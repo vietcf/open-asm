@@ -1,0 +1,213 @@
+<div class="container-fluid">
+  <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/device/platform" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
+    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search platform..." aria-label="Search" value="<%= search %>">
+    <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
+      <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+        <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
+      <% }) %>
+    </select>
+    <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
+  </form>
+  <div class="row mb-3">
+    <div class="col-12 d-flex justify-content-end align-items-center position-relative" style="margin-top: 16px;">
+      <% if (hasPermission && hasPermission(user, 'platform.create')) { %>
+        <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addPlatformModal">
+          <i class="bi bi-plus"></i> Add Platform
+        </button>
+      <% } %>
+      <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+        <div id="toast-error" class="alert alert-danger position-absolute top-0 end-0" style="margin-top:4px; z-index:999;">
+          <%= errorMessage %>
+        </div>
+        <script>setTimeout(()=>{var el=document.getElementById('toast-error'); if(el) el.remove(); window.history.replaceState({}, '', window.location.pathname);},5000)</script>
+      <% } %>
+      <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+        <div id="toast-success" class="alert alert-success position-absolute top-0 end-0" style="margin-top:4px; z-index:999;">
+          <%= successMessage %>
+        </div>
+        <script>setTimeout(()=>{var el=document.getElementById('toast-success'); if(el) el.remove(); window.history.replaceState({}, '', window.location.pathname);},5000)</script>
+      <% } %>
+      <!-- Add Platform Modal -->
+      <% if (hasPermission && hasPermission(user, 'platform.create')) { %>
+        <div class="modal fade" id="addPlatformModal" tabindex="-1" aria-labelledby="addPlatformModalLabel" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="addPlatformModalLabel">Add Platform</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <form id="addPlatformForm" action="/device/platform" method="POST">
+                  <input type="hidden" name="page" value="<%= page %>">
+                  <input type="hidden" name="search" value="<%= search %>">
+                  <div class="mb-3">
+                    <label for="platformName" class="form-label">Platform Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control form-control-sm" id="platformName" name="name" placeholder="Platform Name" required>
+                  </div>
+                  <div class="mb-3">
+                    <label for="platformDescription" class="form-label">Description</label>
+                    <input type="text" class="form-control form-control-sm" id="platformDescription" name="description" placeholder="Description">
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Add Platform</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Platform List</h5>
+        </div>
+        <div class="card-body table-responsive p-0">
+          <table class="table table-hover text-nowrap">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Platform Name</th>
+                <th>Description</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (platformList && platformList.length > 0) { %>
+                <% platformList.forEach(function(platform, idx) { %>
+                  <tr>
+                    <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                    <td><%= platform.name %></td>
+                    <td><%= platform.description %></td>
+                    <td class="text-end">
+                      <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#platformDetailModal-<%= platform.id %>"><i class="bi bi-eye"></i></a>
+                      <% if (hasPermission && hasPermission(user, 'platform.update')) { %>
+                        <a href="#" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#platformEditModal-<%= platform.id %>"><i class="bi bi-pencil"></i></a>
+                      <% } %>
+                      <% if (hasPermission && hasPermission(user, 'platform.delete')) { %>
+                        <form action="/device/platform/<%= platform.id %>?_method=DELETE" method="POST" style="display:inline">
+                          <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure?')"><i class="bi bi-trash"></i></button>
+                        </form>
+                      <% } %>
+                    </td>
+                  </tr>
+                  <!-- Platform Detail Modal -->
+                  <div class="modal fade" id="platformDetailModal-<%= platform.id %>" tabindex="-1" aria-labelledby="platformDetailModalLabel-<%= platform.id %>" aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="platformDetailModalLabel-<%= platform.id %>">Platform Information</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <dl class="row mb-0">
+                            <dt class="col-sm-4">Platform Name</dt>
+                            <dd class="col-sm-8"><%= platform.name %></dd>
+                            <dt class="col-sm-4">Description</dt>
+                            <dd class="col-sm-8"><%= platform.description %></dd>
+                          </dl>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Platform Edit Modal -->
+                  <% if (hasPermission && hasPermission(user, 'platform.update')) { %>
+                    <div class="modal fade" id="platformEditModal-<%= platform.id %>" tabindex="-1" aria-labelledby="platformEditModalLabel-<%= platform.id %>" aria-hidden="true">
+                      <div class="modal-dialog">
+                        <div class="modal-content">
+                          <div class="modal-header">
+                            <h5 class="modal-title" id="platformEditModalLabel-<%= platform.id %>">Edit Platform</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                          </div>
+                          <form action="/device/platform/<%= platform.id %>?_method=PUT" method="POST">
+                            <input type="hidden" name="page" value="<%= page %>">
+                            <input type="hidden" name="search" value="<%= search %>">
+                            <div class="modal-body">
+                              <div class="mb-3">
+                                <label class="form-label">Platform Name</label>
+                                <input type="text" class="form-control form-control-sm" name="name" value="<%= platform.name %>" disabled>
+                              </div>
+                              <div class="mb-3">
+                                <label class="form-label">Description</label>
+                                <input type="text" class="form-control form-control-sm" name="description" value="<%= platform.description %>">
+                              </div>
+                            </div>
+                            <div class="modal-footer">
+                              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                              <button type="submit" class="btn btn-primary btn-sm">Save changes</button>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                    </div>
+                  <% } %>
+                <% }) %>
+              <% } else { %>
+                <tr><td colspan="4" class="text-center">No data</td></tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer clearfix">
+          <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
+            <div>
+              <% 
+                let startItem = (page - 1) * pageSize + 1;
+                let endItem = startItem + (platformList ? platformList.length : 0) - 1;
+                if (!platformList || platformList.length === 0) {
+                  startItem = 0;
+                  endItem = 0;
+                }
+              %>
+              <span>Showing <%= startItem %> - <%= endItem %> of <%= totalCount %> platforms</span>
+            </div>
+            <ul class="pagination pagination-sm m-0 float-end">
+              <% 
+                let startPage = 1;
+                let endPage = totalPages;
+                if (totalPages > 10) {
+                  if (page <= 5) {
+                    startPage = 1;
+                    endPage = 10;
+                  } else if (page + 4 >= totalPages) {
+                    startPage = totalPages - 9;
+                    endPage = totalPages;
+                  } else {
+                    startPage = page - 5 + 1;
+                    endPage = page + 4;
+                  }
+                }
+              %>
+              <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                <a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= page - 1 %>&pageSize=<%= pageSize %>" tabindex="-1">Previous</a>
+              </li>
+              <% if (startPage > 1) { %>
+                <li class="page-item"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=1&pageSize=<%= pageSize %>">1</a></li>
+                <% if (startPage > 2) { %>
+                  <li class="page-item disabled"><span class="page-link">...</span></li>
+                <% } %>
+              <% } %>
+              <% for (let i = startPage; i <= endPage; i++) { %>
+                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= i %>&pageSize=<%= pageSize %>"><%= i %></a></li>
+              <% } %>
+              <% if (endPage < totalPages) { %>
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                <li class="page-item"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= totalPages %>&pageSize=<%= pageSize %>"><%= totalPages %></a></li>
+              <% } %>
+              <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                <a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= page + 1 %>&pageSize=<%= pageSize %>">Next</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,94 @@
+<!-- 2FA Setup - AdminLTE style, similar to login page -->
+<link rel="stylesheet" href="/css/adminlte.min.css">
+<link rel="stylesheet" href="/css/bootstrap-icons.min.css">
+<style>
+  .login-box .card-body {
+    padding: 2.5rem 2.2rem 2rem 2.2rem;
+    font-family: 'Source Sans 3', 'Source Sans Pro', Arial, sans-serif;
+    font-size: 1.08rem;
+  }
+  .login-box .card-header .h1 {
+    font-family: 'Source Sans 3', 'Source Sans Pro', Arial, sans-serif;
+    font-size: 2.2rem;
+    letter-spacing: 1px;
+  }
+  .login-box .form-control-lg {
+    font-size: 1.25rem;
+    height: 2.8rem;
+  }
+  .login-box .input-group-text {
+    font-size: 1.3rem;
+    background: #f4f6f9;
+  }
+  .login-box .btn {
+    font-size: 1.1rem;
+    padding: 0.7rem 0;
+  }
+  .login-box .badge {
+    font-size: 1.15em;
+    letter-spacing: 2px;
+    word-break: break-all;
+    white-space: pre-line;
+    display: inline-block;
+    max-width: 100%;
+    text-align: left;
+  }
+  .login-box .login-box-msg {
+    font-size: 1.08rem;
+    margin-bottom: 1.5rem;
+  }
+  .login-box .secret-wrap {
+    word-break: break-all;
+    white-space: pre-line;
+    display: block;
+    max-width: 100%;
+    margin: 0 auto;
+    text-align: center;
+  }
+  @media (min-width: 576px) {
+    .login-box {
+      width: 480px;
+      max-width: 98vw;
+    }
+  }
+</style>
+<div class="hold-transition login-page" style="background: #f4f6f9; min-height: 100vh;">
+  <div class="login-box">
+    <div class="card card-outline card-primary shadow">
+      <div class="card-header text-center">
+        <span class="h1"><b>2FA</b> Setup</span>
+      </div>
+      <div class="card-body">
+        <p class="login-box-msg">Enable Two-Factor Authentication for your account</p>
+        <% if (error) { %>
+          <div class="alert alert-danger text-center py-2"><%= error %></div>
+        <% } %>
+        <% if (qr) { %>
+          <div class="text-center mb-3">
+            <img src="<%= qr %>" alt="QR Code" class="img-fluid rounded border bg-white p-2" style="width:200px;height:200px;"/>
+          </div>
+          <div class="mb-2 text-center">
+            <small class="text-muted">Scan this QR code with <b>Google Authenticator</b>, <b>Microsoft Authenticator</b>,<br>or any TOTP app.</small>
+          </div>
+          <div class="mb-3 text-center">
+            <span class="text-secondary">Or enter this secret manually:</span><br>
+            <span class="badge bg-light text-dark px-3 py-2 mt-1 secret-wrap"><%= secret.replace(/(.{32})/g, '$1\n') %></span>
+          </div>
+          <form method="POST" action="/2fa/verify" autocomplete="off">
+            <div class="input-group mb-3" style="height: 48px;">
+              <input type="text" class="form-control form-control-lg text-center" id="token" name="token" maxlength="6" required pattern="[0-9]{6}" placeholder="Enter 6-digit code" autofocus style="height: 48px;">
+              <span class="input-group-text d-flex align-items-center justify-content-center" style="height: 48px; min-width: 48px; font-size: 1.5rem;"><span class="bi bi-shield-lock"></span></span>
+            </div>
+            <div class="d-grid gap-2 mb-2">
+              <button type="submit" class="btn btn-primary btn-block">
+                <i class="fas fa-check-circle mr-1"></i> Verify & Enable 2FA
+              </button>
+            </div>
+          </form>
+        <% } else { %>
+          <div class="alert alert-warning text-center">No QR code available. Please try again.</div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,214 @@
+<div class="container-fluid">
+  <div class="row justify-content-center">
+    <div class="col-lg-7 col-md-9">
+      <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Add Server</h5>
+        </div>
+        <form action="/server/server/add" method="POST">
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label">IP Address(es) <span class="text-danger">*</span></label>
+              <div class="d-flex align-items-center gap-2">
+                <select id="ip-select" name="ip_addresses[]" class="form-select form-select-sm flex-grow-1" multiple required></select>
+                <button type="button" class="btn btn-outline-success btn-sm" id="add-ip-btn" title="Add new IP"><i class="bi bi-plus-circle"></i> Add IP</button>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Platform (OS)</label>
+              <select id="platform-select" name="os" class="form-select form-select-sm"></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Server Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control form-control-sm" placeholder="Enter server name" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Status</label>
+              <select name="status" class="form-select form-select-sm">
+                <option value="">-- Select Status --</option>
+                <% (statusOptions || []).forEach(function(st) { %>
+                  <option value="<%= st %>"><%= st %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Location</label>
+              <select name="location" class="form-select form-select-sm">
+                <option value="">-- Select location --</option>
+                <% (locations || []).forEach(function(loc) { %>
+                  <option value="<%= loc %>"><%= loc %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Type</label>
+              <select name="type" class="form-select form-select-sm">
+                <option value="">-- Select type --</option>
+                <% (typeOptions || []).forEach(function(tp) { %>
+                  <option value="<%= tp %>"><%= tp %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Managers</label>
+              <select id="manager-select" name="managers[]" class="form-select form-select-sm select2" multiple></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Systems</label>
+              <select id="system-select" name="systems[]" class="form-select form-select-sm select2" multiple></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Agents</label>
+              <select id="agent-select" name="agents[]" class="form-select form-select-sm select2" multiple></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Services</label>
+              <select id="service-select" name="services[]" class="form-select form-select-sm select2" multiple></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Tags</label>
+              <select id="tag-select" name="tags[]" class="form-select form-select-sm select2" multiple></select>
+            </div>
+            <div class="mb-3">
+              <label for="serverDescription" class="form-label">Description</label>
+              <textarea class="form-control form-control-sm" id="serverDescription" name="description" placeholder="Description" rows="2"></textarea>
+            </div>
+          </div>
+          <div class="card-footer text-end">
+            <button type="submit" class="btn btn-primary btn-sm">Add Server</button>
+            <a href="/server/server/list" class="btn btn-outline-secondary btn-sm ms-2">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+  $(function() {
+    $('#ip-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select IP address(es)',
+      allowClear: true,
+      ajax: {
+        url: '/network/api/ip-addresses/unassigned',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      },
+      minimumInputLength: 0
+    });
+    $('#manager-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select manager(s)',
+      allowClear: true,
+      ajax: {
+        url: '/organize/api/contact',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      },
+      minimumInputLength: 0
+    });
+    $('#system-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select system(s)',
+      allowClear: true,
+      ajax: {
+        url: '/system/api/system',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      },
+      minimumInputLength: 0
+    });
+    $('#agent-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select agent(s)',
+      allowClear: true,
+      ajax: {
+        url: '/server/api/agent',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      },
+      minimumInputLength: 0
+    });
+    $('#service-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select service(s)',
+      allowClear: true,
+      ajax: {
+        url: '/server/api/service',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      },
+      minimumInputLength: 0
+    });
+    $('#platform-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select platform (OS)',
+      allowClear: true,
+      ajax: {
+        url: '/device/api/platform',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      }
+    });
+    $('#tag-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select tag(s)',
+      allowClear: true,
+      ajax: {
+        url: '/organize/api/tag',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      }
+    });
+
+    // Auto-fill server name if empty when OS and IP are selected, and convert to lowercase
+    function autoFillServerName() {
+      var nameInput = $("input[name='name']");
+      var osText = $('#platform-select').find('option:selected').text() || $('#platform-select').select2('data')[0]?.text || '';
+      var ipData = $('#ip-select').select2('data');
+      var firstIp = ipData && ipData.length > 0 ? ipData[0].text : '';
+      if (nameInput.val().trim() === '' && osText && firstIp) {
+        var firstWord = osText.split(/\s+/)[0];
+        var autoName = (firstWord + '_' + firstIp).toLowerCase();
+        nameInput.val(autoName);
+      }
+    }
+    $('#platform-select').on('change', autoFillServerName);
+    $('#ip-select').on('change', autoFillServerName);
+    $("input[name='name']").on('input', function() {
+      // Always convert to lowercase on manual input
+      var val = $(this).val();
+      $(this).val(val.toLowerCase());
+    });
+
+    // Thêm nút Add IP: mở tab mới tới trang quản lý IP và tự động bật popup Add IP
+    $('#add-ip-btn').off('click').on('click', function(e) {
+      e.preventDefault();
+      window.open('http://localhost:3000/network/ip-address?add=1', '_blank');
+    });
+  });
+</script>

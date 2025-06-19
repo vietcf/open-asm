@@ -1,0 +1,399 @@
+<div class="container-fluid">
+  <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/device/device" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
+    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search Device Name, Type, OS..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+    <select class="form-select form-select-sm me-2" name="page_size" onchange="this.form.submit()" style="width:90px;max-width:90px;">
+      <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+        <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
+      <% }) %>
+    </select>
+    <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
+  </form>
+  <div class="row mb-3">
+    <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
+      <% if (hasPermission && hasPermission(user, 'device.create')) { %>
+        <button type="button" class="btn btn-primary btn-sm me-2" onclick="window.location.href='/device/device/add'">
+          <i class="bi bi-plus"></i> Add Device
+        </button>
+      <% } %>
+      <% if (hasPermission && hasPermission(user, 'device.read')) { %>
+        <form id="deviceExportForm" action="/device/device/export" method="GET" style="display:inline; margin-right: 8px;">
+          <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+          <input type="hidden" name="device_type_id" value="<%= typeof device_type_id !== 'undefined' ? device_type_id : '' %>">
+          <% if (tags && tags.length) { tags.forEach(function(tag) { %>
+            <input type="hidden" name="tags[]" value="<%= tag %>">
+          <% }) } %>
+          <button type="submit" class="btn btn-warning btn-sm">
+            <i class="bi bi-download"></i> Export
+          </button>
+        </form>
+        <button type="button" class="btn btn-secondary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#deviceFilterModal">
+          <i class="bi bi-funnel"></i> Filter
+        </button>
+      <% } %>
+      <!-- Filter Modal -->
+      <div class="modal fade" id="deviceFilterModal" tabindex="-1" aria-labelledby="deviceFilterModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="deviceFilterModalLabel">Filter Devices</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="deviceFilterForm">
+                <div class="mb-3">
+                  <label for="filterDeviceType" class="form-label">Device Type</label>
+                  <select id="filterDeviceType" name="device_type_id" class="form-select form-select-sm select2" data-selected="<%= typeof device_type_id !== 'undefined' ? device_type_id : '' %>"></select>
+                </div>
+                <div class="mb-3">
+                  <label for="filterDeviceTags" class="form-label">Tags</label>
+                  <select id="filterDeviceTags" name="tags[]" class="form-select form-select-sm select2" multiple data-selected='<%- JSON.stringify(typeof tags !== 'undefined' ? tags : []) %>'></select>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal" onclick="window.location.href='/device/device'">Close</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="clearDeviceFilterBtn">Clear Filter</button>
+              <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal" onclick="applyDeviceFilter()">Apply Filter</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <script>
+        $(function() {
+          $('#filterDeviceType').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select device type',
+            width: '100%',
+            allowClear: true,
+            dropdownParent: $('#deviceFilterModal'),
+            ajax: {
+              url: '/device/api/device-type',
+              dataType: 'json',
+              delay: 250,
+              data: params => ({ search: params.term }),
+              processResults: data => ({ results: data }),
+              cache: true
+            }
+          });
+          $('#filterDeviceTags').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select tag(s)',
+            allowClear: true,
+            width: '100%',
+            multiple: true,
+            dropdownParent: $('#deviceFilterModal'),
+            ajax: {
+              url: '/organize/api/tag',
+              dataType: 'json',
+              delay: 250,
+              data: params => ({ search: params.term }),
+              processResults: data => ({ results: data }),
+              cache: true
+            }
+          });
+
+          // Set selected value for Device Type
+          var selectedDeviceType = $('#filterDeviceType').attr('data-selected');
+          if (selectedDeviceType) {
+            $.ajax({
+              url: '/device/api/device-type',
+              data: { search: '' },
+              dataType: 'json',
+              success: function(data) {
+                var found = data.find(function(item) { return String(item.id) === String(selectedDeviceType); });
+                if (found) {
+                  var option = new Option(found.text, found.id, true, true);
+                  $('#filterDeviceType').append(option).trigger('change');
+                } else if (selectedDeviceType) {
+                  // fallback: add option with id only
+                  var option = new Option(selectedDeviceType, selectedDeviceType, true, true);
+                  $('#filterDeviceType').append(option).trigger('change');
+                }
+              }
+            });
+          }
+          // Set selected value for Tags (multiple)
+          var selectedTags = $('#filterDeviceTags').attr('data-selected');
+          if (selectedTags) {
+            try {
+              var tagIds = JSON.parse(selectedTags);
+              if (Array.isArray(tagIds) && tagIds.length) {
+                $.ajax({
+                  url: '/organize/api/tag',
+                  data: { search: '' },
+                  dataType: 'json',
+                  success: function(data) {
+                    var foundTags = data.filter(function(item) { return tagIds.includes(String(item.id)) || tagIds.includes(item.id); });
+                    foundTags.forEach(function(tag) {
+                      var option = new Option(tag.text || tag.name, tag.id, true, true);
+                      $('#filterDeviceTags').append(option);
+                    });
+                    $('#filterDeviceTags').val(tagIds.map(String)).trigger('change');
+                  }
+                });
+              }
+            } catch(e) {}
+          }
+        });
+        function applyDeviceFilter() {
+          const params = new URLSearchParams();
+          // Device type
+          const deviceTypeId = $('#filterDeviceType').val();
+          if (deviceTypeId) params.append('device_type_id', deviceTypeId);
+          // Tags (multiple)
+          const tagIds = $('#filterDeviceTags').val();
+          if (tagIds && tagIds.length) {
+            tagIds.forEach(tid => params.append('tags[]', tid));
+          }
+          window.location.href = '/device/device?' + params.toString();
+        }
+        $('#clearDeviceFilterBtn').on('click', function() {
+          $('#filterDeviceType').val(null).trigger('change');
+          $('#filterDeviceTags').val(null).trigger('change');
+          // Optionally, close modal and reload list without filters
+          window.location.href = '/device/device';
+        });
+      </script>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Device List</h5>
+        </div>
+        <div class="card-body table-responsive p-0">
+          <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+            <div class="alert alert-danger" style="position: absolute; top: 12px; right: 32px; min-width:200px; max-width:400px; text-align:center; z-index: 1000;">
+              <%= errorMessage %>
+            </div>
+            <script>
+              setTimeout(function() {
+                var el = document.querySelector('.alert-danger');
+                if (el) el.style.display = 'none';
+              }, 3000);
+            </script>
+          <% } %>
+          <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+            <div class="alert alert-success" style="position: absolute; top: 60px; right: 32px; min-width:200px; max-width:400px; text-align:center; z-index: 1000;">
+              <%= successMessage %>
+            </div>
+            <script>
+              setTimeout(function() {
+                var el = document.querySelector('.alert-success');
+                if (el) el.style.display = 'none';
+              }, 3000);
+            </script>
+          <% } %>
+          <table class="table table-hover text-nowrap">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Name</th>
+                <th>Device Type</th>
+                <th>Manufacturer</th>
+                <th>Platform (OS)</th>
+                <th>IP Address(es)</th>
+                <th>Management</th>
+                <th>Tags</th>
+                <!-- <th>Contacts</th> -->
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (deviceList && deviceList.length > 0) { %>
+                <% deviceList.forEach(function(device, idx) { %>
+                  <tr>
+                    <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                    <td><%= device.name %></td>
+                    <td><%= device.device_type_name || '-' %></td>
+                    <td><%= device.manufacturer %></td>
+                    <td>
+                      <% if (device.platform_name) { %>
+                        <%= device.platform_name %>
+                      <% } else if (device.platform) { %>
+                        <%= device.platform %>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <% if (device.ip_addresses && device.ip_addresses.length) { %>
+                        <% let ipList = device.ip_addresses.map(ipObj => ipObj.ip_address || ipObj.address || ipObj).join(', '); %>
+                        <%= ipList %>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
+                    <td><%= device.management_address ? device.management_address : '-' %></td>
+                    <td>
+                      <% if (device.tags && device.tags.length) { %>
+                        <% device.tags.forEach(function(tag) { %>
+                          <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em; margin-right:2px; margin-bottom:2px;"><%= tag.name %></span>
+                        <% }) %>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
+                    <!--
+                    <td>
+                      <% if (device.contacts && device.contacts.length) { %>
+                        <ul class="list-unstyled mb-0">
+                          <% device.contacts.forEach(function(contact) { %>
+                            <li><%= contact.name %> &lt;<%= contact.email %>&gt;</li>
+                          <% }) %>
+                        </ul>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
+                    -->
+                    <td class="text-end">
+                      <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#deviceDetailModal-<%= device.id %>"><i class="bi bi-eye"></i></a>
+                      <% if (hasPermission && hasPermission(user, 'device.update')) { %>
+                        <a href="/device/device/edit/<%= device.id %>" class="btn btn-warning btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
+                      <% } %>
+                      <% if (hasPermission && hasPermission(user, 'device.delete')) { %>
+                        <form action="/device/device/<%= device.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirm('Are you sure you want to delete this device?')">
+                          <button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="bi bi-trash"></i></button>
+                        </form>
+                      <% } %>
+                    </td>
+                  </tr>
+                <% }) %>
+              <% } else { %>
+                <tr><td colspan="11" class="text-center">No data</td></tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer clearfix">
+          <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
+            <div>
+              <% 
+                let startItem = (page - 1) * pageSize + 1;
+                let endItem = startItem + (deviceList ? deviceList.length : 0) - 1;
+                if (!deviceList || deviceList.length === 0) {
+                  startItem = 0;
+                  endItem = 0;
+                }
+              %>
+              <span>Showing <%= startItem %> - <%= endItem %> of <%= totalCount %> devices</span>
+            </div>
+            <ul class="pagination pagination-sm m-0 float-end">
+              <% 
+                let startPage = 1;
+                let endPage = totalPages;
+                if (totalPages > 10) {
+                  if (page <= 5) {
+                    startPage = 1;
+                    endPage = 10;
+                  } else if (page + 4 >= totalPages) {
+                    startPage = totalPages - 9;
+                    endPage = totalPages;
+                  } else {
+                    startPage = page - 5 + 1;
+                    endPage = page + 4;
+                  }
+                }
+              %>
+              <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                <a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= page - 1 %>&page_size=<%= pageSize %>" tabindex="-1">Previous</a>
+              </li>
+              <% if (startPage > 1) { %>
+                <li class="page-item"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=1&page_size=<%= pageSize %>">1</a></li>
+                <% if (startPage > 2) { %>
+                  <li class="page-item disabled"><span class="page-link">...</span></li>
+                <% } %>
+              <% } %>
+              <% for (let i = startPage; i <= endPage; i++) { %>
+                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= i %>&page_size=<%= pageSize %>"><%= i %></a></li>
+              <% } %>
+              <% if (endPage < totalPages) { %>
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                <li class="page-item"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= totalPages %>&page_size=<%= pageSize %>"><%= totalPages %></a></li>
+              <% } %>
+              <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                <a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= page + 1 %>&page_size=<%= pageSize %>">Next</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <% if (deviceList && deviceList.length > 0) { %>
+    <% deviceList.forEach(function(device) { %>
+      <div class="modal fade" id="deviceDetailModal-<%= device.id %>" tabindex="-1" aria-labelledby="deviceDetailModalLabel-<%= device.id %>" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="deviceDetailModalLabel-<%= device.id %>">Device Detail: <%= device.name %></h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <dl class="row">
+                <dt class="col-sm-3">Name</dt>
+                <dd class="col-sm-9"><%= device.name %></dd>
+                <dt class="col-sm-3">Device Type</dt>
+                <dd class="col-sm-9"><%= device.device_type_name || '-' %></dd>
+                <dt class="col-sm-3">Manufacturer</dt>
+                <dd class="col-sm-9"><%= device.manufacturer || '-' %></dd>
+                <dt class="col-sm-3">Platform (OS)</dt>
+                <dd class="col-sm-9"><%= device.platform_name || device.platform || '-' %></dd>
+                <dt class="col-sm-3">Serial Number</dt>
+                <dd class="col-sm-9"><%= device.serial_number || '-' %></dd>
+                <dt class="col-sm-3">IP Address(es)</dt>
+                <dd class="col-sm-9">
+                  <% if (device.ip_addresses && device.ip_addresses.length) { %>
+                    <ul class="list-unstyled mb-0">
+                      <% device.ip_addresses.forEach(function(ip) { %>
+                        <li><%= ip.ip_address || ip.address || ip %></li>
+                      <% }) %>
+                    </ul>
+                  <% } else { %>
+                    <span class="text-muted">-</span>
+                  <% } %>
+                </dd>
+                <dt class="col-sm-3">Management Address</dt>
+                <dd class="col-sm-9"><%= device.management_address || '-' %></dd>
+                <dt class="col-sm-3">Tags</dt>
+                <dd class="col-sm-9">
+                  <% if (device.tags && device.tags.length) { %>
+                    <% device.tags.forEach(function(tag) { %>
+                      <span class="badge bg-light text-dark me-1 mb-1"><%= tag.name %></span>
+                    <% }) %>
+                  <% } else { %>
+                    <span class="text-muted">-</span>
+                  <% } %>
+                </dd>
+                <dt class="col-sm-3">Contacts</dt>
+                <dd class="col-sm-9">
+                  <% if (device.contacts && device.contacts.length) { %>
+                    <ul class="list-unstyled mb-0">
+                      <% device.contacts.forEach(function(contact) { %>
+                        <li><%= contact.name %> &lt;<%= contact.email %>&gt;</li>
+                      <% }) %>
+                    </ul>
+                  <% } else { %>
+                    <span class="text-muted">-</span>
+                  <% } %>
+                </dd>
+                <dt class="col-sm-3">Description</dt>
+                <dd class="col-sm-9"><%= device.description || '-' %></dd>
+                <dt class="col-sm-3">Location</dt>
+                <dd class="col-sm-9"><%= device.location || '-' %></dd>
+                <dt class="col-sm-3">Created At</dt>
+                <dd class="col-sm-9"><%= device.created_at ? device.created_at.toLocaleString ? device.created_at.toLocaleString() : device.created_at : '-' %></dd>
+                <dt class="col-sm-3">Updated At</dt>
+                <dd class="col-sm-9"><%= device.updated_at ? device.updated_at.toLocaleString ? device.updated_at.toLocaleString() : device.updated_at : '-' %></dd>
+                <dt class="col-sm-3">Updated By</dt>
+                <dd class="col-sm-9"><%= device.updated_by || '-' %></dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% }) %>
+  <% } %>
+</div>

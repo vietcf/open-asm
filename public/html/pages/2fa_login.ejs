@@ -1,0 +1,51 @@
+<!-- 2FA Login - AdminLTE style, giống trang login -->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Two-Factor Authentication | 2FA Login</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/css/adminlte.min.css">
+  <link rel="stylesheet" href="/css/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="/css/source-sans-3.css">
+  <style>
+    body { background: #f4f6f9; }
+    .login-box { margin-top: 5vh; }
+    .login-card-body { font-family: 'Source Sans 3', 'Source Sans Pro', Arial, sans-serif; }
+    .input-group-text { font-size: 1.3rem; background: #f4f6f9; }
+    .btn { font-size: 1.1rem; padding: 0.7rem 0; }
+    .login-box-msg { font-size: 1.08rem; margin-bottom: 1.5rem; }
+  </style>
+</head>
+<body class="login-page bg-body-secondary">
+  <div class="login-box">
+    <div class="login-logo mb-2">
+      <a href="/"><b>2FA</b> Verification</a>
+    </div>
+    <div class="card">
+      <div class="card-body login-card-body">
+        <% if (error) { %>
+          <div class="alert alert-danger text-center mb-3" role="alert">
+            <%= error %>
+          </div>
+        <% } %>
+        <p class="login-box-msg">Enter the 6-digit code from your authenticator app</p>
+        <form action="/login/2fa" method="post" autocomplete="off">
+          <div class="input-group mb-3" style="height: 48px;">
+            <input type="text" name="token" class="form-control form-control-lg text-center" maxlength="6" required pattern="[0-9]{6}" placeholder="Enter 6-digit code" autofocus style="height: 48px;">
+            <span class="input-group-text d-flex align-items-center justify-content-center" style="height: 48px; min-width: 48px; font-size: 1.5rem;"><span class="bi bi-shield-lock"></span></span>
+          </div>
+          <div class="d-grid gap-2 mb-2">
+            <button type="submit" class="btn btn-primary btn-block">
+              <i class="fas fa-check-circle mr-1"></i> Verify 2FA
+            </button>
+          </div>
+        </form>
+        <p class="mb-0 text-center mt-3">
+          <a href="/logout" class="text-muted">Back to Login</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

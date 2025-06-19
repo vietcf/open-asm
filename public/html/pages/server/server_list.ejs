@@ -1,0 +1,538 @@
+<div class="container-fluid">
+  <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/server/server/list" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
+    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search Server Name, IP or OS..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+    <select class="form-select form-select-sm me-2" name="page_size" onchange="this.form.submit()" style="width:90px;max-width:90px;">
+      <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+        <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
+      <% }) %>
+    </select>
+    <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
+  </form>
+  <div class="row mb-3">
+    <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
+      <button type="button" class="btn btn-primary btn-sm me-2" onclick="window.location.href='/server/server/add'">
+        <i class="bi bi-plus"></i> Add Server
+      </button>
+      <form action="/server/import" method="POST" enctype="multipart/form-data" style="display:inline; margin-right: 8px;">
+        <label class="btn btn-success btn-sm mb-0">
+          <i class="bi bi-upload"></i> Import from file
+          <input type="file" name="serverfile" accept=".csv,.txt" style="display:none" onchange="this.form.submit()">
+        </label>
+      </form>
+      <form id="serverExportForm" action="/server/server/export" method="GET" style="display:inline; margin-right: 8px;">
+        <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+        <input type="hidden" name="location" value="<%= typeof filterLocation !== 'undefined' ? filterLocation : '' %>">
+        <input type="hidden" name="type" value="<%= typeof filterType !== 'undefined' ? filterType : '' %>">
+        <input type="hidden" name="status" value="<%= typeof filterStatus !== 'undefined' ? filterStatus : '' %>">
+        <% if (filterTags && filterTags.length) { filterTags.forEach(function(tag) { %>
+          <input type="hidden" name="tags[]" value="<%= tag %>">
+        <% }) } %>
+        <% if (filterIp && filterIp.length) { filterIp.forEach(function(ip) { %>
+          <input type="hidden" name="ip[]" value="<%= ip %>">
+        <% }) } %>
+        <% if (filterManager && filterManager.length) { filterManager.forEach(function(m) { %>
+          <input type="hidden" name="manager[]" value="<%= m %>">
+        <% }) } %>
+        <% if (filterSystems && filterSystems.length) { filterSystems.forEach(function(s) { %>
+          <input type="hidden" name="systems[]" value="<%= s %>">
+        <% }) } %>
+        <% if (filterServices && filterServices.length) { filterServices.forEach(function(sv) { %>
+          <input type="hidden" name="services[]" value="<%= sv %>">
+        <% }) } %>
+        <% if (filterOs && filterOs.length) { filterOs.forEach(function(os) { %>
+          <input type="hidden" name="os[]" value="<%= os %>">
+        <% }) } %>
+        <button type="submit" class="btn btn-warning btn-sm">
+          <i class="bi bi-download"></i> Export
+        </button>
+      </form>
+      <button type="button" class="btn btn-secondary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#filterModal">
+        <i class="bi bi-funnel"></i> Filter
+      </button>
+      <!-- Filter Modal -->
+      <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <form id="serverFilterForm" method="get" action="/server/server/list">
+              <div class="modal-header">
+                <h5 class="modal-title" id="filterModalLabel">Filter Server List</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="row g-2">
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Tags</label>
+                    <select id="filterTags" name="tags[]" class="form-select select2" multiple></select>
+                  </div>
+                  <div class="col-12 mb-2">
+                    <label class="form-label">IP Address</label>
+                    <select id="filterIp" name="ip[]" class="form-select select2" multiple></select>
+                  </div>
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Manager</label>
+                    <select id="filterManager" name="manager[]" class="form-select select2" multiple></select>
+                  </div>
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Systems</label>
+                    <select id="filterSystems" name="systems[]" class="form-select select2" multiple></select>
+                  </div>
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Services</label>
+                    <select id="filterServices" name="services[]" class="form-select select2" multiple></select>
+                  </div>
+                  <div class="col-12 mb-2">
+                    <label class="form-label">OS/Platform</label>
+                    <select id="filterOs" name="os[]" class="form-select select2" multiple></select>
+                  </div>
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Status</label>
+                    <select id="filterStatus" name="status" class="form-select">
+                      <option value="">All</option>
+                      <% (statusOptions || []).forEach(function(st) { %>
+                        <option value="<%= st %>" <%= filterStatus == st ? 'selected' : '' %>><%= st %></option>
+                      <% }) %>
+                    </select>
+                  </div>
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Location</label>
+                    <select id="filterLocation" name="location" class="form-select">
+                      <option value="">All</option>
+                      <% (locations || []).forEach(function(loc) { %>
+                        <option value="<%= loc %>" <%= filterLocation == loc ? 'selected' : '' %>><%= loc %></option>
+                      <% }) %>
+                    </select>
+                  </div>
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Type</label>
+                    <select id="filterType" name="type" class="form-select">
+                      <option value="">All</option>
+                      <% (typeOptions || []).forEach(function(tp) { %>
+                        <option value="<%= tp %>" <%= filterType == tp ? 'selected' : '' %>><%= tp %></option>
+                      <% }) %>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" id="clearFilterBtn">Clear Filter</button>
+                <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Server List</h5>
+        </div>
+        <div class="card-body table-responsive p-0">
+          <% if (typeof error !== 'undefined' && error) { %>
+            <div class="alert alert-danger" style="position: absolute; top: 12px; right: 32px; min-width:200px; max-width:400px; text-align:center; z-index: 1000;">
+              <%= error %>
+            </div>
+            <script>
+              setTimeout(function() {
+                var el = document.querySelector('.alert-danger');
+                if (el) el.style.display = 'none';
+              }, 3000);
+            </script>
+          <% } %>
+          <% if (typeof success !== 'undefined' && success) { %>
+            <div class="alert alert-success" style="position: absolute; top: 60px; right: 32px; min-width:200px; max-width:400px; text-align:center; z-index: 1000;">
+              <%= success %>
+            </div>
+            <script>
+              setTimeout(function() {
+                var el = document.querySelector('.alert-success');
+                if (el) el.style.display = 'none';
+              }, 3000);
+            </script>
+          <% } %>
+          <table class="table table-hover text-nowrap">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Server Name</th>
+                <th>IP Address</th>
+                <th>Status</th>
+                <th>Location</th>
+                <th>Type</th>
+                <th>Tags</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (serverList && serverList.length > 0) { %>
+                <% serverList.forEach(function(server, idx) { %>
+                  <tr>
+                    <td><%= idx + 1 %></td>
+                    <td><%= server.name %></td>
+                    <td>
+                      <% if (Array.isArray(server.ip_addresses) && server.ip_addresses.length) { %>
+                        <%= server.ip_addresses.map(ipObj => ipObj.ip_address).join(', ') %>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
+                    <td><%= server.status %></td>
+                    <td><%= server.location %></td>
+                    <td><%= server.type %></td>
+                    <td>
+                      <% if (Array.isArray(server.tags) && server.tags.length) { %>
+                        <div class="d-flex flex-wrap">
+                          <% server.tags.forEach(function(tag) { %>
+                            <span class="badge bg-light text-dark me-1 mb-1"><%= tag.name %></span>
+                          <% }) %>
+                        </div>
+                      <% } else { %>
+                        <span class="text-muted">No tags</span>
+                      <% } %>
+                    </td>
+                    <td class="text-end">
+                      <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#serverDetailModal-<%= server.id %>"><i class="bi bi-eye"></i></a>
+                      <a href="/server/server/<%= server.id %>/edit" class="btn btn-warning btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
+                      <form action="/server/<%= server.id %>?_method=DELETE" method="POST" style="display:inline">
+                        <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete?')"><i class="bi bi-trash"></i></button>
+                      </form>
+                    </td>
+                  </tr>
+                  <!-- Server Detail Modal -->
+                  <div class="modal fade" id="serverDetailModal-<%= server.id %>" tabindex="-1" aria-labelledby="serverDetailModalLabel-<%= server.id %>" aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="serverDetailModalLabel-<%= server.id %>">Server Detail</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <dl class="row mb-0">
+                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Server Name</dt>
+                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;white-space: pre-line;"><%= server.name %></dd>
+                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Description</dt>
+                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;white-space: pre-line;"><%= (server.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') %></dd>
+                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">IP Address</dt>
+                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
+                              <% if (Array.isArray(server.ip_addresses) && server.ip_addresses.length) { %>
+                                <%= server.ip_addresses.map(ipObj => ipObj.ip_address).join(', ') %>
+                              <% } else { %>
+                                <span class="text-muted">-</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Status</dt>
+                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;"><%= server.status %></dd>
+                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Location</dt>
+                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;"><%= server.location %></dd>
+                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Type</dt>
+                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;"><%= server.type %></dd>
+                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Manager</dt>
+                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
+                              <% if (Array.isArray(server.managers) && server.managers.length) { %>
+                                <%= server.managers.map(m => m.name).join(', ') %>
+                              <% } else if (server.manager) { %>
+                                <a href="/organize/contact?search='+encodeURIComponent(server.manager)+'" target="_blank"><%= server.manager %></a>
+                              <% } else { %>
+                                <span class="text-muted">-</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Platform (OS)</dt>
+                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
+                              <% if (server.platform_name) { %>
+                                <%= server.platform_name %>
+                              <% } else { %>
+                                <span class="text-muted">-</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Agents</dt>
+                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
+                              <% if (Array.isArray(server.agents) && server.agents.length) { %>
+                                <div class="d-flex flex-wrap">
+                                  <% server.agents.forEach(function(a) { %>
+                                    <span class="badge bg-light text-dark me-1 mb-1"><%= a.name %></span>
+                                  <% }) %>
+                                </div>
+                              <% } else { %>
+                                <span class="text-muted">-</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Services</dt>
+                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
+                              <% if (Array.isArray(server.services) && server.services.length) { %>
+                                <div class="d-flex flex-wrap">
+                                  <% server.services.forEach(function(s) { %>
+                                    <span class="badge bg-light text-dark me-1 mb-1"><%= s.name %></span>
+                                  <% }) %>
+                                </div>
+                              <% } else { %>
+                                <span class="text-muted">-</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Tags</dt>
+                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
+                              <% if (Array.isArray(server.tags) && server.tags.length) { %>
+                                <div class="d-flex flex-wrap">
+                                  <% server.tags.forEach(function(tag) { %>
+                                    <span class="badge bg-light text-dark me-1 mb-1"><%= tag.name %></span>
+                                  <% }) %>
+                                </div>
+                              <% } else { %>
+                                <span class="text-muted">No tags</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Created At</dt>
+                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;"><%= server.created_at ? new Date(server.created_at).toLocaleString() : '' %></dd>
+                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Updated At</dt>
+                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;"><%= server.updated_at ? new Date(server.updated_at).toLocaleString() : '' %></dd>
+                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Updated By</dt>
+                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;"><%= server.updated_by || '' %></dd>
+                          </dl>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                <% }) %>
+              <% } else { %>
+                <tr><td colspan="7" class="text-center">No data</td></tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer clearfix">
+          <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
+            <div>
+              <% 
+                let startItem = (page - 1) * pageSize + 1;
+                let endItem = startItem + (serverList ? serverList.length : 0) - 1;
+                if (!serverList || serverList.length === 0) {
+                  startItem = 0;
+                  endItem = 0;
+                }
+              %>
+              <span>Showing <%= startItem %> - <%= endItem %> of <%= totalCount %> servers</span>
+            </div>
+            <ul class="pagination pagination-sm m-0 float-end">
+              <% 
+                let startPage = 1;
+                let endPage = totalPages;
+                if (totalPages > 10) {
+                  if (page <= 5) {
+                    startPage = 1;
+                    endPage = 10;
+                  } else if (page + 4 >= totalPages) {
+                    startPage = totalPages - 9;
+                    endPage = totalPages;
+                  } else {
+                    startPage = page - 5 + 1;
+                    endPage = page + 4;
+                  }
+                }
+              %>
+              <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                <a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= page - 1 %>&page_size=<%= pageSize %>" tabindex="-1">Previous</a>
+              </li>
+              <% if (startPage > 1) { %>
+                <li class="page-item"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=1&page_size=<%= pageSize %>">1</a></li>
+                <% if (startPage > 2) { %>
+                  <li class="page-item disabled"><span class="page-link">...</span></li>
+                <% } %>
+              <% } %>
+              <% for (let i = startPage; i <= endPage; i++) { %>
+                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= i %>&page_size=<%= pageSize %>"><%= i %></a></li>
+              <% } %>
+              <% if (endPage < totalPages) { %>
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                <li class="page-item"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= totalPages %>&page_size=<%= pageSize %>"><%= totalPages %></a></li>
+              <% } %>
+              <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                <a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= page + 1 %>&page_size=<%= pageSize %>">Next</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- Filter values for JS (an toàn cho EJS strict) -->
+<div id="filter-data"
+  data-tags='<%= JSON.stringify(filterTags || []) %>'
+  data-ip='<%= JSON.stringify(filterIp || []) %>'
+  data-manager='<%= JSON.stringify(filterManager || []) %>'
+  data-systems='<%= JSON.stringify(filterSystems || []) %>'
+  data-services='<%= JSON.stringify(filterServices || []) %>'
+  data-os='<%= JSON.stringify(filterOs || []) %>' style="display:none"></div>
+<script>
+  var filterValues = {
+    tags: JSON.parse(document.getElementById('filter-data').dataset.tags || '[]'),
+    ip: JSON.parse(document.getElementById('filter-data').dataset.ip || '[]'),
+    manager: JSON.parse(document.getElementById('filter-data').dataset.manager || '[]'),
+    systems: JSON.parse(document.getElementById('filter-data').dataset.systems || '[]'),
+    services: JSON.parse(document.getElementById('filter-data').dataset.services || '[]'),
+    os: JSON.parse(document.getElementById('filter-data').dataset.os || '[]')
+  };
+</script>
+<link href="/css/select2.min.css" rel="stylesheet" />
+<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="/js/select2.min.js"></script>
+<script>
+function restoreSelect2Value($el, values, url) {
+  if (!values || !values.length) return;
+  $.ajax({
+    url: url,
+    data: { ids: values },
+    dataType: 'json',
+    traditional: true,
+    success: function(data) {
+      data.forEach(function(item) {
+        if ($el.find('option[value="' + item.id + '"]').length === 0) {
+          var option = new Option(item.text || item.ip || item.name, item.id, true, true);
+          $el.append(option);
+        }
+      });
+      $el.val(values).trigger('change');
+    }
+  });
+}
+
+$(function() {
+  var $filterModal = $('#filterModal');
+  var $modalContent = $filterModal.find('.modal-content');
+  // Multi-select fields: select2 ajax
+  $('#filterTags').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select tag(s)',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $modalContent,
+    ajax: {
+      url: '/organize/api/tag',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({ search: params.term }),
+      processResults: data => ({ results: data })
+    }
+  });
+  $('#filterIp').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select IP(s)',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $modalContent,
+    ajax: {
+      url: '/network/api/ip-addresses',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({ search: params.term }),
+      processResults: data => ({
+        results: data.map(x => ({
+          id: x.id,
+          text: x.text || x.ip || x.name
+        }))
+      })
+    }
+  });
+  $('#filterManager').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select manager(s)',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $modalContent,
+    ajax: {
+      url: '/organize/api/contact',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({ search: params.term }),
+      processResults: data => ({ results: data })
+    }
+  });
+  $('#filterSystems').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select system(s)',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $modalContent,
+    ajax: {
+      url: '/system/api/system',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({ search: params.term }),
+      processResults: data => ({ results: data })
+    }
+  });
+  $('#filterServices').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select service(s)',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $modalContent,
+    ajax: {
+      url: '/server/api/service',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({ search: params.term }),
+      processResults: data => ({ results: data })
+    }
+  });
+  $('#filterOs').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select OS',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $modalContent,
+    ajax: {
+      url: '/device/api/platform',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({ search: params.term }),
+      processResults: data => ({ results: data })
+    }
+  });
+
+  // Restore selected values for multi-select filter fields
+  restoreSelect2Value($('#filterTags'), filterValues.tags, '/organize/api/tag');
+  restoreSelect2Value($('#filterIp'), filterValues.ip, '/network/api/ip-addresses');
+  restoreSelect2Value($('#filterManager'), filterValues.manager, '/organize/api/contact');
+  restoreSelect2Value($('#filterSystems'), filterValues.systems, '/system/api/system');
+  restoreSelect2Value($('#filterServices'), filterValues.services, '/server/api/service');
+  restoreSelect2Value($('#filterOs'), filterValues.os, '/device/api/platform');
+
+  // Clear Filter button: reset tất cả filter về mặc định
+  $('#clearFilterBtn').on('click', function() {
+    window.location.href = '/server/server/list';
+  });
+});
+</script>
+<style>
+  .select2-container--bootstrap-5 .select2-dropdown {
+    z-index: 2000 !important;
+  }
+</style>
+<% var filterLocation = typeof filterLocation !== 'undefined' ? filterLocation : '';
+   var filterType = typeof filterType !== 'undefined' ? filterType : '';
+%>
+<script>
+  // Ghi log dữ liệu services ra console khi modal chi tiết server được mở
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.modal[id^="serverDetailModal-"]').forEach(function(modal) {
+      modal.addEventListener('show.bs.modal', function() {
+        try {
+          // Lấy id server từ id modal
+          var serverId = this.id.replace('serverDetailModal-', '');
+          // Tìm phần tử <pre> chứa JSON.stringify(server.services) nếu có (hoặc lấy từ thuộc tính data nếu bạn muốn tối ưu hơn)
+          var pre = this.querySelector('pre[data-services]');
+          if (pre) {
+            var services = JSON.parse(pre.getAttribute('data-services'));
+            console.log('[DEBUG] server.services for serverId=' + serverId + ':', services);
+          }
+        } catch(e) {}
+      });
+    });
+  });
+</script>

@@ -1,0 +1,293 @@
+<div class="container-fluid">
+  <div class="row mb-3">
+    <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
+      <% if (hasPermission && hasPermission(user, 'user.create')) { %>
+      <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addUserModal">
+        <i class="bi bi-plus"></i> Add User
+      </button>
+      <!-- Add User Modal -->
+      <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="addUserModalLabel">Add User</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="addUserForm" action="/administrator/users" method="POST" autocomplete="off">
+                <div class="mb-3">
+                  <label for="userUsername" class="form-label">Username <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control form-control-sm" id="userUsername" name="username" placeholder="Username" required>
+                </div>
+                <div class="mb-3">
+                  <label for="userEmail" class="form-label">Email <span class="text-danger">*</span></label>
+                  <input type="email" class="form-control form-control-sm" id="userEmail" name="email" placeholder="Email" required>
+                </div>
+                <div class="mb-3">
+                  <label for="userFullname" class="form-label">Full Name</label>
+                  <input type="text" class="form-control form-control-sm" id="userFullname" name="fullname" placeholder="Full Name">
+                </div>
+                <div class="mb-3">
+                  <label for="userRole" class="form-label">Role <span class="text-danger">*</span></label>
+                  <select class="form-select form-select-sm" id="userRole" name="role" required>
+                    <option value="">-- Select Role --</option>
+                    <% if (roles && roles.length) { roles.forEach(function(role) { %>
+                      <option value="<%= role.name %>"><%= role.name %></option>
+                    <% }) } %>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label for="userPassword" class="form-label">Password <span class="text-danger">*</span></label>
+                  <input type="password" class="form-control form-control-sm" id="userPassword" name="password" placeholder="Password" required minlength="4">
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Require 2FA</label>
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="require2faSwitch" name="require_twofa" checked>
+                    <label class="form-check-label" for="require2faSwitch">Enable Two-Factor Authentication</label>
+                  </div>
+                </div>
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-primary btn-sm" form="addUserForm">Add User</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <% } %>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title mb-0">User List</h3>
+        </div>
+        <div class="card-body table-responsive p-0">
+          <table class="table table-hover text-nowrap">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Full Name</th>
+                <th>Role</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (userList && userList.length > 0) { %>
+                <% userList.forEach(function(rowUser, idx) { %>
+                  <tr>
+                    <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                    <td><%= rowUser.username %></td>
+                    <td><%= rowUser.email %></td>
+                    <td><%= rowUser.fullname %></td>
+                    <td><%= rowUser.role_name %></td>
+                    <td class="text-end">
+                      <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#userDetailModal-<%= rowUser.id %>"><i class="bi bi-eye"></i></a>
+                      <% if (hasPermission && hasPermission(user, 'user.update')) { %>
+                        <a href="#" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#userEditModal-<%= rowUser.id %>"><i class="bi bi-pencil"></i></a>
+                      <% } %>
+                      <% if (hasPermission && hasPermission(user, 'user.delete')) { %>
+                        <form action="/administrator/users/<%= rowUser.id %>?_method=DELETE" method="POST" style="display:inline">
+                          <input type="hidden" name="_method" value="DELETE">
+                          <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete?')" <%= rowUser.username === 'admin' ? 'disabled data-bs-toggle="tooltip" data-bs-title="Cannot delete admin user"' : '' %>>
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </form>
+                      <% } %>
+                    </td>
+                  </tr>
+                  <!-- User Detail Modal -->
+                  <div class="modal fade" id="userDetailModal-<%= rowUser.id %>" tabindex="-1" aria-labelledby="userDetailModalLabel-<%= rowUser.id %>" aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="userDetailModalLabel-<%= rowUser.id %>">User Information</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <dl class="row mb-0">
+                            <dt class="col-sm-4">Username</dt>
+                            <dd class="col-sm-8"><%= rowUser.username %></dd>
+                            <dt class="col-sm-4">Email</dt>
+                            <dd class="col-sm-8"><%= rowUser.email %></dd>
+                            <dt class="col-sm-4">Full Name</dt>
+                            <dd class="col-sm-8"><%= rowUser.fullname %></dd>
+                            <dt class="col-sm-4">Role</dt>
+                            <dd class="col-sm-8"><%= rowUser.role_name %></dd>
+                          </dl>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <% if (hasPermission && hasPermission(user, 'user.update')) { %>
+                  <!-- User Edit Modal -->
+                  <div class="modal fade" id="userEditModal-<%= rowUser.id %>" tabindex="-1" aria-labelledby="userEditModalLabel-<%= rowUser.id %>" aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="userEditModalLabel-<%= rowUser.id %>">Edit User</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <form id="editUserForm-<%= rowUser.id %>" action="/administrator/users/<%= rowUser.id %>/edit?_method=PUT" method="POST">
+                            <input type="hidden" name="_method" value="PUT">
+                            <div class="mb-3">
+                              <label class="form-label">Username <span class="text-danger">*</span></label>
+                              <input type="text" class="form-control form-control-sm" name="username" value="<%= rowUser.username %>" <%= rowUser.username === 'admin' ? 'readonly' : '' %> required>
+                            </div>
+                            <div class="mb-3">
+                              <label class="form-label">Email <span class="text-danger">*</span></label>
+                              <input type="email" class="form-control form-control-sm" name="email" value="<%= rowUser.email %>">
+                            </div>
+                            <div class="mb-3">
+                              <label class="form-label">Full Name</label>
+                              <input type="text" class="form-control form-control-sm" name="fullname" value="<%= rowUser.fullname %>">
+                            </div>
+                            <div class="mb-3">
+                              <label class="form-label">Role <span class="text-danger">*</span></label>
+                              <select class="form-select form-select-sm" name="role" <%= rowUser.username === 'admin' ? 'disabled' : '' %> required>
+                                <option value="">-- Select Role --</option>
+                                <% if (roles && roles.length) { roles.forEach(function(role) { %>
+                                  <option value="<%= role.name %>" <%= rowUser.role_name === role.name ? 'selected' : '' %>><%= role.name %></option>
+                                <% }) } %>
+                              </select>
+                              <% if (rowUser.username === 'admin') { %>
+                                <input type="hidden" name="role" value="<%= rowUser.role_name %>">
+                              <% } %>
+                            </div>
+                            <div class="mb-3">
+                              <label class="form-label">Password</label>
+                              <input type="password" class="form-control form-control-sm" name="password" placeholder="Leave blank to keep current password" minlength="4" autocomplete="new-password">
+                            </div>
+                            <div class="mb-3">
+                              <label class="form-label">Repeat Password</label>
+                              <input type="password" class="form-control form-control-sm" name="repeat_password" placeholder="Repeat new password" minlength="4" autocomplete="new-password">
+                            </div>
+                            <div class="mb-3">
+                              <label class="form-label">Require 2FA</label>
+                              <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="editRequire2faSwitch-<%= rowUser.id %>" name="require_twofa" <%= (rowUser.require_twofa === true || rowUser.require_twofa === 1 || rowUser.require_twofa === '1' || rowUser.require_twofa === 'true') ? 'checked' : '' %>>
+                                <label class="form-check-label" for="editRequire2faSwitch-<%= rowUser.id %>">Enable Two-Factor Authentication</label>
+                              </div>
+                            </div>
+                          </form>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                          <button type="submit" class="btn btn-primary btn-sm" form="editUserForm-<%= rowUser.id %>">Save Changes</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <% } %>
+                <% }) %>
+              <% } else { %>
+                <tr><td colspan="6" class="text-center">No data</td></tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer clearfix">
+          <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
+            <div>
+              <span>Showing <%= userList && userList.length ? ((page - 1) * pageSize + 1) : 0 %> - <%= userList && userList.length ? ((page - 1) * pageSize + userList.length) : 0 %> of <%= totalCount || '' %> users</span>
+            </div>
+            <form method="get" class="d-flex align-items-center" style="gap: 8px;">
+              <input type="hidden" name="page" value="<%= page %>">
+              <label for="pageSizeSelect" class="mb-0 me-1">Page size:</label>
+              <select id="pageSizeSelect" name="pageSize" class="form-select form-select-sm" style="width:auto;display:inline-block;" onchange="this.form.submit()">
+                <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
+                  <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
+                <% }) %>
+              </select>
+            </form>
+            <ul class="pagination pagination-sm m-0 float-end">
+              <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                <a class="page-link" href="?page=<%= page - 1 %>&pageSize=<%= pageSize %>" tabindex="-1">Previous</a>
+              </li>
+              <% 
+                let startPage = 1;
+                let endPage = totalPages;
+                if (totalPages > 10) {
+                  if (page <= 5) {
+                    startPage = 1;
+                    endPage = 10;
+                  } else if (page + 4 >= totalPages) {
+                    startPage = totalPages - 9;
+                    endPage = totalPages;
+                  } else {
+                    startPage = page - 5 + 1;
+                    endPage = page + 4;
+                  }
+                }
+                for (let i = startPage; i <= endPage; i++) { 
+              %>
+                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %>&pageSize=<%= pageSize %>"><%= i %></a></li>
+              <% } %>
+              <% if (endPage < totalPages) { %>
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+              <% } %>
+              <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                <a class="page-link" href="?page=<%= page + 1 %>&pageSize=<%= pageSize %>">Next</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function showToast(msg, type) {
+  const toast = document.createElement('div');
+  toast.className = `alert alert-${type}`;
+  toast.style.position = 'fixed';
+  toast.style.top = '16px';
+  toast.style.right = '16px';
+  toast.style.zIndex = 9999;
+  toast.style.minWidth = '200px';
+  toast.innerText = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+// Client-side validation for edit user password match
+window.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('form[id^="editUserForm-"]').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+      const pwd = form.querySelector('input[name="password"]');
+      const repwd = form.querySelector('input[name="repeat_password"]');
+      // Only check if at least one password field is filled
+      if ((pwd && pwd.value) || (repwd && repwd.value)) {
+        if (!pwd.value || !repwd.value || pwd.value !== repwd.value) {
+          e.preventDefault();
+          showToast('Passwords do not match.', 'danger');
+          repwd && repwd.focus();
+        }
+      }
+    });
+  });
+});
+</script>
+<% if (success) { %>
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      showToast('<%= success %>', 'success');
+    });
+  </script>
+<% } %>
+<% if (error) { %>
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      showToast('<%= error %>', 'danger');
+    });
+  </script>
+<% } %>

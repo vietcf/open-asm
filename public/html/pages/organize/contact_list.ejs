@@ -1,0 +1,274 @@
+<div class="container-fluid">
+  <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/organize/contact" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
+    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search name, email..." aria-label="Search" value="<%= search %>">
+    <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
+      <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+        <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
+      <% }) %>
+    </select>
+    <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
+  </form>
+  <div class="row mb-3">
+    <div class="col-12 d-flex justify-content-end align-items-center position-relative">
+      <% if (hasPermission && hasPermission(user, 'contact.create')) { %>
+        <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addContactModal">
+          <i class="bi bi-plus"></i> Add Contact
+        </button>
+        <!-- Add Contact Modal -->
+        <div class="modal fade" id="addContactModal" tabindex="-1" aria-labelledby="addContactModalLabel" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="addContactModalLabel">Add Contact</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <form action="/organize/contact" method="POST">
+                <input type="hidden" name="page" value="<%= page %>">
+                <input type="hidden" name="search" value="<%= search %>">
+                <div class="modal-body">
+                  <div class="mb-3">
+                    <label class="form-label">Name <span class="text-danger">*</span></label>
+                    <input type="text" name="name" class="form-control form-control-sm" required>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Email</label>
+                    <input type="email" name="email" class="form-control form-control-sm">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Phone</label>
+                    <input type="text" name="phone" class="form-control form-control-sm">
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Org Unit</label>
+                    <select name="unit_id" class="form-select form-select-sm">
+                      <option value="">None</option>
+                      <% units.forEach(u => { %>
+                        <option value="<%= u.id %>"><%= u.name %></option>
+                      <% }) %>
+                    </select>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Position <span class="text-danger">*</span></label>
+                    <select name="position" class="form-select form-select-sm" required>
+                      <option value="Manager">Manager</option>
+                      <option value="Staff" selected>Staff</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                  <button type="submit" class="btn btn-primary btn-sm">Add Contact</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      <% } %>
+      <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+        <div class="alert alert-danger position-absolute top-0 end-0" style="margin-top:4px; z-index:999;">
+          <%= errorMessage %>
+        </div>
+        <script>setTimeout(()=>{document.querySelector('.alert-danger').remove(); window.history.replaceState({}, '', window.location.pathname);},5000);</script>
+      <% } %>
+      <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+        <div class="alert alert-success position-absolute top-0 end-0" style="margin-top:4px; z-index:999;">
+          <%= successMessage %>
+        </div>
+        <script>setTimeout(()=>{document.querySelector('.alert-success').remove(); window.history.replaceState({}, '', window.location.pathname);},5000);</script>
+      <% } %>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title mb-0">Contact List</h3>
+        </div>
+        <div class="card-body table-responsive p-0">
+          <table class="table table-hover text-nowrap">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Org Unit</th>
+                <th>Position</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (contactList && contactList.length) { %>
+                <% contactList.forEach((c, i) => { %>
+                  <tr>
+                    <td><%= (page - 1) * 10 + i + 1 %></td>
+                    <td><%= c.name %></td>
+                    <td><%= c.email %></td>
+                    <td><%= c.phone %></td>
+                    <td><%= c.unit_name || '' %></td>
+                    <td><%= c.position %></td>
+                    <td class="text-end">
+                      <% if (hasPermission && hasPermission(user, 'contact.update')) { %>
+                        <button class="btn btn-warning btn-sm me-1" title="Edit" data-bs-toggle="modal" data-bs-target="#editContactModal-<%= c.id %>"><i class="bi bi-pencil"></i></button>
+                      <% } %>
+                      <% if (hasPermission && hasPermission(user, 'contact.delete')) { %>
+                        <form action="/organize/contact/<%= c.id %>?_method=DELETE" method="POST" style="display:inline;">
+                          <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure?')"><i class="bi bi-trash"></i></button>
+                        </form>
+                      <% } %>
+                    </td>
+                  </tr>
+                  <!-- Edit Contact Modal -->
+                  <% if (hasPermission && hasPermission(user, 'contact.update')) { %>
+                  <div class="modal fade" id="editContactModal-<%= c.id %>" tabindex="-1" aria-labelledby="editContactModalLabel-<%= c.id %>" aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="editContactModalLabel-<%= c.id %>">Edit Contact</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form action="/organize/contact/<%= c.id %>?_method=PUT" method="POST">
+                          <div class="modal-body">
+                            <div class="mb-3"><label class="form-label">Name</label><input type="text" name="name" class="form-control form-control-sm" value="<%= c.name %>" required></div>
+                            <div class="mb-3"><label class="form-label">Email</label><input type="email" name="email" class="form-control form-control-sm" value="<%= c.email %>"></div>
+                            <div class="mb-3"><label class="form-label">Phone</label><input type="text" name="phone" class="form-control form-control-sm" value="<%= c.phone %>"></div>
+                            <div class="mb-3">
+                              <label class="form-label">Org Unit</label>
+                              <select name="unit_id" class="form-select form-select-sm">
+                                <option value="">None</option>
+                                <% units.forEach(u => { %>
+                                  <option value="<%= u.id %>" <%= u.id === c.unit_id ? 'selected' : '' %>><%= u.name %></option>
+                                <% }) %>
+                              </select>
+                            </div>
+                            <div class="mb-3">
+                              <label class="form-label">Position</label>
+                              <select name="position" class="form-select form-select-sm" required>
+                                <option value="Manager" <%= c.position === 'Manager' ? 'selected' : '' %>>Manager</option>
+                                <option value="Staff" <%= c.position === 'Staff' ? 'selected' : '' %>>Staff</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                  <% } %>
+                <% }) %>
+              <% } else { %>
+                <tr><td colspan="7" class="text-center">No contacts found</td></tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer clearfix">
+          <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
+            <div>
+              <span>Showing <%= startItem %> - <%= endItem %> of <%= totalCount %> contacts</span>
+            </div>
+            <ul class="pagination pagination-sm m-0 float-end">
+              <% 
+                let startPage = 1;
+                let endPage = totalPages;
+                if (totalPages > 10) {
+                  if (page <= 5) {
+                    startPage = 1;
+                    endPage = 10;
+                  } else if (page + 4 >= totalPages) {
+                    startPage = totalPages - 9;
+                    endPage = totalPages;
+                  } else {
+                    startPage = page - 5 + 1;
+                    endPage = page + 4;
+                  }
+                }
+              %>
+              <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                <a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= page - 1 %>&pageSize=<%= pageSize %>" tabindex="-1">Previous</a>
+              </li>
+              <% if (startPage > 1) { %>
+                <li class="page-item"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=1&pageSize=<%= pageSize %>">1</a></li>
+                <% if (startPage > 2) { %>
+                  <li class="page-item disabled"><span class="page-link">...</span></li>
+                <% } %>
+              <% } %>
+              <% for (let i = startPage; i <= endPage; i++) { %>
+                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= i %>&pageSize=<%= pageSize %>"><%= i %></a></li>
+              <% } %>
+              <% if (endPage < totalPages) { %>
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                <li class="page-item"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= totalPages %>&pageSize=<%= pageSize %>"><%= totalPages %></a></li>
+              <% } %>
+              <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                <a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= page + 1 %>&pageSize=<%= pageSize %>">Next</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// Validate Contact Add/Edit Form
+function validateContactForm(form) {
+  var nameInput = form.querySelector('[name="name"]');
+  var emailInput = form.querySelector('[name="email"]');
+  var positionInput = form.querySelector('[name="position"]');
+  var valid = true;
+  // Trim values
+  if (nameInput) nameInput.value = nameInput.value.trim();
+  if (emailInput) emailInput.value = emailInput.value.trim();
+  if (positionInput) positionInput.value = positionInput.value.trim();
+  // Validate Name
+  if (!nameInput.value) {
+    nameInput.classList.add('is-invalid');
+    valid = false;
+  } else {
+    nameInput.classList.remove('is-invalid');
+  }
+  // Validate Email
+  if (!emailInput.value) {
+    emailInput.classList.add('is-invalid');
+    valid = false;
+  } else {
+    emailInput.classList.remove('is-invalid');
+  }
+  // Validate Position
+  if (!positionInput.value) {
+    positionInput.classList.add('is-invalid');
+    valid = false;
+  } else {
+    positionInput.classList.remove('is-invalid');
+  }
+  // Show error toast if invalid
+  if (!valid) {
+    if (typeof showToast === 'function') {
+      showToast('Please fill in all required fields (Name, Email, Position).', 'danger');
+    } else {
+      alert('Please fill in all required fields (Name, Email, Position).');
+    }
+  }
+  return valid;
+}
+// Attach validateContactForm to all add/edit contact forms
+window.addEventListener('DOMContentLoaded', function() {
+  // Add Contact Modal
+  var addForm = document.querySelector('#addContactModal form');
+  if (addForm) {
+    addForm.onsubmit = function(e) {
+      if (!validateContactForm(this)) e.preventDefault();
+    };
+  }
+  // Edit Contact Modals
+  document.querySelectorAll('[id^="editContactModal-"] form').forEach(function(form) {
+    form.onsubmit = function(e) {
+      if (!validateContactForm(this)) e.preventDefault();
+    };
+  });
+});
+</script>

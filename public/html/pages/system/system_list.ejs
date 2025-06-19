@@ -1,0 +1,393 @@
+<div class="container-fluid">
+  <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/system/system" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
+    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search System, Alias..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+    <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
+      <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+        <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
+      <% }) %>
+    </select>
+    <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
+  </form>
+  <div class="row mb-3">
+    <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
+      <a href="/system/system/add" class="btn btn-primary btn-sm me-2">
+        <i class="bi bi-plus"></i> Add System
+      </a>
+      <!--
+      <form action="/system/import" method="POST" enctype="multipart/form-data" style="display:inline;">
+        <label class="btn btn-success btn-sm mb-0">
+          <i class="bi bi-upload"></i> Import from file
+          <input type="file" name="systemfile" accept=".csv,.txt" style="display:none" onchange="this.form.submit()">
+        </label>
+      </form>
+      -->
+      <!--
+      <button type="button" class="btn btn-secondary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#filterModal">
+        <i class="bi bi-funnel"></i> Filter
+      </button>
+      -->
+      <!-- Filter Modal -->
+      <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="filterModalLabel">Filter Systems</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="filterForm" method="get" action="">
+                <div class="mb-3">
+                  <label for="filterId" class="form-label">System ID</label>
+                  <input type="text" class="form-control form-control-sm" id="filterId" name="id" placeholder="System ID" value="<%= typeof id !== 'undefined' ? id : '' %>">
+                </div>
+                <div class="mb-3">
+                  <label for="filterName" class="form-label">System Name</label>
+                  <input type="text" class="form-control form-control-sm" id="filterName" name="name" placeholder="System Name" value="<%= typeof name !== 'undefined' ? name : '' %>">
+                </div>
+                <div class="mb-3">
+                  <label for="filterManager" class="form-label">Manager</label>
+                  <input type="text" class="form-control form-control-sm" id="filterManager" name="manager" placeholder="Manager" value="<%= typeof manager !== 'undefined' ? manager : '' %>">
+                </div>
+                <input type="hidden" name="pageSize" value="<%= pageSize %>">
+              </form>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-primary btn-sm" form="filterForm">Apply Filter</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title mb-0">System List</h3>
+        </div>
+        <div class="card-body table-responsive p-0">
+          <table class="table table-hover text-nowrap">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>System ID</th>
+                <th>System Name</th>
+                <th>Alias</th>
+                <th>Tags</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (systemList && systemList.length > 0) { %>
+                <% systemList.forEach(function(system, idx) { %>
+                  <tr>
+                    <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                    <td><%= system.system_id %></td>
+                    <td><%= system.name %></td>
+                    <td>
+                      <% if (Array.isArray(system.alias) && system.alias.length > 0) { %>
+                        <%= system.alias.join(', ') %>
+                      <% } else if (system.alias) { %>
+                        <%= system.alias %>
+                      <% } else { %>
+                        <span class="text-muted">No alias</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <% if (system.tags && system.tags.length > 0) { %>
+                        <% system.tags.forEach(function(tag) { %>
+                          <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                        <% }) %>
+                      <% } else { %>
+                        <span class="text-muted">No tags</span>
+                      <% } %>
+                    </td>
+                    <td class="text-end">
+                      <button type="button" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#systemDetailModal-<%= system.id %>" onclick='showSystemDetail(<%= JSON.stringify(system) %>)'><i class="bi bi-eye"></i></button>
+                      <a href="/system/system/<%= system.id %>/edit" class="btn btn-warning btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
+                      <form action="/system/system/<%= system.id %>/delete" method="POST" style="display:inline" onsubmit="return confirmDeleteSystem(this, '<%= system.name %>')">
+                        <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                  <!-- System Detail Modal -->
+                  <div class="modal fade" id="systemDetailModal-<%= system.id %>" tabindex="-1" aria-labelledby="systemDetailModalLabel-<%= system.id %>" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="systemDetailModalLabel-<%= system.id %>">System Detail</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <dl class="row mb-0">
+                            <dt class="col-sm-3">ID (DB)</dt>
+                            <dd class="col-sm-9">
+                              <% if (typeof system.id !== 'undefined' && system.id !== null) { %>
+                                <%= system.id %>
+                              <% } else { %>
+                                <span class="text-muted">No data</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-3">System Code</dt>
+                            <dd class="col-sm-9">
+                              <% if (system.system_id) { %>
+                                <%= system.system_id %>
+                              <% } else { %>
+                                <span class="text-muted">No data</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-3">System Name</dt>
+                            <dd class="col-sm-9">
+                              <% if (system.name) { %>
+                                <%= system.name %>
+                              <% } else { %>
+                                <span class="text-muted">No data</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-3">Level</dt>
+                            <dd class="col-sm-9">
+                              <% if (system.level) { %>
+                                <%= system.level %>
+                              <% } else { %>
+                                <span class="text-muted">No data</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-3">Manager(s)</dt>
+                            <dd class="col-sm-9">
+                              <% if (system.contacts && system.contacts.length > 0) { %>
+                                <% system.contacts.forEach(function(contact, idx) { %>
+                                  <% if (contact.email) { %>
+                                    <a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>" target="_blank"><%= contact.name %> (<%= contact.email %>)</a><%= idx < system.contacts.length - 1 ? ', ' : '' %>
+                                  <% } else { %>
+                                    <%= contact.name %><%= idx < system.contacts.length - 1 ? ', ' : '' %>
+                                  <% } %>
+                                <% }) %>
+                              <% } else { %>
+                                <span class="text-muted">No manager</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-3">Department</dt>
+                            <dd class="col-sm-9">
+                              <% if (system.department_name) { %>
+                                <%= system.department_name %>
+                              <% } else { %>
+                                <span class="text-muted">No data</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-3">Alias</dt>
+                            <dd class="col-sm-9">
+                              <% if (Array.isArray(system.alias) && system.alias.length > 0) { %>
+                                <%= system.alias.join(', ') %>
+                              <% } else if (system.alias) { %>
+                                <%= system.alias %>
+                              <% } else { %>
+                                <span class="text-muted">No alias</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-3">Tags</dt>
+                            <dd class="col-sm-9">
+                              <% if (system.tags && system.tags.length > 0) { %>
+                                <% system.tags.forEach(function(tag) { %>
+                                  <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                                <% }) %>
+                              <% } else { %>
+                                <span class="text-muted">No tags</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-3">Created At</dt>
+                            <dd class="col-sm-9">
+                              <% if (system.created_at) { %>
+                                <%= system.created_at.toLocaleString ? system.created_at.toLocaleString() : system.created_at %>
+                              <% } else { %>
+                                <span class="text-muted">No data</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-3">Updated At</dt>
+                            <dd class="col-sm-9">
+                              <% if (system.updated_at) { %>
+                                <%= system.updated_at.toLocaleString ? system.updated_at.toLocaleString() : system.updated_at %>
+                              <% } else { %>
+                                <span class="text-muted">No data</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-3">Updated By</dt>
+                            <dd class="col-sm-9">
+                              <% if (system.updated_by) { %>
+                                <%= system.updated_by %>
+                              <% } else { %>
+                                <span class="text-muted">No data</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-3">Description</dt>
+                            <dd class="col-sm-9">
+                              <% if (system.description) { %>
+                                <span class="desc-text"><%- system.description.replace(/\n/g, '<br>') %></span>
+                              <% } else { %>
+                                <span class="text-muted">No data</span>
+                              <% } %>
+                            </dd>
+                          </dl>
+                          <hr>
+                          <h6>IP Addresses</h6>
+                          <ul>
+                            <% if (system.ip_addresses && system.ip_addresses.length > 0) { %>
+                              <% system.ip_addresses.forEach(function(ipObj) { %>
+                                <li>
+                                  <% if (typeof ipObj === 'object' && ipObj.ip) { %>
+                                    <%= ipObj.ip %>
+                                    <% if (ipObj.contact_name && ipObj.contact_email) { %>
+                                      - <a href="/organize/contact?search=<%= encodeURIComponent(ipObj.contact_email) %>" target="_blank"><%= ipObj.contact_email %></a>
+                                    <% } else if (ipObj.contact_name) { %>
+                                      - <%= ipObj.contact_name %>
+                                    <% } %>
+                                    <% if (ipObj.server_name) { %>
+                                      (<a href="/server/server/list?search=<%= encodeURIComponent(ipObj.ip) %>" target="_blank"><%= ipObj.server_name %></a>)
+                                    <% } %>
+                                  <% } else { %>
+                                    <%= ipObj %>
+                                  <% } %>
+                                </li>
+                              <% }) %>
+                            <% } else { %>
+                              <li>No IPs</li>
+                            <% } %>
+                          </ul>
+                          <h6>Domains</h6>
+                          <ul>
+                            <% if (system.domains && system.domains.length > 0) { %>
+                              <% system.domains.forEach(function(domain) { %>
+                                <li>
+                                  <% if (typeof domain === 'object' && domain.domain) { %>
+                                    <a href="/network/domain?search=<%= encodeURIComponent(domain.domain) %>" target="_blank"><%= domain.domain %></a>
+                                  <% } else { %>
+                                    <%= domain %>
+                                  <% } %>
+                                </li>
+                              <% }) %>
+                            <% } else { %>
+                              <li>No domains</li>
+                            <% } %>
+                          </ul>
+                          <!-- Insert docs section at end of modal-body -->
+                          <h6>System Documents</h6>
+                          <ul class="mb-3">
+                            <% if (system.docs && system.docs.length > 0) { %>
+                              <% system.docs.forEach(function(doc) { %>
+                                <li>
+                                  <a href="<%= doc.url %>" target="_blank">
+                                    <i class="bi bi-file-earmark-text"></i> <%= doc.name %>
+                                  </a>
+                                </li>
+                              <% }) %>
+                            <% } else { %>
+                              <li>No documents</li>
+                            <% } %>
+                          </ul>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                <% }) %>
+              <% } else { %>
+                <tr><td colspan="8" class="text-center">No data</td></tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer clearfix">
+          <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
+            <div>
+              <% 
+                let startItem = (page - 1) * pageSize + 1;
+                let endItem = startItem + (systemList ? systemList.length : 0) - 1;
+                if (!systemList || systemList.length === 0) {
+                  startItem = 0;
+                  endItem = 0;
+                }
+              %>
+              <span>Showing <%= startItem %> - <%= endItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : (typeof total !== 'undefined' ? total : 0) %> systems</span>
+            </div>
+            <ul class="pagination pagination-sm m-0 float-end">
+              <% 
+                let startPage = 1;
+                let endPage = totalPages;
+                if (totalPages > 10) {
+                  if (page <= 5) {
+                    startPage = 1;
+                    endPage = 10;
+                  } else if (page + 4 >= totalPages) {
+                    startPage = totalPages - 9;
+                    endPage = totalPages;
+                  } else {
+                    startPage = page - 5 + 1;
+                    endPage = page + 4;
+                  }
+                }
+              %>
+              <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                <a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= page - 1 %>&pageSize=<%= pageSize %>" tabindex="-1">Previous</a>
+              </li>
+              <% if (startPage > 1) { %>
+                <li class="page-item"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=1&pageSize=<%= pageSize %>">1</a></li>
+                <% if (startPage > 2) { %>
+                  <li class="page-item disabled"><span class="page-link">...</span></li>
+                <% } %>
+              <% } %>
+              <% for (let i = startPage; i <= endPage; i++) { %>
+                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= i %>&pageSize=<%= pageSize %>"><%= i %></a></li>
+              <% } %>
+              <% if (endPage < totalPages) { %>
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                <li class="page-item"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= totalPages %>&pageSize=<%= pageSize %>"><%= totalPages %></a></li>
+              <% } %>
+              <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                <a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= page + 1 %>&pageSize=<%= pageSize %>">Next</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function confirmDeleteSystem(form, name) {
+  if (confirm('Are you sure you want to delete the system: ' + name + '?')) {
+    form._deleting = true;
+    return true;
+  }
+  return false;
+}
+function showToast(msg, type) {
+  const toast = document.createElement('div');
+  toast.className = `alert alert-${type}`;
+  toast.style.position = 'fixed';
+  toast.style.top = '16px';
+  toast.style.right = '16px';
+  toast.style.zIndex = 9999;
+  toast.style.minWidth = '200px';
+  toast.innerText = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+</script>
+<% if (success) { %>
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      showToast('<%= success %>', 'success');
+    });
+  </script>
+<% } %>
+<% if (error) { %>
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      showToast('<%= error %>', 'danger');
+    });
+  </script>
+<% } %>

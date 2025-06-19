@@ -1,0 +1,698 @@
+<div class="container-fluid">
+  <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/network/ip-address" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
+    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search IP or Description..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+    <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
+      <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+        <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
+      <% }) %>
+    </select>
+    <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
+  </form>
+  <div class="row mb-3">
+    <div class="col-12 d-flex justify-content-end align-items-center">
+      <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addIpModal" <% if (!hasPermission(user, 'ip_address.create')) { %>style="display:none"<% } %>>
+        <i class="bi bi-plus"></i> Add IP
+      </button>
+      <!-- Add IP Modal -->
+      <div class="modal fade" id="addIpModal" tabindex="-1" aria-labelledby="addIpModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="addIpModalLabel">Add IP Address</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="addIpForm" action="/network/ip-address" method="POST">
+                <input type="hidden" name="page" value="<%= page %>">
+                <div class="mb-3">
+                  <label for="ipAddress" class="form-label">IP Address <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control form-control-sm" id="ipAddress" name="address" placeholder="IP Address" required>
+                </div>
+                <div class="mb-3">
+                  <label for="ipDescription" class="form-label">Description</label>
+                  <textarea class="form-control form-control-sm" id="ipDescription" name="description" placeholder="Description" rows="2"></textarea>
+                </div>
+                <div class="mb-3">
+                  <label for="ipStatus" class="form-label">Status</label>
+                  <select class="form-select form-select-sm" id="ipStatus" name="status">
+                    <option value="">-- No status --</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="reserved">Reserved</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label for="ipTags" class="form-label">Tags</label>
+                  <select id="ipTags" name="tags[]" class="form-select form-select-sm select2" multiple></select>
+                </div>
+                <div class="mb-3">
+                  <label for="ipContacts" class="form-label">Contacts</label>
+                  <select id="ipContacts" name="contacts[]" class="form-select form-select-sm select2" multiple></select>
+                </div>
+                <div class="mb-3">
+                  <label for="ipSystems" class="form-label">Systems</label>
+                  <select id="ipSystems" name="systems[]" class="form-select form-select-sm select2" multiple></select>
+                </div>
+                <div class="modal-footer d-flex justify-content-end">
+                  <button type="submit" class="btn btn-primary btn-sm">Add IP</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      <form action="/network/ip-address/export" method="GET" style="display:inline;">
+        <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+        <% if (typeof filterTags !== 'undefined' && filterTags.length) { filterTags.forEach(function(tag) { %>
+          <input type="hidden" name="tags[]" value="<%= tag %>">
+        <% }) } %>
+        <% if (typeof filterStatus !== 'undefined' && filterStatus) { %>
+          <input type="hidden" name="status" value="<%= filterStatus %>">
+        <% } %>
+        <% if (typeof filterSystems !== 'undefined' && filterSystems.length) { filterSystems.forEach(function(s) { %>
+          <input type="hidden" name="systems[]" value="<%= s %>">
+        <% }) } %>
+        <% if (typeof filterContacts !== 'undefined' && filterContacts.length) { filterContacts.forEach(function(c) { %>
+          <input type="hidden" name="contacts[]" value="<%= c %>">
+        <% }) } %>
+        <button type="submit" class="btn btn-warning btn-sm">
+          <i class="bi bi-download"></i> Export
+        </button>
+      </form>
+      <button type="button" class="btn btn-secondary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#filterIpModal">
+        <i class="bi bi-funnel"></i> Filter
+      </button>
+      <!-- Filter Modal -->
+      <div class="modal fade" id="filterIpModal" tabindex="-1" aria-labelledby="filterIpModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <form id="ipFilterForm" method="get" action="/network/ip-address">
+              <div class="modal-header">
+                <h5 class="modal-title" id="filterIpModalLabel">Filter IP Address List</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="row g-2">
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Systems</label>
+                    <select id="filterIpSystems" name="systems[]" class="form-select select2" multiple></select>
+                  </div>
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Contacts</label>
+                    <select id="filterIpContacts" name="contacts[]" class="form-select select2" multiple></select>
+                  </div>
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Status</label>
+                    <select id="filterIpStatus" name="status" class="form-select select2">
+                      <option value="">-- All Status --</option>
+                      <option value="assigned">Assigned</option>
+                      <option value="reserved">Reserved</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Tags</label>
+                    <select id="filterIpTags" name="tags[]" class="form-select select2" multiple></select>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <!-- Filter values for JS (an toàn cho EJS strict) -->
+      <div id="filter-data"
+        data-tags='<%= JSON.stringify(filterTags || []) %>'
+        data-status='<%= typeof filterStatus !== 'undefined' ? JSON.stringify([filterStatus]) : '[]' %>'
+        data-systems='<%= JSON.stringify(filterSystems || []) %>'
+        data-contacts='<%= JSON.stringify(filterContacts || []) %>' style="display:none"></div>
+      <script>
+        function restoreSelect2Value($el, values, url) {
+          if (!values || !values.length) return;
+          $.ajax({
+            url: url,
+            data: { ids: values },
+            dataType: 'json',
+            traditional: true,
+            success: function(data) {
+              data.forEach(function(item) {
+                if ($el.find('option[value="' + item.id + '"]').length === 0) {
+                  var option = new Option(item.text || item.name, item.id, true, true);
+                  $el.append(option);
+                }
+              });
+              $el.val(values).trigger('change');
+            }
+          });
+        }
+        $(function() {
+          var $filterModal = $('#filterIpModal');
+          var $modalContent = $filterModal.find('.modal-content');
+          var filterValues = {
+            tags: JSON.parse(document.getElementById('filter-data').dataset.tags || '[]'),
+            status: JSON.parse(document.getElementById('filter-data').dataset.status || '[]'),
+            systems: JSON.parse(document.getElementById('filter-data').dataset.systems || '[]'),
+            contacts: JSON.parse(document.getElementById('filter-data').dataset.contacts || '[]')
+          };
+          $('#filterIpTags').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select tag(s)',
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $modalContent,
+            ajax: {
+              url: '/organize/api/tag',
+              dataType: 'json',
+              delay: 250,
+              data: params => ({ search: params.term }),
+              processResults: data => ({ results: data })
+            }
+          });
+          $('#filterIpStatus').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select status',
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $modalContent
+          });
+          $('#filterIpSystems').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select system(s)',
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $modalContent,
+            ajax: {
+              url: '/system/api/system',
+              dataType: 'json',
+              delay: 250,
+              data: params => ({ search: params.term }),
+              processResults: data => ({ results: data })
+            }
+          });
+          $('#filterIpContacts').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select contact(s)',
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $modalContent,
+            ajax: {
+              url: '/organize/api/contact',
+              dataType: 'json',
+              delay: 250,
+              data: params => ({ search: params.term }),
+              processResults: data => ({ results: data })
+            }
+          });
+          // Restore selected values for multi-select filter fields
+          restoreSelect2Value($('#filterIpTags'), filterValues.tags, '/organize/api/tag');
+          restoreSelect2Value($('#filterIpSystems'), filterValues.systems, '/system/api/system');
+          restoreSelect2Value($('#filterIpContacts'), filterValues.contacts, '/organize/api/contact');
+          if (filterValues.status && filterValues.status.length) {
+            $('#filterIpStatus').val(filterValues.status).trigger('change');
+          }
+          // Clear Filter button: reset tất cả filter về mặc định
+          $('#clearFilterBtnIp').on('click', function() {
+            window.location.href = '/network/ip-address';
+          });
+        });
+      </script>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title mb-0">IP Addresses List</h3>
+        </div>
+        <div class="card-body table-responsive p-0">
+          <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+            <div id="toast-error" class="toast-error alert alert-danger" style="position:absolute; left:0; right:0; top:0; margin:auto; z-index:9999; min-width:200px; max-width:400px; text-align:center;">
+              <%= errorMessage %>
+            </div>
+            <script>setTimeout(function(){var el=document.getElementById('toast-error');if(el)el.style.display='none';},3000);</script>
+          <% } %>
+          <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+            <!-- <div id="toast-success" class="toast-success alert alert-success" style="position:absolute; left:0; right:0; top:40px; margin:auto; z-index:9999; min-width:200px; max-width:400px; text-align:center;">
+              <%= successMessage %>
+            </div>
+            <script>setTimeout(function(){var el=document.getElementById('toast-success');if(el)el.style.display='none';},3000);</script> -->
+          <% } %>
+          <table class="table table-hover text-nowrap">
+            <thead>
+              <tr>
+                <th>STT</th>
+                <th>IP Address</th>
+                <th>Description</th>
+                <th>Status</th>
+                <th>Tags</th>
+                <th>Created At</th>
+                <th>Updated At</th>
+                <th>Updated By</th>
+                <th>Systems</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (ipList && ipList.length > 0) { %>
+                <% ipList.forEach(function(ip, idx) { %>
+                  <tr>
+                    <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                    <td><%= ip.ip_address %></td>
+                    <td><% if (ip.description && ip.description.trim()) { %><span class="desc-text"><%- ip.description.replace(/\n/g, '<br>') %></span><% } %></td>
+                    <td><% if (ip.status) { %><span class="badge bg-secondary"><%= ip.status %></span><% } else { %><span class="text-muted">-</span><% } %></td>
+                    <td>
+                      <% if (ip.tags && ip.tags.length > 0) { %>
+                        <% ip.tags.forEach(function(tag) { %>
+                          <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                        <% }) %>
+                      <% } else { %>
+                        <span class="text-muted">No tags</span>
+                      <% } %>
+                    </td>
+                    <td><%= ip.created_at ? (ip.created_at.toLocaleString ? ip.created_at.toLocaleString() : ip.created_at) : '' %></td>
+                    <td><%= ip.updated_at ? (ip.updated_at.toLocaleString ? ip.updated_at.toLocaleString() : ip.updated_at) : '' %></td>
+                    <td><%= ip.updated_by || '' %></td>
+                    <td>
+                      <% if (ip.systems && ip.systems.length > 0) { %>
+                        <% ip.systems.forEach(function(system, i) { %>
+                          <%= system.name %><%= i < ip.systems.length - 1 ? ', ' : '' %>
+                        <% }) %>
+                      <% } else { %>
+                        <span class="text-muted">No system</span>
+                      <% } %>
+                    </td>
+                    <td class="text-end">
+                      <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#ipDetailModal-<%= ip.id %>"><i class="bi bi-eye"></i></a>
+                      <button type="button" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#ipEditModal-<%= ip.id %>" <% if (!hasPermission(user, 'ip_address.update')) { %>style="display:none"<% } %>><i class="bi bi-pencil"></i></button>
+                      <form action="/network/ip-address/<%= ip.id %>?_method=DELETE" method="POST" style="display:inline">
+                        <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure?')" <% if (!hasPermission(user, 'ip_address.delete')) { %>style="display:none"<% } %>><i class="bi bi-trash"></i></button>
+                      </form>
+                    </td>
+                  </tr>
+                  <!-- IP Detail Modal -->
+                  <div class="modal fade" id="ipDetailModal-<%= ip.id %>" tabindex="-1" aria-labelledby="ipDetailModalLabel-<%= ip.id %>" aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="ipDetailModalLabel-<%= ip.id %>">IP Information</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <dl class="row mb-0">
+                            <dt class="col-sm-4">ID</dt>
+                            <dd class="col-sm-8"><%= ip.id %></dd>
+                            <dt class="col-sm-4">IP Address</dt>
+                            <dd class="col-sm-8"><%= ip.ip_address %></dd>
+                            <dt class="col-sm-4">Description</dt>
+                            <dd class="col-sm-8"><span class="desc-text"><%- (ip.description || '').replace(/\n/g, '<br>') %></span></dd>
+                            <dt class="col-sm-4">Status</dt>
+                            <dd class="col-sm-8"><%= ip.status || '' %></dd>
+                            <dt class="col-sm-4">Tags</dt>
+                            <dd class="col-sm-8">
+                              <% if (ip.tags && ip.tags.length > 0) { %>
+                                <% ip.tags.forEach(function(tag) { %>
+                                  <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                                <% }) %>
+                              <% } else { %>
+                                <span class="text-muted">No tags</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-4">Created At</dt>
+                            <dd class="col-sm-8"><%= ip.created_at ? (ip.created_at.toLocaleString ? ip.created_at.toLocaleString() : ip.created_at) : '' %></dd>
+                            <dt class="col-sm-4">Updated At</dt>
+                            <dd class="col-sm-8"><%= ip.updated_at ? (ip.updated_at.toLocaleString ? ip.updated_at.toLocaleString() : ip.updated_at) : '' %></dd>
+                            <dt class="col-sm-4">Updated By</dt>
+                            <dd class="col-sm-8"><%= ip.updated_by || '' %></dd>
+                            <dt class="col-sm-4">Contacts</dt>
+                            <dd class="col-sm-8">
+                              <% if (ip.contacts && ip.contacts.length > 0) { %>
+                                <% ip.contacts.forEach(function(contact, idx) { %>
+                                  <% if (contact.email) { %>
+                                    <div><a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>" target="_blank"><%= contact.name %> (<%= contact.email %>)</a></div>
+                                  <% } else { %>
+                                    <div><%= contact.name %></div>
+                                  <% } %>
+                                <% }) %>
+                              <% } else { %>
+                                <span class="text-muted">No contacts</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-4">Systems</dt>
+                            <dd class="col-sm-8">
+                              <% if (ip.systems && ip.systems.length > 0) { %>
+                                <% ip.systems.forEach(function(system) { %>
+                                  <div><a href="/system/system?search=<%= encodeURIComponent(system.name) %>" target="_blank"><%= system.name + (system.system_id ? ' (' + system.system_id + ')' : '') %></a></div>
+                                <% }) %>
+                              <% } else { %>
+                                <span class="text-muted">No system</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-4">Server</dt>
+                            <dd class="col-sm-8">
+                              <% if (ip.server && ip.server.id) { %>
+                                <a href="/server/server/list?search=<%= encodeURIComponent(ip.server.name) %>" target="_blank"><%= ip.server.name %></a>
+                              <% } else { %>
+                                <span class="text-muted">No server</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-4">Device</dt>
+                            <dd class="col-sm-8">
+                              <% if (ip.device && ip.device.id) { %>
+                                <a href="/device/device?search=<%= encodeURIComponent(ip.device.name) %>" target="_blank"><%= ip.device.name %></a>
+                              <% } else { %>
+                                <span class="text-muted">No device</span>
+                              <% } %>
+                            </dd>
+                          </dl>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- IP Edit Modal -->
+                  <div class="modal fade" id="ipEditModal-<%= ip.id %>" tabindex="-1" aria-labelledby="ipEditModalLabel-<%= ip.id %>" aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="ipEditModalLabel-<%= ip.id %>">Edit IP Address</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form action="/network/ip-address/<%= ip.id %>?_method=PUT" method="POST">
+                          <input type="hidden" name="page" value="<%= page %>">
+                          <div class="modal-body">
+                            <div class="mb-3">
+                              <label for="editIpAddress-<%= ip.id %>" class="form-label">IP Address</label>
+                              <input type="text" class="form-control form-control-sm" id="editIpAddress-<%= ip.id %>" name="address" value="<%= ip.ip_address %>" readonly tabindex="-1" style="background:#e9ecef;pointer-events:none;">
+                            </div>
+                            <div class="mb-3">
+                              <label for="editIpDescription-<%= ip.id %>" class="form-label">Description</label>
+                              <textarea class="form-control form-control-sm" id="editIpDescription-<%= ip.id %>" name="description" rows="2"><%= ip.description %></textarea>
+                            </div>
+                            <div class="mb-3">
+                              <label for="editIpStatus-<%= ip.id %>" class="form-label">Status</label>
+                              <select class="form-select form-select-sm" id="editIpStatus-<%= ip.id %>" name="status">
+                                <option value="">-- No status --</option>
+                                <option value="assigned" <%= ip.status === 'assigned' ? 'selected' : '' %>>Assigned</option>
+                                <option value="reserved" <%= ip.status === 'reserved' ? 'selected' : '' %>>Reserved</option>
+                                <option value="inactive" <%= ip.status === 'inactive' ? 'selected' : '' %>>Inactive</option>
+                              </select>
+                            </div>
+                            <div class="mb-3">
+                              <label for="editIpTags-<%= ip.id %>" class="form-label">Tags</label>
+                              <select id="editIpTags-<%= ip.id %>" name="tags[]" class="form-select form-select-sm select2" multiple data-selected='<%- JSON.stringify(ip.tags || []) %>'></select>
+                            </div>
+                            <div class="mb-3">
+                              <label for="editIpContacts-<%= ip.id %>" class="form-label">Contacts</label>
+                              <select id="editIpContacts-<%= ip.id %>" name="contacts[]" class="form-select form-select-sm select2" multiple data-selected='<%- JSON.stringify(ip.contacts || []) %>'></select>
+                            </div>
+                            <div class="mb-3">
+                              <label for="editIpSystems-<%= ip.id %>" class="form-label">Systems</label>
+                              <select id="editIpSystems-<%= ip.id %>" name="systems[]" class="form-select form-select-sm select2" multiple data-selected='<%- JSON.stringify(ip.systems || []) %>'></select>
+                            </div>
+                          </div>
+                          <div class="modal-footer d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary btn-sm">Save changes</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                <% }) %>
+              <% } else { %>
+                <tr><td colspan="10" class="text-center">No data</td></tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer clearfix">
+          <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
+            <div>
+              <% 
+                let startItem = (page - 1) * pageSize + 1;
+                let endItem = startItem + (ipList ? ipList.length : 0) - 1;
+                if (!ipList || ipList.length === 0) {
+                  startItem = 0;
+                  endItem = 0;
+                }
+              %>
+              <span>Showing <%= startItem %> - <%= endItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> IPs</span>
+            </div>
+            <ul class="pagination pagination-sm m-0 float-end">
+              <% 
+                let startPage = 1;
+                let endPage = totalPages;
+                if (totalPages > 10) {
+                  if (page <= 5) {
+                    startPage = 1;
+                    endPage = 10;
+                  } else if (page + 4 >= totalPages) {
+                    startPage = totalPages - 9;
+                    endPage = totalPages;
+                  } else {
+                    startPage = page - 5;
+                    endPage = page + 4;
+                  }
+                }
+              %>
+              <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                <a class="page-link" href="?page=<%= page - 1 %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>" tabindex="-1">Previous</a>
+              </li>
+              <% if (startPage > 1) { %>
+                <li class="page-item"><a class="page-link" href="?page=1&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>">1</a></li>
+                <% if (startPage > 2) { %>
+                  <li class="page-item disabled"><span class="page-link">...</span></li>
+                <% } %>
+              <% } %>
+              <% for (let i = startPage; i <= endPage; i++) { %>
+                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>"><%= i %></a></li>
+              <% } %>
+              <% if (endPage < totalPages) { %>
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>"><%= totalPages %></a></li>
+              <% } %>
+              <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                <a class="page-link" href="?page=<%= page + 1 %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>">Next</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<style>
+  /* Ensure select2 dropdown is above Bootstrap modal and filter modal */
+  .select2-container--open {
+    z-index: 2055 !important;
+  }
+  .select2-dropdown {
+    z-index: 2055 !important;
+  }
+</style>
+<script>
+window.ipList = JSON.parse('<%- JSON.stringify(ipList || []) %>');
+</script>
+<script>
+  // Hide select2 fields in Add IP modal until initialized
+  $(function() {
+    $('#ipTags, #ipContacts, #ipSystems').css('visibility', 'hidden');
+    let selectsReady = 0;
+    function showIfReady() {
+      selectsReady++;
+      if (selectsReady === 3) {
+        $('#ipTags, #ipContacts, #ipSystems').css('visibility', 'visible');
+      }
+    }
+    $('#ipTags').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select tag(s)',
+      allowClear: true,
+      width: '100%',
+      dropdownParent: $('#addIpModal'),
+      ajax: {
+        url: '/organize/api/tag',
+        dataType: 'json',
+        delay: 250,
+        data: function(params) { return { search: params.term }; },
+        processResults: function(data) { return { results: data }; },
+        cache: true
+      }
+    }).on('select2:open select2:close', showIfReady);
+    $('#ipContacts').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select contact(s)',
+      allowClear: true,
+      width: '100%',
+      dropdownParent: $('#addIpModal'),
+      ajax: {
+        url: '/organize/api/contact',
+        dataType: 'json',
+        delay: 250,
+        data: function(params) { return { search: params.term }; },
+        processResults: function(data) { return { results: data }; },
+        cache: true
+      }
+    }).on('select2:open select2:close', showIfReady);
+    $('#ipSystems').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select system(s)',
+      allowClear: true,
+      width: '100%',
+      dropdownParent: $('#addIpModal'),
+      ajax: {
+        url: '/system/api/system',
+        dataType: 'json',
+        delay: 250,
+        data: function(params) { return { search: params.term }; },
+        processResults: function(data) { return { results: data }; },
+        cache: true
+      }
+    }).on('select2:open select2:close', showIfReady);
+  });
+</script>
+<script>
+  // Tự động bật modal Add IP nếu có ?add=1 trên URL
+  $(function() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('add') === '1') {
+      setTimeout(function() {
+        const $modal = $('#addIpModal');
+        if ($modal.length) {
+          $modal.modal('show');
+        }
+      }, 300); // delay để đảm bảo select2 đã khởi tạo
+    }
+  });
+</script>
+<% if (successMessage) { %>
+  <script>window.addEventListener('DOMContentLoaded',function(){showToast('<%= successMessage %>','success');});</script>
+<% } %>
+<script>
+function showToast(msg, type) {
+  const toast = document.createElement('div');
+  toast.className = `alert alert-${type}`;
+  toast.style.position = 'fixed';
+  toast.style.top = '16px';
+  toast.style.right = '16px';
+  toast.style.zIndex = 9999;
+  toast.style.minWidth = '200px';
+  toast.innerText = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+</script>
+<script>
+  // --- Robust Select2 initialization for all Edit IP modals (subnet style) ---
+  window.addEventListener('DOMContentLoaded', function() {
+    if (ipList && ipList.length > 0) {
+      ipList.forEach(function(ip) {
+        var $tags = $('#editIpTags-' + ip.id);
+        var $contacts = $('#editIpContacts-' + ip.id);
+        var $systems = $('#editIpSystems-' + ip.id);
+        if ($.fn.select2 && $tags.length && !$tags.hasClass('select2-hidden-accessible')) {
+          $tags.select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select tag(s)',
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $('#ipEditModal-' + ip.id),
+            ajax: {
+              url: '/organize/api/tag',
+              dataType: 'json',
+              delay: 250,
+              data: function(params) { return { search: params.term }; },
+              processResults: function(data) { return { results: data }; },
+              cache: true
+            }
+          });
+        }
+        if ($.fn.select2 && $contacts.length && !$contacts.hasClass('select2-hidden-accessible')) {
+          $contacts.select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select contact(s)',
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $('#ipEditModal-' + ip.id),
+            ajax: {
+              url: '/organize/api/contact',
+              dataType: 'json',
+              delay: 250,
+              data: function(params) { return { search: params.term }; },
+              processResults: function(data) { return { results: data }; },
+              cache: true
+            }
+          });
+        }
+        if ($.fn.select2 && $systems.length && !$systems.hasClass('select2-hidden-accessible')) {
+          $systems.select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select system(s)',
+            allowClear: true,
+            width: '100%',
+            dropdownParent: $('#ipEditModal-' + ip.id),
+            ajax: {
+              url: '/system/api/system',
+              dataType: 'json',
+              delay: 250,
+              data: function(params) { return { search: params.term }; },
+              processResults: function(data) { return { results: data }; },
+              cache: true
+            }
+          });
+        }
+        // On modal show, only update the selected values (no destroy/init)
+        $('#ipEditModal-' + ip.id).off('shown.bs.modal').on('shown.bs.modal', function() {
+          // Tags
+          var tags = $tags.attr('data-selected') ? JSON.parse($tags.attr('data-selected')) : [];
+          $tags.val(null).trigger('change');
+          $tags.empty();
+          if (Array.isArray(tags) && tags.length) {
+            tags.forEach(function(tag) {
+              if ($tags.find('option[value="' + tag.id + '"]').length === 0) {
+                var option = new Option(tag.name, tag.id, true, true);
+                $tags.append(option);
+              }
+            });
+            $tags.trigger('change');
+          }
+          // Contacts
+          var contacts = $contacts.attr('data-selected') ? JSON.parse($contacts.attr('data-selected')) : [];
+          $contacts.val(null).trigger('change');
+          $contacts.empty();
+          if (Array.isArray(contacts) && contacts.length) {
+            contacts.forEach(function(contact) {
+              var text = contact.name + (contact.email ? ' (' + contact.email + ')' : '');
+              if ($contacts.find('option[value="' + contact.id + '"]').length === 0) {
+                var option = new Option(text, contact.id, true, true);
+                $contacts.append(option);
+              }
+            });
+            $contacts.trigger('change');
+          }
+          // Systems
+          var systems = $systems.attr('data-selected') ? JSON.parse($systems.attr('data-selected')) : [];
+          $systems.val(null).trigger('change');
+          $systems.empty();
+          if (Array.isArray(systems) && systems.length) {
+            systems.forEach(function(system) {
+              var text = system.name + (system.system_id ? ' (' + system.system_id + ')' : '');
+              if ($systems.find('option[value="' + system.id + '"]').length === 0) {
+                var option = new Option(text, system.id, true, true);
+                $systems.append(option);
+              }
+            });
+            $systems.trigger('change');
+          }
+        });
+      });
+    }
+  });
+</script>

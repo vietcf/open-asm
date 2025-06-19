@@ -1,0 +1,439 @@
+<div class="container-fluid">
+  <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/network/domain" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
+    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search Domain..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+    <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
+      <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+        <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
+      <% }) %>
+    </select>
+    <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
+  </form>
+  <div class="row mb-3">
+    <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
+      <% if (hasPermission && hasPermission(user, 'domain.create')) { %>
+        <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addDomainModal">
+          <i class="bi bi-plus"></i> Add Domain
+        </button>
+      <% } %>
+      <!-- Add Domain Modal -->
+      <div class="modal fade" id="addDomainModal" tabindex="-1" aria-labelledby="addDomainModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="addDomainModalLabel">Add Domain</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="addDomainForm" action="/network/domain" method="POST">
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label for="domainName" class="form-label">Domain <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control form-control-sm" id="domainName" name="domain" placeholder="Domain" required>
+                </div>
+                <div class="mb-3">
+                  <label for="domainDescription" class="form-label">Description</label>
+                  <input type="text" class="form-control form-control-sm" id="domainDescription" name="description" placeholder="Description">
+                </div>
+                <div class="mb-3">
+                  <label for="domainIpId" class="form-label">IP Address</label>
+                  <select id="domainIpId" name="ip_id" class="form-select form-select-sm select2"></select>
+                </div>
+                <div class="mb-3">
+                  <label for="domainRecordType" class="form-label">Record Type</label>
+                  <select id="domainRecordType" name="record_type" class="form-select form-select-sm">
+                    <option value="A" selected>A</option>
+                    <option value="AAAA">AAAA</option>
+                    <option value="CNAME">CNAME</option>
+                    <option value="MX">MX</option>
+                    <option value="TXT">TXT</option>
+                    <option value="NS">NS</option>
+                    <option value="SRV">SRV</option>
+                    <option value="PTR">PTR</option>
+                    <option value="SOA">SOA</option>
+                    <option value="OTHER">Other</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label for="domainSystems" class="form-label">Systems</label>
+                  <select id="domainSystems" name="systems[]" class="form-select form-select-sm select2" multiple></select>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                <button type="submit" class="btn btn-primary btn-sm">Add Domain</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="row">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title mb-0">Domain List</h3>
+        </div>
+        <div class="card-body table-responsive p-0">
+          <table class="table table-hover text-nowrap">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Domain</th>
+                <th>Description</th>
+                <th>IP Address</th>
+                <th>Record Type</th>
+                <th>System</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (domainList && domainList.length > 0) { %>
+                <% domainList.forEach(function(domain, idx) { %>
+                  <tr>
+                    <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                    <td><%= domain.domain %></td>
+                    <td><%= domain.description %></td>
+                    <td>
+                      <% if (domain.ip && domain.ip.ip_address) { %>
+                        <span class="badge bg-primary"><%= domain.ip.ip_address %></span>
+                      <% } else { %>
+                        <span class="text-muted">No IP</span>
+                      <% } %>
+                    </td>
+                    <td><%= domain.record_type || '' %></td>
+                    <td>
+                      <% if (domain.systems && domain.systems.length > 0) { %>
+                        <% domain.systems.forEach(function(sys, i) { %>
+                          <%= sys.name %><%= i < domain.systems.length - 1 ? ', ' : '' %>
+                        <% }) %>
+                      <% } else { %>
+                        <span class="text-muted">No system</span>
+                      <% } %>
+                    </td>
+                    <td class="text-end">
+                      <button type="button" class="btn btn-info btn-sm" title="Detail" data-bs-toggle="modal" data-bs-target="#domainDetailModal-<%= domain.id %>"><i class="bi bi-eye"></i></button>
+                      <% if (hasPermission && hasPermission(user, 'domain.edit')) { %>
+                        <button type="button" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#editDomainModal-<%= domain.id %>"><i class="bi bi-pencil"></i></button>
+                      <% } %>
+                      <form action="/network/domain/<%= domain.id %>?_method=DELETE" method="POST" style="display:inline">
+                        <% if (hasPermission && hasPermission(user, 'domain.delete')) { %>
+                          <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure?')"><i class="bi bi-trash"></i></button>
+                        <% } %>
+                      </form>
+                    </td>
+                  </tr>
+                  <!-- Domain Detail Modal -->
+                  <div class="modal fade" id="domainDetailModal-<%= domain.id %>" tabindex="-1" aria-labelledby="domainDetailModalLabel-<%= domain.id %>" aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="domainDetailModalLabel-<%= domain.id %>">Domain Detail</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <dl class="row mb-0">
+                            <dt class="col-sm-4">Domain</dt>
+                            <dd class="col-sm-8"><%= domain.domain %></dd>
+                            <dt class="col-sm-4">Description</dt>
+                            <dd class="col-sm-8"><%= domain.description || '' %></dd>
+                            <dt class="col-sm-4">IP</dt>
+                            <dd class="col-sm-8">
+                              <% if (domain.ip && domain.ip.ip_address) { %>
+                                <a href="/network/ip-address?search=<%= encodeURIComponent(domain.ip.ip_address) %>" target="_blank" class="text-primary" style="text-decoration: underline; cursor: pointer;">
+                                  <%= domain.ip.ip_address %>
+                                </a>
+                              <% } else { %>
+                                <span class="text-muted">No IP</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-4">Record Type</dt>
+                            <dd class="col-sm-8"><%= domain.record_type || '' %></dd>
+                            <dt class="col-sm-4">System</dt>
+                            <dd class="col-sm-8">
+                              <% if (domain.systems && domain.systems.length > 0) { %>
+                                <% domain.systems.forEach(function(sys) { %>
+                                  <div>
+                                    <a href="/system/system?search=<%= encodeURIComponent(sys.name) %>" target="_blank" class="text-primary" style="text-decoration: underline; cursor: pointer;">
+                                      <%= sys.name %>
+                                    </a>
+                                  </div>
+                                <% }) %>
+                              <% } else { %>
+                                <span class="text-muted">No system</span>
+                              <% } %>
+                            </dd>
+                          </dl>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- Edit Domain Modal -->
+                  <div class="modal fade" id="editDomainModal-<%= domain.id %>" tabindex="-1" aria-labelledby="editDomainModalLabel-<%= domain.id %>" aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="editDomainModalLabel-<%= domain.id %>">Edit Domain</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form action="/network/domain/<%= domain.id %>?_method=PUT" method="POST">
+                          <div class="modal-body">
+                            <div class="mb-3">
+                              <label class="form-label">Domain</label>
+                              <input type="text" class="form-control form-control-sm" value="<%= domain.domain %>" readonly>
+                            </div>
+                            <div class="mb-3">
+                              <label class="form-label">Description</label>
+                              <input type="text" class="form-control form-control-sm" name="description" value="<%= domain.description %>">
+                            </div>
+                            <div class="mb-3">
+                              <label for="editDomainIpId-<%= domain.id %>" class="form-label">IP Address</label>
+                              <select id="editDomainIpId-<%= domain.id %>" name="ip_id" class="form-select form-select-sm select2">
+                                <% if (domain.ip && domain.ip.id) { %>
+                                  <option value="<%= domain.ip.id %>" selected><%= domain.ip.ip_address %></option>
+                                <% } %>
+                              </select>
+                            </div>
+                            <div class="mb-3">
+                              <label for="editDomainRecordType-<%= domain.id %>" class="form-label">Record Type</label>
+                              <select id="editDomainRecordType-<%= domain.id %>" name="record_type" class="form-select form-select-sm">
+                                <option value="A" <%= domain.record_type === 'A' ? 'selected' : '' %>>A</option>
+                                <option value="AAAA" <%= domain.record_type === 'AAAA' ? 'selected' : '' %>>AAAA</option>
+                                <option value="CNAME" <%= domain.record_type === 'CNAME' ? 'selected' : '' %>>CNAME</option>
+                                <option value="MX" <%= domain.record_type === 'MX' ? 'selected' : '' %>>MX</option>
+                                <option value="TXT" <%= domain.record_type === 'TXT' ? 'selected' : '' %>>TXT</option>
+                                <option value="NS" <%= domain.record_type === 'NS' ? 'selected' : '' %>>NS</option>
+                                <option value="SRV" <%= domain.record_type === 'SRV' ? 'selected' : '' %>>SRV</option>
+                                <option value="PTR" <%= domain.record_type === 'PTR' ? 'selected' : '' %>>PTR</option>
+                                <option value="SOA" <%= domain.record_type === 'SOA' ? 'selected' : '' %>>SOA</option>
+                                <option value="OTHER" <%= domain.record_type === 'OTHER' ? 'selected' : '' %>>Other</option>
+                              </select>
+                            </div>
+                            <div class="mb-3">
+                              <label for="editDomainSystems-<%= domain.id %>" class="form-label">Systems</label>
+                              <select id="editDomainSystems-<%= domain.id %>" name="systems[]" class="form-select form-select-sm select2" multiple></select>
+                            </div>
+                          </div>
+                          <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary btn-sm">Save changes</button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+                <% }) %>
+              <% } else { %>
+                <tr><td colspan="7" class="text-center">No data</td></tr>
+              <% } %>
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer clearfix">
+          <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
+            <div>
+              <% 
+                let startItem = (page - 1) * pageSize + 1;
+                let endItem = startItem + (domainList ? domainList.length : 0) - 1;
+                if (!domainList || domainList.length === 0) {
+                  startItem = 0;
+                  endItem = 0;
+                }
+              %>
+              <span>Showing <%= startItem %> - <%= endItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> domains</span>
+            </div>
+            <ul class="pagination pagination-sm m-0 float-end">
+              <% 
+                let startPage = 1;
+                let endPage = totalPages;
+                if (totalPages > 10) {
+                  if (page <= 5) {
+                    startPage = 1;
+                    endPage = 10;
+                  } else if (page + 4 >= totalPages) {
+                    startPage = totalPages - 9;
+                    endPage = totalPages;
+                  } else {
+                    startPage = page - 5 + 1;
+                    endPage = page + 4;
+                  }
+                }
+              %>
+              <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                <a class="page-link" href="?page=<%= page - 1 %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>" tabindex="-1">Previous</a>
+              </li>
+              <% if (startPage > 1) { %>
+                <li class="page-item"><a class="page-link" href="?page=1&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>">1</a></li>
+                <% if (startPage > 2) { %>
+                  <li class="page-item disabled"><span class="page-link">...</span></li>
+                <% } %>
+              <% } %>
+              <% for (let i = startPage; i <= endPage; i++) { %>
+                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>"><%= i %></a></li>
+              <% } %>
+              <% if (endPage < totalPages) { %>
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>"><%= totalPages %></a></li>
+              <% } %>
+              <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                <a class="page-link" href="?page=<%= page + 1 %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>">Next</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+window.domainList = <%- JSON.stringify(domainList || []) %>
+</script>
+<script>
+function showToast(msg, type) {
+  const toast = document.createElement('div');
+  toast.className = `alert alert-${type}`;
+  toast.style.position = 'fixed';
+  toast.style.top = '16px';
+  toast.style.right = '16px';
+  toast.style.zIndex = 9999;
+  toast.style.minWidth = '200px';
+  toast.innerText = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script>
+$(function() {
+  $('#domainIpId').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select IP address',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#addDomainModal'),
+    ajax: {
+      url: '/network/api/ip-addresses',
+      dataType: 'json',
+      delay: 250,
+      data: function(params) { return { search: params.term }; },
+      processResults: function(data) { return { results: data }; },
+      cache: true
+    }
+  });
+  $('#domainSystems').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select system(s)',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#addDomainModal'),
+    ajax: {
+      url: '/system/api/system',
+      dataType: 'json',
+      delay: 250,
+      data: function(params) { return { search: params.term }; },
+      processResults: function(data) { return { results: data }; },
+      cache: true
+    }
+  });
+  var domainList = window.domainList;
+  if (domainList && domainList.length > 0) {
+    domainList.forEach(function(domain) {
+      $('#editDomainIpId-' + domain.id).select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Select IP address',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $('#editDomainModal-' + domain.id),
+        ajax: {
+          url: '/network/api/ip-addresses',
+          dataType: 'json',
+          delay: 250,
+          data: function(params) { return { search: params.term }; },
+          processResults: function(data) { return { results: data }; },
+          cache: true
+        }
+      });
+      $('#editDomainSystems-' + domain.id).select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Select system(s)',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $('#editDomainModal-' + domain.id),
+        ajax: {
+          url: '/system/api/system',
+          dataType: 'json',
+          delay: 250,
+          data: function(params) { return { search: params.term }; },
+          processResults: function(data) { return { results: data }; },
+          cache: true
+        }
+      });
+      // Preselect các systems đã liên kết
+      try {
+        var systems = domain.systems || [];
+        if (Array.isArray(systems) && systems.length) {
+          var systemData = systems.map(function(s) {
+            if (typeof s === 'object' && s.id && s.name) {
+              return { id: s.id, text: s.name };
+            } else {
+              return null;
+            }
+          }).filter(Boolean);
+          $('#editDomainSystems-' + domain.id).empty();
+          systemData.forEach(function(system) {
+            if ($('#editDomainSystems-' + domain.id + ' option[value="' + system.id + '"]').length === 0) {
+              var option = new Option(system.text, system.id, true, true);
+              $('#editDomainSystems-' + domain.id).append(option);
+            }
+          });
+          $('#editDomainSystems-' + domain.id).trigger('change');
+        }
+      } catch (e) { console.error('System preselect error:', e); }
+      // --- Bổ sung: preselect lại IP và System mỗi lần mở modal ---
+      $('#editDomainModal-' + domain.id).off('shown.bs.modal').on('shown.bs.modal', function() {
+        // IP
+        var ip = domain.ip;
+        var $ipSelect = $('#editDomainIpId-' + domain.id);
+        $ipSelect.val(null).trigger('change');
+        $ipSelect.empty();
+        if (ip && ip.id && ip.ip_address) {
+          var option = new Option(ip.ip_address, ip.id, true, true);
+          $ipSelect.append(option);
+          $ipSelect.val(String(ip.id)).trigger('change');
+        }
+        // System
+        var $sysSelect = $('#editDomainSystems-' + domain.id);
+        $sysSelect.val(null).trigger('change');
+        $sysSelect.empty();
+        var systems = domain.systems || [];
+        if (Array.isArray(systems) && systems.length) {
+          systems.forEach(function(system) {
+            if ($sysSelect.find('option[value="' + system.id + '"]').length === 0) {
+              var option = new Option(system.name, system.id, true, true);
+              $sysSelect.append(option);
+            }
+          });
+          $sysSelect.val(systems.map(function(s){return String(s.id);})).trigger('change');
+        }
+      });
+    });
+  }
+});
+</script>
+<% if (success) { %>
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      showToast('<%= success %>', 'success');
+    });
+  </script>
+<% } %>
+<% if (error) { %>
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      showToast('<%= error %>', 'danger');
+    });
+  </script>
+<% } %>
