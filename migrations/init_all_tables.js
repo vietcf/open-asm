@@ -28,24 +28,25 @@ const createRuleFirewallTable = require('./create_rulefirewall_table');
 async function createTables() {
   try {
     console.log('Creating tables...');
-    await createUsersTable(pool);
-    await createPermissionsAndRolesTables(pool);
+    // Đảm bảo thứ tự tạo bảng đúng phụ thuộc khóa ngoại
+    await createPermissionsAndRolesTables(pool); // roles, permissions, role_permissions
+    await createUsersTable(pool); // users (phụ thuộc roles)
     await createAgentsTable(pool);
     await createServicesTable(pool);
     await createUnitsTable(pool);
     await createContactsTable(pool);
     await createServersTable(pool);
+    await createTagsTable(pool); // tags phải tạo trước ip_addresses
     await createIpAddressesTable(pool);
     await createDomainsTable(pool);
     await createSubnetsTable(pool);
     await createPlatformsTable(pool);
     await createSystemsTable(pool);
     await createDeviceTypesTable(pool);
-    await createTagsTable(pool);
     await createFileUploadsTable(pool);
     await createDevicesTable(pool);
+    await createPrivRolesTable(pool); // priv_roles phải tạo trước priv_users
     await createPrivUsersTable(pool);
-    await createPrivRolesTable(pool);
     await createPrivPermissionsTable(pool);
     await createPrivUserRolesTable(pool);
     await createPrivRolePermissionsTable(pool);
