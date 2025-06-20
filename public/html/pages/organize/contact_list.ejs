@@ -50,8 +50,8 @@
                   <div class="mb-3">
                     <label class="form-label">Position <span class="text-danger">*</span></label>
                     <select name="position" class="form-select form-select-sm" required>
-                      <option value="Manager">Manager</option>
-                      <option value="Staff" selected>Staff</option>
+                      <option value="MANAGER">MANAGER</option>
+                      <option value="STAFF" selected>STAFF</option>
                     </select>
                   </div>
                 </div>
@@ -144,8 +144,8 @@
                             <div class="mb-3">
                               <label class="form-label">Position</label>
                               <select name="position" class="form-select form-select-sm" required>
-                                <option value="Manager" <%= c.position === 'Manager' ? 'selected' : '' %>>Manager</option>
-                                <option value="Staff" <%= c.position === 'Staff' ? 'selected' : '' %>>Staff</option>
+                                <option value="MANAGER" <%= c.position === 'MANAGER' ? 'selected' : '' %>>MANAGER</option>
+                                <option value="STAFF" <%= c.position === 'STAFF' ? 'selected' : '' %>>STAFF</option>
                               </select>
                             </div>
                           </div>

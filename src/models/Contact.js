@@ -10,8 +10,8 @@ class Contact {
     const q = `%${search}%`;
     const result = await pool.query(
       `SELECT COUNT(*) FROM contacts
-       WHERE name ILIKE $1 OR email ILIKE $1 OR phone ILIKE $1 OR position ILIKE $1`,
-      [q]
+       WHERE name ILIKE $1 OR email ILIKE $2 OR phone ILIKE $1 OR position ILIKE $1`,
+      [q, search.includes('@') ? search : q]
     );
     return parseInt(result.rows[0].count, 10);
   }
@@ -36,10 +36,10 @@ class Contact {
       `SELECT c.*, u.name AS unit_name
        FROM contacts c
        LEFT JOIN units u ON c.unit_id = u.id
-       WHERE c.name ILIKE $1 OR c.email ILIKE $1 OR c.phone ILIKE $1 OR c.position ILIKE $1 OR u.name ILIKE $1
+       WHERE c.name ILIKE $1 OR c.email ILIKE $2 OR c.phone ILIKE $1 OR c.position ILIKE $1 OR u.name ILIKE $1
        ORDER BY c.id
-       LIMIT $2 OFFSET $3`,
-      [q, pageSize, offset]
+       LIMIT $3 OFFSET $4`,
+      [q, search.includes('@') ? search : q, pageSize, offset]
     );
     return result.rows;
   }
