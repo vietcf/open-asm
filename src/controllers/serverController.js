@@ -628,8 +628,7 @@ exports.listAgent = async (req, res) => {
         { agentList, search, page, pageSize, totalPages, totalCount, allowedPageSizes, success, error, user: req.session.user, hasPermission: req.app.locals.hasPermission }
       ),
       title: 'Agent List',
-      activeMenu: 'server',
-      activeSubMenu: 'agent-list',
+      activeMenu: 'agent', // Đặt đúng giá trị để sidebar.ejs nhận diện
       user: req.session.user,
       siteName
     });
