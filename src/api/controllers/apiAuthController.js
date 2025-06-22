@@ -1,9 +1,9 @@
 // Controller for API authentication (JWT login)
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
-const { pool } = require('../../config/config');
-const User = require('../models/User');
-const Permission = require('../models/Permission');
+const { pool } = require('../../../config/config');
+const User = require('../../models/User');
+const Permission = require('../../models/Permission');
 const JWT_SECRET = process.env.JWT_SECRET || 'VcB_your_jwt_secret';
 
 exports.login = async (req, res) => {

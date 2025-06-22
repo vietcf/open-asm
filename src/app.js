@@ -12,7 +12,7 @@ const fs = require('fs');
 const ejs = require('ejs');
 const methodOverride = require('method-override');
 const flash = require('connect-flash');
-const { authenticate } = require('./middlewares/auth');
+const { authenticate } = require('./api/middlewares/auth');
 
 // Import routers and controllers
 const networkRouter = require('./routes/network');
@@ -31,8 +31,14 @@ const authRouter = require('./routes/auth');
 const require2fa = require('./middlewares/require2fa');
 const changePasswordRouter = require('./routes/changePassword');
 const requirePasswordChange = require('./middlewares/requirePasswordChange');
-const swaggerRouter = require('./routes/swagger');
-const apiCommonRouter = require('./routes/apiCommon');
+const apiContactRouter = require('./api/routes/apiContact');
+const apiUnitRouter = require('./api/routes/apiUnit');
+const apiRuleRouter = require('./api/routes/apiRule');
+const apiServerRouter = require('./api/routes/apiServer');
+const apiIpAddressRouter = require('./api/routes/apiIpAddress');
+const apiAuthRouter = require('./api/routes/apiAuth');
+const apiSwaggerRouter = require('./api/routes/apiSwagger');
+const apiRouter = require('./api/routes');
 
 const app = express();
 
@@ -94,14 +100,10 @@ app.use('/api/upload', requireLogin, require2fa, requirePasswordChange, uploadRo
 app.use('/2fa', requireLogin, twofaRouter); 
 
 // Serve Swagger API docs at /api-docs (no auth for now)
-app.use('/api-docs', swaggerRouter);
+app.use('/api-docs', apiSwaggerRouter);
 
-// Register API routes with JWT authentication globally
-const apiPublicPaths = ['/auth/login'];
-app.use('/api', (req, res, next) => {
-  if (apiPublicPaths.includes(req.path)) return next();
-  return authenticate(req, res, next);
-}, apiCommonRouter);
+// API v1 routes (all handled in apiRouter)
+app.use('/api/v1', apiRouter);
 
 // Helper: check permission in EJS
 app.locals.hasPermission = (user, perm) => {
