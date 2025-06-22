@@ -1,5 +1,6 @@
 // Controller for Contact API
-const Contact = require('../models/Contact');
+const Contact = require('../../models/Contact');
+const Unit = require('../../models/Unit');
 
 // exports.listContacts = async (req, res) => {
 //   try {
@@ -37,6 +38,13 @@ exports.createContact = async (req, res) => {
     const allowedPositions = ['MANAGER', 'STAFF'];
     if (!allowedPositions.includes(position)) {
       return res.status(400).json({ error: 'Invalid position value' });
+    }
+    // Validate unit_id if provided
+    if (unit_id !== undefined && unit_id !== null && unit_id !== '') {
+      const unit = await Unit.findById(unit_id);
+      if (!unit) {
+        return res.status(400).json({ error: 'Invalid unit_id: unit does not exist' });
+      }
     }
     // Check for duplicate email
     const existing = await Contact.findByEmail(email);
