@@ -2,16 +2,26 @@
 // Centralized configuration for firewall module
 
 module.exports = {
-  actionsOptions: ['allow', 'deny', 'drop', 'reject'],
-  statusOptions: ['enable', 'disable'],
+  firewallNameOptions: [
+    'USER',
+    'SERVER',
+    'INTERNET-IN',
+    'INTERNET-OUT',
+    'BACKBOND',
+    'DMZ',
+    'PARTNER',
+    'DIGI'
+  ],
+  actionsOptions: ['ALLOW', 'DENY', 'DROP', 'REJECT'],
+  statusOptions: ['ENABLE', 'DISABLE'],
   violationTypeOptions: [
-    'cde to out of scope',
-    'out of scope to cde', 
-    'in cde none secure ports',
-    'out cde none secure ports',
-    'any',
-    'test/dev-production',
-    'user-to-production-mgmt-ports'
+    'CDE-TO-OUT-OF-SCOPE',
+    'OUT-OF-SCOPE-TO-CDE', 
+    'IN-CDE-NONE-SECURE-PORTS',
+    'OUT-CDE-NONE-SECURE-PORTS',
+    'ANY',
+    'TEST/DEV/UAT-PRODUCTION',
+    'USER-SERVER-MGMT-PORTS'
   ],
   // Add more firewall-specific config here as needed
 };

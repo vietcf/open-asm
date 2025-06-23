@@ -2,7 +2,7 @@
 const { pool } = require('../../config/config');
 
 class RuleFirewall {
-  static async findAll({ search = '', page = 1, pageSize = 10, ou_id, contacts, tags, violation_type, status }) {
+  static async findAll({ search = '', page = 1, pageSize = 10, ou_id, contacts, tags, violation_type, status, firewall_name }) {
     let whereClauses = [];
     let params = [];
     let paramIdx = 1;
@@ -45,6 +45,12 @@ class RuleFirewall {
     if (status) {
       whereClauses.push(`rf.status = $${paramIdx}`);
       params.push(status);
+      paramIdx++;
+    }
+    // Add firewall_name filter
+    if (firewall_name) {
+      whereClauses.push(`rf.firewall_name = $${paramIdx}`);
+      params.push(firewall_name);
       paramIdx++;
     }
     // Filter by tags (must have ALL selected tags)
@@ -125,7 +131,7 @@ class RuleFirewall {
       await client.query('BEGIN');
       // Normalize & trim all string fields
       const fields = [
-        'rulename', 'src_zone', 'src', 'src_detail', 'dst_zone', 'dst', 'dst_detail',
+        'rulename', 'firewall_name', 'src_zone', 'src', 'src_detail', 'dst_zone', 'dst', 'dst_detail',
         'services', 'application', 'url', 'action', 'status', 'violation_type',
         'violation_detail', 'solution_proposal', 'solution_confirm', 'description'
       ];
@@ -138,10 +144,10 @@ class RuleFirewall {
       }
       // Insert rule
       const insertSql = `INSERT INTO rulefirewall
-        (rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail, services, application, url, action, ou_id, status, violation_type, violation_detail, solution_proposal, solution_confirm, description, created_at, updated_at, updated_by)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,NOW(),NOW(),$19) RETURNING id`;
+        (rulename, firewall_name, src_zone, src, src_detail, dst_zone, dst, dst_detail, services, application, url, action, ou_id, status, violation_type, violation_detail, solution_proposal, solution_confirm, description, created_at, updated_at, updated_by)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,NOW(),NOW(),$20) RETURNING id`;
       const values = [
-        data.rulename, data.src_zone, data.src, data.src_detail, data.dst_zone, data.dst, data.dst_detail,
+        data.rulename, data.firewall_name, data.src_zone, data.src, data.src_detail, data.dst_zone, data.dst, data.dst_detail,
         data.services, data.application, data.url, data.action, data.ou_id || null, data.status || null,
         data.violation_type, data.violation_detail, data.solution_proposal, data.solution_confirm, data.description, data.updated_by || null
       ];
@@ -174,7 +180,7 @@ class RuleFirewall {
       await client.query('BEGIN');
       // Normalize & trim all string fields
       const fields = [
-        'rulename', 'src_zone', 'src', 'src_detail', 'dst_zone', 'dst', 'dst_detail',
+        'rulename', 'firewall_name', 'src_zone', 'src', 'src_detail', 'dst_zone', 'dst', 'dst_detail',
         'services', 'application', 'url', 'action', 'status', 'violation_type',
         'violation_detail', 'solution_proposal', 'solution_confirm', 'description'
       ];
@@ -187,13 +193,13 @@ class RuleFirewall {
       }
       // Update rule
       const updateSql = `UPDATE rulefirewall SET
-        rulename=$1, src_zone=$2, src=$3, src_detail=$4, dst_zone=$5, dst=$6, dst_detail=$7,
-        services=$8, application=$9, url=$10, action=$11, ou_id=$12, status=$13, violation_type=$14,
-        violation_detail=$15, solution_proposal=$16, solution_confirm=$17, description=$18,
-        updated_at=NOW(), updated_by=$19
-        WHERE id=$20`;
+        rulename=$1, firewall_name=$2, src_zone=$3, src=$4, src_detail=$5, dst_zone=$6, dst=$7, dst_detail=$8,
+        services=$9, application=$10, url=$11, action=$12, ou_id=$13, status=$14, violation_type=$15,
+        violation_detail=$16, solution_proposal=$17, solution_confirm=$18, description=$19,
+        updated_at=NOW(), updated_by=$20
+        WHERE id=$21`;
       const values = [
-        data.rulename, data.src_zone, data.src, data.src_detail, data.dst_zone, data.dst, data.dst_detail,
+        data.rulename, data.firewall_name, data.src_zone, data.src, data.src_detail, data.dst_zone, data.dst, data.dst_detail,
         data.services, data.application, data.url, data.action, data.ou_id || null, data.status || null,
         data.violation_type, data.violation_detail, data.solution_proposal, data.solution_confirm, data.description, data.updated_by || null, id
       ];
