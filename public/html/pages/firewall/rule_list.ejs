@@ -26,6 +26,15 @@
             <div class="modal-body">
               <form id="addRuleForm" action="/firewall/rule" method="POST">
                 <div class="mb-3">
+                  <label for="firewall_name" class="form-label">Firewall Name <span class="text-danger">*</span></label>
+                  <select class="form-select form-select-sm" id="firewall_name" name="firewall_name" required>
+                    <option value="">-- Select Firewall Name --</option>
+                    <% (firewallNameOptions || []).forEach(function(fw) { %>
+                      <option value="<%= fw %>"><%= fw %></option>
+                    <% }) %>
+                  </select>
+                </div>
+                <div class="mb-3">
                   <label for="rulename" class="form-label">Rule Name <span class="text-danger">*</span></label>
                   <input type="text" class="form-control form-control-sm" id="rulename" name="rulename" required placeholder="Rule Name">
                 </div>
@@ -131,6 +140,7 @@
         <% }) } %>
         <input type="hidden" name="violation_type" value="<%= typeof violation_type !== 'undefined' ? violation_type : '' %>">
         <input type="hidden" name="status" value="<%= typeof status !== 'undefined' ? status : '' %>">
+        <input type="hidden" name="firewall_name" value="<%= typeof firewall_name !== 'undefined' ? firewall_name : '' %>">
         <button type="submit" class="btn btn-warning btn-sm">
           <i class="bi bi-download"></i> Export
         </button>
@@ -150,6 +160,15 @@
         </div>
         <form method="get" action="/firewall/rule">
           <div class="modal-body">
+            <div class="mb-3">
+              <label for="filterRuleFirewallName" class="form-label">Firewall Name</label>
+              <select class="form-select form-select-sm" id="filterRuleFirewallName" name="firewall_name">
+                <option value="">-- All --</option>
+                <% (firewallNameOptions || []).forEach(function(fw) { %>
+                  <option value="<%= fw %>" <%= typeof firewall_name !== 'undefined' && firewall_name === fw ? 'selected' : '' %>><%= fw %></option>
+                <% }) %>
+              </select>
+            </div>
             <div class="mb-3">
               <label for="filterRuleOuId" class="form-label">OU (Unit)</label>
               <select id="filterRuleOuId" name="ou_id" class="form-select form-select-sm select2" style="width:100%"></select>
@@ -214,6 +233,7 @@
             <thead>
               <tr>
                 <th>#</th>
+                <th>Firewall Name</th>
                 <th>Rule Name</th>
                 <th>Source</th>
                 <th>Destination</th>
@@ -232,6 +252,7 @@
                 <% ruleList.forEach(function(rule, idx) { %>
                   <tr>
                     <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                    <td><%= rule.firewall_name || '' %></td>
                     <td><%= rule.rulename %></td>
                     <td><%= rule.src %></td>
                     <td><%= rule.dst %></td>
@@ -358,6 +379,15 @@
                         </div>
                         <div class="modal-body">
                           <form action="/firewall/rule/<%= rule.id %>" method="POST">
+                            <div class="mb-3">
+                              <label for="editFirewallName-<%= rule.id %>" class="form-label">Firewall Name <span class="text-danger">*</span></label>
+                              <select class="form-select form-select-sm" id="editFirewallName-<%= rule.id %>" name="firewall_name" required>
+                                <option value="">-- Select Firewall Name --</option>
+                                <% (firewallNameOptions || []).forEach(function(fw) { %>
+                                  <option value="<%= fw %>" <%= rule.firewall_name === fw ? 'selected' : '' %>><%= fw %></option>
+                                <% }) %>
+                              </select>
+                            </div>
                             <div class="mb-3">
                               <label for="editRulename-<%= rule.id %>" class="form-label">Rule Name <span class="text-danger">*</span></label>
                               <input type="text" class="form-control form-control-sm" id="editRulename-<%= rule.id %>" name="rulename" value="<%= rule.rulename %>" required>

@@ -43,10 +43,12 @@ exports.ruleList = async (req, res) => {
     if (typeof contacts === 'string') contacts = [contacts];
     contacts = contacts.map(c => parseInt(c, 10)).filter(c => !isNaN(c));
     if (contacts.length === 0) contacts = undefined;
+    let firewall_name = req.query.firewall_name || '';
+    if (firewall_name === '') firewall_name = undefined;
 
     // --- Call model with filters ---
     const { rules: ruleList, totalCount, totalPages } = await RuleFirewall.findAll({
-      search, page, pageSize, ou_id, contacts, tags, violation_type, status
+      search, page, pageSize, ou_id, contacts, tags, violation_type, status, firewall_name
     });
 
     // --- Fetch display names for selected filters (for select2 persistence) ---
@@ -81,6 +83,8 @@ exports.ruleList = async (req, res) => {
         actionsOptions: firewallConfig.actionsOptions,
         statusOptions: firewallConfig.statusOptions,
         violationTypeOptions: firewallConfig.violationTypeOptions,
+        firewallNameOptions: firewallConfig.firewallNameOptions,
+        firewall_name, // giữ lại giá trị filter khi render lại view
         // Pass filter values for modal persistence
         ou_id, ou_name, tags, tagNames, contacts, contactNames, violation_type, status,
         user: req.session.user,
@@ -108,7 +112,7 @@ exports.addRule = async (req, res) => {
       rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr
+      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr, firewall_name
     } = req.body;
     // Normalize & trim all string fields
     [rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
@@ -153,12 +157,16 @@ exports.addRule = async (req, res) => {
       req.flash('error', 'Invalid violation type value.');
       return res.redirect('/firewall/rule');
     }
+    if (!firewall_name || !firewallConfig.firewallNameOptions.includes(firewall_name)) {
+      req.flash('error', 'Invalid or missing firewall name.');
+      return res.redirect('/firewall/rule');
+    }
     // Compose normalized body
     const body = {
       rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags,
+      contacts, tags, firewall_name,
       updated_by: req.session && req.session.user ? req.session.user.username : null
     };
     // created_at and updated_at are set to NOW() in the model SQL
@@ -179,7 +187,7 @@ exports.editRule = async (req, res) => {
       rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr
+      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr, firewall_name
     } = req.body;
     // Normalize & trim all string fields
     [rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
@@ -225,12 +233,16 @@ exports.editRule = async (req, res) => {
       req.flash('error', 'Invalid violation type value.');
       return res.redirect('/firewall/rule');
     }
+    if (!firewall_name || !firewallConfig.firewallNameOptions.includes(firewall_name)) {
+      req.flash('error', 'Invalid or missing firewall name.');
+      return res.redirect('/firewall/rule');
+    }
     // Compose normalized data
     const data = {
       rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags,
+      contacts, tags, firewall_name,
       updated_by: req.session && req.session.user ? req.session.user.username : null
     };
     await RuleFirewall.update(id, data);
@@ -288,6 +300,7 @@ exports.exportRuleList = async (req, res) => {
     const worksheet = workbook.addWorksheet('Firewall Rules');
     worksheet.columns = [
       { header: '#', key: 'idx', width: 6 },
+      { header: 'Firewall Name', key: 'firewall_name', width: 18 },
       { header: 'Rule Name', key: 'rulename', width: 25 },
       { header: 'Source Zone', key: 'src_zone', width: 18 },
       { header: 'Source', key: 'src', width: 18 },
@@ -315,6 +328,7 @@ exports.exportRuleList = async (req, res) => {
     ruleList.forEach((rule, idx) => {
       worksheet.addRow({
         idx: idx + 1,
+        firewall_name: rule.firewall_name || '',
         rulename: rule.rulename,
         src_zone: rule.src_zone || '',
         src: rule.src,
