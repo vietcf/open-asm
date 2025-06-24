@@ -36,9 +36,9 @@
                   <label for="ipStatus" class="form-label">Status</label>
                   <select class="form-select form-select-sm" id="ipStatus" name="status">
                     <option value="">-- No status --</option>
-                    <option value="assigned">Assigned</option>
-                    <option value="reserved">Reserved</option>
-                    <option value="inactive">Inactive</option>
+                    <% (ipStatusOptions || []).forEach(function(opt) { %>
+                      <option value="<%= opt %>"><%= opt.charAt(0).toUpperCase() + opt.slice(1) %></option>
+                    <% }) %>
                   </select>
                 </div>
                 <div class="mb-3">
@@ -399,9 +399,9 @@
                               <label for="editIpStatus-<%= ip.id %>" class="form-label">Status</label>
                               <select class="form-select form-select-sm" id="editIpStatus-<%= ip.id %>" name="status">
                                 <option value="">-- No status --</option>
-                                <option value="assigned" <%= ip.status === 'assigned' ? 'selected' : '' %>>Assigned</option>
-                                <option value="reserved" <%= ip.status === 'reserved' ? 'selected' : '' %>>Reserved</option>
-                                <option value="inactive" <%= ip.status === 'inactive' ? 'selected' : '' %>>Inactive</option>
+                                <% (ipStatusOptions || []).forEach(function(opt) { %>
+                                  <option value="<%= opt %>" <%= ip.status === opt ? 'selected' : '' %>><%= opt.charAt(0).toUpperCase() + opt.slice(1) %></option>
+                                <% }) %>
                               </select>
                             </div>
                             <div class="mb-3">
