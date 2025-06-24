@@ -3,6 +3,7 @@ const Subnet = require('../models/Subnet');
 const Domain = require('../models/Domain');
 const Configuration = require('../models/Configuration');
 const config = require('../../config/config');
+const ipAddressOptions = require('../../config/ipAddressOptions');
 const ejs = require('ejs');
 const fs = require('fs');
 const path = require('path');
@@ -77,7 +78,8 @@ exports.listIP = async (req, res) => {
         hasPermission: req.app.locals.hasPermission,
         user: req.session.user,
         successMessage,
-        errorMessage
+        errorMessage,
+        ipStatusOptions: ipAddressOptions.status // Truyền options status cho EJS từ ipAddressOptions
       }
     );
     res.render('layouts/layout', {
