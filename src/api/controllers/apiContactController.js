@@ -22,7 +22,7 @@ const Unit = require('../../models/Unit');
 
 exports.createContact = async (req, res) => {
   try {
-    let { name, email, phone, position, unit_id } = req.body;
+    let { name, email, phone, position, unit_id, description } = req.body;
     // Default position to 'STAFF' if not provided
     if (!position) position = 'STAFF';
     // Validate required fields
@@ -51,7 +51,7 @@ exports.createContact = async (req, res) => {
     if (existing) {
       return res.status(409).json({ error: 'Contact already exists with this email' });
     }
-    const contact = await Contact.create({ name, email, phone, position, unit_id });
+    const contact = await Contact.create({ name, email, phone, position, unit_id, description });
     res.status(201).json(contact);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -70,6 +70,7 @@ exports.updateContact = async (req, res) => {
     let phone = ('phone' in req.body) ? (typeof req.body.phone === 'string' ? req.body.phone.trim() : '') : current.phone;
     let position = ('position' in req.body) ? (typeof req.body.position === 'string' ? req.body.position.trim() : '') : current.position;
     let unit_id = ('unit_id' in req.body) ? req.body.unit_id : current.unit_id;
+    let description = ('description' in req.body) ? (typeof req.body.description === 'string' ? req.body.description.trim() : '') : current.description;
     // Validate: nếu trường name/email/position được truyền lên thì phải khác rỗng
     if ('name' in req.body && !name) {
       return res.status(400).json({ error: 'Name must not be empty if provided' });
@@ -105,7 +106,7 @@ exports.updateContact = async (req, res) => {
       }
     }
     // Update
-    const updated = await Contact.update(id, { name, email, phone, position, unit_id });
+    const updated = await Contact.update(id, { name, email, phone, position, unit_id, description });
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -160,7 +161,8 @@ exports.getContactById = async (req, res) => {
       phone: contact.phone,
       unit_id: contact.unit_id,
       unit_name: contact.unit_name,
-      position: contact.position
+      position: contact.position,
+      description: contact.description
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

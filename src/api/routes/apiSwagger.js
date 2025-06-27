@@ -38,6 +38,8 @@ const swaggerJsdoc = require('swagger-jsdoc');
  *           type: string
  *         unit_id:
  *           type: integer
+ *         description:
+ *           type: string
  *   securitySchemes:
  *     bearerAuth:
  *       type: http

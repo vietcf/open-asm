@@ -95,7 +95,7 @@ class RuleFirewall {
     // Add pagination params
     const paramsWithPaging = params.concat([pageSize, offset]);
     // Main query
-    const sql = `SELECT rf.*, u.name AS ou_name
+    const sql = `SELECT rf.*, u.name AS ou_name, rf.work_order
        FROM rulefirewall rf
        LEFT JOIN units u ON rf.ou_id = u.id
        ${tagJoin}
@@ -133,7 +133,7 @@ class RuleFirewall {
       const fields = [
         'rulename', 'firewall_name', 'src_zone', 'src', 'src_detail', 'dst_zone', 'dst', 'dst_detail',
         'services', 'application', 'url', 'action', 'status', 'violation_type',
-        'violation_detail', 'solution_proposal', 'solution_confirm', 'description'
+        'violation_detail', 'solution_proposal', 'solution_confirm', 'description', 'work_order'
       ];
       for (const f of fields) {
         if (typeof data[f] === 'string') data[f] = data[f].trim();
@@ -144,12 +144,12 @@ class RuleFirewall {
       }
       // Insert rule
       const insertSql = `INSERT INTO rulefirewall
-        (rulename, firewall_name, src_zone, src, src_detail, dst_zone, dst, dst_detail, services, application, url, action, ou_id, status, violation_type, violation_detail, solution_proposal, solution_confirm, description, created_at, updated_at, updated_by)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,NOW(),NOW(),$20) RETURNING id`;
+        (rulename, firewall_name, src_zone, src, src_detail, dst_zone, dst, dst_detail, services, application, url, action, ou_id, status, violation_type, violation_detail, solution_proposal, solution_confirm, description, work_order, created_at, updated_at, updated_by)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,NOW(),NOW(),$21) RETURNING id`;
       const values = [
         data.rulename, data.firewall_name, data.src_zone, data.src, data.src_detail, data.dst_zone, data.dst, data.dst_detail,
         data.services, data.application, data.url, data.action, data.ou_id || null, data.status || null,
-        data.violation_type, data.violation_detail, data.solution_proposal, data.solution_confirm, data.description, data.updated_by || null
+        data.violation_type, data.violation_detail, data.solution_proposal, data.solution_confirm, data.description, data.work_order || null, data.updated_by || null
       ];
       const result = await client.query(insertSql, values);
       const ruleId = result.rows[0].id;
@@ -182,7 +182,7 @@ class RuleFirewall {
       const fields = [
         'rulename', 'firewall_name', 'src_zone', 'src', 'src_detail', 'dst_zone', 'dst', 'dst_detail',
         'services', 'application', 'url', 'action', 'status', 'violation_type',
-        'violation_detail', 'solution_proposal', 'solution_confirm', 'description'
+        'violation_detail', 'solution_proposal', 'solution_confirm', 'description', 'work_order'
       ];
       for (const f of fields) {
         if (typeof data[f] === 'string') data[f] = data[f].trim();
@@ -195,13 +195,13 @@ class RuleFirewall {
       const updateSql = `UPDATE rulefirewall SET
         rulename=$1, firewall_name=$2, src_zone=$3, src=$4, src_detail=$5, dst_zone=$6, dst=$7, dst_detail=$8,
         services=$9, application=$10, url=$11, action=$12, ou_id=$13, status=$14, violation_type=$15,
-        violation_detail=$16, solution_proposal=$17, solution_confirm=$18, description=$19,
-        updated_at=NOW(), updated_by=$20
-        WHERE id=$21`;
+        violation_detail=$16, solution_proposal=$17, solution_confirm=$18, description=$19, work_order=$20,
+        updated_at=NOW(), updated_by=$21
+        WHERE id=$22`;
       const values = [
         data.rulename, data.firewall_name, data.src_zone, data.src, data.src_detail, data.dst_zone, data.dst, data.dst_detail,
         data.services, data.application, data.url, data.action, data.ou_id || null, data.status || null,
-        data.violation_type, data.violation_detail, data.solution_proposal, data.solution_confirm, data.description, data.updated_by || null, id
+        data.violation_type, data.violation_detail, data.solution_proposal, data.solution_confirm, data.description, data.work_order || null, data.updated_by || null, id
       ];
       await client.query(updateSql, values);
       // Update contacts (remove all, then add new)
@@ -246,6 +246,15 @@ class RuleFirewall {
     }
   }
   // Có thể bổ sung thêm các method delete ở đây
+
+  // Batch update work_order for multiple rules
+  static async updateManyWorkOrder(ids, work_order, updated_by) {
+    if (!Array.isArray(ids) || ids.length === 0) return 0;
+    const placeholders = ids.map((_, i) => `$${i + 3}`).join(',');
+    const sql = `UPDATE rulefirewall SET work_order = $1, updated_by = $2, updated_at = NOW() WHERE id IN (${placeholders})`;
+    const result = await pool.query(sql, [work_order, updated_by, ...ids]);
+    return result.rowCount; // Return number of updated rows
+  }
 }
 
 module.exports = RuleFirewall;

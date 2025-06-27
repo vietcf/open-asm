@@ -16,6 +16,7 @@ const { authorizePermissionJWT } = require('../middlewares/auth');
  * /api/v1/contacts/search:
  *   get:
  *     summary: Search contacts with pagination
+ *     description: Search contacts by name, email, phone, position, or unit_name (case-insensitive partial matching)
  *     tags: [Contact]
  *     security:
  *       - bearerAuth: []
@@ -25,7 +26,7 @@ const { authorizePermissionJWT } = require('../middlewares/auth');
  *         schema:
  *           type: string
  *         required: true
- *         description: Search keyword
+ *         description: Search keyword (searches in name, email, phone, position, unit_name fields)
  *       - in: query
  *         name: page
  *         schema:
@@ -61,6 +62,7 @@ const { authorizePermissionJWT } = require('../middlewares/auth');
  *       500:
  *         description: Server error
  */
+// Search contacts by: name, email, phone, position, unit_name (case-insensitive)
 apiContactRouter.get('/search', authorizePermissionJWT('contact.read'), apiContactController.searchContacts);
 
 /**
@@ -100,6 +102,8 @@ apiContactRouter.get('/search', authorizePermissionJWT('contact.read'), apiConta
  *                   type: string
  *                 position:
  *                   type: string
+ *                 description:
+ *                   type: string
  *       404:
  *         description: Contact not found
  *       500:
@@ -136,6 +140,9 @@ apiContactRouter.get('/:id', authorizePermissionJWT('contact.read'), apiContactC
  *                 enum: [MANAGER, STAFF]
  *               unit_id:
  *                 type: integer
+ *               description:
+ *                 type: string
+ *                 description: Additional description for the contact
  *     responses:
  *       201:
  *         description: Contact created
@@ -173,9 +180,6 @@ apiContactRouter.post('/', authorizePermissionJWT('contact.create'), apiContactC
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - name
- *               - email
  *             properties:
  *               name:
  *                 type: string
@@ -188,6 +192,9 @@ apiContactRouter.post('/', authorizePermissionJWT('contact.create'), apiContactC
  *                 enum: [MANAGER, STAFF]
  *               unit_id:
  *                 type: integer
+ *               description:
+ *                 type: string
+ *                 description: Additional description for the contact
  *     responses:
  *       200:
  *         description: Contact updated

@@ -124,7 +124,7 @@
                     </td>
                   </tr>
                   <!-- Show Contact Detail Modal -->
-                  <div class="modal fade" id="showContactModal-<%= c.id %>" tabindex="-1" aria-labelledby="showContactModalLabel-<%= c.id %>" aria-hidden="true">
+                  <div class="modal fade" id="showContactModal-<%= c.id %>" data-phone="<%= c.phone || '' %>" tabindex="-1" aria-labelledby="showContactModalLabel-<%= c.id %>" aria-hidden="true">
                     <div class="modal-dialog">
                       <div class="modal-content">
                         <div class="modal-header">
@@ -145,6 +145,14 @@
                             <dd class="col-sm-8"><%= c.unit_name || '' %></dd>
                             <dt class="col-sm-4">Position</dt>
                             <dd class="col-sm-8"><%= c.position %></dd>
+                            <dt class="col-sm-4">Description</dt>
+                            <dd class="col-sm-8">
+                              <% if (c.description && c.description.trim()) { %>
+                                <div style="white-space: pre-wrap; word-wrap: break-word;"><%= c.description %></div>
+                              <% } else { %>
+                                <span class="text-muted">No description</span>
+                              <% } %>
+                            </dd>
                           </dl>
                           <div class="text-center mt-3 contact-image-placeholder" id="contact-image-<%= c.id %>"></div>
                         </div>
@@ -261,18 +269,28 @@
         var contactId = this.id.replace('showContactModal-', '');
         var imgDiv = document.getElementById('contact-image-' + contactId);
         if (!imgDiv) return;
+        
+        // Get contact phone from data attribute
+        var phoneValue = this.getAttribute('data-phone') || '';
+        
+        // Only show QR if contact has phone number
+        if (!phoneValue || phoneValue.trim() === '') {
+          imgDiv.innerHTML = '';
+          return;
+        }
+        
         imgDiv.innerHTML = '<div class="spinner-border text-secondary" role="status" style="width:2rem;height:2rem;"></div>';
         fetch('/organize/api/contact/' + contactId + '/qrcode')
           .then(function(res) { return res.json(); })
           .then(function(data) {
             if (data && data.image && data.mime) {
               imgDiv.innerHTML = '<img src="data:' + data.mime + ';base64,' + data.image + '" alt="QR vCard" class="img-thumbnail" style="max-width:180px;max-height:180px;">' +
-                '<div class="small text-muted mt-2">Scan để lưu vào danh bạ điện thoại</div>';
+                '<div class="small text-muted mt-2">Scan to save to phone contacts</div>';
             } else {
-              imgDiv.innerHTML = '<div class="text-danger small">Không tạo được mã QR</div>';
+              imgDiv.innerHTML = '<div class="text-danger small">Unable to generate QR code</div>';
             }
           })
-          .catch(function() { imgDiv.innerHTML = '<div class="text-danger small">Không tạo được mã QR</div>'; });
+          .catch(function() { imgDiv.innerHTML = '<div class="text-danger small">Unable to generate QR code</div>'; });
       });
       // Clear QR when modal is hidden
       modalEl.addEventListener('hidden.bs.modal', function() {
