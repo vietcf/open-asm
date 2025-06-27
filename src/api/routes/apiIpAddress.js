@@ -12,10 +12,12 @@ const apiIpAddressController = require('../controllers/apiIpAddressController');
 
 /**
  * @swagger
- * /api/ip-address:
+ * /api/v1/ip-addresses:
  *   get:
  *     summary: List IP addresses (with filter, pagination)
  *     tags: [IPAddress]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: search
@@ -35,7 +37,8 @@ const apiIpAddressController = require('../controllers/apiIpAddressController');
  *         name: status
  *         schema:
  *           type: string
- *         description: Filter by status
+ *           enum: [reserved, assigned, inactved]
+ *         description: "Filter by status (reserved, assigned, inactved)"
  *       - in: query
  *         name: systems
  *         schema:
@@ -83,10 +86,12 @@ apiIpAddressRouter.get('/', apiIpAddressController.listIpAddresses);
 
 /**
  * @swagger
- * /api/ip-address/{id}:
+ * /api/v1/ip-addresses/{id}:
  *   get:
  *     summary: Get a single IP address by ID
  *     tags: [IPAddress]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -108,10 +113,12 @@ apiIpAddressRouter.get('/:id', apiIpAddressController.getIpAddress);
 
 /**
  * @swagger
- * /api/ip-address:
+ * /api/v1/ip-addresses:
  *   post:
  *     summary: Create a new IP address
  *     tags: [IPAddress]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -128,11 +135,8 @@ apiIpAddressRouter.get('/:id', apiIpAddressController.getIpAddress);
  *                 type: string
  *               status:
  *                 type: string
- *                 description: Status value. Must be one of the allowed options from config/ipAddressOptions.js
- *                 enum:
- *                   - reserved
- *                   - assigned
- *                   - inactved
+ *                 description: "Status value. Must be one of: reserved, assigned, inactved"
+ *                 enum: [reserved, assigned, inactved]
  *               tags:
  *                 type: array
  *                 items:
@@ -162,10 +166,12 @@ apiIpAddressRouter.post('/', apiIpAddressController.createIpAddress);
 
 /**
  * @swagger
- * /api/ip-address/{id}:
+ * /api/v1/ip-addresses/{id}:
  *   put:
  *     summary: Update an IP address
  *     tags: [IPAddress]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -184,11 +190,8 @@ apiIpAddressRouter.post('/', apiIpAddressController.createIpAddress);
  *                 type: string
  *               status:
  *                 type: string
- *                 description: Status value. Must be one of the allowed options from config/ipAddressOptions.js
- *                 enum:
- *                   - reserved
- *                   - assigned
- *                   - inactved
+ *                 description: "Status value. Must be one of: reserved, assigned, inactved"
+ *                 enum: [reserved, assigned, inactved]
  *               tags:
  *                 type: array
  *                 items:
@@ -218,10 +221,12 @@ apiIpAddressRouter.put('/:id', apiIpAddressController.updateIpAddress);
 
 /**
  * @swagger
- * /api/ip-address/{id}:
+ * /api/v1/ip-addresses/{id}:
  *   delete:
  *     summary: Delete an IP address
  *     tags: [IPAddress]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id

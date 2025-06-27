@@ -112,7 +112,7 @@ exports.addRule = async (req, res) => {
       rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr, firewall_name
+      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr, firewall_name, work_order
     } = req.body;
     // Normalize & trim all string fields
     [rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
@@ -145,19 +145,23 @@ exports.addRule = async (req, res) => {
       return res.redirect('/firewall/rule');
     }
     // Validate action, status, violation_type against config
-    if (!firewallConfig.actionsOptions.includes(action)) {
+    const allowedActions = firewallConfig.actionsOptions.map(a => a.value);
+    if (!allowedActions.includes(action)) {
       req.flash('error', 'Invalid action value.');
       return res.redirect('/firewall/rule');
     }
-    if (status && !firewallConfig.statusOptions.includes(status)) {
+    const allowedStatus = firewallConfig.statusOptions.map(s => s.value);
+    if (status && !allowedStatus.includes(status)) {
       req.flash('error', 'Invalid status value.');
       return res.redirect('/firewall/rule');
     }
-    if (violation_type && !firewallConfig.violationTypeOptions.includes(violation_type)) {
+    const allowedViolationTypes = firewallConfig.violationTypeOptions.map(v => v.value);
+    if (violation_type && !allowedViolationTypes.includes(violation_type)) {
       req.flash('error', 'Invalid violation type value.');
       return res.redirect('/firewall/rule');
     }
-    if (!firewall_name || !firewallConfig.firewallNameOptions.includes(firewall_name)) {
+    const allowedFirewallNames = firewallConfig.firewallNameOptions.map(f => f.value);
+    if (!firewall_name || !allowedFirewallNames.includes(firewall_name)) {
       req.flash('error', 'Invalid or missing firewall name.');
       return res.redirect('/firewall/rule');
     }
@@ -166,7 +170,7 @@ exports.addRule = async (req, res) => {
       rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags, firewall_name,
+      contacts, tags, firewall_name, work_order,
       updated_by: req.session && req.session.user ? req.session.user.username : null
     };
     // created_at and updated_at are set to NOW() in the model SQL
@@ -187,7 +191,7 @@ exports.editRule = async (req, res) => {
       rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr, firewall_name
+      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr, firewall_name, work_order
     } = req.body;
     // Normalize & trim all string fields
     [rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
@@ -221,19 +225,23 @@ exports.editRule = async (req, res) => {
       return res.redirect('/firewall/rule');
     }
     // Validate action, status, violation_type against config
-    if (!firewallConfig.actionsOptions.includes(action)) {
+    const allowedActions = firewallConfig.actionsOptions.map(a => a.value);
+    if (!allowedActions.includes(action)) {
       req.flash('error', 'Invalid action value.');
       return res.redirect('/firewall/rule');
     }
-    if (status && !firewallConfig.statusOptions.includes(status)) {
+    const allowedStatus = firewallConfig.statusOptions.map(s => s.value);
+    if (status && !allowedStatus.includes(status)) {
       req.flash('error', 'Invalid status value.');
       return res.redirect('/firewall/rule');
     }
-    if (violation_type && !firewallConfig.violationTypeOptions.includes(violation_type)) {
+    const allowedViolationTypes = firewallConfig.violationTypeOptions.map(v => v.value);
+    if (violation_type && !allowedViolationTypes.includes(violation_type)) {
       req.flash('error', 'Invalid violation type value.');
       return res.redirect('/firewall/rule');
     }
-    if (!firewall_name || !firewallConfig.firewallNameOptions.includes(firewall_name)) {
+    const allowedFirewallNames = firewallConfig.firewallNameOptions.map(f => f.value);
+    if (!firewall_name || !allowedFirewallNames.includes(firewall_name)) {
       req.flash('error', 'Invalid or missing firewall name.');
       return res.redirect('/firewall/rule');
     }
@@ -242,7 +250,7 @@ exports.editRule = async (req, res) => {
       rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags, firewall_name,
+      contacts, tags, firewall_name, work_order,
       updated_by: req.session && req.session.user ? req.session.user.username : null
     };
     await RuleFirewall.update(id, data);
@@ -319,6 +327,7 @@ exports.exportRuleList = async (req, res) => {
       { header: 'Solution Proposal', key: 'solution_proposal', width: 28 },
       { header: 'Solution Confirm', key: 'solution_confirm', width: 28 },
       { header: 'Status', key: 'status', width: 10 },
+      { header: 'Work Order', key: 'work_order', width: 18 },
       { header: 'Description', key: 'description', width: 30 },
       { header: 'Tags', key: 'tags', width: 24 },
       { header: 'Created At', key: 'created_at', width: 20 },
@@ -348,6 +357,7 @@ exports.exportRuleList = async (req, res) => {
         solution_proposal: rule.solution_proposal || '',
         solution_confirm: rule.solution_confirm || '',
         status: rule.status || '',
+        work_order: rule.work_order || '',
         description: rule.description || '',
         tags: (rule.tagNames && rule.tagNames.length > 0) ? rule.tagNames.join(', ') : '',
         created_at: rule.created_at ? (rule.created_at.toLocaleString ? rule.created_at.toLocaleString() : rule.created_at) : '',
@@ -362,5 +372,34 @@ exports.exportRuleList = async (req, res) => {
     res.end();
   } catch (err) {
     res.status(500).send('Export error: ' + err.message);
+  }
+};
+
+// Batch update work_order for selected rules
+exports.batchUpdateWorkOrder = async (req, res) => {
+  //console.log("xxxx");
+  try {
+    
+    const { ids, work_order } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'No rules selected.' });
+    }
+    if (!work_order || typeof work_order !== 'string' || !work_order.trim()) {
+      return res.status(400).json({ error: 'Work Order is required.' });
+    }
+    const updated_by = req.session && req.session.user ? req.session.user.username : null;
+    const updatedCount = await RuleFirewall.updateManyWorkOrder(ids, work_order.trim(), updated_by);
+    if (updatedCount > 0) {
+
+      console.log('Batch update WO for IDs:', ids, 'Work Order:', work_order, 'Updated By:', updated_by);
+      return res.json({ success: true, message: 'Work Order updated successfully!' });
+    } else {
+      return res.status(400).json({ error: 'No rules were updated. Please check your selection.' });
+    }
+
+  } catch (err) {
+    //console.error('Batch update WO error:', err);
+    // Notify user of failure
+    return res.status(500).json({ error: 'Failed to update Work Order. Please try again.' });
   }
 };

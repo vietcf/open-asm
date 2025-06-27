@@ -43,16 +43,20 @@ exports.createRule = async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: rulename, src, dst, action, firewall_name' });
     }
     // Validate enums
-    if (!firewallConfig.actionsOptions.includes(action)) {
+    const allowedActions = firewallConfig.actionsOptions.map(a => a.value);
+    if (!allowedActions.includes(action)) {
       return res.status(400).json({ error: 'Invalid action value' });
     }
-    if (status && !firewallConfig.statusOptions.includes(status)) {
+    const allowedStatus = firewallConfig.statusOptions.map(s => s.value);
+    if (status && !allowedStatus.includes(status)) {
       return res.status(400).json({ error: 'Invalid status value' });
     }
-    if (violation_type && !firewallConfig.violationTypeOptions.includes(violation_type)) {
+    const allowedViolationTypes = firewallConfig.violationTypeOptions.map(v => v.value);
+    if (violation_type && !allowedViolationTypes.includes(violation_type)) {
       return res.status(400).json({ error: 'Invalid violation_type value' });
     }
-    if (!firewallConfig.firewallNameOptions.includes(firewall_name)) {
+    const allowedFirewallNames = firewallConfig.firewallNameOptions.map(f => f.value);
+    if (!allowedFirewallNames.includes(firewall_name)) {
       return res.status(400).json({ error: 'Invalid firewall_name value' });
     }
     // Normalize arrays
@@ -125,16 +129,20 @@ exports.updateRule = async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: rulename, src, dst, action, firewall_name' });
     }
     // Validate enums
-    if (!firewallConfig.actionsOptions.includes(action)) {
+    const allowedActions = firewallConfig.actionsOptions.map(a => a.value);
+    if (!allowedActions.includes(action)) {
       return res.status(400).json({ error: 'Invalid action value' });
     }
-    if (status && !firewallConfig.statusOptions.includes(status)) {
+    const allowedStatus = firewallConfig.statusOptions.map(s => s.value);
+    if (status && !allowedStatus.includes(status)) {
       return res.status(400).json({ error: 'Invalid status value' });
     }
-    if (violation_type && !firewallConfig.violationTypeOptions.includes(violation_type)) {
+    const allowedViolationTypes = firewallConfig.violationTypeOptions.map(v => v.value);
+    if (violation_type && !allowedViolationTypes.includes(violation_type)) {
       return res.status(400).json({ error: 'Invalid violation_type value' });
     }
-    if (!firewallConfig.firewallNameOptions.includes(firewall_name)) {
+    const allowedFirewallNames = firewallConfig.firewallNameOptions.map(f => f.value);
+    if (!allowedFirewallNames.includes(firewall_name)) {
       return res.status(400).json({ error: 'Invalid firewall_name value' });
     }
     // Normalize arrays

@@ -18,5 +18,7 @@ router.post('/rule/:id', checkPermission('update', 'rule'), firewallController.e
 router.delete('/rule/:id', checkPermission('delete', 'rule'), firewallController.deleteRule);
 // GET /firewall/rule/export
 router.get('/rule/export', checkPermission('read', 'rule'), firewallController.exportRuleList);
+// POST /firewall/rule/batch-update-wo
+router.post('/api/batch-update-wo', checkPermission('update', 'rule'), firewallController.batchUpdateWorkOrder);
 
 module.exports = router;
