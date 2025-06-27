@@ -96,7 +96,7 @@ exports.listServer = async (req, res) => {
       body: ejs.render(
         fs.readFileSync(path.join(__dirname, '../../public/html/pages/server/server_list.ejs'), 'utf8'),
         { serverList, search: filterParams.search, page, pageSize, totalPages, totalCount, startItem, endItem, allowedPageSizes, success, error,
-          locations: serverOptions.locations, statusOptions: serverOptions.status, typeOptions: serverOptions.types,
+          locations: serverOptions.locations, statusOptions: serverOptions.status, typesOptions: serverOptions.types,
           filterLocation: filterParams.location, filterType: filterParams.type, filterStatus: filterParams.status,
           filterTags: filterParams.tags, filterIp: filterParams.ip, filterManager: filterParams.manager, filterSystems: filterParams.systems, filterServices: filterParams.services, filterOs: filterParams.os
         }
@@ -350,7 +350,7 @@ exports.editServerForm = async (req, res) => {
       body: ejs.render(
         fs.readFileSync(path.join(__dirname, '../../public/html/pages/server/server_edit.ejs'), 'utf8'),
         { server, selectedContacts, selectedSystems, selectedAgents, selectedServices, selectedPlatform, selectedIPs, platforms, selectedTags,
-          locations: serverOptions.locations, statusOptions: serverOptions.status, typeOptions: serverOptions.types }
+          locations: serverOptions.locations, statusOptions: serverOptions.status, typesOptions: serverOptions.types }
       ),
       title: 'Edit Server',
       activeMenu: 'server-list',
@@ -373,7 +373,7 @@ exports.addServerForm = async (req, res) => {
       imgPath: require('../../config/config').imgPath,
       body: require('ejs').render(
         require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/server/server_add.ejs'), 'utf8'),
-        { locations: serverOptions.locations, statusOptions: serverOptions.status, typeOptions: serverOptions.types }
+        { locations: serverOptions.locations, statusOptions: serverOptions.status, typesOptions: serverOptions.types }
       ),
       title: 'Add Server',
       activeMenu: 'server-list',

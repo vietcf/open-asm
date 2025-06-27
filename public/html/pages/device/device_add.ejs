@@ -41,9 +41,9 @@
               <label class="form-label">Location</label>
               <select name="location" class="form-select form-select-sm">
                 <option value="">-- Select location --</option>
-                <% if (locationOptions) { Object.keys(locationOptions).forEach(function(key) { %>
-                  <option value="<%= key %>"><%= locationOptions[key] %></option>
-                <% }); } %>
+                <% if (locationOptions && Array.isArray(locationOptions)) { locationOptions.forEach(function(opt) { %>
+                  <option value="<%= opt.value %>"><%= opt.label %></option>
+                <% }) } %>
               </select>
             </div>
             <div class="mb-3">

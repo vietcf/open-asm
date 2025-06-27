@@ -86,6 +86,11 @@ class Agent {
     const res = await pool.query(sql, params);
     return parseInt(res.rows[0].count, 10);
   }
+
+  static async exists(id) {
+    const res = await pool.query('SELECT 1 FROM agents WHERE id = $1', [id]);
+    return res.rowCount > 0;
+  }
 }
 
 module.exports = Agent;

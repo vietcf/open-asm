@@ -1,20 +1,27 @@
-// Organization Unit API routes
+// Subnet API routes
 const express = require('express');
-const apiUnitRouter = express.Router();
-const apiUnitController = require('../controllers/apiUnitController');
+const apiSubnetRouter = express.Router();
+const apiSubnetController = require('../controllers/apiSubnetController');
 
 /**
  * @swagger
- * /api/units:
+ * tags:
+ *   - name: Subnet
+ *     description: API for managing subnets
+ */
+
+/**
+ * @swagger
+ * /api/subnets:
  *   get:
- *     summary: List organization units (with filter, pagination)
- *     tags: [OrganizationUnit]
+ *     summary: List subnets (with filter, pagination)
+ *     tags: [Subnet]
  *     parameters:
  *       - in: query
  *         name: search
  *         schema:
  *           type: string
- *         description: Search by unit name, code, or description
+ *         description: Search by subnet address or description
  *       - in: query
  *         name: page
  *         schema:
@@ -27,7 +34,7 @@ const apiUnitController = require('../controllers/apiUnitController');
  *         description: Page size
  *     responses:
  *       200:
- *         description: List of organization units
+ *         description: List of subnets
  *         content:
  *           application/json:
  *             schema:
@@ -41,44 +48,44 @@ const apiUnitController = require('../controllers/apiUnitController');
  *                   type: integer
  *                 totalPages:
  *                   type: integer
- *                 units:
+ *                 subnets:
  *                   type: array
  *                   items:
- *                     $ref: '#/components/schemas/OrganizationUnit'
+ *                     $ref: '#/components/schemas/Subnet'
  */
-apiUnitRouter.get('/', apiUnitController.listUnits);
+apiSubnetRouter.get('/', apiSubnetController.listSubnets);
 
 /**
  * @swagger
- * /api/units/{id}:
+ * /api/subnets/{id}:
  *   get:
- *     summary: Get a single organization unit by ID
- *     tags: [OrganizationUnit]
+ *     summary: Get a single subnet by ID
+ *     tags: [Subnet]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
- *         description: Organization unit ID
+ *         description: Subnet ID
  *     responses:
  *       200:
- *         description: Organization unit object
+ *         description: Subnet object
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/OrganizationUnit'
+ *               $ref: '#/components/schemas/Subnet'
  *       404:
  *         description: Not found
  */
-apiUnitRouter.get('/:id', apiUnitController.getUnit);
+apiSubnetRouter.get('/:id', apiSubnetController.getSubnet);
 
 /**
  * @swagger
- * /api/units:
+ * /api/subnets:
  *   post:
- *     summary: Create a new organization unit
- *     tags: [OrganizationUnit]
+ *     summary: Create a new subnet
+ *     tags: [Subnet]
  *     requestBody:
  *       required: true
  *       content:
@@ -86,117 +93,123 @@ apiUnitRouter.get('/:id', apiUnitController.getUnit);
  *           schema:
  *             type: object
  *             required:
- *               - name
+ *               - address
  *             properties:
- *               name:
+ *               address:
  *                 type: string
- *                 description: Unit name (required, unique, case-insensitive)
- *               code:
- *                 type: string
- *                 description: Unit code (optional)
+ *                 description: Subnet address (required, e.g. 192.168.1.0/24)
  *               description:
  *                 type: string
  *                 description: Description (optional)
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 description: List of tag IDs (optional)
  *     responses:
  *       201:
- *         description: Created organization unit
+ *         description: Created subnet
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/OrganizationUnit'
+ *               $ref: '#/components/schemas/Subnet'
  *       400:
  *         description: Validation error
  *       409:
- *         description: Duplicate unit name
+ *         description: Duplicate subnet address
  */
-apiUnitRouter.post('/', apiUnitController.createUnit);
+apiSubnetRouter.post('/', apiSubnetController.createSubnet);
 
 /**
  * @swagger
- * /api/units/{id}:
+ * /api/subnets/{id}:
  *   put:
- *     summary: Update an organization unit
- *     tags: [OrganizationUnit]
+ *     summary: Update a subnet
+ *     tags: [Subnet]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
- *         description: Organization unit ID
+ *         description: Subnet ID
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - name
  *             properties:
- *               name:
+ *               address:
  *                 type: string
- *                 description: Unit name (required, unique, case-insensitive)
- *               code:
- *                 type: string
- *                 description: Unit code (optional)
+ *                 description: Subnet address (required, e.g. 192.168.1.0/24)
  *               description:
  *                 type: string
  *                 description: Description (optional)
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 description: List of tag IDs (optional)
  *     responses:
  *       200:
- *         description: Updated organization unit
+ *         description: Updated subnet
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/OrganizationUnit'
+ *               $ref: '#/components/schemas/Subnet'
  *       400:
  *         description: Validation error
  *       404:
  *         description: Not found
  *       409:
- *         description: Duplicate unit name
+ *         description: Duplicate subnet address
  */
-apiUnitRouter.put('/:id', apiUnitController.updateUnit);
+apiSubnetRouter.put('/:id', apiSubnetController.updateSubnet);
 
 /**
  * @swagger
- * /api/units/{id}:
+ * /api/subnets/{id}:
  *   delete:
- *     summary: Delete an organization unit
- *     tags: [OrganizationUnit]
+ *     summary: Delete a subnet
+ *     tags: [Subnet]
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
- *         description: Organization unit ID
+ *         description: Subnet ID
  *     responses:
  *       204:
  *         description: Deleted
  *       404:
  *         description: Not found
  */
-apiUnitRouter.delete('/:id', apiUnitController.deleteUnit);
+apiSubnetRouter.delete('/:id', apiSubnetController.deleteSubnet);
 
 /**
  * @swagger
- * tags:
- *   - name: OrganizationUnit
- *     description: API for managing organization units
  * components:
  *   schemas:
- *     OrganizationUnit:
+ *     Subnet:
  *       type: object
  *       properties:
  *         id:
  *           type: integer
- *         name:
- *           type: string
- *         code:
+ *         address:
  *           type: string
  *         description:
  *           type: string
+ *         tags:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: integer
+ *               name:
+ *                 type: string
  */
 
-module.exports = apiUnitRouter;
+module.exports = apiSubnetRouter;

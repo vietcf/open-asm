@@ -5,6 +5,7 @@ const config = require('../../config/config');
 const Contact = require('../models/Contact');
 const Unit = require('../models/Unit');
 const Configuration = require('../models/Configuration');
+const QRCode = require('qrcode');
 
 // Contact List page handler
 exports.contactList = async (req, res) => {
@@ -65,12 +66,12 @@ exports.contactList = async (req, res) => {
 // Create new contact
 exports.createContact = async (req, res) => {
   try {
-    let { name, email, position, unit_id, phone, note } = req.body;
+    let { name, email, position, unit_id, phone, description } = req.body;
     name = (name || '').trim();
     email = (email || '').trim();
     position = (position || '').trim();
     phone = (phone || '').trim();
-    note = (note || '').trim();
+    description = (description || '').trim();
     // Validate required fields
     if (!name || !email || !position) {
       return res.redirect('/organize/contact?error=Name, Email, and Position are required');
@@ -82,7 +83,7 @@ exports.createContact = async (req, res) => {
       return res.redirect('/organize/contact?error=Email already exists');
     }
     // Insert new contact
-    await Contact.create({ name, email, position, unit_id, phone, note });
+    await Contact.create({ name, email, position, unit_id, phone, description });
     res.redirect('/organize/contact?success=Contact added successfully');
   } catch (err) {
     console.error('Add contact error:', err);
@@ -93,16 +94,16 @@ exports.createContact = async (req, res) => {
 // Update existing contact
 exports.updateContact = async (req, res) => {
   try {
-    let { name, email, position, unit_id, phone, note } = req.body;
+    let { name, email, position, unit_id, phone, description } = req.body;
     name = (name || '').trim();
     email = (email || '').trim();
     position = (position || '').trim();
     phone = (phone || '').trim();
-    note = (note || '').trim();
+    description = (description || '').trim();
     if (!name || !email || !position) {
       return res.redirect('/organize/contact?error=Name, Email, and Position are required');
     }
-    await Contact.update(req.params.id, { name, email, position, unit_id, phone, note });
+    await Contact.update(req.params.id, { name, email, position, unit_id, phone, description });
     res.redirect('/organize/contact?success=Contact updated successfully');
   } catch(err) {
     console.error(err);
@@ -424,5 +425,44 @@ exports.apiTagSearch = async (req, res) => {
     res.json(tags.map(tag => ({ id: tag.id, text: tag.name })));
   } catch (err) {
     res.status(500).json({ error: 'Error loading tags' });
+  }
+};
+
+// API: Serve contact QR vCard as base64 PNG (for AJAX modal)
+exports.apiContactQrVcard = async (req, res) => {
+  try {
+    const contactId = req.params.id;
+    const contact = await Contact.findById(contactId);
+    if (!contact) return res.status(404).json({ error: 'Contact not found' });
+    // Tách tên cho trường N:
+    let nField = '';
+    if (contact.name) {
+      const parts = contact.name.trim().split(/\s+/);
+      if (parts.length === 1) {
+        nField = `${parts[0]};;;;`;
+      } else if (parts.length === 2) {
+        nField = `${parts[1]};${parts[0]};;;`;
+      } else {
+        const last = parts.pop();
+        const first = parts.shift();
+        nField = `${last};${first};${parts.join(' ')};;`;
+      }
+    }
+    const vcard = [
+      'BEGIN:VCARD',
+      'VERSION:3.0',
+      nField ? `N:${nField}` : '',
+      `FN:${contact.name || ''}`,
+      contact.email ? `EMAIL:${contact.email}` : '',
+      contact.phone ? `TEL:${contact.phone}` : '',
+      contact.unit_name ? `ORG:${contact.unit_name}` : '',
+      contact.position ? `TITLE:${contact.position}` : '',
+      'END:VCARD'
+    ].filter(Boolean).join('\n');
+    const qrDataUrl = await QRCode.toDataURL(vcard, { type: 'image/png', errorCorrectionLevel: 'M', margin: 1, width: 256 });
+    const base64 = qrDataUrl.replace(/^data:image\/png;base64,/, '');
+    res.json({ image: base64, mime: 'image/png' });
+  } catch (err) {
+    res.status(500).json({ error: 'Unable to generate QR vCard', detail: err.message });
   }
 };

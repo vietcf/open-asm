@@ -212,6 +212,44 @@ class IpAddress {
     const result = await pool.query(sql, params);
     return parseInt(result.rows[0].count, 10);
   }
+
+  // Gán lại toàn bộ tags cho IP (xóa hết rồi thêm lại)
+  static async setTags(ipId, tagIds) {
+    // Xóa hết tag cũ
+    await pool.query("DELETE FROM tag_object WHERE object_type = 'ip_address' AND object_id = $1", [ipId]);
+    // Thêm tag mới nếu có
+    if (Array.isArray(tagIds) && tagIds.length > 0) {
+      const values = tagIds.map((tagId, idx) => `($1, $${idx + 2}, 'ip_address')`).join(',');
+      await pool.query(
+        `INSERT INTO tag_object (object_id, tag_id, object_type) VALUES ${values}`,
+        [ipId, ...tagIds]
+      );
+    }
+  }
+
+  // Gán lại toàn bộ contacts cho IP (xóa hết rồi thêm lại)
+  static async setContacts(ipId, contactIds) {
+    await pool.query('DELETE FROM ip_contact WHERE ip_id = $1', [ipId]);
+    if (Array.isArray(contactIds) && contactIds.length > 0) {
+      const values = contactIds.map((cid, idx) => `($1, $${idx + 2})`).join(',');
+      await pool.query(
+        `INSERT INTO ip_contact (ip_id, contact_id) VALUES ${values}`,
+        [ipId, ...contactIds]
+      );
+    }
+  }
+
+  // Gán lại toàn bộ systems cho IP (xóa hết rồi thêm lại)
+  static async setSystems(ipId, systemIds) {
+    await pool.query('DELETE FROM system_ip WHERE ip_id = $1', [ipId]);
+    if (Array.isArray(systemIds) && systemIds.length > 0) {
+      const values = systemIds.map((sid, idx) => `($1, $${idx + 2})`).join(',');
+      await pool.query(
+        `INSERT INTO system_ip (ip_id, system_id) VALUES ${values}`,
+        [ipId, ...systemIds]
+      );
+    }
+  }
 }
 
 // Export the IpAddress model

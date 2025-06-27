@@ -53,6 +53,9 @@ router.delete('/tag/:id', checkPermission('delete', 'tag'), organizeController.d
 // (Ensure this returns [{id, text}] for select2)
 router.get('/api/contact', organizeController.apiContactSearch);
 
+// API: Serve contact image as base64 (AJAX for modal)
+//router.get('/api/contact/:id/image', organizeController.apiContactImage);
+
 // API: Tag search for select2 ajax (used in system add/edit, ip address add/edit, server add/edit)
 // Permissions to access this API:
 // - tag.read: View tag list (e.g. for read-only or tag selection screens)
@@ -67,5 +70,8 @@ router.get('/api/tag',organizeController.apiTagSearch);
 // Example request: /organize/api/unit?search=abc
 // (Ensure this returns [{id, text}] for select2)
 router.get('/api/unit', organizeController.apiUnitSearch);
+
+// API: Serve contact QR vCard as base64 PNG (AJAX for modal)
+router.get('/api/contact/:id/qrcode', organizeController.apiContactQrVcard);
 
 module.exports = router;

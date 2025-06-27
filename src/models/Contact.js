@@ -64,20 +64,20 @@ class Contact {
     return result.rows[0];
   }
 
-  static async create({ name, email, phone, position, unit_id }) {
+  static async create({ name, email, phone, position, unit_id, description }) {
     const result = await pool.query(
-      `INSERT INTO contacts (name, email, phone, position, unit_id)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [name, email, phone, position, unit_id || null]
+      `INSERT INTO contacts (name, email, phone, position, unit_id, description)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [name, email, phone, position, unit_id || null, description || null]
     );
     return result.rows[0];
   }
 
-  static async update(id, { name, email, phone, position, unit_id }) {
+  static async update(id, { name, email, phone, position, unit_id, description }) {
     const result = await pool.query(
-      `UPDATE contacts SET name=$1, email=$2, phone=$3, position=$4, unit_id=$5
-       WHERE id=$6 RETURNING *`,
-      [name, email, phone, position, unit_id || null, id]
+      `UPDATE contacts SET name=$1, email=$2, phone=$3, position=$4, unit_id=$5, description=$6
+       WHERE id=$7 RETURNING *`,
+      [name, email, phone, position, unit_id || null, description || null, id]
     );
     return result.rows[0];
   }
@@ -101,6 +101,11 @@ class Contact {
       [ids]
     );
     return result.rows;
+  }
+
+  static async exists(id) {
+    const res = await pool.query('SELECT 1 FROM contacts WHERE id = $1', [id]);
+    return res.rowCount > 0;
   }
 }
 

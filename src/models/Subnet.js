@@ -136,6 +136,12 @@ class Subnet {
     await db.query("DELETE FROM tag_object WHERE object_type = 'subnet' AND object_id = $1", [id]);
     await db.query('DELETE FROM subnets WHERE id = $1', [id]);
   }
+
+  // Find subnet by address (for duplicate check)
+  static async findByAddress(address) {
+    const result = await pool.query('SELECT * FROM subnets WHERE address = $1', [address]);
+    return result.rows[0];
+  }
 }
 
 // Export the Subnet model

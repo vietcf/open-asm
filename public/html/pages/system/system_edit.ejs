@@ -23,11 +23,11 @@
               <label class="form-label">Level</label>
               <select name="level" class="form-select form-select-sm">
                 <option value="">-- Select Level --</option>
-                <option value="1" <%= system.level == '1' ? 'selected' : '' %>>1</option>
-                <option value="2" <%= system.level == '2' ? 'selected' : '' %>>2</option>
-                <option value="3" <%= system.level == '3' ? 'selected' : '' %>>3</option>
-                <option value="4" <%= system.level == '4' ? 'selected' : '' %>>4</option>
-                <option value="5" <%= system.level == '5' ? 'selected' : '' %>>5</option>
+                <% if (typeof levelOptions !== 'undefined' && Array.isArray(levelOptions)) { %>
+                  <% levelOptions.forEach(function(opt) { %>
+                    <option value="<%= opt.value %>" <%= system.level == opt.value ? 'selected' : '' %>><%= opt.label %></option>
+                  <% }) %>
+                <% } %>
               </select>
             </div>
             <div class="mb-3">

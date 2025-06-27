@@ -30,7 +30,7 @@
                   <select class="form-select form-select-sm" id="firewall_name" name="firewall_name" required>
                     <option value="">-- Select Firewall Name --</option>
                     <% (firewallNameOptions || []).forEach(function(fw) { %>
-                      <option value="<%= fw %>"><%= fw %></option>
+                      <option value="<%= fw.value %>"><%= fw.label %></option>
                     <% }) %>
                   </select>
                 </div>
@@ -79,7 +79,7 @@
                   <select class="form-select form-select-sm" id="action" name="action" required>
                     <option value="">-- Select Action --</option>
                     <% (actionsOptions || []).forEach(function(act) { %>
-                      <option value="<%= act %>"><%= act.charAt(0).toUpperCase() + act.slice(1) %></option>
+                      <option value="<%= act.value %>"><%= act.label %></option>
                     <% }) %>
                   </select>
                 </div>
@@ -87,8 +87,9 @@
                   <label for="status" class="form-label">Status</label>
                   <select class="form-select form-select-sm" id="status" name="status">
                     <option value="">-- No status --</option>
-                    <option value="active">Enabled</option>
-                    <option value="inactive">Disabled</option>
+                    <% (statusOptions || []).forEach(function(st) { %>
+                      <option value="<%= st.value %>"><%= st.label %></option>
+                    <% }) %>
                   </select>
                 </div>
                 <div class="mb-3">
@@ -96,7 +97,7 @@
                   <select class="form-select form-select-sm" id="violation_type" name="violation_type">
                     <option value="">-- None --</option>
                     <% (violationTypeOptions || []).forEach(function(vt) { %>
-                      <option value="<%= vt %>" <%= typeof violation_type !== 'undefined' && violation_type === vt ? 'selected' : '' %>><%= vt.charAt(0).toUpperCase() + vt.slice(1) %></option>
+                      <option value="<%= vt.value %>" <%= typeof violation_type !== 'undefined' && violation_type === vt.value ? 'selected' : '' %>><%= vt.label %></option>
                     <% }) %>
                   </select>
                 </div>
@@ -165,7 +166,7 @@
               <select class="form-select form-select-sm" id="filterRuleFirewallName" name="firewall_name">
                 <option value="">-- All --</option>
                 <% (firewallNameOptions || []).forEach(function(fw) { %>
-                  <option value="<%= fw %>" <%= typeof firewall_name !== 'undefined' && firewall_name === fw ? 'selected' : '' %>><%= fw %></option>
+                  <option value="<%= fw.value %>" <%= typeof firewall_name !== 'undefined' && firewall_name === fw.value ? 'selected' : '' %>><%= fw.label %></option>
                 <% }) %>
               </select>
             </div>
@@ -186,7 +187,7 @@
               <select class="form-select form-select-sm" id="filterRuleViolationType" name="violation_type">
                 <option value="">-- All --</option>
                 <% (violationTypeOptions || []).forEach(function(vt) { %>
-                  <option value="<%= vt %>" <%= typeof violation_type !== 'undefined' && violation_type === vt ? 'selected' : '' %>><%= vt.charAt(0).toUpperCase() + vt.slice(1) %></option>
+                  <option value="<%= vt.value %>" <%= typeof violation_type !== 'undefined' && violation_type === vt.value ? 'selected' : '' %>><%= vt.label %></option>
                 <% }) %>
               </select>
             </div>
@@ -195,7 +196,7 @@
               <select class="form-select form-select-sm" id="filterRuleStatus" name="status">
                 <option value="">-- All --</option>
                 <% (statusOptions || []).forEach(function(st) { %>
-                  <option value="<%= st %>" <%= typeof status !== 'undefined' && status === st ? 'selected' : '' %>><%= st.charAt(0).toUpperCase() + st.slice(1) %></option>
+                  <option value="<%= st.value %>" <%= typeof status !== 'undefined' && status === st.value ? 'selected' : '' %>><%= st.label %></option>
                 <% }) %>
               </select>
             </div>
@@ -384,7 +385,7 @@
                               <select class="form-select form-select-sm" id="editFirewallName-<%= rule.id %>" name="firewall_name" required>
                                 <option value="">-- Select Firewall Name --</option>
                                 <% (firewallNameOptions || []).forEach(function(fw) { %>
-                                  <option value="<%= fw %>" <%= rule.firewall_name === fw ? 'selected' : '' %>><%= fw %></option>
+                                  <option value="<%= fw.value %>" <%= rule.firewall_name === fw.value ? 'selected' : '' %>><%= fw.label %></option>
                                 <% }) %>
                               </select>
                             </div>
@@ -433,7 +434,7 @@
                               <select class="form-select form-select-sm" id="editAction-<%= rule.id %>" name="action" required>
                                 <option value="">-- Select Action --</option>
                                 <% (actionsOptions || []).forEach(function(act) { %>
-                                  <option value="<%= act %>" <%= rule.action === act ? 'selected' : '' %>><%= act.charAt(0).toUpperCase() + act.slice(1) %></option>
+                                  <option value="<%= act.value %>" <%= rule.action === act.value ? 'selected' : '' %>><%= act.label %></option>
                                 <% }) %>
                               </select>
                             </div>
@@ -450,7 +451,7 @@
                               <select class="form-select form-select-sm" id="editStatus-<%= rule.id %>" name="status">
                                 <option value="">-- No status --</option>
                                 <% (statusOptions || []).forEach(function(st) { %>
-                                  <option value="<%= st %>" <%= rule.status === st ? 'selected' : '' %>><%= st.charAt(0).toUpperCase() + st.slice(1) %></option>
+                                  <option value="<%= st.value %>" <%= rule.status === st.value ? 'selected' : '' %>><%= st.label %></option>
                                 <% }) %>
                               </select>
                             </div>
@@ -459,7 +460,7 @@
                               <select class="form-select form-select-sm" id="editViolationType-<%= rule.id %>" name="violation_type">
                                 <option value="">-- None --</option>
                                 <% (violationTypeOptions || []).forEach(function(vt) { %>
-                                  <option value="<%= vt %>" <%= rule.violation_type === vt ? 'selected' : '' %>><%= vt.charAt(0).toUpperCase() + vt.slice(1) %></option>
+                                  <option value="<%= vt.value %>" <%= rule.violation_type === vt.value ? 'selected' : '' %>><%= vt.label %></option>
                                 <% }) %>
                               </select>
                             </div>

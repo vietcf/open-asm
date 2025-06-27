@@ -281,6 +281,11 @@ class Server {
     const result = await pool.query(sql, params);
     return parseInt(result.rows[0].count, 10);
   }
+
+  static async exists(id) {
+    const res = await pool.query('SELECT 1 FROM servers WHERE id = $1', [id]);
+    return res.rowCount > 0;
+  }
 }
 
 module.exports = Server;

@@ -79,6 +79,11 @@ class Tag {
     const result = await pool.query(sql, params);
     return result.rows;
   }
+
+  static async exists(id) {
+    const result = await pool.query('SELECT 1 FROM tags WHERE id = $1', [id]);
+    return result.rowCount > 0;
+  }
 }
 
 module.exports = Tag;
