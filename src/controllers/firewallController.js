@@ -6,7 +6,7 @@ const config = require('../../config/config');
 const { pool } = config;
 const RuleFirewall = require('../models/RuleFirewall');
 const Configuration = require('../models/Configuration');
-const firewallConfig = require('../../config/firewall_config');
+const firewallConfig = require('../../config/firewallOptions');
 const ExcelJS = require('exceljs');
 
 exports.ruleList = async (req, res) => {

@@ -78,6 +78,11 @@ class Platform {
     // select2 expects [{id, text}]
     return result.rows.map(row => ({ id: row.id, text: row.name }));
   }
+
+  static async exists(id) {
+    const res = await pool.query('SELECT 1 FROM platforms WHERE id = $1', [id]);
+    return res.rowCount > 0;
+  }
 }
 
 module.exports = Platform;

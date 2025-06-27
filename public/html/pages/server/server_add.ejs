@@ -27,7 +27,7 @@
               <select name="status" class="form-select form-select-sm">
                 <option value="">-- Select Status --</option>
                 <% (statusOptions || []).forEach(function(st) { %>
-                  <option value="<%= st %>"><%= st %></option>
+                  <option value="<%= st.value %>"><%= st.label %></option>
                 <% }) %>
               </select>
             </div>
@@ -36,7 +36,7 @@
               <select name="location" class="form-select form-select-sm">
                 <option value="">-- Select location --</option>
                 <% (locations || []).forEach(function(loc) { %>
-                  <option value="<%= loc %>"><%= loc %></option>
+                  <option value="<%= loc.value %>"><%= loc.label %></option>
                 <% }) %>
               </select>
             </div>
@@ -44,8 +44,8 @@
               <label class="form-label">Type</label>
               <select name="type" class="form-select form-select-sm">
                 <option value="">-- Select type --</option>
-                <% (typeOptions || []).forEach(function(tp) { %>
-                  <option value="<%= tp %>"><%= tp %></option>
+                <% (typesOptions || []).forEach(function(tp) { %>
+                  <option value="<%= tp.value %>"><%= tp.label %></option>
                 <% }) %>
               </select>
             </div>

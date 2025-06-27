@@ -313,6 +313,11 @@ class System {
       await executor.query('DELETE FROM system_server WHERE system_id = $1', [id]);
     } catch (e) { /* Table not found, skip */ }
   }
+
+  static async exists(id) {
+    const res = await pool.query('SELECT 1 FROM systems WHERE id = $1', [id]);
+    return res.rowCount > 0;
+  }
 }
 
 module.exports = System;

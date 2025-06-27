@@ -6,6 +6,7 @@ const FileUpload = require('../models/FileUpload');
 const Configuration = require('../models/Configuration');
 const fs = require('fs');
 const path = require('path');
+const systemOptions = require('../../config/systemOptions');
 
 // System list page (with DB)
 exports.listSystem = async (req, res) => {
@@ -95,7 +96,8 @@ exports.editSystemForm = async (req, res) => {
         selectedIPs,
         selectedTags, // <-- ensure this is passed
         selectedDomains,
-        selectedManagerObjects
+        selectedManagerObjects,
+        levelOptions: systemOptions.levels // Thêm dòng này
       }
     );
     const siteConfig = await Configuration.findByKey('site_name');
@@ -273,7 +275,8 @@ exports.addSystemForm = async (req, res) => {
           units,
           contacts,
           servers: servers.rows,
-          error: null // Always pass error as null, no error message on add form
+          error: null, // Always pass error as null, no error message on add form
+          levelOptions: systemOptions.levels // Thêm dòng này
         }
       ),
       title: 'Add System',

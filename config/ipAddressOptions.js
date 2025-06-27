@@ -2,8 +2,8 @@
 
 module.exports = {
   status: [
-    'reserved',
-    'assigned',
-    'inactved'
+    { value: 'reserved', label: 'Reserved' },
+    { value: 'assigned', label: 'Assigned' },
+    { value: 'inactved', label: 'Inactive' }
   ]
 };

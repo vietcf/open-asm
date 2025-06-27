@@ -54,8 +54,8 @@ const swaggerJsdoc = require('swagger-jsdoc');
  *     description: Firewall Rule management
  *   - name: Server
  *     description: Server management
- *   - name: IpAddress
- *     description: IP Address management
+ *   - name: IPAddress
+ *     description: API for managing IP addresses
  *   - name: Auth
  *     description: Authentication management
  */

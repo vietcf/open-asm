@@ -37,7 +37,7 @@
                   <select class="form-select form-select-sm" id="ipStatus" name="status">
                     <option value="">-- No status --</option>
                     <% (ipStatusOptions || []).forEach(function(opt) { %>
-                      <option value="<%= opt %>"><%= opt.charAt(0).toUpperCase() + opt.slice(1) %></option>
+                      <option value="<%= opt.value %>" <%= typeof filterStatus !== 'undefined' && filterStatus === opt.value ? 'selected' : '' %>><%= opt.label %></option>
                     <% }) %>
                   </select>
                 </div>
@@ -106,9 +106,9 @@
                     <label class="form-label">Status</label>
                     <select id="filterIpStatus" name="status" class="form-select select2">
                       <option value="">-- All Status --</option>
-                      <option value="assigned">Assigned</option>
-                      <option value="reserved">Reserved</option>
-                      <option value="inactive">Inactive</option>
+                      <% (ipStatusOptions || []).forEach(function(opt) { %>
+                        <option value="<%= opt.value %>" <%= typeof filterStatus !== 'undefined' && filterStatus === opt.value ? 'selected' : '' %>><%= opt.label %></option>
+                      <% }) %>
                     </select>
                   </div>
                   <div class="col-12 mb-2">
@@ -400,7 +400,7 @@
                               <select class="form-select form-select-sm" id="editIpStatus-<%= ip.id %>" name="status">
                                 <option value="">-- No status --</option>
                                 <% (ipStatusOptions || []).forEach(function(opt) { %>
-                                  <option value="<%= opt %>" <%= ip.status === opt ? 'selected' : '' %>><%= opt.charAt(0).toUpperCase() + opt.slice(1) %></option>
+                                  <option value="<%= opt.value %>" <%= ip.status === opt.value ? 'selected' : '' %>><%= opt.label %></option>
                                 <% }) %>
                               </select>
                             </div>

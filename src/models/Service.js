@@ -38,6 +38,11 @@ class Service {
   static async deleteService(id) {
     return pool.query('DELETE FROM services WHERE id = $1', [id]);
   }
+
+  static async exists(id) {
+    const res = await pool.query('SELECT 1 FROM services WHERE id = $1', [id]);
+    return res.rowCount > 0;
+  }
 }
 
 module.exports = Service;

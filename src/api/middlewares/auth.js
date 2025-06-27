@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const JWT_SECRET = process.env.JWT_SECRET || 'VcB_your_jwt_secret';
 
 // Authenticate: verify JWT and attach user info to req.user
-function authenticate(req, res, next) {
+function authenticateJWT(req, res, next) {
   const authHeader = req.headers['authorization'];
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ error: 'Missing or invalid token' });
@@ -19,7 +19,7 @@ function authenticate(req, res, next) {
 }
 
 // Authorize by role (string or array)
-function authorizeRole(roles) {
+function authorizeRoleJWT(roles) {
   return (req, res, next) => {
     if (!req.user || !req.user.role) {
       return res.status(403).json({ error: 'Forbidden' });
@@ -38,7 +38,7 @@ function authorizeRole(roles) {
 }
 
 // Authorize by permission (if you store permissions in JWT)
-function authorizePermission(permission) {
+function authorizePermissionJWT(permission) {
   return (req, res, next) => {
     if (!req.user || !req.user.permissions || !req.user.permissions.includes(permission)) {
       return res.status(403).json({ error: 'Forbidden' });
@@ -47,4 +47,4 @@ function authorizePermission(permission) {
   };
 }
 
-module.exports = { authenticate, authorizeRole, authorizePermission };
+module.exports = { authenticateJWT, authorizeRoleJWT, authorizePermissionJWT };

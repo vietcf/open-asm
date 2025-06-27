@@ -1,3 +1,10 @@
+/**
+ * @swagger
+ * tags:
+ *   - name: Auth
+ *     description: Authentication management
+ */
+
 // Auth API routes
 const express = require('express');
 const apiAuthRouter = express.Router();

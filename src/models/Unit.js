@@ -76,6 +76,12 @@ class Unit {
     );
     return result.rows[0];
   }
+
+  // Check if a unit exists by ID
+  static async exists(id) {
+    const result = await pool.query('SELECT 1 FROM units WHERE id = $1', [id]);
+    return result.rowCount > 0;
+  }
 }
 
 module.exports = Unit;

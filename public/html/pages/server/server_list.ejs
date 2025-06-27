@@ -87,27 +87,27 @@
                   <div class="col-12 mb-2">
                     <label class="form-label">Status</label>
                     <select id="filterStatus" name="status" class="form-select">
-                      <option value="">All</option>
+                      <option value="">-- All --</option>
                       <% (statusOptions || []).forEach(function(st) { %>
-                        <option value="<%= st %>" <%= filterStatus == st ? 'selected' : '' %>><%= st %></option>
+                        <option value="<%= st.value %>" <%= filterStatus == st.value ? 'selected' : '' %>><%= st.label %></option>
                       <% }) %>
                     </select>
                   </div>
                   <div class="col-12 mb-2">
                     <label class="form-label">Location</label>
                     <select id="filterLocation" name="location" class="form-select">
-                      <option value="">All</option>
+                      <option value="">-- All --</option>
                       <% (locations || []).forEach(function(loc) { %>
-                        <option value="<%= loc %>" <%= filterLocation == loc ? 'selected' : '' %>><%= loc %></option>
+                        <option value="<%= loc.value %>" <%= filterLocation == loc.value ? 'selected' : '' %>><%= loc.label %></option>
                       <% }) %>
                     </select>
                   </div>
                   <div class="col-12 mb-2">
                     <label class="form-label">Type</label>
                     <select id="filterType" name="type" class="form-select">
-                      <option value="">All</option>
-                      <% (typeOptions || []).forEach(function(tp) { %>
-                        <option value="<%= tp %>" <%= filterType == tp ? 'selected' : '' %>><%= tp %></option>
+                      <option value="">-- All --</option>
+                      <% (typesOptions || []).forEach(function(tp) { %>
+                        <option value="<%= tp.value %>" <%= filterType == tp.value ? 'selected' : '' %>><%= tp.label %></option>
                       <% }) %>
                     </select>
                   </div>

@@ -41,7 +41,8 @@ exports.listDevice = async (req, res) => {
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
     const errorMessage = req.flash('error')[0] || req.query.error || null;
     const successMessage = req.flash('success')[0] || req.query.success || null;
-    const deviceConfig = require('../../config/deviceLocationOptions');
+    // Đổi require sang file mới
+    const deviceConfig = require('../../config/deviceOptions');
     const locationOptions = deviceConfig.locationOptions;
     // Đảm bảo truyền tags ra view luôn là mảng chuỗi (phù hợp với select2)
     let tagsForView = req.query['tags[]'] || req.query.tags || [];
@@ -95,7 +96,8 @@ exports.addDeviceForm = async (req, res) => {
     const error = (req.flash('error') || [])[0];
     const success = (req.flash('success') || [])[0];
     // Load location options from config
-    const deviceConfig = require('../../config/deviceLocationOptions');
+    // Đổi require sang file mới
+    const deviceConfig = require('../../config/deviceOptions');
     const locationOptions = deviceConfig.locationOptions;
     const content = require('ejs').render(
       require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/device/device_add.ejs'), 'utf8'),
@@ -131,7 +133,8 @@ exports.editDeviceForm = async (req, res) => {
     const error = (req.flash('error') || [])[0];
     const success = (req.flash('success') || [])[0];
     // Load location options from config
-    const deviceConfig = require('../../config/deviceLocationOptions');
+    // Đổi require sang file mới
+    const deviceConfig = require('../../config/deviceOptions');
     const locationOptions = deviceConfig.locationOptions;
     const content = require('ejs').render(
       require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/device/device_edit.ejs'), 'utf8'),
