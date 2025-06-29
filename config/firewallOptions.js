@@ -19,8 +19,9 @@ module.exports = {
     { value: 'REJECT', label: 'REJECT' }
   ],
   statusOptions: [
-    { value: 'ENABLE', label: 'ENABLE' },
-    { value: 'DISABLE', label: 'DISABLE' }
+    { value: 'TODO', label: 'TODO' },
+    { value: 'PROCESSING', label: 'PROCESSING' },
+    { value: 'DONE', label: 'DONE' }
   ],
   violationTypeOptions: [
     { value: 'CDE-TO-OUT-OF-SCOPE', label: 'CDE-TO-OUT-OF-SCOPE' },
