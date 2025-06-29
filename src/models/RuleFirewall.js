@@ -2,7 +2,7 @@
 const { pool } = require('../../config/config');
 
 class RuleFirewall {
-  static async findAll({ search = '', page = 1, pageSize = 10, ou_id, contacts, tags, violation_type, status, firewall_name }) {
+  static async findAll({ search = '', page = 1, pageSize = 10, ou_id, contacts, tags, violation_type, status, firewall_name, audit_batch }) {
     let whereClauses = [];
     let params = [];
     let paramIdx = 1;
@@ -81,6 +81,17 @@ class RuleFirewall {
       params.push(contacts.length);
       paramIdx += 2;
     }
+    // Filter by audit_batch (comma-separated, partial match for any batch)
+    if (typeof audit_batch === 'string' && audit_batch.length > 0) {
+      // Support multiple batches, comma-separated
+      const batches = audit_batch.split(',').map(v => v.trim()).filter(v => v.length > 0);
+      if (batches.length > 0) {
+        const batchClauses = batches.map((batch, i) => `rf.audit_batch ILIKE $${paramIdx + i}`);
+        whereClauses.push('(' + batchClauses.join(' OR ') + ')');
+        params.push(...batches.map(b => `%${b}%`));
+        paramIdx += batches.length;
+      }
+    }
     let where = whereClauses.length > 0 ? 'WHERE ' + whereClauses.join(' AND ') : '';
     // Count query
     const countSql = `SELECT COUNT(*) FROM rulefirewall rf
@@ -144,12 +155,13 @@ class RuleFirewall {
       }
       // Insert rule
       const insertSql = `INSERT INTO rulefirewall
-        (rulename, firewall_name, src_zone, src, src_detail, dst_zone, dst, dst_detail, services, application, url, action, ou_id, status, violation_type, violation_detail, solution_proposal, solution_confirm, description, work_order, created_at, updated_at, updated_by)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,NOW(),NOW(),$21) RETURNING id`;
+        (rulename, firewall_name, src_zone, src, src_detail, dst_zone, dst, dst_detail, services, application, url, action, ou_id, status, violation_type, violation_detail, solution_proposal, solution_confirm, description, audit_batch, work_order, created_at, updated_at, updated_by)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,NOW(),NOW(),$22) RETURNING id`;
       const values = [
         data.rulename, data.firewall_name, data.src_zone, data.src, data.src_detail, data.dst_zone, data.dst, data.dst_detail,
         data.services, data.application, data.url, data.action, data.ou_id || null, data.status || null,
-        data.violation_type, data.violation_detail, data.solution_proposal, data.solution_confirm, data.description, data.work_order || null, data.updated_by || null
+        data.violation_type, data.violation_detail, data.solution_proposal, data.solution_confirm, data.description,
+        data.audit_batch || null, data.work_order || null, data.updated_by || null
       ];
       const result = await client.query(insertSql, values);
       const ruleId = result.rows[0].id;
@@ -195,13 +207,14 @@ class RuleFirewall {
       const updateSql = `UPDATE rulefirewall SET
         rulename=$1, firewall_name=$2, src_zone=$3, src=$4, src_detail=$5, dst_zone=$6, dst=$7, dst_detail=$8,
         services=$9, application=$10, url=$11, action=$12, ou_id=$13, status=$14, violation_type=$15,
-        violation_detail=$16, solution_proposal=$17, solution_confirm=$18, description=$19, work_order=$20,
-        updated_at=NOW(), updated_by=$21
-        WHERE id=$22`;
+        violation_detail=$16, solution_proposal=$17, solution_confirm=$18, description=$19, audit_batch=$20, work_order=$21,
+        updated_at=NOW(), updated_by=$22
+        WHERE id=$23`;
       const values = [
         data.rulename, data.firewall_name, data.src_zone, data.src, data.src_detail, data.dst_zone, data.dst, data.dst_detail,
         data.services, data.application, data.url, data.action, data.ou_id || null, data.status || null,
-        data.violation_type, data.violation_detail, data.solution_proposal, data.solution_confirm, data.description, data.work_order || null, data.updated_by || null, id
+        data.violation_type, data.violation_detail, data.solution_proposal, data.solution_confirm, data.description,
+        data.audit_batch || null, data.work_order || null, data.updated_by || null, id
       ];
       await client.query(updateSql, values);
       // Update contacts (remove all, then add new)

@@ -1,4 +1,5 @@
 <div class="container-fluid">
+  <div id="wo-alert-container"></div>
   <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/firewall/rule" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
     <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search any field (name, src, dst, service, action, status, ...)" aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
     <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
@@ -11,15 +12,13 @@
   <div class="row mb-3">
     <div class="col-12 d-flex justify-content-end align-items-center">
       <% if (hasPermission && hasPermission(user, 'rule.create')) { %>
-      <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addRuleModal">
+      <button id="add-rule-btn" type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addRuleModal">
         <i class="bi bi-plus"></i> Add Rule
       </button>
       <% } %>
       <button type="button" class="btn btn-success btn-sm me-2" id="editMultiWOButton">
-        <i class="bi bi-pencil-square"></i> Edit WO
+        <i class="bi bi-pencil-square"></i> Edit Batch WO
       </button>
-      <div id="wo-alert-container" style="position:relative; width:0; height:0;"></div>
-      <!-- ROLLBACK: Remove custom wo-alert-container and restore original notification logic -->
       <div id="editWoWarning" class="alert alert-warning d-none" style="position:fixed; top:80px; right:30px; z-index:9999; min-width:200px; max-width:400px; text-align:center;">
         Please select at least one rule to edit WO.
       </div>
@@ -92,15 +91,6 @@
                   </select>
                 </div>
                 <div class="mb-3">
-                  <label for="status" class="form-label">Status</label>
-                  <select class="form-select form-select-sm" id="status" name="status">
-                    <option value="">-- No status --</option>
-                    <% (statusOptions || []).forEach(function(st) { %>
-                      <option value="<%= st.value %>"><%= st.label %></option>
-                    <% }) %>
-                  </select>
-                </div>
-                <div class="mb-3">
                   <label for="violation_type" class="form-label">Violation Type</label>
                   <select class="form-select form-select-sm" id="violation_type" name="violation_type">
                     <option value="">-- None --</option>
@@ -126,8 +116,24 @@
                   <select id="ruleTags" name="tags[]" class="form-select form-select-sm select2" multiple></select>
                 </div>
                 <div class="mb-3">
+                  <label for="audit_batch" class="form-label">Audit Batch</label>
+                  <input type="text" class="form-control form-control-sm" id="audit_batch" name="audit_batch" placeholder="e.g. 2023-01,2023-02">
+                  <div class="invalid-feedback" id="auditBatchFeedback">
+                    Each audit batch must be in the format yyyy-01 or yyyy-02 (e.g. 2023-01,2024-02).
+                  </div>
+                </div>
+                <div class="mb-3">
                   <label for="description" class="form-label">Description</label>
                   <textarea class="form-control form-control-sm" id="description" name="description" rows="2" placeholder="Description"></textarea>
+                </div>
+                <div class="mb-3">
+                  <label for="status" class="form-label">Status</label>
+                  <select class="form-select form-select-sm" id="status" name="status">
+                    <option value="">-- No status --</option>
+                    <% (statusOptions || []).forEach(function(st) { %>
+                      <option value="<%= st.value %>"><%= st.label %></option>
+                    <% }) %>
+                  </select>
                 </div>
                 <div class="mb-3">
                   <label for="work_order" class="form-label">Work Order</label>
@@ -195,6 +201,10 @@
               <select id="filterRuleTags" name="tags[]" class="form-select form-select-sm select2" multiple></select>
             </div>
             <div class="mb-3">
+              <label for="filterRuleAuditBatch" class="form-label">Audit Batch</label>
+              <input type="text" class="form-control form-control-sm" id="filterRuleAuditBatch" name="audit_batch" placeholder="e.g. 2023-01,2023-02" value="<%= typeof audit_batch !== 'undefined' ? audit_batch : '' %>">
+            </div>
+            <div class="mb-3">
               <label for="filterRuleViolationType" class="form-label">Violation Type</label>
               <select class="form-select form-select-sm" id="filterRuleViolationType" name="violation_type">
                 <option value="">-- All --</option>
@@ -234,13 +244,13 @@
             <div id="toast-error" class="toast-error alert alert-danger" style="position:absolute; left:0; right:0; top:0; margin:auto; z-index:9999; min-width:200px; max-width:400px; text-align:center;">
               <%= error %>
             </div>
-            <script>setTimeout(function(){var el=document.getElementById('toast-error');if(el)el.style.display='none';},3000);</script>
+            <script>setTimeout(function(){var el=document.getElementById('toast-error');if(el)el.style.display='none';},6000);</script>
           <% } %>
           <% if (typeof success !== 'undefined' && success) { %>
             <div id="toast-success" class="toast-success alert alert-success" style="position:absolute; left:0; right:0; top:40px; margin:auto; z-index:9999; min-width:200px; max-width:400px; text-align:center;">
               <%= success %>
             </div>
-            <script>setTimeout(function(){var el=document.getElementById('toast-success');if(el)el.style.display='none';},3000);</script>
+            <script>setTimeout(function(){var el=document.getElementById('toast-success');if(el)el.style.display='none';},6000);</script>
           <% } %>
           <table class="table table-hover text-nowrap">
             <thead>
@@ -310,6 +320,8 @@
                         </div>
                         <div class="modal-body">
                           <dl class="row mb-0">
+                            <dt class="col-sm-4">Firewall Name</dt>
+                            <dd class="col-sm-8"><%= rule.firewall_name || '' %></dd>
                             <dt class="col-sm-4">Rule Name</dt>
                             <dd class="col-sm-8"><%= rule.rulename %></dd>
                             <dt class="col-sm-4">Source Zone</dt>
@@ -332,6 +344,32 @@
                             <dd class="col-sm-8"><%= rule.url || '' %></dd>
                             <dt class="col-sm-4">Action</dt>
                             <dd class="col-sm-8"><%= rule.action %></dd>
+                            <dt class="col-sm-4">Violation Type</dt>
+                            <dd class="col-sm-8"><%= rule.violation_type || '' %></dd>
+                            <dt class="col-sm-4">Violation Detail</dt>
+                            <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.violation_detail || '').replace(/\r?\n/g, '<br>') %></dd>
+                            <dt class="col-sm-4">Solution Proposal</dt>
+                            <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.solution_proposal || '').replace(/\r?\n/g, '<br>') %></dd>
+                            <dt class="col-sm-4">Solution Confirm</dt>
+                            <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.solution_confirm || '').replace(/\r?\n/g, '<br>') %></dd>
+                            <dt class="col-sm-4">Tags</dt>
+                            <dd class="col-sm-8">
+                              <% if (rule.tagNames && rule.tagNames.length > 0) { %>
+                                <% rule.tagNames.forEach(function(tag) { %>
+                                  <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag %></span>
+                                <% }) %>
+                              <% } else { %>
+                                <span class="text-muted">No tags</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-4">Audit Batch</dt>
+                            <dd class="col-sm-8"><%= rule.audit_batch || '' %></dd>
+                            <dt class="col-sm-4">Description</dt>
+                            <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.description || '').replace(/\r?\n/g, '<br>') %></dd>
+                            <dt class="col-sm-4">Status</dt>
+                            <dd class="col-sm-8"><%= rule.status || '' %></dd>
+                            <dt class="col-sm-4">Work Order</dt>
+                            <dd class="col-sm-8"><%= rule.work_order || '' %></dd>
                             <dt class="col-sm-4">OU (Unit)</dt>
                             <dd class="col-sm-8"><%= rule.ou_name || '' %></dd>
                             <dt class="col-sm-4">Contacts</dt>
@@ -342,30 +380,6 @@
                                 <% }) %>
                               <% } else { %>
                                 <span class="text-muted">No contacts</span>
-                              <% } %>
-                            </dd>
-                            <dt class="col-sm-4">Violation Type</dt>
-                            <dd class="col-sm-8"><%= rule.violation_type || '' %></dd>
-                            <dt class="col-sm-4">Violation Detail</dt>
-                            <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.violation_detail || '').replace(/\r?\n/g, '<br>') %></dd>
-                            <dt class="col-sm-4">Solution Proposal</dt>
-                            <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.solution_proposal || '').replace(/\r?\n/g, '<br>') %></dd>
-                            <dt class="col-sm-4">Solution Confirm</dt>
-                            <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.solution_confirm || '').replace(/\r?\n/g, '<br>') %></dd>
-                            <dt class="col-sm-4">Status</dt>
-                            <dd class="col-sm-8"><%= rule.status || '' %></dd>
-                            <dt class="col-sm-4">Work Order</dt>
-                            <dd class="col-sm-8"><%= rule.work_order || '' %></dd>
-                            <dt class="col-sm-4">Description</dt>
-                            <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.description || '').replace(/\r?\n/g, '<br>') %></dd>
-                            <dt class="col-sm-4">Tags</dt>
-                            <dd class="col-sm-8">
-                              <% if (rule.tagNames && rule.tagNames.length > 0) { %>
-                                <% rule.tagNames.forEach(function(tag) { %>
-                                  <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag %></span>
-                                <% }) %>
-                              <% } else { %>
-                                <span class="text-muted">No tags</span>
                               <% } %>
                             </dd>
                             <dt class="col-sm-4">Created At</dt>
@@ -459,15 +473,6 @@
                               <select id="editRuleContacts-<%= rule.id %>" name="contacts[]" class="form-select form-select-sm select2" multiple data-selected='<%- JSON.stringify(rule.contacts || []) %>' data-placeholder="Select contact(s)"></select>
                             </div>
                             <div class="mb-3">
-                              <label for="editStatus-<%= rule.id %>" class="form-label">Status</label>
-                              <select class="form-select form-select-sm" id="editStatus-<%= rule.id %>" name="status">
-                                <option value="">-- No status --</option>
-                                <% (statusOptions || []).forEach(function(st) { %>
-                                  <option value="<%= st.value %>" <%= rule.status === st.value ? 'selected' : '' %>><%= st.label %></option>
-                                <% }) %>
-                              </select>
-                            </div>
-                            <div class="mb-3">
                               <label for="editViolationType-<%= rule.id %>" class="form-label">Violation Type</label>
                               <select class="form-select form-select-sm" id="editViolationType-<%= rule.id %>" name="violation_type">
                                 <option value="">-- None --</option>
@@ -480,13 +485,37 @@
                               <label for="editViolationDetail-<%= rule.id %>" class="form-label">Violation Detail</label>
                               <textarea class="form-control form-control-sm" id="editViolationDetail-<%= rule.id %>" name="violation_detail" rows="1"><%= rule.violation_detail || '' %></textarea>
                             </div>
+                            <div class="mb-3">
+                              <label for="editSolutionProposal-<%= rule.id %>" class="form-label">Solution Proposal</label>
+                              <textarea class="form-control form-control-sm" id="editSolutionProposal-<%= rule.id %>" name="solution_proposal" rows="1"><%= rule.solution_proposal || '' %></textarea>
+                            </div>
+                            <div class="mb-3">
+                              <label for="editSolutionConfirm-<%= rule.id %>" class="form-label">Solution Confirm</label>
+                              <textarea class="form-control form-control-sm" id="editSolutionConfirm-<%= rule.id %>" name="solution_confirm" rows="1"><%= rule.solution_confirm || '' %></textarea>
+                            </div>
                             <div class="mb-3 position-relative">
                               <label for="editRuleTags-<%= rule.id %>" class="form-label">Tags</label>
                               <select id="editRuleTags-<%= rule.id %>" name="tags[]" class="form-select form-select-sm select2" multiple data-selected='<%- JSON.stringify(rule.tags || []) %>'></select>
                             </div>
                             <div class="mb-3">
+                              <label for="editAuditBatch-<%= rule.id %>" class="form-label">Audit Batch</label>
+                              <input type="text" class="form-control form-control-sm edit-audit-batch" id="editAuditBatch-<%= rule.id %>" name="audit_batch" value="<%= rule.audit_batch || '' %>" placeholder="e.g. 2023-01,2023-02">
+                              <div class="invalid-feedback">
+                                Each audit batch must be in the format yyyy-01 or yyyy-02 (e.g. 2023-01,2024-02).
+                              </div>
+                            </div>
+                            <div class="mb-3">
                               <label for="editDescription-<%= rule.id %>" class="form-label">Description</label>
                               <textarea class="form-control form-control-sm" id="editDescription-<%= rule.id %>" name="description" rows="2"><%= rule.description || '' %></textarea>
+                            </div>
+                            <div class="mb-3">
+                              <label for="editStatus-<%= rule.id %>" class="form-label">Status</label>
+                              <select class="form-select form-select-sm" id="editStatus-<%= rule.id %>" name="status">
+                                <option value="">-- No status --</option>
+                                <% (statusOptions || []).forEach(function(st) { %>
+                                  <option value="<%= st.value %>" <%= rule.status === st.value ? 'selected' : '' %>><%= st.label %></option>
+                                <% }) %>
+                              </select>
                             </div>
                             <div class="mb-3">
                               <label for="editWorkOrder-<%= rule.id %>" class="form-label">Work Order</label>
@@ -600,22 +629,6 @@
               <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.solution_proposal || '').replace(/\r?\n/g, '<br>') %></dd>
               <dt class="col-sm-4">Solution Confirm</dt>
               <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.solution_confirm || '').replace(/\r?\n/g, '<br>') %></dd>
-              <dt class="col-sm-4">Status</dt>
-              <dd class="col-sm-8"><%= rule.status || '' %></dd>
-              <dt class="col-sm-4">Work Order</dt>
-              <dd class="col-sm-8"><%= rule.work_order || '' %></dd>
-              <dt class="col-sm-4">Description</dt>
-              <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.description || '').replace(/\r?\n/g, '<br>') %></dd>
-              <dt class="col-sm-4">Tags</dt>
-              <dd class="col-sm-8">
-                <% if (rule.tagNames && rule.tagNames.length > 0) { %>
-                  <% rule.tagNames.forEach(function(tag) { %>
-                    <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag %></span>
-                  <% }) %>
-                <% } else { %>
-                  <span class="text-muted">No tags</span>
-                <% } %>
-              </dd>
               <dt class="col-sm-4">Created At</dt>
               <dd class="col-sm-8"><%= rule.created_at ? (rule.created_at.toLocaleString ? rule.created_at.toLocaleString() : rule.created_at) : '' %></dd>
               <dt class="col-sm-4">Updated At</dt>
@@ -678,10 +691,6 @@
 }
 </style>
 <script>
-  // Assign EJS variables to JS variables safely
-  var ou_id = window.ou_id !== undefined ? JSON.stringify(window.ou_id) : 'null';
-  var tags = Array.isArray(window.tags) ? JSON.stringify(window.tags) : '[]';
-
 $(function() {
   function getDropdownParent(element) {
     return $(element).closest('.modal-content');
@@ -1054,47 +1063,41 @@ $(function() {
       data: JSON.stringify({ ids: selectedIds, work_order: woValue }),
       success: function(res) {
         $('#editWoModal').modal('hide');
-        showWoAlert(res.message || 'Work Order updated successfully!', 'success');
+        // Truyền thông báo thành công qua query string để đồng bộ alert (KHÔNG encode)
+        var url = new URL(window.location.href);
+        url.searchParams.set('success', res.message || 'Work Order updated successfully!');
+        window.location.href = url.toString();
       },
       error: function(xhr) {
         let msg = 'Update failed!';
         if (xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
         $('#editWoModal').modal('hide');
-        showWoAlert(msg, 'danger');
+        // Truyền thông báo lỗi qua query string để đồng bộ alert (KHÔNG encode)
+        var url = new URL(window.location.href);
+        url.searchParams.set('error', msg);
+        window.location.href = url.toString();
       }
     });
   });
 
-  // Simple toast notification function
-  window.showToast = function(message, type) {
-    // Find the Edit WO button to anchor the toast
-    var $anchorBtn = $('#editMultiWOButton');
-    var offset = $anchorBtn.offset();
-    var toast = $(
-      '<div class="toast align-items-center text-bg-' + (type === 'success' ? 'success' : 'danger') + ' border-0 position-absolute" role="alert" aria-live="assertive" aria-atomic="true" style="z-index:99999; min-width:220px; left:' + (offset ? (offset.left - 10) : 0) + 'px; top:' + (offset ? (offset.top + $anchorBtn.outerHeight() + 10) : 0) + 'px;">' +
-        '<div class="d-flex">' +
-          '<div class="toast-body">' + message + '</div>' +
-          '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>' +
-        '</div>' +
-      '</div>'
-    );
-    $('body').append(toast);
-    var bsToast = new bootstrap.Toast(toast[0], { delay: 3000 });
-    bsToast.show();
-    toast.on('hidden.bs.toast', function() {
-      toast.remove();
-      // Only reload after toast is hidden and if it was a success
-      if (type === 'success' && window._pendingReload) {
-        location.reload();
-      }
-    });
-  };
-  // Remove validation error on input
-  $('#woInput').on('input', function() {
-    if ($(this).val().trim()) {
-      $(this).removeClass('is-invalid');
-      $(this).next('.invalid-feedback').remove();
-    }
-  });
+  // Hiển thị alert thành công/thất bại từ query string (nếu có) sau khi reload trang (batch WO)
+  var params = new URLSearchParams(window.location.search);
+  if (params.has('success')) {
+    var msg = params.get('success');
+    var $alert = $('<div id="toast-success" class="toast-success alert alert-success" style="position:absolute; left:0; right:0; top:40px; margin:auto; z-index:9999; min-width:200px; max-width:400px; text-align:center;">'+msg+'</div>');
+    $('#wo-alert-container').html($alert);
+    setTimeout(function(){ $alert.fadeOut(400, function(){ $alert.remove(); }); }, 3000);
+    params.delete('success');
+    window.history.replaceState({}, '', window.location.pathname + (params.toString() ? '?' + params.toString() : ''));
+  }
+  if (params.has('error')) {
+    var msg = params.get('error');
+    var $alert = $('<div id="toast-error" class="toast-error alert alert-danger" style="position:absolute; left:0; right:0; top:0; margin:auto; z-index:9999; min-width:200px; max-width:400px; text-align:center;">'+msg+'</div>');
+    $('#wo-alert-container').html($alert);
+    setTimeout(function(){ $alert.fadeOut(400, function(){ $alert.remove(); }); }, 3000);
+    params.delete('error');
+    window.history.replaceState({}, '', window.location.pathname + (params.toString() ? '?' + params.toString() : ''));
+  }
 });
 </script>
+<!-- END SCRIPT -->

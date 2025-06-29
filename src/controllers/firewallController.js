@@ -45,10 +45,13 @@ exports.ruleList = async (req, res) => {
     if (contacts.length === 0) contacts = undefined;
     let firewall_name = req.query.firewall_name || '';
     if (firewall_name === '') firewall_name = undefined;
+    // Parse audit_batch filter
+    let audit_batch = req.query.audit_batch || '';
+    if (audit_batch === '') audit_batch = undefined;
 
     // --- Call model with filters ---
     const { rules: ruleList, totalCount, totalPages } = await RuleFirewall.findAll({
-      search, page, pageSize, ou_id, contacts, tags, violation_type, status, firewall_name
+      search, page, pageSize, ou_id, contacts, tags, violation_type, status, firewall_name, audit_batch
     });
 
     // --- Fetch display names for selected filters (for select2 persistence) ---
@@ -87,6 +90,7 @@ exports.ruleList = async (req, res) => {
         firewall_name, // giữ lại giá trị filter khi render lại view
         // Pass filter values for modal persistence
         ou_id, ou_name, tags, tagNames, contacts, contactNames, violation_type, status,
+        audit_batch, // persist audit_batch filter value
         user: req.session.user,
         hasPermission: req.app.locals.hasPermission
       }
@@ -112,7 +116,7 @@ exports.addRule = async (req, res) => {
       rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr, firewall_name, work_order
+      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr, firewall_name, work_order, audit_batch
     } = req.body;
     // Normalize & trim all string fields
     [rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
@@ -165,12 +169,25 @@ exports.addRule = async (req, res) => {
       req.flash('error', 'Invalid or missing firewall name.');
       return res.redirect('/firewall/rule');
     }
+    // Xử lý audit_batch: chuẩn hóa, validate định dạng, lưu dạng chuỗi TEXT
+    if (typeof audit_batch === 'string') audit_batch = audit_batch.trim();
+    let auditBatchStr = '';
+    if (audit_batch && audit_batch.length > 0) {
+      const batches = audit_batch.split(',').map(v => v.trim()).filter(v => v.length > 0);
+      const valid = batches.every(batch => /^\d{4}-0[12]$/.test(batch));
+      if (!valid) {
+        req.flash('error', 'Each audit batch must be in the format yyyy-01 or yyyy-02, separated by commas.');
+        return res.redirect('/firewall/rule');
+      }
+      auditBatchStr = batches.join(',');
+    }
     // Compose normalized body
     const body = {
       rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
       contacts, tags, firewall_name, work_order,
+      audit_batch: auditBatchStr,
       updated_by: req.session && req.session.user ? req.session.user.username : null
     };
     // created_at and updated_at are set to NOW() in the model SQL
@@ -191,7 +208,7 @@ exports.editRule = async (req, res) => {
       rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr, firewall_name, work_order
+      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr, firewall_name, work_order, audit_batch
     } = req.body;
     // Normalize & trim all string fields
     [rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
@@ -245,12 +262,25 @@ exports.editRule = async (req, res) => {
       req.flash('error', 'Invalid or missing firewall name.');
       return res.redirect('/firewall/rule');
     }
+    // Audit batch normalization and validation (same as addRule)
+    if (typeof audit_batch === 'string') audit_batch = audit_batch.trim();
+    let auditBatchStr = '';
+    if (audit_batch && audit_batch.length > 0) {
+      const batches = audit_batch.split(',').map(v => v.trim()).filter(v => v.length > 0);
+      const valid = batches.every(batch => /^\d{4}-0[12]$/.test(batch));
+      if (!valid) {
+        req.flash('error', 'Each audit batch must be in the format yyyy-01 or yyyy-02, separated by commas.');
+        return res.redirect('/firewall/rule');
+      }
+      auditBatchStr = batches.join(',');
+    }
     // Compose normalized data
     const data = {
       rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
       contacts, tags, firewall_name, work_order,
+      audit_batch: auditBatchStr,
       updated_by: req.session && req.session.user ? req.session.user.username : null
     };
     await RuleFirewall.update(id, data);
@@ -391,7 +421,7 @@ exports.batchUpdateWorkOrder = async (req, res) => {
     const updatedCount = await RuleFirewall.updateManyWorkOrder(ids, work_order.trim(), updated_by);
     if (updatedCount > 0) {
 
-      console.log('Batch update WO for IDs:', ids, 'Work Order:', work_order, 'Updated By:', updated_by);
+      //console.log('Batch update WO for IDs:', ids, 'Work Order:', work_order, 'Updated By:', updated_by);
       return res.json({ success: true, message: 'Work Order updated successfully!' });
     } else {
       return res.status(400).json({ error: 'No rules were updated. Please check your selection.' });
