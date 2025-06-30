@@ -35,31 +35,41 @@ const { authenticateJWT, authorizePermissionJWT } = require('../middlewares/auth
  *               firewall_name:
  *                 type: string
  *                 enum: [USER, SERVER, INTERNET-IN, INTERNET-OUT, BACKBOND, DMZ, PARTNER, DIGI]
- *                 description: Firewall name (must select from list in config)
+ *                 description: Firewall name (must select from list in config) *
  *               rulename:
  *                 type: string
+ *                 description: Rule name *
  *               src_zone:
  *                 type: string
+ *                 description: Source zone
  *               src:
  *                 type: string
+ *                 description: Source *
  *               src_detail:
  *                 type: string
+ *                 description: Source detail
  *               dst_zone:
  *                 type: string
+ *                 description: Destination zone
  *               dst:
  *                 type: string
+ *                 description: Destination *
  *               dst_detail:
  *                 type: string
+ *                 description: Destination detail
  *               services:
  *                 type: string
+ *                 description: Service/Port
  *               application:
  *                 type: string
+ *                 description: Application
  *               url:
  *                 type: string
+ *                 description: URL
  *               action:
  *                 type: string
  *                 enum: [ALLOW, DENY, DROP, REJECT]
- *                 description: Action to take (must select from list)
+ *                 description: Action to take (must select from list) *
  *               status:
  *                 type: string
  *                 enum: [ENABLE, DISABLE]
@@ -70,10 +80,13 @@ const { authenticateJWT, authorizePermissionJWT } = require('../middlewares/auth
  *                 description: Violation type (must select from list)
  *               violation_detail:
  *                 type: string
+ *                 description: Violation detail
  *               solution_proposal:
  *                 type: string
+ *                 description: Solution proposal
  *               solution_confirm:
  *                 type: string
+ *                 description: Solution confirm
  *               ou_id:
  *                 type: integer
  *                 description: Organization Unit ID (must select from list of units)
@@ -87,8 +100,15 @@ const { authenticateJWT, authorizePermissionJWT } = require('../middlewares/auth
  *                 items:
  *                   type: integer
  *                 description: List of tag IDs (must select from list, all IDs must exist)
+ *               audit_batch:
+ *                 type: string
+ *                 description: Audit batch (comma-separated, each in format yyyy-01 or yyyy-02)
+ *               work_order:
+ *                 type: string
+ *                 description: Work order
  *               description:
  *                 type: string
+ *                 description: Description
  *     responses:
  *       201:
  *         description: Rule created
@@ -134,31 +154,41 @@ apiRuleRouter.post('/', authenticateJWT, authorizePermissionJWT('rule.create'), 
  *               firewall_name:
  *                 type: string
  *                 enum: [USER, SERVER, INTERNET-IN, INTERNET-OUT, BACKBOND, DMZ, PARTNER, DIGI]
- *                 description: Firewall name (must select from list in config)
+ *                 description: Firewall name (must select from list in config) *
  *               rulename:
  *                 type: string
+ *                 description: Rule name *
  *               src_zone:
  *                 type: string
+ *                 description: Source zone
  *               src:
  *                 type: string
+ *                 description: Source *
  *               src_detail:
  *                 type: string
+ *                 description: Source detail
  *               dst_zone:
  *                 type: string
+ *                 description: Destination zone
  *               dst:
  *                 type: string
+ *                 description: Destination *
  *               dst_detail:
  *                 type: string
+ *                 description: Destination detail
  *               services:
  *                 type: string
+ *                 description: Service/Port
  *               application:
  *                 type: string
+ *                 description: Application
  *               url:
  *                 type: string
+ *                 description: URL
  *               action:
  *                 type: string
  *                 enum: [ALLOW, DENY, DROP, REJECT]
- *                 description: Action to take (must select from list)
+ *                 description: Action to take (must select from list) *
  *               status:
  *                 type: string
  *                 enum: [ENABLE, DISABLE]
@@ -169,10 +199,13 @@ apiRuleRouter.post('/', authenticateJWT, authorizePermissionJWT('rule.create'), 
  *                 description: Violation type (must select from list)
  *               violation_detail:
  *                 type: string
+ *                 description: Violation detail
  *               solution_proposal:
  *                 type: string
+ *                 description: Solution proposal
  *               solution_confirm:
  *                 type: string
+ *                 description: Solution confirm
  *               ou_id:
  *                 type: integer
  *                 description: Organization Unit ID (must select from list of units)
@@ -186,8 +219,15 @@ apiRuleRouter.post('/', authenticateJWT, authorizePermissionJWT('rule.create'), 
  *                 items:
  *                   type: integer
  *                 description: List of tag IDs (must select from list, all IDs must exist)
+ *               audit_batch:
+ *                 type: string
+ *                 description: Audit batch (comma-separated, each in format yyyy-01 or yyyy-02)
+ *               work_order:
+ *                 type: string
+ *                 description: Work order
  *               description:
  *                 type: string
+ *                 description: Description
  *     responses:
  *       200:
  *         description: Rule updated

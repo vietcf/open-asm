@@ -28,16 +28,27 @@ exports.createRule = async (req, res) => {
       rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags, firewall_name
+      contacts, tags, firewall_name, audit_batch, work_order
     } = req.body;
     // Normalize & trim all string fields
     [firewall_name, rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, status, violation_type,
-      violation_detail, solution_proposal, solution_confirm, description
+      violation_detail, solution_proposal, solution_confirm, description, work_order
     ] = [firewall_name, rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, status, violation_type,
-      violation_detail, solution_proposal, solution_confirm, description
+      violation_detail, solution_proposal, solution_confirm, description, work_order
     ].map(v => typeof v === 'string' ? v.trim() : v);
+    // Normalize audit_batch
+    if (typeof audit_batch === 'string') audit_batch = audit_batch.trim();
+    let auditBatchStr = '';
+    if (audit_batch && audit_batch.length > 0) {
+      const batches = audit_batch.split(',').map(v => v.trim()).filter(v => v.length > 0);
+      const valid = batches.every(batch => /^\d{4}-0[12]$/.test(batch));
+      if (!valid) {
+        return res.status(400).json({ error: 'Each audit batch must be in the format yyyy-01 or yyyy-02 (e.g. 2023-01,2024-02)' });
+      }
+      auditBatchStr = batches.join(',');
+    }
     // Validate required fields
     if (!rulename || !src || !dst || !action || !firewall_name) {
       return res.status(400).json({ error: 'Missing required fields: rulename, src, dst, action, firewall_name' });
@@ -95,7 +106,8 @@ exports.createRule = async (req, res) => {
       rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags, firewall_name,
+      contacts, tags, firewall_name, work_order,
+      audit_batch: auditBatchStr,
       updated_by: req.user ? req.user.username : null // JWT user
     };
     // Insert rule
@@ -114,16 +126,27 @@ exports.updateRule = async (req, res) => {
       firewall_name, rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags
+      contacts, tags, audit_batch, work_order
     } = req.body;
     // Normalize & trim all string fields
     [firewall_name, rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, status, violation_type,
-      violation_detail, solution_proposal, solution_confirm, description
+      violation_detail, solution_proposal, solution_confirm, description, work_order
     ] = [firewall_name, rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, status, violation_type,
-      violation_detail, solution_proposal, solution_confirm, description
+      violation_detail, solution_proposal, solution_confirm, description, work_order
     ].map(v => typeof v === 'string' ? v.trim() : v);
+    // Normalize audit_batch
+    if (typeof audit_batch === 'string') audit_batch = audit_batch.trim();
+    let auditBatchStr = '';
+    if (audit_batch && audit_batch.length > 0) {
+      const batches = audit_batch.split(',').map(v => v.trim()).filter(v => v.length > 0);
+      const valid = batches.every(batch => /^\d{4}-0[12]$/.test(batch));
+      if (!valid) {
+        return res.status(400).json({ error: 'Each audit batch must be in the format yyyy-01 or yyyy-02 (e.g. 2023-01,2024-02)' });
+      }
+      auditBatchStr = batches.join(',');
+    }
     // Validate required fields
     if (!rulename || !src || !dst || !action || !firewall_name) {
       return res.status(400).json({ error: 'Missing required fields: rulename, src, dst, action, firewall_name' });
@@ -181,7 +204,8 @@ exports.updateRule = async (req, res) => {
       firewall_name, rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags,
+      contacts, tags, work_order,
+      audit_batch: auditBatchStr,
       updated_by: req.user ? req.user.username : null
     };
     // Check if rule exists (optional, for 404)
