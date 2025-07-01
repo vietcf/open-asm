@@ -5,14 +5,9 @@ const User = require('../models/User');
 // GET /2fa/setup - generate secret and QR code
 exports.setup = async (req, res) => {
   const user = req.session.user;
-  if (!user) return res.status(401).send('Unauthorized');
-  
-  // Kiểm tra trạng thái 2FA từ database để đảm bảo tính chính xác
-  const dbUser = await User.findById(user.id);
-  if (!dbUser) return res.status(404).send('User not found');
-  
+  // if (!user) return res.status(401).send('Unauthorized');
   // Chỉ cho phép user chưa setup 2FA truy cập trang này
-  if (dbUser.twofa_enabled === true) {
+  if (user.twofa_enabled === true) {
     // Redirect về dashboard với thông báo
     return res.redirect('/dashboard?error=2FA is already enabled for your account');
   }
