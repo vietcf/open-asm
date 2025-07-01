@@ -11,19 +11,19 @@ const User = {
     const result = await pool.query(sql);
     return result.rows;
   },
-  create: async ({ username, email, fullname, role, passwordHash, require_twofa }) => {
+  create: async ({ username, email, fullname, role, passwordHash, require_twofa, must_change_password }) => {
     const sql = 'INSERT INTO users (username, email, fullname, role_id, password_hash, require_twofa, must_change_password) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *';
-    const result = await pool.query(sql, [username, email, fullname, role, passwordHash, require_twofa, true]);
+    const result = await pool.query(sql, [username, email, fullname, role, passwordHash, require_twofa, must_change_password !== undefined ? must_change_password : true]);
     return result.rows[0];
   },
-  update: async (id, { username, email, fullname, role, require_twofa, passwordHash }) => {
+  update: async (id, { username, email, fullname, role, require_twofa, must_change_password, passwordHash }) => {
     let sql, params;
     if (passwordHash) {
-      sql = 'UPDATE users SET username = $1, email = $2, fullname = $3, role_id = $4, require_twofa = $5, password_hash = $6, must_change_password = $7 WHERE id = $8 RETURNING *';
-      params = [username, email, fullname, role, require_twofa, passwordHash, false, id];
+      sql = 'UPDATE users SET username = $1, email = $2, fullname = $3, role_id = $4, require_twofa = $5, must_change_password = $6, password_hash = $7 WHERE id = $8 RETURNING *';
+      params = [username, email, fullname, role, require_twofa, must_change_password, passwordHash, id];
     } else {
-      sql = 'UPDATE users SET username = $1, email = $2, fullname = $3, role_id = $4, require_twofa = $5 WHERE id = $6 RETURNING *';
-      params = [username, email, fullname, role, require_twofa, id];
+      sql = 'UPDATE users SET username = $1, email = $2, fullname = $3, role_id = $4, require_twofa = $5, must_change_password = $6 WHERE id = $7 RETURNING *';
+      params = [username, email, fullname, role, require_twofa, must_change_password, id];
     }
     const result = await pool.query(sql, params);
     return result.rows[0];

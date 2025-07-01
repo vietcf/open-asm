@@ -21,6 +21,18 @@ function buildSessionUser(user) {
   };
 }
 
+// Helper function to load user permissions (kept for potential future use)
+async function loadUserPermissions(req, user) {
+  const role = await Role.findById(user.role_id);
+  let permissions = [];
+  if (role) {
+    permissions = await Permission.findByRoleId(role.id);
+    permissions = permissions.map(p => p.name);
+  }
+  req.session.permissions = permissions;
+  return permissions;
+}
+
 exports.getLoginPage = (req, res) => {
   const errorMessage = req.query.error || null;
       res.render('pages/login', {
@@ -41,43 +53,32 @@ exports.postLogin = async (req, res) => {
     }
     const match = await bcrypt.compare(password, user.password_hash);
     if (match) {
-      req.session.isLoggedIn = true;
-      // Always set session user with must_change_password
+      req.session.isLoggedIn = true; //Logined username and password successfully 
+      req.session.user = buildSessionUser(user); // Always set session user
+      
+      // Set default 2FA state
+      req.session.is2faPending = false; //Mac dinh khong yeu cau 2FA
+      req.session.is2faVerified = true; //Mac dinh la da duoc verify 2FA
+
+      // If required, check must_change_password
+      if (user.must_change_password) {
+        return res.redirect('/change-password');
+      }
+
       // 1. 2FA required but not setup
       if (user.require_twofa && (!user.twofa_enabled || !user.twofa_secret)) {
-        req.session.is2faPending = false;
-        req.session.is2faVerified = false;
-        req.session.user = buildSessionUser(user);
-        //if (user.must_change_password) return res.redirect('/change-password');
+        req.session.is2faVerified = false; // Override default
         return res.redirect('/2fa/setup');
       }
+      
       // 2. 2FA required and enabled (OTP required)
       if (user.require_twofa && user.twofa_enabled && user.twofa_secret) {
-        req.session.is2faPending = true;
-        req.session.is2faVerified = false;
-        req.session.user = buildSessionUser(user);
-        if (user.must_change_password) return res.redirect('/change-password');
+        req.session.is2faPending = true;   // Override default
+        req.session.is2faVerified = false; // Override default
         return res.redirect('/login/2fa');
       }
-      // 3. No 2FA required or not enabled
-      req.session.isLoggedIn = true;
-      req.session.is2faVerified = true;
-      req.session.is2faPending = false;
-      req.session.user = buildSessionUser(user);
-      if (user.must_change_password) return res.redirect('/change-password');
-      // Lấy danh sách permission của user dựa vào role
-      const role = await Role.findById(user.role_id);
       
-      let permissions = [];
-      if (role) {
-        // Get permissions as objects
-        permissions = await Permission.findByRoleId(role.id);
-        // Map to permission names for use everywhere else
-        permissions = permissions.map(p => p.name);
-        // Store mapped permission names for direct session access and in user object
-        req.session.permissions = permissions;
-        req.session.user.permissions = permissions;
-      }
+      // 3. No 2FA required - permissions loaded by global middleware
       await writeLog({ action: 'login', description: 'Login successful', status: 'success', req });
       return res.redirect('/dashboard');
     }
@@ -121,16 +122,10 @@ exports.post2fa = async (req, res) => {
   req.session.isLoggedIn = true;
   req.session.is2faVerified = true;
   req.session.is2faPending = false;
-  // Load permissions (must do BEFORE must_change_password check)
-  const role = await Role.findById(req.session.user.role_id);
-  let permissions = [];
-  if (role) {
-    permissions = await Permission.findByRoleId(role.id);
-    permissions = permissions.map(p => p.name);
-  }
-  req.session.permissions = permissions;
-  req.session.user.permissions = permissions;
-  // Always check must_change_password after 2FA and after setting permissions
+  
+  // Note: Permissions will be loaded by global middleware
+  
+  // Always check must_change_password after 2FA
   if (req.session.user.must_change_password) {
     return res.redirect('/change-password');
   }

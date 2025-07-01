@@ -57,9 +57,32 @@ app.use(session({
 // Flash middleware for session messages
 app.use(flash());
 
-// Middleware: pass permissions from session to res.locals for views
-app.use((req, res, next) => {
+// Global middleware: ensure permissions are loaded for logged-in users
+app.use(async (req, res, next) => {
+  // Always pass permissions to views (empty array if not available)
   res.locals.permissions = req.session.permissions || [];
+  
+  // If user is logged in but permissions not loaded, load them
+  if (req.session.isLoggedIn && req.session.user && !req.session.permissions) {
+    try {
+      const Role = require('./models/Role');
+      const Permission = require('./models/Permission');
+      
+      const role = await Role.findById(req.session.user.role_id);
+      let permissions = [];
+      if (role) {
+        permissions = await Permission.findByRoleId(role.id);
+        permissions = permissions.map(p => p.name);
+      }
+      req.session.permissions = permissions;
+      res.locals.permissions = permissions;
+    } catch (error) {
+      console.error('Error loading permissions in global middleware:', error);
+      req.session.permissions = [];
+      res.locals.permissions = [];
+    }
+  }
+  
   next();
 });
 
@@ -111,10 +134,6 @@ app.locals.hasPermission = (user, perm) => {
   if (user.role_name === 'superadmin') return true; // superadmin always has all permissions
   if (user.permissions && Array.isArray(user.permissions)) {
     return user.permissions.includes(perm);
-  }
-  // If permissions are stored in res.locals.permissions (legacy)
-  if (Array.isArray(res?.locals?.permissions)) {
-    return res.locals.permissions.includes(perm);
   }
   return false;
 };

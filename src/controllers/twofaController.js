@@ -6,6 +6,17 @@ const User = require('../models/User');
 exports.setup = async (req, res) => {
   const user = req.session.user;
   if (!user) return res.status(401).send('Unauthorized');
+  
+  // Kiểm tra trạng thái 2FA từ database để đảm bảo tính chính xác
+  const dbUser = await User.findById(user.id);
+  if (!dbUser) return res.status(404).send('User not found');
+  
+  // Chỉ cho phép user chưa setup 2FA truy cập trang này
+  if (dbUser.twofa_enabled === true) {
+    // Redirect về dashboard với thông báo
+    return res.redirect('/dashboard?error=2FA is already enabled for your account');
+  }
+  
   // Generate a new secret
   const secret = speakeasy.generateSecret({ name: 'ASG Project (' + user.username + ')' });
   // Store secret temporarily in session until verified
@@ -38,39 +49,13 @@ exports.verify = async (req, res) => {
   req.session.user.twofa_enabled = true;
   req.session.user.twofa_secret = secret;
   delete req.session.tmp_twofa_secret;
-  // Always check must_change_password after 2FA setup
-  if (req.session.user.must_change_password) {
-    req.session.isLoggedIn = true;
-    req.session.is2faVerified = true;
-    req.session.is2faPending = false;
-    // Nạp lại quyền cho user vào session (giống login)
-    const Role = require('../models/Role');
-    const Permission = require('../models/Permission');
-    const role = await Role.findById(req.session.user.role_id);
-    let permissions = [];
-    if (role) {
-      permissions = await Permission.findByRoleId(role.id);
-      permissions = permissions.map(p => p.name);
-    }
-    req.session.permissions = permissions;
-    req.session.user.permissions = permissions;
-    return res.redirect('/change-password');
-  }
+  
   // Đảm bảo trạng thái đăng nhập đầy đủ
-  req.session.isLoggedIn = true;
   req.session.is2faVerified = true;
   req.session.is2faPending = false;
-  // Nạp lại quyền cho user vào session (giống login)
-  const Role = require('../models/Role');
-  const Permission = require('../models/Permission');
-  const role = await Role.findById(req.session.user.role_id);
-  let permissions = [];
-  if (role) {
-    permissions = await Permission.findByRoleId(role.id);
-    permissions = permissions.map(p => p.name);
-  }
-  req.session.permissions = permissions;
-  req.session.user.permissions = permissions;
+  
+  // Note: Permissions will be loaded by global middleware
+  
   res.redirect('/dashboard');
 };
 

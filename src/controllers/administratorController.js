@@ -27,6 +27,8 @@ exports.listUsers = async (req, res) => {
     }
     const userList = await User.findPage(page, pageSize);
     const roles = await Role.findAll(); // Get list of roles from DB
+    const siteConfig = await Configuration.findByKey('site_name');
+    const siteName = siteConfig ? siteConfig.value : undefined;
     res.render('layouts/layout', {
       cssPath: require('../../config/config').cssPath,
       jsPath: require('../../config/config').jsPath,
@@ -37,7 +39,8 @@ exports.listUsers = async (req, res) => {
       ),
       title: 'User Management',
       activeMenu: 'user-management',
-      user: req.session.user // Removed to avoid EJS context confusion
+      user: req.session.user, // Removed to avoid EJS context confusion
+      siteName
     });
   } catch (err) {
     res.status(500).send('Error loading user list: ' + err.message);
@@ -91,8 +94,13 @@ exports.createUser = async (req, res) => {
     // Read require_twofa from form (checkbox returns 'on' if checked)
     const requireTwofaRaw = req.body.require_twofa;
     const require_twofa = requireTwofaRaw === 'on' ? true : false;
+    
+    // Read must_change_password from form (checkbox returns 'on' if checked)
+    const mustChangePasswordRaw = req.body.must_change_password;
+    const must_change_password = mustChangePasswordRaw === 'on' ? true : false;
+    
     const passwordHash = await bcrypt.hash(normPassword, 10);
-    await User.create({ username: normUsername, email: normEmail, fullname: normFullname, role: role_id, passwordHash, require_twofa });
+    await User.create({ username: normUsername, email: normEmail, fullname: normFullname, role: role_id, passwordHash, require_twofa, must_change_password });
     req.flash('success', 'User added successfully!');
     res.redirect('/administrator/users');
   } catch (err) {
@@ -130,6 +138,10 @@ exports.updateUser = async (req, res) => {
     // Handle require_twofa from edit form
     const requireTwofaRaw = req.body.require_twofa;
     const require_twofa = requireTwofaRaw === 'on' ? true : false;
+    
+    // Handle must_change_password from edit form
+    const mustChangePasswordRaw = req.body.must_change_password;
+    const must_change_password = mustChangePasswordRaw === 'on' ? true : false;
     // Lấy số ngày hết hạn setup OTP từ configuration
     let otpDeadlineDays = 3;
     const otpDeadlineConfig = await Configuration.findByKey('otp_deadline_time');
@@ -152,7 +164,7 @@ exports.updateUser = async (req, res) => {
     if (normPassword && normPassword.length >= 4) {
       passwordHash = await bcrypt.hash(normPassword, 10);
     }
-    await User.update(id, { username: newUsername, email: normEmail, fullname: normFullname, role: newRole, require_twofa, passwordHash });
+    await User.update(id, { username: newUsername, email: normEmail, fullname: normFullname, role: newRole, require_twofa, must_change_password, passwordHash });
     req.flash('success', 'User updated successfully!');
     res.redirect('/administrator/users');
   } catch (err) {
@@ -218,6 +230,8 @@ exports.listRoles = async (req, res) => {
         permissions: await Role.getPermissions(r.id)
       }))
     );
+    const siteConfig = await Configuration.findByKey('site_name');
+    const siteName = siteConfig ? siteConfig.value : undefined;
     res.render('layouts/layout', {
       cssPath: require('../../config/config').cssPath,
       jsPath: require('../../config/config').jsPath,
@@ -239,7 +253,8 @@ exports.listRoles = async (req, res) => {
         }
       ),
       title: 'Role Management',
-      activeMenu: 'role-management'
+      activeMenu: 'role-management',
+      siteName
     });
   } catch (err) {
     res.status(500).send('Error loading role list: ' + err.message);
@@ -362,6 +377,8 @@ exports.listPermissions = async (req, res) => {
       [pageSize, offset]
     )).rows;
 
+    const siteConfig = await Configuration.findByKey('site_name');
+    const siteName = siteConfig ? siteConfig.value : undefined;
     res.render('layouts/layout', {
       cssPath: require('../../config/config').cssPath,
       jsPath: require('../../config/config').jsPath,
@@ -382,7 +399,8 @@ exports.listPermissions = async (req, res) => {
         }
       ),
       title: 'Permission Management',
-      activeMenu: 'permission-management'
+      activeMenu: 'permission-management',
+      siteName
     });
   } catch (err) {
     res.status(500).send('Error loading permission list: ' + err.message);
