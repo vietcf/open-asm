@@ -9,7 +9,7 @@ module.exports = async (pool) => {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       role_id INT REFERENCES roles(id),
       twofa_secret VARCHAR(64),
-      twofa_enabled BOOLEAN DEFAULT TRUE,
+      twofa_enabled BOOLEAN DEFAULT FALSE,
       require_twofa BOOLEAN DEFAULT FALSE,
       twofa_setup_deadline TIMESTAMP,
       must_change_password BOOLEAN DEFAULT FALSE

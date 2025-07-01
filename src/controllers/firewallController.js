@@ -95,6 +95,8 @@ exports.ruleList = async (req, res) => {
         hasPermission: req.app.locals.hasPermission
       }
     );
+    const siteConfig = await Configuration.findByKey('site_name');
+    const siteName = siteConfig ? siteConfig.value : undefined;
     res.render('layouts/layout', {
       cssPath: config.cssPath,
       jsPath: config.jsPath,
@@ -102,7 +104,8 @@ exports.ruleList = async (req, res) => {
       body: content,
       title: 'Firewall Rule',
       activeMenu: 'firewall-rule',
-      user: req.session.user
+      user: req.session.user,
+      siteName
     });
   } catch (err) {
     res.status(500).send('Error loading firewall rules: ' + err.message);

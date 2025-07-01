@@ -258,7 +258,12 @@ exports.listSubnet = async (req, res) => {
     const siteName = siteConfig ? siteConfig.value : undefined;
     const contentSubnet = ejs.render(
       fs.readFileSync(path.join(__dirname, '../../public/html/pages/network/subnet_list.ejs'), 'utf8'),
-      { subnetList, page, pageSize, totalPages, totalCount, search, success, error, allowedPageSizes, hasPermission: req.app.locals.hasPermission, user: req.session.user }
+      { 
+        subnetList, page, pageSize, totalPages, totalCount, search, success, error, allowedPageSizes, 
+        hasPermission: req.app.locals.hasPermission, 
+        user: req.session.user,
+        permissions: req.session.permissions || [] // Đảm bảo permissions luôn có
+      }
     );
     res.render('layouts/layout', {
       cssPath: config.cssPath,
