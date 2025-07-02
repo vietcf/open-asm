@@ -56,7 +56,7 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+    secure: false, // ✅ Always false since Nginx handles SSL termination
     httpOnly: true, // Prevent XSS
     // maxAge: removed - session expires when browser closes
     sameSite: 'lax' // CSRF protection
