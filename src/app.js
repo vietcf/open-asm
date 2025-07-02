@@ -42,6 +42,9 @@ const apiRouter = require('./api/routes');
 
 const app = express();
 
+// Trust proxy for reverse proxy setup (HTTPS)
+app.set('trust proxy', 1);
+
 // Parse JSON and URL-encoded bodies
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -49,9 +52,15 @@ app.use(methodOverride('_method'));
 
 // Session middleware setup
 app.use(session({
-  secret: 'VcbS3cr3teeee', // Change to a strong secret in production
+  secret: process.env.SESSION_SECRET || 'VcbS3cr3teeee', // Use environment variable in production
   resave: false,
-  saveUninitialized: false
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+    httpOnly: true, // Prevent XSS
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'lax' // CSRF protection
+  }
 }));
 
 // Flash middleware for session messages
