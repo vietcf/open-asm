@@ -148,8 +148,10 @@ app.locals.hasPermission = (user, perm) => {
 };
 
 // Start the server
-app.listen(3000, () => {
-    console.log('Server running on port 3000');
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, 'localhost', () => {
+    console.log(`Server running on localhost:${PORT}`);
+    console.log('🔒 App bound to localhost only - using reverse proxy (Nginx)');
 });
 
 // Start scheduled cleanup job for system logs
