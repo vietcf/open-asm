@@ -2,6 +2,11 @@
 module.exports = function require2fa(req, res, next) {
   if (!req.session.user) return res.redirect('/login');
   
+  // Bypass 2FA requirement for 2FA setup/verify routes
+  if (req.path.startsWith('/2fa/')) {
+    return next();
+  }
+  
   // Cho phép user must_change_password bypass 2FA requirement
   if (req.session.user.must_change_password) {
     return next();

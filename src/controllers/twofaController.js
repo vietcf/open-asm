@@ -6,10 +6,15 @@ const User = require('../models/User');
 exports.setup = async (req, res) => {
   const user = req.session.user;
   // if (!user) return res.status(401).send('Unauthorized');
+  
   // Chỉ cho phép user chưa setup 2FA truy cập trang này
   if (user.twofa_enabled === true) {
-    // Redirect về dashboard với thông báo
-    return res.redirect('/dashboard?error=2FA is already enabled for your account');
+    // Nếu đã setup 2FA và đã verify → về dashboard
+    if (req.session.is2faVerified) {
+      return res.redirect('/dashboard?info=2FA is already enabled and verified');
+    }
+    // Nếu đã setup nhưng chưa verify → về login/2fa để verify
+    return res.redirect('/login/2fa?info=Please verify your 2FA code');
   }
   
   // Generate a new secret
