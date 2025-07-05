@@ -1,6 +1,6 @@
 // Server configuration options for filter dropdowns, etc.
 
-module.exports = {
+const serverOptions = {
   locations: [
     { value: 'DC', label: 'DC' },
     { value: 'DR', label: 'DR' },
@@ -19,3 +19,5 @@ module.exports = {
     { value: 'CLOUD-INSTANCE', label: 'CLOUD-INSTANCE' }
   ]
 };
+
+export default serverOptions;

@@ -1,12 +1,6 @@
-const express = require('express');
-const path = require('path');
-const fs = require('fs');
-const ejs = require('ejs');
-const config = require('../../config/config');
-const organizeController = require('../controllers/organizeController');
-const checkPermission = require('../middlewares/checkPermission');
-const requireLogin = require('../middlewares/requireLogin');
-const require2fa = require('../middlewares/require2fa');
+import express from 'express';
+import organizeController from '../controllers/organizeController.js';
+import checkPermission from '../middlewares/requirePermission.middleware.js';
 
 const router = express.Router();
 
@@ -36,7 +30,7 @@ router.delete('/unit/:id', checkPermission('delete', 'unit'), organizeController
 
 // ====== TAG MENU ======
 // Tag List page
-router.get('/tag', requireLogin, require2fa, checkPermission('read', 'tag'), organizeController.tagList);
+router.get('/tag', checkPermission('read', 'tag'), organizeController.tagList);
 // Create a new tag
 router.post('/tag', checkPermission('create', 'tag'), organizeController.createTag);
 // Update an existing tag
@@ -45,33 +39,10 @@ router.put('/tag/:id', checkPermission('update', 'tag'), organizeController.upda
 router.delete('/tag/:id', checkPermission('delete', 'tag'), organizeController.deleteTag);
 
 // ====== API AJAX SEARCH ======
-
-// API: Contact search for select2 ajax (manager dropdown)
-// AJAX API for select2 Contacts dropdown in Privileged Account List
-// Used by /public/html/pages/privilege/priv_account_list.ejs
-// Example request: /organize/api/contact?search=abc
-// (Ensure this returns [{id, text}] for select2)
 router.get('/api/contact', organizeController.apiContactSearch);
-
-// API: Serve contact image as base64 (AJAX for modal)
-//router.get('/api/contact/:id/image', organizeController.apiContactImage);
-
-// API: Tag search for select2 ajax (used in system add/edit, ip address add/edit, server add/edit)
-// Permissions to access this API:
-// - tag.read: View tag list (e.g. for read-only or tag selection screens)
-// - system.create, system.update: When creating/updating a system, tags can be selected
-// - ip_address.create, ip_address.update: When creating/updating an IP address, tags can be selected
-// - server.create, server.update: When creating/updating a server, tags can be selected
 router.get('/api/tag',organizeController.apiTagSearch);
-
-// API: Unit search for select2 ajax (used in contact add/edit)
-// AJAX API for select2 Organize (unit) dropdown in Privileged Account List
-// Used by /public/html/pages/privilege/priv_account_list.ejs
-// Example request: /organize/api/unit?search=abc
-// (Ensure this returns [{id, text}] for select2)
 router.get('/api/unit', organizeController.apiUnitSearch);
-
-// API: Serve contact QR vCard as base64 PNG (AJAX for modal)
 router.get('/api/contact/:id/qrcode', organizeController.apiContactQrVcard);
 
-module.exports = router;
+
+export default router;

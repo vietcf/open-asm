@@ -7,9 +7,9 @@ exports.setup = async (req, res) => {
   const user = req.session.user;
   // if (!user) return res.status(401).send('Unauthorized');
   
-  // Chỉ cho phép user chưa setup 2FA truy cập trang này
-  if (user.twofa_enabled === true) {
-    // Nếu đã setup 2FA và đã verify → về dashboard
+  // Chỉ cho phép user chưa setup 2FA hoặc setup chưa hoàn tất truy cập trang này
+  if (user.twofa_enabled === true && user.twofa_secret) {
+    // Nếu đã setup 2FA hoàn tất và đã verify → về dashboard
     if (req.session.is2faVerified) {
       return res.redirect('/dashboard?info=2FA is already enabled and verified');
     }
@@ -24,7 +24,13 @@ exports.setup = async (req, res) => {
   // Generate QR code
   const otpauth_url = secret.otpauth_url;
   const qr = await qrcode.toDataURL(otpauth_url);
-  res.render('pages/2fa_setup', { qr, secret: secret.base32, error: null });
+  res.render('pages/2fa_setup', { 
+    qr, 
+    secret: secret.base32, 
+    error: null,
+    title: '2FA Setup',
+    activeMenu: '2fa'
+  });
 };
 
 // POST /2fa/verify - verify OTP and enable 2FA
@@ -42,7 +48,13 @@ exports.verify = async (req, res) => {
     // regenerate QR code for the same secret
     const otpauth_url = speakeasy.otpauthURL({ secret, label: 'ASG Project (' + user.username + ')', encoding: 'base32' });
     const qr = await qrcode.toDataURL(otpauth_url);
-    return res.render('pages/2fa_setup', { qr, secret, error: 'Invalid OTP. Try again.' });
+    return res.render('pages/2fa_setup', { 
+      qr, 
+      secret, 
+      error: 'Invalid OTP. Try again.',
+      title: '2FA Setup',
+      activeMenu: '2fa'
+    });
   }
   // Save secret to DB, enable 2FA
   await User.updateTwoFA(user.id, secret, true);

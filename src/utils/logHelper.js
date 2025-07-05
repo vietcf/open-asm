@@ -1,5 +1,6 @@
-const SystemLog = require('../models/SystemLog');
-const os = require('os');
+
+import SystemLog from '../models/SystemLog.js';
+import os from 'os';
 
 /**
  * Ghi log hệ thống, tự động lấy các trường user, ip, user_agent nếu có trong req
@@ -35,4 +36,4 @@ async function writeLog({ action, description, req, status, object_type, object_
   await SystemLog.create(log);
 }
 
-module.exports = { writeLog };
+export { writeLog };

@@ -1,26 +1,80 @@
-// Import required modules
-const { pool } = require('../../config/config');
+/**
+ * IpAddress Model - handles all database operations for IP addresses and their relationships.
+ *
+ * Naming convention: All methods use get/set prefix for clarity and consistency.
+ * - get...: Fetch data (single/multiple records, filtered, paginated, etc.)
+ * - set...: Update or assign relationships (tags, contacts, systems, etc.)
+ *
+ * Relationships handled:
+ *   - Tags (tag_object)
+ *   - Contacts (ip_contact)
+ *   - Systems (system_ip)
+ *   - Device/Server (joins for info only)
+ *
+ * All business logic for IP address CRUD and relationship management is encapsulated here.
+ */
+import { pool } from '../../config/config.js';
 
 class IpAddress {
-  static async findAll() {
-    const result = await pool.query('SELECT * FROM ip_addresses ORDER BY id');
-    return result.rows;
-  }
 
-  static async findById(id) {
-    const result = await pool.query('SELECT * FROM ip_addresses WHERE id = $1', [id]);
-    return result.rows[0];
-  }
+  // ===== CRUD METHODS =====
 
-  static async create({ address, description, status, updated_by }) {
-    const result = await pool.query(
+  /**
+   * Create a new IP address
+   * @param {Object} data
+   * @param {string} data.address
+   * @param {string} data.description
+   * @param {string} data.status
+   * @param {string} data.updated_by
+   * @param {object} [client=pool]
+   * @returns {Promise<Object>} The created IP address
+   */
+  static async create({ address, description, status, updated_by }, client = pool) {
+    const result = await client.query(
       'INSERT INTO ip_addresses (ip_address, description, status, updated_by) VALUES ($1, $2, $3, $4) RETURNING *',
       [address, description, status, updated_by]
     );
     return result.rows[0];
   }
 
-  // Update only description, status, updated_by (KHÔNG update ip_address)
+  /**
+   * Get all IP addresses (no filter, ordered by id)
+   * @returns {Promise<Array>} List of all IP addresses
+   */
+  static async findAll() {
+    const result = await pool.query('SELECT * FROM ip_addresses ORDER BY id');
+    return result.rows;
+  }
+
+  /**
+   * Get an IP address by id
+   * @param {number} id
+   * @returns {Promise<Object|null>}
+   */
+  static async findById(id) {
+    const result = await pool.query('SELECT * FROM ip_addresses WHERE id = $1', [id]);
+    return result.rows[0];
+  }
+
+  /**
+   * Get an IP address by address string
+   * @param {string} address
+   * @returns {Promise<Object|null>}
+   */
+  static async findByAddress(address) {
+    const result = await pool.query('SELECT * FROM ip_addresses WHERE ip_address = $1', [address]);
+    return result.rows[0];
+  }
+
+  /**
+   * Update an IP address
+   * @param {number} id
+   * @param {Object} data
+   * @param {string} data.description
+   * @param {string} data.status
+   * @param {string} data.updated_by
+   * @returns {Promise<Object>} The updated IP address
+   */
   static async update(id, { description, status, updated_by }) {
     const result = await pool.query(
       'UPDATE ip_addresses SET description = $1, status = $2, updated_at = NOW(), updated_by = $3 WHERE id = $4 RETURNING *',
@@ -29,27 +83,44 @@ class IpAddress {
     return result.rows[0];
   }
 
+  /**
+   * Delete an IP address by id
+   * @param {number} id
+   * @returns {Promise<void>}
+   */
   static async delete(id) {
     await pool.query('DELETE FROM ip_addresses WHERE id = $1', [id]);
   }
 
+  /**
+   * Count all IP addresses
+   * @returns {Promise<number>}
+   */
   static async countAll() {
     const result = await pool.query('SELECT COUNT(*) FROM ip_addresses');
     return parseInt(result.rows[0].count, 10);
   }
 
+  /**
+   * Get paginated list of IP addresses
+   * @param {number} page
+   * @param {number} pageSize
+   * @returns {Promise<Array>}
+   */
   static async findPage(page, pageSize) {
     const offset = (page - 1) * pageSize;
     const result = await pool.query('SELECT * FROM ip_addresses ORDER BY id LIMIT $1 OFFSET $2', [pageSize, offset]);
     return result.rows;
   }
 
-  static async findByAddress(address) {
-    const result = await pool.query('SELECT * FROM ip_addresses WHERE ip_address = $1', [address]);
-    return result.rows[0];
-  }
-
-  static async searchPage(search, page, pageSize) {
+  /**
+   * Get paginated list of IP addresses by search
+   * @param {string} search
+   * @param {number} page
+   * @param {number} pageSize
+   * @returns {Promise<Array>}
+   */
+  static async findSearchPage(search, page, pageSize) {
     const offset = (page - 1) * pageSize;
     const result = await pool.query(
       `SELECT * FROM ip_addresses WHERE ip_address::text ILIKE $1 OR description ILIKE $1 ORDER BY id LIMIT $2 OFFSET $3`,
@@ -58,7 +129,12 @@ class IpAddress {
     return result.rows;
   }
 
-  static async searchCount(search) {
+  /**
+   * Count IP addresses by search
+   * @param {string} search
+   * @returns {Promise<number>}
+   */
+  static async countSearch(search) {
     const result = await pool.query(
       `SELECT COUNT(*) FROM ip_addresses WHERE ip_address::text ILIKE $1 OR description ILIKE $1`,
       [`%${search}%`]
@@ -66,6 +142,11 @@ class IpAddress {
     return parseInt(result.rows[0].count, 10);
   }
 
+  /**
+   * Get all IP addresses in a subnet
+   * @param {string} subnetAddress
+   * @returns {Promise<Array>}
+   */
   static async findBySubnet(subnetAddress) {
     const result = await pool.query(
       'SELECT * FROM ip_addresses WHERE ip_address::inet <<= $1::inet ORDER BY ip_address::inet',
@@ -74,13 +155,40 @@ class IpAddress {
     return result.rows;
   }
 
+  /**
+   * Get all IP addresses by server id
+   * @param {number} serverId
+   * @returns {Promise<Array>}
+   */
   static async findByServerId(serverId) {
     const res = await pool.query('SELECT * FROM ip_addresses WHERE server_id = $1 ORDER BY id', [serverId]);
     return res.rows;
   }
 
+  /**
+   * Get unassigned IP addresses (for select2 ajax, etc.)
+   * @param {Object} params
+   * @param {string} params.search
+   * @param {number} params.limit
+   * @returns {Promise<Array<{id:number, ip_address:string}>>}
+   */
+  static async findUnassignIP({ search = '', limit = 20 }) {
+    const result = await pool.query(
+      "SELECT id, ip_address FROM ip_addresses WHERE (status IS NULL OR status != 'assigned') AND ip_address::text ILIKE $1 ORDER BY ip_address LIMIT $2",
+      [`%${search}%`, limit]
+    );
+    return result.rows;
+  }
+
+  // ===== ADVANCED FILTERED LISTS =====
+
   // Filtered IP list with pagination, search, tags, status, systems, contacts
-  static async filterList({ search, tags, status, systems, contacts, page = 1, pageSize = 10 }) {
+  /**
+   * Get filtered list of IP addresses (with pagination, search, tags, status, systems, contacts)
+   * @param {Object} filters { search, tags, status, systems, contacts, page, pageSize }
+   * @returns {Promise<Array>} Filtered list of IP addresses
+   */
+  static async findFilteredList({ search, tags, status, systems, contacts, page = 1, pageSize = 10 }) {
     let params = [];
     let whereClauses = [];
     let joinClauses = [];
@@ -163,7 +271,12 @@ class IpAddress {
   }
 
   // Count for filtered IP list
-  static async filterCount({ search, tags, status, systems, contacts }) {
+  /**
+   * Get count for filtered IP address list (search, tags, status, systems, contacts)
+   * @param {Object} filters { search, tags, status, systems, contacts }
+   * @returns {Promise<number>} Count of filtered IP addresses
+   */
+  static async countFiltered({ search, tags, status, systems, contacts }) {
     let params = [];
     let whereClauses = [];
     let joinClauses = [];
@@ -213,38 +326,56 @@ class IpAddress {
     return parseInt(result.rows[0].count, 10);
   }
 
-  // Gán lại toàn bộ tags cho IP (xóa hết rồi thêm lại)
-  static async setTags(ipId, tagIds) {
-    // Xóa hết tag cũ
-    await pool.query("DELETE FROM tag_object WHERE object_type = 'ip_address' AND object_id = $1", [ipId]);
-    // Thêm tag mới nếu có
+  // Set all tags for an IP address (remove all old, add new)
+  /**
+   * Set all tags for an IP address (removes all old, adds new)
+   * @param {number} ipId
+   * @param {Array<number>} tagIds
+   * @returns {Promise<void>}
+   */
+  static async setTags(ipId, tagIds, client = pool) {
+    // Remove all old tags
+    await client.query("DELETE FROM tag_object WHERE object_type = 'ip_address' AND object_id = $1", [ipId]);
+    // Add new tags if any
     if (Array.isArray(tagIds) && tagIds.length > 0) {
       const values = tagIds.map((tagId, idx) => `($1, $${idx + 2}, 'ip_address')`).join(',');
-      await pool.query(
+      await client.query(
         `INSERT INTO tag_object (object_id, tag_id, object_type) VALUES ${values}`,
         [ipId, ...tagIds]
       );
     }
   }
 
-  // Gán lại toàn bộ contacts cho IP (xóa hết rồi thêm lại)
-  static async setContacts(ipId, contactIds) {
-    await pool.query('DELETE FROM ip_contact WHERE ip_id = $1', [ipId]);
+  // Set all contacts for an IP address (remove all old, add new)
+  /**
+   * Set all contacts for an IP address (removes all old, adds new)
+   * @param {number} ipId
+   * @param {Array<number>} contactIds
+   * @returns {Promise<void>}
+   */
+  static async setContacts(ipId, contactIds, client = pool) {
+    await client.query('DELETE FROM ip_contact WHERE ip_id = $1', [ipId]);
     if (Array.isArray(contactIds) && contactIds.length > 0) {
       const values = contactIds.map((cid, idx) => `($1, $${idx + 2})`).join(',');
-      await pool.query(
+      await client.query(
         `INSERT INTO ip_contact (ip_id, contact_id) VALUES ${values}`,
         [ipId, ...contactIds]
       );
     }
   }
 
-  // Gán lại toàn bộ systems cho IP (xóa hết rồi thêm lại)
-  static async setSystems(ipId, systemIds) {
-    await pool.query('DELETE FROM system_ip WHERE ip_id = $1', [ipId]);
+  // Set all systems for an IP address (remove all old, add new)
+  /**
+   * Set all systems for an IP address (removes all old, adds new)
+   * @param {number} ipId
+   * @param {Array<number>} systemIds
+   * @returns {Promise<void>}
+   */
+  static async setSystems(ipId, systemIds, client = pool) {
+    await client.query('DELETE FROM system_ip WHERE ip_id = $1', [ipId]);
     if (Array.isArray(systemIds) && systemIds.length > 0) {
       const values = systemIds.map((sid, idx) => `($1, $${idx + 2})`).join(',');
-      await pool.query(
+      await client.query(
         `INSERT INTO system_ip (ip_id, system_id) VALUES ${values}`,
         [ipId, ...systemIds]
       );
@@ -253,4 +384,4 @@ class IpAddress {
 }
 
 // Export the IpAddress model
-module.exports = IpAddress;
+export default IpAddress;

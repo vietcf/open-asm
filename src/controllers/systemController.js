@@ -1,52 +1,49 @@
+const path = require('path');
+const fs = require('fs');
+
 const System = require('../models/System');
 const Unit = require('../models/Unit');
 const Contact = require('../models/Contact');
 const Domain = require('../models/Domain');
 const FileUpload = require('../models/FileUpload');
 const Configuration = require('../models/Configuration');
-const fs = require('fs');
-const path = require('path');
 const systemOptions = require('../../config/systemOptions');
+const pool = require('../../config/config').pool;
 
 // System list page (with DB)
 exports.listSystem = async (req, res) => {
   try {
-    // Lấy allowedPageSizes từ config (giống serverController)
-    let allowedPageSizes = [10, 20, 50];
-    try {
-      const configPageSize = await Configuration.findByKey('page_size');
-      if (configPageSize && typeof configPageSize.value === 'string') {
-        allowedPageSizes = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      }
-    } catch (e) {}
-    // Lấy pageSize từ query, kiểm tra hợp lệ
-    let pageSize = parseInt(req.query.pageSize, 10) || allowedPageSizes[0];
-    if (!allowedPageSizes.includes(pageSize)) pageSize = allowedPageSizes[0];
+    // Paging & search params
+    const allowedPageSizes = res.locals.pageSizeOptions;
+    let pageSize = parseInt(req.query.pageSize, 10);
+    if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = res.locals.defaultPageSize;
     const page = parseInt(req.query.page, 10) || 1;
-    const search = req.query.search ? req.query.search.trim() : '';
-    // Gọi model lấy 1 lần đầy đủ join
+    const search = req.query.search?.trim() || '';
+
+    // Data
     const systemList = await System.filterList({ search, page, pageSize });
     const totalCount = await System.filterCount({ search });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
-    const success = req.flash('success')[0];
-    const error = req.flash('error')[0];
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    const content = require('ejs').render(
-      require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/system/system_list.ejs'), 'utf8'),
-      { systemList, search, page, pageSize, totalPages, totalCount, startItem, endItem, allowedPageSizes, success, error }
-    );
-    res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: content,
+
+    // Flash messages
+    const [success, error] = [req.flash('success')[0], req.flash('error')[0]];
+
+    // Render
+    res.render('pages/system/system_list', {
+      systemList,
+      search,
+      page,
+      pageSize,
+      totalPages,
+      totalCount,
+      startItem,
+      endItem,
+      success,
+      error,
       title: 'System',
-      activeMenu: 'system',
-      user: req.session.user,
-      siteName
+      activeMenu: 'system'
     });
   } catch (err) {
     res.status(500).send('Error loading systems: ' + err.message);
@@ -58,26 +55,24 @@ exports.editSystemForm = async (req, res) => {
   try {
     const id = req.params.id;
     const system = await System.findById(id);
-    // const units = await Unit.findAll(); // Không cần nếu trường unit dùng select2 ajax
-    // const contacts = await Contact.findAll(); // Không cần, select2 ajax
-    // Get correct list of contact_id as managers of this system
+    // Get the correct list of contact_id as managers of this system
     const selectedContacts = await System.getContactsBySystemId(id);
-    // Get list of IPs assigned to this system
+    // Get the list of IPs assigned to this system
     const selectedIPs = await System.getIpIdsBySystemId(id);
     // Get info of selected IPs (to render selected options)
     let ipAddresses = [];
     if (selectedIPs.length > 0) {
       ipAddresses = await System.getIpAddressesByIds(selectedIPs);
     }
-    // Get list of domains assigned to this system (for multi-select, with name)
+    // Get the list of domains assigned to this system (for multi-select, with name)
     const selectedDomains = await System.getDomainsBySystemId(id);
-    // Get list of tags assigned to this system
+    // Get the list of tags assigned to this system
     const selectedTags = await System.getTagIds(id);
-    // Get list of files uploaded for this system
+    // Get the list of files uploaded for this system
     const files = await FileUpload.findByObject('system', id);
     system.docs = files.map(f => ({
       id: f.id,
-      name: f.original_name || f.name, // fallback nếu thiếu original_name
+      name: f.original_name || f.name, // fallback if original_name is missing
       url: FileUpload.getUrl(f)
     }));
     // Get info of selected managers (contacts) for select2 selected options
@@ -85,32 +80,19 @@ exports.editSystemForm = async (req, res) => {
     if (selectedContacts && selectedContacts.length > 0) {
       selectedManagerObjects = await Contact.findByIds(selectedContacts);
     }
-    const content = require('ejs').render(
-      require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/system/system_edit.ejs'), 'utf8'),
-      {
-        system,
-        // units,
-        //contacts,
-        selectedContacts,
-        ipAddresses,
-        selectedIPs,
-        selectedTags, // <-- ensure this is passed
-        selectedDomains,
-        selectedManagerObjects,
-        levelOptions: systemOptions.levels // Thêm dòng này
-      }
-    );
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: content,
+    res.render('pages/system/system_edit', {
+      system,
+      // units,
+      //contacts,
+      selectedContacts,
+      ipAddresses,
+      selectedIPs,
+      selectedTags, // <-- ensure this is passed
+      selectedDomains,
+      selectedManagerObjects,
+      levelOptions: systemOptions.levels, // Add this line
       title: 'Edit System',
-      activeMenu: 'system',
-      user: req.session.user,
-      siteName
+      activeMenu: 'system'
     });
   } catch (err) {
     res.status(500).send('Error loading system: ' + err.message);
@@ -119,7 +101,6 @@ exports.editSystemForm = async (req, res) => {
 
 // Handle system update
 exports.updateSystem = async (req, res) => {
-  const pool = require('../../config/config').pool;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -144,7 +125,7 @@ exports.updateSystem = async (req, res) => {
     name = (name === undefined || name === null) ? '' : String(name).trim();
     level = (level === undefined || level === null || level === '') ? null : level;
     department_id = (department_id === undefined || department_id === null || department_id === '') ? null : department_id;
-    // Alias: always array
+    // Alias: always an array
     let aliasValue = [];
     if (alias !== undefined && alias !== null && alias !== '') {
       if (Array.isArray(alias)) {
@@ -153,17 +134,17 @@ exports.updateSystem = async (req, res) => {
         aliasValue = String(alias).split(',').map(s => s.trim()).filter(Boolean);
       }
     }
-    // Managers: always array
+    // Managers: always an array
     if (!Array.isArray(managers)) managers = managers ? [managers] : [];
-    // Servers: always array
+    // Servers: always an array
     if (!Array.isArray(servers)) servers = servers ? [servers] : [];
-    // IP addresses: always array
+    // IP addresses: always an array
     if (!Array.isArray(ip_addresses)) ip_addresses = ip_addresses ? [ip_addresses] : [];
-    // Tags: always array
+    // Tags: always an array
     if (!Array.isArray(tags)) tags = tags ? [tags] : [];
-    // Domains: always array
+    // Domains: always an array
     if (!Array.isArray(domains)) domains = domains ? [domains] : [];
-    // Description: always string
+    // Description: always a string
     description = (description === undefined || description === null) ? '' : String(description);
     // Update the systems table
     await System.updateMain(id, {
@@ -206,7 +187,7 @@ exports.updateSystem = async (req, res) => {
         }, client);
       }
     }
-    // Handle uploaded files from AJAX (input hidden: uploaded_docs_edit)
+    // Handle uploaded files from AJAX (hidden input: uploaded_docs_edit)
     let uploadedDocsEdit = [];
     if (req.body.uploaded_docs_edit) {
       try {
@@ -215,7 +196,7 @@ exports.updateSystem = async (req, res) => {
     }
     if (Array.isArray(uploadedDocsEdit) && uploadedDocsEdit.length > 0) {
       for (const doc of uploadedDocsEdit) {
-        // Move file from tmp to system folder if using local
+        // Move file from tmp to system folder if using local storage
         let finalPath = doc.url;
         if (process.env.FILE_UPLOAD_DRIVER !== 's3' && doc.url && doc.url.startsWith('/uploads/tmp/')) {
           const filename = doc.url.split('/').pop();
@@ -228,7 +209,7 @@ exports.updateSystem = async (req, res) => {
             finalPath = '/uploads/system/' + filename;
           } catch (e) { /* If error, keep original tmp url */ }
         }
-        // Validate file info before saving to DB
+        // Validate file info before saving to the database
         if (!finalPath || !(doc.originalname || doc.name) || !doc.mimetype || !doc.size) {
           continue;
         }
@@ -258,31 +239,11 @@ exports.updateSystem = async (req, res) => {
 // Render add system form
 exports.addSystemForm = async (req, res) => {
   try {
-    const units = await Unit.findAll();
-    const contacts = await Contact.findAll();
-    const { pool } = require('../../config/config');
-    // Get all servers
-    const servers = await pool.query('SELECT id, name FROM servers ORDER BY name');
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: require('ejs').render(
-        require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/system/system_add.ejs'), 'utf8'),
-        {
-          units,
-          contacts,
-          servers: servers.rows,
-          error: null, // Always pass error as null, no error message on add form
-          levelOptions: systemOptions.levels // Thêm dòng này
-        }
-      ),
+    res.render('pages/system/system_add', {
+      error: null, // Always pass error as null, no error message on add form
+      levelOptions: systemOptions.levels, // Add this line
       title: 'Add System',
-      activeMenu: 'system',
-      user: req.session.user,
-      siteName
+      activeMenu: 'system'
     });
   } catch (err) {
     res.status(500).send('Error loading add system form: ' + err.message);
@@ -295,7 +256,7 @@ exports.addSystem = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    // Lấy dữ liệu từ form và kiểm tra/khởi tạo an toàn
+    // Get data from the form and check/initialize safely
     let {
       system_id = '',
       name = '',
@@ -309,28 +270,28 @@ exports.addSystem = async (req, res) => {
       domains = [],
       description = ''
     } = req.body;
-    // Đảm bảo các trường mảng luôn là mảng
+    // Ensure all array fields are always arrays
     if (!Array.isArray(alias)) alias = alias ? alias.split(',').map(s => s.trim()).filter(Boolean) : [];
     if (!Array.isArray(managers)) managers = managers ? [managers] : [];
     if (!Array.isArray(servers)) servers = servers ? [servers] : [];
     if (!Array.isArray(ip_addresses)) ip_addresses = ip_addresses ? [ip_addresses] : [];
     if (!Array.isArray(tags)) tags = tags ? [tags] : [];
     if (!Array.isArray(domains)) domains = domains ? [domains] : [];
-    // Đảm bảo các trường chuỗi luôn là chuỗi
+    // Ensure all string fields are always strings
     system_id = typeof system_id === 'string' ? system_id.trim() : '';
     name = typeof name === 'string' ? name.trim() : '';
     description = typeof description === 'string' ? description : '';
-    // Đảm bảo các trường số là null nếu rỗng
+    // Ensure all number fields are null if empty
     level = (level === undefined || level === null || level === '') ? null : level;
     department_id = (department_id === undefined || department_id === null || department_id === '') ? null : department_id;
-    // Validate level nếu có
+    // Validate level if present, use allowed values from systemOptions.levels
     if (level !== null) {
-      const allowedLevels = ['1', '2', '3', '4', '5'];
+      const allowedLevels = (systemOptions.levels || []).map(l => l.value);
       if (!allowedLevels.includes(level)) {
         return res.status(400).send('Invalid level value.');
       }
     }
-    // Tạo mới system
+    // Create new system
     const newSystem = await System.create({
       system_id,
       name,
@@ -359,7 +320,7 @@ exports.addSystem = async (req, res) => {
         }, client);
       }
     }
-    // Handle uploaded files from AJAX (input hidden: uploaded_docs)
+    // Handle uploaded files from AJAX (hidden input: uploaded_docs)
     let uploadedDocs = [];
     if (req.body.uploaded_docs) {
       try {
@@ -368,11 +329,11 @@ exports.addSystem = async (req, res) => {
     }
     if (Array.isArray(uploadedDocs) && uploadedDocs.length > 0) {
       for (const doc of uploadedDocs) {
-        // Validate file info before saving to DB
+        // Validate file info before saving to the database
         if (!(doc.url && (doc.originalname || doc.name) && doc.mimetype && doc.size)) {
           continue;
         }
-        // Move file from tmp to system folder if using local
+        // Move file from tmp to system folder if using local storage
         let finalPath = doc.url;
         if (process.env.FILE_UPLOAD_DRIVER !== 's3' && doc.url && doc.url.startsWith('/uploads/tmp/')) {
           const filename = doc.url.split('/').pop();
@@ -381,10 +342,10 @@ exports.addSystem = async (req, res) => {
           const destPath = path.join(destDir, filename);
           if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
           try {
-            // Copy file sang system
+            // Copy file to system folder
             fs.copyFileSync(tmpPath, destPath);
             finalPath = '/uploads/system/' + filename;
-            // Xóa file ở tmp nếu copy thành công
+            // Delete file from tmp if copy is successful
             fs.unlinkSync(tmpPath);
           } catch (e) { /* If error, keep original tmp url */ }
         }
@@ -422,16 +383,16 @@ exports.deleteSystem = async (req, res) => {
   try {
     await client.query('BEGIN');
     const id = req.params.id;
-    // Xóa các liên kết qua model
+    // Delete related links via model
     await System.deleteTags(id, client);
     await System.deleteIPs(id, client);
     await System.deleteContacts(id, client);
     await System.deleteDomains(id, client);
     await System.deleteServers(id, client);
-    // Xóa file uploads liên quan đến system này cả DB và vật lý
+    // Delete file uploads related to this system from both DB and physical storage
     const files = await FileUpload.findByObject('system', id);
     await client.query('DELETE FROM file_uploads WHERE object_type = $1 AND object_id = $2', ['system', id]);
-    // Xóa file vật lý
+    // Delete physical files
     for (const file of files) {
       if (file.file_path && file.file_path.startsWith('/uploads/system/')) {
         const absPath = path.join(__dirname, '../../public', file.file_path);
@@ -440,7 +401,7 @@ exports.deleteSystem = async (req, res) => {
         } catch (e) { /* ignore */ }
       }
     }
-    // Xóa system
+    // Delete system
     await System.delete(id, client);
     await client.query('COMMIT');
     req.flash('success', 'System deleted successfully');
@@ -458,17 +419,8 @@ exports.deleteSystem = async (req, res) => {
 exports.apiSystemSearch = async (req, res) => {
   try {
     const search = req.query.search ? req.query.search.trim() : '';
-    const pool = require('../../config/config').pool;
-    let sql = 'SELECT id, name FROM systems';
-    let params = [];
-    if (search) {
-      sql += ' WHERE name ILIKE $1 OR system_id ILIKE $1';
-      params.push(`%${search}%`);
-    }
-    sql += ' ORDER BY name LIMIT 20';
-    const result = await pool.query(sql, params);
-    // Format for select2
-    const data = result.rows.map(row => ({ id: row.id, text: row.name }));
+    // Move query logic to model for cleaner controller
+    const data = await System.apiSystemSearch({ search });
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: 'Error loading systems', detail: err.message });

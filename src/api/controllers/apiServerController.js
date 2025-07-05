@@ -30,8 +30,8 @@ exports.listServers = async (req, res) => {
       page: parseInt(page, 10) || 1,
       pageSize: parseInt(pageSize, 10) || 10
     };
-    const serverList = await Server.filterList(filterParams);
-    const total = await Server.filterCount(filterParams);
+    const serverList = await Server.getFilteredList(filterParams);
+    const total = await Server.getFilteredCount(filterParams);
     res.json({ data: serverList, total });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -41,7 +41,7 @@ exports.listServers = async (req, res) => {
 // Get a single server by id
 exports.getServer = async (req, res) => {
   try {
-    const server = await Server.findById(req.params.id);
+    const server = await Server.getById(req.params.id);
     if (!server) return res.status(404).json({ error: 'Server not found' });
     res.json(server);
   } catch (err) {
@@ -164,46 +164,19 @@ exports.createServer = async (req, res) => {
       [name, os, status, location, type, description || null, username]
     );
     const serverId = insertServerRes.rows[0].id;
-    // Handle IP addresses
+    // Use Server model methods for relationships
     let ipIds = ip_addresses ? (Array.isArray(ip_addresses) ? ip_addresses : [ip_addresses]) : [];
-    if (!ipIds || ipIds.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'At least one IP address is required' });
-    }
-    await client.query('UPDATE ip_addresses SET server_id = NULL, status = NULL WHERE server_id = $1', [serverId]);
-    for (const ipId of ipIds) {
-      await client.query('UPDATE ip_addresses SET server_id = $1, status = $2 WHERE id = $3', [serverId, 'assigned', ipId]);
-    }
-    // Managers
     let managerList = managers ? (Array.isArray(managers) ? managers : [managers]) : [];
-    await client.query('DELETE FROM server_contact WHERE server_id = $1', [serverId]);
-    for (const mid of managerList) {
-      await client.query('INSERT INTO server_contact (server_id, contact_id) VALUES ($1, $2)', [serverId, mid]);
-    }
-    // Systems
     let systemList = systems ? (Array.isArray(systems) ? systems : [systems]) : [];
-    await client.query('DELETE FROM server_system WHERE server_id = $1', [serverId]);
-    for (const sid of systemList) {
-      await client.query('INSERT INTO server_system (server_id, system_id) VALUES ($1, $2)', [serverId, sid]);
-    }
-    // Agents
     let agentList = agents ? (Array.isArray(agents) ? agents : [agents]) : [];
-    await client.query('DELETE FROM server_agents WHERE server_id = $1', [serverId]);
-    for (const aid of agentList) {
-      await client.query('INSERT INTO server_agents (server_id, agent_id) VALUES ($1, $2)', [serverId, aid]);
-    }
-    // Services
     let serviceList = services ? (Array.isArray(services) ? services : [services]) : [];
-    await client.query('DELETE FROM server_services WHERE server_id = $1', [serverId]);
-    for (const sid of serviceList) {
-      await client.query('INSERT INTO server_services (server_id, service_id) VALUES ($1, $2)', [serverId, sid]);
-    }
-    // Tags
     let tagList = tags ? (Array.isArray(tags) ? tags : [tags]) : [];
-    await client.query(`DELETE FROM tag_object WHERE object_type = 'server' AND object_id = $1`, [serverId]);
-    for (const tid of tagList) {
-      await client.query(`INSERT INTO tag_object (object_type, object_id, tag_id) VALUES ('server', $1, $2)`, [serverId, tid]);
-    }
+    await Server.setIpAddresses(serverId, ipIds, client);
+    await Server.setManagers(serverId, managerList, client);
+    await Server.setSystems(serverId, systemList, client);
+    await Server.setAgents(serverId, agentList, client);
+    await Server.setServices(serverId, serviceList, client);
+    await Server.setTags(serverId, tagList, client);
     await client.query('COMMIT');
     res.status(201).json({ id: serverId });
   } catch (err) {
@@ -243,46 +216,19 @@ exports.updateServer = async (req, res) => {
       'UPDATE servers SET name=$1, os_id=$2, status=$3, location=$4, type=$5, description=$6, updated_by=$7, updated_at=NOW() WHERE id=$8',
       [name, os, status, location, type, description || null, username, id]
     );
-    // IP addresses
+    // Use Server model methods for relationships
     let ipIds = ip_addresses ? (Array.isArray(ip_addresses) ? ip_addresses : [ip_addresses]) : [];
-    if (!ipIds || ipIds.length === 0) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: 'At least one IP address is required' });
-    }
-    await client.query('UPDATE ip_addresses SET server_id = NULL, status = NULL WHERE server_id = $1', [id]);
-    for (const ipId of ipIds) {
-      await client.query('UPDATE ip_addresses SET server_id = $1, status = $2 WHERE id = $3', [id, 'assigned', ipId]);
-    }
-    // Managers
     let managerList = managers ? (Array.isArray(managers) ? managers : [managers]) : [];
-    await client.query('DELETE FROM server_contact WHERE server_id = $1', [id]);
-    for (const mid of managerList) {
-      await client.query('INSERT INTO server_contact (server_id, contact_id) VALUES ($1, $2)', [id, mid]);
-    }
-    // Systems
     let systemList = systems ? (Array.isArray(systems) ? systems : [systems]) : [];
-    await client.query('DELETE FROM server_system WHERE server_id = $1', [id]);
-    for (const sid of systemList) {
-      await client.query('INSERT INTO server_system (server_id, system_id) VALUES ($1, $2)', [id, sid]);
-    }
-    // Agents
     let agentList = agents ? (Array.isArray(agents) ? agents : [agents]) : [];
-    await client.query('DELETE FROM server_agents WHERE server_id = $1', [id]);
-    for (const aid of agentList) {
-      await client.query('INSERT INTO server_agents (server_id, agent_id) VALUES ($1, $2)', [id, aid]);
-    }
-    // Services
     let serviceList = services ? (Array.isArray(services) ? services : [services]) : [];
-    await client.query('DELETE FROM server_services WHERE server_id = $1', [id]);
-    for (const sid of serviceList) {
-      await client.query('INSERT INTO server_services (server_id, service_id) VALUES ($1, $2)', [id, sid]);
-    }
-    // Tags
     let tagList = tags ? (Array.isArray(tags) ? tags : [tags]) : [];
-    await client.query(`DELETE FROM tag_object WHERE object_type = 'server' AND object_id = $1`, [id]);
-    for (const tid of tagList) {
-      await client.query(`INSERT INTO tag_object (object_type, object_id, tag_id) VALUES ('server', $1, $2)`, [id, tid]);
-    }
+    await Server.setIpAddresses(id, ipIds, client);
+    await Server.setManagers(id, managerList, client);
+    await Server.setSystems(id, systemList, client);
+    await Server.setAgents(id, agentList, client);
+    await Server.setServices(id, serviceList, client);
+    await Server.setTags(id, tagList, client);
     await client.query('COMMIT');
     res.json({ id });
   } catch (err) {

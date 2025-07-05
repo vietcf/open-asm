@@ -11,36 +11,32 @@ exports.listUsers = async (req, res) => {
   try {
     let page = parseInt(req.query.page, 10) || 1;
     let pageSize = parseInt(req.query.pageSize, 10);
-    // Load page size options from configuration
-    let pageSizeOptions = [10, 20, 50];
-    const configPageSize = await Configuration.findByKey('page_size');
-    if (configPageSize && typeof configPageSize.value === 'string') {
-      pageSizeOptions = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      if (!pageSize || !pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
-    } else {
-      if (!pageSize) pageSize = 10;
+    
+    // Use global pageSizeOptions from res.locals (set in app.js)
+    if (!pageSize || !res.locals.pageSizeOptions.includes(pageSize)) {
+      pageSize = res.locals.defaultPageSize;
     }
+    
     const totalCount = await User.countAll();
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     if (page > totalPages) {
       return res.redirect(`/administrator/users?page=${totalPages}&pageSize=${pageSize}`);
     }
     const userList = await User.findPage(page, pageSize);
-    const roles = await Role.findAll(); // Get list of roles from DB
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: require('ejs').render(
-        require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/administrator/user_list.ejs'), 'utf8'),
-        { userList, roles, page, totalPages, pageSize, pageSizeOptions, totalCount, success: (req.flash('success') || [])[0], error: (req.flash('error') || [])[0], user: req.session.user, hasPermission: req.app.locals.hasPermission }
-      ),
+    const roles = await Role.findAll();
+    
+    res.render('pages/administrator/user_list', {
+      userList, 
+      roles, 
+      page, 
+      totalPages, 
+      pageSize, 
+      totalCount, 
+      success: (req.flash('success') || [])[0], 
+      error: (req.flash('error') || [])[0],
       title: 'User Management',
-      activeMenu: 'user-management',
-      user: req.session.user, // Removed to avoid EJS context confusion
-      siteName
+      activeMenu: 'user-management'
+      // pageSizeOptions, defaultPageSize, siteName, cssPath, jsPath, imgPath, permissions đã có trong res.locals
     });
   } catch (err) {
     res.status(500).send('Error loading user list: ' + err.message);
@@ -202,14 +198,10 @@ exports.listRoles = async (req, res) => {
     // Pagination and page size
     let page = parseInt(req.query.page, 10) || 1;
     let pageSize = parseInt(req.query.pageSize, 10);
-    // Load page size options from configuration
-    let pageSizeOptions = [10, 20, 50];
-    const configPageSize = await Configuration.findByKey('page_size');
-    if (configPageSize && typeof configPageSize.value === 'string') {
-      pageSizeOptions = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      if (!pageSize || !pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
-    } else {
-      if (!pageSize) pageSize = 10;
+    
+    // Use global pageSizeOptions from res.locals (set in app.js)
+    if (!pageSize || !res.locals.pageSizeOptions.includes(pageSize)) {
+      pageSize = res.locals.defaultPageSize;
     }
 
     // Get total count of roles
@@ -230,31 +222,19 @@ exports.listRoles = async (req, res) => {
         permissions: await Role.getPermissions(r.id)
       }))
     );
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: require('ejs').render(
-        require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/administrator/role_list.ejs'), 'utf8'),
-        {
-          roleList,
-          allPermissions,
-          page,
-          totalPages,
-          pageSize,
-          pageSizeOptions,
-          totalCount,
-          success: (req.flash('success') || [])[0],
-          error: (req.flash('error') || [])[0],
-          user: req.session.user,
-          hasPermission: req.app.locals.hasPermission
-        }
-      ),
+    
+    res.render('pages/administrator/role_list', {
+      roleList,
+      allPermissions,
+      page,
+      totalPages,
+      pageSize,
+      totalCount,
+      success: (req.flash('success') || [])[0],
+      error: (req.flash('error') || [])[0],
       title: 'Role Management',
-      activeMenu: 'role-management',
-      siteName
+      activeMenu: 'role-management'
+      // pageSizeOptions, cssPath, jsPath, imgPath, permissions đã có trong res.locals
     });
   } catch (err) {
     res.status(500).send('Error loading role list: ' + err.message);
@@ -353,14 +333,10 @@ exports.listPermissions = async (req, res) => {
     // Pagination and page size
     let page = parseInt(req.query.page, 10) || 1;
     let pageSize = parseInt(req.query.pageSize, 10);
-    // Load page size options from configuration
-    let pageSizeOptions = [10, 20, 50];
-    const configPageSize = await Configuration.findByKey('page_size');
-    if (configPageSize && typeof configPageSize.value === 'string') {
-      pageSizeOptions = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      if (!pageSize || !pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
-    } else {
-      if (!pageSize) pageSize = 10;
+    
+    // Use global pageSizeOptions from res.locals (set in app.js)
+    if (!pageSize || !res.locals.pageSizeOptions.includes(pageSize)) {
+      pageSize = res.locals.defaultPageSize;
     }
 
     // Use pool from config directly
@@ -376,31 +352,18 @@ exports.listPermissions = async (req, res) => {
       'SELECT id, name, description FROM permissions ORDER BY name LIMIT $1 OFFSET $2',
       [pageSize, offset]
     )).rows;
-
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: require('ejs').render(
-        require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/administrator/permission_list.ejs'), 'utf8'),
-        {
-          permissionList,
-          page,
-          totalPages,
-          pageSize,
-          pageSizeOptions,
-          totalCount,
-          success: (req.flash('success') || [])[0],
-          error: (req.flash('error') || [])[0],
-          user: req.session.user,
-          hasPermission: req.app.locals.hasPermission
-        }
-      ),
+    
+    res.render('pages/administrator/permission_list', {
+      permissionList,
+      page,
+      totalPages,
+      pageSize,
+      totalCount,
+      success: (req.flash('success') || [])[0],
+      error: (req.flash('error') || [])[0],
       title: 'Permission Management',
-      activeMenu: 'permission-management',
-      siteName
+      activeMenu: 'permission-management'
+      // pageSizeOptions, cssPath, jsPath, imgPath, permissions đã có trong res.locals
     });
   } catch (err) {
     res.status(500).send('Error loading permission list: ' + err.message);
@@ -474,21 +437,14 @@ exports.deletePermission = async (req, res) => {
 exports.listConfigurations = async (req, res) => {
   try {
     const configList = await Configuration.findAll();
-    // Fetch site_name from Configuration
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: require('ejs').render(
-        require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/administrator/configuration_list.ejs'), 'utf8'),
-        { configList, success: (req.flash('success') || [])[0], error: (req.flash('error') || [])[0], user: req.session.user, hasPermission: req.app.locals.hasPermission }
-      ),
+    // Fetch site_name from Configuration// Sử dụng layout mặc định
+    res.render('pages/administrator/configuration_list', {
+      configList, 
+      success: (req.flash('success') || [])[0], 
+      error: (req.flash('error') || [])[0],
       title: 'System Configuration',
-      activeMenu: 'system-configuration',
-      user: req.session.user,
-      siteName
+      activeMenu: 'system-configuration'
+      // cssPath, jsPath, imgPath, permissions đã có sẵn trong res.locals từ app.js
     });
   } catch (err) {
     res.status(500).send('Error loading configuration: ' + err.message);
@@ -590,53 +546,31 @@ exports.deleteConfiguration = async (req, res) => {
 // ===== SYSTEM LOG =====
 exports.listSystemLogs = async (req, res) => {
   try {
-    // Get allowed page sizes from configuration using Configuration model
-    let configPageSize = 20;
-    let allowedPageSizes = [10, 20, 50, 100];
-    const configRow = await Configuration.findByKey('page_size');
-    if (configRow && configRow.value) {
-      allowedPageSizes = configRow.value.split(',').map(v => parseInt(v.trim(), 10)).filter(v => !isNaN(v));
-      if (allowedPageSizes.length > 0) configPageSize = allowedPageSizes[0];
-    }
-    // Get site_name from configuration
-    let siteName = '';
-    const siteNameConfig = await Configuration.findByKey('site_name');
-    if (siteNameConfig && siteNameConfig.value) {
-      siteName = siteNameConfig.value;
-    }
-    // Pagination params
+    // Use global pageSizeOptions from res.locals (set in app.js)
     const page = parseInt(req.query.page, 10) || 1;
-    const pageSize = parseInt(req.query.pageSize, 10) || configPageSize;
+    const pageSize = parseInt(req.query.pageSize, 10) || res.locals.defaultPageSize;
     const offset = (page - 1) * pageSize;
+    
     // Get total count
     const countResult = await pool.query('SELECT COUNT(*) FROM system_log');
     const totalCount = parseInt(countResult.rows[0].count, 10);
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    
     // Get logs for current page (newest first)
     const logsResult = await pool.query('SELECT * FROM system_log ORDER BY created_at DESC LIMIT $1 OFFSET $2', [pageSize, offset]);
     const logs = logsResult.rows;
-    res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: require('ejs').render(
-        require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/administrator/system_log.ejs'), 'utf8'),
-        {
-          logs,
-          page,
-          pageSize,
-          allowedPageSizes,
-          totalPages,
-          totalCount,
-          siteName,
-          success: (req.flash('success') || [])[0],
-          error: (req.flash('error') || [])[0]
-        }
-      ),
+    
+    res.render('pages/administrator/system_log', {
+      logs,
+      page,
+      pageSize,
+      totalPages,
+      totalCount,
+      success: (req.flash('success') || [])[0],
+      error: (req.flash('error') || [])[0],
       title: 'System Log',
-      activeMenu: 'system-log',
-      user: req.session.user,
-      siteName // truyền siteName cho layout
+      activeMenu: 'system-log'
+      // pageSizeOptions (as allowedPageSizes), cssPath, jsPath, imgPath, permissions đã có trong res.locals
     });
   } catch (err) {
     res.status(500).send('Error loading system log: ' + err.message);

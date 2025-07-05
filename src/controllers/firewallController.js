@@ -1,7 +1,4 @@
 // src/controllers/firewallController.js
-const ejs = require('ejs');
-const fs = require('fs');
-const path = require('path');
 const config = require('../../config/config');
 const { pool } = config;
 const RuleFirewall = require('../models/RuleFirewall');
@@ -16,14 +13,9 @@ exports.ruleList = async (req, res) => {
     let pageSize = parseInt(req.query.pageSize, 10);
     if (isNaN(page) || page < 1) page = 1;
 
-    // Load page size options from configuration
-    let pageSizeOptions = [10, 20, 50];
-    let configPageSize = 10;
-    const configRow = await Configuration.findByKey('page_size');
-    if (configRow && configRow.value) {
-      pageSizeOptions = configRow.value.split(',').map(v => parseInt(v.trim(), 10)).filter(v => !isNaN(v));
-      if (pageSizeOptions.length > 0) configPageSize = pageSizeOptions[0];
-    }
+    // Load page size options from res.locals (set in app.js)
+    const pageSizeOptions = res.locals.pageSizeOptions || [10, 20, 50];
+    let configPageSize = res.locals.defaultPageSize || 10;
     if (!pageSize || !pageSizeOptions.includes(pageSize)) pageSize = configPageSize;
 
     // --- Parse and normalize filter params ---
@@ -79,33 +71,33 @@ exports.ruleList = async (req, res) => {
 
     const success = req.flash ? req.flash('success')[0] : undefined;
     const error = req.flash ? req.flash('error')[0] : undefined;
-    const content = ejs.render(
-      fs.readFileSync(path.join(__dirname, '../../public/html/pages/firewall/rule_list.ejs'), 'utf8'),
-      {
-        ruleList, page, pageSize, totalPages, totalCount, search, success, error, pageSizeOptions,
-        actionsOptions: firewallConfig.actionsOptions,
-        statusOptions: firewallConfig.statusOptions,
-        violationTypeOptions: firewallConfig.violationTypeOptions,
-        firewallNameOptions: firewallConfig.firewallNameOptions,
-        firewall_name, // giữ lại giá trị filter khi render lại view
-        // Pass filter values for modal persistence
-        ou_id, ou_name, tags, tagNames, contacts, contactNames, violation_type, status,
-        audit_batch, // persist audit_batch filter value
-        user: req.session.user,
-        hasPermission: req.app.locals.hasPermission
-      }
-    );
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    res.render('layouts/layout', {
-      cssPath: config.cssPath,
-      jsPath: config.jsPath,
-      imgPath: config.imgPath,
-      body: content,
+    res.render('pages/firewall/rule_list', {
+      ruleList, 
+      page, 
+      pageSize, 
+      totalPages, 
+      totalCount, 
+      search, 
+      success, 
+      error, 
+      allowedPageSizes: pageSizeOptions,
+      actionsOptions: firewallConfig.actionsOptions,
+      statusOptions: firewallConfig.statusOptions,
+      violationTypeOptions: firewallConfig.violationTypeOptions,
+      firewallNameOptions: firewallConfig.firewallNameOptions,
+      firewall_name, // giữ lại giá trị filter khi render lại view
+      // Pass filter values for modal persistence
+      ou_id, 
+      ou_name, 
+      tags, 
+      tagNames, 
+      contacts, 
+      contactNames, 
+      violation_type, 
+      status,
+      audit_batch, // persist audit_batch filter value
       title: 'Firewall Rule',
-      activeMenu: 'firewall-rule',
-      user: req.session.user,
-      siteName
+      activeMenu: 'firewall-rule'
     });
   } catch (err) {
     res.status(500).send('Error loading firewall rules: ' + err.message);

@@ -36,12 +36,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Department (Unit)</label>
-              <select name="department_id" class="form-select form-select-sm">
-                <option value="">-- Select Department --</option>
-                <% units.forEach(function(unit) { %>
-                  <option value="<%= unit.id %>"><%= unit.name %></option>
-                <% }) %>
-              </select>
+              <select id="unit-select" name="department_id" class="form-select form-select-sm"></select>
             </div>
             <div class="mb-3">
               <label class="form-label">Domains</label>
@@ -84,6 +79,21 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
 <script>
   $(function() {
+    // Department (Unit) select2 AJAX
+    $('#unit-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select department',
+      allowClear: true,
+      width: '100%',
+      ajax: {
+        url: '/organize/api/unit',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      }
+    });
     $('#manager-select').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select manager(s)',

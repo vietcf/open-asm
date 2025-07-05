@@ -1,68 +1,32 @@
-const express = require('express');
-const path = require('path');
-const fs = require('fs');
-const ejs = require('ejs');
-const config = require('../../config/config');
-const networkController = require('../controllers/networkController');
-const checkPermission = require('../middlewares/checkPermission');
+import express from 'express';
+import networkController from '../controllers/networkController.js';
+import requirePermission from '../middlewares/requirePermission.middleware.js';
 
 const router = express.Router();
 
-
-
 // ====== IPADDRESS MENU ======
-// List all IP addresses
-router.get('/ip-address', checkPermission('read', 'ip_address'), networkController.listIP); 
-// Create a new IP address
-router.post('/ip-address', checkPermission('create', 'ip_address'), networkController.createIP); 
-// Update an IP address
-router.put('/ip-address/:id', checkPermission('update', 'ip_address'), networkController.updateIP);
-// Delete an IP address
-router.delete('/ip-address/:id', checkPermission('delete', 'ip_address'), networkController.deleteIP); 
-// Export IP Address List as Excel (filtered)
-router.get('/ip-address/export', checkPermission('read', 'ip_address'), networkController.exportIpAddressList);
+router.get('/ip-address', requirePermission('read', 'ip_address'), networkController.listIP);
+router.post('/ip-address', requirePermission('create', 'ip_address'), networkController.createIP);
+router.put('/ip-address/:id', requirePermission('update', 'ip_address'), networkController.updateIP);
+router.delete('/ip-address/:id', requirePermission('delete', 'ip_address'), networkController.deleteIP);
+router.get('/ip-address/export', requirePermission('read', 'ip_address'), networkController.exportIpAddressList);
 
 // ====== SUBNET MENU ======
-// List all subnets
-router.get('/subnet-address', checkPermission('read', 'subnet'), networkController.listSubnet); 
-// Create a new subnet
-router.post('/subnet-address', checkPermission('create', 'subnet'), networkController.createSubnet); 
-// Update a subnet
-router.put('/subnet-address/:id', checkPermission('update', 'subnet'), networkController.updateSubnet); 
-// Delete a subnet
-router.delete('/subnet-address/:id', checkPermission('delete', 'subnet'), networkController.deleteSubnet); 
-
-
+router.get('/subnet-address', requirePermission('read', 'subnet'), networkController.listSubnet);
+router.post('/subnet-address', requirePermission('create', 'subnet'), networkController.createSubnet);
+router.put('/subnet-address/:id', requirePermission('update', 'subnet'), networkController.updateSubnet);
+router.delete('/subnet-address/:id', requirePermission('delete', 'subnet'), networkController.deleteSubnet);
 
 // ====== DOMAIN MENU ======
-// List all domains
-router.get('/domain', checkPermission('read', 'domain'), networkController.listDomain);
-// Create a new domain
-router.post('/domain', checkPermission('create', 'domain'), networkController.createDomain);
-// Edit domain 
-router.put('/domain/:id', checkPermission('update', 'domain'), networkController.updateDomain);
-// Delete domain
-router.delete('/domain/:id', checkPermission('delete', 'domain'), networkController.deleteDomain);
+router.get('/domain', requirePermission('read', 'domain'), networkController.listDomain);
+router.post('/domain', requirePermission('create', 'domain'), networkController.createDomain);
+router.put('/domain/:id', requirePermission('update', 'domain'), networkController.updateDomain);
+router.delete('/domain/:id', requirePermission('delete', 'domain'), networkController.deleteDomain);
 
+// // ====== AJAX API ======
+router.get('/api/subnet-address/:id', requirePermission('read', 'subnet'), networkController.detailSubnet); //Get detail of subnet
+router.get('/api/ip-addresses', networkController.apiSearchIPAddresses); // Search IP addresses
+router.get('/api/domain', networkController.apiDomainSearch); // Search domains
+router.get('/api/ip-addresses/unassigned', networkController.apiSearchUnassignedIPAddresses); // Search unassigned IP addresses
 
-// ====== AJAX API ======
-
-// API: Get subnet detail by ID (subnet detail page)
-// Use for subnet detail in subnet list
-router.get('/api/subnet-address/:id', checkPermission('read', 'subnet'), networkController.detailSubnet);
-
-
-// API: Search IP addresses for select2 ajax 
-router.get('/api/ip-addresses',networkController.apiSearchIPAddresses);
-
-
-// API: Domain search for select2 ajax 
-router.get('/api/domain',networkController.apiDomainSearch);
-
-// API: Search unassigned IP addresses for select2 ajax 
-router.get('/api/ip-addresses/unassigned',networkController.apiSearchUnassignedIPAddresses);
-
-// Protected route example
-// router.get('/list', checkPermission('read', 'network'), networkController.listNetworks);
-
-module.exports = router;
+export default router;

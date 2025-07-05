@@ -10,7 +10,7 @@
     </form>
     <div class="row mb-3">
       <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px; gap: 8px;">
-        <% if (hasPermission(user, 'priv_account.create')) { %>
+        <% if (hasPermission('priv_account.create')) { %>
         <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addPrivUserModal">
           <i class="bi bi-plus"></i> Add Privileged Account
         </button>
@@ -189,10 +189,10 @@
                       <td><%= account.created_at ? account.created_at.toLocaleString() : '' %></td>
                       <td class="text-end">
                         <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#privUserDetailModal-<%= account.id %>"><i class="bi bi-eye"></i></a>
-                        <% if (hasPermission(user, 'priv_account.update')) { %>
+                        <% if (hasPermission('priv_account.update')) { %>
                         <a href="#" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#privUserEditModal-<%= account.id %>"><i class="bi bi-pencil"></i></a>
                         <% } %>
-                        <% if (hasPermission(user, 'priv_account.delete')) { %>
+                        <% if (hasPermission('priv_account.delete')) { %>
                         <form action="/priv-account/account/<%= account.id %>/delete" method="POST" style="display:inline">
                           <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete?')"><i class="bi bi-trash"></i></button>
                         </form>

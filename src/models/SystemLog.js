@@ -1,4 +1,4 @@
-const { pool } = require('../../config/config');
+import { pool } from '../../config/config.js';
 
 const SystemLog = {
   /**
@@ -33,4 +33,4 @@ const SystemLog = {
   }
 };
 
-module.exports = SystemLog;
+export default SystemLog;

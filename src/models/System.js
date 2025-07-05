@@ -1,6 +1,23 @@
 const { pool } = require('../../config/config');
 
 class System {
+  // AJAX API: Search systems for select2 (id, text)
+  static async apiSystemSearch({ search = '' }) {
+    const q = `%${search}%`;
+    // Only return id and text (system name or system_id)
+    const result = await pool.query(
+      `SELECT id, name, system_id FROM systems
+       WHERE name ILIKE $1 OR system_id ILIKE $1
+       ORDER BY name ASC
+       LIMIT 20`,
+      [q]
+    );
+    // Format for select2: [{ id, text }]
+    return result.rows.map(row => ({
+      id: row.id,
+      text: row.name ? `${row.name} (${row.system_id})` : row.system_id
+    }));
+  }
   static async findPage(page = 1, pageSize = 10) {
     const offset = (page - 1) * pageSize;
     const result = await pool.query(

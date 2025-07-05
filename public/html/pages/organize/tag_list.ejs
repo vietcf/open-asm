@@ -2,7 +2,7 @@
   <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/organize/tag" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
     <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search tag..." aria-label="Search" value="<%= search %>">
     <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
-      <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+      <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
         <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
       <% }) %>
     </select>
@@ -10,7 +10,7 @@
   </form>
   <div class="row mb-3">
     <div class="col-12 d-flex justify-content-end align-items-center position-relative">
-      <% if (hasPermission && hasPermission(user, 'tag.create')) { %>
+      <% if (hasPermission('tag.create')) { %>
       <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addTagModal">
         <i class="bi bi-plus"></i> Add Tag
       </button>
@@ -80,10 +80,10 @@
                     <td><%= tag.name %></td>
                     <td><%= tag.description %></td>
                     <td class="text-end">
-                      <% if (hasPermission && hasPermission(user, 'tag.update')) { %>
+                      <% if (hasPermission('tag.update')) { %>
                         <button class="btn btn-warning btn-sm me-1" data-bs-toggle="modal" data-bs-target="#editTagModal-<%= tag.id %>"><i class="bi bi-pencil"></i></button>
                       <% } %>
-                      <% if (hasPermission && hasPermission(user, 'tag.delete')) { %>
+                      <% if (hasPermission('tag.delete')) { %>
                         <form action="/organize/tag/<%= tag.id %>?_method=DELETE" method="POST" style="display:inline;">
                           <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this tag?')"><i class="bi bi-trash"></i></button>
                         </form>
@@ -91,7 +91,7 @@
                     </td>
                   </tr>
                   <!-- Edit Tag Modal -->
-                  <% if (hasPermission && hasPermission(user, 'tag.update')) { %>
+                  <% if (hasPermission('tag.update')) { %>
                   <div class="modal fade" id="editTagModal-<%= tag.id %>" tabindex="-1" aria-labelledby="editTagModalLabel-<%= tag.id %>" aria-hidden="true">
                     <div class="modal-dialog">
                       <div class="modal-content">

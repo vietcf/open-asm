@@ -2,9 +2,6 @@ const PrivUser = require('../models/PrivUser');
 const PrivRole = require('../models/PrivRole');
 const PrivPermission = require('../models/PrivPermission');
 const config = require('../../config/config');
-const ejs = require('ejs');
-const fs = require('fs');
-const path = require('path');
 const { pool } = require('../../config/config');
 const Configuration = require('../models/Configuration');
 const System = require('../models/System');
@@ -19,16 +16,11 @@ const accountOptions = require('../../config/accountOptions');
 exports.listAccounts = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    let pageSize = parseInt(req.query.pageSize) || 10;
+    let pageSize = parseInt(req.query.pageSize) || res.locals.defaultPageSize;
     
-    // Load allowed page sizes from configuration
-    let allowedPageSizes = [10, 20, 50]; 
-    const configPageSize = await Configuration.findByKey('page_size');
-    if (configPageSize && typeof configPageSize.value === 'string') {
-      allowedPageSizes = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = allowedPageSizes[0];
-    } else {
-      if (!pageSize) pageSize = 10;
+    // Use global pageSizeOptions from res.locals (set in app.js)
+    if (!pageSize || !res.locals.pageSizeOptions.includes(pageSize)) {
+      pageSize = res.locals.defaultPageSize;
     }
 
     // Get filter parameters
@@ -169,41 +161,32 @@ exports.listAccounts = async (req, res) => {
 
     const success = req.flash ? req.flash('success')[0] : (req.query.success || null);
     const error = req.flash ? req.flash('error')[0] : (req.query.error || null);
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-
-    const content = ejs.render(
-      fs.readFileSync(path.join(__dirname, '../../public/html/pages/privilege/priv_account_list.ejs'), 'utf8'),
-      {
-        privUserList, page, totalPages, pageSize, allowedPageSizes,
-        search, success, error,
-        // Truyền đủ các biến cho filter modal
-        system_ids,
-        system_names: selectedSystems.map(s => s.name),
-        organize_id: selectedOrganize ? selectedOrganize.id : '',
-        organize_name: selectedOrganize ? selectedOrganize.name : '',
-        contact_ids,
-        contact_names: selectedContacts.map(c => c.name),
-        // Thêm accountTypes và manageTypes cho EJS
-        accountTypes: accountOptions.accountTypes,
-        manageTypes: accountOptions.manageTypes,
-        user: req.session.user,
-        hasPermission: req.app.locals.hasPermission,
-        startItem, endItem, totalCount
-      }
-    );
-
-    res.render('layouts/layout', {
-      cssPath: config.cssPath,  
-      jsPath: config.jsPath,
-      imgPath: config.imgPath,
-      body: content,
-      title: 'Privileged Account List',
-      activeMenu: 'priv-account-list', 
-      user: req.session.user,
-      siteName
+    
+    res.render('pages/privilege/priv_account_list', {
+      privUserList,
+      page,
+      totalPages,
+      pageSize,
+      search,
+      success,
+      error,
+      // Truyền đủ các biến cho filter modal
+      system_ids,
+      system_names: selectedSystems.map(s => s.name),
+      organize_id: selectedOrganize ? selectedOrganize.id : '',
+      organize_name: selectedOrganize ? selectedOrganize.name : '',
+      contact_ids,
+      contact_names: selectedContacts.map(c => c.name),
+      // Thêm accountTypes và manageTypes cho EJS
+      accountTypes: accountOptions.accountTypes,
+      manageTypes: accountOptions.manageTypes,
+      startItem,
+      endItem,
+      totalCount,
+      allowedPageSizes: res.locals.pageSizeOptions,
+      title: 'Privileged Account',
+      activeMenu: 'priv-account'
     });
-
   } catch (err) {
     console.error('Error loading privileged accounts:', err);
     res.status(500).send('Error loading privileged accounts: ' + err.message);
@@ -463,16 +446,13 @@ exports.getAccountDetails = async (req, res) => {
 exports.listRoles = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    let pageSize = parseInt(req.query.pageSize) || 10;
-    // Load allowed page sizes from configuration
-    let allowedPageSizes = [10, 20, 50];
-    const configPageSize = await Configuration.findByKey('page_size');
-    if (configPageSize && typeof configPageSize.value === 'string') {
-      allowedPageSizes = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = allowedPageSizes[0];
-    } else {
-      if (!pageSize) pageSize = 10;
+    let pageSize = parseInt(req.query.pageSize) || res.locals.defaultPageSize;
+    
+    // Use global pageSizeOptions from res.locals (set in app.js)
+    if (!pageSize || !res.locals.pageSizeOptions.includes(pageSize)) {
+      pageSize = res.locals.defaultPageSize;
     }
+    
     const search = req.query.search ? req.query.search.trim() : '';
     const system_id = req.query.system_id ? req.query.system_id.trim() : '';
     let privRoleList, totalCount, totalPages;
@@ -527,22 +507,24 @@ exports.listRoles = async (req, res) => {
     }
     const success = req.flash ? req.flash('success')[0] : (req.query.success || null);
     const error = req.flash ? req.flash('error')[0] : (req.query.error || null);
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    const user = req.session.user;
-    const content = ejs.render(
-      fs.readFileSync(path.join(__dirname, '../../public/html/pages/privilege/priv_role_list.ejs'), 'utf8'),
-      { privRoleList, page, totalPages, pageSize, allowedPageSizes, search, system_id, system_name, success, error, allPermissions, user: req.session.user, hasPermission: req.app.locals.hasPermission, startItem, endItem, totalCount }
-    );
-    res.render('layouts/layout', {
-      cssPath: config.cssPath,
-      jsPath: config.jsPath,
-      imgPath: config.imgPath,
-      body: content,
+    
+    res.render('pages/privilege/priv_role_list', {
+      privRoleList, 
+      page, 
+      totalPages, 
+      pageSize, 
+      search, 
+      system_id, 
+      system_name, 
+      success, 
+      error, 
+      allPermissions, 
+      startItem, 
+      endItem, 
+      totalCount,
+      allowedPageSizes: res.locals.pageSizeOptions,
       title: 'Privileged Role List',
-      activeMenu: 'priv-role-list',
-      user: req.session.user,
-      siteName
+      activeMenu: 'priv-role-list'
     });
   } catch (err) {
     console.error('Error loading privileged roles:', err);
@@ -627,16 +609,13 @@ exports.deleteRole = async (req, res) => {
 exports.listPermissions = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    let pageSize = parseInt(req.query.pageSize) || 10;
-    // Load allowed page sizes from configuration
-    let allowedPageSizes = [10, 20, 50];
-    const configPageSize = await Configuration.findByKey('page_size');
-    if (configPageSize && typeof configPageSize.value === 'string') {
-      allowedPageSizes = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = allowedPageSizes[0];
-    } else {
-      if (!pageSize) pageSize = 10;
+    let pageSize = parseInt(req.query.pageSize) || res.locals.defaultPageSize;
+    
+    // Use global pageSizeOptions from res.locals (set in app.js)
+    if (!pageSize || !res.locals.pageSizeOptions.includes(pageSize)) {
+      pageSize = res.locals.defaultPageSize;
     }
+    
     const search = req.query.search ? req.query.search.trim() : '';
     const system_id = req.query.system_id ? req.query.system_id.trim() : '';
     let privPermissionList, totalCount, totalPages;
@@ -676,11 +655,7 @@ exports.listPermissions = async (req, res) => {
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = Math.min(page * pageSize, totalCount);
     const success = req.flash ? req.flash('success')[0] : (req.query.success || null);
-    const error = req.flash ? req.flash('error')[0] : (req.query.error || null);
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    const user = req.session.user;
-    // Ensure each permission has its system info (join or fetch system name)
+    const error = req.flash ? req.flash('error')[0] : (req.query.error || null);// Ensure each permission has its system info (join or fetch system name)
     for (const perm of privPermissionList) {
       perm.system = await System.findById(perm.system_id);
     }
@@ -689,19 +664,23 @@ exports.listPermissions = async (req, res) => {
     if (system_id && privPermissionList.length > 0 && privPermissionList[0].system && privPermissionList[0].system.name) {
       system_name = privPermissionList[0].system.name;
     }
-    const content = ejs.render(
-      fs.readFileSync(path.join(__dirname, '../../public/html/pages/privilege/priv_permission_list.ejs'), 'utf8'),
-      { privPermissionList, page, totalPages, pageSize, allowedPageSizes, search, system_id, system_name, success, error, user: req.session.user, hasPermission: req.app.locals.hasPermission, startItem, endItem, totalCount }
-    );
-    res.render('layouts/layout', {
-      cssPath: config.cssPath,
-      jsPath: config.jsPath,
-      imgPath: config.imgPath,
-      body: content,
+    
+    res.render('pages/privilege/priv_permission_list', {
+      privPermissionList, 
+      page, 
+      totalPages, 
+      pageSize, 
+      search, 
+      system_id, 
+      system_name, 
+      success, 
+      error, 
+      startItem, 
+      endItem, 
+      totalCount,
+      allowedPageSizes: res.locals.pageSizeOptions,
       title: 'Privileged Permission List',
-      activeMenu: 'priv-permission-list',
-      user: req.session.user,
-      siteName
+      activeMenu: 'priv-permission-list'
     });
   } catch (err) {
     console.error('Error loading privileged permissions:', err);

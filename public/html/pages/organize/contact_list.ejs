@@ -2,7 +2,7 @@
   <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/organize/contact" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
     <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search name, email..." aria-label="Search" value="<%= search %>">
     <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
-      <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+      <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
         <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
       <% }) %>
     </select>
@@ -10,7 +10,7 @@
   </form>
   <div class="row mb-3">
     <div class="col-12 d-flex justify-content-end align-items-center position-relative">
-      <% if (hasPermission && hasPermission(user, 'contact.create')) { %>
+      <% if (hasPermission('contact.create')) { %>
         <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addContactModal">
           <i class="bi bi-plus"></i> Add Contact
         </button>
@@ -113,10 +113,10 @@
                     <td><%= c.position %></td>
                     <td class="text-end">
                       <button class="btn btn-info btn-sm me-1" title="Show Detail" data-bs-toggle="modal" data-bs-target="#showContactModal-<%= c.id %>"><i class="bi bi-eye"></i></button>
-                      <% if (hasPermission && hasPermission(user, 'contact.update')) { %>
+                      <% if (hasPermission('contact.update')) { %>
                         <button class="btn btn-warning btn-sm me-1" title="Edit" data-bs-toggle="modal" data-bs-target="#editContactModal-<%= c.id %>"><i class="bi bi-pencil"></i></button>
                       <% } %>
-                      <% if (hasPermission && hasPermission(user, 'contact.delete')) { %>
+                      <% if (hasPermission('contact.delete')) { %>
                         <form action="/organize/contact/<%= c.id %>?_method=DELETE" method="POST" style="display:inline;">
                           <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure?')"><i class="bi bi-trash"></i></button>
                         </form>
@@ -163,7 +163,7 @@
                     </div>
                   </div>
                   <!-- Edit Contact Modal -->
-                  <% if (hasPermission && hasPermission(user, 'contact.update')) { %>
+                  <% if (hasPermission('contact.update')) { %>
                   <div class="modal fade" id="editContactModal-<%= c.id %>" tabindex="-1" aria-labelledby="editContactModalLabel-<%= c.id %>" aria-hidden="true">
                     <div class="modal-dialog">
                       <div class="modal-content">

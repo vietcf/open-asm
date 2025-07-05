@@ -67,34 +67,71 @@ module.exports = async (pool) => {
     ON CONFLICT (ip_address) DO NOTHING;
   `);
 
-  // Seed tag_object: assign tags to some IPs (example: 2 tags per IP for first 10 IPs)
-  await pool.query(`
-    INSERT INTO tag_object (object_id, tag_id, object_type) VALUES
-      (1, 1, 'ip_address'), (1, 2, 'ip_address'),
-      (2, 2, 'ip_address'), (2, 3, 'ip_address'),
-      (3, 1, 'ip_address'), (3, 3, 'ip_address'),
-      (4, 1, 'ip_address'), (4, 4, 'ip_address'),
-      (5, 2, 'ip_address'), (5, 4, 'ip_address'),
-      (6, 3, 'ip_address'), (6, 4, 'ip_address'),
-      (7, 1, 'ip_address'), (7, 2, 'ip_address'),
-      (8, 2, 'ip_address'), (8, 3, 'ip_address'),
-      (9, 1, 'ip_address'), (9, 3, 'ip_address')
-    ON CONFLICT DO NOTHING;
-  `);
+  // Lấy id các tag theo tên
+  const { rows: tagRows } = await pool.query('SELECT id, name FROM tags');
+  const tagMap = {};
+  tagRows.forEach(tag => { tagMap[tag.name] = tag.id; });
+
+  // Gán tag cho các IP (ví dụ: 2 tag cho mỗi IP đầu tiên)
+  // Đảm bảo các tag này tồn tại trong seed_tags.js
+  const tagObjectData = [
+    { object_id: 1, tag_name: 'Critical' },
+    { object_id: 1, tag_name: 'Production' },
+    { object_id: 2, tag_name: 'Production' },
+    { object_id: 2, tag_name: 'Test' },
+    { object_id: 3, tag_name: 'Critical' },
+    { object_id: 3, tag_name: 'Test' },
+    { object_id: 4, tag_name: 'Critical' },
+    { object_id: 4, tag_name: 'Internal' },
+    { object_id: 5, tag_name: 'Production' },
+    { object_id: 5, tag_name: 'Internal' },
+    { object_id: 6, tag_name: 'Test' },
+    { object_id: 6, tag_name: 'Internal' },
+    { object_id: 7, tag_name: 'Critical' },
+    { object_id: 7, tag_name: 'Production' },
+    { object_id: 8, tag_name: 'Production' },
+    { object_id: 8, tag_name: 'Test' },
+    { object_id: 9, tag_name: 'Critical' },
+    { object_id: 9, tag_name: 'Test' },
+  ];
+  for (const row of tagObjectData) {
+    const tag_id = tagMap[row.tag_name];
+    if (tag_id) {
+      await pool.query(
+        `INSERT INTO tag_object (object_id, tag_id, object_type) VALUES ($1, $2, 'ip_address') ON CONFLICT DO NOTHING`,
+        [row.object_id, tag_id]
+      );
+    }
+  }
 
   // Seed ip_contact: assign contacts to some IPs (example: 2 contacts per IP for first 10 IPs)
-  await pool.query(`
-    INSERT INTO ip_contact (ip_id, contact_id) VALUES
-      (1, 1), (1, 2),
-      (2, 2), (2, 3),
-      (3, 1), (3, 3),
-      (4, 2), (4, 4),
-      (5, 1), (5, 4),
-      (6, 2), (6, 5),
-      (7, 3), (7, 5),
-      (8, 1), (8, 5),
-      (9, 2), (9, 3),
-      (10, 4), (10, 5)
-    ON CONFLICT DO NOTHING;
-  `);
+  // Map ip_address to id to always get the correct id
+  const { rows: ipRows } = await pool.query('SELECT id, ip_address FROM ip_addresses');
+  const ipMap = {};
+  ipRows.forEach(ip => { ipMap[ip.ip_address] = ip.id; });
+
+  // Danh sách các IP và contact muốn gán
+  const ipContactData = [
+    { ip: '192.168.1.1', contacts: [1, 2] },
+    { ip: '192.168.1.2', contacts: [2, 3] },
+    { ip: '10.0.0.10', contacts: [1, 3] },
+    { ip: '10.0.0.11', contacts: [2, 4] },
+    { ip: '10.0.0.12', contacts: [1, 4] },
+    { ip: '10.0.0.13', contacts: [2, 5] },
+    { ip: '10.0.0.14', contacts: [3, 5] },
+    { ip: '10.0.0.15', contacts: [1, 5] },
+    { ip: '10.0.0.16', contacts: [2, 3] },
+    { ip: '10.0.0.17', contacts: [4, 5] },
+  ];
+  for (const row of ipContactData) {
+    const ip_id = ipMap[row.ip];
+    if (ip_id) {
+      for (const contact_id of row.contacts) {
+        await pool.query(
+          `INSERT INTO ip_contact (ip_id, contact_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [ip_id, contact_id]
+        );
+      }
+    }
+  }
 };

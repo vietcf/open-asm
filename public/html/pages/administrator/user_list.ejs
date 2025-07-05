@@ -1,7 +1,7 @@
 <div class="container-fluid">
   <div class="row mb-3">
     <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
-      <% if (hasPermission && hasPermission(user, 'user.create')) { %>
+      <% if (hasPermission('user.create')) { %>
       <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addUserModal">
         <i class="bi bi-plus"></i> Add User
       </button>
@@ -111,10 +111,10 @@
                     </td>
                     <td class="text-end">
                       <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#userDetailModal-<%= rowUser.id %>"><i class="bi bi-eye"></i></a>
-                      <% if (hasPermission && hasPermission(user, 'user.update')) { %>
+                      <% if (hasPermission('user.update')) { %>
                         <a href="#" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#userEditModal-<%= rowUser.id %>"><i class="bi bi-pencil"></i></a>
                       <% } %>
-                      <% if (hasPermission && hasPermission(user, 'user.delete')) { %>
+                      <% if (hasPermission('user.delete')) { %>
                         <form action="/administrator/users/<%= rowUser.id %>?_method=DELETE" method="POST" style="display:inline">
                           <input type="hidden" name="_method" value="DELETE">
                           <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete?')" <%= rowUser.username === 'admin' ? 'disabled data-bs-toggle="tooltip" data-bs-title="Cannot delete admin user"' : '' %>>
@@ -166,7 +166,7 @@
                       </div>
                     </div>
                   </div>
-                  <% if (hasPermission && hasPermission(user, 'user.update')) { %>
+                  <% if (hasPermission('user.update')) { %>
                   <!-- User Edit Modal -->
                   <div class="modal fade" id="userEditModal-<%= rowUser.id %>" tabindex="-1" aria-labelledby="userEditModalLabel-<%= rowUser.id %>" aria-hidden="true">
                     <div class="modal-dialog">

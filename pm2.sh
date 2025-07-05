@@ -4,38 +4,44 @@
 # Detect actual user (in case running with sudo)
 ACTUAL_USER=${SUDO_USER:-$USER}
 
+# Prevent running as root
+if [ "$EUID" -eq 0 ]; then
+  echo "❌ Please run this script as a normal user, not with sudo or as root."
+  exit 1
+fi
+
 case "$1" in
   start)
     echo "🚀 Starting Open ASM with PM2 (user: $ACTUAL_USER)..."
-    sudo -u $ACTUAL_USER pm2 start ecosystem.config.json --env production
+    pm2 start ecosystem.config.json --env production
     ;;
   stop)
     echo "⏹️  Stopping Open ASM..."
-    sudo -u $ACTUAL_USER pm2 stop open-asm
+    pm2 stop open-asm
     ;;
   restart)
     echo "🔄 Restarting Open ASM..."
-    sudo -u $ACTUAL_USER pm2 restart open-asm
+    pm2 restart open-asm
     ;;
   reload)
     echo "♻️  Reloading Open ASM (zero downtime)..."
-    sudo -u $ACTUAL_USER pm2 reload open-asm
+    pm2 reload open-asm
     ;;
   delete)
     echo "🗑️  Deleting Open ASM from PM2..."
-    sudo -u $ACTUAL_USER pm2 delete open-asm
+    pm2 delete open-asm
     ;;
   status)
     echo "📊 PM2 Status (user: $ACTUAL_USER):"
-    sudo -u $ACTUAL_USER pm2 status
+    pm2 status
     ;;
   logs)
     echo "📄 PM2 Logs:"
-    sudo -u $ACTUAL_USER pm2 logs open-asm --lines 50
+    pm2 logs open-asm --lines 50
     ;;
   monit)
     echo "📊 PM2 Monitor:"
-    sudo -u $ACTUAL_USER pm2 monit
+    pm2 monit
     ;;
   *)
     echo "Usage: $0 {start|stop|restart|reload|delete|status|logs|monit}"

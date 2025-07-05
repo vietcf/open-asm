@@ -1,14 +1,23 @@
 #!/bin/bash
 
+# Prevent running as root
+if [ "$EUID" -eq 0 ]; then
+  echo "❌ Please run this script as a normal user, not with sudo or as root."
+  exit 1
+fi
+
+# Determine the user to run user-level commands as
+RUN_AS_USER=${SUDO_USER:-$USER}
+
 echo "🚀 Deploying Open ASM with HTTPS..."
 
-# 1. Install dependencies
+# 1. Install dependencies (as user)
 echo "📦 Installing dependencies..."
 npm install
 
-# Install PM2 globally
+# Install PM2 globally (as user)
 echo "⚡ Installing PM2..."
-sudo npm install -g pm2
+npm install -g pm2
 
 # 2. Install and setup Nginx
 echo "🔧 Installing and setting up Nginx..."
@@ -81,21 +90,20 @@ fi
 
 # 7. Start app with PM2
 echo "🚀 Starting app with PM2..."
-# Switch to actual user to start PM2 (avoid running as root)
-sudo -u $ACTUAL_USER pm2 start ecosystem.config.json --env production
+pm2 start ecosystem.config.json --env production
 
 # Save PM2 configuration and setup auto-restart for the actual user
-sudo -u $ACTUAL_USER pm2 save
-sudo -u $ACTUAL_USER pm2 startup
+pm2 save
+pm2 startup
 echo "⚠️  Copy and run the command above to enable PM2 auto-startup for user: $ACTUAL_USER"
 
 # 8. Check status
 echo "📊 Service status:"
 sudo systemctl status nginx --no-pager
 echo ""
-echo "📊 PM2 status (for user $ACTUAL_USER):"
-sudo -u $ACTUAL_USER pm2 status
-sudo -u $ACTUAL_USER pm2 logs open-asm --lines 10
+echo "📊 PM2 status (for user $RUN_AS_USER):"
+pm2 status
+pm2 logs open-asm --lines 10
 
 echo "✅ Deployment completed!"
 echo "🌐 Your app should be available at: https://your-domain.com"
