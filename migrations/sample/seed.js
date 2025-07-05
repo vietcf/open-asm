@@ -1,4 +1,5 @@
-const { pool } = require('../config/config');
+const path = require('path');
+const { pool } = require(path.resolve(__dirname, '../../config/config.js'));
 const seedUsers = require('./seed_users');
 const seedIpAddresses = require('./seed_ip_addresses');
 const seedSubnets = require('./seed_subnets');
@@ -31,13 +32,13 @@ async function seedData() {
     await seedUnits(pool);
     await seedContacts(pool);
     await seedServers(pool);
+    await seedTags(pool);
     await seedIpAddresses(pool);
     await seedDomains(pool);
     await seedSubnets(pool);
     await seedPlatforms(pool);
     await seedSystems(pool);
     await seedDeviceTypes(pool);
-    await seedTags(pool);
     await seedDevices(pool);
     // Privilege tables: seed roles and permissions first, then users, then user_roles and role_permissions
     await seedPrivRoles(pool);

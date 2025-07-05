@@ -1,51 +1,41 @@
-// Agent model for PostgreSQL
-const { pool } = require('../../config/config');
+
+import { pool } from '../../config/config.js';
 
 class Agent {
-  static async countAll(search = '') {
-    let sql = 'SELECT COUNT(*) FROM agents';
-    let params = [];
-    if (search) {
-      sql += ' WHERE LOWER(name) LIKE $1 OR LOWER(version) LIKE $1';
-      params.push(`%${search}%`);
-    }
-    const res = await pool.query(sql, params);
-    return parseInt(res.rows[0].count, 10);
-  }
-
-  static async findPage(page = 1, pageSize = 10, search = '') {
-    const offset = (page - 1) * pageSize;
-    let sql = 'SELECT * FROM agents';
-    let params = [];
-    if (search) {
-      sql += ' WHERE LOWER(name) LIKE $1 OR LOWER(version) LIKE $1';
-      params.push(`%${search}%`);
-    }
-    sql += ' ORDER BY id LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
-    params.push(pageSize, offset);
-    const res = await pool.query(sql, params);
-    return res.rows;
-  }
-
-  static async createAgent({ name, version, description }) {
+  // Create a new agent
+  static async create({ name, version, description }) {
     if (!name || !name.trim()) throw new Error('Agent Name is required!');
-    const res = await pool.query(
+    const result = await pool.query(
       'INSERT INTO agents (name, version, description) VALUES ($1, $2, $3) RETURNING *',
       [name, version, description]
     );
-    return res.rows[0];
+    return result.rows[0];
   }
 
-  static async updateAgent(id, { name, version, description }) {
+  // Get all agents
+  static async findAll() {
+    const result = await pool.query('SELECT * FROM agents ORDER BY id');
+    return result.rows;
+  }
+
+  // Get an agent by id
+  static async findById(id) {
+    const result = await pool.query('SELECT * FROM agents WHERE id = $1', [id]);
+    return result.rows[0];
+  }
+
+  // Update an agent
+  static async update(id, { name, version, description }) {
     if (!name || !name.trim()) throw new Error('Agent Name is required!');
-    const res = await pool.query(
+    const result = await pool.query(
       'UPDATE agents SET name = $1, version = $2, description = $3 WHERE id = $4 RETURNING *',
       [name, version, description, id]
     );
-    return res.rows[0];
+    return result.rows[0];
   }
 
-  static async deleteAgent(id) {
+  // Delete an agent
+  static async delete(id) {
     try {
       const res = await pool.query('DELETE FROM agents WHERE id = $1 RETURNING *', [id]);
       if (res.rowCount === 0) {
@@ -60,8 +50,35 @@ class Agent {
     }
   }
 
+  // Count all agents (optionally with search)
+  static async countAll(search = '') {
+    let sql = 'SELECT COUNT(*) FROM agents';
+    let params = [];
+    if (search) {
+      sql += ' WHERE LOWER(name) LIKE $1 OR LOWER(version) LIKE $1';
+      params.push(`%${search}%`);
+    }
+    const res = await pool.query(sql, params);
+    return parseInt(res.rows[0].count, 10);
+  }
+
+  // Get a page of agents (optionally with search)
+  static async findPage(page = 1, pageSize = 10, search = '') {
+    const offset = (page - 1) * pageSize;
+    let sql = 'SELECT * FROM agents';
+    let params = [];
+    if (search) {
+      sql += ' WHERE LOWER(name) LIKE $1 OR LOWER(version) LIKE $1';
+      params.push(`%${search}%`);
+    }
+    sql += ' ORDER BY id LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
+    params.push(pageSize, offset);
+    const res = await pool.query(sql, params);
+    return res.rows;
+  }
+
   // Filtered agent list with pagination, search
-  static async filterList({ search = '', page = 1, pageSize = 10 }) {
+  static async findFilteredList({ search = '', page = 1, pageSize = 10 }) {
     const offset = (page - 1) * pageSize;
     let sql = 'SELECT * FROM agents';
     let params = [];
@@ -76,7 +93,7 @@ class Agent {
   }
 
   // Count for filtered agent list
-  static async filterCount({ search = '' }) {
+  static async countFiltered({ search = '' }) {
     let sql = 'SELECT COUNT(*) FROM agents';
     let params = [];
     if (search) {
@@ -87,10 +104,11 @@ class Agent {
     return parseInt(res.rows[0].count, 10);
   }
 
+  // Check if an agent exists by id
   static async exists(id) {
     const res = await pool.query('SELECT 1 FROM agents WHERE id = $1', [id]);
     return res.rowCount > 0;
   }
 }
 
-module.exports = Agent;
+export default Agent;

@@ -15,7 +15,7 @@ exports.listIpAddresses = async (req, res) => {
     const filterContacts = contacts ? (Array.isArray(contacts) ? contacts.map(Number) : [Number(contacts)]) : [];
     const filterStatus = status || '';
     const filterSearch = search || '';
-    const ipList = await IpAddress.filterList({
+    const ipList = await IpAddress.getFilteredList({
       search: filterSearch,
       tags: filterTags,
       status: filterStatus,
@@ -24,7 +24,7 @@ exports.listIpAddresses = async (req, res) => {
       page: parseInt(page, 10) || 1,
       pageSize: parseInt(pageSize, 10) || 10
     });
-    const total = await IpAddress.filterCount({
+    const total = await IpAddress.getFilteredCount({
       search: filterSearch,
       tags: filterTags,
       status: filterStatus,
@@ -40,7 +40,7 @@ exports.listIpAddresses = async (req, res) => {
 // Get a single IP address by id
 exports.getIpAddress = async (req, res) => {
   try {
-    const ip = await IpAddress.findById(req.params.id);
+    const ip = await IpAddress.getById(req.params.id);
     if (!ip) return res.status(404).json({ error: 'IP address not found' });
     res.json(ip);
   } catch (err) {
@@ -107,8 +107,10 @@ exports.createIpAddress = async (req, res) => {
     // --- Validation block end ---
 
     // Create IP address
-    const ip = await IpAddress.create({ address, description, status, updated_by: req.user ? req.user.username : null });
-    // TODO: Add tags, contacts, systems relations if needed
+    const ip = await IpAddress.createIpAddress({ address, description, status, updated_by: req.user ? req.user.username : null });
+    if (tags) await IpAddress.setTags(ip.id, tags);
+    if (contacts) await IpAddress.setContacts(ip.id, contacts);
+    if (systems) await IpAddress.setSystems(ip.id, systems);
     res.status(201).json(ip);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -122,7 +124,7 @@ exports.updateIpAddress = async (req, res) => {
     let { description, status, tags, contacts, systems } = req.body;
 
     // Fetch current IP address
-    const currentIp = await IpAddress.findById(id);
+    const currentIp = await IpAddress.getById(id);
     if (!currentIp) return res.status(404).json({ error: 'IP address not found' });
 
     // Prepare update object
@@ -190,22 +192,12 @@ exports.updateIpAddress = async (req, res) => {
     updateObj.updated_by = req.user ? req.user.username : null;
 
     // Update IP address (chỉ update các trường chính)
-    const ip = await IpAddress.update(id, updateObj);
+    const ip = await IpAddress.setIpAddress(id, updateObj);
     if (!ip) return res.status(404).json({ error: 'IP address not found' });
-
-    // Cập nhật bảng liên kết nếu có truyền lên
-    if (tags !== undefined) {
-      await IpAddress.setTags(id, tags);
-    }
-    if (contacts !== undefined) {
-      await IpAddress.setContacts(id, contacts);
-    }
-    if (systems !== undefined) {
-      await IpAddress.setSystems(id, systems);
-    }
-
-    // Lấy lại bản ghi đã cập nhật (bao gồm liên kết nếu findById có join)
-    const updatedIp = await IpAddress.findById(id);
+    if (tags !== undefined) await IpAddress.setTags(id, tags);
+    if (contacts !== undefined) await IpAddress.setContacts(id, contacts);
+    if (systems !== undefined) await IpAddress.setSystems(id, systems);
+    const updatedIp = await IpAddress.getById(id);
     res.json(updatedIp);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -216,7 +208,7 @@ exports.updateIpAddress = async (req, res) => {
 exports.deleteIpAddress = async (req, res) => {
   try {
     const id = req.params.id;
-    await IpAddress.delete(id);
+    await IpAddress.deleteIpAddress(id);
     res.status(204).send();
   } catch (err) {
     res.status(500).json({ error: err.message });

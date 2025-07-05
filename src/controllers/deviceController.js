@@ -1,7 +1,4 @@
 const config = require('../../config/config');
-const ejs = require('ejs');
-const fs = require('fs');
-const path = require('path');
 const Platform = require('../models/Platform');
 const DeviceType = require('../models/DeviceType');
 const Device = require('../models/Device');
@@ -27,13 +24,7 @@ exports.listDevice = async (req, res) => {
     const page = parseInt(req.query.page, 10) || 1;
     let pageSize = parseInt(req.query.page_size, 10);
     let allowedPageSizes = [10, 20, 50];
-    const configPageSize = await Configuration.findByKey('page_size');
-    if (configPageSize && typeof configPageSize.value === 'string') {
-      allowedPageSizes = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = allowedPageSizes[0];
-    } else {
-      if (!pageSize) pageSize = 10;
-    }
+    if (!pageSize) pageSize = 10;
     const deviceList = await Device.filterList({ ...filterParams, page, pageSize });
     const totalCount = await Device.filterCount({ ...filterParams });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -48,41 +39,25 @@ exports.listDevice = async (req, res) => {
     let tagsForView = req.query['tags[]'] || req.query.tags || [];
     if (typeof tagsForView === 'string') tagsForView = [tagsForView];
     tagsForView = tagsForView.map(String);
-    const content = require('ejs').render(
-      require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/device/device_list.ejs'), 'utf8'),
-      {
-        deviceList,
-        search: filterParams.search,
-        device_type_id: req.query.device_type_id || '',
-        tags: tagsForView,
-        platform_id: req.query.platform_id,
-        location: req.query.location,
-        page,
-        pageSize,
-        totalPages,
-        errorMessage,
-        successMessage,
-        totalCount,
-        startItem,
-        endItem,
-        allowedPageSizes,
-        user: req.session.user,
-        hasPermission: req.app.locals.hasPermission,
-        locationOptions
-      }
-    );
-    // Fetch site_name from Configuration
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    return res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: content,
+    res.render('pages/device/device_list', {
+      deviceList,
+      search: filterParams.search,
+      device_type_id: req.query.device_type_id || '',
+      tags: tagsForView,
+      platform_id: req.query.platform_id,
+      location: req.query.location,
+      page,
+      pageSize,
+      totalPages,
+      errorMessage,
+      successMessage,
+      totalCount,
+      startItem,
+      endItem,
+      allowedPageSizes,
+      locationOptions,
       title: 'Device List',
-      activeMenu: 'device',
-      user: req.session.user,
-      siteName
+      activeMenu: 'device'
     });
   } catch (err) {
     console.error('Error loading devices:', err);
@@ -99,22 +74,12 @@ exports.addDeviceForm = async (req, res) => {
     // Đổi require sang file mới
     const deviceConfig = require('../../config/deviceOptions');
     const locationOptions = deviceConfig.locationOptions;
-    const content = require('ejs').render(
-      require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/device/device_add.ejs'), 'utf8'),
-      { error, success, locationOptions }
-    );
-    // Fetch site_name from Configuration
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: content,
+    res.render('pages/device/device_add', {
+      error,
+      success,
+      locationOptions,
       title: 'Add Device',
-      activeMenu: 'device',
-      user: req.session.user,
-      siteName
+      activeMenu: 'device'
     });
   } catch (err) {
     res.status(500).send('Error loading add device form: ' + err.message);
@@ -136,29 +101,15 @@ exports.editDeviceForm = async (req, res) => {
     // Đổi require sang file mới
     const deviceConfig = require('../../config/deviceOptions');
     const locationOptions = deviceConfig.locationOptions;
-    const content = require('ejs').render(
-      require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/device/device_edit.ejs'), 'utf8'),
-      {
-        device,
-        error,
-        success,
-        selectedTags: device.selectedTags,
-        selectedContacts: device.selectedContacts,
-        locationOptions
-      }
-    );
-    // Fetch site_name from Configuration
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: content,
+    res.render('pages/device/device_edit', {
+      device,
+      error,
+      success,
+      selectedTags: device.selectedTags,
+      selectedContacts: device.selectedContacts,
+      locationOptions,
       title: 'Edit Device',
-      activeMenu: 'device',
-      user: req.session.user,
-      siteName
+      activeMenu: 'device'
     });
   } catch (err) {
     res.status(500).send('Error loading edit device form: ' + err.message);
@@ -396,13 +347,7 @@ exports.listPlatform = async (req, res) => {
     let pageSize = parseInt(req.query.pageSize, 10);
     // Load allowed page sizes from configuration
     let allowedPageSizes = [10, 20, 50];
-    const configPageSize = await Configuration.findByKey('page_size');
-    if (configPageSize && typeof configPageSize.value === 'string') {
-      allowedPageSizes = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = allowedPageSizes[0];
-    } else {
-      if (!pageSize) pageSize = 10;
-    }
+    if (!pageSize) pageSize = 10;
     let platformList, totalCount;
     if (search) {
       totalCount = await Platform.searchCount(search);
@@ -414,34 +359,18 @@ exports.listPlatform = async (req, res) => {
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const errorMessage = req.query.error || null;
     const successMessage = req.flash('success')[0] || req.query.success || null;
-    const content = ejs.render(
-      fs.readFileSync(path.join(__dirname, '../../public/html/pages/device/device_platform.ejs'), 'utf8'),
-      {
-        platformList,
-        search,
-        page,
-        pageSize,
-        totalPages,
-        totalCount,
-        errorMessage,
-        successMessage,
-        allowedPageSizes,
-        user: req.session.user,
-        hasPermission: req.app.locals.hasPermission
-      }
-    );
-    // Fetch site_name from Configuration
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    return res.render('layouts/layout', {
-      cssPath: config.cssPath,
-      jsPath: config.jsPath,
-      imgPath: config.imgPath,
-      body: content,
+    res.render('pages/device/device_platform', {
+      platformList,
+      search,
+      page,
+      pageSize,
+      totalPages,
+      totalCount,
+      errorMessage,
+      successMessage,
+      allowedPageSizes,
       title: 'Platform List',
-      activeMenu: 'device-platform',
-      user: req.session.user,
-      siteName
+      activeMenu: 'device-platform'
     });
   } catch (err) {
     console.error('Error loading platforms:', err);
@@ -492,13 +421,7 @@ exports.listDeviceType = async (req, res) => {
     const page = parseInt(req.query.page, 10) || 1;
     let pageSize = parseInt(req.query.pageSize, 10);
     let allowedPageSizes = [10, 20, 50];
-    const configPageSize = await Configuration.findByKey('page_size');
-    if (configPageSize && typeof configPageSize.value === 'string') {
-      allowedPageSizes = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = allowedPageSizes[0];
-    } else {
-      if (!pageSize) pageSize = 10;
-    }
+    if (!pageSize) pageSize = 10;
     // Pagination
     const offset = (page - 1) * pageSize;
     let deviceTypeList, totalCount;
@@ -518,36 +441,20 @@ exports.listDeviceType = async (req, res) => {
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
     const errorMessage = req.flash('error')[0] || req.query.error || null;
-    const successMessage = req.flash('success')[0] || req.query.success || null;
-    const content = ejs.render(
-      fs.readFileSync(path.join(__dirname, '../../public/html/pages/device/device_type_list.ejs'), 'utf8'),
-      {
-        deviceTypeList,
-        search,
-        page,
-        pageSize,
-        totalPages,
-        totalCount,
-        startItem,
-        endItem,
-        errorMessage,
-        successMessage,
-        allowedPageSizes,
-        user: req.session.user,
-        hasPermission: req.app.locals.hasPermission
-      }
-    );
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    return res.render('layouts/layout', {
-      cssPath: config.cssPath,
-      jsPath: config.jsPath,
-      imgPath: config.imgPath,
-      body: content,
+    const successMessage = req.flash('success')[0] || req.query.success || null;return res.render('pages/device/device_type_list', {
+      deviceTypeList,
+      search,
+      page,
+      pageSize,
+      totalPages,
+      totalCount,
+      startItem,
+      endItem,
+      errorMessage,
+      successMessage,
+      allowedPageSizes,
       title: 'Device Type List',
-      activeMenu: 'device-type',
-      user: req.session.user,
-      siteName
+      activeMenu: 'device-type'
     });
   } catch (err) {
     console.error('Error loading device types:', err);

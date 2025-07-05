@@ -2,7 +2,7 @@
   <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/network/ip-address" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
     <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search IP or Description..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
     <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
-      <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+      <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
         <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
       <% }) %>
     </select>
@@ -10,7 +10,7 @@
   </form>
   <div class="row mb-3">
     <div class="col-12 d-flex justify-content-end align-items-center">
-      <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addIpModal" <% if (!hasPermission(user, 'ip_address.create')) { %>style="display:none"<% } %>>
+      <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addIpModal" <% if (!hasPermission('ip_address.create')) { %>style="display:none"<% } %>>
         <i class="bi bi-plus"></i> Add IP
       </button>
       <!-- Add IP Modal -->
@@ -288,9 +288,9 @@
                     </td>
                     <td class="text-end">
                       <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#ipDetailModal-<%= ip.id %>"><i class="bi bi-eye"></i></a>
-                      <button type="button" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#ipEditModal-<%= ip.id %>" <% if (!hasPermission(user, 'ip_address.update')) { %>style="display:none"<% } %>><i class="bi bi-pencil"></i></button>
+                      <button type="button" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#ipEditModal-<%= ip.id %>" <% if (!hasPermission('ip_address.update')) { %>style="display:none"<% } %>><i class="bi bi-pencil"></i></button>
                       <form action="/network/ip-address/<%= ip.id %>?_method=DELETE" method="POST" style="display:inline">
-                        <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure?')" <% if (!hasPermission(user, 'ip_address.delete')) { %>style="display:none"<% } %>><i class="bi bi-trash"></i></button>
+                        <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure?')" <% if (!hasPermission('ip_address.delete')) { %>style="display:none"<% } %>><i class="bi bi-trash"></i></button>
                       </form>
                     </td>
                   </tr>

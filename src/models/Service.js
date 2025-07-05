@@ -1,7 +1,37 @@
-// Service model for PostgreSQL
-const { pool } = require('../../config/config');
+
+import { pool } from '../../config/config.js';
 
 class Service {
+  // Create a new service
+  static async create({ name, description }) {
+    const result = await pool.query('INSERT INTO services (name, description) VALUES ($1, $2) RETURNING *', [name, description]);
+    return result.rows[0];
+  }
+
+  // Get all services
+  static async findAll() {
+    const result = await pool.query('SELECT * FROM services ORDER BY id');
+    return result.rows;
+  }
+
+  // Get a service by id
+  static async findById(id) {
+    const result = await pool.query('SELECT * FROM services WHERE id = $1', [id]);
+    return result.rows[0];
+  }
+
+  // Update a service
+  static async update(id, { name, description }) {
+    const result = await pool.query('UPDATE services SET name = $1, description = $2 WHERE id = $3 RETURNING *', [name, description, id]);
+    return result.rows[0];
+  }
+
+  // Delete a service
+  static async delete(id) {
+    await pool.query('DELETE FROM services WHERE id = $1', [id]);
+  }
+
+  // Count all services (optionally with search)
   static async countAll(search = '') {
     let sql = 'SELECT COUNT(*) FROM services';
     let params = [];
@@ -13,6 +43,7 @@ class Service {
     return parseInt(res.rows[0].count, 10);
   }
 
+  // Get a page of services (optionally with search)
   static async findPage(page = 1, pageSize = 10, search = '') {
     const offset = (page - 1) * pageSize;
     let sql = 'SELECT * FROM services';
@@ -27,22 +58,11 @@ class Service {
     return res.rows;
   }
 
-  static async createService({ name, description }) {
-    return pool.query('INSERT INTO services (name, description) VALUES ($1, $2)', [name, description]);
-  }
-
-  static async updateService(id, { name, description }) {
-    return pool.query('UPDATE services SET name = $1, description = $2 WHERE id = $3', [name, description, id]);
-  }
-
-  static async deleteService(id) {
-    return pool.query('DELETE FROM services WHERE id = $1', [id]);
-  }
-
+  // Check if a service exists by id
   static async exists(id) {
     const res = await pool.query('SELECT 1 FROM services WHERE id = $1', [id]);
     return res.rowCount > 0;
   }
 }
 
-module.exports = Service;
+export default Service;

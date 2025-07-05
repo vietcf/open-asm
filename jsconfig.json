@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "esnext",
+    "baseUrl": "./src",
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "checkJs": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "test", "public", "migrations", "logs"]
+}

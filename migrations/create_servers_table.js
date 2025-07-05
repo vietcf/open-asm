@@ -6,6 +6,7 @@ module.exports = async (db) => {
     CREATE TABLE IF NOT EXISTS servers (
       id SERIAL PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
+      description TEXT,
       os_id INTEGER,
       location TEXT,
       type TEXT,
