@@ -321,10 +321,26 @@ class Server {
     return server;
   }
 
-   static async exists(id) {
+  static async exists(id) {
     const res = await pool.query('SELECT 1 FROM servers WHERE id = $1', [id]);
     return res.rowCount > 0;
   }
+
+  // For select2 AJAX: get servers by search (id, name)
+  static async select2Search({ search = '', limit = 20 }) {
+    let sql = 'SELECT id, name FROM servers';
+    let params = [];
+    if (search) {
+      sql += ' WHERE LOWER(name) LIKE $1';
+      params.push(`%${search}%`);
+    }
+    sql += ' ORDER BY name LIMIT $' + (params.length + 1);
+    params.push(limit);
+    const result = await pool.query(sql, params);
+    // Select2 expects: { results: [ { id, text } ] }
+    return result.rows.map(row => ({ id: row.id, text: row.name }));
+  }
+
 }
 
 export default Server;

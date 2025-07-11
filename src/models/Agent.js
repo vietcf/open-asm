@@ -109,6 +109,21 @@ class Agent {
     const res = await pool.query('SELECT 1 FROM agents WHERE id = $1', [id]);
     return res.rowCount > 0;
   }
+
+  // For select2 AJAX: get agents by search (id, name, version)
+  static async select2Search({ search = '', limit = 20 }) {
+    let sql = 'SELECT id, name, version FROM agents';
+    let params = [];
+    if (search) {
+      sql += ' WHERE LOWER(name) LIKE $1 OR LOWER(version) LIKE $1';
+      params.push(`%${search.toLowerCase()}%`);
+    }
+    sql += ' ORDER BY name LIMIT $' + (params.length + 1);
+    params.push(limit);
+    const result = await pool.query(sql, params);
+    return result.rows.map(row => ({ id: row.id, text: row.version ? `${row.name} (${row.version})` : row.name }));
+  }
+
 }
 
 export default Agent;

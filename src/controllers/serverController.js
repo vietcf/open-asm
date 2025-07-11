@@ -5,7 +5,6 @@ import Server from '../models/Server.js';
 import IpAddress from '../models/IpAddress.js';
 import Service from '../models/Service.js';
 import Agent from '../models/Agent.js';
-import Configuration from '../models/Configuration.js';
 import serverOptions from '../../config/serverOptions.js';
 import ExcelJS from 'exceljs';
 
@@ -400,8 +399,8 @@ serverController.listAgent = async (req, res) => {
     const search = req.query.search ? req.query.search.trim() : '';
 
     // Truy vấn agent list
-    const agentList = await require('../models/Agent').filterList({ search, page, pageSize });
-    const totalCount = await require('../models/Agent').filterCount({ search });
+    const agentList = await Agent.findFilteredList({ search, page, pageSize });
+    const totalCount = await Agent.countFiltered({ search });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const success = req.flash('success')[0];
     const error = req.flash('error')[0];res.render('pages/server/agent_list', {
@@ -428,7 +427,7 @@ serverController.createAgent = async (req, res) => {
       req.flash('error', 'Agent Name is required!');
       return res.redirect('/server/agent/list');
     }
-    await Agent.createAgent({ name, version, description });
+    await Agent.create({ name, version, description });
     req.flash('success', 'Agent added successfully');
     res.redirect('/server/agent/list');
   } catch (err) {
@@ -449,7 +448,7 @@ serverController.updateAgent = async (req, res) => {
       req.flash('error', 'Agent Name is required!');
       return res.redirect('/server/agent/list');
     }
-    await Agent.updateAgent(id, { name, version, description });
+    await Agent.update(id, { name, version, description });
     req.flash('success', 'Agent updated successfully');
     res.redirect('/server/agent/list');
   } catch (err) {
@@ -465,7 +464,7 @@ serverController.updateAgent = async (req, res) => {
 serverController.deleteAgent = async (req, res) => {
   try {
     const id = req.params.id;
-    await Agent.deleteAgent(id);
+    await Agent.delete(id);
     req.flash('success', 'Agent deleted successfully');
     res.redirect('/server/agent/list');
   } catch (err) {
@@ -479,15 +478,7 @@ serverController.deleteAgent = async (req, res) => {
 serverController.apiSearchService = async (req, res) => {
   try {
     const search = req.query.search ? req.query.search.trim().toLowerCase() : '';
-    let sql = 'SELECT id, name FROM services';
-    let params = [];
-    if (search) {
-      sql += ' WHERE LOWER(name) LIKE $1';
-      params.push(`%${search}%`);
-    }
-    sql += ' ORDER BY name LIMIT 20';
-    const result = await pool.query(sql, params);
-    const data = result.rows.map(row => ({ id: row.id, text: row.name }));
+    const data = await Service.select2Search({ search, limit: 20 });
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: 'Error loading services', detail: err.message });
@@ -498,15 +489,7 @@ serverController.apiSearchService = async (req, res) => {
 serverController.apiSearchAgent = async (req, res) => {
   try {
     const search = req.query.search ? req.query.search.trim().toLowerCase() : '';
-    let sql = 'SELECT id, name, version FROM agents';
-    let params = [];
-    if (search) {
-      sql += ' WHERE LOWER(name) LIKE $1 OR LOWER(version) LIKE $1';
-      params.push(`%${search}%`);
-    }
-    sql += ' ORDER BY name LIMIT 20';
-    const result = await pool.query(sql, params);
-    const data = result.rows.map(row => ({ id: row.id, text: row.version ? `${row.name} (${row.version})` : row.name }));
+    const data = await Agent.select2Search({ search, limit: 20 });
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: 'Error loading agents', detail: err.message });
@@ -517,16 +500,7 @@ serverController.apiSearchAgent = async (req, res) => {
 serverController.apiSearchServer = async (req, res) => {
   try {
     const search = req.query.search ? req.query.search.trim().toLowerCase() : '';
-    let sql = 'SELECT id, name FROM servers';
-    let params = [];
-    if (search) {
-      sql += ' WHERE LOWER(name) LIKE $1';
-      params.push(`%${search}%`);
-    }
-    sql += ' ORDER BY name LIMIT 20';
-    const result = await pool.query(sql, params);
-    // Select2 expects: { results: [ { id, text } ] }
-    const data = result.rows.map(row => ({ id: row.id, text: row.name }));
+    const data = await Server.select2Search({ search, limit: 20 });
     res.json({ results: data });
   } catch (err) {
     res.status(500).json({ error: 'Error loading servers', detail: err.message });

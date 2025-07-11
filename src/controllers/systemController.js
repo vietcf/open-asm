@@ -1,17 +1,18 @@
-const path = require('path');
-const fs = require('fs');
+import path from 'path';
+import fs from 'fs';
+import System from '../models/System.js';
+import Unit from '../models/Unit.js';
+import Contact from '../models/Contact.js';
+import Domain from '../models/Domain.js';
+import FileUpload from '../models/FileUpload.js';
+import Configuration from '../models/Configuration.js';
+import systemOptions from '../../config/systemOptions.js';
+import { pool } from '../../config/config.js';
 
-const System = require('../models/System');
-const Unit = require('../models/Unit');
-const Contact = require('../models/Contact');
-const Domain = require('../models/Domain');
-const FileUpload = require('../models/FileUpload');
-const Configuration = require('../models/Configuration');
-const systemOptions = require('../../config/systemOptions');
-const pool = require('../../config/config').pool;
+const systemController = {};
 
 // System list page (with DB)
-exports.listSystem = async (req, res) => {
+systemController.listSystem = async (req, res) => {
   try {
     // Paging & search params
     const allowedPageSizes = res.locals.pageSizeOptions;
@@ -21,8 +22,8 @@ exports.listSystem = async (req, res) => {
     const search = req.query.search?.trim() || '';
 
     // Data
-    const systemList = await System.filterList({ search, page, pageSize });
-    const totalCount = await System.filterCount({ search });
+    const systemList = await System.findFilteredList({ search, page, pageSize });
+    const totalCount = await System.countFiltered({ search });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
@@ -42,8 +43,8 @@ exports.listSystem = async (req, res) => {
       endItem,
       success,
       error,
-      title: 'System',
-      activeMenu: 'system'
+      title: 'System Management',
+      activeMenu: 'system-management',
     });
   } catch (err) {
     res.status(500).send('Error loading systems: ' + err.message);
@@ -51,7 +52,7 @@ exports.listSystem = async (req, res) => {
 };
 
 // Render edit system form
-exports.editSystemForm = async (req, res) => {
+systemController.editSystemForm = async (req, res) => {
   try {
     const id = req.params.id;
     const system = await System.findById(id);
@@ -100,7 +101,7 @@ exports.editSystemForm = async (req, res) => {
 };
 
 // Handle system update
-exports.updateSystem = async (req, res) => {
+systemController.updateSystem = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -237,7 +238,7 @@ exports.updateSystem = async (req, res) => {
 };
 
 // Render add system form
-exports.addSystemForm = async (req, res) => {
+systemController.addSystemForm = async (req, res) => {
   try {
     res.render('pages/system/system_add', {
       error: null, // Always pass error as null, no error message on add form
@@ -251,7 +252,7 @@ exports.addSystemForm = async (req, res) => {
 };
 
 // Handle add system
-exports.addSystem = async (req, res) => {
+systemController.addSystem = async (req, res) => {
   const pool = require('../../config/config').pool;
   const client = await pool.connect();
   try {
@@ -377,7 +378,7 @@ exports.addSystem = async (req, res) => {
 };
 
 // Delete system and related links
-exports.deleteSystem = async (req, res) => {
+systemController.deleteSystem = async (req, res) => {
   const pool = require('../../config/config').pool;
   const client = await pool.connect();
   try {
@@ -416,7 +417,7 @@ exports.deleteSystem = async (req, res) => {
 };
 
 // API for select2 ajax system search
-exports.apiSystemSearch = async (req, res) => {
+systemController.apiSystemSearch = async (req, res) => {
   try {
     const search = req.query.search ? req.query.search.trim() : '';
     // Move query logic to model for cleaner controller
@@ -426,3 +427,5 @@ exports.apiSystemSearch = async (req, res) => {
     res.status(500).json({ error: 'Error loading systems', detail: err.message });
   }
 };
+
+export default systemController;

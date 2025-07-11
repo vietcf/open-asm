@@ -50,4 +50,4 @@ const Role = {
   }
 };
 
-export { Role };
+export default Role;

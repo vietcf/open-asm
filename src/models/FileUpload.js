@@ -1,4 +1,4 @@
-const { pool } = require('../../config/config');
+import { pool } from '../../config/config.js';
 
 const FileUpload = {
   async create({ object_type, object_id, original_name, file_path, mime_type, size, uploaded_by }) {
@@ -52,4 +52,4 @@ const FileUpload = {
   }
 };
 
-module.exports = FileUpload;
+export default FileUpload;

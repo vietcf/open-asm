@@ -2,7 +2,7 @@
 // Middleware to load permissions for the current user (by role_id) and attach to req.permissions
 // Uses in-memory cache for role-permissions mapping
 
-import { Permission } from '../models/Permission.js';
+import Permission from '../models/Permission.js';
 
 // Simple in-memory cache (role_id -> permissions array)
 const rolePermissionsCache = {};

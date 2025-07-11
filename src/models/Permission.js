@@ -80,4 +80,4 @@ class Permission {
   }
 }
 
-export { Permission };
+export default Permission;

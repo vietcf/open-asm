@@ -1,7 +1,7 @@
 // config/deviceOptions.js
 // Centralized configuration for device module (location, ...)
 
-module.exports = {
+const deviceOptions = {
   locationOptions: [
     { value: 'DC', label: 'Data Center DR' },
     { value: 'DR', label: 'Data Center DC' },
@@ -10,3 +10,5 @@ module.exports = {
   ]
   // Add more device-specific config here as needed
 };
+
+export default deviceOptions;

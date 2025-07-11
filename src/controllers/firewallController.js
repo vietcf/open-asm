@@ -1,12 +1,13 @@
 // src/controllers/firewallController.js
-const config = require('../../config/config');
-const { pool } = config;
-const RuleFirewall = require('../models/RuleFirewall');
-const Configuration = require('../models/Configuration');
-const firewallConfig = require('../../config/firewallOptions');
-const ExcelJS = require('exceljs');
+import { config } from '../../config/config.js';
+import RuleFirewall from '../models/RuleFirewall.js';
+import Configuration from '../models/Configuration.js';
+import firewallConfig from '../../config/firewallOptions.js';
+import ExcelJS from 'exceljs';
 
-exports.ruleList = async (req, res) => {
+const firewallController = {};
+
+firewallController.ruleList = async (req, res) => {
   try {
     const search = req.query.search ? req.query.search.trim() : '';
     let page = parseInt(req.query.page, 10);
@@ -104,7 +105,7 @@ exports.ruleList = async (req, res) => {
   }
 };
 
-exports.addRule = async (req, res) => {
+firewallController.addRule = async (req, res) => {
   try {
     // Extract fields directly from request body
     let {
@@ -195,7 +196,7 @@ exports.addRule = async (req, res) => {
   }
 };
 
-exports.editRule = async (req, res) => {
+firewallController.editRule = async (req, res) => {
   const id = req.params.id;
   try {
     // Extract fields directly from request body
@@ -287,7 +288,7 @@ exports.editRule = async (req, res) => {
   }
 };
 
-exports.deleteRule = async (req, res) => {
+firewallController.deleteRule = async (req, res) => {
   const id = req.params.id;
   try {
     await RuleFirewall.delete(id);
@@ -303,7 +304,7 @@ exports.deleteRule = async (req, res) => {
   }
 };
 
-exports.exportRuleList = async (req, res) => {
+firewallController.exportRuleList = async (req, res) => {
   try {
     // Parse filters (reuse logic from ruleList)
     const search = req.query.search ? req.query.search.trim() : '';
@@ -401,7 +402,7 @@ exports.exportRuleList = async (req, res) => {
 };
 
 // Batch update work_order for selected rules
-exports.batchUpdateWorkOrder = async (req, res) => {
+firewallController.batchUpdateWorkOrder = async (req, res) => {
   //console.log("xxxx");
   try {
     
@@ -428,3 +429,5 @@ exports.batchUpdateWorkOrder = async (req, res) => {
     return res.status(500).json({ error: 'Failed to update Work Order. Please try again.' });
   }
 };
+
+export default firewallController;
