@@ -1,4 +1,3 @@
-
 import { pool } from '../../config/config.js';
 
 /**
@@ -160,6 +159,17 @@ class Unit {
     }
     sql += ' ORDER BY name LIMIT 20';
     const result = await pool.query(sql, params);
+    return result.rows;
+  }
+
+    /**
+   * Get multiple units by array of ids
+   * @param {Array<number|string>} ids
+   * @returns {Promise<Array>}
+   */
+  static async findByIds(ids) {
+    if (!Array.isArray(ids) || ids.length === 0) return [];
+    const result = await pool.query('SELECT * FROM units WHERE id = ANY($1)', [ids]);
     return result.rows;
   }
 

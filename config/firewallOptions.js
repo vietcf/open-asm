@@ -1,7 +1,7 @@
 // config/firewallOptions.js
 // Centralized configuration for firewall module
 
-module.exports = {
+const firewallOptions = {
   firewallNameOptions: [
     { value: 'USER', label: 'USER' },
     { value: 'SERVER', label: 'SERVER' },
@@ -34,3 +34,5 @@ module.exports = {
   ]
   // Add more firewall-specific config here as needed
 };
+
+export default firewallOptions;

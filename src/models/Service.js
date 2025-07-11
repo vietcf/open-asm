@@ -1,4 +1,3 @@
-
 import { pool } from '../../config/config.js';
 
 class Service {
@@ -62,6 +61,20 @@ class Service {
   static async exists(id) {
     const res = await pool.query('SELECT 1 FROM services WHERE id = $1', [id]);
     return res.rowCount > 0;
+  }
+
+  // For select2 AJAX: get services by search (id, name)
+  static async select2Search({ search = '', limit = 20 }) {
+    let sql = 'SELECT id, name FROM services';
+    let params = [];
+    if (search) {
+      sql += ' WHERE LOWER(name) LIKE $1';
+      params.push(`%${search}%`);
+    }
+    sql += ' ORDER BY name LIMIT $' + (params.length + 1);
+    params.push(limit);
+    const result = await pool.query(sql, params);
+    return result.rows.map(row => ({ id: row.id, text: row.name }));
   }
 }
 

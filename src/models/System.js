@@ -1,24 +1,18 @@
-const { pool } = require('../../config/config');
+
+import { pool } from '../../config/config.js';
 
 class System {
-  // AJAX API: Search systems for select2 (id, text)
-  static async apiSystemSearch({ search = '' }) {
-    const q = `%${search}%`;
-    // Only return id and text (system name or system_id)
+  // ===== CRUD METHODS =====
+  static async create({ system_id, name, level, department_id, alias, description, updated_by }) {
     const result = await pool.query(
-      `SELECT id, name, system_id FROM systems
-       WHERE name ILIKE $1 OR system_id ILIKE $1
-       ORDER BY name ASC
-       LIMIT 20`,
-      [q]
+      `INSERT INTO systems (system_id, name, level, department_id, alias, description, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [system_id, name, level, department_id, alias, description, updated_by]
     );
-    // Format for select2: [{ id, text }]
-    return result.rows.map(row => ({
-      id: row.id,
-      text: row.name ? `${row.name} (${row.system_id})` : row.system_id
-    }));
+    return result.rows[0];
   }
-  static async findPage(page = 1, pageSize = 10) {
+
+  static async findAll(page = 1, pageSize = 10) {
     const offset = (page - 1) * pageSize;
     const result = await pool.query(
       `SELECT s.*, u.name AS department_name,
@@ -34,11 +28,6 @@ class System {
       [pageSize, offset]
     );
     return result.rows;
-  }
-
-  static async countAll() {
-    const result = await pool.query('SELECT COUNT(*) FROM systems');
-    return parseInt(result.rows[0].count, 10);
   }
 
   static async findById(id) {
@@ -57,16 +46,7 @@ class System {
     return result.rows[0];
   }
 
-  static async create({ system_id, name, level, department_id, alias, description, updated_by }) {
-    const result = await pool.query(
-      `INSERT INTO systems (system_id, name, level, department_id, alias, description, updated_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [system_id, name, level, department_id, alias, description, updated_by]
-    );
-    return result.rows[0];
-  }
-
-  static async updateMain(id, { system_id, name, level, department_id, alias, description, updated_by }, client) {
+  static async update(id, { system_id, name, level, department_id, alias, description, updated_by }, client) {
     const executor = client || pool;
     const result = await executor.query(
       `UPDATE systems SET system_id=$1, name=$2, level=$3, department_id=$4, alias=$5, description=$6, updated_at=CURRENT_TIMESTAMP, updated_by=$7
@@ -76,98 +56,69 @@ class System {
     return result.rows[0];
   }
 
-  static async updateContacts(id, managers, client) {
-    const executor = client || pool;
-    await executor.query('DELETE FROM system_contact WHERE system_id = $1', [id]);
-    if (managers && managers.length > 0) {
-      for (const contactId of managers) {
-        await executor.query('INSERT INTO system_contact (system_id, contact_id) VALUES ($1, $2)', [id, contactId]);
-      }
-    }
-  }
-
-  static async updateIPs(id, ip_addresses, client) {
-    const executor = client || pool;
-    await executor.query('DELETE FROM system_ip WHERE system_id = $1', [id]);
-    if (ip_addresses && ip_addresses.length > 0) {
-      for (const ipId of ip_addresses) {
-        await executor.query('INSERT INTO system_ip (system_id, ip_id) VALUES ($1, $2)', [id, ipId]);
-      }
-    }
-  }
-
-  static async updateDomains(id, domains, client) {
-    const executor = client || pool;
-    await executor.query('DELETE FROM system_domain WHERE system_id = $1', [id]);
-    if (domains && domains.length > 0) {
-      for (const domainId of domains) {
-        await executor.query('INSERT INTO system_domain (system_id, domain_id) VALUES ($1, $2)', [id, domainId]);
-      }
-    }
-  }
-
-  static async updateTags(id, tags, client) {
-    const executor = client || pool;
-    await executor.query("DELETE FROM tag_object WHERE object_type = 'system' AND object_id = $1", [id]);
-    if (tags && tags.length > 0) {
-      for (const tagId of tags) {
-        await executor.query(
-          "INSERT INTO tag_object (tag_id, object_type, object_id) VALUES ($1, 'system', $2) ON CONFLICT DO NOTHING",
-          [tagId, id]
-        );
-      }
-    }
-  }
-
-  static async delete(id, client) {
+  static async remove(id, client) {
     const executor = client || pool;
     await executor.query('DELETE FROM systems WHERE id = $1', [id]);
   }
 
-  static async searchPage(search, page = 1, pageSize = 10) {
-    const offset = (page - 1) * pageSize;
-    const q = `%${search}%`;
-    const result = await pool.query(
-      `SELECT s.*, u.name AS department_name,
-        ARRAY(
-          SELECT c.name FROM system_contact sc
-          JOIN contacts c ON sc.contact_id = c.id
-          WHERE sc.system_id = s.id
-        ) AS managers
-       FROM systems s
-       LEFT JOIN units u ON s.department_id = u.id
-       WHERE s.name ILIKE $1 OR s.system_id ILIKE $1 OR EXISTS (SELECT 1 FROM unnest(s.alias) a WHERE a ILIKE $1)
-       ORDER BY s.id
-       LIMIT $2 OFFSET $3`,
-      [q, pageSize, offset]
-    );
-    return result.rows;
-  }
-
-  static async searchCount(search) {
-    const q = `%${search}%`;
-    const result = await pool.query(
-      `SELECT COUNT(*) FROM systems WHERE name ILIKE $1 OR system_id ILIKE $1 OR EXISTS (SELECT 1 FROM unnest(alias) a WHERE a ILIKE $1)`,
-      [q]
-    );
-    return parseInt(result.rows[0].count, 10);
-  }
-
-  // Gán tag cho hệ thống
-  static async setTags(systemId, tagIds) {
-    // Xóa hết tag cũ trong tag_object
-    await pool.query("DELETE FROM tag_object WHERE object_type = 'system' AND object_id = $1", [systemId]);
-    // Thêm tag mới
-    if (tagIds && tagIds.length > 0) {
-      for (const tagId of tagIds) {
-        await pool.query(
-          "INSERT INTO tag_object (tag_id, object_type, object_id) VALUES ($1, 'system', $2) ON CONFLICT DO NOTHING",
-          [tagId, systemId]
-        );
+  // ===== RELATIONSHIP/UTILITY METHODS =====
+  static async setContacts(systemId, managers, client) {
+    const executor = client || pool;
+    await executor.query('DELETE FROM system_contact WHERE system_id = $1', [systemId]);
+    if (managers && managers.length > 0) {
+      for (const contactId of managers) {
+        await executor.query('INSERT INTO system_contact (system_id, contact_id) VALUES ($1, $2)', [systemId, contactId]);
       }
     }
   }
-  // Lấy danh sách tag id của hệ thống
+
+  static async addContacts(systemId, managers, client) {
+    const executor = client || pool;
+    if (managers && managers.length > 0) {
+      for (const contactId of managers) {
+        await executor.query('INSERT INTO system_contact (system_id, contact_id) VALUES ($1, $2)', [systemId, contactId]);
+      }
+    }
+  }
+
+  static async setIPs(systemId, ip_addresses, client) {
+    const executor = client || pool;
+    await executor.query('DELETE FROM system_ip WHERE system_id = $1', [systemId]);
+    if (ip_addresses && ip_addresses.length > 0) {
+      for (const ipId of ip_addresses) {
+        await executor.query('INSERT INTO system_ip (system_id, ip_id) VALUES ($1, $2)', [systemId, ipId]);
+      }
+    }
+  }
+
+  static async addIPs(systemId, ip_addresses, client) {
+    const executor = client || pool;
+    if (ip_addresses && ip_addresses.length > 0) {
+      for (const ipId of ip_addresses) {
+        await executor.query('INSERT INTO system_ip (system_id, ip_id) VALUES ($1, $2)', [systemId, ipId]);
+      }
+    }
+  }
+
+  static async setDomains(systemId, domains, client) {
+    const executor = client || pool;
+    await executor.query('DELETE FROM system_domain WHERE system_id = $1', [systemId]);
+    if (domains && domains.length > 0) {
+      for (const domainId of domains) {
+        await executor.query('INSERT INTO system_domain (system_id, domain_id) VALUES ($1, $2)', [systemId, domainId]);
+      }
+    }
+  }
+
+  static async addDomains(systemId, domains, client) {
+    const executor = client || pool;
+    if (domains && domains.length > 0) {
+      for (const domainId of domains) {
+        await executor.query('INSERT INTO system_domain (system_id, domain_id) VALUES ($1, $2)', [systemId, domainId]);
+      }
+    }
+  }
+
   static async getTagIds(systemId) {
     const result = await pool.query(
       "SELECT tag_id FROM tag_object WHERE object_type = 'system' AND object_id = $1",
@@ -176,8 +127,8 @@ class System {
     return result.rows.map(row => row.tag_id);
   }
 
-  // Lấy danh sách hệ thống với join đầy đủ, trả về các trường liên kết dạng JSON
-  static async filterList({ search = '', page = 1, pageSize = 10 }) {
+  // ===== FILTERED LIST & PAGINATION =====
+  static async findFilteredList({ search = '', page = 1, pageSize = 10 }) {
     const offset = (page - 1) * pageSize;
     const q = `%${search}%`;
     const result = await pool.query(`
@@ -217,7 +168,7 @@ class System {
     return result.rows;
   }
 
-  static async filterCount({ search = '' }) {
+  static async countFiltered({ search = '' }) {
     const q = `%${search}%`;
     const result = await pool.query(`
       SELECT COUNT(DISTINCT s.id) AS count
@@ -244,6 +195,23 @@ class System {
     return parseInt(result.rows[0].count, 10);
   }
 
+  // ===== SELECT2 AJAX SEARCH (for dropdowns) =====
+  static async select2Search({ search = '', limit = 20 }) {
+    const q = `%${search}%`;
+    const result = await pool.query(
+      `SELECT id, name, system_id FROM systems
+       WHERE name ILIKE $1 OR system_id ILIKE $1
+       ORDER BY name ASC
+       LIMIT $2`,
+      [q, limit]
+    );
+    return result.rows.map(row => ({
+      id: row.id,
+      text: row.name ? `${row.name} (${row.system_id})` : row.system_id
+    }));
+  }
+
+  // ===== RELATIONSHIP/UTILITY GETTERS =====
   static async getContactsBySystemId(systemId) {
     const result = await pool.query('SELECT contact_id FROM system_contact WHERE system_id = $1', [systemId]);
     return result.rows.map(row => row.contact_id);
@@ -265,76 +233,22 @@ class System {
     return result.rows.map(row => ({ id: row.id, name: row.domain }));
   }
 
-  static async addContacts(systemId, managers, client) {
-    const executor = client || pool;
-    if (managers && managers.length > 0) {
-      for (const contactId of managers) {
-        await executor.query('INSERT INTO system_contact (system_id, contact_id) VALUES ($1, $2)', [systemId, contactId]);
-      }
-    }
-  }
-
-  static async addIPs(systemId, ip_addresses, client) {
-    const executor = client || pool;
-    if (ip_addresses && ip_addresses.length > 0) {
-      for (const ipId of ip_addresses) {
-        await executor.query('INSERT INTO system_ip (system_id, ip_id) VALUES ($1, $2)', [systemId, ipId]);
-      }
-    }
-  }
-
-  static async addDomains(systemId, domains, client) {
-    const executor = client || pool;
-    if (domains && domains.length > 0) {
-      for (const domainId of domains) {
-        await executor.query('INSERT INTO system_domain (system_id, domain_id) VALUES ($1, $2)', [systemId, domainId]);
-      }
-    }
-  }
-
-  static async addTags(systemId, tags, client) {
-    const executor = client || pool;
-    if (tags && tags.length > 0) {
-      for (const tagId of tags) {
-        await executor.query(
-          "INSERT INTO tag_object (tag_id, object_type, object_id) VALUES ($1, 'system', $2) ON CONFLICT DO NOTHING",
-          [tagId, systemId]
-        );
-      }
-    }
-  }
-
-  static async deleteTags(id, client) {
-    const executor = client || pool;
-    await executor.query("DELETE FROM tag_object WHERE object_type = 'system' AND object_id = $1", [id]);
-  }
-
-  static async deleteIPs(id, client) {
-    const executor = client || pool;
-    await executor.query('DELETE FROM system_ip WHERE system_id = $1', [id]);
-  }
-
-  static async deleteContacts(id, client) {
-    const executor = client || pool;
-    await executor.query('DELETE FROM system_contact WHERE system_id = $1', [id]);
-  }
-
-  static async deleteDomains(id, client) {
-    const executor = client || pool;
-    await executor.query('DELETE FROM system_domain WHERE system_id = $1', [id]);
-  }
-
-  static async deleteServers(id, client) {
-    const executor = client || pool;
-    try {
-      await executor.query('DELETE FROM system_server WHERE system_id = $1', [id]);
-    } catch (e) { /* Table not found, skip */ }
-  }
-
+  // ===== EXISTENCE CHECKER =====
   static async exists(id) {
     const res = await pool.query('SELECT 1 FROM systems WHERE id = $1', [id]);
     return res.rowCount > 0;
   }
+
+  /**
+   * Get multiple systems by array of ids
+   * @param {Array<number|string>} ids
+   * @returns {Promise<Array>}
+   */
+  static async findByIds(ids) {
+    if (!Array.isArray(ids) || ids.length === 0) return [];
+    const result = await pool.query('SELECT * FROM systems WHERE id = ANY($1)', [ids]);
+    return result.rows;
+  }
 }
 
-module.exports = System;
+export default System;

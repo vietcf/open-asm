@@ -2,7 +2,7 @@
     <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/priv-account/account" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
       <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search account name or description..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
       <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
-        <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+        <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
           <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
         <% }) %>
       </select>

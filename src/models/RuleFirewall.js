@@ -1,5 +1,5 @@
 // src/models/RuleFirewall.js
-const { pool } = require('../../config/config');
+import { pool } from '../../config/config.js';
 
 class RuleFirewall {
   static async findAll({ search = '', page = 1, pageSize = 10, ou_id, contacts, tags, violation_type, status, firewall_name, audit_batch }) {
@@ -270,4 +270,4 @@ class RuleFirewall {
   }
 }
 
-module.exports = RuleFirewall;
+export default RuleFirewall;

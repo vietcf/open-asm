@@ -1,6 +1,6 @@
 // System configuration options for filter dropdowns, etc.
 
-module.exports = {
+const systemOptions = {
   levels: [
     { value: '1', label: 'Level 1' },
     { value: '2', label: 'Level 2' },
@@ -9,3 +9,5 @@ module.exports = {
     { value: '5', label: 'Level 5' }
   ]
 };
+
+export default systemOptions;

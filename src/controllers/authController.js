@@ -1,9 +1,9 @@
 
 import bcrypt from 'bcrypt';
 import speakeasy from 'speakeasy';
-import { User } from '../models/User.js';
-import { Role } from '../models/Role.js';
-import { Permission } from '../models/Permission.js';
+import User from '../models/User.js';
+import Role from '../models/Role.js';
+import Permission from '../models/Permission.js';
 import { writeLog } from '../utils/logHelper.js';
 import { config } from '../../config/config.js';
 

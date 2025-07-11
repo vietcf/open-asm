@@ -1,13 +1,15 @@
-const User = require('../models/User');
-const Role = require('../models/Role');
-const Permission = require('../models/Permission');
-const Configuration = require('../models/Configuration');
-const SystemLog = require('../models/SystemLog');
-const bcrypt = require('bcrypt');
-const { pool } = require('../../config/config');
+import User from '../models/User.js';
+import Role from '../models/Role.js';
+import Permission from '../models/Permission.js';
+import Configuration from '../models/Configuration.js';
+import SystemLog from '../models/SystemLog.js';
+import bcrypt from 'bcrypt';
+import { pool } from '../../config/config.js';
 
 // ===== USER MANAGEMENT =====
-exports.listUsers = async (req, res) => {
+const administratorController = {};
+
+administratorController.listUsers = async (req, res) => {
   try {
     let page = parseInt(req.query.page, 10) || 1;
     let pageSize = parseInt(req.query.pageSize, 10);
@@ -43,7 +45,7 @@ exports.listUsers = async (req, res) => {
   }
 };
 
-exports.createUser = async (req, res) => {
+administratorController.createUser = async (req, res) => {
   try {
     const { username, email, fullname, role, password } = req.body;
     // Normalize and trim input fields
@@ -105,7 +107,7 @@ exports.createUser = async (req, res) => {
   }
 };
 
-exports.updateUser = async (req, res) => {
+administratorController.updateUser = async (req, res) => {
   try {
     const id = req.params.id;
     const { username, email, fullname, role, password } = req.body;
@@ -169,7 +171,7 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-exports.deleteUser = async (req, res) => {
+administratorController.deleteUser = async (req, res) => {
   try {
     const id = req.params.id;
     // Prevent deleting admin user
@@ -193,7 +195,7 @@ const getAllPermissions = async () => {
   return result.rows;
 };
 
-exports.listRoles = async (req, res) => {
+administratorController.listRoles = async (req, res) => {
   try {
     // Pagination and page size
     let page = parseInt(req.query.page, 10) || 1;
@@ -241,7 +243,7 @@ exports.listRoles = async (req, res) => {
   }
 };
 
-exports.createRole = async (req, res) => {
+administratorController.createRole = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -271,7 +273,7 @@ exports.createRole = async (req, res) => {
   }
 };
 
-exports.updateRole = async (req, res) => {
+administratorController.updateRole = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -309,7 +311,7 @@ exports.updateRole = async (req, res) => {
   }
 };
 
-exports.deleteRole = async (req, res) => {
+administratorController.deleteRole = async (req, res) => {
   try {
     const id = req.params.id;
     // Prevent deleting superadmin role
@@ -328,7 +330,7 @@ exports.deleteRole = async (req, res) => {
 };
 
 // ===== PERMISSION MANAGEMENT =====
-exports.listPermissions = async (req, res) => {
+administratorController.listPermissions = async (req, res) => {
   try {
     // Pagination and page size
     let page = parseInt(req.query.page, 10) || 1;
@@ -370,7 +372,7 @@ exports.listPermissions = async (req, res) => {
   }
 };
 
-exports.createPermission = async (req, res) => {
+administratorController.createPermission = async (req, res) => {
   try {
     // Normalize and trim input fields
     const name = req.body.name ? req.body.name.trim() : '';
@@ -402,7 +404,7 @@ exports.createPermission = async (req, res) => {
   }
 };
 
-exports.updatePermission = async (req, res) => {
+administratorController.updatePermission = async (req, res) => {
   try {
     const id = req.params.id;
     const { description } = req.body;
@@ -421,7 +423,7 @@ exports.updatePermission = async (req, res) => {
   }
 };
 
-exports.deletePermission = async (req, res) => {
+administratorController.deletePermission = async (req, res) => {
   try {
     const id = req.params.id;
     await Permission.delete(id);
@@ -434,7 +436,7 @@ exports.deletePermission = async (req, res) => {
 };
 
 // ===== SYSTEM CONFIGURATION CRUD =====
-exports.listConfigurations = async (req, res) => {
+administratorController.listConfigurations = async (req, res) => {
   try {
     const configList = await Configuration.findAll();
     // Fetch site_name from Configuration// Sử dụng layout mặc định
@@ -451,7 +453,7 @@ exports.listConfigurations = async (req, res) => {
   }
 };
 
-exports.createConfiguration = async (req, res) => {
+administratorController.createConfiguration = async (req, res) => {
   try {
     let { key, value, description } = req.body;
     // Normalize and validate
@@ -508,7 +510,7 @@ exports.createConfiguration = async (req, res) => {
   }
 };
 
-exports.updateConfiguration = async (req, res) => {
+administratorController.updateConfiguration = async (req, res) => {
   try {
     // Hỗ trợ cả PUT (RESTful) và POST truyền thống
     const key = req.params.key || req.body.key;
@@ -526,7 +528,7 @@ exports.updateConfiguration = async (req, res) => {
   }
 };
 
-exports.deleteConfiguration = async (req, res) => {
+administratorController.deleteConfiguration = async (req, res) => {
   try {
     // Hỗ trợ cả DELETE (RESTful) và POST truyền thống
     const key = req.params.key || req.body.key;
@@ -544,7 +546,7 @@ exports.deleteConfiguration = async (req, res) => {
 };
 
 // ===== SYSTEM LOG =====
-exports.listSystemLogs = async (req, res) => {
+administratorController.listSystemLogs = async (req, res) => {
   try {
     // Use global pageSizeOptions from res.locals (set in app.js)
     const page = parseInt(req.query.page, 10) || 1;
@@ -576,3 +578,5 @@ exports.listSystemLogs = async (req, res) => {
     res.status(500).send('Error loading system log: ' + err.message);
   }
 };
+
+export default administratorController;

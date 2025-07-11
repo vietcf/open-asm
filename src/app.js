@@ -37,15 +37,14 @@ import dashboardRouter from './routes/dashboard.js';
 import requireLogin from './middlewares/requireLogin.middleware.js';
 
 import networkRouter from './routes/network.js';
-// import systemRouter from './routes/system.js';
-// import privAccountRouter from './routes/privAccount.js';
+import systemRouter from './routes/system.js';
+import privAccountRouter from './routes/privAccount.js';
 import serverRouter from './routes/server.js';
 import organizeRouter from './routes/organize.js';
-// import administratorRouter from './routes/administrator.js';
-// import dashboardRouter from './routes/dashboard.js';
-// import deviceRoutes from './routes/device.js';
-// import uploadRouter from './routes/upload.js';
-// import firewallRouter from './routes/firewall.js';
+import administratorRouter from './routes/administrator.js';
+import deviceRoutes from './routes/device.js';
+import uploadRouter from './routes/upload.js';
+import firewallRouter from './routes/firewall.js';
 // import twofaRouter from './routes/twofa.js';
 // import authRouter from './routes/auth.js';
 // import changePasswordRouter from './routes/changePassword.js';
@@ -159,31 +158,17 @@ app.use('/', authRouter); // /login, /logout, /login/2fa
 // // Dashboard route (requires login + 2FA if enabled)
 // app.use('/dashboard', requireLogin, require2fa, dashboardRouter);
 app.use('/dashboard', requireLogin, dashboardRouter);
+app.use('/system', systemRouter);
 app.use('/network', requireLogin, networkRouter);
 app.use('/server', serverRouter);
 app.use('/organize', organizeRouter);
-// // ===========================================
-// // FEATURE ROUTES (Full authentication + password change required)
-// // ===========================================
-// //app.use('/network', requireLogin, require2fa, requirePasswordChange, networkRouter);
-// //app.use('/network', requireLogin, require2fa, requirePasswordChange, networkRouter);
-// app.use('/network', networkRouter);
-// //app.use('/system', requireLogin, require2fa, requirePasswordChange, systemRouter);
-// app.use('/system', systemRouter);
-// //app.use('/priv-account', requireLogin, require2fa, requirePasswordChange, privAccountRouter);
-// app.use('/priv-account', privAccountRouter);
-// //app.use('/device', requireLogin, require2fa, requirePasswordChange, deviceRoutes); 
-// app.use('/device', deviceRoutes);
-// //app.use('/server', requireLogin, require2fa, requirePasswordChange, serverRouter); 
-// //app.use('/organize', requireLogin, require2fa, requirePasswordChange, organizeRouter);
-
-// //app.use('/firewall', requireLogin, require2fa, requirePasswordChange, firewallRouter);
-// app.use('/firewall', firewallRouter);
-// //app.use('/administrator', requireLogin, require2fa, requirePasswordChange, administratorRouter);
-// app.use('/administrator', administratorRouter);
+app.use('/device', deviceRoutes);
+app.use('/priv-account', privAccountRouter);
+app.use('/firewall', firewallRouter);
+app.use('/administrator', administratorRouter);
 
 // //Upload route to get upload patch file
-// app.use('/api/upload', requireLogin, require2fa, requirePasswordChange, uploadRouter); 
+app.use('/api/upload', uploadRouter); 
 
 // ===========================================
 // API ROUTES
