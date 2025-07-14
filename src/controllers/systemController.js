@@ -6,6 +6,8 @@ import Contact from '../models/Contact.js';
 import Domain from '../models/Domain.js';
 import FileUpload from '../models/FileUpload.js';
 import Configuration from '../models/Configuration.js';
+import IpAddress from '../models/IpAddress.js';
+import Tag from '../models/Tag.js';
 import systemOptions from '../../config/systemOptions.js';
 import { pool } from '../../config/config.js';
 
@@ -147,8 +149,85 @@ systemController.updateSystem = async (req, res) => {
     if (!Array.isArray(domains)) domains = domains ? [domains] : [];
     // Description: always a string
     description = (description === undefined || description === null) ? '' : String(description);
+
+    // Explicit required field validation (only required fields in the form)
+    const requiredFields = [
+      { key: 'system_id', value: system_id, label: 'System ID' },
+      { key: 'name', value: name, label: 'System Name' }
+    ];
+    const missing = requiredFields.filter(f => f.value === null || f.value === undefined || f.value === '');
+    if (missing.length > 0) {
+      req.flash('error', 'Missing required field(s): ' + missing.map(f => f.label).join(', '));
+      return res.redirect('/system/system');
+    }
+
+    // Validate level if present, use allowed values from systemOptions.levels
+    if (level !== null) {
+      const allowedLevels = (systemOptions.levels || []).map(l => l.value);
+      if (!allowedLevels.includes(level)) {
+        req.flash('error', 'Invalid level value.');
+        return res.redirect('/system/system');
+      }
+    }
+
+    // Validate department_id if present
+    if (department_id !== null) {
+      const unit = await Unit.findById(department_id);
+      if (!unit) {
+        req.flash('error', 'Invalid department (unit) selected.');
+        return res.redirect('/system/system');
+      }
+    }
+
+    // Validate managers (contact ids)
+    if (managers && managers.length > 0) {
+      const invalidManagers = [];
+      for (const mid of managers) {
+        if (!(await Contact.exists(mid))) invalidManagers.push(mid);
+      }
+      if (invalidManagers.length > 0) {
+        req.flash('error', 'Invalid manager (contact) IDs: ' + invalidManagers.join(', '));
+        return res.redirect('/system/system');
+      }
+    }
+
+    // Validate ip_addresses
+    if (ip_addresses && ip_addresses.length > 0) {
+      const invalidIps = [];
+      for (const ipid of ip_addresses) {
+        if (!(await IpAddress.exists(ipid))) invalidIps.push(ipid);
+      }
+      if (invalidIps.length > 0) {
+        req.flash('error', 'Invalid IP address IDs: ' + invalidIps.join(', '));
+        return res.redirect('/system/system');
+      }
+    }
+
+    // Validate tags
+    if (tags && tags.length > 0) {
+      const invalidTags = [];
+      for (const tid of tags) {
+        if (!(await Tag.exists(tid))) invalidTags.push(tid);
+      }
+      if (invalidTags.length > 0) {
+        req.flash('error', 'Invalid tag IDs: ' + invalidTags.join(', '));
+        return res.redirect('/system/system');
+      }
+    }
+
+    // Validate domains
+    if (domains && domains.length > 0) {
+      const invalidDomains = [];
+      for (const did of domains) {
+        if (!(await Domain.findById(did))) invalidDomains.push(did);
+      }
+      if (invalidDomains.length > 0) {
+        req.flash('error', 'Invalid domain IDs: ' + invalidDomains.join(', '));
+        return res.redirect('/system/system');
+      }
+    }
     // Update the systems table
-    await System.updateMain(id, {
+    await System.update(id, {
       system_id,
       name,
       level,
@@ -157,10 +236,10 @@ systemController.updateSystem = async (req, res) => {
       description,
       updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
     }, client);
-    await System.updateContacts(id, managers, client);
-    await System.updateIPs(id, ip_addresses, client);
-    await System.updateDomains(id, domains, client);
-    await System.updateTags(id, tags, client);
+    await System.setContacts(id, managers, client);
+    await System.setIPs(id, ip_addresses, client);
+    await System.setDomains(id, domains, client);
+    await System.setTags(id, tags, client);
     // Handle file deletion if requested
     let filesToDelete = [];
     if (req.body.delete_files) {
@@ -197,19 +276,8 @@ systemController.updateSystem = async (req, res) => {
     }
     if (Array.isArray(uploadedDocsEdit) && uploadedDocsEdit.length > 0) {
       for (const doc of uploadedDocsEdit) {
-        // Move file from tmp to system folder if using local storage
-        let finalPath = doc.url;
-        if (process.env.FILE_UPLOAD_DRIVER !== 's3' && doc.url && doc.url.startsWith('/uploads/tmp/')) {
-          const filename = doc.url.split('/').pop();
-          const tmpPath = path.join(__dirname, '../../public/uploads/tmp/', filename);
-          const destDir = path.join(__dirname, '../../public/uploads/system/');
-          const destPath = path.join(destDir, filename);
-          if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
-          try {
-            fs.renameSync(tmpPath, destPath);
-            finalPath = '/uploads/system/' + filename;
-          } catch (e) { /* If error, keep original tmp url */ }
-        }
+        // Move file from tmp to system folder if using local storage (now via FileUpload helper)
+        let finalPath = FileUpload.moveFromTmpToSystem(doc.url);
         // Validate file info before saving to the database
         if (!finalPath || !(doc.originalname || doc.name) || !doc.mimetype || !doc.size) {
           continue;
@@ -253,43 +321,113 @@ systemController.addSystemForm = async (req, res) => {
 
 // Handle add system
 systemController.addSystem = async (req, res) => {
-  const pool = require('../../config/config').pool;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    // Get data from the form and check/initialize safely
+    // Extract raw data from form
     let {
-      system_id = '',
-      name = '',
-      level = null,
-      department_id = null,
-      alias = [],
-      managers = [],
-      servers = [],
-      ip_addresses = [],
-      tags = [],
-      domains = [],
-      description = ''
+      system_id,
+      name,
+      level,
+      department_id,
+      alias,
+      managers,
+      servers,
+      ip_addresses,
+      tags,
+      domains,
+      description
     } = req.body;
-    // Ensure all array fields are always arrays
-    if (!Array.isArray(alias)) alias = alias ? alias.split(',').map(s => s.trim()).filter(Boolean) : [];
-    if (!Array.isArray(managers)) managers = managers ? [managers] : [];
-    if (!Array.isArray(servers)) servers = servers ? [servers] : [];
-    if (!Array.isArray(ip_addresses)) ip_addresses = ip_addresses ? [ip_addresses] : [];
-    if (!Array.isArray(tags)) tags = tags ? [tags] : [];
-    if (!Array.isArray(domains)) domains = domains ? [domains] : [];
-    // Ensure all string fields are always strings
+
+    // Normalize/validate fields
     system_id = typeof system_id === 'string' ? system_id.trim() : '';
     name = typeof name === 'string' ? name.trim() : '';
     description = typeof description === 'string' ? description : '';
-    // Ensure all number fields are null if empty
+
+    alias = !alias ? [] : Array.isArray(alias) ? alias.filter(Boolean) : alias.split(',').map(s => s.trim()).filter(Boolean);
+    managers = !managers ? [] : Array.isArray(managers) ? managers : [managers];
+    servers = !servers ? [] : Array.isArray(servers) ? servers : [servers];
+    ip_addresses = !ip_addresses ? [] : Array.isArray(ip_addresses) ? ip_addresses : [ip_addresses];
+    tags = !tags ? [] : Array.isArray(tags) ? tags : [tags];
+    domains = !domains ? [] : Array.isArray(domains) ? domains : [domains];
+
     level = (level === undefined || level === null || level === '') ? null : level;
     department_id = (department_id === undefined || department_id === null || department_id === '') ? null : department_id;
+
+    // Explicit required field validation (only required fields in the form)
+    const requiredFields = [
+      { key: 'system_id', value: system_id, label: 'System ID' },
+      { key: 'name', value: name, label: 'System Name' }
+    ];
+    const missing = requiredFields.filter(f => f.value === null || f.value === undefined || f.value === '');
+    if (missing.length > 0) {
+      req.flash('error', 'Missing required field(s): ' + missing.map(f => f.label).join(', '));
+      return res.redirect('/system/system');
+    }
+
     // Validate level if present, use allowed values from systemOptions.levels
     if (level !== null) {
       const allowedLevels = (systemOptions.levels || []).map(l => l.value);
       if (!allowedLevels.includes(level)) {
-        return res.status(400).send('Invalid level value.');
+        req.flash('error', 'Invalid level value.');
+        return res.redirect('/system/system');
+      }
+    }
+
+    // Validate department_id if present
+    if (department_id !== null) {
+      const unit = await Unit.findById(department_id);
+      if (!unit) {
+        req.flash('error', 'Invalid department (unit) selected.');
+        return res.redirect('/system/system');
+      }
+    }
+
+    // Validate managers (contact ids)
+    if (managers && managers.length > 0) {
+      const invalidManagers = [];
+      for (const mid of managers) {
+        if (!(await Contact.exists(mid))) invalidManagers.push(mid);
+      }
+      if (invalidManagers.length > 0) {
+        req.flash('error', 'Invalid manager (contact) IDs: ' + invalidManagers.join(', '));
+        return res.redirect('/system/system');
+      }
+    }
+
+    // Validate ip_addresses
+    if (ip_addresses && ip_addresses.length > 0) {
+      const invalidIps = [];
+      for (const ipid of ip_addresses) {
+        if (!(await IpAddress.exists(ipid))) invalidIps.push(ipid);
+      }
+      if (invalidIps.length > 0) {
+        req.flash('error', 'Invalid IP address IDs: ' + invalidIps.join(', '));
+        return res.redirect('/system/system');
+      }
+    }
+
+    // Validate tags
+    if (tags && tags.length > 0) {
+      const invalidTags = [];
+      for (const tid of tags) {
+        if (!(await Tag.exists(tid))) invalidTags.push(tid);
+      }
+      if (invalidTags.length > 0) {
+        req.flash('error', 'Invalid tag IDs: ' + invalidTags.join(', '));
+        return res.redirect('/system/system');
+      }
+    }
+
+    // Validate domains
+    if (domains && domains.length > 0) {
+      const invalidDomains = [];
+      for (const did of domains) {
+        if (!(await Domain.findById(did))) invalidDomains.push(did);
+      }
+      if (invalidDomains.length > 0) {
+        req.flash('error', 'Invalid domain IDs: ' + invalidDomains.join(', '));
+        return res.redirect('/system/system');
       }
     }
     // Create new system
@@ -302,10 +440,11 @@ systemController.addSystem = async (req, res) => {
       description,
       updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
     }, client);
-    await System.addContacts(newSystem.id, managers, client);
-    await System.addIPs(newSystem.id, ip_addresses, client);
-    await System.addDomains(newSystem.id, domains, client);
-    await System.addTags(newSystem.id, tags, client);
+    // Use set... methods for consistency and future-proofing
+    await System.setContacts(newSystem.id, managers, client);
+    await System.setIPs(newSystem.id, ip_addresses, client);
+    await System.setDomains(newSystem.id, domains, client);
+    await System.setTags(newSystem.id, tags, client);
     // Save uploaded files info to file_uploads table if any
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
@@ -334,22 +473,8 @@ systemController.addSystem = async (req, res) => {
         if (!(doc.url && (doc.originalname || doc.name) && doc.mimetype && doc.size)) {
           continue;
         }
-        // Move file from tmp to system folder if using local storage
-        let finalPath = doc.url;
-        if (process.env.FILE_UPLOAD_DRIVER !== 's3' && doc.url && doc.url.startsWith('/uploads/tmp/')) {
-          const filename = doc.url.split('/').pop();
-          const tmpPath = path.join(__dirname, '../../public/uploads/tmp/', filename);
-          const destDir = path.join(__dirname, '../../public/uploads/system/');
-          const destPath = path.join(destDir, filename);
-          if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
-          try {
-            // Copy file to system folder
-            fs.copyFileSync(tmpPath, destPath);
-            finalPath = '/uploads/system/' + filename;
-            // Delete file from tmp if copy is successful
-            fs.unlinkSync(tmpPath);
-          } catch (e) { /* If error, keep original tmp url */ }
-        }
+        // Move file from tmp to system folder if using local storage (now via FileUpload helper)
+        let finalPath = FileUpload.moveFromTmpToSystem(doc.url);
         await FileUpload.create({
           object_type: 'system',
           object_id: newSystem.id,
@@ -379,7 +504,6 @@ systemController.addSystem = async (req, res) => {
 
 // Delete system and related links
 systemController.deleteSystem = async (req, res) => {
-  const pool = require('../../config/config').pool;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -391,17 +515,7 @@ systemController.deleteSystem = async (req, res) => {
     await System.deleteDomains(id, client);
     await System.deleteServers(id, client);
     // Delete file uploads related to this system from both DB and physical storage
-    const files = await FileUpload.findByObject('system', id);
-    await client.query('DELETE FROM file_uploads WHERE object_type = $1 AND object_id = $2', ['system', id]);
-    // Delete physical files
-    for (const file of files) {
-      if (file.file_path && file.file_path.startsWith('/uploads/system/')) {
-        const absPath = path.join(__dirname, '../../public', file.file_path);
-        try {
-          if (fs.existsSync(absPath)) fs.unlinkSync(absPath);
-        } catch (e) { /* ignore */ }
-      }
-    }
+    await FileUpload.deleteByObject('system', id);
     // Delete system
     await System.delete(id, client);
     await client.query('COMMIT');
@@ -420,8 +534,8 @@ systemController.deleteSystem = async (req, res) => {
 systemController.apiSystemSearch = async (req, res) => {
   try {
     const search = req.query.search ? req.query.search.trim() : '';
-    // Move query logic to model for cleaner controller
-    const data = await System.apiSystemSearch({ search });
+    // Use select2Search for select2 API
+    const data = await System.select2Search({ search });
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: 'Error loading systems', detail: err.message });

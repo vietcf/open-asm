@@ -460,8 +460,14 @@ administratorController.createConfiguration = async (req, res) => {
     key = key ? key.trim() : '';
     value = value ? value.trim() : '';
     description = description ? description.trim() : '';
+    //console.log('Creating configuration:', { key, value, description });
+    const keyRegex = /^[a-zA-Z0-9_]+$/;
     if (!key || !value) {
       req.flash('error', 'Key and Value are required!');
+      return res.redirect('/administrator/configuration');
+    }
+    if (!keyRegex.test(key)) {
+      req.flash('error', 'Key can only contain letters, numbers, and underscores (a-z, A-Z, 0-9, _)!');
       return res.redirect('/administrator/configuration');
     }
     // Custom validation for known keys
@@ -471,19 +477,19 @@ administratorController.createConfiguration = async (req, res) => {
       let sizes = value.split(',').map(v => v.trim());
       // All must be numbers, allowed, unique, sorted
       if (!sizes.length || sizes.some(v => !/^[0-9]+$/.test(v) || !allowed.includes(v))) {
-        req.flash('error', 'All values must be numeric, order and separated by commas');
+        req.flash('error', 'All values must be valid numbers in [5,10,15,20], separated by commas!');
         return res.redirect('/administrator/configuration');
       }
       // Check uniqueness
       const uniqueSizes = Array.from(new Set(sizes));
       if (uniqueSizes.length !== sizes.length) {
-        req.flash('error', 'Page size values must be unique.');
+        req.flash('error', 'Page size values must be unique!');
         return res.redirect('/administrator/configuration');
       }
       // Check sorted ascending
       const sortedSizes = [...sizes].map(Number).sort((a, b) => a - b).map(String);
       if (JSON.stringify(sizes) !== JSON.stringify(sortedSizes)) {
-        req.flash('error', 'Page size values must be sorted in ascending order.');
+        req.flash('error', 'Page size values must be sorted in ascending order!');
         return res.redirect('/administrator/configuration');
       }
     } else if (key === 'log_level') {
@@ -496,12 +502,13 @@ administratorController.createConfiguration = async (req, res) => {
     } else if (key === 'log_retention_days') {
       // Must be a positive integer
       if (!/^[0-9]+$/.test(value) || parseInt(value) <= 0) {
-        req.flash('error', 'Log retention days must be a positive number.');
+        req.flash('error', 'Log retention days must be a positive integer!');
         return res.redirect('/administrator/configuration');
       }
     }
     const user = req.session.user ? req.session.user.username : null;
-    await Configuration.create(key, value, description, user);
+    console.log('Creating configuration:', { key, value, description });
+    await Configuration.create({ key, value, description, updatedBy: user });
     req.flash('success', 'Configuration added successfully!');
     res.redirect('/administrator/configuration');
   } catch (err) {
@@ -512,14 +519,53 @@ administratorController.createConfiguration = async (req, res) => {
 
 administratorController.updateConfiguration = async (req, res) => {
   try {
-    // Hỗ trợ cả PUT (RESTful) và POST truyền thống
-    const key = req.params.key || req.body.key;
-    const { value, description } = req.body;
+    // Support both PUT (RESTful) and traditional POST
+    let key = req.params.key || req.body.key;
+    let { value, description } = req.body;
+    key = key ? key.trim() : '';
+    value = value ? value.trim() : '';
+    description = description ? description.trim() : '';
+    const keyRegex = /^[a-zA-Z0-9_]+$/;
     if (!key || !value) {
       req.flash('error', 'Key and Value are required.');
       return res.redirect('/administrator/configuration');
     }
-    await Configuration.updateByKey(key, value, req.session.user?.username || null, description);
+    if (!keyRegex.test(key)) {
+      req.flash('error', 'Key can only contain letters, numbers, and underscores (a-z, A-Z, 0-9, _)!');
+      return res.redirect('/administrator/configuration');
+    }
+    // Custom validation for known keys
+    if (key === 'page_size') {
+      const allowed = ['5','10','15','20'];
+      let sizes = value.split(',').map(v => v.trim());
+      if (!sizes.length || sizes.some(v => !/^[0-9]+$/.test(v) || !allowed.includes(v))) {
+        req.flash('error', 'All values must be valid numbers in [5,10,15,20], separated by commas!');
+        return res.redirect('/administrator/configuration');
+      }
+      const uniqueSizes = Array.from(new Set(sizes));
+      if (uniqueSizes.length !== sizes.length) {
+        req.flash('error', 'Page size values must be unique!');
+        return res.redirect('/administrator/configuration');
+      }
+      const sortedSizes = [...sizes].map(Number).sort((a, b) => a - b).map(String);
+      if (JSON.stringify(sizes) !== JSON.stringify(sortedSizes)) {
+        req.flash('error', 'Page size values must be sorted in ascending order!');
+        return res.redirect('/administrator/configuration');
+      }
+    } else if (key === 'log_level') {
+      const allowed = ['info','warning','critical'];
+      if (!allowed.includes(value)) {
+        req.flash('error', 'Log level must be one of: info, warning, critical.');
+        return res.redirect('/administrator/configuration');
+      }
+    } else if (key === 'log_retention_days') {
+      if (!/^[0-9]+$/.test(value) || parseInt(value) <= 0) {
+        req.flash('error', 'Log retention days must be a positive integer!');
+        return res.redirect('/administrator/configuration');
+      }
+    }
+    const user = req.session.user ? req.session.user.username : null;
+    await Configuration.update(key, { value, description, updatedBy: user });
     req.flash('success', 'Configuration updated successfully!');
     res.redirect('/administrator/configuration');
   } catch (err) {

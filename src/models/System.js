@@ -1,4 +1,3 @@
-
 import { pool } from '../../config/config.js';
 
 class System {
@@ -119,13 +118,38 @@ class System {
     }
   }
 
-  static async getTagIds(systemId) {
-    const result = await pool.query(
-      "SELECT tag_id FROM tag_object WHERE object_type = 'system' AND object_id = $1",
+  static async setTags(systemId, tagIds, client) {
+    const executor = client || pool;
+    // Remove all current tags for this system
+    await executor.query(
+      "DELETE FROM tag_object WHERE object_type = 'system' AND object_id = $1",
       [systemId]
     );
-    return result.rows.map(row => row.tag_id);
+    // Add new tags
+    if (Array.isArray(tagIds) && tagIds.length > 0) {
+      for (const tagId of tagIds) {
+        await executor.query(
+          "INSERT INTO tag_object (object_type, object_id, tag_id) VALUES ('system', $1, $2)",
+          [systemId, tagId]
+        );
+      }
+    }
   }
+
+  static async addTags(systemId, tagIds, client) {
+    const executor = client || pool;
+    if (Array.isArray(tagIds) && tagIds.length > 0) {
+      for (const tagId of tagIds) {
+        await executor.query(
+          "INSERT INTO tag_object (object_type, object_id, tag_id) VALUES ('system', $1, $2) ON CONFLICT DO NOTHING",
+          [systemId, tagId]
+        );
+      }
+    }
+  }
+
+ 
+
 
   // ===== FILTERED LIST & PAGINATION =====
   static async findFilteredList({ search = '', page = 1, pageSize = 10 }) {
@@ -231,6 +255,14 @@ class System {
   static async getDomainsBySystemId(systemId) {
     const result = await pool.query('SELECT d.id, d.domain FROM system_domain sd JOIN domains d ON sd.domain_id = d.id WHERE sd.system_id = $1', [systemId]);
     return result.rows.map(row => ({ id: row.id, name: row.domain }));
+  }
+
+  static async getTagIds(systemId) {
+    const result = await pool.query(
+      "SELECT tag_id FROM tag_object WHERE object_type = 'system' AND object_id = $1",
+      [systemId]
+    );
+    return result.rows.map(row => row.tag_id);
   }
 
   // ===== EXISTENCE CHECKER =====

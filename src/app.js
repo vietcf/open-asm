@@ -1,41 +1,44 @@
 // Main application entry point for the Express server
 // Sets up middleware, session, view engine, static files, and routes
 
-
-// Core modules
-import express from 'express';
-import path from 'path';
+// =========================
+// Core Node.js modules
+// =========================
 import fs from 'fs';
+import path, { dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// =========================
 // Third-party modules
+// =========================
+import express from 'express';
 import bodyParser from 'body-parser';
-import bcrypt from 'bcrypt';
 import session from 'express-session';
 import methodOverride from 'method-override';
 import flash from 'connect-flash';
+import bcrypt from 'bcrypt';
 import ejs from 'ejs';
 import expressLayouts from 'express-ejs-layouts';
 
-// Project modules
+// =========================
+// Project modules (config, utils, middlewares)
+// =========================
 import { config } from '../config/config.js';
 import { siteConfig } from './utils/siteConfig.js';
 import { loadPermissions } from './middlewares/permissions.middleware.js';
-// import requireLogin from './middlewares/requireLogin.js';
 // import require2fa from './middlewares/require2fa.js';
 // import requirePasswordChange from './middlewares/requirePasswordChange.js';
 // import { authenticate } from './api/middlewares/auth.js';
 
+// =========================
 // Routers
-
+// =========================
 import authRouter from './routes/auth.js';
 import dashboardRouter from './routes/dashboard.js';
 import requireLogin from './middlewares/requireLogin.middleware.js';
-
 import networkRouter from './routes/network.js';
 import systemRouter from './routes/system.js';
 import privAccountRouter from './routes/privAccount.js';
@@ -46,7 +49,6 @@ import deviceRoutes from './routes/device.js';
 import uploadRouter from './routes/upload.js';
 import firewallRouter from './routes/firewall.js';
 // import twofaRouter from './routes/twofa.js';
-// import authRouter from './routes/auth.js';
 // import changePasswordRouter from './routes/changePassword.js';
 
 // API Routers
@@ -88,6 +90,8 @@ app.use(session({
     sameSite: 'lax'
   }
 }));
+
+// Flash middleware for session messages
 app.use(flash());
 
 // 5. Global template variables (res.locals)
@@ -155,20 +159,18 @@ app.use('/', authRouter); // /login, /logout, /login/2fa
 // // 2FA setup/disable routes (requires login only)
 // app.use('/2fa', requireLogin, twofaRouter); 
 
-// // Dashboard route (requires login + 2FA if enabled)
-// app.use('/dashboard', requireLogin, require2fa, dashboardRouter);
 app.use('/dashboard', requireLogin, dashboardRouter);
-app.use('/system', systemRouter);
+app.use('/system', requireLogin, systemRouter);
 app.use('/network', requireLogin, networkRouter);
-app.use('/server', serverRouter);
-app.use('/organize', organizeRouter);
-app.use('/device', deviceRoutes);
-app.use('/priv-account', privAccountRouter);
-app.use('/firewall', firewallRouter);
-app.use('/administrator', administratorRouter);
+app.use('/server', requireLogin, serverRouter);
+app.use('/organize', requireLogin, organizeRouter);
+app.use('/device', requireLogin, deviceRoutes);
+app.use('/priv-account', requireLogin, privAccountRouter);
+app.use('/firewall', requireLogin, firewallRouter);
+app.use('/administrator', requireLogin, administratorRouter);
 
 // //Upload route to get upload patch file
-app.use('/api/upload', uploadRouter); 
+app.use('/api/upload', requireLogin, uploadRouter); 
 
 // ===========================================
 // API ROUTES
@@ -188,5 +190,7 @@ app.listen(PORT, 'localhost', () => {
 });
 
 // Start scheduled cleanup job for system logs
-// import cleanupLogsJob from './utils/cleanupLogs.js';
-// cleanupLogsJob.start();
+import * as cleanupLogsJob from './utils/cleanupLogs.js';
+if (typeof cleanupLogsJob.start === 'function') {
+  cleanupLogsJob.start();
+}

@@ -5,6 +5,7 @@ import Domain from '../models/Domain.js';
 import Configuration from '../models/Configuration.js';
 import { pool } from '../../config/config.js';
 import ipAddressOptions from '../../config/ipAddressOptions.js';
+import subnetOptions from '../../config/subnetOptions.js';
 import ExcelJS from 'exceljs';
 
 
@@ -17,7 +18,7 @@ const networkController = {};
 
 networkController.listIP = async (req, res) => {
   try {
-    // Chuẩn hóa filter params
+    // Normalize and parse query parameters
     const normalizeArray = v => (Array.isArray(v) ? v : (v ? [v] : []));
     const search = req.query.search ? req.query.search.trim() : '';
     const page = parseInt(req.query.page, 10) || 1;
@@ -30,9 +31,11 @@ networkController.listIP = async (req, res) => {
     let filterStatus = req.query.status || '';
     let filterSystems = req.query['systems[]'] || req.query.systems || [];
     let filterContacts = req.query['contacts[]'] || req.query.contacts || [];
+
     filterTags = normalizeArray(filterTags).filter(x => x !== '');
     filterSystems = normalizeArray(filterSystems).filter(x => x !== '');
     filterContacts = normalizeArray(filterContacts).filter(x => x !== '');
+
     // Gọi model filter
     const ipList = await IpAddress.findFilteredList({
       search,
@@ -43,6 +46,7 @@ networkController.listIP = async (req, res) => {
       page,
       pageSize
     });
+
     const totalCount = await IpAddress.countFiltered({
       search,
       tags: filterTags,
@@ -53,6 +57,7 @@ networkController.listIP = async (req, res) => {
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const successMessage = req.flash('success')[0];
     const errorMessage = req.flash('error')[0];
+    // console.log('IP List:',  ipList);
     res.render('pages/network/ip_address_list', {
       ipList,
       page,
@@ -127,11 +132,11 @@ networkController.updateIP = async (req, res) => {
     contacts = contacts ? (Array.isArray(contacts) ? contacts : [contacts]) : [];
     systems = systems ? (Array.isArray(systems) ? systems : [systems]) : [];
     const updated_by = req.session.user?.username || '';
-    // Update IP address record
-    await IpAddress.update(id, { description, status, updated_by });
-    await IpAddress.setTags(id, tags);
-    await IpAddress.setContacts(id, contacts);
-    await IpAddress.setSystems(id, systems);
+    // Update IP address record (all within transaction)
+    await IpAddress.update(id, { description, status, updated_by }, client);
+    await IpAddress.setTags(id, tags, client);
+    await IpAddress.setContacts(id, contacts, client);
+    await IpAddress.setSystems(id, systems, client);
     await client.query('COMMIT');
     req.flash('success', 'IP address updated successfully!');
     return res.redirect(`/network/ip-address?page=${page || 1}`);
@@ -154,8 +159,8 @@ networkController.deleteIP = async (req, res) => {
   try {
     await client.query('BEGIN');
     const page = req.body.page || req.query.page || 1;
-    await IpAddress.setTags(req.params.id, []);
-    await IpAddress.delete(req.params.id);
+    await IpAddress.setTags(req.params.id, [], client);
+    await IpAddress.delete(req.params.id, client);
     await client.query('COMMIT');
     req.flash('success', 'IP address deleted successfully!');
     return res.redirect(`/network/ip-address?page=${page}`);
@@ -230,7 +235,10 @@ networkController.createSubnet = async (req, res) => {
       await client.query('ROLLBACK');
       return res.redirect('/network/subnet-address');
     }
-    await Subnet.create({ address, description, tags }, client);
+    // Create subnet without tags
+    const newSubnet = await Subnet.create({ address, description }, client);
+    // Assign tags using setTags method
+    await Subnet.setTags(newSubnet.id, tags, client);
     await client.query('COMMIT');
     req.flash('success', 'Subnet added successfully!');
     return res.redirect('/network/subnet-address');
@@ -255,7 +263,8 @@ networkController.updateSubnet = async (req, res) => {
     let { description, page, tags } = req.body;
     tags = tags ? (Array.isArray(tags) ? tags : [tags]) : [];
     description = description || '';
-    await Subnet.update(req.params.id, { description, tags }, client);
+    await Subnet.update(req.params.id, { description }, client);
+    await Subnet.setTags(req.params.id, tags, client);
     await client.query('COMMIT');
     req.flash('success', 'Subnet updated successfully!');
     return res.redirect(`/network/subnet-address?page=${page || 1}`);
@@ -314,21 +323,22 @@ networkController.listDomain = async (req, res) => {
     } else {
       totalCount = await Domain.countAll();
       domainList = await Domain.findPage(page, pageSize);
-      // For non-search, systems and ip are now included from the model (JOIN/aggregation)
     }
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const success = req.flash('success')[0];
     const error = req.flash('error')[0];
+    // Load record type options from config
+    
     res.render('pages/network/domain_list', {
-      domainList, 
-      page, 
-      pageSize, 
-      totalPages, 
-      totalCount, 
-      search, 
-      success, 
-      error, 
-      // allowedPageSizes không cần truyền, đã có global
+      domainList,
+      page,
+      pageSize,
+      totalPages,
+      totalCount,
+      search,
+      success,
+      error,
+      recordTypeOptions: subnetOptions.recordTypes,
       title: 'Domain',
       activeMenu: 'domain'
     });
@@ -353,8 +363,9 @@ networkController.createDomain = async (req, res) => {
       req.flash('error', 'Domain name is required.');
       return res.redirect('/network/domain');
     }
-    // Create domain và gán systems qua model
-    await Domain.create({ domain, description, ip_id, record_type, systems }, client);
+    // Create domain, then set systems via model
+    const newDomain = await Domain.create({ domain, description, ip_id, record_type }, client);
+    await Domain.setSystems(newDomain.id, systems, client);
     await client.query('COMMIT');
     req.flash('success', 'Domain added successfully!');
     res.redirect('/network/domain');
@@ -383,8 +394,9 @@ networkController.updateDomain = async (req, res) => {
     ip_id = ip_id && String(ip_id).trim() !== '' ? ip_id : null;
     systems = systems ? (Array.isArray(systems) ? systems : [systems]) : [];
     const id = req.params.id;
-    // Update domain và gán lại systems qua model
-    await Domain.update(id, { description, ip_id, record_type, systems }, client);
+    // Update domain, then set systems via model
+    await Domain.update(id, { description, ip_id, record_type }, client);
+    await Domain.setSystems(id, systems, client);
     await client.query('COMMIT');
     req.flash('success', 'Domain updated successfully!');
     res.redirect('/network/domain');

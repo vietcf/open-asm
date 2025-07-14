@@ -40,16 +40,9 @@
                 <div class="mb-3">
                   <label for="domainRecordType" class="form-label">Record Type</label>
                   <select id="domainRecordType" name="record_type" class="form-select form-select-sm">
-                    <option value="A" selected>A</option>
-                    <option value="AAAA">AAAA</option>
-                    <option value="CNAME">CNAME</option>
-                    <option value="MX">MX</option>
-                    <option value="TXT">TXT</option>
-                    <option value="NS">NS</option>
-                    <option value="SRV">SRV</option>
-                    <option value="PTR">PTR</option>
-                    <option value="SOA">SOA</option>
-                    <option value="OTHER">Other</option>
+                    <% (recordTypeOptions || []).forEach(function(opt) { %>
+                      <option value="<%= opt.value %>" <%= opt.value === 'A' ? 'selected' : '' %>><%= opt.label %></option>
+                    <% }) %>
                   </select>
                 </div>
                 <div class="mb-3">
@@ -132,6 +125,8 @@
                         </div>
                         <div class="modal-body">
                           <dl class="row mb-0">
+                            <dt class="col-sm-4">Domain ID</dt>
+                            <dd class="col-sm-8"><%= domain.id %></dd>
                             <dt class="col-sm-4">Domain</dt>
                             <dd class="col-sm-8"><%= domain.domain %></dd>
                             <dt class="col-sm-4">Description</dt>

@@ -8,16 +8,11 @@ import { pool } from '../../config/config.js';
  * All business logic for domain CRUD and relationship management is encapsulated here.
  */
 class Domain {
-  static async findAll() {
-    const result = await pool.query('SELECT * FROM domains ORDER BY id');
-    return result.rows;
-  }
+  // ===== CRUD METHODS =====
 
-  static async findById(id) {
-    const result = await pool.query('SELECT * FROM domains WHERE id = $1', [id]);
-    return result.rows[0] || null;
-  }
-
+  /**
+   * Create a new domain
+   */
   static async create({ domain, description, ip_id = null, record_type = null }, client = pool) {
     const result = await client.query(
       'INSERT INTO domains (domain, description, ip_id, record_type) VALUES ($1, $2, $3, $4) RETURNING *',
@@ -26,6 +21,25 @@ class Domain {
     return result.rows[0];
   }
 
+  /**
+   * Get all domains (no filter, ordered by id)
+   */
+  static async findAll() {
+    const result = await pool.query('SELECT * FROM domains ORDER BY id');
+    return result.rows;
+  }
+
+  /**
+   * Get a domain by id
+   */
+  static async findById(id) {
+    const result = await pool.query('SELECT * FROM domains WHERE id = $1', [id]);
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Update a domain
+   */
   static async update(id, { description, ip_id = null, record_type = null }, client = pool) {
     const result = await client.query(
       'UPDATE domains SET description = $1, ip_id = $2, record_type = $3 WHERE id = $4 RETURNING *',
@@ -34,17 +48,25 @@ class Domain {
     return result.rows[0];
   }
 
+  /**
+   * Delete a domain by id
+   */
   static async delete(id, client = pool) {
-    // Remove system_domain links first
     await client.query('DELETE FROM system_domain WHERE domain_id = $1', [id]);
     await client.query('DELETE FROM domains WHERE id = $1', [id]);
   }
 
+  /**
+   * Count all domains
+   */
   static async countAll() {
     const result = await pool.query('SELECT COUNT(*) FROM domains');
     return parseInt(result.rows[0].count, 10);
   }
 
+  /**
+   * Get paginated list of domains
+   */
   static async findPage(page = 1, pageSize = 10) {
     const offset = (page - 1) * pageSize;
     const result = await pool.query(
@@ -66,6 +88,9 @@ class Domain {
     });
   }
 
+  /**
+   * Get paginated list of domains by search
+   */
   static async findSearchPage(search, page = 1, pageSize = 10) {
     const offset = (page - 1) * pageSize;
     const result = await pool.query(
@@ -82,13 +107,15 @@ class Domain {
       LIMIT $2 OFFSET $3`,
       [`%${search}%`, pageSize, offset]
     );
-    // Convert systems from JSON string to array if needed
     return result.rows.map(row => {
       row.systems = Array.isArray(row.systems) ? row.systems : JSON.parse(row.systems);
       return row;
     });
   }
 
+  /**
+   * Count domains by search
+   */
   static async countSearch(search) {
     const result = await pool.query(
       `SELECT COUNT(*) AS count FROM (
@@ -105,7 +132,9 @@ class Domain {
     return parseInt(result.rows[0].count, 10);
   }
 
-  // Relationship: Get all systems of a domain (many-to-many)
+  /**
+   * Get all systems of a domain (many-to-many)
+   */
   static async findSystems(domainId) {
     const result = await pool.query(
       `SELECT s.* FROM systems s
@@ -116,7 +145,9 @@ class Domain {
     return result.rows;
   }
 
-  // Relationship: Set all systems for a domain (removes all old, adds new)
+  /**
+   * Set all systems for a domain (removes all old, adds new)
+   */
   static async setSystems(domainId, systemIds, client = pool) {
     await client.query('DELETE FROM system_domain WHERE domain_id = $1', [domainId]);
     if (Array.isArray(systemIds) && systemIds.length > 0) {
@@ -128,7 +159,9 @@ class Domain {
     }
   }
 
-  // Get IP info for a domain (returns {id, ip_address} or null)
+  /**
+   * Get IP info for a domain (returns {id, ip_address} or null)
+   */
   static async getIp(ip_id) {
     if (!ip_id) return null;
     const result = await pool.query('SELECT id, ip_address FROM ip_addresses WHERE id = $1', [ip_id]);

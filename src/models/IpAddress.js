@@ -19,6 +19,7 @@ class IpAddress {
 
   // ===== CRUD METHODS =====
 
+  
   /**
    * Create a new IP address
    * @param {Object} data
@@ -75,8 +76,9 @@ class IpAddress {
    * @param {string} data.updated_by
    * @returns {Promise<Object>} The updated IP address
    */
-  static async update(id, { description, status, updated_by }) {
-    const result = await pool.query(
+  static async update(id, { description, status, updated_by }, client) {
+    const executor = client || pool;
+    const result = await executor.query(
       'UPDATE ip_addresses SET description = $1, status = $2, updated_at = NOW(), updated_by = $3 WHERE id = $4 RETURNING *',
       [description, status, updated_by, id]
     );
@@ -88,8 +90,8 @@ class IpAddress {
    * @param {number} id
    * @returns {Promise<void>}
    */
-  static async delete(id) {
-    await pool.query('DELETE FROM ip_addresses WHERE id = $1', [id]);
+  static async delete(id, client = pool) {
+    await client.query('DELETE FROM ip_addresses WHERE id = $1', [id]);
   }
 
   /**
@@ -381,6 +383,17 @@ class IpAddress {
       );
     }
   }
+
+  /**
+   * Check if an IP address exists by id
+   * @param {number|string} id
+   * @returns {Promise<boolean>}
+   */
+  static async exists(id) {
+    const result = await pool.query('SELECT 1 FROM ip_addresses WHERE id = $1 LIMIT 1', [id]);
+    return result.rowCount > 0;
+  }
+
 }
 
 // Export the IpAddress model
