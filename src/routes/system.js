@@ -13,12 +13,12 @@ const router = express.Router();
 router.get('/system', requirePermission('read', 'system'), systemController.listSystem);
 
 // Add system
-router.get('/system/add', requirePermission('create', 'system'), systemController.addSystemForm);
-router.post('/system/add', requirePermission('create', 'system'), uploadSystemDocs, systemController.addSystem);
+router.get('/system/add', requirePermission('create', 'system'), systemController.addSystemForm); //Load form add system
+router.post('/system/add', requirePermission('create', 'system'), uploadSystemDocs, systemController.addSystem); //Process form add system
 
 // Edit system 
-router.get('/system/:id/edit', requirePermission('update', 'system'), systemController.editSystemForm);
-router.post('/system/:id/edit', requirePermission('update', 'system'), uploadSystemDocs, systemController.updateSystem);
+router.get('/system/:id/edit', requirePermission('update', 'system'), systemController.editSystemForm); //Load form edit system
+router.post('/system/:id/edit', requirePermission('update', 'system'), uploadSystemDocs, systemController.updateSystem); //Process form edit system 
 
 // Delete system
 router.post('/system/:id/delete', requirePermission('delete', 'system'), systemController.deleteSystem);

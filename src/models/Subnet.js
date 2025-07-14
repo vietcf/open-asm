@@ -23,35 +23,39 @@ class Subnet {
     return result.rows[0];
   }
 
-  // Create a new subnet and assign tags (transaction client optional)
-  static async create({ address, description, tags = [] }, client = pool) {
+  // Create a new subnet (only fields in subnets table)
+  static async create({ address, description }, client = pool) {
     const result = await client.query(
       'INSERT INTO subnets (address, description) VALUES ($1, $2) RETURNING *',
       [address, description]
     );
-    const newSubnet = result.rows[0];
-    for (const tagId of tags) {
-      await client.query(
-        "INSERT INTO tag_object (tag_id, object_type, object_id) VALUES ($1, 'subnet', $2) ON CONFLICT DO NOTHING",
-        [tagId, newSubnet.id]
-      );
-    }
-    return newSubnet;
+    return result.rows[0];
   }
 
-  // Update subnet description and tags by ID (transaction client optional)
-  static async update(id, { description, tags = [] }, client = pool) {
+  /**
+   * Set all tags for a subnet (remove all old, add new)
+   * @param {number} subnetId
+   * @param {Array<number>} tagIds
+   * @param {object} [client=pool]
+   * @returns {Promise<void>}
+   */
+  static async setTags(subnetId, tagIds, client = pool) {
+    await client.query("DELETE FROM tag_object WHERE object_type = 'subnet' AND object_id = $1", [subnetId]);
+    if (Array.isArray(tagIds) && tagIds.length > 0) {
+      const values = tagIds.map((tagId, idx) => `($1, $${idx + 2}, 'subnet')`).join(',');
+      await client.query(
+        `INSERT INTO tag_object (object_id, tag_id, object_type) VALUES ${values}`,
+        [subnetId, ...tagIds]
+      );
+    }
+  }
+
+  // Update subnet description by ID (transaction client optional)
+  static async update(id, { description }, client = pool) {
     await client.query(
       'UPDATE subnets SET description = $1 WHERE id = $2',
       [description, id]
     );
-    await client.query("DELETE FROM tag_object WHERE object_type = 'subnet' AND object_id = $1", [id]);
-    for (const tagId of tags) {
-      await client.query(
-        "INSERT INTO tag_object (tag_id, object_type, object_id) VALUES ($1, 'subnet', $2) ON CONFLICT DO NOTHING",
-        [tagId, id]
-      );
-    }
   }
 
 

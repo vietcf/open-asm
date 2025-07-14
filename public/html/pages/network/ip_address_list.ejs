@@ -247,12 +247,12 @@
               <tr>
                 <th>STT</th>
                 <th>IP Address</th>
-                <th>Description</th>
+                <!-- <th>Description</th> -->
                 <th>Status</th>
                 <th>Tags</th>
-                <th>Created At</th>
-                <th>Updated At</th>
-                <th>Updated By</th>
+                <!-- <th>Created At</th> -->
+                <!-- <th>Updated At</th> -->
+                <!-- <th>Updated By</th> -->
                 <th>Systems</th>
                 <th class="text-end">Actions</th>
               </tr>
@@ -263,7 +263,7 @@
                   <tr>
                     <td><%= (page - 1) * pageSize + idx + 1 %></td>
                     <td><%= ip.ip_address %></td>
-                    <td><% if (ip.description && ip.description.trim()) { %><span class="desc-text"><%- ip.description.replace(/\n/g, '<br>') %></span><% } %></td>
+                    <!-- <td><% if (ip.description && ip.description.trim()) { %><span class="desc-text"><%- ip.description.replace(/\n/g, '<br>') %></span><% } %></td> -->
                     <td><% if (ip.status) { %><span class="badge bg-secondary"><%= ip.status %></span><% } else { %><span class="text-muted">-</span><% } %></td>
                     <td>
                       <% if (ip.tags && ip.tags.length > 0) { %>
@@ -274,9 +274,9 @@
                         <span class="text-muted">No tags</span>
                       <% } %>
                     </td>
-                    <td><%= ip.created_at ? (ip.created_at.toLocaleString ? ip.created_at.toLocaleString() : ip.created_at) : '' %></td>
-                    <td><%= ip.updated_at ? (ip.updated_at.toLocaleString ? ip.updated_at.toLocaleString() : ip.updated_at) : '' %></td>
-                    <td><%= ip.updated_by || '' %></td>
+                    <!-- <td><%= ip.created_at ? (ip.created_at.toLocaleString ? ip.created_at.toLocaleString() : ip.created_at) : '' %></td> -->
+                    <!-- <td><%= ip.updated_at ? (ip.updated_at.toLocaleString ? ip.updated_at.toLocaleString() : ip.updated_at) : '' %></td> -->
+                    <!-- <td><%= ip.updated_by || '' %></td> -->
                     <td>
                       <% if (ip.systems && ip.systems.length > 0) { %>
                         <% ip.systems.forEach(function(system, i) { %>
@@ -498,7 +498,7 @@
   }
 </style>
 <script>
-window.ipList = JSON.parse('<%- JSON.stringify(ipList || []) %>');
+window.ipList = <%- JSON.stringify(ipList || []) %>;
 </script>
 <script>
   // Hide select2 fields in Add IP modal until initialized
