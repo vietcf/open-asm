@@ -1,4 +1,4 @@
-module.exports = async (pool) => {
+export default async (pool) => {
   await pool.query('TRUNCATE TABLE contacts RESTART IDENTITY CASCADE;');
 
   await pool.query(`

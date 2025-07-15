@@ -1,4 +1,4 @@
-module.exports = async (db) => {
+export default async (db) => {
   // Lấy id các ip_address để gán cho domain
   const ipRows = await db.query(`SELECT id, ip_address FROM ip_addresses WHERE ip_address IN ('10.0.0.10','10.0.0.11','192.168.1.1')`);
   const ipMap = {};

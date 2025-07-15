@@ -8,6 +8,7 @@ import Unit from '../models/Unit.js';
 import Contact from '../models/Contact.js';
 import ExcelJS from 'exceljs';
 import accountOptions from '../../config/accountOptions.js';
+import { clearPermissionsCache } from '../middlewares/permissions.middleware.js';
 
 const privAccountController = {};
 
@@ -390,6 +391,10 @@ privAccountController.createRole = async (req, res) => {
     // Create role with system_id
     const newRole = await PrivRole.create({ name, description, system_id, updated_by });
     await PrivRole.setPermissions(newRole.id, permissions.map(Number));
+    
+    // Clear permissions cache since new role with permissions was created
+    clearPermissionsCache();
+    
     req.flash && req.flash('success', 'Privileged role added successfully!');
     res.redirect('/priv-account/role');
   } catch (err) {
@@ -413,6 +418,10 @@ privAccountController.updateRole = async (req, res) => {
     await PrivRole.update(id, { name, description, system_id, updated_by });
     console.log('Updating permissions for role ID:', id, 'with permissions:', permissions);
     await PrivRole.setPermissions(id, permissions.map(Number));
+    
+    // Clear permissions cache for all roles since permissions changed
+    clearPermissionsCache();
+    
     req.flash && req.flash('success', 'Privileged role updated successfully!');
     res.redirect('/priv-account/role');
   } catch (err) {
@@ -426,6 +435,10 @@ privAccountController.deleteRole = async (req, res) => {
   try {
     const { id } = req.params;
     await PrivRole.remove(id);
+    
+    // Clear permissions cache since role was deleted
+    clearPermissionsCache();
+    
     req.flash && req.flash('success', 'Privileged role deleted successfully!');
     res.redirect('/priv-account/role');
   } catch (err) {

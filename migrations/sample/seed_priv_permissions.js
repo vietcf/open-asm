@@ -1,5 +1,5 @@
 // filepath: migrations/seed_priv_permissions.js
-module.exports = async (pool) => {
+export default async (pool) => {
   // Lấy id hệ thống mặc định (id nhỏ nhất)
   const { rows } = await pool.query('SELECT id FROM systems ORDER BY id LIMIT 1');
   if (!rows.length) throw new Error('No system found. Please seed systems table first.');

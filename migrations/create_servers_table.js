@@ -1,7 +1,7 @@
 // Migration for creating servers table
 // Updated: 02/06/2025 - Remove ip from servers, add server_id to ip_addresses (link IP to server)
 // Updated: 02/07/2025 - Add status column to servers table
-module.exports = async (db) => {
+export default async (db) => {
   await db.query(`
     CREATE TABLE IF NOT EXISTS servers (
       id SERIAL PRIMARY KEY,

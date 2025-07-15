@@ -1,5 +1,5 @@
 // migrations/seed_rulefirewall.js
-module.exports = async (pool) => {
+export default async (pool) => {
   // Lấy danh sách id thực tế từ bảng units
   const { rows: unitRows } = await pool.query('SELECT id FROM units ORDER BY id ASC');
   if (!unitRows.length) throw new Error('No units found. Please seed units table first.');

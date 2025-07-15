@@ -1,7 +1,7 @@
 // migrations/rm_tables.js
 // Script to drop all tables in the connected database
 
-const { pool } = require('../config/config');
+import { pool } from '../config/config.js';
 
 async function dropAllTables() {
   try {

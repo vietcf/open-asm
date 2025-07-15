@@ -17,7 +17,7 @@ npm install
 
 # Install PM2 globally (as user)
 echo "⚡ Installing PM2..."
-npm install -g pm2
+sudo pm install -g pm2
 
 # 2. Install and setup Nginx
 echo "🔧 Installing and setting up Nginx..."

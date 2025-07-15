@@ -1,5 +1,5 @@
 // Seed data for systems, system_server, server_ip (no foreign key constraints)
-module.exports = async (db) => {
+export default async (db) => {
   // Seed hệ thống
   // Lấy user id và username (giả sử user id=1, username='admin' đã seed ở seed_users.js)
   // Seed hệ thống có updated_by=1, updated_by_username='admin'

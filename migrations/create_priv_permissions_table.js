@@ -1,5 +1,5 @@
 // filepath: migrations/create_priv_permissions_table.js
-module.exports = async (pool) => {
+export default async (pool) => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS priv_permissions (
       id SERIAL PRIMARY KEY,

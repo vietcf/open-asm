@@ -1,4 +1,4 @@
-module.exports = async (db) => {
+export default async (db) => {
   await db.query(`
     INSERT INTO services (name, description) VALUES
       ('Web Server', 'Handles HTTP requests and serves web content'),

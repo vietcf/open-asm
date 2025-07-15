@@ -1,5 +1,5 @@
 // filepath: migrations/create_priv_users_table.js
-module.exports = async (pool) => {
+export default async (pool) => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS priv_users (
       id SERIAL PRIMARY KEY,
