@@ -1,5 +1,5 @@
 // filepath: migrations/seed_priv_users.js
-module.exports = async (pool) => {
+export default async (pool) => {
   // Seed priv_users
   // Lấy id các đơn vị (unit) theo code
   const { rows: unitRows } = await pool.query("SELECT id, code FROM units WHERE code IN ('IT','HR','FIN')");

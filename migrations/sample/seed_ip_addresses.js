@@ -1,4 +1,4 @@
-module.exports = async (pool) => {
+export default async (pool) => {
   await pool.query(`
     INSERT INTO ip_addresses (ip_address, description, server_id, updated_by) VALUES
       ('192.168.1.1', 'Main router', NULL, 'admin'),

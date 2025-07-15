@@ -1,5 +1,5 @@
 // filepath: migrations/seed_priv_user_roles.js
-module.exports = async (pool) => {
+export default async (pool) => {
   // Giả sử user_id 1,2,3 và role_id 1,2,3 đã tồn tại
   // Lấy id thực tế của user theo username
   const { rows: userRows } = await pool.query("SELECT id, username FROM priv_users WHERE username IN ('alice','bob','charlie')");

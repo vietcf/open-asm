@@ -1,5 +1,5 @@
 // migrations/create_devices_table.js
-module.exports = async (pool) => {
+export default async (pool) => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS devices (
       id SERIAL PRIMARY KEY,

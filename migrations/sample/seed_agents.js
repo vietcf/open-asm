@@ -1,4 +1,4 @@
-module.exports = async (db) => {
+export default async (db) => {
   await db.query(`
     INSERT INTO agents (name, version, description) VALUES
       ('Zabbix Agent', '6.0', 'Monitoring agent for Zabbix'),

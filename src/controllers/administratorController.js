@@ -5,6 +5,7 @@ import Configuration from '../models/Configuration.js';
 import SystemLog from '../models/SystemLog.js';
 import bcrypt from 'bcrypt';
 import { pool } from '../../config/config.js';
+import { clearPermissionsCache } from '../middlewares/permissions.middleware.js';
 
 // ===== USER MANAGEMENT =====
 const administratorController = {};
@@ -262,6 +263,10 @@ administratorController.createRole = async (req, res) => {
     // Move DB logic to model
     await Role.createWithPermissions({ name, description, permissions: permissions.map(Number) }, client);
     await client.query('COMMIT');
+    
+    // Clear permissions cache since new role with permissions was created
+    clearPermissionsCache();
+    
     req.flash('success', 'Role added successfully!');
     res.redirect('/administrator/roles');
   } catch (err) {
@@ -300,6 +305,10 @@ administratorController.updateRole = async (req, res) => {
     await Role.update(id, { name, description }, client);
     await Role.updatePermissions(id, permissions.map(Number), client);
     await client.query('COMMIT');
+    
+    // Clear permissions cache since role permissions were updated
+    clearPermissionsCache();
+    
     req.flash('success', 'Role updated successfully!');
     res.redirect('/administrator/roles');
   } catch (err) {

@@ -1,4 +1,4 @@
-module.exports = async (pool) => {
+export default async (pool) => {
   await pool.query(`
     INSERT INTO units (name, code, description)
     VALUES

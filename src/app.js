@@ -115,6 +115,7 @@ app.use((req, res, next) => {
     const user = res.locals.user;
     if (!user) return false;
     if (user.role_name === 'superadmin') return true;
+    
     if (req.permissions && Array.isArray(req.permissions)) {
       return req.permissions.includes(perm);
     }

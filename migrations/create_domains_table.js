@@ -1,7 +1,5 @@
 // Migration script to create domains table
-const { pool } = require('../config/config');
-
-module.exports = async (db) => {
+export default async (db) => {
   // Create domains table
   await db.query(`
     CREATE TABLE IF NOT EXISTS domains (

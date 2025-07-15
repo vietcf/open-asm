@@ -1,9 +1,46 @@
-// Simple reusable middleware for permission check using res.locals.hasPermission
-export default function requirePermission(action, resource) {
+// Enhanced middleware for permission check - supports multiple permissions
+export default function requirePermission(...permissions) {
   return (req, res, next) => {
-    if (!res.locals.hasPermission(action, resource)) {
+    // Handle different parameter formats
+    let permissionsToCheck = [];
+    
+    if (permissions.length === 2 && typeof permissions[0] === 'string' && typeof permissions[1] === 'string') {
+      // Legacy format: requirePermission('read', 'user')
+      const [action, resource] = permissions;
+      permissionsToCheck = [`${resource}.${action}`];
+    } else {
+      // New format: requirePermission('user.read', 'user.create', 'system.read')
+      permissionsToCheck = permissions;
+    }
+    
+    // Check if user has ANY of the required permissions (OR logic)
+    const hasAnyPermission = permissionsToCheck.some(permission => {
+      return res.locals.hasPermission(permission);
+    });
+    
+    if (!hasAnyPermission) {
+      console.log(`Permission denied. Required one of: ${permissionsToCheck.join(', ')}`);
+      console.log('User permissions:', req.permissions);
       return res.status(403).send('Forbidden');
     }
+    
+    next();
+  };
+}
+
+// Alternative function for AND logic (user must have ALL permissions)
+export function requireAllPermissions(...permissions) {
+  return (req, res, next) => {
+    const hasAllPermissions = permissions.every(permission => {
+      return res.locals.hasPermission(permission);
+    });
+    
+    if (!hasAllPermissions) {
+      console.log(`Permission denied. Required ALL of: ${permissions.join(', ')}`);
+      console.log('User permissions:', req.permissions);
+      return res.status(403).send('Forbidden');
+    }
+    
     next();
   };
 }

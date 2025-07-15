@@ -1,5 +1,5 @@
 // Seed data for subnets table
-module.exports = async (pool) => {
+export default async (pool) => {
   await pool.query(`
     INSERT INTO subnets (address, description) VALUES
       ('192.168.1.0/24', 'Office LAN'),

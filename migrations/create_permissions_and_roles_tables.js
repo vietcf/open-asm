@@ -1,5 +1,5 @@
 // Create permissions, roles, role_permissions tables
-module.exports = async (pool) => {
+export default async (pool) => {
   // Create permissions table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS permissions (
