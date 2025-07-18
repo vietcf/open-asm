@@ -40,6 +40,17 @@ class Tag {
   }
 
   /**
+   * Get tags by multiple ids
+   * @param {Array<number>} ids
+   * @returns {Promise<Array>}
+   */
+  static async findByIds(ids) {
+    if (!ids || ids.length === 0) return [];
+    const result = await pool.query('SELECT * FROM tags WHERE id = ANY($1)', [ids]);
+    return result.rows;
+  }
+
+  /**
    * Update a tag
    * @param {number} id
    * @param {Object} data

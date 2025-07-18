@@ -2,6 +2,9 @@
 import { config } from '../../config/config.js';
 import RuleFirewall from '../models/RuleFirewall.js';
 import Configuration from '../models/Configuration.js';
+import Unit from '../models/Unit.js';
+import Contact from '../models/Contact.js';
+import Tag from '../models/Tag.js';
 import firewallConfig from '../../config/firewallOptions.js';
 import ExcelJS from 'exceljs';
 
@@ -20,52 +23,62 @@ firewallController.ruleList = async (req, res) => {
     if (!pageSize || !pageSizeOptions.includes(pageSize)) pageSize = configPageSize;
 
     // --- Parse and normalize filter params ---
-    let ou_id = req.query.ou_id;
-    if (ou_id && ou_id !== '') ou_id = parseInt(ou_id, 10);
-    if (isNaN(ou_id)) ou_id = undefined;
-    let violation_type = req.query.violation_type || '';
-    if (violation_type === '') violation_type = undefined;
-    let status = req.query.status || '';
-    if (status === '') status = undefined;
+    let filterUnitId = req.query.ou_id;
+    if (filterUnitId && filterUnitId !== '') filterUnitId = parseInt(filterUnitId, 10);
+    if (isNaN(filterUnitId)) filterUnitId = undefined;
+    let filterViolationType = req.query.violation_type || '';
+    if (filterViolationType === '') filterViolationType = undefined;
+    let filterStatus = req.query.status || '';
+    if (filterStatus === '') filterStatus = undefined;
     // Multi-select: tags, contacts
-    let tags = req.query['tags[]'] || req.query.tags || [];
-    if (typeof tags === 'string') tags = [tags];
-    tags = tags.map(t => parseInt(t, 10)).filter(t => !isNaN(t));
-    if (tags.length === 0) tags = undefined;
-    let contacts = req.query['contacts[]'] || req.query.contacts || [];
-    if (typeof contacts === 'string') contacts = [contacts];
-    contacts = contacts.map(c => parseInt(c, 10)).filter(c => !isNaN(c));
-    if (contacts.length === 0) contacts = undefined;
-    let firewall_name = req.query.firewall_name || '';
-    if (firewall_name === '') firewall_name = undefined;
+    let filterTagIds = req.query['tags[]'] || req.query.tags || [];
+    if (typeof filterTagIds === 'string') filterTagIds = [filterTagIds];
+    filterTagIds = Array.isArray(filterTagIds) ? filterTagIds : [];
+    filterTagIds = filterTagIds.map(t => parseInt(t, 10)).filter(t => !isNaN(t));
+    if (!Array.isArray(filterTagIds)) filterTagIds = [];
+    if (filterTagIds.length === 0) filterTagIds = [];
+    let filterContactIds = req.query['contacts[]'] || req.query.contacts || [];
+    if (typeof filterContactIds === 'string') filterContactIds = [filterContactIds];
+    filterContactIds = Array.isArray(filterContactIds) ? filterContactIds : [];
+    filterContactIds = filterContactIds.map(c => parseInt(c, 10)).filter(c => !isNaN(c));
+    if (!Array.isArray(filterContactIds)) filterContactIds = [];
+    if (filterContactIds.length === 0) filterContactIds = [];
+    let filterFirewallName = req.query.firewall_name || '';
+    if (filterFirewallName === '') filterFirewallName = undefined;
     // Parse audit_batch filter
-    let audit_batch = req.query.audit_batch || '';
-    if (audit_batch === '') audit_batch = undefined;
+    let filterAuditBatch = req.query.audit_batch || '';
+    if (filterAuditBatch === '') filterAuditBatch = undefined;
 
-    // --- Call model with filters ---
-    const { rules: ruleList, totalCount, totalPages } = await RuleFirewall.findAll({
-      search, page, pageSize, ou_id, contacts, tags, violation_type, status, firewall_name, audit_batch
+
+    // --- Call model with filters (optimized aggregation) ---
+    const ruleList = await RuleFirewall.findFilteredList({
+      search, page, pageSize, ou_id: filterUnitId, contacts: filterContactIds, tags: filterTagIds, violation_type: filterViolationType, status: filterStatus, firewall_name: filterFirewallName, audit_batch: filterAuditBatch
     });
+    const totalCount = await RuleFirewall.countFiltered({
+      search, ou_id: filterUnitId, contacts: filterContactIds, tags: filterTagIds, violation_type: filterViolationType, status: filterStatus, firewall_name: filterFirewallName, audit_batch: filterAuditBatch
+    });
+    const totalPages = Math.ceil(totalCount / pageSize) || 1;
 
     // --- Fetch display names for selected filters (for select2 persistence) ---
-    let ou_name = '';
-    if (ou_id) {
-      const ouRes = await pool.query('SELECT name FROM units WHERE id = $1', [ou_id]);
-      if (ouRes.rows.length > 0) ou_name = ouRes.rows[0].name;
+    // --- Prepare selected values for select2 persistence ---
+    let selectedUnit = '';
+    if (filterUnitId) {
+      const unit = await Unit.findById(filterUnitId);
+      if (unit) selectedUnit = unit.name;
     }
-    let tagNames = [];
-    if (tags && tags.length > 0) {
-      const tagRes = await pool.query('SELECT id, name FROM tags WHERE id = ANY($1)', [tags]);
-      tagNames = tags.map(tid => {
-        const found = tagRes.rows.find(r => r.id === tid);
+    let selectedTags = [];
+    if (Array.isArray(filterTagIds) && filterTagIds.length > 0) {
+      const tagList = await Tag.findByIds(filterTagIds);
+      selectedTags = filterTagIds.map(tid => {
+        const found = tagList.find(r => r.id === tid);
         return found ? found.name : '';
       });
     }
-    let contactNames = [];
-    if (contacts && contacts.length > 0) {
-      const contactRes = await pool.query('SELECT id, name, email FROM contacts WHERE id = ANY($1)', [contacts]);
-      contactNames = contacts.map(cid => {
-        const found = contactRes.rows.find(r => r.id === cid);
+    let selectedContacts = [];
+    if (Array.isArray(filterContactIds) && filterContactIds.length > 0) {
+      const contactList = await Contact.findByIds(filterContactIds);
+      selectedContacts = filterContactIds.map(cid => {
+        const found = contactList.find(c => c.id === cid);
         return found ? (found.name + (found.email ? ' (' + found.email + ')' : '')) : '';
       });
     }
@@ -73,30 +86,30 @@ firewallController.ruleList = async (req, res) => {
     const success = req.flash ? req.flash('success')[0] : undefined;
     const error = req.flash ? req.flash('error')[0] : undefined;
     res.render('pages/firewall/rule_list', {
-      ruleList, 
-      page, 
-      pageSize, 
-      totalPages, 
-      totalCount, 
-      search, 
-      success, 
-      error, 
+      ruleList,
+      page,
+      pageSize,
+      totalPages,
+      totalCount,
+      search,
+      success,
+      error,
       allowedPageSizes: pageSizeOptions,
       actionsOptions: firewallConfig.actionsOptions,
       statusOptions: firewallConfig.statusOptions,
       violationTypeOptions: firewallConfig.violationTypeOptions,
       firewallNameOptions: firewallConfig.firewallNameOptions,
-      firewall_name, // giữ lại giá trị filter khi render lại view
+      firewall_name: filterFirewallName,
       // Pass filter values for modal persistence
-      ou_id, 
-      ou_name, 
-      tags, 
-      tagNames, 
-      contacts, 
-      contactNames, 
-      violation_type, 
-      status,
-      audit_batch, // persist audit_batch filter value
+      filterUnitId,
+      selectedUnit,
+      filterTagIds: Array.isArray(filterTagIds) ? filterTagIds : [],
+      selectedTags: Array.isArray(selectedTags) ? selectedTags : [],
+      filterContactIds: Array.isArray(filterContactIds) ? filterContactIds : [],
+      selectedContacts: Array.isArray(selectedContacts) ? selectedContacts : [],
+      violation_type: filterViolationType,
+      status: filterStatus,
+      audit_batch: filterAuditBatch,
       title: 'Firewall Rule',
       activeMenu: 'firewall-rule'
     });
@@ -107,69 +120,89 @@ firewallController.ruleList = async (req, res) => {
 
 firewallController.addRule = async (req, res) => {
   try {
-    // Extract fields directly from request body
-    let {
+    // Extract fields from request body (similar to User.create approach)
+    const {
       rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr, firewall_name, work_order, audit_batch
+      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr, 
+      firewall_name, work_order, audit_batch
     } = req.body;
-    // Normalize & trim all string fields
-    [rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
-      services, application, url, action, status, violation_type,
-      violation_detail, solution_proposal, solution_confirm, description
-    ] = [rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
-      services, application, url, action, status, violation_type,
-      violation_detail, solution_proposal, solution_confirm, description
-    ].map(v => typeof v === 'string' ? v.trim() : v);
-    // Normalize array fields
-    contacts = Array.isArray(contactsArr) ? contactsArr : (contacts || []);
-    tags = Array.isArray(tagsArr) ? tagsArr : (tags || []);
-    // Normalize ou_id
-    ou_id = ou_id && ou_id !== '' ? parseInt(ou_id.id !== undefined ? ou_id.id : ou_id, 10) : null;
-    if (isNaN(ou_id)) ou_id = null;
-    // Normalize contacts and tags to arrays of integers
-    if (!Array.isArray(contacts)) contacts = [contacts];
-    contacts = contacts
-      .map(c => (typeof c === 'object' && c.id !== undefined ? c.id : c))
-      .map(c => parseInt(c, 10))
-      .filter(c => !isNaN(c));
-    if (!Array.isArray(tags)) tags = [tags];
-    tags = tags
-      .map(t => (typeof t === 'object' && t.id !== undefined ? t.id : t))
-      .map(t => parseInt(t, 10))
-      .filter(t => !isNaN(t));
+
+    // Normalize and trim input fields (like User.create)
+    const normRulename = rulename ? rulename.trim() : '';
+    const normSrcZone = src_zone ? src_zone.trim() : '';
+    const normSrc = src ? src.trim() : '';
+    const normSrcDetail = src_detail ? src_detail.trim() : '';
+    const normDstZone = dst_zone ? dst_zone.trim() : '';
+    const normDst = dst ? dst.trim() : '';
+    const normDstDetail = dst_detail ? dst_detail.trim() : '';
+    const normServices = services ? services.trim() : '';
+    const normApplication = application ? application.trim() : '';
+    const normUrl = url ? url.trim() : '';
+    const normAction = action ? action.trim() : '';
+    const normStatus = status ? status.trim() : '';
+    const normViolationType = violation_type ? violation_type.trim() : '';
+    const normViolationDetail = violation_detail ? violation_detail.trim() : '';
+    const normSolutionProposal = solution_proposal ? solution_proposal.trim() : '';
+    const normSolutionConfirm = solution_confirm ? solution_confirm.trim() : '';
+    const normDescription = description ? description.trim() : '';
+    const normFirewallName = firewall_name ? firewall_name.trim() : '';
+    const normWorkOrder = work_order ? work_order.trim() : '';
+    const normAuditBatch = audit_batch ? audit_batch.trim() : '';
+
     // Validate required fields
-    if (!rulename || !src || !dst || !action) {
+    if (!normRulename || !normSrc || !normDst || !normAction) {
       req.flash('error', 'Missing required fields: Rule Name, Source, Destination, Action');
       return res.redirect('/firewall/rule');
     }
+
+    // Normalize ou_id
+    const normOuId = ou_id && ou_id !== '' ? parseInt(ou_id, 10) : null;
+    if (ou_id && isNaN(normOuId)) {
+      req.flash('error', 'Invalid OU ID');
+      return res.redirect('/firewall/rule');
+    }
+
+    // Normalize array fields
+    let normContacts = Array.isArray(contactsArr) ? contactsArr : (contacts || []);
+    let normTags = Array.isArray(tagsArr) ? tagsArr : (tags || []);
+    
+    if (!Array.isArray(normContacts)) normContacts = [normContacts];
+    normContacts = normContacts
+      .map(c => parseInt(c, 10))
+      .filter(c => !isNaN(c));
+      
+    if (!Array.isArray(normTags)) normTags = [normTags];
+    normTags = normTags
+      .map(t => parseInt(t, 10))
+      .filter(t => !isNaN(t));
     // Validate action, status, violation_type against config
     const allowedActions = firewallConfig.actionsOptions.map(a => a.value);
-    if (!allowedActions.includes(action)) {
+    if (!allowedActions.includes(normAction)) {
       req.flash('error', 'Invalid action value.');
       return res.redirect('/firewall/rule');
     }
     const allowedStatus = firewallConfig.statusOptions.map(s => s.value);
-    if (status && !allowedStatus.includes(status)) {
+    if (normStatus && !allowedStatus.includes(normStatus)) {
       req.flash('error', 'Invalid status value.');
       return res.redirect('/firewall/rule');
     }
     const allowedViolationTypes = firewallConfig.violationTypeOptions.map(v => v.value);
-    if (violation_type && !allowedViolationTypes.includes(violation_type)) {
+    if (normViolationType && !allowedViolationTypes.includes(normViolationType)) {
       req.flash('error', 'Invalid violation type value.');
       return res.redirect('/firewall/rule');
     }
     const allowedFirewallNames = firewallConfig.firewallNameOptions.map(f => f.value);
-    if (!firewall_name || !allowedFirewallNames.includes(firewall_name)) {
+    if (!normFirewallName || !allowedFirewallNames.includes(normFirewallName)) {
       req.flash('error', 'Invalid or missing firewall name.');
       return res.redirect('/firewall/rule');
     }
-    // Xử lý audit_batch: chuẩn hóa, validate định dạng, lưu dạng chuỗi TEXT
-    if (typeof audit_batch === 'string') audit_batch = audit_batch.trim();
+
+    // Process audit_batch: normalize and validate format
     let auditBatchStr = '';
-    if (audit_batch && audit_batch.length > 0) {
-      const batches = audit_batch.split(',').map(v => v.trim()).filter(v => v.length > 0);
+    if (normAuditBatch && normAuditBatch.length > 0) {
+      const batches = normAuditBatch.split(',').map(v => v.trim()).filter(v => v.length > 0);
       const valid = batches.every(batch => /^\d{4}-0[12]$/.test(batch));
       if (!valid) {
         req.flash('error', 'Each audit batch must be in the format yyyy-01 or yyyy-02, separated by commas.');
@@ -177,17 +210,36 @@ firewallController.addRule = async (req, res) => {
       }
       auditBatchStr = batches.join(',');
     }
-    // Compose normalized body
-    const body = {
-      rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
-      services, application, url, action, ou_id, status, violation_type,
-      violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags, firewall_name, work_order,
+
+    // Compose final data object (like User.create)
+    const ruleData = {
+      rulename: normRulename,
+      src_zone: normSrcZone || null,
+      src: normSrc,
+      src_detail: normSrcDetail || null,
+      dst_zone: normDstZone || null,
+      dst: normDst,
+      dst_detail: normDstDetail || null,
+      services: normServices || null,
+      application: normApplication || null,
+      url: normUrl || null,
+      action: normAction,
+      ou_id: normOuId,
+      status: normStatus || null,
+      violation_type: normViolationType || null,
+      violation_detail: normViolationDetail || null,
+      solution_proposal: normSolutionProposal || null,
+      solution_confirm: normSolutionConfirm || null,
+      description: normDescription || null,
+      contacts: normContacts,
+      tags: normTags,
+      firewall_name: normFirewallName,
+      work_order: normWorkOrder || null,
       audit_batch: auditBatchStr,
       updated_by: req.session && req.session.user ? req.session.user.username : null
     };
-    // created_at and updated_at are set to NOW() in the model SQL
-    await RuleFirewall.create(body);
+
+    await RuleFirewall.create(ruleData);
     req.flash('success', 'Rule added successfully!');
     res.redirect('/firewall/rule');
   } catch (err) {
@@ -196,73 +248,95 @@ firewallController.addRule = async (req, res) => {
   }
 };
 
+
+
 firewallController.editRule = async (req, res) => {
   const id = req.params.id;
   try {
-    // Extract fields directly from request body
-    let {
+    // Extract fields from request body (similar to User.update approach)
+    const {
       rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr, firewall_name, work_order, audit_batch
+      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr, 
+      firewall_name, work_order, audit_batch
     } = req.body;
-    // Normalize & trim all string fields
-    [rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
-      services, application, url, action, status, violation_type,
-      violation_detail, solution_proposal, solution_confirm, description
-    ] = [rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
-      services, application, url, action, status, violation_type,
-      violation_detail, solution_proposal, solution_confirm, description
-    ].map(v => typeof v === 'string' ? v.trim() : v);
-    // Normalize array fields, always initialize to [] if empty
-    // Ensure both contacts and tags can handle multiple values
-    contacts = Array.isArray(contactsArr) ? contactsArr : (contacts !== undefined ? contacts : []);
-    tags = Array.isArray(tagsArr) ? tagsArr : (tags !== undefined ? tags : []);
-    if (!Array.isArray(contacts)) contacts = contacts ? [contacts] : [];
-    if (!Array.isArray(tags)) tags = tags ? [tags] : [];
-    // Normalize ou_id
-    ou_id = ou_id && ou_id !== '' ? parseInt(ou_id.id !== undefined ? ou_id.id : ou_id, 10) : null;
-    if (isNaN(ou_id)) ou_id = null;
-    // Normalize contacts and tags to arrays of integers
-    contacts = contacts
-      .map(c => (typeof c === 'object' && c.id !== undefined ? c.id : c))
-      .map(c => parseInt(c, 10))
-      .filter(c => !isNaN(c));
-    tags = tags
-      .map(t => (typeof t === 'object' && t.id !== undefined ? t.id : t))
-      .map(t => parseInt(t, 10))
-      .filter(t => !isNaN(t));
+
+    // Normalize and trim input fields (like User.update)
+    const normRulename = rulename ? rulename.trim() : '';
+    const normSrcZone = src_zone ? src_zone.trim() : '';
+    const normSrc = src ? src.trim() : '';
+    const normSrcDetail = src_detail ? src_detail.trim() : '';
+    const normDstZone = dst_zone ? dst_zone.trim() : '';
+    const normDst = dst ? dst.trim() : '';
+    const normDstDetail = dst_detail ? dst_detail.trim() : '';
+    const normServices = services ? services.trim() : '';
+    const normApplication = application ? application.trim() : '';
+    const normUrl = url ? url.trim() : '';
+    const normAction = action ? action.trim() : '';
+    const normStatus = status ? status.trim() : '';
+    const normViolationType = violation_type ? violation_type.trim() : '';
+    const normViolationDetail = violation_detail ? violation_detail.trim() : '';
+    const normSolutionProposal = solution_proposal ? solution_proposal.trim() : '';
+    const normSolutionConfirm = solution_confirm ? solution_confirm.trim() : '';
+    const normDescription = description ? description.trim() : '';
+    const normFirewallName = firewall_name ? firewall_name.trim() : '';
+    const normWorkOrder = work_order ? work_order.trim() : '';
+    const normAuditBatch = audit_batch ? audit_batch.trim() : '';
+
     // Validate required fields
-    if (!rulename || !src || !dst || !action) {
+    if (!normRulename || !normSrc || !normDst || !normAction) {
       req.flash('error', 'Missing required fields: Rule Name, Source, Destination, Action');
       return res.redirect('/firewall/rule');
     }
+
+    // Normalize ou_id
+    const normOuId = ou_id && ou_id !== '' ? parseInt(ou_id, 10) : null;
+    if (ou_id && isNaN(normOuId)) {
+      req.flash('error', 'Invalid OU ID');
+      return res.redirect('/firewall/rule');
+    }
+
+    // Normalize array fields (always initialize to [] if empty)
+    let normContacts = Array.isArray(contactsArr) ? contactsArr : (contacts !== undefined ? contacts : []);
+    let normTags = Array.isArray(tagsArr) ? tagsArr : (tags !== undefined ? tags : []);
+    
+    if (!Array.isArray(normContacts)) normContacts = normContacts ? [normContacts] : [];
+    normContacts = normContacts
+      .map(c => parseInt(c, 10))
+      .filter(c => !isNaN(c));
+      
+    if (!Array.isArray(normTags)) normTags = normTags ? [normTags] : [];
+    normTags = normTags
+      .map(t => parseInt(t, 10))
+      .filter(t => !isNaN(t));
+
     // Validate action, status, violation_type against config
     const allowedActions = firewallConfig.actionsOptions.map(a => a.value);
-    if (!allowedActions.includes(action)) {
+    if (!allowedActions.includes(normAction)) {
       req.flash('error', 'Invalid action value.');
       return res.redirect('/firewall/rule');
     }
     const allowedStatus = firewallConfig.statusOptions.map(s => s.value);
-    if (status && !allowedStatus.includes(status)) {
+    if (normStatus && !allowedStatus.includes(normStatus)) {
       req.flash('error', 'Invalid status value.');
       return res.redirect('/firewall/rule');
     }
     const allowedViolationTypes = firewallConfig.violationTypeOptions.map(v => v.value);
-    if (violation_type && !allowedViolationTypes.includes(violation_type)) {
+    if (normViolationType && !allowedViolationTypes.includes(normViolationType)) {
       req.flash('error', 'Invalid violation type value.');
       return res.redirect('/firewall/rule');
     }
     const allowedFirewallNames = firewallConfig.firewallNameOptions.map(f => f.value);
-    if (!firewall_name || !allowedFirewallNames.includes(firewall_name)) {
+    if (!normFirewallName || !allowedFirewallNames.includes(normFirewallName)) {
       req.flash('error', 'Invalid or missing firewall name.');
       return res.redirect('/firewall/rule');
     }
-    // Audit batch normalization and validation (same as addRule)
-    if (typeof audit_batch === 'string') audit_batch = audit_batch.trim();
+
+    // Process audit_batch: normalize and validate format
     let auditBatchStr = '';
-    if (audit_batch && audit_batch.length > 0) {
-      const batches = audit_batch.split(',').map(v => v.trim()).filter(v => v.length > 0);
+    if (normAuditBatch && normAuditBatch.length > 0) {
+      const batches = normAuditBatch.split(',').map(v => v.trim()).filter(v => v.length > 0);
       const valid = batches.every(batch => /^\d{4}-0[12]$/.test(batch));
       if (!valid) {
         req.flash('error', 'Each audit batch must be in the format yyyy-01 or yyyy-02, separated by commas.');
@@ -270,16 +344,36 @@ firewallController.editRule = async (req, res) => {
       }
       auditBatchStr = batches.join(',');
     }
-    // Compose normalized data
-    const data = {
-      rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
-      services, application, url, action, ou_id, status, violation_type,
-      violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags, firewall_name, work_order,
+
+    // Compose final data object (like User.update)
+    const ruleData = {
+      rulename: normRulename,
+      src_zone: normSrcZone || null,
+      src: normSrc,
+      src_detail: normSrcDetail || null,
+      dst_zone: normDstZone || null,
+      dst: normDst,
+      dst_detail: normDstDetail || null,
+      services: normServices || null,
+      application: normApplication || null,
+      url: normUrl || null,
+      action: normAction,
+      ou_id: normOuId,
+      status: normStatus || null,
+      violation_type: normViolationType || null,
+      violation_detail: normViolationDetail || null,
+      solution_proposal: normSolutionProposal || null,
+      solution_confirm: normSolutionConfirm || null,
+      description: normDescription || null,
+      contacts: normContacts,
+      tags: normTags,
+      firewall_name: normFirewallName,
+      work_order: normWorkOrder || null,
       audit_batch: auditBatchStr,
       updated_by: req.session && req.session.user ? req.session.user.username : null
     };
-    await RuleFirewall.update(id, data);
+
+    await RuleFirewall.update(id, ruleData);
     req.flash('success', 'Rule updated successfully!');
     res.redirect('/firewall/rule');
   } catch (err) {

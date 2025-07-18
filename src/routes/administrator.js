@@ -30,7 +30,6 @@ router.delete('/permissions/:id', requirePermission('permission.delete'), admini
 router.get('/configuration', requirePermission('configuration.read'), administratorController.listConfigurations);
 router.post('/configuration', requirePermission('configuration.create'), administratorController.createConfiguration);
 router.post('/configuration/:key', requirePermission('configuration.update'), administratorController.updateConfiguration);
-//router.delete('/configuration/:key', requirePermission('configuration.delete'), administratorController.deleteConfiguration); // Use DELETE for delete
 
 // System Log
 router.get('/log', requirePermission('system_log.read'), administratorController.listSystemLogs);
