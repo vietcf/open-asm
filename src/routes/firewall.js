@@ -11,18 +11,18 @@ const router = express.Router();
 
 // ====== FIREWALL RULE MENU ======
 // List firewall rules
-router.get('/rule', requirePermission('read', 'rule'), firewallController.ruleList);
+router.get('/rule', requirePermission('rule.read'), firewallController.ruleList);
 // Export firewall rule list as Excel (filtered)
-router.get('/rule/export', requirePermission('read', 'rule'), firewallController.exportRuleList);
+router.get('/rule/export', requirePermission('rule.read'), firewallController.exportRuleList);
 // Add firewall rule
-router.post('/rule', requirePermission('create', 'rule'), firewallController.addRule);
+router.post('/rule', requirePermission('rule.create'), firewallController.addRule);
 // Edit firewall rule
-router.post('/rule/:id', requirePermission('update', 'rule'), firewallController.editRule);
+router.post('/rule/:id', requirePermission('rule.update'), firewallController.editRule);
 // Delete firewall rule
-router.delete('/rule/:id', requirePermission('delete', 'rule'), firewallController.deleteRule);
+router.delete('/rule/:id', requirePermission('rule.delete'), firewallController.deleteRule);
 
 // ====== FIREWALL BATCH MENU ======
 // Batch update work order
-router.post('/api/batch-update-wo', requirePermission('update', 'rule'), firewallController.batchUpdateWorkOrder);
+router.post('/api/batch-update-wo', requirePermission('rule.update'), firewallController.batchUpdateWorkOrder);
 
 export default router;

@@ -150,11 +150,11 @@
       </div>
       <form action="/firewall/rule/export" method="GET" style="display:inline;" class="me-2" id="exportRuleForm">
         <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-        <input type="hidden" name="ou_id" value="<%= typeof ou_id !== 'undefined' ? ou_id : '' %>">
-        <% if (typeof tags !== 'undefined' && Array.isArray(tags)) { tags.forEach(function(t) { %>
+        <input type="hidden" name="ou_id" value="<%= typeof filterUnitId !== 'undefined' ? filterUnitId : '' %>">
+        <% if (typeof filterTagIds !== 'undefined' && Array.isArray(filterTagIds)) { filterTagIds.forEach(function(t) { %>
           <input type="hidden" name="tags[]" value="<%= t %>">
         <% }) } %>
-        <% if (typeof contacts !== 'undefined' && Array.isArray(contacts)) { contacts.forEach(function(c) { %>
+        <% if (typeof filterContactIds !== 'undefined' && Array.isArray(filterContactIds)) { filterContactIds.forEach(function(c) { %>
           <input type="hidden" name="contacts[]" value="<%= c %>">
         <% }) } %>
         <input type="hidden" name="violation_type" value="<%= typeof violation_type !== 'undefined' ? violation_type : '' %>">
@@ -691,6 +691,11 @@
 }
 </style>
 <script>
+// --- GLOBAL DEBUG: Confirm script loaded and catch JS errors ---
+console.log('[Firewall Rule List] Script loaded');
+window.onerror = function(msg, url, line, col, error) {
+  console.error('[Global JS Error]', msg, url, line, col, error);
+};
 $(function() {
   function getDropdownParent(element) {
     return $(element).closest('.modal-content');
@@ -716,7 +721,10 @@ $(function() {
       dataType: 'json',
       delay: 250,
       data: function(params) { return { search: params.term }; },
-      processResults: function(data) { return { results: data }; },
+      processResults: function(data) {
+        console.log('[Select2 OU] AJAX response:', data);
+        return { results: data };
+      },
       cache: true
     }
   });
@@ -732,7 +740,10 @@ $(function() {
       dataType: 'json',
       delay: 250,
       data: function(params) { return { search: params.term }; },
-      processResults: function(data) { return { results: data }; },
+      processResults: function(data) {
+        console.log('[Select2 Tags] AJAX response:', data);
+        return { results: data };
+      },
       cache: true
     }
   });
@@ -748,7 +759,10 @@ $(function() {
       dataType: 'json',
       delay: 250,
       data: function(params) { return { search: params.term }; },
-      processResults: function(data) { return { results: data }; },
+      processResults: function(data) {
+        console.log('[Select2 Contacts] AJAX response:', data);
+        return { results: data };
+      },
       cache: true
     }
   });
@@ -774,10 +788,23 @@ $(function() {
 
   // Init select2 when modal opens, so dropdownParent is always correct
   $('#addRuleModal').on('shown.bs.modal', function() {
+    console.log('==> [AddRuleModal] Modal opened');
+    // --- DEBUG: Confirm jQuery and select2 loaded ---
+    if (typeof $ === 'undefined') {
+      console.error('jQuery ($) is NOT loaded!');
+    } else {
+      console.log('jQuery ($) is loaded:', $);
+    }
+    if (typeof $.fn.select2 === 'undefined') {
+      console.error('select2 is NOT loaded!');
+    } else {
+      console.log('select2 is loaded:', $.fn.select2);
+    }
     var $modalContent = $('#addRuleModal .modal-content');
     if ($('#ruleOuId').hasClass('select2-hidden-accessible')) $('#ruleOuId').select2('destroy');
     if ($('#ruleTags').hasClass('select2-hidden-accessible')) $('#ruleTags').select2('destroy');
     if ($('#ruleContacts').hasClass('select2-hidden-accessible')) $('#ruleContacts').select2('destroy');
+    console.log('==> [AddRuleModal] Initializing select2 for OU, Tags, Contacts');
     $('#ruleOuId').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select OU (Unit)',
@@ -789,8 +816,17 @@ $(function() {
         url: '/organize/api/unit',
         dataType: 'json',
         delay: 250,
-        data: function(params) { return { search: params.term }; },
-        processResults: function(data) { return { results: data }; },
+        data: function(params) {
+          console.log('[AddRule Select2 OU] AJAX data params:', params);
+          return { search: params.term };
+        },
+        processResults: function(data) {
+          console.log('[AddRule Select2 OU] AJAX response:', data);
+          return { results: data };
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+          console.error('[AddRule Select2 OU] AJAX ERROR:', textStatus, errorThrown);
+        },
         cache: true
       }
     });
@@ -805,11 +841,28 @@ $(function() {
         url: '/organize/api/tag',
         dataType: 'json',
         delay: 250,
-        data: function(params) { return { search: params.term }; },
-        processResults: function(data) { return { results: data }; },
+        data: function(params) {
+          console.log('[AddRule Select2 Tags] AJAX data params:', params);
+          return { search: params.term };
+        },
+        processResults: function(data) {
+          console.log('[AddRule Select2 Tags] AJAX response:', data);
+          return { results: data };
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+          console.error('[AddRule Select2 Tags] AJAX ERROR:', textStatus, errorThrown);
+        },
         cache: true
       }
     });
+    // Auto-select tags if provided from controller (selectedTags: [{id, name}])
+    <% if (typeof selectedTags !== 'undefined' && Array.isArray(selectedTags) && selectedTags.length > 0) { %>
+      var selectedTags = <%- JSON.stringify(selectedTags) %>;
+      selectedTags.forEach(function(tag) {
+        var option = new Option(tag.name, tag.id, true, true);
+        $('#ruleTags').append(option).trigger('change');
+      });
+    <% } %>
     $('#ruleContacts').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select contact(s)',
@@ -821,11 +874,31 @@ $(function() {
         url: '/organize/api/contact',
         dataType: 'json',
         delay: 250,
-        data: function(params) { return { search: params.term }; },
-        processResults: function(data) { return { results: data }; },
+        data: function(params) {
+          console.log('[AddRule Select2 Contacts] AJAX data params:', params);
+          return { search: params.term };
+        },
+        processResults: function(data) {
+          console.log('[AddRule Select2 Contacts] AJAX response:', data);
+          return { results: data };
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+          console.error('[AddRule Select2 Contacts] AJAX ERROR:', textStatus, errorThrown);
+        },
         cache: true
       }
     });
+    console.log('[AddRuleModal] select2 initialized for OU, Tags, Contacts');
+    // Tự động trigger tìm kiếm rỗng cho OU, Tags, Contacts khi mở modal
+    setTimeout(function() {
+      console.log('==> [AddRuleModal] Trigger select2 open/close for AJAX');
+      $('#ruleOuId').select2('open');
+      $('#ruleOuId').select2('close');
+      $('#ruleTags').select2('open');
+      $('#ruleTags').select2('close');
+      $('#ruleContacts').select2('open');
+      $('#ruleContacts').select2('close');
+    }, 300);
   });
   <% ruleList.forEach(function(rule) { %>
     $('#ruleEditModal-<%= rule.id %>').on('shown.bs.modal', function() {
@@ -890,8 +963,8 @@ $(function() {
         $ou.append(ouOption).trigger('change');
       }
       // Pre-select tags if present
-      var tagData = <%= JSON.stringify((rule.tags || []).map(t => t.id !== undefined ? t.id : t)) %>;
-      var tagNames = <%= JSON.stringify((rule.tags || []).map(t => t.name || t)) %>;
+      var tagData = <%- JSON.stringify((rule.tags || []).map(t => t.id !== undefined ? t.id : t)) %>;
+      var tagNames = <%- JSON.stringify((rule.tags || []).map(t => t.name || t)) %>;
       if (tagData.length > 0) {
         tagData.forEach(function(tid, i) {
           var tagOption = new Option(tagNames[i] || tid, tid, true, true);
@@ -976,21 +1049,21 @@ $(function() {
       }
     });
     // --- Persist filter values ---
-    <% if (typeof ou_id !== 'undefined' && ou_id) { %>
-      var ouOption = new Option('<%= typeof ou_name !== 'undefined' ? ou_name : '' %>', '<%= ou_id %>', true, true);
+    <% if (typeof filterUnitId !== 'undefined' && filterUnitId) { %>
+      var ouOption = new Option('<%= typeof selectedUnit !== 'undefined' ? selectedUnit : '' %>', '<%= filterUnitId %>', true, true);
       $ou.append(ouOption).trigger('change');
     <% } %>
-    <% if (typeof tags !== 'undefined' && Array.isArray(tags) && tags.length > 0) { %>
-      var tagData = <%- JSON.stringify(tags) %>;
-      var tagNames = <%- JSON.stringify(typeof tagNames !== 'undefined' ? tagNames : []) %>;
+    <% if (typeof filterTagIds !== 'undefined' && Array.isArray(filterTagIds) && filterTagIds.length > 0) { %>
+      var tagData = <%- JSON.stringify(filterTagIds) %>;
+      var tagNames = <%- JSON.stringify(typeof selectedTags !== 'undefined' ? selectedTags : []) %>;
       tagData.forEach(function(tid, i) {
         var tagOption = new Option(tagNames[i] || tid, tid, true, true);
         $tags.append(tagOption).trigger('change');
       });
     <% } %>
-    <% if (typeof contacts !== 'undefined' && Array.isArray(contacts) && contacts.length > 0) { %>
-      var contactData = <%- JSON.stringify(contacts) %>;
-      var contactNames = <%- JSON.stringify(typeof contactNames !== 'undefined' ? contactNames : []) %>;
+    <% if (typeof filterContactIds !== 'undefined' && Array.isArray(filterContactIds) && filterContactIds.length > 0) { %>
+      var contactData = <%- JSON.stringify(filterContactIds) %>;
+      var contactNames = <%- JSON.stringify(typeof selectedContacts !== 'undefined' ? selectedContacts : []) %>;
       contactData.forEach(function(cid, i) {
         var contactOption = new Option(contactNames[i] || cid, cid, true, true);
         $contacts.append(contactOption).trigger('change');

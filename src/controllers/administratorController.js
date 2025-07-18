@@ -85,8 +85,8 @@ administratorController.createUser = async (req, res) => {
     }
     // (Optional) Check duplicate email
     if (normEmail) {
-      const allUsers = await User.findAll();
-      if (allUsers.some(u => (u.email || '').trim() === normEmail)) {
+      const existingEmailUser = await User.findByEmail(normEmail);
+      if (existingEmailUser) {
         req.flash('error', 'Email already exists!');
         return res.redirect('/administrator/users');
       }
@@ -137,6 +137,25 @@ administratorController.updateUser = async (req, res) => {
       if (!validRole) throw new Error('Invalid role');
       newRole = normRole;
     }
+    
+    // Check for duplicate username (excluding current user)
+    if (newUsername !== currentUser.username) {
+      const existingUsernameUser = await User.findByUsername(newUsername);
+      if (existingUsernameUser && existingUsernameUser.id !== parseInt(id)) {
+        req.flash('error', 'Username already exists!');
+        return res.redirect('/administrator/users');
+      }
+    }
+    
+    // Check for duplicate email (excluding current user)
+    if (normEmail && normEmail !== (currentUser.email || '').trim()) {
+      const existingEmailUser = await User.findByEmail(normEmail);
+      if (existingEmailUser && existingEmailUser.id !== parseInt(id)) {
+        req.flash('error', 'Email already exists!');
+        return res.redirect('/administrator/users');
+      }
+    }
+    
     // Handle require_twofa from edit form
     const requireTwofaRaw = req.body.require_twofa;
     const require_twofa = requireTwofaRaw === 'on' ? true : false;
@@ -358,19 +377,15 @@ administratorController.listPermissions = async (req, res) => {
       pageSize = res.locals.defaultPageSize;
     }
 
-    // Use pool from config directly
-    const totalCountResult = await pool.query('SELECT COUNT(*) FROM permissions');
-    const totalCount = parseInt(totalCountResult.rows[0].count, 10);
+    // Chuẩn hóa: dùng filter/search nếu có (có thể mở rộng sau)
+    const filters = {}; // Hiện tại chưa có filter, có thể lấy từ req.query nếu cần
+    const totalCount = await Permission.countFiltered(filters);
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     // If requested page > totalPages, redirect to last page
     if (page > totalPages) {
       return res.redirect(`/administrator/permissions?page=${totalPages}&pageSize=${pageSize}`);
     }
-    const offset = (page - 1) * pageSize;
-    const permissionList = (await pool.query(
-      'SELECT id, name, description FROM permissions ORDER BY name LIMIT $1 OFFSET $2',
-      [pageSize, offset]
-    )).rows;
+    const permissionList = await Permission.findFilteredList({ ...filters, page, pageSize });
     
     res.render('pages/administrator/permission_list', {
       permissionList,

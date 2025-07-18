@@ -1,4 +1,3 @@
-
 /**
  * User model for PostgreSQL (ES6 class)
  * Author: [Your Name]
@@ -33,6 +32,17 @@ class User {
   static async findByUsername(username) {
     const sql = `SELECT users.*, roles.name AS role_name FROM users LEFT JOIN roles ON users.role_id = roles.id WHERE users.username = $1 LIMIT 1`;
     const result = await pool.query(sql, [username]);
+    return result.rows[0];
+  }
+
+  /**
+   * Find a user by email
+   * @param {string} email
+   * @returns {Promise<Object|null>}
+   */
+  static async findByEmail(email) {
+    const sql = 'SELECT * FROM users WHERE email = $1 LIMIT 1';
+    const result = await pool.query(sql, [email]);
     return result.rows[0];
   }
 

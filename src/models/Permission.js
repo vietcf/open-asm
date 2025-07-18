@@ -1,4 +1,3 @@
-
 import { pool } from '../../config/config.js';
 
 /**
@@ -76,6 +75,33 @@ class Permission {
       ORDER BY p.name
     `;
     const result = await pool.query(sql, [roleId]);
+    return result.rows;
+  }
+
+  /**
+   * Count permissions with optional filters (for pagination/search)
+   * @param {Object} filters
+   * @returns {Promise<number>}
+   */
+  static async countFiltered(filters = {}) {
+    // Hiện tại chỉ hỗ trợ đếm tất cả, có thể mở rộng filter sau
+    const sql = 'SELECT COUNT(*) FROM permissions';
+    const result = await pool.query(sql);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  /**
+   * Get a filtered page of permissions (for pagination/search)
+   * @param {Object} params
+   * @param {number} params.page
+   * @param {number} params.pageSize
+   * @returns {Promise<Array>}
+   */
+  static async findFilteredList({ page, pageSize, ...filters }) {
+    // Hiện tại chỉ hỗ trợ phân trang, có thể mở rộng filter sau
+    const offset = (page - 1) * pageSize;
+    const sql = `SELECT id, name, description FROM permissions ORDER BY name LIMIT $1 OFFSET $2`;
+    const result = await pool.query(sql, [pageSize, offset]);
     return result.rows;
   }
 }
