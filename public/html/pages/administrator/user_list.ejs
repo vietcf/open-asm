@@ -32,7 +32,7 @@
                   <select class="form-select form-select-sm" id="userRole" name="role" required>
                     <option value="">-- Select Role --</option>
                     <% if (roles && roles.length) { roles.forEach(function(role) { %>
-                      <option value="<%= role.name %>"><%= role.name %></option>
+                      <option value="<%= role.id %>"><%= role.name %></option>
                     <% }) } %>
                   </select>
                 </div>
@@ -195,7 +195,7 @@
                               <select class="form-select form-select-sm" name="role" <%= rowUser.username === 'admin' ? 'disabled' : '' %> required>
                                 <option value="">-- Select Role --</option>
                                 <% if (roles && roles.length) { roles.forEach(function(role) { %>
-                                  <option value="<%= role.name %>" <%= rowUser.role_name === role.name ? 'selected' : '' %>><%= role.name %></option>
+                                  <option value="<%= role.id %>" <%= rowUser.role_id === role.id ? 'selected' : '' %>><%= role.name %></option>
                                 <% }) } %>
                               </select>
                               <% if (rowUser.username === 'admin') { %>
@@ -311,9 +311,9 @@ window.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', function(e) {
       const pwd = form.querySelector('input[name="password"]');
       const repwd = form.querySelector('input[name="repeat_password"]');
-      // Only check if at least one password field is filled
-      if ((pwd && pwd.value) || (repwd && repwd.value)) {
-        if (!pwd.value || !repwd.value || pwd.value !== repwd.value) {
+      // Chỉ kiểm tra khi một trong hai trường có giá trị
+      if (pwd && pwd.value) {
+        if (!repwd || !repwd.value || pwd.value !== repwd.value) {
           e.preventDefault();
           showToast('Passwords do not match.', 'danger');
           repwd && repwd.focus();

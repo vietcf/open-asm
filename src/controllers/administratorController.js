@@ -14,28 +14,29 @@ administratorController.listUsers = async (req, res) => {
   try {
     let page = parseInt(req.query.page, 10) || 1;
     let pageSize = parseInt(req.query.pageSize, 10);
-    
     // Use global pageSizeOptions from res.locals (set in app.js)
     if (!pageSize || !res.locals.pageSizeOptions.includes(pageSize)) {
       pageSize = res.locals.defaultPageSize;
     }
-    
-    const totalCount = await User.countAll();
+
+    // Chuẩn hóa: dùng filter/search nếu có (có thể mở rộng sau)
+    const filters = {}; // Hiện tại chưa có filter, có thể lấy từ req.query nếu cần
+    const totalCount = await User.countFiltered(filters);
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     if (page > totalPages) {
       return res.redirect(`/administrator/users?page=${totalPages}&pageSize=${pageSize}`);
     }
-    const userList = await User.findPage(page, pageSize);
+    const userList = await User.findFilteredList({ ...filters, page, pageSize });
     const roles = await Role.findAll();
-    
+
     res.render('pages/administrator/user_list', {
-      userList, 
-      roles, 
-      page, 
-      totalPages, 
-      pageSize, 
-      totalCount, 
-      success: (req.flash('success') || [])[0], 
+      userList,
+      roles,
+      page,
+      totalPages,
+      pageSize,
+      totalCount,
+      success: (req.flash('success') || [])[0],
       error: (req.flash('error') || [])[0],
       title: 'User Management',
       activeMenu: 'user-management'
@@ -53,29 +54,29 @@ administratorController.createUser = async (req, res) => {
     const normUsername = username ? username.trim() : '';
     const normEmail = email ? email.trim() : '';
     const normFullname = fullname ? fullname.trim() : '';
-    const normRole = role ? role.trim() : '';
+    const normRole = role ? Number(role) : null;
     const normPassword = password ? password.trim() : '';
     // Validate required fields
     if (!normUsername || !normEmail || !normPassword) {
       req.flash('error', 'Username, email, and password are required!');
       return res.redirect('/administrator/users');
     }
-    if (!normRole) {
+    if (!normRole || isNaN(normRole)) {
       req.flash('error', 'Role is required!');
+      return res.redirect('/administrator/users');
+    }
+    // Kiểm tra role_id có tồn tại trong DB không
+    const validRole = await Role.findById(normRole);
+    if (!validRole) {
+      req.flash('error', 'Invalid role!');
       return res.redirect('/administrator/users');
     }
     if (normPassword.length < 4) {
       req.flash('error', 'Password must be at least 4 characters!');
       return res.redirect('/administrator/users');
     }
-    // Get role_id from role name
-    const roles = await Role.findAll();
-    const roleObj = roles.find(r => r.name === normRole);
-    const role_id = roleObj ? roleObj.id : null;
-    if (!role_id) {
-      req.flash('error', 'Invalid role!');
-      return res.redirect('/administrator/users');
-    }
+    // Lấy role_id trực tiếp từ form
+    const role_id = normRole;
     // Check duplicate username/email
     const existedUser = await User.findByUsername(normUsername);
     if (existedUser) {
@@ -111,13 +112,14 @@ administratorController.createUser = async (req, res) => {
 administratorController.updateUser = async (req, res) => {
   try {
     const id = req.params.id;
-    const { username, email, fullname, role, password } = req.body;
+    const { username, email, fullname, role, password, repeat_password } = req.body;
     // Normalize and trim input fields
     const normUsername = username ? username.trim() : '';
     const normEmail = email ? email.trim() : '';
     const normFullname = fullname ? fullname.trim() : '';
-    const normRole = role ? role.trim() : '';
+    const normRole = role ? Number(role) : null;
     const normPassword = password ? password.trim() : '';
+    const normRepeatPassword = repeat_password ? repeat_password.trim() : '';
     // Get current user info
     const currentUser = await User.findById(id);
     if (!currentUser) throw new Error('User not found');
@@ -126,18 +128,18 @@ administratorController.updateUser = async (req, res) => {
     let newRole = normRole;
     if (currentUser.username === 'admin') {
       newUsername = currentUser.username;
-      newRole = currentUser.role_id; // Use role_id (number) instead of role (name)
+      newRole = currentUser.role_id;
     } else {
-      // Get role_id from role name
-      const roles = await Role.findAll();
-      const roleObj = roles.find(r => r.name === normRole);
-      newRole = roleObj ? roleObj.id : null;
-      if (!newRole) throw new Error('Invalid role');
+      if (!normRole || isNaN(normRole)) {
+        throw new Error('Role is required');
+      }
+      const validRole = await Role.findById(normRole);
+      if (!validRole) throw new Error('Invalid role');
+      newRole = normRole;
     }
     // Handle require_twofa from edit form
     const requireTwofaRaw = req.body.require_twofa;
     const require_twofa = requireTwofaRaw === 'on' ? true : false;
-    
     // Handle must_change_password from edit form
     const mustChangePasswordRaw = req.body.must_change_password;
     const must_change_password = mustChangePasswordRaw === 'on' ? true : false;
@@ -147,20 +149,26 @@ administratorController.updateUser = async (req, res) => {
     if (otpDeadlineConfig && otpDeadlineConfig.value && !isNaN(parseInt(otpDeadlineConfig.value))) {
       otpDeadlineDays = parseInt(otpDeadlineConfig.value);
     }
-    // Nếu bật require_twofa và user chưa có 2FA, set deadline X ngày kể từ hiện tại
     if (require_twofa && (!currentUser.twofa_enabled || !currentUser.twofa_secret)) {
       const deadline = new Date(Date.now() + otpDeadlineDays * 24 * 60 * 60 * 1000);
       await User.updateTwofaDeadline(id, deadline);
     } else if (!require_twofa) {
-      // Nếu tắt require_twofa thì clear deadline
       await User.updateTwofaDeadline(id, null);
     }
-    // If turning off require_twofa, clear 2FA secret and disable 2FA
     if (!require_twofa && currentUser.require_twofa) {
       await User.updateTwoFA(id, null, false);
     }
     let passwordHash = undefined;
-    if (normPassword && normPassword.length >= 4) {
+    // Server-side validation: if password is entered, repeat_password must match
+    if (normPassword) {
+      if (!normRepeatPassword || normPassword !== normRepeatPassword) {
+        req.flash('error', 'Passwords do not match!');
+        return res.redirect('/administrator/users');
+      }
+      if (normPassword.length < 4) {
+        req.flash('error', 'Password must be at least 4 characters!');
+        return res.redirect('/administrator/users');
+      }
       passwordHash = await bcrypt.hash(normPassword, 10);
     }
     await User.update(id, { username: newUsername, email: normEmail, fullname: normFullname, role: newRole, require_twofa, must_change_password, passwordHash });
