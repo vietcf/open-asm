@@ -86,22 +86,26 @@ class User {
   }
 
   /**
-   * Count all users
+   * Count users with optional filters (for pagination/search)
+   * @param {Object} filters
    * @returns {Promise<number>}
    */
-  static async countAll() {
+  static async countFiltered(filters = {}) {
+    // Hiện tại chỉ hỗ trợ đếm tất cả, có thể mở rộng filter sau
     const sql = 'SELECT COUNT(*) FROM users';
     const result = await pool.query(sql);
     return parseInt(result.rows[0].count, 10);
   }
 
   /**
-   * Get a page of users with roles
-   * @param {number} page
-   * @param {number} pageSize
+   * Get a filtered page of users with roles (for pagination/search)
+   * @param {Object} params
+   * @param {number} params.page
+   * @param {number} params.pageSize
    * @returns {Promise<Array>}
    */
-  static async findPage(page, pageSize) {
+  static async findFilteredList({ page, pageSize, ...filters }) {
+    // Hiện tại chỉ hỗ trợ phân trang, có thể mở rộng filter sau
     const offset = (page - 1) * pageSize;
     const sql = `SELECT users.*, roles.name AS role_name FROM users LEFT JOIN roles ON users.role_id = roles.id ORDER BY users.id LIMIT $1 OFFSET $2`;
     const result = await pool.query(sql, [pageSize, offset]);
