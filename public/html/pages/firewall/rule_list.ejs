@@ -112,6 +112,14 @@
                   <textarea class="form-control form-control-sm" id="solution_confirm" name="solution_confirm" rows="1" placeholder="Solution Confirm"></textarea>
                 </div>
                 <div class="mb-3 position-relative">
+                  <label for="ruleOuId" class="form-label">OU (Unit)</label>
+                  <select id="ruleOuId" name="ou_id" class="form-select form-select-sm select2" style="width:100%" data-placeholder="Select OU (Unit)"></select>
+                </div>
+                <div class="mb-3">
+                  <label for="ruleContacts" class="form-label">Contacts</label>
+                  <select id="ruleContacts" name="contacts[]" class="form-select form-select-sm select2" multiple data-placeholder="Select contact(s)"></select>
+                </div>
+                <div class="mb-3 position-relative">
                   <label for="ruleTags" class="form-label">Tags</label>
                   <select id="ruleTags" name="tags[]" class="form-select form-select-sm select2" multiple></select>
                 </div>
