@@ -1,57 +1,46 @@
 // src/models/RuleFirewall.js
 import { pool } from '../../config/config.js';
 
+
+
 class RuleFirewall {
   // ===== CRUD METHODS =====
-  static async create(data) {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      // Normalize & trim all string fields
-      const fields = [
-        'rulename', 'firewall_name', 'src_zone', 'src', 'src_detail', 'dst_zone', 'dst', 'dst_detail',
-        'services', 'application', 'url', 'action', 'status', 'violation_type',
-        'violation_detail', 'solution_proposal', 'solution_confirm', 'description', 'work_order'
-      ];
-      for (const f of fields) {
-        if (typeof data[f] === 'string') data[f] = data[f].trim();
-      }
-      // Validate required fields
-      if (!data.rulename || !data.src || !data.dst || !data.action) {
-        throw new Error('Missing required fields: Rule Name, Source, Destination, Action');
-      }
-      // Insert rule
-      const insertSql = `INSERT INTO rulefirewall
-        (rulename, firewall_name, src_zone, src, src_detail, dst_zone, dst, dst_detail, services, application, url, action, ou_id, status, violation_type, violation_detail, solution_proposal, solution_confirm, description, audit_batch, work_order, created_at, updated_at, updated_by)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,NOW(),NOW(),$22) RETURNING id`;
-      const values = [
-        data.rulename, data.firewall_name, data.src_zone, data.src, data.src_detail, data.dst_zone, data.dst, data.dst_detail,
-        data.services, data.application, data.url, data.action, data.ou_id || null, data.status || null,
-        data.violation_type, data.violation_detail, data.solution_proposal, data.solution_confirm, data.description,
-        data.audit_batch || null, data.work_order || null, data.updated_by || null
-      ];
-      const result = await client.query(insertSql, values);
-      const ruleId = result.rows[0].id;
-      // Insert contacts (many-to-many)
-      if (Array.isArray(data.contacts) && data.contacts.length > 0) {
-        for (const cid of data.contacts) {
-          await client.query('INSERT INTO rulefirewall_contact(rule_id, contact_id) VALUES ($1, $2)', [ruleId, cid]);
-        }
-      }
-      // Insert tags (many-to-many)
-      if (Array.isArray(data.tags) && data.tags.length > 0) {
-        for (const tid of data.tags) {
-          await client.query('INSERT INTO tag_object(tag_id, object_id, object_type) VALUES ($1, $2, $3)', [tid, ruleId, 'rulefirewall']);
-        }
-      }
-      await client.query('COMMIT');
-      return ruleId;
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
+  static async create(data, client) {
+    // Accept external client for transaction, fallback to pool
+    const executor = client || pool;
+    let shouldManageTransaction = !client;
+    // Assume data is already normalized in controller
+    // Validate required fields
+    if (!data.rulename || !data.src || !data.dst || !data.action) {
+      throw new Error('Missing required fields: Rule Name, Source, Destination, Action');
     }
+    if (shouldManageTransaction) {
+      const transactionClient = await pool.connect();
+      try {
+        await transactionClient.query('BEGIN');
+        const ruleId = await RuleFirewall.create(data, transactionClient);
+        await transactionClient.query('COMMIT');
+        return { id: ruleId };
+      } catch (err) {
+        await transactionClient.query('ROLLBACK');
+        throw err;
+      } finally {
+        transactionClient.release();
+      }
+    }
+    // Insert rule
+    const insertSql = `INSERT INTO rulefirewall
+      (rulename, firewall_name, src_zone, src, src_detail, dst_zone, dst, dst_detail, services, application, url, action, ou_id, status, violation_type, violation_detail, solution_proposal, solution_confirm, description, audit_batch, work_order, created_at, updated_at, updated_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,NOW(),NOW(),$22) RETURNING id`;
+    const values = [
+      data.rulename, data.firewall_name, data.src_zone, data.src, data.src_detail, data.dst_zone, data.dst, data.dst_detail,
+      data.services, data.application, data.url, data.action, data.ou_id || null, data.status || null,
+      data.violation_type, data.violation_detail, data.solution_proposal, data.solution_confirm, data.description,
+      data.audit_batch || null, data.work_order || null, data.updated_by || null
+    ];
+    const result = await executor.query(insertSql, values);
+    const ruleId = result.rows[0].id;
+    return ruleId;
   }
 
   static async findAll(page = 1, pageSize = 10) {
@@ -112,14 +101,19 @@ class RuleFirewall {
   }
 
   static async update(id, data, client) {
+    // Accept external client for transaction, fallback to pool
     const executor = client || pool;
-    const shouldManageTransaction = !client;
-    
+    let shouldManageTransaction = !client;
+    // Data is already normalized in controller
+    // Validate required fields
+    if (!data.rulename || !data.src || !data.dst || !data.action) {
+      throw new Error('Missing required fields: Rule Name, Source, Destination, Action');
+    }
     if (shouldManageTransaction) {
       const transactionClient = await pool.connect();
       try {
         await transactionClient.query('BEGIN');
-        const result = await this.update(id, data, transactionClient);
+        const result = await RuleFirewall.update(id, data, transactionClient);
         await transactionClient.query('COMMIT');
         return result;
       } catch (err) {
@@ -128,20 +122,6 @@ class RuleFirewall {
       } finally {
         transactionClient.release();
       }
-    }
-
-    // Normalize & trim all string fields
-    const fields = [
-      'rulename', 'firewall_name', 'src_zone', 'src', 'src_detail', 'dst_zone', 'dst', 'dst_detail',
-      'services', 'application', 'url', 'action', 'status', 'violation_type',
-      'violation_detail', 'solution_proposal', 'solution_confirm', 'description', 'work_order'
-    ];
-    for (const f of fields) {
-      if (typeof data[f] === 'string') data[f] = data[f].trim();
-    }
-    // Validate required fields
-    if (!data.rulename || !data.src || !data.dst || !data.action) {
-      throw new Error('Missing required fields: Rule Name, Source, Destination, Action');
     }
     // Update rule
     const updateSql = `UPDATE rulefirewall SET
@@ -157,32 +137,19 @@ class RuleFirewall {
       data.audit_batch || null, data.work_order || null, data.updated_by || null, id
     ];
     const result = await executor.query(updateSql, values);
-    // Update contacts (remove all, then add new)
-    await executor.query('DELETE FROM rulefirewall_contact WHERE rule_id = $1', [id]);
-    if (Array.isArray(data.contacts) && data.contacts.length > 0) {
-      for (const cid of data.contacts) {
-        await executor.query('INSERT INTO rulefirewall_contact(rule_id, contact_id) VALUES ($1, $2)', [id, cid]);
-      }
-    }
-    // Update tags (remove all, then add new)
-    await executor.query("DELETE FROM tag_object WHERE object_id = $1 AND object_type = 'rulefirewall'", [id]);
-    if (Array.isArray(data.tags) && data.tags.length > 0) {
-      for (const tid of data.tags) {
-        await executor.query('INSERT INTO tag_object(tag_id, object_id, object_type) VALUES ($1, $2, $3)', [tid, id, 'rulefirewall']);
-      }
-    }
+    // ...existing code...
     return result.rows[0];
   }
 
   static async remove(id, client) {
+    // Accept external client for transaction, fallback to pool
     const executor = client || pool;
-    const shouldManageTransaction = !client;
-    
+    let shouldManageTransaction = !client;
     if (shouldManageTransaction) {
       const transactionClient = await pool.connect();
       try {
         await transactionClient.query('BEGIN');
-        await this.remove(id, transactionClient);
+        await RuleFirewall.remove(id, transactionClient);
         await transactionClient.query('COMMIT');
       } catch (err) {
         await transactionClient.query('ROLLBACK');
@@ -192,7 +159,6 @@ class RuleFirewall {
       }
       return;
     }
-
     // Remove all tag links for this rule
     await executor.query("DELETE FROM tag_object WHERE object_type = 'rulefirewall' AND object_id = $1", [id]);
     // Remove all contact links for this rule

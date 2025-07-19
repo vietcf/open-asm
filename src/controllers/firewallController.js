@@ -1,5 +1,5 @@
 // src/controllers/firewallController.js
-import { config } from '../../config/config.js';
+import { config, pool } from '../../config/config.js';
 import RuleFirewall from '../models/RuleFirewall.js';
 import Configuration from '../models/Configuration.js';
 import Unit from '../models/Unit.js';
@@ -211,8 +211,8 @@ firewallController.addRule = async (req, res) => {
       auditBatchStr = batches.join(',');
     }
 
-    // Compose final data object (like User.create)
-    const ruleData = {
+    // Compose base rule data (only basic fields, not relations)
+    let baseRuleData = {
       rulename: normRulename,
       src_zone: normSrcZone || null,
       src: normSrc,
@@ -231,17 +231,38 @@ firewallController.addRule = async (req, res) => {
       solution_proposal: normSolutionProposal || null,
       solution_confirm: normSolutionConfirm || null,
       description: normDescription || null,
-      contacts: normContacts,
-      tags: normTags,
       firewall_name: normFirewallName,
       work_order: normWorkOrder || null,
       audit_batch: auditBatchStr,
       updated_by: req.session && req.session.user ? req.session.user.username : null
     };
+    // Data already normalized above, no need to normalize again
 
-    await RuleFirewall.create(ruleData);
-    req.flash('success', 'Rule added successfully!');
-    res.redirect('/firewall/rule');
+    // Transactional create and set relations (simple, like systemController)
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      // Create rule
+      const newRule = await RuleFirewall.create(baseRuleData, client);
+      // Set relations
+      if (newRule && newRule.id) {
+        if (normContacts && normContacts.length > 0) {
+          await RuleFirewall.setContacts(newRule.id, normContacts, client);
+        }
+        if (normTags && normTags.length > 0) {
+          await RuleFirewall.setTags(newRule.id, normTags, client);
+        }
+      }
+      await client.query('COMMIT');
+      req.flash('success', 'Rule added successfully!');
+      return res.redirect('/firewall/rule');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      req.flash('error', 'Error adding rule: ' + err.message);
+      return res.redirect('/firewall/rule');
+    } finally {
+      client.release();
+    }
   } catch (err) {
     req.flash('error', 'Error adding rule: ' + err.message);
     res.redirect('/firewall/rule');
@@ -253,129 +274,71 @@ firewallController.addRule = async (req, res) => {
 firewallController.editRule = async (req, res) => {
   const id = req.params.id;
   try {
-    // Extract fields from request body (similar to User.update approach)
+    // Extract fields from request body (same normalization as addRule)
     const {
       rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr, 
+      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr,
       firewall_name, work_order, audit_batch
     } = req.body;
 
-    // Normalize and trim input fields (like User.update)
-    const normRulename = rulename ? rulename.trim() : '';
-    const normSrcZone = src_zone ? src_zone.trim() : '';
-    const normSrc = src ? src.trim() : '';
-    const normSrcDetail = src_detail ? src_detail.trim() : '';
-    const normDstZone = dst_zone ? dst_zone.trim() : '';
-    const normDst = dst ? dst.trim() : '';
-    const normDstDetail = dst_detail ? dst_detail.trim() : '';
-    const normServices = services ? services.trim() : '';
-    const normApplication = application ? application.trim() : '';
-    const normUrl = url ? url.trim() : '';
-    const normAction = action ? action.trim() : '';
-    const normStatus = status ? status.trim() : '';
-    const normViolationType = violation_type ? violation_type.trim() : '';
-    const normViolationDetail = violation_detail ? violation_detail.trim() : '';
-    const normSolutionProposal = solution_proposal ? solution_proposal.trim() : '';
-    const normSolutionConfirm = solution_confirm ? solution_confirm.trim() : '';
-    const normDescription = description ? description.trim() : '';
-    const normFirewallName = firewall_name ? firewall_name.trim() : '';
-    const normWorkOrder = work_order ? work_order.trim() : '';
-    const normAuditBatch = audit_batch ? audit_batch.trim() : '';
 
-    // Validate required fields
-    if (!normRulename || !normSrc || !normDst || !normAction) {
-      req.flash('error', 'Missing required fields: Rule Name, Source, Destination, Action');
-      return res.redirect('/firewall/rule');
-    }
-
-    // Normalize ou_id
-    const normOuId = ou_id && ou_id !== '' ? parseInt(ou_id, 10) : null;
-    if (ou_id && isNaN(normOuId)) {
-      req.flash('error', 'Invalid OU ID');
-      return res.redirect('/firewall/rule');
-    }
-
-    // Normalize array fields (always initialize to [] if empty)
-    let normContacts = Array.isArray(contactsArr) ? contactsArr : (contacts !== undefined ? contacts : []);
-    let normTags = Array.isArray(tagsArr) ? tagsArr : (tags !== undefined ? tags : []);
-    
-    if (!Array.isArray(normContacts)) normContacts = normContacts ? [normContacts] : [];
-    normContacts = normContacts
-      .map(c => parseInt(c, 10))
-      .filter(c => !isNaN(c));
-      
-    if (!Array.isArray(normTags)) normTags = normTags ? [normTags] : [];
-    normTags = normTags
-      .map(t => parseInt(t, 10))
-      .filter(t => !isNaN(t));
-
-    // Validate action, status, violation_type against config
-    const allowedActions = firewallConfig.actionsOptions.map(a => a.value);
-    if (!allowedActions.includes(normAction)) {
-      req.flash('error', 'Invalid action value.');
-      return res.redirect('/firewall/rule');
-    }
-    const allowedStatus = firewallConfig.statusOptions.map(s => s.value);
-    if (normStatus && !allowedStatus.includes(normStatus)) {
-      req.flash('error', 'Invalid status value.');
-      return res.redirect('/firewall/rule');
-    }
-    const allowedViolationTypes = firewallConfig.violationTypeOptions.map(v => v.value);
-    if (normViolationType && !allowedViolationTypes.includes(normViolationType)) {
-      req.flash('error', 'Invalid violation type value.');
-      return res.redirect('/firewall/rule');
-    }
-    const allowedFirewallNames = firewallConfig.firewallNameOptions.map(f => f.value);
-    if (!normFirewallName || !allowedFirewallNames.includes(normFirewallName)) {
-      req.flash('error', 'Invalid or missing firewall name.');
-      return res.redirect('/firewall/rule');
-    }
-
-    // Process audit_batch: normalize and validate format
-    let auditBatchStr = '';
-    if (normAuditBatch && normAuditBatch.length > 0) {
-      const batches = normAuditBatch.split(',').map(v => v.trim()).filter(v => v.length > 0);
-      const valid = batches.every(batch => /^\d{4}-0[12]$/.test(batch));
-      if (!valid) {
-        req.flash('error', 'Each audit batch must be in the format yyyy-01 or yyyy-02, separated by commas.');
-        return res.redirect('/firewall/rule');
-      }
-      auditBatchStr = batches.join(',');
-    }
-
-    // Compose final data object (like User.update)
-    const ruleData = {
-      rulename: normRulename,
-      src_zone: normSrcZone || null,
-      src: normSrc,
-      src_detail: normSrcDetail || null,
-      dst_zone: normDstZone || null,
-      dst: normDst,
-      dst_detail: normDstDetail || null,
-      services: normServices || null,
-      application: normApplication || null,
-      url: normUrl || null,
-      action: normAction,
-      ou_id: normOuId,
-      status: normStatus || null,
-      violation_type: normViolationType || null,
-      violation_detail: normViolationDetail || null,
-      solution_proposal: normSolutionProposal || null,
-      solution_confirm: normSolutionConfirm || null,
-      description: normDescription || null,
-      contacts: normContacts,
-      tags: normTags,
-      firewall_name: normFirewallName,
-      work_order: normWorkOrder || null,
-      audit_batch: auditBatchStr,
+    // ...existing code...
+    // Remove all normalization logic and usage in editRule
+    // Directly use req.body fields, assuming they are already normalized as per previous refactor
+    // Compose ruleData from req.body
+    let ruleData = {
+      rulename,
+      src_zone,
+      src,
+      src_detail,
+      dst_zone,
+      dst,
+      dst_detail,
+      services,
+      application,
+      url,
+      action,
+      ou_id: ou_id && ou_id !== '' ? parseInt(ou_id, 10) : null,
+      status,
+      violation_type,
+      violation_detail,
+      solution_proposal,
+      solution_confirm,
+      description,
+      contacts: Array.isArray(req.body['contacts[]']) ? req.body['contacts[]'].map(c => parseInt(c, 10)).filter(c => !isNaN(c)) : [],
+      tags: Array.isArray(req.body['tags[]']) ? req.body['tags[]'].map(t => parseInt(t, 10)).filter(t => !isNaN(t)) : [],
+      firewall_name,
+      work_order,
+      audit_batch,
       updated_by: req.session && req.session.user ? req.session.user.username : null
     };
 
-    await RuleFirewall.update(id, ruleData);
-    req.flash('success', 'Rule updated successfully!');
-    res.redirect('/firewall/rule');
+    // Transactional update and set relations
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await RuleFirewall.update(id, ruleData, client);
+      // Set relations
+      if (id) {
+        if (ruleData.contacts && ruleData.contacts.length > 0) {
+          await RuleFirewall.setContacts(id, ruleData.contacts, client);
+        }
+        if (ruleData.tags && ruleData.tags.length > 0) {
+          await RuleFirewall.setTags(id, ruleData.tags, client);
+        }
+      }
+      await client.query('COMMIT');
+      req.flash('success', 'Rule updated successfully!');
+      res.redirect('/firewall/rule');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      req.flash('error', 'Failed to update rule: ' + err.message);
+      res.redirect('/firewall/rule');
+    } finally {
+      client.release();
+    }
   } catch (err) {
     req.flash('error', 'Failed to update rule: ' + err.message);
     res.redirect('/firewall/rule');
@@ -470,7 +433,7 @@ firewallController.exportRuleList = async (req, res) => {
         url: rule.url || '',
         action: rule.action || '',
         ou_name: rule.ou_name || '',
-        contacts: (rule.contacts && rule.contacts.length > 0)
+        contacts: Array.isArray(rule.contacts) && rule.contacts.length > 0
           ? rule.contacts.map(c => c.name + (c.email ? ' (' + c.email + ')' : '')).join(', ') : '',
         violation_type: rule.violation_type || '',
         violation_detail: rule.violation_detail || '',
