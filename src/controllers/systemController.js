@@ -46,7 +46,7 @@ systemController.listSystem = async (req, res) => {
       success,
       error,
       title: 'System Management',
-      activeMenu: 'system-management',
+      activeMenu: 'system',
     });
   } catch (err) {
     res.status(500).send('Error loading systems: ' + err.message);

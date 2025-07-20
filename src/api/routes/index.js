@@ -1,13 +1,13 @@
-const express = require('express');
-const { authenticateJWT } = require('../middlewares/auth');
-const apiContactRouter = require('./apiContact');
-const apiUnitRouter = require('./apiUnit');
-const apiRuleRouter = require('./apiRule');
-const apiServerRouter = require('./apiServer');
-const apiIpAddressRouter = require('./apiIpAddress');
-const apiAuthRouter = require('./apiAuth');
-const apiSubnetRouter = require('./apiSubnet');
-const apiDeviceRouter = require('./apiDevice');
+import express from 'express';
+import { authenticateJWT } from '../middlewares/auth.middleware.js';
+import apiContactRouter from './apiContact.js';
+import apiUnitRouter from './apiUnit.js';
+import apiRuleRouter from './apiRule.js';
+// import apiServerRouter from './apiServer.js';
+import apiIpAddressRouter from './apiIpAddress.js';
+import apiAuthRouter from './apiAuth.js';
+import apiSubnetRouter from './apiSubnet.js';
+// import apiDeviceRouter from './apiDevice.js';
 
 const apiRouter = express.Router();
 
@@ -18,10 +18,10 @@ apiRouter.use('/auth', apiAuthRouter);
 apiRouter.use('/contacts', authenticateJWT, apiContactRouter);
 apiRouter.use('/units', authenticateJWT, apiUnitRouter);
 apiRouter.use('/rules', authenticateJWT, apiRuleRouter);
-apiRouter.use('/servers', authenticateJWT, apiServerRouter);
+// apiRouter.use('/servers', authenticateJWT, apiServerRouter);
 apiRouter.use('/ip-addresses', authenticateJWT, apiIpAddressRouter);
 apiRouter.use('/subnets', authenticateJWT, apiSubnetRouter);
-apiRouter.use('/devices', authenticateJWT, apiDeviceRouter);
+// apiRouter.use('/devices', authenticateJWT, apiDeviceRouter);
 
 // Handle JSON parse errors for API routes only
 apiRouter.use((err, req, res, next) => {
@@ -31,4 +31,4 @@ apiRouter.use((err, req, res, next) => {
   next(err);
 });
 
-module.exports = apiRouter;
+export default apiRouter;

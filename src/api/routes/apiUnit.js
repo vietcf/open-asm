@@ -1,14 +1,17 @@
 // Organization Unit API routes
-const express = require('express');
+import express from 'express';
+import apiUnitController from '../controllers/apiUnitController.js';
+import { authorizePermissionJWT } from '../middlewares/auth.middleware.js';
 const apiUnitRouter = express.Router();
-const apiUnitController = require('../controllers/apiUnitController');
 
 /**
  * @swagger
- * /api/units:
+ * /api/v1/units:
  *   get:
  *     summary: List organization units (with filter, pagination)
  *     tags: [OrganizationUnit]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: search
@@ -19,12 +22,14 @@ const apiUnitController = require('../controllers/apiUnitController');
  *         name: page
  *         schema:
  *           type: integer
- *         description: Page number
+ *           default: 1
+ *         description: "Page number (default: 1)"
  *       - in: query
  *         name: pageSize
  *         schema:
  *           type: integer
- *         description: Page size
+ *           default: 20
+ *         description: "Page size (default: 20)"
  *     responses:
  *       200:
  *         description: List of organization units
@@ -50,10 +55,12 @@ apiUnitRouter.get('/', apiUnitController.listUnits);
 
 /**
  * @swagger
- * /api/units/{id}:
+ * /api/v1/units/{id}:
  *   get:
  *     summary: Get a single organization unit by ID
  *     tags: [OrganizationUnit]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -71,14 +78,16 @@ apiUnitRouter.get('/', apiUnitController.listUnits);
  *       404:
  *         description: Not found
  */
-apiUnitRouter.get('/:id', apiUnitController.getUnit);
+apiUnitRouter.get('/:id', authorizePermissionJWT('unit.read'), apiUnitController.getUnit);
 
 /**
  * @swagger
- * /api/units:
+ * /api/v1/units:
  *   post:
  *     summary: Create a new organization unit
  *     tags: [OrganizationUnit]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -109,14 +118,16 @@ apiUnitRouter.get('/:id', apiUnitController.getUnit);
  *       409:
  *         description: Duplicate unit name
  */
-apiUnitRouter.post('/', apiUnitController.createUnit);
+apiUnitRouter.post('/', authorizePermissionJWT('unit.create'), apiUnitController.createUnit);
 
 /**
  * @swagger
- * /api/units/{id}:
+ * /api/v1/units/{id}:
  *   put:
  *     summary: Update an organization unit
  *     tags: [OrganizationUnit]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -156,14 +167,16 @@ apiUnitRouter.post('/', apiUnitController.createUnit);
  *       409:
  *         description: Duplicate unit name
  */
-apiUnitRouter.put('/:id', apiUnitController.updateUnit);
+apiUnitRouter.put('/:id', authorizePermissionJWT('unit.update'), apiUnitController.updateUnit);
 
 /**
  * @swagger
- * /api/units/{id}:
+ * /api/v1/units/{id}:
  *   delete:
  *     summary: Delete an organization unit
  *     tags: [OrganizationUnit]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -177,7 +190,7 @@ apiUnitRouter.put('/:id', apiUnitController.updateUnit);
  *       404:
  *         description: Not found
  */
-apiUnitRouter.delete('/:id', apiUnitController.deleteUnit);
+apiUnitRouter.delete('/:id', authorizePermissionJWT('unit.delete'), apiUnitController.deleteUnit);
 
 /**
  * @swagger
@@ -185,6 +198,11 @@ apiUnitRouter.delete('/:id', apiUnitController.deleteUnit);
  *   - name: OrganizationUnit
  *     description: API for managing organization units
  * components:
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
  *   schemas:
  *     OrganizationUnit:
  *       type: object
@@ -199,4 +217,4 @@ apiUnitRouter.delete('/:id', apiUnitController.deleteUnit);
  *           type: string
  */
 
-module.exports = apiUnitRouter;
+export default apiUnitRouter;

@@ -1,12 +1,13 @@
-const speakeasy = require('speakeasy');
-const qrcode = require('qrcode');
-const User = require('../models/User');
+import speakeasy from 'speakeasy';
+import qrcode from 'qrcode';
+import User from '../models/User.js';
+
+const twofaController = {};
 
 // GET /2fa/setup - generate secret and QR code
-exports.setup = async (req, res) => {
+twofaController.setup = async (req, res) => {
   const user = req.session.user;
   // if (!user) return res.status(401).send('Unauthorized');
-  
   // Chỉ cho phép user chưa setup 2FA hoặc setup chưa hoàn tất truy cập trang này
   if (user.twofa_enabled === true && user.twofa_secret) {
     // Nếu đã setup 2FA hoàn tất và đã verify → về dashboard
@@ -16,7 +17,6 @@ exports.setup = async (req, res) => {
     // Nếu đã setup nhưng chưa verify → về login/2fa để verify
     return res.redirect('/login/2fa?info=Please verify your 2FA code');
   }
-  
   // Generate a new secret
   const secret = speakeasy.generateSecret({ name: 'ASG Project (' + user.username + ')' });
   // Store secret temporarily in session until verified
@@ -29,12 +29,13 @@ exports.setup = async (req, res) => {
     secret: secret.base32, 
     error: null,
     title: '2FA Setup',
-    activeMenu: '2fa'
+    activeMenu: '2fa',
+    layout: false // Render without main layout, only show QR and OTP info
   });
 };
 
 // POST /2fa/verify - verify OTP and enable 2FA
-exports.verify = async (req, res) => {
+twofaController.verify = async (req, res) => {
   const user = req.session.user;
   const { token } = req.body;
   const secret = req.session.tmp_twofa_secret;
@@ -53,7 +54,8 @@ exports.verify = async (req, res) => {
       secret, 
       error: 'Invalid OTP. Try again.',
       title: '2FA Setup',
-      activeMenu: '2fa'
+      activeMenu: '2fa',
+      layout: false // Render without main layout, only show QR and OTP info
     });
   }
   // Save secret to DB, enable 2FA
@@ -61,18 +63,15 @@ exports.verify = async (req, res) => {
   req.session.user.twofa_enabled = true;
   req.session.user.twofa_secret = secret;
   delete req.session.tmp_twofa_secret;
-  
   // Đảm bảo trạng thái đăng nhập đầy đủ
   req.session.is2faVerified = true;
   req.session.is2faPending = false;
-  
   // Note: Permissions will be loaded by global middleware
-  
   res.redirect('/dashboard');
 };
 
 // POST /2fa/disable - disable 2FA
-exports.disable = async (req, res) => {
+twofaController.disable = async (req, res) => {
   const user = req.session.user;
   if (!user) return res.status(401).send('Unauthorized');
   await User.updateTwoFA(user.id, null, false);
@@ -80,3 +79,5 @@ exports.disable = async (req, res) => {
   req.session.user.twofa_secret = null;
   res.redirect('/dashboard');
 };
+
+export default twofaController;

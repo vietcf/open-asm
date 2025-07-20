@@ -16,7 +16,7 @@
               <%= success %>
             </div>
           <% } %>
-          <form action="/device/device/update/<%= device.id %>" method="POST">
+          <form action="/device/device/<%= device.id %>?_method=PUT" method="POST">
             <div class="mb-3">
               <label class="form-label">Device Type <span class="text-danger">*</span></label>
               <select id="device-type-select" name="device_type_id" class="form-select form-select-sm select2" required></select>

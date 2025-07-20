@@ -1,8 +1,7 @@
-// Rule API routes
-const express = require('express');
+import express from 'express';
+import apiRuleController from '../controllers/apiRuleController.js';
+import { authorizePermissionJWT, authenticateJWT } from '../middlewares/auth.middleware.js';
 const apiRuleRouter = express.Router();
-const apiRuleController = require('../controllers/apiRuleController');
-const { authenticateJWT, authorizePermissionJWT } = require('../middlewares/auth');
 
 /**
  * @swagger
@@ -10,6 +9,90 @@ const { authenticateJWT, authorizePermissionJWT } = require('../middlewares/auth
  *   - name: Rule
  *     description: Firewall Rule management
  */
+
+/**
+ * @swagger
+ * /api/v1/rules:
+ *   get:
+ *     summary: Search firewall rules with pagination
+ *     description: Search rules by rule name, source, destination, etc. (case-insensitive partial matching)
+ *     tags: [Rule]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Search keyword (searches in rule name, source, destination, etc.)
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         required: false
+ *         description: Page number (default 1)
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *         required: false
+ *         description: Page size (default 20, max 100)
+ *     responses:
+ *       200:
+ *         description: Search results
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 totalCount:
+ *                   type: integer
+ *                 page:
+ *                   type: integer
+ *                 pageSize:
+ *                   type: integer
+ *                 totalPages:
+ *                   type: integer
+ *                 rules:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Rule'
+ *       500:
+ *         description: Server error
+ */
+// List and search rules (pagination, search)
+apiRuleRouter.get('/', authorizePermissionJWT('rule.read'), apiRuleController.listRules);
+
+/**
+ * @swagger
+ * /api/v1/rules/{id}:
+ *   get:
+ *     summary: Get a firewall rule by ID
+ *     tags: [Rule]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Rule ID
+ *     responses:
+ *       200:
+ *         description: Rule detail
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Rule'
+ *       404:
+ *         description: Rule not found
+ *       500:
+ *         description: Server error
+ */
+// Get rule by ID
+apiRuleRouter.get('/:id', authorizePermissionJWT('rule.read'), apiRuleController.getRule);
 
 /**
  * @swagger
@@ -118,10 +201,13 @@ const { authenticateJWT, authorizePermissionJWT } = require('../middlewares/auth
  *               $ref: '#/components/schemas/Rule'
  *       400:
  *         description: Invalid input
+ *       409:
+ *         description: Rule already exists with this name
  *       500:
  *         description: Server error
  */
-apiRuleRouter.post('/', authenticateJWT, authorizePermissionJWT('rule.create'), apiRuleController.createRule);
+// Create rule
+apiRuleRouter.post('/', authorizePermissionJWT('rule.create'), apiRuleController.createRule);
 
 /**
  * @swagger
@@ -144,12 +230,6 @@ apiRuleRouter.post('/', authenticateJWT, authorizePermissionJWT('rule.create'), 
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - rulename
- *               - src
- *               - dst
- *               - action
- *               - firewall_name
  *             properties:
  *               firewall_name:
  *                 type: string
@@ -239,8 +319,17 @@ apiRuleRouter.post('/', authenticateJWT, authorizePermissionJWT('rule.create'), 
  *         description: Invalid input
  *       404:
  *         description: Rule not found
+ *       409:
+ *         description: Rule already exists with this name
  *       500:
  *         description: Server error
+ */
+// Update rule
+apiRuleRouter.put('/:id', authorizePermissionJWT('rule.update'), apiRuleController.updateRule);
+
+/**
+ * @swagger
+ * /api/v1/rules/{id}:
  *   delete:
  *     summary: Delete a firewall rule
  *     tags: [Rule]
@@ -261,7 +350,7 @@ apiRuleRouter.post('/', authenticateJWT, authorizePermissionJWT('rule.create'), 
  *       500:
  *         description: Server error
  */
-apiRuleRouter.put('/:id', authenticateJWT, authorizePermissionJWT('rule.update'), apiRuleController.updateRule);
-apiRuleRouter.delete('/:id', authenticateJWT, authorizePermissionJWT('rule.delete'), apiRuleController.deleteRule);
+// Delete rule
+apiRuleRouter.delete('/:id', authorizePermissionJWT('rule.delete'), apiRuleController.deleteRule);
 
-module.exports = apiRuleRouter;
+export default apiRuleRouter;

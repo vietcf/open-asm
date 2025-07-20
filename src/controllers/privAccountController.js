@@ -287,7 +287,7 @@ privAccountController.updateAccount = async (req, res) => {
 privAccountController.deleteAccount = async (req, res) => {
   try {
     const { id } = req.params;
-    await PrivUser.delete(id);
+    await PrivUser.remove(id);
     req.flash && req.flash('success', 'Privileged user deleted successfully!');
     res.redirect('/priv-account/account');
   } catch (err) {
@@ -458,73 +458,43 @@ privAccountController.listPermissions = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     let pageSize = parseInt(req.query.pageSize) || res.locals.defaultPageSize;
-    
-    // Use global pageSizeOptions from res.locals (set in app.js)
     if (!pageSize || !res.locals.pageSizeOptions.includes(pageSize)) {
       pageSize = res.locals.defaultPageSize;
     }
-    
     const search = req.query.search ? req.query.search.trim() : '';
-    const system_id = req.query.system_id ? req.query.system_id.trim() : '';
-    let privPermissionList, totalCount, totalPages;
-    // Filtering logic
-    if (search || system_id) {
-      // Custom search with system filter
-      let where = [];
-      let params = [];
-      let idx = 1;
-      if (search) {
-        where.push('(name ILIKE $' + idx + ' OR description ILIKE $' + idx + ')');
-        params.push(`%${search}%`);
-        idx++;
-      }
-      if (system_id) {
-        where.push('system_id = $' + idx);
-        params.push(system_id);
-        idx++;
-      }
-      let whereClause = where.length ? ('WHERE ' + where.join(' AND ')) : '';
-      // Count
-      const countRes = await pool.query(`SELECT COUNT(*) FROM priv_permissions ${whereClause}`, params);
-      totalCount = parseInt(countRes.rows[0].count, 10);
-      // Page
-      params.push(pageSize, (page - 1) * pageSize);
-      const pageRes = await pool.query(
-        `SELECT * FROM priv_permissions ${whereClause} ORDER BY id LIMIT $${params.length - 1} OFFSET $${params.length}`,
-        params
-      );
-      privPermissionList = pageRes.rows;
-    } else {
-      totalCount = await PrivPermission.searchCount('');
-      privPermissionList = await PrivPermission.searchPage('', page, pageSize);
+
+    // Use model methods for all DB logic
+    const totalCount = await PrivPermission.countFiltered({ search });
+    const privPermissionList = await PrivPermission.findFilteredList({ search, page, pageSize });
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+    // Attach system info to each permission
+    for (const perm of privPermissionList) {
+      perm.system = await System.findById(perm.system_id);
     }
-    totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
     // Calculate summary range for 'Showing x - y of z' display
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = Math.min(page * pageSize, totalCount);
     const success = req.flash ? req.flash('success')[0] : (req.query.success || null);
-    const error = req.flash ? req.flash('error')[0] : (req.query.error || null);// Ensure each permission has its system info (join or fetch system name)
-    for (const perm of privPermissionList) {
-      perm.system = await System.findById(perm.system_id);
-    }
-    // Persist filter values for modal
+    const error = req.flash ? req.flash('error')[0] : (req.query.error || null);
     let system_name = '';
-    if (system_id && privPermissionList.length > 0 && privPermissionList[0].system && privPermissionList[0].system.name) {
+    if (req.query.system_id && privPermissionList.length > 0 && privPermissionList[0].system && privPermissionList[0].system.name) {
       system_name = privPermissionList[0].system.name;
     }
-    
+
     res.render('pages/privilege/priv_permission_list', {
-      privPermissionList, 
-      page, 
-      totalPages, 
-      pageSize, 
-      search, 
-      system_id, 
-      system_name, 
-      success, 
-      error, 
-      startItem, 
-      endItem, 
+      privPermissionList,
+      page,
+      totalPages,
+      pageSize,
+      search,
+      system_id: req.query.system_id || '',
+      system_name,
+      success,
+      error,
+      startItem,
+      endItem,
       totalCount,
       allowedPageSizes: res.locals.pageSizeOptions,
       title: 'Privileged Permission List',
@@ -597,7 +567,7 @@ privAccountController.updatePermission = async (req, res) => {
 privAccountController.deletePermission = async (req, res) => {
   try {
     const { id } = req.params;
-    await PrivPermission.delete(id);
+    await PrivPermission.remove(id);
     req.flash && req.flash('success', 'Privileged permission deleted successfully!');
     res.redirect('/priv-account/permission');
   } catch (err) {

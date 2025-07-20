@@ -1,7 +1,8 @@
-// IP Address API routes
-const express = require('express');
+
+// IP Address API routes (ES6)
+import express from 'express';
+import apiIpAddressController from '../controllers/apiIpAddressController.js';
 const apiIpAddressRouter = express.Router();
-const apiIpAddressController = require('../controllers/apiIpAddressController');
 
 /**
  * @swagger
@@ -61,12 +62,14 @@ const apiIpAddressController = require('../controllers/apiIpAddressController');
  *         name: page
  *         schema:
  *           type: integer
- *         description: Page number
+ *           default: 1
+ *         description: "Page number (default: 1)"
  *       - in: query
  *         name: pageSize
  *         schema:
  *           type: integer
- *         description: Page size
+ *           default: 10
+ *         description: "Page size (default: 10)"
  *     responses:
  *       200:
  *         description: List of IP addresses
@@ -83,6 +86,33 @@ const apiIpAddressController = require('../controllers/apiIpAddressController');
  *                   type: integer
  */
 apiIpAddressRouter.get('/', apiIpAddressController.listIpAddresses);
+
+/**
+ * @swagger
+ * /api/v1/ip-addresses/find:
+ *   get:
+ *     summary: Find IP address by address string (exact match)
+ *     tags: [IPAddress]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: address
+ *         schema:
+ *           type: string
+ *         required: true
+ *         description: IP address to search (exact match)
+ *     responses:
+ *       200:
+ *         description: IP address object
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/IpAddress'
+ *       404:
+ *         description: Not found
+ */
+apiIpAddressRouter.get('/find', apiIpAddressController.findIpAddressByAddress);
 
 /**
  * @swagger
@@ -109,6 +139,7 @@ apiIpAddressRouter.get('/', apiIpAddressController.listIpAddresses);
  *       404:
  *         description: Not found
  */
+
 apiIpAddressRouter.get('/:id', apiIpAddressController.getIpAddress);
 
 /**
@@ -242,6 +273,7 @@ apiIpAddressRouter.put('/:id', apiIpAddressController.updateIpAddress);
  */
 apiIpAddressRouter.delete('/:id', apiIpAddressController.deleteIpAddress);
 
+
 // Swagger schema for IP address
 /**
  * @swagger
@@ -300,4 +332,5 @@ apiIpAddressRouter.delete('/:id', apiIpAddressController.deleteIpAddress);
  *                 type: string
  */
 
-module.exports = apiIpAddressRouter;
+
+export default apiIpAddressRouter;

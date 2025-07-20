@@ -1,12 +1,14 @@
-// API Controller for IP Address
-const IpAddress = require('../../models/IpAddress');
-const Contact = require('../../models/Contact');
-const System = require('../../models/System');
-const Tag = require('../../models/Tag');
-const ipAddressOptions = require('../../../config/ipAddressOptions');
+
+// API Controller for IP Address (ES6)
+import IpAddress from '../../models/IpAddress.js';
+import Contact from '../../models/Contact.js';
+import System from '../../models/System.js';
+import Tag from '../../models/Tag.js';
+import ipAddressOptions from '../../../config/ipAddressOptions.js';
 
 // List all IP addresses (with optional filters)
-exports.listIpAddresses = async (req, res) => {
+const apiIpAddressController = {};
+apiIpAddressController.listIpAddresses = async (req, res) => {
   try {
     const { search, tags, status, systems, contacts, page = 1, pageSize = 10 } = req.query;
     // Parse arrays from query if needed
@@ -15,7 +17,7 @@ exports.listIpAddresses = async (req, res) => {
     const filterContacts = contacts ? (Array.isArray(contacts) ? contacts.map(Number) : [Number(contacts)]) : [];
     const filterStatus = status || '';
     const filterSearch = search || '';
-    const ipList = await IpAddress.getFilteredList({
+    const ipList = await IpAddress.findFilteredList({
       search: filterSearch,
       tags: filterTags,
       status: filterStatus,
@@ -24,7 +26,7 @@ exports.listIpAddresses = async (req, res) => {
       page: parseInt(page, 10) || 1,
       pageSize: parseInt(pageSize, 10) || 10
     });
-    const total = await IpAddress.getFilteredCount({
+    const total = await IpAddress.countFiltered({
       search: filterSearch,
       tags: filterTags,
       status: filterStatus,
@@ -38,9 +40,9 @@ exports.listIpAddresses = async (req, res) => {
 };
 
 // Get a single IP address by id
-exports.getIpAddress = async (req, res) => {
+apiIpAddressController.getIpAddress = async (req, res) => {
   try {
-    const ip = await IpAddress.getById(req.params.id);
+    const ip = await IpAddress.findById(req.params.id);
     if (!ip) return res.status(404).json({ error: 'IP address not found' });
     res.json(ip);
   } catch (err) {
@@ -49,7 +51,7 @@ exports.getIpAddress = async (req, res) => {
 };
 
 // Add a new IP address
-exports.createIpAddress = async (req, res) => {
+apiIpAddressController.createIpAddress = async (req, res) => {
   try {
     let { address, description, status, tags, contacts, systems } = req.body;
     address = typeof address === 'string' ? address.trim() : '';
@@ -107,7 +109,7 @@ exports.createIpAddress = async (req, res) => {
     // --- Validation block end ---
 
     // Create IP address
-    const ip = await IpAddress.createIpAddress({ address, description, status, updated_by: req.user ? req.user.username : null });
+    const ip = await IpAddress.create({ address, description, status, updated_by: req.user ? req.user.username : null });
     if (tags) await IpAddress.setTags(ip.id, tags);
     if (contacts) await IpAddress.setContacts(ip.id, contacts);
     if (systems) await IpAddress.setSystems(ip.id, systems);
@@ -118,13 +120,13 @@ exports.createIpAddress = async (req, res) => {
 };
 
 // Edit an IP address (description, status, updated_by)
-exports.updateIpAddress = async (req, res) => {
+apiIpAddressController.updateIpAddress = async (req, res) => {
   try {
     const id = req.params.id;
     let { description, status, tags, contacts, systems } = req.body;
 
     // Fetch current IP address
-    const currentIp = await IpAddress.getById(id);
+    const currentIp = await IpAddress.findById(id);
     if (!currentIp) return res.status(404).json({ error: 'IP address not found' });
 
     // Prepare update object
@@ -192,12 +194,12 @@ exports.updateIpAddress = async (req, res) => {
     updateObj.updated_by = req.user ? req.user.username : null;
 
     // Update IP address (chỉ update các trường chính)
-    const ip = await IpAddress.setIpAddress(id, updateObj);
+    const ip = await IpAddress.update(id, updateObj);
     if (!ip) return res.status(404).json({ error: 'IP address not found' });
     if (tags !== undefined) await IpAddress.setTags(id, tags);
     if (contacts !== undefined) await IpAddress.setContacts(id, contacts);
     if (systems !== undefined) await IpAddress.setSystems(id, systems);
-    const updatedIp = await IpAddress.getById(id);
+    const updatedIp = await IpAddress.findById(id);
     res.json(updatedIp);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -205,12 +207,29 @@ exports.updateIpAddress = async (req, res) => {
 };
 
 // Delete an IP address
-exports.deleteIpAddress = async (req, res) => {
+apiIpAddressController.deleteIpAddress = async (req, res) => {
   try {
     const id = req.params.id;
-    await IpAddress.deleteIpAddress(id);
+    await IpAddress.delete(id);
     res.status(204).send();
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Find IP address by address string (exact match)
+apiIpAddressController.findIpAddressByAddress = async (req, res) => {
+  try {
+    const { address } = req.query;
+    if (!address || typeof address !== 'string' || address.trim() === '') {
+      return res.status(400).json({ error: 'Missing or invalid address parameter' });
+    }
+    const ip = await IpAddress.findByAddress(address.trim());
+    if (!ip) return res.status(404).json({ error: 'IP address not found' });
+    res.json(ip);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+export default apiIpAddressController;

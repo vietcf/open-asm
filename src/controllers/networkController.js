@@ -521,7 +521,7 @@ networkController.apiSearchUnassignedIPAddresses = async (req, res) => {
   try {
     const search = req.query.search || '';
     const limit = parseInt(req.query.limit) || 20;
-    const ips = await IpAddress.findUnassigned({ search, limit });
+    const ips = await IpAddress.findUnassignIP({ search, limit });
     res.json(ips.map(ip => ({ id: ip.id, text: ip.ip_address })));
   } catch (err) {
     console.error('API /network/api/ip-addresses/unassigned error:', err);

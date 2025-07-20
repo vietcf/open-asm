@@ -16,6 +16,8 @@ const apiServerController = require('../controllers/apiServerController');
  *   get:
  *     summary: List servers (with filter, pagination)
  *     tags: [Server]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: search
@@ -127,6 +129,8 @@ apiServerRouter.get('/', apiServerController.listServers);
  *   post:
  *     summary: Create a new server
  *     tags: [Server]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -207,6 +211,8 @@ apiServerRouter.post('/', apiServerController.createServer);
  *   get:
  *     summary: Get a single server by ID
  *     tags: [Server]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -232,6 +238,8 @@ apiServerRouter.get('/:id', apiServerController.getServer);
  *   put:
  *     summary: Update a server
  *     tags: [Server]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -321,6 +329,8 @@ apiServerRouter.put('/:id', apiServerController.updateServer);
  *   delete:
  *     summary: Delete a server
  *     tags: [Server]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
