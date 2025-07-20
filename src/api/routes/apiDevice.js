@@ -4,6 +4,8 @@
  *   get:
  *     summary: List devices (with filter, pagination)
  *     tags: [Device]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: search
@@ -67,6 +69,8 @@
  *   post:
  *     summary: Create a new device
  *     tags: [Device]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -133,6 +137,8 @@
  *   get:
  *     summary: Get a single device by ID
  *     tags: [Device]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -152,6 +158,8 @@
  *   put:
  *     summary: Update a device
  *     tags: [Device]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -225,6 +233,8 @@
  *   delete:
  *     summary: Delete a device
  *     tags: [Device]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id

@@ -328,6 +328,8 @@
                         </div>
                         <div class="modal-body">
                           <dl class="row mb-0">
+                            <dt class="col-sm-4">ID</dt>
+                            <dd class="col-sm-8"><%= rule.id %></dd>
                             <dt class="col-sm-4">Firewall Name</dt>
                             <dd class="col-sm-8"><%= rule.firewall_name || '' %></dd>
                             <dt class="col-sm-4">Rule Name</dt>
@@ -855,7 +857,14 @@ $(function() {
         },
         processResults: function(data) {
           console.log('[AddRule Select2 Tags] AJAX response:', data);
-          return { results: data };
+          // Accept both [{id, name}] and [{id, text}] formats
+          if (Array.isArray(data)) {
+            return { results: data.map(tag => {
+              if (tag.text) return tag;
+              return { id: tag.id, text: tag.name };
+            }) };
+          }
+          return { results: [] };
         },
         error: function(jqXHR, textStatus, errorThrown) {
           console.error('[AddRule Select2 Tags] AJAX ERROR:', textStatus, errorThrown);
@@ -888,7 +897,14 @@ $(function() {
         },
         processResults: function(data) {
           console.log('[AddRule Select2 Contacts] AJAX response:', data);
-          return { results: data };
+          // Accept both [{id, name}] and [{id, text}] formats
+          if (Array.isArray(data)) {
+            return { results: data.map(c => {
+              if (c.text) return c;
+              return { id: c.id, text: c.name + (c.email ? ' (' + c.email + ')' : '') };
+            }) };
+          }
+          return { results: [] };
         },
         error: function(jqXHR, textStatus, errorThrown) {
           console.error('[AddRule Select2 Contacts] AJAX ERROR:', textStatus, errorThrown);
@@ -917,6 +933,10 @@ $(function() {
       if ($ou.hasClass('select2-hidden-accessible')) $ou.select2('destroy');
       if ($tags.hasClass('select2-hidden-accessible')) $tags.select2('destroy');
       if ($contacts.hasClass('select2-hidden-accessible')) $contacts.select2('destroy');
+      // Xóa hết các option cũ trước khi append mới
+      $ou.empty();
+      $tags.empty();
+      $contacts.empty();
       $ou.select2({
         theme: 'bootstrap-5',
         placeholder: 'Select OU (Unit)',

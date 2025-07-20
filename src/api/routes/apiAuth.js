@@ -6,9 +6,10 @@
  */
 
 // Auth API routes
-const express = require('express');
+import express from 'express';
+import apiAuthController from '../controllers/apiAuthController.js';
+
 const apiAuthRouter = express.Router();
-const apiAuthController = require('../controllers/apiAuthController');
 
 /**
  * @swagger
@@ -49,4 +50,4 @@ const apiAuthController = require('../controllers/apiAuthController');
  */
 apiAuthRouter.post('/login', apiAuthController.login);
 
-module.exports = apiAuthRouter;
+export default apiAuthRouter;

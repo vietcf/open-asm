@@ -15,12 +15,16 @@ const controller = require('../controllers/apiSystemController');
  *   get:
  *     summary: Get all systems
  *     tags: [System]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: List of systems
  *   post:
  *     summary: Create a new system
  *     tags: [System]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -68,6 +72,8 @@ const controller = require('../controllers/apiSystemController');
  *   get:
  *     summary: Get a system by ID
  *     tags: [System]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -83,6 +89,8 @@ const controller = require('../controllers/apiSystemController');
  *   put:
  *     summary: Update a system
  *     tags: [System]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -134,6 +142,8 @@ const controller = require('../controllers/apiSystemController');
  *   delete:
  *     summary: Delete a system
  *     tags: [System]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id

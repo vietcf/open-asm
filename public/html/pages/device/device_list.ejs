@@ -254,7 +254,7 @@
                         <a href="/device/device/edit/<%= device.id %>" class="btn btn-warning btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
                       <% } %>
                       <% if (hasPermission('device.delete')) { %>
-                        <form action="/device/device/<%= device.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirm('Are you sure you want to delete this device?')">
+                        <form action="/device/device/<%= device.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirm('Are you sure you want to delete this device? This action cannot be undone!')">
                           <button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="bi bi-trash"></i></button>
                         </form>
                       <% } %>

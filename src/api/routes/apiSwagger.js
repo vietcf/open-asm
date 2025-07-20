@@ -1,8 +1,9 @@
 // Swagger setup for Express API documentation
-const express = require('express');
+import express from 'express';
+import swaggerUi from 'swagger-ui-express';
+import swaggerJsdoc from 'swagger-jsdoc';
+
 const apiSwaggerRouter = express.Router();
-const swaggerUi = require('swagger-ui-express');
-const swaggerJsdoc = require('swagger-jsdoc');
 
 /**
  * @swagger
@@ -72,8 +73,8 @@ const options = {
     },
     servers: [
       {
-        url: 'http://localhost:3000',
-      },
+        url: '/'
+      }
     ],
   },
   apis: ['./src/api/routes/**/*.js'],
@@ -83,4 +84,4 @@ const specs = swaggerJsdoc(options);
 
 apiSwaggerRouter.use('/', swaggerUi.serve, swaggerUi.setup(specs));
 
-module.exports = apiSwaggerRouter;
+export default apiSwaggerRouter;

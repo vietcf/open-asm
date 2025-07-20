@@ -29,9 +29,8 @@ import expressLayouts from 'express-ejs-layouts';
 import { config } from '../config/config.js';
 import { siteConfig } from './utils/siteConfig.js';
 import { loadPermissions } from './middlewares/permissions.middleware.js';
-// import require2fa from './middlewares/require2fa.js';
-// import requirePasswordChange from './middlewares/requirePasswordChange.js';
-// import { authenticate } from './api/middlewares/auth.js';
+import requirePasswordChange from './middlewares/requirePasswordChange.middleware.js';
+import require2fa from './middlewares/require2fa.middleware.js';
 
 // =========================
 // Routers
@@ -48,8 +47,8 @@ import administratorRouter from './routes/administrator.js';
 import deviceRoutes from './routes/device.js';
 import uploadRouter from './routes/upload.js';
 import firewallRouter from './routes/firewall.js';
-// import twofaRouter from './routes/twofa.js';
-// import changePasswordRouter from './routes/changePassword.js';
+import twofaRouter from './routes/twofa.js';
+import changePasswordRouter from './routes/changePassword.js';
 
 // API Routers
 // import apiContactRouter from './api/routes/apiContact.js';
@@ -58,8 +57,8 @@ import firewallRouter from './routes/firewall.js';
 // import apiServerRouter from './api/routes/apiServer.js';
 // import apiIpAddressRouter from './api/routes/apiIpAddress.js';
 // import apiAuthRouter from './api/routes/apiAuth.js';
-// import apiSwaggerRouter from './api/routes/apiSwagger.js';
-// import apiRouter from './api/routes/index.js';
+import apiSwaggerRouter from './api/routes/apiSwagger.js';
+import apiRouter from './api/routes/index.js';
 // Remove unused controller import since we're using router pattern
 
 
@@ -93,6 +92,7 @@ app.use(session({
 
 // Flash middleware for session messages
 app.use(flash());
+
 
 // 5. Global template variables (res.locals)
 // 5.1. Load permissions for every request (after session, before routes)
@@ -145,30 +145,40 @@ app.get(['/', '/index.html'], (req, res) => {
     res.redirect('/login');
 });
 
+
 // ===========================================
 // PUBLIC ROUTES (No authentication required)
 // ===========================================
 app.use('/', authRouter); // /login, /logout, /login/2fa
+
+
+// ===========================================
+// MIDDLEWARES AFTER SESSION, BEFORE ROUTES
+// ===========================================
+
+// Enforce password change for users with must_change_password flag (after session, before routes)
+app.use(requirePasswordChange);
+
 
 // ===========================================
 // PROTECTED ROUTES (Authentication required)
 // ===========================================
 
 // Change password route (requires login + 2FA)
-// app.use('/change-password', requireLogin, require2fa, changePasswordRouter);
+app.use('/change-password', requireLogin, changePasswordRouter);
 
 // // 2FA setup/disable routes (requires login only)
-// app.use('/2fa', requireLogin, twofaRouter); 
+app.use('/2fa', requireLogin, twofaRouter); 
 
-app.use('/dashboard', requireLogin, dashboardRouter);
-app.use('/system', requireLogin, systemRouter);
-app.use('/network', requireLogin, networkRouter);
-app.use('/server', requireLogin, serverRouter);
-app.use('/organize', requireLogin, organizeRouter);
-app.use('/device', requireLogin, deviceRoutes);
-app.use('/priv-account', requireLogin, privAccountRouter);
-app.use('/firewall', requireLogin, firewallRouter);
-app.use('/administrator', requireLogin, administratorRouter);
+app.use('/dashboard', requireLogin, require2fa, dashboardRouter);
+app.use('/system', requireLogin, require2fa, systemRouter);
+app.use('/network', requireLogin, require2fa, networkRouter);
+app.use('/server', requireLogin, require2fa, serverRouter);
+app.use('/organize', requireLogin, require2fa, organizeRouter);
+app.use('/device', requireLogin, require2fa, deviceRoutes);
+app.use('/priv-account', requireLogin, require2fa, privAccountRouter);
+app.use('/firewall', requireLogin, require2fa, firewallRouter);
+app.use('/administrator', requireLogin, require2fa, administratorRouter);
 
 // //Upload route to get upload patch file
 app.use('/api/upload', requireLogin, uploadRouter); 
@@ -177,11 +187,11 @@ app.use('/api/upload', requireLogin, uploadRouter);
 // API ROUTES
 // ===========================================
 
-// Swagger API documentation (public)
-// app.use('/api-docs', apiSwaggerRouter);
+//  Swagger API documentation (public)
+app.use('/api-docs', apiSwaggerRouter);
 
 // // API v1 routes (authentication handled internally)
-// app.use('/api/v1', apiRouter);
+app.use('/api/v1', apiRouter);
 
 // Start the server
 const PORT = process.env.PORT || 3000;

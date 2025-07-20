@@ -1,8 +1,8 @@
 // Contact API routes
-const express = require('express');
+import express from 'express';
+import apiContactController from '../controllers/apiContactController.js';
+import { authorizePermissionJWT } from '../middlewares/auth.middleware.js';
 const apiContactRouter = express.Router();
-const apiContactController = require('../controllers/apiContactController');
-const { authorizePermissionJWT } = require('../middlewares/auth');
 
 /**
  * @swagger
@@ -238,4 +238,4 @@ apiContactRouter.put('/:id', authorizePermissionJWT('contact.update'), apiContac
  */
 apiContactRouter.delete('/:id', authorizePermissionJWT('contact.delete'), apiContactController.deleteContact);
 
-module.exports = apiContactRouter;
+export default apiContactRouter;

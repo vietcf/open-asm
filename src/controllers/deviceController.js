@@ -167,7 +167,7 @@ deviceController.createDevice = async (req, res) => {
       updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
     };
     // Insert device only
-    const device = await Device.insertDevice(data, client);
+    const device = await Device.create(data, client);
     // Set IP addresses
     if (ip_addresses) {
       const ipList = Array.isArray(ip_addresses) ? ip_addresses : [ip_addresses];
@@ -262,8 +262,9 @@ deviceController.deleteDevice = async (req, res) => {
     // Remove all contacts for this device
     await Device.setContacts(req.params.id, [], client);
     // Delete the device
-    await Device.delete(req.params.id, client);
+    await Device.remove(req.params.id, client);
     await client.query('COMMIT');
+    req.flash('success', 'Device deleted successfully!');
     res.redirect('/device/device');
   } catch (err) {
     await client.query('ROLLBACK');

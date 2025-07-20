@@ -50,11 +50,12 @@ export const postLogin = async (req, res) => {
       req.session.isLoggedIn = true; // Logined username and password successfully
       req.session.user = buildSessionUser(user); // Only store user info, not permissions
 
-      console.log('User logged in:', req.session.user);
+      // console.log('User logged in:', req.session.user);
 
       // Set default 2FA state
-      req.session.is2faPending = false; // Mac dinh khong yeu cau 2FA
-      req.session.is2faVerified = true; // Mac dinh la da duoc verify 2FA
+      req.session.is2faVerified = true; //Mac dinh da duoc verify 2FA
+      req.session.is2faPending = false; //Mac dinh khong pending 2FA Verify
+
 
       // If required, check must_change_password
       if (user.must_change_password) {

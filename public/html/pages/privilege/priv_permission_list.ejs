@@ -89,7 +89,7 @@
                       <a href="#" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#privPermissionEditModal-<%= permission.id %>"><i class="bi bi-pencil"></i></a>
                       <% } %>
                       <% if (hasPermission('priv_permission.delete')) { %>
-                      <form action="/priv-account/permission/<%= permission.id %>/delete" method="POST" style="display:inline">
+                      <form action="/priv-account/permission/<%= permission.id %>?_method=DELETE" method="POST" style="display:inline">
                         <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete?')"><i class="bi bi-trash"></i></button>
                       </form>
                       <% } %>
@@ -134,7 +134,7 @@
                           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                          <form id="editPrivPermissionForm-<%= permission.id %>" action="/priv-account/permission/<%= permission.id %>/edit" method="POST">
+                          <form id="editPrivPermissionForm-<%= permission.id %>" action="/priv-account/permission/<%= permission.id %>?_method=PUT" method="POST">
                             <div class="mb-3">
                               <label class="form-label">Permission Name <span class="text-danger">*</span></label>
                               <input type="text" class="form-control form-control-sm" name="name" value="<%= permission.name %>" required>

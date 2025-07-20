@@ -1,7 +1,10 @@
-const Unit = require('../../models/Unit');
+import Unit from '../../models/Unit.js';
 
 // Controller for Organization Unit (OU) API
-exports.listUnits = async (req, res) => {
+const apiUnitController = {};
+
+apiUnitController.listUnits = async (req, res) => {
+  console.log('Listing units with pagination and search');
   try {
     // Pagination and search support
     const page = parseInt(req.query.page, 10) || 1;
@@ -9,9 +12,9 @@ exports.listUnits = async (req, res) => {
     const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
     let totalCount, totalPages, units;
     if (search) {
-      totalCount = await Unit.searchCount(search);
+      totalCount = await Unit.countSearch(search);
       totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-      units = await Unit.searchPage(search, page, pageSize);
+      units = await Unit.findSearchPage(search, page, pageSize);
     } else {
       totalCount = await Unit.countAll();
       totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -23,7 +26,7 @@ exports.listUnits = async (req, res) => {
   }
 };
 
-exports.getUnit = async (req, res) => {
+apiUnitController.getUnit = async (req, res) => {
   try {
     const id = req.params.id;
     const unit = await Unit.findById(id);
@@ -34,7 +37,7 @@ exports.getUnit = async (req, res) => {
   }
 };
 
-exports.createUnit = async (req, res) => {
+apiUnitController.createUnit = async (req, res) => {
   try {
     let { name, code, description } = req.body;
     name = typeof name === 'string' ? name.trim() : '';
@@ -55,13 +58,16 @@ exports.createUnit = async (req, res) => {
   }
 };
 
-exports.updateUnit = async (req, res) => {
+apiUnitController.updateUnit = async (req, res) => {
   try {
     const id = req.params.id;
-    let { name, code, description } = req.body;
-    name = typeof name === 'string' ? name.trim() : '';
-    code = typeof code === 'string' ? code.trim() : '';
-    description = typeof description === 'string' ? description.trim() : '';
+    // Lấy dữ liệu hiện tại
+    const current = await Unit.findById(id);
+    if (!current) return res.status(404).json({ error: 'Unit not found' });
+    // Chỉ cập nhật trường nào truyền lên, còn lại giữ nguyên
+    let name = ('name' in req.body) ? (typeof req.body.name === 'string' ? req.body.name.trim() : current.name) : current.name;
+    let code = ('code' in req.body) ? (typeof req.body.code === 'string' ? req.body.code.trim() : current.code) : current.code;
+    let description = ('description' in req.body) ? (typeof req.body.description === 'string' ? req.body.description.trim() : current.description) : current.description;
     if (!name) {
       return res.status(400).json({ error: 'Unit name is required' });
     }
@@ -71,14 +77,13 @@ exports.updateUnit = async (req, res) => {
       return res.status(409).json({ error: 'Unit already exists with this name' });
     }
     const updated = await Unit.update(id, { name, code, description });
-    if (!updated) return res.status(404).json({ error: 'Unit not found' });
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-exports.deleteUnit = async (req, res) => {
+apiUnitController.deleteUnit = async (req, res) => {
   try {
     const id = req.params.id;
     const unit = await Unit.findById(id);
@@ -89,3 +94,5 @@ exports.deleteUnit = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export default apiUnitController;

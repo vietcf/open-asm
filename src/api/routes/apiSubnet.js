@@ -1,7 +1,7 @@
-// Subnet API routes
-const express = require('express');
+// Subnet API routes (ES6)
+import express from 'express';
+import apiSubnetController from '../controllers/apiSubnetController.js';
 const apiSubnetRouter = express.Router();
-const apiSubnetController = require('../controllers/apiSubnetController');
 
 /**
  * @swagger
@@ -12,10 +12,12 @@ const apiSubnetController = require('../controllers/apiSubnetController');
 
 /**
  * @swagger
- * /api/subnets:
+ * /api/v1/subnets:
  *   get:
  *     summary: List subnets (with filter, pagination)
  *     tags: [Subnet]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: search
@@ -26,12 +28,14 @@ const apiSubnetController = require('../controllers/apiSubnetController');
  *         name: page
  *         schema:
  *           type: integer
- *         description: Page number
+ *           default: 1
+ *         description: "Page number (default: 1)"
  *       - in: query
  *         name: pageSize
  *         schema:
  *           type: integer
- *         description: Page size
+ *           default: 20
+ *         description: "Page size (default: 20)"
  *     responses:
  *       200:
  *         description: List of subnets
@@ -57,10 +61,12 @@ apiSubnetRouter.get('/', apiSubnetController.listSubnets);
 
 /**
  * @swagger
- * /api/subnets/{id}:
+ * /api/v1/subnets/{id}:
  *   get:
  *     summary: Get a single subnet by ID
  *     tags: [Subnet]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -86,6 +92,8 @@ apiSubnetRouter.get('/:id', apiSubnetController.getSubnet);
  *   post:
  *     summary: Create a new subnet
  *     tags: [Subnet]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -126,6 +134,8 @@ apiSubnetRouter.post('/', apiSubnetController.createSubnet);
  *   put:
  *     summary: Update a subnet
  *     tags: [Subnet]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -173,6 +183,8 @@ apiSubnetRouter.put('/:id', apiSubnetController.updateSubnet);
  *   delete:
  *     summary: Delete a subnet
  *     tags: [Subnet]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -212,4 +224,4 @@ apiSubnetRouter.delete('/:id', apiSubnetController.deleteSubnet);
  *                 type: string
  */
 
-module.exports = apiSubnetRouter;
+export default apiSubnetRouter;
