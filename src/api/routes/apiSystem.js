@@ -11,7 +11,7 @@ const controller = require('../controllers/apiSystemController');
 
 /**
  * @swagger
- * /api/systems:
+ * /api/v1/systems:
  *   get:
  *     summary: Get all systems
  *     tags: [System]
@@ -68,7 +68,7 @@ const controller = require('../controllers/apiSystemController');
  *       400:
  *         description: Validation error
  *
- * /api/systems/{id}:
+ * /api/v1/systems/{id}:
  *   get:
  *     summary: Get a system by ID
  *     tags: [System]

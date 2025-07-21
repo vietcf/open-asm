@@ -174,8 +174,8 @@
                     <td><%= idx + 1 %></td>
                     <td><%= server.name %></td>
                     <td>
-                      <% if (Array.isArray(server.ip_addresses) && server.ip_addresses.length) { %>
-                        <%= server.ip_addresses.map(ipObj => ipObj.ip_address).join(', ') %>
+                      <% if (Array.isArray(server.ip) && server.ip.length) { %>
+                        <%= server.ip.map(ipObj => ipObj.ip_address).join(', ') %>
                       <% } else { %>
                         <span class="text-muted">-</span>
                       <% } %>
@@ -216,14 +216,16 @@
                         </div>
                         <div class="modal-body">
                           <dl class="row mb-0">
+                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Server ID</dt>
+                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;"><%= server.id %></dd>
                             <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Server Name</dt>
                             <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;white-space: pre-line;"><%= server.name %></dd>
                             <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Description</dt>
                             <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;white-space: pre-line;"><%= (server.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') %></dd>
                             <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">IP Address</dt>
                             <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
-                              <% if (Array.isArray(server.ip_addresses) && server.ip_addresses.length) { %>
-                                <%= server.ip_addresses.map(ipObj => ipObj.ip_address).join(', ') %>
+                              <% if (Array.isArray(server.ip) && server.ip.length) { %>
+                                <%= server.ip.map(ipObj => ipObj.ip_address).join(', ') %>
                               <% } else { %>
                                 <span class="text-muted">-</span>
                               <% } %>

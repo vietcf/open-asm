@@ -1,10 +1,12 @@
 // Server controller for CRUD and detail logic
 
+
 import { pool } from '../../config/config.js';
 import Server from '../models/Server.js';
 import IpAddress from '../models/IpAddress.js';
 import Service from '../models/Service.js';
 import Agent from '../models/Agent.js';
+import Platform from '../models/Platform.js';
 import serverOptions from '../../config/serverOptions.js';
 import ExcelJS from 'exceljs';
 
@@ -202,8 +204,9 @@ serverController.editServerForm = async (req, res) => {
     const selectedServices = (server.services || []).map(sv => ({ id: sv.id, text: sv.name }));
     const selectedIPs = (server.ip || []).map(ip => ({ id: ip.id, text: ip.ip_address }));
     const selectedTags = (server.tags || []).map(tag => ({ id: tag.id, text: tag.name }));
-    // Get selected platform id (for select2 ajax, only need selected value)
     let selectedPlatform = server.os_id;
+    // Truyền platform đã chọn (id, text) cho select2 ajax pre-populate
+    const selectedPlatformObj = server.os_id && server.platform_name ? { id: server.os_id, text: server.platform_name } : null;
     res.render('pages/server/server_edit', {
       server,
       selectedContacts,
@@ -211,8 +214,8 @@ serverController.editServerForm = async (req, res) => {
       selectedAgents,
       selectedServices,
       selectedPlatform,
+      selectedPlatformObj,
       selectedIPs,
-      platforms: [], // not needed, select2 will load via ajax
       selectedTags,
       locations: serverOptions.locations,
       statusOptions: serverOptions.status,
@@ -568,7 +571,7 @@ serverController.exportServerList = async (req, res) => {
       server.id,
       server.name || '',
       server.description ? server.description.replace(/\r?\n|\r/g, ' ') : '',
-      (server.ip_addresses && server.ip_addresses.length ? server.ip_addresses.map(ip => ip.ip_address).join(', ') : ''),
+      (server.ip && server.ip.length ? server.ip.map(ip => ip.ip_address).join(', ') : ''),
       server.status || '',
       server.location || '',
       server.type || '',

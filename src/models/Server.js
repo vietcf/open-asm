@@ -198,10 +198,30 @@ class Server {
     const where = whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : '';
     const joins = joinClauses.join(' ');
     const offset = (page - 1) * pageSize;
-    const sql = `SELECT s.* FROM servers s ${joins} ${where} GROUP BY s.id ORDER BY s.id LIMIT $${idx} OFFSET $${idx + 1}`;
+    // Sử dụng json_agg để tổng hợp các trường liên quan
+    const sql = `SELECT s.*, p.name AS platform_name,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name)) FILTER (WHERE c.id IS NOT NULL), '[]') AS managers,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', sys.id, 'name', sys.name)) FILTER (WHERE sys.id IS NOT NULL), '[]') AS systems,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', sv.id, 'name', sv.name)) FILTER (WHERE sv.id IS NOT NULL), '[]') AS services,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', ag.id, 'name', ag.name, 'version', ag.version)) FILTER (WHERE ag.id IS NOT NULL), '[]') AS agents
+      FROM servers s ${joins} ${where} 
+      GROUP BY s.id, p.name
+      ORDER BY s.id
+      LIMIT $${idx} OFFSET $${idx + 1}`;
     params.push(pageSize, offset);
     const res = await pool.query(sql, params);
-    return res.rows;
+    // Parse các trường JSON nếu cần
+    return res.rows.map(server => {
+      server.ip = Array.isArray(server.ip) ? server.ip : JSON.parse(server.ip);
+      server.tags = Array.isArray(server.tags) ? server.tags : JSON.parse(server.tags);
+      server.managers = Array.isArray(server.managers) ? server.managers : JSON.parse(server.managers);
+      server.systems = Array.isArray(server.systems) ? server.systems : JSON.parse(server.systems);
+      server.services = Array.isArray(server.services) ? server.services : JSON.parse(server.services);
+      server.agents = Array.isArray(server.agents) ? server.agents : JSON.parse(server.agents);
+      return server;
+    });
   }
 
   static async countFiltered({ search, status, type, platform_id, location, tags, ip, manager, systems, services, os }) {

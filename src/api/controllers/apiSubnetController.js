@@ -88,13 +88,11 @@ apiSubnetController.updateSubnet = async (req, res) => {
 
     // Address is required (but don't update it, just check for duplicate)
     if (!address) {
-      client.release();
       return res.status(400).json({ error: 'Subnet address is required' });
     }
     // Check for duplicate address (except for this id)
     const existing = await Subnet.findByAddress(address);
     if (existing && String(existing.id) !== String(id)) {
-      client.release();
       return res.status(409).json({ error: 'Subnet already exists with this address' });
     }
 
@@ -106,7 +104,6 @@ apiSubnetController.updateSubnet = async (req, res) => {
     if (tags && Array.isArray(tags)) {
       for (const tagId of tags) {
         if (!(await Tag.exists(tagId))) {
-          client.release();
           return res.status(400).json({ error: `Tag does not exist: ${tagId}` });
         }
       }
@@ -128,7 +125,7 @@ apiSubnetController.updateSubnet = async (req, res) => {
     await client.query('ROLLBACK');
     res.status(500).json({ error: err.message });
   } finally {
-    client.release();
+    if (!client.released) client.release();
   }
 };
 
