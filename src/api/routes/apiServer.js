@@ -1,7 +1,7 @@
-// Server API routes
-const express = require('express');
+// Server API routes (ES6)
+import express from 'express';
+import apiServerController from '../controllers/apiServerController.js';
 const apiServerRouter = express.Router();
-const apiServerController = require('../controllers/apiServerController');
 
 /**
  * @swagger
@@ -12,7 +12,7 @@ const apiServerController = require('../controllers/apiServerController');
 
 /**
  * @swagger
- * /api/servers:
+ * /api/v1/servers:
  *   get:
  *     summary: List servers (with filter, pagination)
  *     tags: [Server]
@@ -100,12 +100,14 @@ const apiServerController = require('../controllers/apiServerController');
  *         name: page
  *         schema:
  *           type: integer
- *         description: Page number
+ *           default: 1
+ *         description: "Page number (default: 1)"
  *       - in: query
  *         name: pageSize
  *         schema:
  *           type: integer
- *         description: Page size
+ *           default: 10
+ *         description: "Page size (default: 10)"
  *     responses:
  *       200:
  *         description: List of servers
@@ -125,7 +127,7 @@ apiServerRouter.get('/', apiServerController.listServers);
 
 /**
  * @swagger
- * /api/servers:
+ * /api/v1/servers:
  *   post:
  *     summary: Create a new server
  *     tags: [Server]
@@ -207,7 +209,7 @@ apiServerRouter.post('/', apiServerController.createServer);
 
 /**
  * @swagger
- * /api/servers/{id}:
+ * /api/v1/servers/{id}:
  *   get:
  *     summary: Get a single server by ID
  *     tags: [Server]
@@ -234,7 +236,7 @@ apiServerRouter.get('/:id', apiServerController.getServer);
 
 /**
  * @swagger
- * /api/servers/{id}:
+ * /api/v1/servers/{id}:
  *   put:
  *     summary: Update a server
  *     tags: [Server]
@@ -325,7 +327,7 @@ apiServerRouter.put('/:id', apiServerController.updateServer);
 
 /**
  * @swagger
- * /api/servers/{id}:
+ * /api/v1/servers/{id}:
  *   delete:
  *     summary: Delete a server
  *     tags: [Server]
@@ -346,4 +348,4 @@ apiServerRouter.put('/:id', apiServerController.updateServer);
  */
 apiServerRouter.delete('/:id', apiServerController.deleteServer);
 
-module.exports = apiServerRouter;
+export default apiServerRouter;

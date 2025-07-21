@@ -1,6 +1,6 @@
 /**
  * @swagger
- * /api/devices:
+ * /api/v1/devices:
  *   get:
  *     summary: List devices (with filter, pagination)
  *     tags: [Device]
@@ -133,7 +133,7 @@
  *       409:
  *         description: Duplicate device name
  *
- * /api/devices/{id}:
+ * /api/v1/devices/{id}:
  *   get:
  *     summary: Get a single device by ID
  *     tags: [Device]

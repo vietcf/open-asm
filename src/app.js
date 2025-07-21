@@ -188,7 +188,7 @@ app.use('/api/upload', requireLogin, uploadRouter);
 // ===========================================
 
 //  Swagger API documentation (public)
-app.use('/api-docs', apiSwaggerRouter);
+app.use('/api-docs', requireLogin, apiSwaggerRouter);
 
 // // API v1 routes (authentication handled internally)
 app.use('/api/v1', apiRouter);

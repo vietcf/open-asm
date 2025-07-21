@@ -19,10 +19,7 @@
             <div class="mb-3">
               <label class="form-label">Platform (OS)</label>
               <select id="platform-select" name="os" class="form-select form-select-sm">
-                <option value="">-- Select Platform --</option>
-                <% platforms.forEach(function(platform) { %>
-                  <option value="<%= platform.id %>" <%= String(selectedPlatform) === String(platform.id) ? 'selected' : '' %>><%= platform.name %></option>
-                <% }) %>
+                <!-- Option will be populated by JS for selected value -->
               </select>
             </div>
             <div class="mb-3">
@@ -205,6 +202,12 @@
         cache: true
       }
     });
+    // Pre-populate platform select2 with current value
+    var selectedPlatformObj = <%- JSON.stringify(typeof selectedPlatformObj !== 'undefined' ? selectedPlatformObj : null) %>;
+    if (selectedPlatformObj && selectedPlatformObj.id) {
+      var option = new Option(selectedPlatformObj.text, selectedPlatformObj.id, true, true);
+      $('#platform-select').append(option).trigger('change');
+    }
     $('#tag-select').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select tag(s)',

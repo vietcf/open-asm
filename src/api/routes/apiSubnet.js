@@ -88,7 +88,7 @@ apiSubnetRouter.get('/:id', apiSubnetController.getSubnet);
 
 /**
  * @swagger
- * /api/subnets:
+ * /api/v1/subnets:
  *   post:
  *     summary: Create a new subnet
  *     tags: [Subnet]
@@ -130,7 +130,7 @@ apiSubnetRouter.post('/', apiSubnetController.createSubnet);
 
 /**
  * @swagger
- * /api/subnets/{id}:
+ * /api/v1/subnets/{id}:
  *   put:
  *     summary: Update a subnet
  *     tags: [Subnet]
@@ -179,7 +179,7 @@ apiSubnetRouter.put('/:id', apiSubnetController.updateSubnet);
 
 /**
  * @swagger
- * /api/subnets/{id}:
+ * /api/v1/subnets/{id}:
  *   delete:
  *     summary: Delete a subnet
  *     tags: [Subnet]
