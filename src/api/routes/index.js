@@ -7,7 +7,8 @@ import apiServerRouter from './apiServer.js';
 import apiIpAddressRouter from './apiIpAddress.js';
 import apiAuthRouter from './apiAuth.js';
 import apiSubnetRouter from './apiSubnet.js';
-// import apiDeviceRouter from './apiDevice.js';
+import apiDeviceRouter from './apiDevice.js';
+import apiSystemRouter from './apiSystem.js';
 
 const apiRouter = express.Router();
 
@@ -21,7 +22,9 @@ apiRouter.use('/rules', authenticateJWT, apiRuleRouter);
 apiRouter.use('/servers', authenticateJWT, apiServerRouter);
 apiRouter.use('/ip-addresses', authenticateJWT, apiIpAddressRouter);
 apiRouter.use('/subnets', authenticateJWT, apiSubnetRouter);
-// apiRouter.use('/devices', authenticateJWT, apiDeviceRouter);
+apiRouter.use('/devices', authenticateJWT, apiDeviceRouter);
+apiRouter.use('/systems', authenticateJWT, apiSystemRouter);
+
 
 // Handle JSON parse errors for API routes only
 apiRouter.use((err, req, res, next) => {

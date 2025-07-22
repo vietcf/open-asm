@@ -12,11 +12,11 @@ import serverOptions from '../../../config/serverOptions.js';
 
 const apiServerController = {};
 
-// List all servers (with filter, pagination)
+// List all servers (with filter and pagination)
 apiServerController.listServers = async (req, res) => {
   try {
     const { search, status, type, location, tags, ip, manager, systems, services, os, page = 1, pageSize = 10 } = req.query;
-    // Normalize arrays
+    // Normalize array parameters
     const normalize = v => (!v ? [] : Array.isArray(v) ? v : [v]);
     const filterParams = {
       search: search ? search.trim().toLowerCase() : '',
@@ -56,8 +56,9 @@ apiServerController.createServer = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    let { name, os, status, location, type, managers, systems, agents, services, tags, ip_addresses, description } = req.body;
-    // Normalize and trim
+    // Ensure destructuring does not fail if body is missing fields
+    let { name, os, status, location, type, managers, systems, agents, services, tags, ip_addresses, description } = req.body || {};
+    // Normalize and trim input fields
     name = typeof name === 'string' ? name.trim() : '';
     description = typeof description === 'string' ? description.trim() : '';
     status = typeof status === 'string' ? status.trim() : '';
@@ -75,7 +76,7 @@ apiServerController.createServer = async (req, res) => {
     if (os && !(await Platform.exists(os))) {
       return res.status(400).json({ error: `Invalid platform (os) ID: ${os}` });
     }
-    // Normalize arrays 
+    // Normalize array fields
     if (managers && !Array.isArray(managers)) managers = [managers];
     if (systems && !Array.isArray(systems)) systems = [systems];
     if (agents && !Array.isArray(agents)) agents = [agents];
@@ -88,42 +89,42 @@ apiServerController.createServer = async (req, res) => {
     services = (services || []).map(x => Number(x)).filter(x => !isNaN(x));
     tags = (tags || []).map(x => Number(x)).filter(x => !isNaN(x));
     ip_addresses = (ip_addresses || []).map(x => Number(x)).filter(x => !isNaN(x));
-    // Validate managers
+    // Validate manager IDs
     const invalidManagers = [];
     for (const mid of managers) {
       // eslint-disable-next-line no-await-in-loop
       if (!(await Contact.exists(mid))) invalidManagers.push(mid);
     }
     if (invalidManagers.length > 0) return res.status(400).json({ error: `Invalid manager (contact) IDs: ${invalidManagers.join(', ')}` });
-    // Validate systems
+    // Validate system IDs
     const invalidSystems = [];
     for (const sid of systems) {
       // eslint-disable-next-line no-await-in-loop
       if (!(await System.exists(sid))) invalidSystems.push(sid);
     }
     if (invalidSystems.length > 0) return res.status(400).json({ error: `Invalid system IDs: ${invalidSystems.join(', ')}` });
-    // Validate agents
+    // Validate agent IDs
     const invalidAgents = [];
     for (const aid of agents) {
       // eslint-disable-next-line no-await-in-loop
       if (!(await Agent.exists(aid))) invalidAgents.push(aid);
     }
     if (invalidAgents.length > 0) return res.status(400).json({ error: `Invalid agent IDs: ${invalidAgents.join(', ')}` });
-    // Validate services
+    // Validate service IDs
     const invalidServices = [];
     for (const sid of services) {
       // eslint-disable-next-line no-await-in-loop
       if (!(await Service.exists(sid))) invalidServices.push(sid);
     }
     if (invalidServices.length > 0) return res.status(400).json({ error: `Invalid service IDs: ${invalidServices.join(', ')}` });
-    // Validate tags
+    // Validate tag IDs
     const invalidTags = [];
     for (const tid of tags) {
       // eslint-disable-next-line no-await-in-loop
       if (!(await Tag.exists(tid))) invalidTags.push(tid);
     }
     if (invalidTags.length > 0) return res.status(400).json({ error: `Invalid tag IDs: ${invalidTags.join(', ')}` });
-    // Validate ip_addresses
+    // Validate IP address IDs
     if (!ip_addresses || ip_addresses.length === 0) return res.status(400).json({ error: 'At least one IP address is required' });
     const invalidIps = [];
     for (const ipId of ip_addresses) {
@@ -131,7 +132,7 @@ apiServerController.createServer = async (req, res) => {
       if (!(await IpAddress.exists(ipId))) invalidIps.push(ipId);
     }
     if (invalidIps.length > 0) return res.status(400).json({ error: `Invalid IP address IDs: ${invalidIps.join(', ')}` });
-    // Create server
+    // Create server in database
     const username = req.user && req.user.username ? req.user.username : 'admin';
     const serverId = await Server.create({ name, os, status, location, type, description, username, client });
     await Server.setIpAddresses(serverId, ip_addresses, client);
@@ -150,109 +151,131 @@ apiServerController.createServer = async (req, res) => {
   }
 };
 
-// Update a server
+// Update a server (real implementation, call model)
+/**
+ * Update a server by ID. Only fields present in the request body are updated; others remain unchanged.
+ * Validates only provided fields. Handles arrays and foreign keys robustly. Uses transaction for atomicity.
+ * @route PUT /api/v1/servers/:id
+ */
+/**
+ * Update a server by ID. Only fields present in the request body are updated; others remain unchanged.
+ * Validates only provided fields. Handles arrays and foreign keys robustly. Uses transaction for atomicity.
+ *
+ * @route PUT /api/v1/servers/:id
+ * @param {Request} req - Express request object
+ * @param {Response} res - Express response object
+ */
+// Hàm cập nhật server, tối ưu, dễ đọc, ít lặp code
 apiServerController.updateServer = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const id = req.params.id;
-    // Đảm bảo destructure không lỗi nếu body thiếu field
-    let { name, os, status, location, type, managers, systems, agents, services, tags, ip_addresses, description } = req.body || {};
-    // Lấy dữ liệu cũ
     const current = await Server.findById(id);
-    if (!current) return res.status(404).json({ error: 'Server not found' });
-    // Chỉ update trường được gửi lên, giữ lại giá trị cũ nếu không gửi
-    name = typeof name === 'string' && name.trim() !== '' ? name.trim() : current.name;
-    description = typeof description === 'string' && description.trim() !== '' ? description.trim() : current.description;
-    os = (os === '' || os === undefined) ? current.os_id : os;
-    status = (status === '' || status === undefined) ? current.status : status;
-    type = (type === '' || type === undefined) ? current.type : type;
-    location = (location === '' || location === undefined) ? current.location : location;
-    // Validate required fields
-    if (!name) return res.status(400).json({ error: 'Server name is required' });
-    if (location && !serverOptions.locations.some(opt => opt.value === location)) {
-      return res.status(400).json({ error: `Invalid location: ${location}` });
+    if (!current) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Server not found' });
     }
-    if (status && !serverOptions.status.some(opt => opt.value === status)) {
-      return res.status(400).json({ error: `Invalid status: ${status}` });
+
+    // Helper
+    const allowedFields = [
+      'name', 'description', 'os', 'status', 'type', 'location',
+      'tags', 'managers', 'systems', 'agents', 'services', 'ip_addresses'
+    ];
+    const has = key => Object.prototype.hasOwnProperty.call(req.body, key);
+    const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const normalizeArray = val => (Array.isArray(val) ? val : [val]).map(Number).filter(x => !isNaN(x));
+
+    // Validate that all fields sent in the request are allowed
+    const invalidFields = Object.keys(body).filter(k => !allowedFields.includes(k));
+    if (invalidFields.length > 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `Invalid field(s): ${invalidFields.join(', ')}` });
     }
-    if (os && !(await Platform.exists(os))) {
-      return res.status(400).json({ error: `Invalid platform (os) ID: ${os}` });
+
+    // Prepare the fields to update
+    const updateFields = {
+      name: has('name') ? (typeof body.name === 'string' ? body.name.trim() : body.name) : current.name,
+      description: has('description') ? (typeof body.description === 'string' ? body.description.trim() : body.description) : current.description,
+      os: has('os') ? body.os : current.os_id,
+      status: has('status') ? body.status : current.status,
+      type: has('type') ? body.type : current.type,
+      location: has('location') ? body.location : current.location,
+    };
+
+    // Validate enum fields if provided
+    if (has('location') && updateFields.location && !serverOptions.locations.some(opt => opt.value === updateFields.location)) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `Invalid location: ${updateFields.location}` });
     }
-    // Normalize arrays
-    if (tags && !Array.isArray(tags)) tags = [tags];
-    if (managers && !Array.isArray(managers)) managers = [managers];
-    if (systems && !Array.isArray(systems)) systems = [systems];
-    if (agents && !Array.isArray(agents)) agents = [agents];
-    if (services && !Array.isArray(services)) services = [services];
-    if (ip_addresses && !Array.isArray(ip_addresses)) ip_addresses = [ip_addresses];
-    tags = tags !== undefined ? tags.map(Number).filter(x => !isNaN(x)) : (Array.isArray(current.tags) ? current.tags.map(t => t.id) : []);
-    managers = managers !== undefined ? managers.map(Number).filter(x => !isNaN(x)) : (Array.isArray(current.managers) ? current.managers.map(m => m.id) : []);
-    systems = systems !== undefined ? systems.map(Number).filter(x => !isNaN(x)) : (Array.isArray(current.systems) ? current.systems.map(s => s.id) : []);
-    agents = agents !== undefined ? agents.map(Number).filter(x => !isNaN(x)) : (Array.isArray(current.agents) ? current.agents.map(a => a.id) : []);
-    services = services !== undefined ? services.map(Number).filter(x => !isNaN(x)) : (Array.isArray(current.services) ? current.services.map(s => s.id) : []);
-    ip_addresses = ip_addresses !== undefined ? ip_addresses.map(Number).filter(x => !isNaN(x)) : (Array.isArray(current.ip) ? current.ip.map(i => i.id) : []);
-    // Validate foreign keys
-    const invalidManagers = [];
-    for (const mid of managers) {
-      if (!(await Contact.exists(mid))) invalidManagers.push(mid);
+    if (has('status') && updateFields.status && !serverOptions.status.some(opt => opt.value === updateFields.status)) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `Invalid status: ${updateFields.status}` });
     }
-    if (invalidManagers.length > 0) return res.status(400).json({ error: `Invalid manager (contact) IDs: ${invalidManagers.join(', ')}` });
-    const invalidSystems = [];
-    for (const sid of systems) {
-      if (!(await System.exists(sid))) invalidSystems.push(sid);
+    if (has('os') && updateFields.os && !(await Platform.exists(updateFields.os))) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `Invalid platform (os) ID: ${updateFields.os}` });
     }
-    if (invalidSystems.length > 0) return res.status(400).json({ error: `Invalid system IDs: ${invalidSystems.join(', ')}` });
-    const invalidAgents = [];
-    for (const aid of agents) {
-      if (!(await Agent.exists(aid))) invalidAgents.push(aid);
+
+    // Configure array fields
+    const arrayFields = [
+      { key: 'tags', model: Tag, set: Server.setTags },
+      { key: 'managers', model: Contact, set: Server.setManagers },
+      { key: 'systems', model: System, set: Server.setSystems },
+      { key: 'agents', model: Agent, set: Server.setAgents },
+      { key: 'services', model: Service, set: Server.setServices },
+      { key: 'ip_addresses', model: IpAddress, set: Server.setIpAddresses },
+    ];
+
+    // Normalize and validate array fields
+    const normalizedArrays = {};
+    for (const { key, model } of arrayFields) {
+      if (has(key)) {
+        const arr = normalizeArray(body[key]);
+        if (arr.length > 0) {
+          const invalid = [];
+          for (const id of arr) {
+            // eslint-disable-next-line no-await-in-loop
+            if (!(await model.exists(id))) invalid.push(id);
+          }
+          if (invalid.length > 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: `Invalid ${key.replace('_', ' ')} IDs: ${invalid.join(', ')}` });
+          }
+        }
+        normalizedArrays[key] = arr;
+      }
     }
-    if (invalidAgents.length > 0) return res.status(400).json({ error: `Invalid agent IDs: ${invalidAgents.join(', ')}` });
-    const invalidServices = [];
-    for (const sid of services) {
-      if (!(await Service.exists(sid))) invalidServices.push(sid);
-    }
-    if (invalidServices.length > 0) return res.status(400).json({ error: `Invalid service IDs: ${invalidServices.join(', ')}` });
-    const invalidTags = [];
-    for (const tid of tags) {
-      if (!(await Tag.exists(tid))) invalidTags.push(tid);
-    }
-    if (invalidTags.length > 0) return res.status(400).json({ error: `Invalid tag IDs: ${invalidTags.join(', ')}` });
-    if (!ip_addresses || ip_addresses.length === 0) return res.status(400).json({ error: 'At least one IP address is required' });
-    const invalidIps = [];
-    for (const ipId of ip_addresses) {
-      if (!(await IpAddress.exists(ipId))) invalidIps.push(ipId);
-    }
-    if (invalidIps.length > 0) return res.status(400).json({ error: `Invalid IP address IDs: ${invalidIps.join(', ')}` });
-    // Update server
+
+    // Update main fields
     const username = req.user && req.user.username ? req.user.username : 'admin';
-    // Use Server.update model method for updating server info
-    await Server.update({
-      id,
-      name,
-      os,
-      status,
-      location,
-      type,
-      description,
-      username,
-      client
-    });
-    await Server.setIpAddresses(id, ip_addresses, client);
-    await Server.setManagers(id, managers, client);
-    await Server.setSystems(id, systems, client);
-    await Server.setAgents(id, agents, client);
-    await Server.setServices(id, services, client);
-    await Server.setTags(id, tags, client);
+    await Server.update(id, { ...updateFields, username, client });
+
+    // Update array fields if present
+    for (const { key, set } of arrayFields) {
+      if (has(key)) {
+        await set(id, normalizedArrays[key], client);
+      }
+    }
+
     await client.query('COMMIT');
-    res.json({ id });
+    const updatedServer = await Server.findById(id);
+    console.info(`[Server Update] id=${id} by user=${username} fields=[${Object.keys(body).join(', ')}] at ${new Date().toISOString()}`);
+    res.json({
+      id: Number(id),
+      updated: true,
+      data: updatedServer,
+      message: 'Server updated successfully.'
+    });
   } catch (err) {
     await client.query('ROLLBACK');
-    res.status(500).json({ error: err.message });
+    console.error(`[Server Update Error] id=${req.params.id}:`, err);
+    res.status(500).json({ error: 'Internal server error' });
   } finally {
     client.release();
   }
 };
+
 
 // Delete a server
 apiServerController.deleteServer = async (req, res) => {

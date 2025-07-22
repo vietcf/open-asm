@@ -18,13 +18,13 @@ const apiAuthController = {
       if (!user || !(await bcrypt.compare(password, user.password_hash))) {
         return res.status(401).json({ error: 'Invalid credentials' });
       }
-      // Lấy danh sách permissions thực tế cho user (dùng Permission model)
+      // Get the actual permissions list for the user (using Permission model)
       let permissions = [];
       if (user.role_id) {
         permissions = await Permission.findByRoleId(user.role_id);
         permissions = permissions.map(p => p.name);
       }
-      // Build JWT payload (lưu cả permissions)
+      // Build JWT payload (include permissions)
       const payload = {
         sub: user.id,
         username: user.username,

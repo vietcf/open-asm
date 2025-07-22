@@ -1,10 +1,12 @@
-// RESTful API controller for System resource
-// Uses System model methods, validates input, and checks foreign keys
-const System = require('../../models/System');
-const Unit = require('../../models/Unit');
-const Tag = require('../../models/Tag');
-const Contact = require('../../models/Contact');
-const IpAddress = require('../../models/IpAddress');
+
+// API Controller for System (ES6 style, refactored)
+import System from '../../models/System.js';
+import Unit from '../../models/Unit.js';
+import Tag from '../../models/Tag.js';
+import Contact from '../../models/Contact.js';
+import IpAddress from '../../models/IpAddress.js';
+
+const apiSystemController = {};
 
 // Helper: parse array fields from req.body (for multi-selects)
 function parseArrayField(val) {
@@ -13,15 +15,8 @@ function parseArrayField(val) {
   return [];
 }
 
-/**
- * @swagger
- * tags:
- *   name: System
- *   description: API for managing systems
- */
-
-// GET /api/systems
-exports.getAll = async (req, res) => {
+// List all systems
+apiSystemController.getAll = async (req, res) => {
   try {
     const systems = await System.findAll();
     res.json(systems);
@@ -30,8 +25,8 @@ exports.getAll = async (req, res) => {
   }
 };
 
-// GET /api/systems/:id
-exports.getById = async (req, res) => {
+// Get system by id
+apiSystemController.getById = async (req, res) => {
   try {
     const system = await System.findByPk(req.params.id);
     if (!system) return res.status(404).json({ error: 'System not found' });
@@ -41,17 +36,23 @@ exports.getById = async (req, res) => {
   }
 };
 
-// POST /api/systems
-exports.create = async (req, res) => {
-  // Validation block
-  const { system_id, name, alias, description, level, department_id, domains, managers, ip_addresses, tags, docs } = req.body;
-  if (!system_id || !name) return res.status(400).json({ error: 'system_id and name are required' });
-  if (department_id && !(await Unit.exists(department_id))) return res.status(400).json({ error: 'Invalid department_id' });
-  if (tags && tags.length && !(await Tag.exists(tags))) return res.status(400).json({ error: 'Invalid tag(s)' });
-  if (managers && managers.length && !(await Contact.exists(managers))) return res.status(400).json({ error: 'Invalid manager(s)' });
-  if (ip_addresses && ip_addresses.length && !(await IpAddress.exists(ip_addresses))) return res.status(400).json({ error: 'Invalid ip_address(es)' });
-  // Create
+// Create a new system
+apiSystemController.create = async (req, res) => {
   try {
+    let { system_id, name, alias, description, level, department_id, domains, managers, ip_addresses, tags, docs } = req.body || {};
+    // Validate required fields
+    if (!system_id || !name) return res.status(400).json({ error: 'system_id and name are required' });
+    if (department_id && !(await Unit.exists(department_id))) return res.status(400).json({ error: 'Invalid department_id' });
+    if (tags && tags.length && !(await Tag.exists(tags))) return res.status(400).json({ error: 'Invalid tag(s)' });
+    if (managers && managers.length && !(await Contact.exists(managers))) return res.status(400).json({ error: 'Invalid manager(s)' });
+    if (ip_addresses && ip_addresses.length && !(await IpAddress.exists(ip_addresses))) return res.status(400).json({ error: 'Invalid ip_address(es)' });
+    // Parse array fields
+    domains = parseArrayField(domains);
+    managers = parseArrayField(managers);
+    ip_addresses = parseArrayField(ip_addresses);
+    tags = parseArrayField(tags);
+    docs = docs || [];
+    // Create
     const system = await System.create({
       system_id,
       name,
@@ -59,11 +60,11 @@ exports.create = async (req, res) => {
       description,
       level,
       department_id,
-      domains: parseArrayField(domains),
-      managers: parseArrayField(managers),
-      ip_addresses: parseArrayField(ip_addresses),
-      tags: parseArrayField(tags),
-      docs: docs || []
+      domains,
+      managers,
+      ip_addresses,
+      tags,
+      docs
     });
     res.status(201).json(system);
   } catch (err) {
@@ -71,17 +72,23 @@ exports.create = async (req, res) => {
   }
 };
 
-// PUT /api/systems/:id
-exports.update = async (req, res) => {
-  // Validation block
-  const { system_id, name, alias, description, level, department_id, domains, managers, ip_addresses, tags, docs } = req.body;
+// Update a system
+apiSystemController.update = async (req, res) => {
   try {
-    const system = await System.findByPk(req.params.id);
+    const id = req.params.id;
+    let { system_id, name, alias, description, level, department_id, domains, managers, ip_addresses, tags, docs } = req.body || {};
+    const system = await System.findByPk(id);
     if (!system) return res.status(404).json({ error: 'System not found' });
     if (department_id && !(await Unit.exists(department_id))) return res.status(400).json({ error: 'Invalid department_id' });
     if (tags && tags.length && !(await Tag.exists(tags))) return res.status(400).json({ error: 'Invalid tag(s)' });
     if (managers && managers.length && !(await Contact.exists(managers))) return res.status(400).json({ error: 'Invalid manager(s)' });
     if (ip_addresses && ip_addresses.length && !(await IpAddress.exists(ip_addresses))) return res.status(400).json({ error: 'Invalid ip_address(es)' });
+    // Parse array fields
+    domains = parseArrayField(domains);
+    managers = parseArrayField(managers);
+    ip_addresses = parseArrayField(ip_addresses);
+    tags = parseArrayField(tags);
+    docs = docs || [];
     // Update
     await system.update({
       system_id,
@@ -90,11 +97,11 @@ exports.update = async (req, res) => {
       description,
       level,
       department_id,
-      domains: parseArrayField(domains),
-      managers: parseArrayField(managers),
-      ip_addresses: parseArrayField(ip_addresses),
-      tags: parseArrayField(tags),
-      docs: docs || []
+      domains,
+      managers,
+      ip_addresses,
+      tags,
+      docs
     });
     res.json(system);
   } catch (err) {
@@ -102,10 +109,11 @@ exports.update = async (req, res) => {
   }
 };
 
-// DELETE /api/systems/:id
-exports.remove = async (req, res) => {
+// Delete a system
+apiSystemController.remove = async (req, res) => {
   try {
-    const system = await System.findByPk(req.params.id);
+    const id = req.params.id;
+    const system = await System.findByPk(id);
     if (!system) return res.status(404).json({ error: 'System not found' });
     await system.destroy();
     res.status(204).end();
@@ -113,3 +121,5 @@ exports.remove = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+export default apiSystemController;

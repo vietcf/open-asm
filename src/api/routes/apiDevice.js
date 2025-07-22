@@ -77,22 +77,22 @@
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - name
- *               - device_type_id
- *               - ip_addresses
+ *             required: []
  *             properties:
  *               name:
  *                 type: string
- *                 description: Device name (required, lowercase)
+ *                 description: >
+ *                   Device name (optional, lowercase). If provided, must not be empty.
  *               device_type_id:
  *                 type: integer
- *                 description: Device type ID (required)
+ *                 description: >
+ *                   Device type ID (optional). If provided, must not be empty.
  *               ip_addresses:
  *                 type: array
  *                 items:
  *                   type: integer
- *                 description: List of IP address IDs (required, at least one)
+ *                 description: >
+ *                   List of IP address IDs (optional, at least one if provided). If provided, must not be empty.
  *               platform_id:
  *                 type: integer
  *                 description: Platform (OS) ID (optional)
@@ -173,22 +173,21 @@
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - name
- *               - device_type_id
- *               - ip_addresses
  *             properties:
  *               name:
  *                 type: string
- *                 description: Device name (required, lowercase)
+ *                 description: |
+ *                   Device name (lowercase). Not required, but if provided, must not be empty.
  *               device_type_id:
  *                 type: integer
- *                 description: Device type ID (required)
+ *                 description: |
+ *                   Device type ID. Not required, but if provided, must not be empty.
  *               ip_addresses:
  *                 type: array
  *                 items:
  *                   type: integer
- *                 description: List of IP address IDs (required, at least one)
+ *                 description: |
+ *                   List of IP address IDs. Not required, but if provided, must not be empty.
  *               platform_id:
  *                 type: integer
  *                 description: Platform (OS) ID (optional)
@@ -305,10 +304,10 @@
  *                 type: string
  */
 
-// Device API routes
-const express = require('express');
+import express from 'express';
+import apiDeviceController from '../controllers/apiDeviceController.js';
+
 const apiDeviceRouter = express.Router();
-const apiDeviceController = require('../controllers/apiDeviceController');
 
 // List devices
 apiDeviceRouter.get('/', apiDeviceController.listDevices);
@@ -321,4 +320,4 @@ apiDeviceRouter.put('/:id', apiDeviceController.updateDevice);
 // Delete device
 apiDeviceRouter.delete('/:id', apiDeviceController.deleteDevice);
 
-module.exports = apiDeviceRouter;
+export default apiDeviceRouter;
