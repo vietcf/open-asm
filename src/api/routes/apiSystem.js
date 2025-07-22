@@ -1,22 +1,111 @@
-const express = require('express');
+
+import express from 'express';
+import apiSystemController from '../controllers/apiSystemController.js';
+
 const router = express.Router();
-const controller = require('../controllers/apiSystemController');
+
 
 /**
  * @swagger
  * tags:
  *   - name: System
  *     description: API for managing systems
+ *
+ * components:
+ *   schemas:
+ *     System:
+ *       type: object
+ *       required:
+ *         - system_id
+ *         - name
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: Unique ID (auto-increment)
+ *         system_id:
+ *           type: string
+ *           description: System code (unique)
+ *         name:
+ *           type: string
+ *           description: System name
+ *         alias:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: List of aliases
+ *         description:
+ *           type: string
+ *           description: Description
+ *         level:
+ *           type: integer
+ *           description: System level
+ *         department_id:
+ *           type: integer
+ *           description: Department (unit) ID
+ *         domains:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: List of domain names or IDs
+ *         managers:
+ *           type: array
+ *           items:
+ *             type: integer
+ *           description: List of manager (contact) IDs
+ *         ip_addresses:
+ *           type: array
+ *           items:
+ *             type: integer
+ *           description: List of IP address IDs
+ *         tags:
+ *           type: array
+ *           items:
+ *             type: integer
+ *           description: List of tag IDs
+ *         docs:
+ *           type: array
+ *           items:
+ *             type: object
+ *           description: List of attached documents
+ *       example:
+ *         id: 1
+ *         system_id: "SYS001"
+ *         name: "Main System"
+ *         alias: ["Legacy", "Core"]
+ *         description: "Main business system"
+ *         level: 2
+ *         department_id: 3
+ *         domains: ["domain1.com", "domain2.com"]
+ *         managers: [5, 7]
+ *         ip_addresses: [101, 102]
+ *         tags: [1, 2]
+ *         docs: [{ id: 1, name: "manual.pdf", url: "/uploads/manual.pdf" }]
  */
 
 /**
  * @swagger
  * /api/v1/systems:
  *   get:
- *     summary: Get all systems
+ *     summary: Get all systems (with optional search, pagination)
  *     tags: [System]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search keyword
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - in: query
+ *         name: pageSize
+ *         schema:
+ *           type: integer
+ *         description: Page size
  *     responses:
  *       200:
  *         description: List of systems
@@ -40,7 +129,9 @@ const controller = require('../controllers/apiSystemController');
  *               name:
  *                 type: string
  *               alias:
- *                 type: string
+ *                 type: array
+ *                 items:
+ *                   type: string
  *               description:
  *                 type: string
  *               level:
@@ -49,19 +140,24 @@ const controller = require('../controllers/apiSystemController');
  *                 type: integer
  *               domains:
  *                 type: array
- *                 items: { type: string }
+ *                 items:
+ *                   type: string
  *               managers:
  *                 type: array
- *                 items: { type: integer }
+ *                 items:
+ *                   type: integer
  *               ip_addresses:
  *                 type: array
- *                 items: { type: integer }
+ *                 items:
+ *                   type: integer
  *               tags:
  *                 type: array
- *                 items: { type: integer }
+ *                 items:
+ *                   type: integer
  *               docs:
  *                 type: array
- *                 items: { type: object }
+ *                 items:
+ *                   type: object
  *     responses:
  *       201:
  *         description: System created
@@ -110,7 +206,9 @@ const controller = require('../controllers/apiSystemController');
  *               name:
  *                 type: string
  *               alias:
- *                 type: string
+ *                 type: array
+ *                 items:
+ *                   type: string
  *               description:
  *                 type: string
  *               level:
@@ -119,19 +217,24 @@ const controller = require('../controllers/apiSystemController');
  *                 type: integer
  *               domains:
  *                 type: array
- *                 items: { type: string }
+ *                 items:
+ *                   type: string
  *               managers:
  *                 type: array
- *                 items: { type: integer }
+ *                 items:
+ *                   type: integer
  *               ip_addresses:
  *                 type: array
- *                 items: { type: integer }
+ *                 items:
+ *                   type: integer
  *               tags:
  *                 type: array
- *                 items: { type: integer }
+ *                 items:
+ *                   type: integer
  *               docs:
  *                 type: array
- *                 items: { type: object }
+ *                 items:
+ *                   type: object
  *     responses:
  *       200:
  *         description: System updated
@@ -159,14 +262,14 @@ const controller = require('../controllers/apiSystemController');
  */
 
 // List all systems
-router.get('/', controller.getAll);
+router.get('/', apiSystemController.getAll);
 // Get system by id
-router.get('/:id', controller.getById);
+router.get('/:id', apiSystemController.getById);
 // Create system
-router.post('/', controller.create);
+router.post('/', apiSystemController.create);
 // Update system
-router.put('/:id', controller.update);
+router.put('/:id', apiSystemController.update);
 // Delete system
-router.delete('/:id', controller.remove);
+router.delete('/:id', apiSystemController.remove);
 
-module.exports = router;
+export default router;

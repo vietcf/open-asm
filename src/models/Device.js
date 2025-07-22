@@ -1,3 +1,4 @@
+
 // Device model for CRUD operations
 import { pool } from '../../config/config.js';
 
@@ -269,6 +270,13 @@ class Device {
     const result = await pool.query(sql, params);
     return result.rows.map(row => ({ id: row.id, text: row.name }));
   }
+
+  // Find a device by name (case-insensitive, for duplicate check)
+  static async findByName(name) {
+    const result = await pool.query('SELECT * FROM devices WHERE LOWER(name) = LOWER($1) LIMIT 1', [name]);
+    return result.rows[0] || null;
+  }
 }
+
 
 export default Device;

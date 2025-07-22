@@ -1,4 +1,4 @@
-// Server API routes (ES6)
+
 import express from 'express';
 import apiServerController from '../controllers/apiServerController.js';
 const apiServerRouter = express.Router();
@@ -139,9 +139,6 @@ apiServerRouter.get('/', apiServerController.listServers);
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - name
- *               - ip_addresses
  *             properties:
  *               name:
  *                 type: string
@@ -255,27 +252,25 @@ apiServerRouter.get('/:id', apiServerController.getServer);
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - name
- *               - ip_addresses
  *             properties:
  *               name:
  *                 type: string
+ *                 description: Server name
  *               os:
  *                 type: integer
  *                 description: Platform (OS) ID
  *               status:
  *                 type: string
  *                 enum: [ONLINE, OFFLINE, MAINTENANCE]
- *                 description: Server status (ONLINE, OFFLINE, MAINTENANCE)
+ *                 description: Server status
  *               location:
  *                 type: string
  *                 enum: [DC, DR, CMC, BRANCH, CLOUD]
- *                 description: Server location (DC, DR, CMC, BRANCH, CLOUD)
+ *                 description: Server location
  *               type:
  *                 type: string
  *                 enum: [PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE]
- *                 description: Server type (PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE)
+ *                 description: Server type
  *               managers:
  *                 type: array
  *                 items:
@@ -305,9 +300,23 @@ apiServerRouter.get('/:id', apiServerController.getServer);
  *                 type: array
  *                 items:
  *                   type: integer
- *                 description: List of IP address IDs (at least one required)
+ *                 description: List of IP address IDs
  *               description:
  *                 type: string
+ *                 description: Server description
+ *           example:
+ *             name: "Example Server"
+ *             os: 1
+ *             status: "ONLINE"
+ *             location: "DC"
+ *             type: "PHYSICAL"
+ *             managers: [101, 102]
+ *             systems: [201]
+ *             agents: [301]
+ *             services: [401, 402]
+ *             tags: [501]
+ *             ip_addresses: [601]
+ *             description: "This is an example update payload."
  *     responses:
  *       200:
  *         description: Updated server
@@ -318,6 +327,29 @@ apiServerRouter.get('/:id', apiServerController.getServer);
  *               properties:
  *                 id:
  *                   type: integer
+ *                 updated:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                 message:
+ *                   type: string
+ *             example:
+ *               id: 22
+ *               updated: true
+ *               data:
+ *                 name: "Example Server"
+ *                 os: 1
+ *                 status: "ONLINE"
+ *                 location: "DC"
+ *                 type: "PHYSICAL"
+ *                 managers: [101, 102]
+ *                 systems: [201]
+ *                 agents: [301]
+ *                 services: [401, 402]
+ *                 tags: [501]
+ *                 ip_addresses: [601]
+ *                 description: "This is an example update payload."
+ *               message: "This is dummy response for updateServer. No DB updated."
  *       400:
  *         description: Validation error
  *       404:
@@ -347,5 +379,56 @@ apiServerRouter.put('/:id', apiServerController.updateServer);
  *         description: Not found
  */
 apiServerRouter.delete('/:id', apiServerController.deleteServer);
+
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Server:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         name:
+ *           type: string
+ *         os:
+ *           type: integer
+ *         status:
+ *           type: string
+ *           enum: [ONLINE, OFFLINE, MAINTENANCE]
+ *         location:
+ *           type: string
+ *           enum: [DC, DR, CMC, BRANCH, CLOUD]
+ *         type:
+ *           type: string
+ *           enum: [PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE]
+ *         managers:
+ *           type: array
+ *           items:
+ *             type: integer
+ *         systems:
+ *           type: array
+ *           items:
+ *             type: integer
+ *         agents:
+ *           type: array
+ *           items:
+ *             type: integer
+ *         services:
+ *           type: array
+ *           items:
+ *             type: integer
+ *         tags:
+ *           type: array
+ *           items:
+ *             type: integer
+ *         ip_addresses:
+ *           type: array
+ *           items:
+ *             type: integer
+ *         description:
+ *           type: string
+ */
 
 export default apiServerRouter;
