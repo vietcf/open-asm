@@ -39,8 +39,8 @@
               <i class="bi bi-list"></i>
             </a>
           </li>
-          <!-- <li class="nav-item d-none d-md-block"><a href="#" class="nav-link">Home</a></li>
-          <li class="nav-item d-none d-md-block"><a href="#" class="nav-link">Contact</a></li> -->
+          <!-- <li class="nav-item d-none d-md-block"><a href="/" class="nav-link">Home</a></li>
+          <li class="nav-item d-none d-md-block"><a href="/contact" class="nav-link">Contact</a></li> -->
         </ul>
         <!--end::Start Navbar Links-->
         <!--begin::End Navbar Links-->
@@ -67,6 +67,10 @@
               <li><a class="dropdown-item" href="/logout"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
             </ul>
           </li>
+          <!-- Remove right menu button on mobile -->
+          <li class="nav-item d-md-none">
+            <style>.navbar-nav .nav-item.menu-toggle-mobile{display:none!important}@media (max-width: 767.98px){.navbar-nav .nav-item.menu-toggle-mobile{display:none!important}}</style>
+          </li>
         </ul>
         <!--end::End Navbar Links-->
       </div>
@@ -74,7 +78,6 @@
     <!--end::Header-->
     <!--begin::Sidebar-->
     <%- include('sidebar', { siteName: typeof siteName !== 'undefined' ? siteName : '' }) %>
-    <!--end::Sidebar-->
     <!--begin::Content Wrapper-->
     <div class="content-wrapper">
       <%- body %>
