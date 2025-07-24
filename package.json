@@ -1,5 +1,8 @@
 {
   "type": "module",
+  "scripts": {
+    "start": "node src/app.js"
+  },
   "dependencies": {
     "accesscontrol": "^2.2.1",
     "aws-sdk": "^2.1692.0",
@@ -21,6 +24,7 @@
     "qrcode": "^1.5.4",
     "speakeasy": "^2.0.0",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "wait-for-it": "^1.0.0"
   }
 }
