@@ -195,9 +195,9 @@ app.use('/api/v1', apiRouter);
 
 // Start the server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, 'localhost', () => {
-    console.log(`Server running on localhost:${PORT}`);
-    console.log('🔒 App bound to localhost only - using reverse proxy (Nginx)');
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on 0.0.0.0:${PORT}`);
+    console.log('🔒 App is using reverse proxy (Nginx)');
 });
 
 // Start scheduled cleanup job for system logs

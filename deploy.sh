@@ -36,10 +36,15 @@ sudo ln -sf /etc/nginx/sites-available/open-asm /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo rm -f /etc/nginx/sites-available/default
 
-# 3. Setup SSL (Self-signed for default server) - BEFORE testing nginx config
+
+# 3. Setup SSL (copy self-signed cert from ./ssl to system dirs)
 echo "🔒 Setting up SSL..."
 chmod +x setup-self-signed-ssl.sh
-sudo ./setup-self-signed-ssl.sh
+./setup-self-signed-ssl.sh
+sudo cp ./ssl/nginx-selfsigned.crt /etc/ssl/certs/nginx-selfsigned.crt
+sudo cp ./ssl/nginx-selfsigned.key /etc/ssl/private/nginx-selfsigned.key
+sudo chmod 600 /etc/ssl/private/nginx-selfsigned.key
+sudo chmod 644 /etc/ssl/certs/nginx-selfsigned.crt
 
 # 4. Test nginx config (after SSL cert is created)
 echo "🔧 Testing nginx configuration..."
