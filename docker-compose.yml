@@ -2,7 +2,7 @@
 services:
   app:
     build: .
-    image: openasm_app:1.0
+    image: openasm_app:1.2
     container_name: openasm_app
     restart: always
     ports:
@@ -32,7 +32,7 @@ services:
     networks:
       - openasm_net
   migration:
-    image: node:22
+    image: openasm_app:1.1
     container_name: openasm_migration
     working_dir: /app
     volumes:
@@ -44,7 +44,7 @@ services:
     environment:
       - NODE_ENV=production
     command: >
-      sh -c "/app/wait-for-it.sh db:5432 --timeout=60 --strict -- npm install && node migrations/init_all_tables.js && node migrations/init_data.js"
+      sh -c "/app/wait-for-it.sh db:5432 --timeout=60 --strict -- node migrations/init_all_tables.js && node migrations/init_data.js"
     restart: "no"
     networks:
       - openasm_net
@@ -59,6 +59,7 @@ services:
       - ./nginx.docker.conf:/etc/nginx/conf.d/default.conf:ro
       - ./ssl/nginx-selfsigned.crt:/etc/ssl/certs/nginx-selfsigned.crt:ro
       - ./ssl/nginx-selfsigned.key:/etc/ssl/private/nginx-selfsigned.key:ro
+      - ./logs/nginx:/var/log/nginx
     depends_on:
       - app
     networks:
