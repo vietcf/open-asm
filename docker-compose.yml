@@ -2,7 +2,7 @@
 services:
   app:
     build: .
-    image: openasm_app:1.2
+    image: openasm_app:1.5
     container_name: openasm_app
     restart: always
     ports:
@@ -29,6 +29,20 @@ services:
       - ./pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    networks:
+      - openasm_net
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: openasm_pgadmin
+    restart: always
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@example.com
+      - PGADMIN_DEFAULT_PASSWORD=admin123321
+      - PGADMIN_LISTEN_PORT=80
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
     networks:
       - openasm_net
   migration:

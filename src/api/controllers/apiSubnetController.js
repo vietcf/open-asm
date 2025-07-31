@@ -72,13 +72,11 @@ apiSubnetController.createSubnet = async (req, res) => {
 };
 
 apiSubnetController.updateSubnet = async (req, res) => {
+
   const client = await pool.connect();
   try {
     const id = req.params.id;
     let { address, description, tags } = req.body;
-    address = typeof address === 'string' ? address.trim() : '';
-    description = typeof description === 'string' ? description.trim() : '';
-
     // Fetch current subnet
     const currentSubnet = await Subnet.findById(id);
     if (!currentSubnet) {
@@ -86,36 +84,41 @@ apiSubnetController.updateSubnet = async (req, res) => {
       return res.status(404).json({ error: 'Subnet not found' });
     }
 
-    // Address is required (but don't update it, just check for duplicate)
-    if (!address) {
-      return res.status(400).json({ error: 'Subnet address is required' });
-    }
-    // Check for duplicate address (except for this id)
-    const existing = await Subnet.findByAddress(address);
-    if (existing && String(existing.id) !== String(id)) {
-      return res.status(409).json({ error: 'Subnet already exists with this address' });
+    // Build update object
+    const updateFields = {};
+
+    // If description is provided, update
+    if (typeof description === 'string') {
+      description = description.trim();
+      updateFields.description = description;
     }
 
-    // Only update description if provided and not empty, else keep old
-    const newDescription = description !== '' ? description : currentSubnet.description;
-
-    // Normalize tags: if provided, validate; else keep old
-    let newTags;
+    // If tags are provided, validate and update
+    let updateTags = null;
     if (tags && Array.isArray(tags)) {
       for (const tagId of tags) {
         if (!(await Tag.exists(tagId))) {
+          client.release();
           return res.status(400).json({ error: `Tag does not exist: ${tagId}` });
         }
       }
-      newTags = tags;
-    } else {
-      newTags = currentSubnet.tags ? currentSubnet.tags.map(t => t.id) : [];
+      updateTags = tags;
+    }
+
+    // If no fields to update, return error
+    if (Object.keys(updateFields).length === 0 && updateTags === null) {
+      client.release();
+      return res.status(400).json({ error: 'No fields to update' });
     }
 
     // Transaction block
     await client.query('BEGIN');
-    await Subnet.update(id, { description: newDescription }, client);
-    await Subnet.setTags(id, newTags, client);
+    if (Object.keys(updateFields).length > 0) {
+      await Subnet.update(id, updateFields, client);
+    }
+    if (updateTags !== null) {
+      await Subnet.setTags(id, updateTags, client);
+    }
     await client.query('COMMIT');
 
     // Return the updated subnet
