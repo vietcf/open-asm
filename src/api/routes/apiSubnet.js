@@ -132,7 +132,7 @@ apiSubnetRouter.post('/', apiSubnetController.createSubnet);
  * @swagger
  * /api/v1/subnets/{id}:
  *   put:
- *     summary: Update a subnet
+ *     summary: Update a subnet (chỉ cho phép cập nhật description và tags)
  *     tags: [Subnet]
  *     security:
  *       - bearerAuth: []
@@ -150,9 +150,6 @@ apiSubnetRouter.post('/', apiSubnetController.createSubnet);
  *           schema:
  *             type: object
  *             properties:
- *               address:
- *                 type: string
- *                 description: Subnet address (required, e.g. 192.168.1.0/24)
  *               description:
  *                 type: string
  *                 description: Description (optional)
@@ -172,8 +169,6 @@ apiSubnetRouter.post('/', apiSubnetController.createSubnet);
  *         description: Validation error
  *       404:
  *         description: Not found
- *       409:
- *         description: Duplicate subnet address
  */
 apiSubnetRouter.put('/:id', apiSubnetController.updateSubnet);
 
