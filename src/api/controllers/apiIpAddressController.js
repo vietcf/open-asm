@@ -42,7 +42,7 @@ apiIpAddressController.listIpAddresses = async (req, res) => {
 // Get a single IP address by id
 apiIpAddressController.getIpAddress = async (req, res) => {
   try {
-    const ip = await IpAddress.findById(req.params.id);
+    const ip = await IpAddress.findByIdWithDetails(req.params.id);
     if (!ip) return res.status(404).json({ error: 'IP address not found' });
     res.json(ip);
   } catch (err) {
@@ -224,7 +224,7 @@ apiIpAddressController.findIpAddressByAddress = async (req, res) => {
     if (!address || typeof address !== 'string' || address.trim() === '') {
       return res.status(400).json({ error: 'Missing or invalid address parameter' });
     }
-    const ip = await IpAddress.findByAddress(address.trim());
+    const ip = await IpAddress.findByAddressWithDetails(address.trim());
     if (!ip) return res.status(404).json({ error: 'IP address not found' });
     res.json(ip);
   } catch (err) {

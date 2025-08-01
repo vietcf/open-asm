@@ -1,4 +1,3 @@
-
 import express from 'express';
 import apiServerController from '../controllers/apiServerController.js';
 const apiServerRouter = express.Router();
@@ -127,6 +126,46 @@ apiServerRouter.get('/', apiServerController.listServers);
 
 /**
  * @swagger
+ * /api/v1/servers/find:
+ *   get:
+ *     summary: Find servers by specific field values (exact match)
+ *     tags: [Server]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: name
+ *         schema:
+ *           type: string
+ *         description: Find server by name
+ *       - in: query
+ *         name: ip_address
+ *         schema:
+ *           type: string
+ *         description: Find servers by IP address (e.g. 192.168.1.1)
+ *     responses:
+ *       200:
+ *         description: List of matching servers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/ServerDetails'
+ *                 total:
+ *                   type: integer
+ *       400:
+ *         description: No search criteria provided
+ *       404:
+ *         description: No servers found
+ */
+apiServerRouter.get('/find', apiServerController.findServers);
+
+/**
+ * @swagger
  * /api/v1/servers:
  *   post:
  *     summary: Create a new server
@@ -221,11 +260,11 @@ apiServerRouter.post('/', apiServerController.createServer);
  *         description: Server ID
  *     responses:
  *       200:
- *         description: Server object
+ *         description: Server object with full details
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Server'
+ *               $ref: '#/components/schemas/ServerDetails'
  *       404:
  *         description: Not found
  */
@@ -319,37 +358,12 @@ apiServerRouter.get('/:id', apiServerController.getServer);
  *             description: "This is an example update payload."
  *     responses:
  *       200:
- *         description: Updated server
+ *         description: Updated server with full details
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 id:
- *                   type: integer
- *                 updated:
- *                   type: boolean
- *                 data:
- *                   type: object
- *                 message:
- *                   type: string
- *             example:
- *               id: 22
- *               updated: true
- *               data:
- *                 name: "Example Server"
- *                 os: 1
- *                 status: "ONLINE"
- *                 location: "DC"
- *                 type: "PHYSICAL"
- *                 managers: [101, 102]
- *                 systems: [201]
- *                 agents: [301]
- *                 services: [401, 402]
- *                 tags: [501]
- *                 ip_addresses: [601]
- *                 description: "This is an example update payload."
- *               message: "This is dummy response for updateServer. No DB updated."
+ *               $ref: '#/components/schemas/ServerDetails'
+
  *       400:
  *         description: Validation error
  *       404:
@@ -429,6 +443,115 @@ apiServerRouter.delete('/:id', apiServerController.deleteServer);
  *             type: integer
  *         description:
  *           type: string
+ *     ServerDetails:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         name:
+ *           type: string
+ *         status:
+ *           type: string
+ *           enum: [ONLINE, OFFLINE, MAINTENANCE]
+ *         location:
+ *           type: string
+ *           enum: [DC, DR, CMC, BRANCH, CLOUD]
+ *         type:
+ *           type: string
+ *           enum: [PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE]
+ *         description:
+ *           type: string
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *         updated_by:
+ *           type: string
+ *         os:
+ *           type: object
+ *           properties:
+ *             id:
+ *               type: integer
+ *             name:
+ *               type: string
+ *             description:
+ *               type: string
+ *         ip_addresses:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: integer
+ *               ip_address:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               status:
+ *                 type: string
+ *         managers:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: integer
+ *               name:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *         systems:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: integer
+ *               name:
+ *                 type: string
+ *               system_id:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *         services:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: integer
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *         agents:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: integer
+ *               name:
+ *                 type: string
+ *               version:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *         tags:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: integer
+ *               name:
+ *                 type: string
+ *               description:
+ *                 type: string
  */
 
 export default apiServerRouter;

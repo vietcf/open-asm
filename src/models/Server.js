@@ -1,4 +1,3 @@
-
 import { pool } from '../../config/config.js';
 
 class Server {
@@ -346,7 +345,88 @@ class Server {
     return res.rowCount > 0;
   }
 
-  // For select2 AJAX: get servers by search (id, name)
+  /**
+   * Find servers by specific criteria (name, ip_address)
+   * @param {Object} criteria - Search criteria
+   * @param {string} criteria.name - Server name (exact match)
+   * @param {string} criteria.ip_address - IP address (exact match)
+   * @returns {Promise<Array>} Array of servers with full details
+   */
+  static async findByCriteria(criteria) {
+    let params = [];
+    let whereClauses = [];
+    let idx = 1;
+
+    // Build WHERE clauses based on criteria
+    if (criteria.name) {
+      whereClauses.push(`s.name = $${idx}`);
+      params.push(criteria.name);
+      idx++;
+    }
+
+    if (criteria.ip_address) {
+      whereClauses.push(`s.id IN (SELECT server_id FROM ip_addresses WHERE ip_address = $${idx})`);
+      params.push(criteria.ip_address);
+      idx++;
+    }
+
+    if (whereClauses.length === 0) {
+      return [];
+    }
+
+    const sql = `
+      SELECT s.*, p.name AS os_name, p.description AS os_description,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address, 'description', ip.description, 'status', ip.status)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name, 'description', t.description)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email, 'phone', c.phone)) FILTER (WHERE c.id IS NOT NULL), '[]') AS managers,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', sys.id, 'name', sys.name, 'system_id', sys.system_id, 'description', sys.description)) FILTER (WHERE sys.id IS NOT NULL), '[]') AS systems,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ssv.id, 'name', ssv.name, 'description', ssv.description)) FILTER (WHERE ssv.id IS NOT NULL), '[]') AS services,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ag.id, 'name', ag.name, 'version', ag.version, 'description', ag.description)) FILTER (WHERE ag.id IS NOT NULL), '[]') AS agents
+      FROM servers s
+      LEFT JOIN platforms p ON p.id = s.os_id
+      LEFT JOIN ip_addresses ip ON ip.server_id = s.id
+      LEFT JOIN tag_object tobj ON tobj.object_type = 'server' AND tobj.object_id = s.id
+      LEFT JOIN tags t ON t.id = tobj.tag_id
+      LEFT JOIN server_contact sc ON sc.server_id = s.id
+      LEFT JOIN contacts c ON c.id = sc.contact_id
+      LEFT JOIN server_system ss ON ss.server_id = s.id
+      LEFT JOIN systems sys ON sys.id = ss.system_id
+      LEFT JOIN server_services sss ON sss.server_id = s.id
+      LEFT JOIN services ssv ON ssv.id = sss.service_id
+      LEFT JOIN server_agents sa ON sa.server_id = s.id
+      LEFT JOIN agents ag ON ag.id = sa.agent_id
+      WHERE ${whereClauses.join(' AND ')}
+      GROUP BY s.id, p.name, p.description
+      ORDER BY s.id
+    `;
+
+    const result = await pool.query(sql, params);
+    
+    // Parse JSON fields for each server
+    return result.rows.map(server => {
+      // Create os object if exists
+      if (server.os_name) {
+        server.os = {
+          id: server.os_id,
+          name: server.os_name,
+          description: server.os_description
+        };
+      }
+      delete server.os_name;
+      delete server.os_description;
+      
+      // Parse JSON arrays
+      server.ip_addresses = Array.isArray(server.ip_addresses) ? server.ip_addresses : JSON.parse(server.ip_addresses);
+      server.tags = Array.isArray(server.tags) ? server.tags : JSON.parse(server.tags);
+      server.managers = Array.isArray(server.managers) ? server.managers : JSON.parse(server.managers);
+      server.systems = Array.isArray(server.systems) ? server.systems : JSON.parse(server.systems);
+      server.services = Array.isArray(server.services) ? server.services : JSON.parse(server.services);
+      server.agents = Array.isArray(server.agents) ? server.agents : JSON.parse(server.agents);
+      
+      return server;
+    });
+  }
+
   static async select2Search({ search = '', limit = 20 }) {
     let sql = 'SELECT id, name FROM servers';
     let params = [];
@@ -359,6 +439,64 @@ class Server {
     const result = await pool.query(sql, params);
     // Select2 expects: { results: [ { id, text } ] }
     return result.rows.map(row => ({ id: row.id, text: row.name }));
+  }
+
+  /**
+   * Find server by ID with full details (similar to findById but with more relationship data)
+   * @param {number} id - Server ID
+   * @returns {Promise<Object|null>} Server with full details or null if not found
+   */
+  static async findByIdWithDetails(id) {
+    const sql = `
+      SELECT s.*, p.name AS os_name, p.description AS os_description,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address, 'description', ip.description, 'status', ip.status)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name, 'description', t.description)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email, 'phone', c.phone)) FILTER (WHERE c.id IS NOT NULL), '[]') AS managers,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', sys.id, 'name', sys.name, 'system_id', sys.system_id, 'description', sys.description)) FILTER (WHERE sys.id IS NOT NULL), '[]') AS systems,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ssv.id, 'name', ssv.name, 'description', ssv.description)) FILTER (WHERE ssv.id IS NOT NULL), '[]') AS services,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ag.id, 'name', ag.name, 'version', ag.version, 'description', ag.description)) FILTER (WHERE ag.id IS NOT NULL), '[]') AS agents
+      FROM servers s
+      LEFT JOIN platforms p ON p.id = s.os_id
+      LEFT JOIN ip_addresses ip ON ip.server_id = s.id
+      LEFT JOIN tag_object tobj ON tobj.object_type = 'server' AND tobj.object_id = s.id
+      LEFT JOIN tags t ON t.id = tobj.tag_id
+      LEFT JOIN server_contact sc ON sc.server_id = s.id
+      LEFT JOIN contacts c ON c.id = sc.contact_id
+      LEFT JOIN server_system ss ON ss.server_id = s.id
+      LEFT JOIN systems sys ON sys.id = ss.system_id
+      LEFT JOIN server_services sss ON sss.server_id = s.id
+      LEFT JOIN services ssv ON ssv.id = sss.service_id
+      LEFT JOIN server_agents sa ON sa.server_id = s.id
+      LEFT JOIN agents ag ON ag.id = sa.agent_id
+      WHERE s.id = $1
+      GROUP BY s.id, p.name, p.description
+    `;
+
+    const result = await pool.query(sql, [id]);
+    if (result.rows.length === 0) return null;
+    
+    const server = result.rows[0];
+    
+    // Create os object if exists
+    if (server.os_name) {
+      server.os = {
+        id: server.os_id,
+        name: server.os_name,
+        description: server.os_description
+      };
+    }
+    delete server.os_name;
+    delete server.os_description;
+    
+    // Parse JSON arrays
+    server.ip_addresses = Array.isArray(server.ip_addresses) ? server.ip_addresses : JSON.parse(server.ip_addresses);
+    server.tags = Array.isArray(server.tags) ? server.tags : JSON.parse(server.tags);
+    server.managers = Array.isArray(server.managers) ? server.managers : JSON.parse(server.managers);
+    server.systems = Array.isArray(server.systems) ? server.systems : JSON.parse(server.systems);
+    server.services = Array.isArray(server.services) ? server.services : JSON.parse(server.services);
+    server.agents = Array.isArray(server.agents) ? server.agents : JSON.parse(server.agents);
+    
+    return server;
   }
 
 }
