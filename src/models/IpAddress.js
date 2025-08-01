@@ -58,6 +58,47 @@ class IpAddress {
   }
 
   /**
+   * Get an IP address by ID with full details (tags, contacts, systems)
+   * @param {number} id
+   * @returns {Promise<Object|null>}
+   */
+  static async findByIdWithDetails(id) {
+    const sql = `SELECT ip.*, 
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email, 'phone', c.phone)) FILTER (WHERE c.id IS NOT NULL), '[]') AS contacts,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', s.id, 'name', s.name, 'system_id', s.system_id)) FILTER (WHERE s.id IS NOT NULL), '[]') AS systems,
+      d.id AS device_id, d.name AS device_name, srv.id AS server_id, srv.name AS server_name
+      FROM ip_addresses ip
+      LEFT JOIN tag_object tobj ON tobj.object_type = 'ip_address' AND tobj.object_id = ip.id
+      LEFT JOIN tags t ON t.id = tobj.tag_id
+      LEFT JOIN ip_contact ic ON ic.ip_id = ip.id
+      LEFT JOIN contacts c ON c.id = ic.contact_id
+      LEFT JOIN system_ip si ON si.ip_id = ip.id
+      LEFT JOIN systems s ON s.id = si.system_id
+      LEFT JOIN devices d ON d.id = ip.device_id
+      LEFT JOIN servers srv ON srv.id = ip.server_id
+      WHERE ip.id = $1
+      GROUP BY ip.id, d.id, srv.id`;
+    
+    const result = await pool.query(sql, [id]);
+    if (result.rows.length === 0) return null;
+    
+    const row = result.rows[0];
+    // Map device/server info into IP object
+    if (row.device_id) {
+      row.device = { id: row.device_id, name: row.device_name };
+    }
+    if (row.server_id) {
+      row.server = { id: row.server_id, name: row.server_name };
+    }
+    delete row.device_id;
+    delete row.device_name;
+    delete row.server_id;
+    delete row.server_name;
+    return row;
+  }
+
+  /**
    * Get an IP address by address string
    * @param {string} address
    * @returns {Promise<Object|null>}
@@ -65,6 +106,47 @@ class IpAddress {
   static async findByAddress(address) {
     const result = await pool.query('SELECT * FROM ip_addresses WHERE ip_address = $1', [address]);
     return result.rows[0];
+  }
+
+  /**
+   * Get an IP address by address string with full details (tags, contacts, systems)
+   * @param {string} address
+   * @returns {Promise<Object|null>}
+   */
+  static async findByAddressWithDetails(address) {
+    const sql = `SELECT ip.*, 
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email, 'phone', c.phone)) FILTER (WHERE c.id IS NOT NULL), '[]') AS contacts,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', s.id, 'name', s.name, 'system_id', s.system_id)) FILTER (WHERE s.id IS NOT NULL), '[]') AS systems,
+      d.id AS device_id, d.name AS device_name, srv.id AS server_id, srv.name AS server_name
+      FROM ip_addresses ip
+      LEFT JOIN tag_object tobj ON tobj.object_type = 'ip_address' AND tobj.object_id = ip.id
+      LEFT JOIN tags t ON t.id = tobj.tag_id
+      LEFT JOIN ip_contact ic ON ic.ip_id = ip.id
+      LEFT JOIN contacts c ON c.id = ic.contact_id
+      LEFT JOIN system_ip si ON si.ip_id = ip.id
+      LEFT JOIN systems s ON s.id = si.system_id
+      LEFT JOIN devices d ON d.id = ip.device_id
+      LEFT JOIN servers srv ON srv.id = ip.server_id
+      WHERE ip.ip_address = $1
+      GROUP BY ip.id, d.id, srv.id`;
+    
+    const result = await pool.query(sql, [address]);
+    if (result.rows.length === 0) return null;
+    
+    const row = result.rows[0];
+    // Map device/server info into IP object
+    if (row.device_id) {
+      row.device = { id: row.device_id, name: row.device_name };
+    }
+    if (row.server_id) {
+      row.server = { id: row.server_id, name: row.server_name };
+    }
+    delete row.device_id;
+    delete row.device_name;
+    delete row.server_id;
+    delete row.server_name;
+    return row;
   }
 
   /**

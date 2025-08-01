@@ -40,10 +40,45 @@ apiServerController.listServers = async (req, res) => {
   }
 };
 
+// Find servers by specific field values (exact match)
+apiServerController.findServers = async (req, res) => {
+  try {
+    const { name, ip_address } = req.query;
+    
+    // Validate that at least one search criteria is provided
+    if (!name && !ip_address) {
+      return res.status(400).json({ error: 'At least one search criteria must be provided (name or ip_address)' });
+    }
+    
+    // Build search criteria
+    const criteria = {};
+    if (name) criteria.name = name.trim();
+    if (ip_address) criteria.ip_address = ip_address.trim();
+    
+    // Find servers with detailed information
+    const servers = await Server.findByCriteria(criteria);
+    
+    if (!servers || servers.length === 0) {
+      return res.status(404).json({ 
+        error: 'No servers found matching the specified criteria',
+        criteria 
+      });
+    }
+    
+    res.json({ 
+      data: servers, 
+      total: servers.length,
+      criteria 
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // Get a single server by id
 apiServerController.getServer = async (req, res) => {
   try {
-    const server = await Server.findById(req.params.id);
+    const server = await Server.findByIdWithDetails(req.params.id);
     if (!server) return res.status(404).json({ error: 'Server not found' });
     res.json(server);
   } catch (err) {
@@ -259,14 +294,9 @@ apiServerController.updateServer = async (req, res) => {
     }
 
     await client.query('COMMIT');
-    const updatedServer = await Server.findById(id);
+    const updatedServer = await Server.findByIdWithDetails(id);
     console.info(`[Server Update] id=${id} by user=${username} fields=[${Object.keys(body).join(', ')}] at ${new Date().toISOString()}`);
-    res.json({
-      id: Number(id),
-      updated: true,
-      data: updatedServer,
-      message: 'Server updated successfully.'
-    });
+    res.json(updatedServer);
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(`[Server Update Error] id=${req.params.id}:`, err);
