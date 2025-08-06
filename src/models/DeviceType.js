@@ -1,4 +1,3 @@
-
 import { pool } from '../../config/config.js';
 
 
@@ -21,10 +20,55 @@ class DeviceType {
     return result.rows[0];
   }
 
-  static async update(id, { name, description }) {
-    const sql = 'UPDATE device_types SET name = $1, description = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *';
-    const result = await pool.query(sql, [name, description, id]);
+  static async update(id, updates) {
+    // Handle both legacy usage (full object) and new API usage (partial updates)
+    const validFields = ['name', 'description'];
+    const updateFields = [];
+    const values = [];
+    let paramCount = 1;
+
+    // Build dynamic SQL for partial updates
+    for (const [key, value] of Object.entries(updates)) {
+      if (validFields.includes(key) && value !== undefined) {
+        updateFields.push(`${key} = $${paramCount}`);
+        values.push(value);
+        paramCount++;
+      }
+    }
+
+    if (updateFields.length === 0) {
+      throw new Error('No valid fields provided for update');
+    }
+
+    // Add updated_at timestamp
+    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+    
+    // Add id parameter
+    values.push(id);
+    const sql = `UPDATE device_types SET ${updateFields.join(', ')} WHERE id = $${paramCount} RETURNING *`;
+    
+    const result = await pool.query(sql, values);
     return result.rows[0];
+  }
+
+  static async checkNameExists(name, excludeId = null) {
+    let sql = 'SELECT id FROM device_types WHERE LOWER(name) = LOWER($1)';
+    const params = [name];
+    
+    if (excludeId) {
+      sql += ' AND id != $2';
+      params.push(excludeId);
+    }
+    
+    const result = await pool.query(sql, params);
+    return result.rows.length > 0;
+  }
+
+  // Find device types by exact name match
+  static async findByNameExact(name) {
+    const sql = 'SELECT * FROM device_types WHERE LOWER(name) = LOWER($1) ORDER BY id';
+    const result = await pool.query(sql, [name]);
+    return result.rows;
   }
 
   static async remove(id) {

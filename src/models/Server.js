@@ -190,7 +190,7 @@ class Server {
       idx++;
     }
     if (search) {
-      whereClauses.push(`(LOWER(s.name) LIKE $${idx} OR LOWER(s.description) LIKE $${idx})`);
+      whereClauses.push(`(LOWER(s.name) LIKE $${idx} OR LOWER(s.description) LIKE $${idx} OR s.id IN (SELECT server_id FROM ip_addresses WHERE ip_address::text ILIKE $${idx}))`);
       params.push(`%${search}%`);
       idx++;
     }
@@ -291,7 +291,7 @@ class Server {
       idx++;
     }
     if (search) {
-      whereClauses.push(`(LOWER(s.name) LIKE $${idx} OR LOWER(s.description) LIKE $${idx})`);
+      whereClauses.push(`(LOWER(s.name) LIKE $${idx} OR LOWER(s.description) LIKE $${idx} OR s.id IN (SELECT server_id FROM ip_addresses WHERE ip_address::text ILIKE $${idx}))`);
       params.push(`%${search}%`);
       idx++;
     }

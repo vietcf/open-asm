@@ -1,4 +1,3 @@
-
 import express from 'express';
 import apiSystemController from '../controllers/apiSystemController.js';
 
@@ -263,6 +262,71 @@ const router = express.Router();
 
 // List all systems
 router.get('/', apiSystemController.getAll);
+
+/**
+ * @swagger
+ * /api/v1/systems/find:
+ *   get:
+ *     summary: Find systems by exact name match
+ *     description: Search systems by exact name matching. Requires a search term.
+ *     tags: [System]
+ *     parameters:
+ *       - in: query
+ *         name: name
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: System name to search for (exact match)
+ *     responses:
+ *       200:
+ *         description: Systems retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   description: Indicates if the request was successful
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/System'
+ *                 count:
+ *                   type: integer
+ *                   description: Number of systems returned
+ *       400:
+ *         description: Search term "name" is required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *                 error:
+ *                   type: string
+ *                   description: Detailed error information
+ */
+router.get('/find', apiSystemController.findSystems);
+
 // Get system by id
 router.get('/:id', apiSystemController.getById);
 // Create system

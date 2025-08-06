@@ -351,7 +351,7 @@ serverController.createService = async (req, res) => {
       req.flash('error', 'Service Name is required!');
       return res.redirect('/server/service/list');
     }
-    await Service.createService({ name, description });
+    await Service.create({ name, description });
     req.flash('success', 'Service added successfully');
     res.redirect('/server/service/list');
   } catch (err) {
@@ -368,7 +368,7 @@ serverController.updateService = async (req, res) => {
       req.flash('error', 'Service Name is required!');
       return res.redirect('/server/service/list');
     }
-    await Service.updateService(id, { name, description });
+    await Service.update(id, { name, description });
     req.flash('success', 'Service updated successfully');
     res.redirect('/server/service/list');
   } catch (err) {
@@ -380,7 +380,7 @@ serverController.updateService = async (req, res) => {
 serverController.deleteService = async (req, res) => {
   try {
     const id = req.params.id;
-    await Service.deleteService(id);
+    await Service.delete(id);
     req.flash('success', 'Service deleted successfully');
     res.redirect('/server/service/list');
   } catch (err) {
@@ -451,7 +451,12 @@ serverController.updateAgent = async (req, res) => {
       req.flash('error', 'Agent Name is required!');
       return res.redirect('/server/agent/list');
     }
-    await Agent.update(id, { name, version, description });
+    // Use new partial update method
+    await Agent.update(id, { 
+      name: name.trim(), 
+      version: version ? version.trim() : null, 
+      description: description ? description.trim() : null 
+    });
     req.flash('success', 'Agent updated successfully');
     res.redirect('/server/agent/list');
   } catch (err) {
@@ -518,9 +523,9 @@ serverController.deleteServer = async (req, res) => {
     const id = req.params.id;
     // Remove related links (if ON DELETE CASCADE is not set in DB)
     await Server.remove(id, pool);
-    res.redirect('/server/list?success=Server deleted successfully');
+    res.redirect('/server/server/list?success=Server deleted successfully');
   } catch (err) {
-    res.redirect('/server/list?error=Unable to delete server');
+    res.redirect('/server/server/list?error=Unable to delete server');
   }
 };
 

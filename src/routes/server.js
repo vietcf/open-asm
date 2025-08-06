@@ -17,7 +17,7 @@ router.post('/server/add', requirePermission('server.create'), serverController.
 router.get('/server/:id/edit', requirePermission('server.update'), serverController.editServerForm);
 router.post('/server/:id/edit', requirePermission('server.update'), serverController.updateServer);
 // Delete server
-router.post('/server/:id/delete', requirePermission('server.delete'), serverController.deleteServer);
+router.delete('/server/:id', requirePermission('server.delete'), serverController.deleteServer);
 
 // ====== SERVICE MENU ======
 // List services
