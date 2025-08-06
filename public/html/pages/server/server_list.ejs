@@ -200,8 +200,8 @@
                         <a href="/server/server/<%= server.id %>/edit" class="btn btn-warning btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
                       <% } %>
                       <% if (hasPermission('server.delete')) { %>
-                        <form action="/server/<%= server.id %>?_method=DELETE" method="POST" style="display:inline">
-                          <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete?')"><i class="bi bi-trash"></i></button>
+                        <form action="/server/server/<%= server.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirm('Are you sure you want to delete this server?')">
+                          <button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="bi bi-trash"></i></button>
                         </form>
                       <% } %>
                     </td>
@@ -272,6 +272,18 @@
                                 <div class="d-flex flex-wrap">
                                   <% server.services.forEach(function(s) { %>
                                     <span class="badge bg-light text-dark me-1 mb-1"><%= s.name %></span>
+                                  <% }) %>
+                                </div>
+                              <% } else { %>
+                                <span class="text-muted">-</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Systems</dt>
+                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
+                              <% if (Array.isArray(server.systems) && server.systems.length) { %>
+                                <div class="d-flex flex-wrap">
+                                  <% server.systems.forEach(function(sys) { %>
+                                    <span class="badge bg-light text-dark me-1 mb-1"><%= sys.name %></span>
                                   <% }) %>
                                 </div>
                               <% } else { %>

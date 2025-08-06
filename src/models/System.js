@@ -148,8 +148,40 @@ class System {
     }
   }
 
- 
+  static async deleteTags(systemId, client) {
+    const executor = client || pool;
+    await executor.query(
+      "DELETE FROM tag_object WHERE object_type = 'system' AND object_id = $1",
+      [systemId]
+    );
+  }
 
+  static async deleteIPs(systemId, client) {
+    const executor = client || pool;
+    await executor.query('DELETE FROM system_ip WHERE system_id = $1', [systemId]);
+  }
+
+  static async deleteContacts(systemId, client) {
+    const executor = client || pool;
+    await executor.query('DELETE FROM system_contact WHERE system_id = $1', [systemId]);
+  }
+
+  static async deleteDomains(systemId, client) {
+    const executor = client || pool;
+    await executor.query('DELETE FROM system_domain WHERE system_id = $1', [systemId]);
+  }
+
+  static async deleteServers(systemId, client) {
+    const executor = client || pool;
+    // If there's a system_server relationship table, delete from it
+    // Otherwise, this method can be empty or remove servers that belong to this system
+    // For now, keeping it empty as the relationship might not exist
+  }
+
+  static async delete(id, client) {
+    // Alias for remove method to maintain consistency
+    return await System.remove(id, client);
+  }
 
   // ===== FILTERED LIST & PAGINATION =====
   static async findFilteredList({ search = '', page = 1, pageSize = 10 }) {
@@ -279,6 +311,13 @@ class System {
   static async findByIds(ids) {
     if (!Array.isArray(ids) || ids.length === 0) return [];
     const result = await pool.query('SELECT * FROM systems WHERE id = ANY($1)', [ids]);
+    return result.rows;
+  }
+
+  // Find systems by exact name match
+  static async findByNameExact(name) {
+    const sql = 'SELECT * FROM systems WHERE LOWER(name) = LOWER($1) ORDER BY id';
+    const result = await pool.query(sql, [name]);
     return result.rows;
   }
 }

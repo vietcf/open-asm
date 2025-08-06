@@ -135,4 +135,35 @@ apiContactController.getContactById = async (req, res) => {
   }
 };
 
+// Find contacts by email (supports both full email and email prefix)
+apiContactController.findContacts = async (req, res) => {
+  try {
+    const { email } = req.query;
+
+    // Require search term
+    if (!email || !email.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Search term "email" is required'
+      });
+    }
+
+    // Use email search (supports both full email and prefix)
+    const contacts = await Contact.findByEmailSearch(email.trim());
+
+    res.json({
+      success: true,
+      data: contacts,
+      count: contacts.length
+    });
+  } catch (error) {
+    console.error('Error finding contacts:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
 export default apiContactController;

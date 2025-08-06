@@ -1,4 +1,3 @@
-
 // API Controller for System (ES6 style, refactored)
 import System from '../../models/System.js';
 import Unit from '../../models/Unit.js';
@@ -119,6 +118,37 @@ apiSystemController.remove = async (req, res) => {
     res.status(204).end();
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+// Find systems by exact name match
+apiSystemController.findSystems = async (req, res) => {
+  try {
+    const { name } = req.query;
+
+    // Require search term
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Search term "name" is required'
+      });
+    }
+
+    // Use exact name matching
+    const systems = await System.findByNameExact(name.trim());
+
+    res.json({
+      success: true,
+      data: systems,
+      count: systems.length
+    });
+  } catch (error) {
+    console.error('Error finding systems:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
   }
 };
 

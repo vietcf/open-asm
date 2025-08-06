@@ -243,7 +243,7 @@
                               <% system.ip_addresses.forEach(function(ipObj) { %>
                                 <li>
                                   <% if (typeof ipObj === 'object' && ipObj.ip) { %>
-                                    <%= ipObj.ip %>
+                                    <a href="/network/ip-address?search=<%= encodeURIComponent(ipObj.ip) %>" target="_blank"><%= ipObj.ip %></a>
                                     <% if (ipObj.contact_name && ipObj.contact_email) { %>
                                       - <a href="/organize/contact?search=<%= encodeURIComponent(ipObj.contact_email) %>" target="_blank"><%= ipObj.contact_email %></a>
                                     <% } else if (ipObj.contact_name) { %>
@@ -253,7 +253,7 @@
                                       (<a href="/server/server/list?search=<%= encodeURIComponent(ipObj.ip) %>" target="_blank"><%= ipObj.server_name %></a>)
                                     <% } %>
                                   <% } else { %>
-                                    <%= ipObj %>
+                                    <a href="/network/ip-address?search=<%= encodeURIComponent(ipObj) %>" target="_blank"><%= ipObj %></a>
                                   <% } %>
                                 </li>
                               <% }) %>

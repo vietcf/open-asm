@@ -1,4 +1,3 @@
-
 import { pool } from '../../config/config.js';
 
 class Agent {
@@ -24,13 +23,20 @@ class Agent {
     return result.rows[0];
   }
 
-  // Update an agent
-  static async update(id, { name, version, description }) {
-    if (!name || !name.trim()) throw new Error('Agent Name is required!');
-    const result = await pool.query(
-      'UPDATE agents SET name = $1, version = $2, description = $3 WHERE id = $4 RETURNING *',
-      [name, version, description, id]
-    );
+  // Update an agent (partial update - only update provided fields)
+  static async update(id, updateData) {
+    // Build dynamic query based on provided fields
+    const fields = Object.keys(updateData);
+    if (fields.length === 0) {
+      return await this.findById(id);
+    }
+    
+    const setClause = fields.map((field, index) => `${field} = $${index + 1}`).join(', ');
+    const values = fields.map(field => updateData[field]);
+    values.push(id); // Add id as last parameter
+    
+    const query = `UPDATE agents SET ${setClause} WHERE id = $${values.length} RETURNING *`;
+    const result = await pool.query(query, values);
     return result.rows[0];
   }
 
@@ -122,6 +128,13 @@ class Agent {
     params.push(limit);
     const result = await pool.query(sql, params);
     return result.rows.map(row => ({ id: row.id, text: row.version ? `${row.name} (${row.version})` : row.name }));
+  }
+
+  // Find agents by exact name match
+  static async findByNameExact(name) {
+    const sql = 'SELECT * FROM agents WHERE LOWER(name) = LOWER($1) ORDER BY id';
+    const result = await pool.query(sql, [name]);
+    return result.rows;
   }
 
 }

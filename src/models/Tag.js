@@ -155,6 +155,19 @@ class Tag {
     const result = await pool.query('SELECT 1 FROM tags WHERE id = $1', [id]);
     return result.rowCount > 0;
   }
+
+  /**
+   * Find tags by exact name match (case-insensitive)
+   * @param {string} name - Name to search for (exact match)
+   * @returns {Promise<Array>}
+   */
+  static async findByNameExact(name) {
+    const result = await pool.query(
+      'SELECT * FROM tags WHERE LOWER(name) = LOWER($1) ORDER BY id',
+      [name]
+    );
+    return result.rows;
+  }
 }
 
 export default Tag;

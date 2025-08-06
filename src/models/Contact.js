@@ -207,6 +207,36 @@ class Contact {
     return result.rows;
   }
 
+  /**
+   * Find contacts by email (supports both full email and email prefix before @)
+   * @param {string} email - Full email or email prefix (part before @)
+   * @returns {Promise<Array>} Array of matching contacts
+   */
+  static async findByEmailSearch(email) {
+    let sql, params;
+    
+    if (email.includes('@')) {
+      // Full email search - exact match
+      sql = `SELECT c.*, u.name AS unit_name
+             FROM contacts c
+             LEFT JOIN units u ON c.unit_id = u.id
+             WHERE LOWER(c.email) = LOWER($1)
+             ORDER BY c.id`;
+      params = [email];
+    } else {
+      // Email prefix search - match the part before @
+      sql = `SELECT c.*, u.name AS unit_name
+             FROM contacts c
+             LEFT JOIN units u ON c.unit_id = u.id
+             WHERE LOWER(SPLIT_PART(c.email, '@', 1)) = LOWER($1)
+             ORDER BY c.id`;
+      params = [email];
+    }
+    
+    const result = await pool.query(sql, params);
+    return result.rows;
+  }
+
 }
 
 export default Contact;

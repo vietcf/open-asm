@@ -11,6 +11,10 @@ const apiContactRouter = express.Router();
  *     description: Contact management
  */
 
+// ============================
+// GET Routes
+// ============================
+
 /**
  * @swagger
  * /api/v1/contacts/search:
@@ -62,8 +66,91 @@ const apiContactRouter = express.Router();
  *       500:
  *         description: Server error
  */
-// Search contacts by: name, email, phone, position, unit_name (case-insensitive)
 apiContactRouter.get('/search', authorizePermissionJWT('contact.read'), apiContactController.searchContacts);
+
+/**
+ * @swagger
+ * /api/v1/contacts/find:
+ *   get:
+ *     summary: Find contacts by email or email prefix
+ *     description: Search contacts by full email address or email prefix (part before @). Supports both exact email matching and prefix matching.
+ *     tags: [Contact]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: email
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Full email address or email prefix (part before @)
+ *         example: "john.doe@company.com or john.doe"
+ *     responses:
+ *       200:
+ *         description: Contacts retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   description: Indicates if the request was successful
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: integer
+ *                       name:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       phone:
+ *                         type: string
+ *                       position:
+ *                         type: string
+ *                       unit_id:
+ *                         type: integer
+ *                       unit_name:
+ *                         type: string
+ *                       description:
+ *                         type: string
+ *                 count:
+ *                   type: integer
+ *                   description: Number of contacts returned
+ *       400:
+ *         description: Search term "email" is required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *                 error:
+ *                   type: string
+ *                   description: Detailed error information
+ */
+apiContactRouter.get('/find', authorizePermissionJWT('contact.read'), apiContactController.findContacts);
 
 /**
  * @swagger
@@ -110,6 +197,10 @@ apiContactRouter.get('/search', authorizePermissionJWT('contact.read'), apiConta
  *         description: Server error
  */
 apiContactRouter.get('/:id', authorizePermissionJWT('contact.read'), apiContactController.getContactById);
+
+// ============================
+// POST Routes
+// ============================
 
 /**
  * @swagger
@@ -158,6 +249,10 @@ apiContactRouter.get('/:id', authorizePermissionJWT('contact.read'), apiContactC
  *         description: Server error
  */
 apiContactRouter.post('/', authorizePermissionJWT('contact.create'), apiContactController.createContact);
+
+// ============================
+// PUT Routes
+// ============================
 
 /**
  * @swagger
@@ -212,6 +307,10 @@ apiContactRouter.post('/', authorizePermissionJWT('contact.create'), apiContactC
  *         description: Server error
  */
 apiContactRouter.put('/:id', authorizePermissionJWT('contact.update'), apiContactController.updateContact);
+
+// ============================
+// DELETE Routes
+// ============================
 
 /**
  * @swagger
