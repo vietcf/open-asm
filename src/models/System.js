@@ -60,6 +60,48 @@ class System {
     await executor.query('DELETE FROM systems WHERE id = $1', [id]);
   }
 
+  /**
+   * Check if a system exists by system_id
+   * @param {string} system_id
+   * @returns {Promise<boolean>}
+   */
+  static async existsBySystemId(system_id) {
+    const result = await pool.query('SELECT 1 FROM systems WHERE system_id = $1', [system_id]);
+    return result.rowCount > 0;
+  }
+
+  /**
+   * Check if a system exists by system_id but exclude a specific id (for updates)
+   * @param {string} system_id
+   * @param {number} excludeId
+   * @returns {Promise<boolean>}
+   */
+  static async existsBySystemIdExcluding(system_id, excludeId) {
+    const result = await pool.query('SELECT 1 FROM systems WHERE system_id = $1 AND id != $2', [system_id, excludeId]);
+    return result.rowCount > 0;
+  }
+
+  /**
+   * Check if a system exists by name
+   * @param {string} name
+   * @returns {Promise<boolean>}
+   */
+  static async existsByName(name) {
+    const result = await pool.query('SELECT 1 FROM systems WHERE LOWER(name) = LOWER($1)', [name]);
+    return result.rowCount > 0;
+  }
+
+  /**
+   * Check if a system exists by name but exclude a specific id (for updates)
+   * @param {string} name
+   * @param {number} excludeId
+   * @returns {Promise<boolean>}
+   */
+  static async existsByNameExcluding(name, excludeId) {
+    const result = await pool.query('SELECT 1 FROM systems WHERE LOWER(name) = LOWER($1) AND id != $2', [name, excludeId]);
+    return result.rowCount > 0;
+  }
+
   // ===== RELATIONSHIP/UTILITY METHODS =====
   static async setContacts(systemId, managers, client) {
     const executor = client || pool;
@@ -248,6 +290,12 @@ class System {
         d.domain ILIKE $2
       )
     `, [search, q]);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  // Get total count of all systems
+  static async count() {
+    const result = await pool.query('SELECT COUNT(*) AS count FROM systems');
     return parseInt(result.rows[0].count, 10);
   }
 

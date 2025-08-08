@@ -331,7 +331,7 @@ deviceController.deletePlatform = async (req, res) => {
   const page = parseInt(req.body.page, 10) || 1;
   const search = req.body.search ? req.body.search.trim() : '';
   try {
-    await Platform.delete(id);
+    await Platform.remove(id);
     const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&success=Platform deleted successfully`;
     return res.redirect(`/device/platform${query}`);
   } catch (err) {

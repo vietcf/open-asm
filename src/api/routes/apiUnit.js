@@ -55,6 +55,56 @@ apiUnitRouter.get('/', apiUnitController.listUnits);
 
 /**
  * @swagger
+ * /api/v1/units/find:
+ *   get:
+ *     summary: Find units by exact name match
+ *     description: Search units by exact name matching. Requires a search term.
+ *     tags: [OrganizationUnit]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: name
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Unit name to search for (exact match, case-insensitive)
+ *     responses:
+ *       200:
+ *         description: Units retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/OrganizationUnit'
+ *                 count:
+ *                   type: integer
+ *       400:
+ *         description: Search term "name" is required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Search term 'name' is required"
+ *       500:
+ *         description: Internal server error
+ */
+apiUnitRouter.get('/find', authorizePermissionJWT('unit.read'), apiUnitController.findUnits);
+
+/**
+ * @swagger
  * /api/v1/units/{id}:
  *   get:
  *     summary: Get a single organization unit by ID

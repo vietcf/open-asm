@@ -1,4 +1,3 @@
-
 // Device model for CRUD operations
 import { pool } from '../../config/config.js';
 
@@ -275,6 +274,66 @@ class Device {
   static async findByName(name) {
     const result = await pool.query('SELECT * FROM devices WHERE LOWER(name) = LOWER($1) LIMIT 1', [name]);
     return result.rows[0] || null;
+  }
+
+  /**
+   * Find devices by specific criteria (name, ip_address)
+   * @param {Object} criteria - Search criteria
+   * @param {string} criteria.name - Device name (exact match)
+   * @param {string} criteria.ip_address - IP address (exact match)
+   * @returns {Promise<Array>} Array of devices with full details
+   */
+  static async findByCriteria(criteria) {
+    let params = [];
+    let whereClauses = [];
+    let idx = 1;
+
+    // Build WHERE clauses based on criteria
+    if (criteria.name) {
+      whereClauses.push(`d.name = $${idx}`);
+      params.push(criteria.name);
+      idx++;
+    }
+
+    if (criteria.ip_address) {
+      whereClauses.push(`d.id IN (SELECT device_id FROM ip_addresses WHERE ip_address = $${idx})`);
+      params.push(criteria.ip_address);
+      idx++;
+    }
+
+    if (whereClauses.length === 0) {
+      return [];
+    }
+
+    const sql = `
+      SELECT d.*, dt.name AS device_type_name, p.name AS platform_name,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address, 'description', ip.description, 'status', ip.status)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name, 'description', t.description)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email, 'phone', c.phone)) FILTER (WHERE c.id IS NOT NULL), '[]') AS contacts
+      FROM devices d
+      LEFT JOIN device_types dt ON d.device_type_id = dt.id
+      LEFT JOIN platforms p ON d.platform_id = p.id
+      LEFT JOIN ip_addresses ip ON ip.device_id = d.id
+      LEFT JOIN tag_object tobj ON tobj.object_type = 'device' AND tobj.object_id = d.id
+      LEFT JOIN tags t ON t.id = tobj.tag_id
+      LEFT JOIN device_contact dc ON dc.device_id = d.id
+      LEFT JOIN contacts c ON c.id = dc.contact_id
+      WHERE ${whereClauses.join(' AND ')}
+      GROUP BY d.id, dt.name, p.name
+      ORDER BY d.id
+    `;
+
+    const result = await pool.query(sql, params);
+    
+    // Parse JSON fields for each device
+    return result.rows.map(device => {
+      // Parse JSON arrays
+      device.ip_addresses = Array.isArray(device.ip_addresses) ? device.ip_addresses : JSON.parse(device.ip_addresses);
+      device.tags = Array.isArray(device.tags) ? device.tags : JSON.parse(device.tags);
+      device.contacts = Array.isArray(device.contacts) ? device.contacts : JSON.parse(device.contacts);
+      
+      return device;
+    });
   }
 }
 

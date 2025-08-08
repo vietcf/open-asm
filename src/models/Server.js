@@ -499,6 +499,11 @@ class Server {
     return server;
   }
 
+  static async findByName(name) {
+    const res = await pool.query('SELECT id, name FROM servers WHERE LOWER(name) = LOWER($1)', [name]);
+    return res.rows[0] || null;
+  }
+
 }
 
 export default Server;

@@ -172,7 +172,23 @@ class IpAddress {
    * @param {number} id
    * @returns {Promise<void>}
    */
+  /**
+   * Delete an IP address
+   * @param {number} id - IP address ID
+   * @param {object} [client=pool] - Database client
+   * @returns {Promise<void>}
+   * @throws {Error} If IP is assigned to server or device
+   */
   static async delete(id, client = pool) {
+    // Check if IP is assigned to any server or device
+    const assignment = await this.checkAssignment(id);
+    if (assignment) {
+      let assignedTo = [];
+      if (assignment.server) assignedTo.push(`server "${assignment.server.name}"`);
+      if (assignment.device) assignedTo.push(`device "${assignment.device.name}"`);
+      throw new Error(`Cannot delete IP address: it is assigned to ${assignedTo.join(' and ')}`);
+    }
+    
     await client.query('DELETE FROM ip_addresses WHERE id = $1', [id]);
   }
 
@@ -476,6 +492,32 @@ class IpAddress {
     return result.rowCount > 0;
   }
 
+  /**
+   * Check if IP address is assigned to any server or device
+   * @param {number} id - IP address ID
+   * @returns {Promise<Object|null>} Returns object with assignment info or null if not assigned
+   */
+  static async checkAssignment(id) {
+    const result = await pool.query(`
+      SELECT 
+        server_id, 
+        device_id,
+        s.name AS server_name,
+        d.name AS device_name
+      FROM ip_addresses ip
+      LEFT JOIN servers s ON s.id = ip.server_id
+      LEFT JOIN devices d ON d.id = ip.device_id
+      WHERE ip.id = $1 AND (ip.server_id IS NOT NULL OR ip.device_id IS NOT NULL)
+    `, [id]);
+    
+    if (result.rows.length === 0) return null;
+    
+    const row = result.rows[0];
+    return {
+      server: row.server_id ? { id: row.server_id, name: row.server_name } : null,
+      device: row.device_id ? { id: row.device_id, name: row.device_name } : null
+    };
+  }
 }
 
 // Export the IpAddress model

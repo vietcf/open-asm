@@ -113,7 +113,10 @@ apiIpAddressController.createIpAddress = async (req, res) => {
     if (tags) await IpAddress.setTags(ip.id, tags);
     if (contacts) await IpAddress.setContacts(ip.id, contacts);
     if (systems) await IpAddress.setSystems(ip.id, systems);
-    res.status(201).json(ip);
+    
+    // Fetch complete IP address with relationships for response
+    const completeIp = await IpAddress.findByIdWithDetails(ip.id);
+    res.status(201).json(completeIp);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -199,7 +202,9 @@ apiIpAddressController.updateIpAddress = async (req, res) => {
     if (tags !== undefined) await IpAddress.setTags(id, tags);
     if (contacts !== undefined) await IpAddress.setContacts(id, contacts);
     if (systems !== undefined) await IpAddress.setSystems(id, systems);
-    const updatedIp = await IpAddress.findById(id);
+    
+    // Fetch complete IP address with relationships for response
+    const updatedIp = await IpAddress.findByIdWithDetails(id);
     res.json(updatedIp);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -210,9 +215,20 @@ apiIpAddressController.updateIpAddress = async (req, res) => {
 apiIpAddressController.deleteIpAddress = async (req, res) => {
   try {
     const id = req.params.id;
+    
+    // Check if IP address exists
+    const ip = await IpAddress.findById(id);
+    if (!ip) {
+      return res.status(404).json({ error: 'IP address not found' });
+    }
+    
     await IpAddress.delete(id);
     res.status(204).send();
   } catch (err) {
+    // If error message contains "assigned to", it's a conflict error
+    if (err.message.includes('assigned to')) {
+      return res.status(409).json({ error: err.message });
+    }
     res.status(500).json({ error: err.message });
   }
 };

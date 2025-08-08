@@ -126,6 +126,72 @@ router.post('/', createAgent);
 
 /**
  * @swagger
+ * /api/v1/agents/find:
+ *   get:
+ *     summary: Find agents by exact name match
+ *     description: Search agents by exact name matching. Requires a search term.
+ *     tags: [Agents]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: name
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Agent name to search for (exact match)
+ *     responses:
+ *       200:
+ *         description: Agents retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   description: Indicates if the request was successful
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Agent'
+ *                 count:
+ *                   type: integer
+ *                   description: Number of agents returned
+ *       400:
+ *         description: Search term "name" is required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   description: Error message
+ *                 error:
+ *                   type: string
+ *                   description: Detailed error information
+ */
+router.get('/find', findAgents);
+
+/**
+ * @swagger
  * /api/v1/agents/{id}:
  *   get:
  *     tags:
@@ -247,71 +313,5 @@ router.put('/:id', updateAgent);
  *         description: Cannot delete agent (in use)
  */
 router.delete('/:id', deleteAgent);
-
-/**
- * @swagger
- * /api/v1/agents/find:
- *   get:
- *     summary: Find agents by exact name match
- *     description: Search agents by exact name matching. Requires a search term.
- *     tags: [Agents]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: name
- *         required: true
- *         schema:
- *           type: string
- *         description: Agent name to search for (exact match)
- *     responses:
- *       200:
- *         description: Agents retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   description: Indicates if the request was successful
- *                 data:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Agent'
- *                 count:
- *                   type: integer
- *                   description: Number of agents returned
- *       400:
- *         description: Search term "name" is required
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   description: Error message
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                   example: false
- *                 message:
- *                   type: string
- *                   description: Error message
- *                 error:
- *                   type: string
- *                   description: Detailed error information
- */
-router.get('/find', findAgents);
 
 export default router;
