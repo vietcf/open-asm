@@ -225,7 +225,12 @@
                             <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">IP Address</dt>
                             <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
                               <% if (Array.isArray(server.ip) && server.ip.length) { %>
-                                <%= server.ip.map(ipObj => ipObj.ip_address).join(', ') %>
+                                <% server.ip.forEach(function(ipObj, index) { %>
+                                  <% if (index > 0) { %>, <% } %>
+                                  <a href="/network/ip-address?search=<%= encodeURIComponent(ipObj.ip_address) %>&pageSize=10" target="_blank" class="text-decoration-none">
+                                    <%= ipObj.ip_address %>
+                                  </a>
+                                <% }) %>
                               <% } else { %>
                                 <span class="text-muted">-</span>
                               <% } %>
@@ -239,9 +244,27 @@
                             <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Manager</dt>
                             <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
                               <% if (Array.isArray(server.managers) && server.managers.length) { %>
-                                <%= server.managers.map(m => m.name).join(', ') %>
+                                <% server.managers.forEach(function(m, index) { %>
+                                  <% if (index > 0) { %>, <% } %>
+                                  <% 
+                                    var searchTerm = m.email || m.name || '';
+                                    var displayText = '';
+                                    if (m.email && m.name) {
+                                      displayText = m.email + ' (' + m.name + ')';
+                                    } else if (m.email) {
+                                      displayText = m.email;
+                                    } else if (m.name) {
+                                      displayText = m.name;
+                                    } else {
+                                      displayText = 'Unknown';
+                                    }
+                                  %>
+                                  <a href="/organize/contact?search=<%= encodeURIComponent(searchTerm) %>&pageSize=10" target="_blank" class="text-decoration-none">
+                                    <%= displayText %>
+                                  </a>
+                                <% }) %>
                               <% } else if (server.manager) { %>
-                                <a href="/organize/contact?search='+encodeURIComponent(server.manager)+'" target="_blank"><%= server.manager %></a>
+                                <a href="/organize/contact?search=<%= encodeURIComponent(server.manager) %>&pageSize=10" target="_blank" class="text-decoration-none"><%= server.manager %></a>
                               <% } else { %>
                                 <span class="text-muted">-</span>
                               <% } %>
@@ -283,7 +306,9 @@
                               <% if (Array.isArray(server.systems) && server.systems.length) { %>
                                 <div class="d-flex flex-wrap">
                                   <% server.systems.forEach(function(sys) { %>
-                                    <span class="badge bg-light text-dark me-1 mb-1"><%= sys.name %></span>
+                                    <a href="/system/system?search=<%= encodeURIComponent(sys.name) %>" target="_blank" class="text-decoration-none me-1 mb-1">
+                                      <span class="badge bg-primary text-white"><%= sys.name %></span>
+                                    </a>
                                   <% }) %>
                                 </div>
                               <% } else { %>

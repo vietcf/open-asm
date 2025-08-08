@@ -252,25 +252,15 @@ deviceController.updateDevice = async (req, res) => {
 
 // Delete a device
 deviceController.deleteDevice = async (req, res) => {
-  const client = await pool.connect();
   try {
-    await client.query('BEGIN');
-    // Remove device_id from all IPs assigned to this device
-    await Device.setIpAddresses(req.params.id, [], client);
-    // Remove all tag_object links for this device
-    await Device.setTags(req.params.id, [], client);
-    // Remove all contacts for this device
-    await Device.setContacts(req.params.id, [], client);
-    // Delete the device
-    await Device.remove(req.params.id, client);
-    await client.query('COMMIT');
+    const id = req.params.id;
+    // Remove related links and cascade delete IPs (similar to server deletion)
+    await Device.remove(id, pool);
     req.flash('success', 'Device deleted successfully!');
     res.redirect('/device/device');
   } catch (err) {
-    await client.query('ROLLBACK');
-    res.status(500).send('Error deleting device: ' + err.message);
-  } finally {
-    client.release();
+    req.flash('error', 'Unable to delete device: ' + err.message);
+    res.redirect('/device/device');
   }
 };
 

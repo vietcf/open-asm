@@ -201,7 +201,7 @@ class Server {
     const sql = `SELECT s.*, p.name AS platform_name,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
-      COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name)) FILTER (WHERE c.id IS NOT NULL), '[]') AS managers,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email)) FILTER (WHERE c.id IS NOT NULL), '[]') AS managers,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', sys.id, 'name', sys.name)) FILTER (WHERE sys.id IS NOT NULL), '[]') AS systems,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', sv.id, 'name', sv.name)) FILTER (WHERE sv.id IS NOT NULL), '[]') AS services,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', ag.id, 'name', ag.name, 'version', ag.version)) FILTER (WHERE ag.id IS NOT NULL), '[]') AS agents
@@ -308,7 +308,7 @@ class Server {
       SELECT s.*, p.name AS platform_name,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
-        COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name)) FILTER (WHERE c.id IS NOT NULL), '[]') AS managers,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email)) FILTER (WHERE c.id IS NOT NULL), '[]') AS managers,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', sys.id, 'name', sys.name)) FILTER (WHERE sys.id IS NOT NULL), '[]') AS systems,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', ssv.id, 'name', ssv.name, 'description', ssv.description)) FILTER (WHERE ssv.id IS NOT NULL), '[]') AS services,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', ag.id, 'name', ag.name, 'version', ag.version, 'description', ag.description)) FILTER (WHERE ag.id IS NOT NULL), '[]') AS agents

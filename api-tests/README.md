@@ -42,15 +42,18 @@ api-tests/
 ├── README.md              # Hướng dẫn sử dụng (file này)
 ├── servers.http           # 🖥️ Server management APIs
 ├── systems.http           # 🏢 System management APIs  
-├── networks.http          # 🌐 Network & IP management APIs
+├── devices.http           # 📱 Device management APIs
+├── ip-addresses.http      # 🌐 IP Address management APIs
+├── networks.http          # 🌐 Network management APIs
 ├── contacts.http          # 👥 Contact management APIs
 ├── tags.http              # 🏷️ Tag management APIs
-└── health.http            # 🔧 Health & monitoring APIs
+├── platforms.http         # � Platform (OS) management APIs
+└── services.http          # ⚙️ Service management APIs
 ```
 
 ## 🚀 Cách sử dụng:
 
-### 1. Setup environment:
+### 1. Khởi động ứng dụng:
 ```bash
 # Khởi động server
 npm start
@@ -67,13 +70,15 @@ npm start
 
 ## 📊 Thứ tự test khuyến nghị:
 
-1. **Health Check** - Kiểm tra server hoạt động
-2. **Login** - Lấy JWT token  
-3. **Tags** - Test quản lý tags (cơ bản nhất)
-4. **Servers** - Test APIs chính
-5. **Systems** - Test quản lý systems
-6. **Contacts** - Test quản lý contacts
-7. **Networks** - Test quản lý network
+1. **Login** - Lấy JWT token trước tiên
+2. **Tags** - Test quản lý tags (cơ bản nhất)
+3. **Platforms** - Test quản lý platforms/OS
+4. **Contacts** - Test quản lý contacts
+5. **IP Addresses** - Test quản lý IP addresses
+6. **Devices** - Test quản lý devices
+7. **Servers** - Test quản lý servers (phức tạp nhất)
+8. **Systems** - Test quản lý systems
+9. **Services** - Test quản lý services
 
 ## ✨ Tính năng:
 
