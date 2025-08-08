@@ -102,6 +102,13 @@ apiServerController.createServer = async (req, res) => {
     os = typeof os === 'string' ? os.trim() : os;
     // Validate required fields
     if (!name) return res.status(400).json({ error: 'Server name is required' });
+    
+    // Check if server name already exists
+    const existingServer = await Server.findByName(name);
+    if (existingServer) {
+      return res.status(400).json({ error: 'Server name already exists' });
+    }
+    
     if (location && !serverOptions.locations.some(opt => opt.value === location)) {
       return res.status(400).json({ error: `Invalid location: ${location}` });
     }
@@ -162,11 +169,18 @@ apiServerController.createServer = async (req, res) => {
     // Validate IP address IDs
     if (!ip_addresses || ip_addresses.length === 0) return res.status(400).json({ error: 'At least one IP address is required' });
     const invalidIps = [];
+    const assignedIps = [];
     for (const ipId of ip_addresses) {
       // eslint-disable-next-line no-await-in-loop
-      if (!(await IpAddress.exists(ipId))) invalidIps.push(ipId);
+      const ipDetails = await IpAddress.findById(ipId);
+      if (!ipDetails) {
+        invalidIps.push(ipId);
+      } else if (ipDetails.status === 'assigned') {
+        assignedIps.push(`IP ${ipDetails.ip_address} (ID: ${ipId})`);
+      }
     }
     if (invalidIps.length > 0) return res.status(400).json({ error: `Invalid IP address IDs: ${invalidIps.join(', ')}` });
+    if (assignedIps.length > 0) return res.status(400).json({ error: `Cannot use already assigned IP addresses: ${assignedIps.join(', ')}` });
     // Create server in database
     const username = req.user && req.user.username ? req.user.username : 'admin';
     const serverId = await Server.create({ name, os, status, location, type, description, username, client });
@@ -177,7 +191,10 @@ apiServerController.createServer = async (req, res) => {
     await Server.setServices(serverId, services, client);
     await Server.setTags(serverId, tags, client);
     await client.query('COMMIT');
-    res.status(201).json({ id: serverId });
+    
+    // Fetch the complete server data with all relationships
+    const newServer = await Server.findByIdWithDetails(serverId);
+    res.status(201).json(newServer);
   } catch (err) {
     await client.query('ROLLBACK');
     res.status(500).json({ error: err.message });
@@ -238,6 +255,15 @@ apiServerController.updateServer = async (req, res) => {
       location: has('location') ? body.location : current.location,
     };
 
+    // Check if server name already exists (only if name is being updated and different from current)
+    if (has('name') && updateFields.name && updateFields.name !== current.name) {
+      const existingServer = await Server.findByName(updateFields.name);
+      if (existingServer && existingServer.id !== parseInt(id)) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Server name already exists' });
+      }
+    }
+
     // Validate enum fields if provided
     if (has('location') && updateFields.location && !serverOptions.locations.some(opt => opt.value === updateFields.location)) {
       await client.query('ROLLBACK');
@@ -269,13 +295,34 @@ apiServerController.updateServer = async (req, res) => {
         const arr = normalizeArray(body[key]);
         if (arr.length > 0) {
           const invalid = [];
-          for (const id of arr) {
-            // eslint-disable-next-line no-await-in-loop
-            if (!(await model.exists(id))) invalid.push(id);
+          const assignedIps = [];
+          
+          for (const itemId of arr) {
+            if (key === 'ip_addresses') {
+              // Special validation for IP addresses - check both existence and assignment status
+              // eslint-disable-next-line no-await-in-loop
+              const ipDetails = await IpAddress.findById(itemId);
+              if (!ipDetails) {
+                invalid.push(itemId);
+              } else if (ipDetails.status === 'assigned' && ipDetails.server_id !== parseInt(id)) {
+                // IP is assigned to a different server
+                assignedIps.push(`IP ${ipDetails.ip_address} (ID: ${itemId})`);
+              }
+            } else {
+              // Regular validation for other relationship types
+              // eslint-disable-next-line no-await-in-loop
+              if (!(await model.exists(itemId))) invalid.push(itemId);
+            }
           }
+          
           if (invalid.length > 0) {
             await client.query('ROLLBACK');
             return res.status(400).json({ error: `Invalid ${key.replace('_', ' ')} IDs: ${invalid.join(', ')}` });
+          }
+          
+          if (assignedIps.length > 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ error: `Cannot use already assigned IP addresses: ${assignedIps.join(', ')}` });
           }
         }
         normalizedArrays[key] = arr;

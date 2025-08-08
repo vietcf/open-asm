@@ -1,0 +1,29 @@
+# ========================================
+# 🔧 HEALTH & MONITORING TESTS
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+
+### Server Health Check
+GET {{baseUrl}}/health
+Accept: application/json
+
+### API Status Check
+GET {{baseUrl}}/{{apiVersion}}/status
+Accept: application/json
+
+### Database Connection Test
+GET {{baseUrl}}/{{apiVersion}}/health/database
+Accept: application/json
+
+### Memory Usage
+GET {{baseUrl}}/{{apiVersion}}/health/memory
+Accept: application/json
+
+### Uptime Check
+GET {{baseUrl}}/{{apiVersion}}/health/uptime
+Accept: application/json
+
+### Application Info
+GET {{baseUrl}}/{{apiVersion}}/info
+Accept: application/json

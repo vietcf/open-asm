@@ -95,4 +95,44 @@ apiUnitController.deleteUnit = async (req, res) => {
   }
 };
 
+apiUnitController.findUnits = async (req, res) => {
+  try {
+    const { name } = req.query;
+
+    // Validate required parameter
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: "Search term 'name' is required"
+      });
+    }
+
+    // Validate empty name
+    if (name.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: "Search term 'name' cannot be empty"
+      });
+    }
+
+    // Find units by exact name match (case-insensitive)
+    const unit = await Unit.findByName(name.trim());
+    const units = unit ? [unit] : [];
+
+    res.status(200).json({
+      success: true,
+      data: units,
+      count: units.length
+    });
+
+  } catch (error) {
+    console.error('Error finding units:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+};
+
 export default apiUnitController;

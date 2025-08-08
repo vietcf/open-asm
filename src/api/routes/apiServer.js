@@ -230,16 +230,26 @@ apiServerRouter.get('/find', apiServerController.findServers);
  *                 type: string
  *     responses:
  *       201:
- *         description: Created server
+ *         description: Created server with full details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ServerDetails'
+ *       400:
+ *         description: Validation error
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 id:
- *                   type: integer
- *       400:
- *         description: Validation error
+ *                 error:
+ *                   type: string
+ *                   examples:
+ *                     - "Server name is required"
+ *                     - "Server name already exists"
+ *                     - "IP address ID 5 is already assigned to another server"
+ *                     - "At least one IP address is required"
+ *                     - "Invalid platform (os) ID: 999"
  */
 apiServerRouter.post('/', apiServerController.createServer);
 

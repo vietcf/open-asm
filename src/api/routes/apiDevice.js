@@ -133,6 +133,63 @@
  *       409:
  *         description: Duplicate device name
  *
+ * /api/v1/devices/find:
+ *   get:
+ *     summary: Find devices by specific field values (exact match)
+ *     tags: [Device]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: name
+ *         schema:
+ *           type: string
+ *         description: Find device by name (exact match)
+ *       - in: query
+ *         name: ip_address
+ *         schema:
+ *           type: string
+ *         description: Find devices by IP address (exact match, e.g. 192.168.1.1)
+ *     responses:
+ *       200:
+ *         description: List of matching devices
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Device'
+ *                 total:
+ *                   type: integer
+ *                 criteria:
+ *                   type: object
+ *                   description: Search criteria used
+ *       400:
+ *         description: No search criteria provided
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "At least one search criteria must be provided (name or ip_address)"
+ *       404:
+ *         description: No devices found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "No devices found matching the specified criteria"
+ *                 criteria:
+ *                   type: object
+ *
  * /api/v1/devices/{id}:
  *   get:
  *     summary: Get a single device by ID
@@ -311,6 +368,8 @@ const apiDeviceRouter = express.Router();
 
 // List devices
 apiDeviceRouter.get('/', apiDeviceController.listDevices);
+// Find devices
+apiDeviceRouter.get('/find', apiDeviceController.findDevices);
 // Get device by ID
 apiDeviceRouter.get('/:id', apiDeviceController.getDevice);
 // Create device

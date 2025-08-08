@@ -44,8 +44,8 @@ const router = express.Router();
  *         domains:
  *           type: array
  *           items:
- *             type: string
- *           description: List of domain names or IDs
+ *             type: integer
+ *           description: List of domain IDs
  *         managers:
  *           type: array
  *           items:
@@ -74,7 +74,7 @@ const router = express.Router();
  *         description: "Main business system"
  *         level: 2
  *         department_id: 3
- *         domains: ["domain1.com", "domain2.com"]
+ *         domains: [1, 2]
  *         managers: [5, 7]
  *         ip_addresses: [101, 102]
  *         tags: [1, 2]
@@ -140,7 +140,7 @@ const router = express.Router();
  *               domains:
  *                 type: array
  *                 items:
- *                   type: string
+ *                   type: integer
  *               managers:
  *                 type: array
  *                 items:
@@ -217,7 +217,7 @@ const router = express.Router();
  *               domains:
  *                 type: array
  *                 items:
- *                   type: string
+ *                   type: integer
  *               managers:
  *                 type: array
  *                 items:

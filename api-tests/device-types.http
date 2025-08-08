@@ -1,0 +1,317 @@
+# ========================================
+# 📱 DEVICE TYPES API TESTS (MINIMAL)
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+# Environment: development (change in VS Code status bar)
+# ========================================
+
+### 0. Login to get JWT Token (Run this first!)
+# @name deviceTypeAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+# ========================================
+# 📋 BASIC DEVICE TYPE CRUD OPERATIONS
+# ========================================
+
+### 1. Get All Device Types
+GET {{baseUrl}}/{{apiVersion}}/device-types
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+### 2. Get Device Type by ID
+GET {{baseUrl}}/{{apiVersion}}/device-types/1
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+### 3. Create New Device Type
+# @name createDeviceType
+POST {{baseUrl}}/{{apiVersion}}/device-types
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+{
+  "name": "Test Device Type",
+  "description": "Test device type for API testing"
+}
+
+### 4. Update Device Type (Complete Update)
+PUT {{baseUrl}}/{{apiVersion}}/device-types/{{createDeviceType.response.body.data.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+{
+  "name": "Test Device Type Updated",
+  "description": "Updated test device type description"
+}
+
+### 5. Update Device Type (Name Only)
+PUT {{baseUrl}}/{{apiVersion}}/device-types/{{createDeviceType.response.body.data.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+{
+  "name": "Test Device Type Name Only"
+}
+
+### 6. Update Device Type (Description Only)
+PUT {{baseUrl}}/{{apiVersion}}/device-types/{{createDeviceType.response.body.data.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+{
+  "description": "Updated description only"
+}
+
+### 7. Delete Device Type
+DELETE {{baseUrl}}/{{apiVersion}}/device-types/{{createDeviceType.response.body.data.id}}
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+# ========================================
+# 🔍 SEARCH & FIND OPERATIONS
+# ========================================
+
+### 8. Find Device Type by Exact Name
+GET {{baseUrl}}/{{apiVersion}}/device-types/find?name=firewall
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+### 9. Find Device Type with Case Sensitivity Test
+GET {{baseUrl}}/{{apiVersion}}/device-types/find?name=fire
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+### 10. Find Device Type - Multiple Results Test
+GET {{baseUrl}}/{{apiVersion}}/device-types/find?name=Network
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+# ========================================
+# ❌ ERROR HANDLING TESTS
+# ========================================
+
+### 11. Get Non-existent Device Type (404)
+GET {{baseUrl}}/{{apiVersion}}/device-types/99999
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+### 12. Get Device Type with Invalid ID (400)
+GET {{baseUrl}}/{{apiVersion}}/device-types/invalid
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+### 13. Find without Name Parameter (400)
+GET {{baseUrl}}/{{apiVersion}}/device-types/find
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+### 14. Find with Empty Name (400)
+GET {{baseUrl}}/{{apiVersion}}/device-types/find?name=
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+### 15. Create Device Type with Invalid Data (400)
+POST {{baseUrl}}/{{apiVersion}}/device-types
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+{
+  "description": "Missing required name field"
+}
+
+### 16. Create Device Type with Empty Name (400)
+POST {{baseUrl}}/{{apiVersion}}/device-types
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+{
+  "name": "",
+  "description": "Empty name should fail"
+}
+
+### 17. Create Device Type with Long Name (400)
+POST {{baseUrl}}/{{apiVersion}}/device-types
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+{
+  "name": "Very Long Device Type Name That Exceeds The Maximum Length Constraint Of 100 Characters Set In Schema",
+  "description": "Testing maximum length constraint violation"
+}
+
+### 18. Create Device Type with Long Description (400)
+POST {{baseUrl}}/{{apiVersion}}/device-types
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+{
+  "name": "Test Device Type",
+  "description": "Very long description that exceeds the maximum length constraint of 500 characters set in the schema. This description is intentionally made very long to test the validation rules applied by the API backend. It should fail because it goes beyond the allowed limit of 500 characters for the description field. This is a comprehensive test to ensure that the API properly validates input data according to the defined schema constraints and returns appropriate error messages when validation fails."
+}
+
+### 19. Create Device Type with Duplicate Name (409)
+POST {{baseUrl}}/{{apiVersion}}/device-types
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+{
+  "name": "Server",
+  "description": "Duplicate name test"
+}
+
+### 20. Update Non-existent Device Type (404)
+PUT {{baseUrl}}/{{apiVersion}}/device-types/99999
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+{
+  "name": "non-existent-device-type"
+}
+
+### 21. Update Device Type with Invalid ID (400)
+PUT {{baseUrl}}/{{apiVersion}}/device-types/invalid
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+{
+  "name": "Invalid ID Update"
+}
+
+### 22. Update Device Type with No Fields (400)
+PUT {{baseUrl}}/{{apiVersion}}/device-types/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+{}
+
+### 23. Update Device Type with Duplicate Name (409)
+PUT {{baseUrl}}/{{apiVersion}}/device-types/5
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+{
+  "name": "Network Device"
+}
+
+### 24. Delete Non-existent Device Type (404)
+DELETE {{baseUrl}}/{{apiVersion}}/device-types/99999
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+### 25. Delete Device Type with Invalid ID (400)
+DELETE {{baseUrl}}/{{apiVersion}}/device-types/invalid
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+### 26. Delete Device Type in Use (409)
+DELETE {{baseUrl}}/{{apiVersion}}/device-types/1
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+# ========================================
+# 🧪 ADVANCED DEVICE TYPE TESTS
+# ========================================
+
+### 27. Create Device Type with Minimal Data
+POST {{baseUrl}}/{{apiVersion}}/device-types
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+{
+  "name": "Minimal Device Type"
+}
+
+### 28. Update Device Type with Null Description
+PUT {{baseUrl}}/{{apiVersion}}/device-types/2
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+{
+  "name": "Device Type With Null Description",
+  "description": null
+}
+
+### 29. Create Device Type with Special Characters
+POST {{baseUrl}}/{{apiVersion}}/device-types
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+{
+  "name": "IoT Device (v2.1)",
+  "description": "Internet of Things device type - version 2.1 with special chars & symbols"
+}
+
+### 30. Find Device Type with Special Characters
+GET {{baseUrl}}/{{apiVersion}}/device-types/find?name=IoT Device (v2.1)
+Accept: application/json
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+
+# ========================================
+# ✅ BASIC DEVICE TYPES API TEST CHECKLIST
+# ========================================
+# 
+# BASIC CRUD OPERATIONS:
+# ⏳ GET /api/v1/device-types (get all device types)
+# ⏳ GET /api/v1/device-types/:id (get device type by ID)
+# ⏳ POST /api/v1/device-types (create new device type)
+# ⏳ PUT /api/v1/device-types/:id (update device type)
+# ⏳ DELETE /api/v1/device-types/:id (delete device type)
+#
+# SEARCH & FIND:
+# ⏳ GET /api/v1/device-types/find?name=exact_name (find by exact name)
+#
+# API STRUCTURE NOTES:
+# ✅ Direct GET /api/v1/device-types endpoint exists
+# ✅ Find endpoint requires 'name' parameter
+# ✅ Response uses structured format with success/data/message
+# ✅ Create response wraps data in 'data' field
+#
+# FIELD VALIDATION:
+# ⏳ Required fields: name (1-100 chars)
+# ⏳ Optional fields: description (max 500 chars, nullable)
+# ⏳ Unique name constraint
+# ⏳ Name length validation (1-100)
+# ⏳ Description length validation (max 500)
+#
+# ERROR HANDLING:
+# ⏳ 400 - Invalid data/missing fields/validation errors
+# ⏳ 404 - Device type not found
+# ⏳ 409 - Duplicate name/device type in use
+# ⏳ 500 - Internal server error
+#
+# PARTIAL UPDATE TESTS:
+# ⏳ Update name only
+# ⏳ Update description only
+# ⏳ Update with null description
+#
+# SPECIAL CASES:
+# ⏳ Case sensitivity in find
+# ⏳ Special characters in names
+# ⏳ Maximum length validation (name: 100, description: 500)
+# ⏳ Minimal required data
+# ⏳ Device type in use cannot be deleted
+#
+# ========================================

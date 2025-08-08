@@ -133,6 +133,16 @@ class Domain {
   }
 
   /**
+   * Check if a domain exists by id
+   * @param {number} id
+   * @returns {Promise<boolean>}
+   */
+  static async exists(id) {
+    const result = await pool.query('SELECT 1 FROM domains WHERE id = $1', [id]);
+    return result.rowCount > 0;
+  }
+
+  /**
    * Get all systems of a domain (many-to-many)
    */
   static async findSystems(domainId) {
