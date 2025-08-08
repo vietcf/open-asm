@@ -350,7 +350,13 @@
                   <% if (device.ip_addresses && device.ip_addresses.length) { %>
                     <ul class="list-unstyled mb-0">
                       <% device.ip_addresses.forEach(function(ip) { %>
-                        <li><%= ip.ip_address || ip.address || ip %></li>
+                        <li>
+                          <a href="ip-address?search=<%= encodeURIComponent(ip.ip_address || ip.address || ip) %>" 
+                             class="text-decoration-none" 
+                             title="Search for this IP address">
+                            <%= ip.ip_address || ip.address || ip %>
+                          </a>
+                        </li>
                       <% }) %>
                     </ul>
                   <% } else { %>
@@ -374,7 +380,13 @@
                   <% if (device.contacts && device.contacts.length) { %>
                     <ul class="list-unstyled mb-0">
                       <% device.contacts.forEach(function(contact) { %>
-                        <li><%= contact.name %> &lt;<%= contact.email %>&gt;</li>
+                        <li>
+                          <a href="contact?search=<%= encodeURIComponent(contact.email) %>" 
+                             class="text-decoration-none" 
+                             title="Search for this contact">
+                            <%= contact.email %> (<%= contact.name %>)
+                          </a>
+                        </li>
                       <% }) %>
                     </ul>
                   <% } else { %>
