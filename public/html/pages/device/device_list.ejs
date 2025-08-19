@@ -194,7 +194,7 @@
                 <th>Manufacturer</th>
                 <th>Platform (OS)</th>
                 <th>IP Address(es)</th>
-                <th>Management</th>
+            <th>Description</th>
                 <th>Tags</th>
                 <!-- <th>Contacts</th> -->
                 <th class="text-end">Actions</th>
@@ -225,7 +225,17 @@
                         <span class="text-muted">-</span>
                       <% } %>
                     </td>
-                    <td><%= device.management_address ? device.management_address : '-' %></td>
+                    <td>
+                      <% if (device.description) { %>
+                        <% let desc = device.description; %>
+                        <% let truncated = desc.length > 40 ? desc.substring(0, 40) + '…' : desc; %>
+                        <span title="<%- desc.replace(/\"/g, '&quot;') %>" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-placement="top">
+                          <%= truncated %>
+                        </span>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
                     <td>
                       <% if (device.tags && device.tags.length) { %>
                         <% device.tags.forEach(function(tag) { %>
