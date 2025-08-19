@@ -82,7 +82,15 @@
                   <tr>
                     <td><%= (page - 1) * pageSize + idx + 1 %></td>
                     <td><%= platform.name %></td>
-                    <td><%= platform.description %></td>
+                    <td>
+                      <% if (platform.description && platform.description.trim()) { %>
+                        <span title="<%= platform.description.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
+                          <%= platform.description.length > 60 ? platform.description.substring(0, 60) + '…' : platform.description %>
+                        </span>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
                     <td class="text-end">
                       <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#platformDetailModal-<%= platform.id %>"><i class="bi bi-eye"></i></a>
                       <% if (hasPermission('platform.update')) { %>

@@ -75,6 +75,7 @@
                 <th>No.</th>
                 <th>System ID</th>
                 <th>System Name</th>
+                <th>Description</th>
                 <th>Alias</th>
                 <th>Tags</th>
                 <th class="text-end">Actions</th>
@@ -87,6 +88,15 @@
                     <td><%= (page - 1) * pageSize + idx + 1 %></td>
                     <td><%= system.system_id %></td>
                     <td><%= system.name %></td>
+                    <td>
+                      <% if (system.description && system.description.trim()) { %>
+                        <span title="<%= system.description.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
+                          <%= system.description.length > 60 ? system.description.substring(0, 60) + '…' : system.description %>
+                        </span>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
                     <td>
                       <% if (Array.isArray(system.alias) && system.alias.length > 0) { %>
                         <%= system.alias.join(', ') %>

@@ -72,7 +72,15 @@
                   <td><%= counter.value++ %></td>
                   <td><%= (level > 0 ? '- '.repeat(level) : '') + subnet.address %></td>
                   </td>
-                  <td><%= subnet.description || '' %></td>
+                  <td>
+                    <% if (subnet.description && subnet.description.trim()) { %>
+                      <span title="<%= subnet.description.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
+                        <%= subnet.description.length > 60 ? subnet.description.substring(0, 60) + '…' : subnet.description %>
+                      </span>
+                    <% } else { %>
+                      <span class="text-muted">-</span>
+                    <% } %>
+                  </td>
                   <td>
                     <% if (subnet.tags && subnet.tags.length > 0) { %>
                       <% subnet.tags.forEach(function(tag) { %>

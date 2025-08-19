@@ -82,7 +82,15 @@
                   <tr>
                     <td><%= idx + 1 %></td>
                     <td><%= type.name %></td>
-                    <td><%= type.description %></td>
+                    <td>
+                      <% if (type.description && type.description.trim()) { %>
+                        <span title="<%= type.description.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
+                          <%= type.description.length > 60 ? type.description.substring(0, 60) + '…' : type.description %>
+                        </span>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
                     <td class="text-end">
                       <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#deviceTypeDetailModal-<%= type.id %>"><i class="bi bi-eye"></i></a>
                       <% if (hasPermission('device_type.update')) { %>

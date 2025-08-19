@@ -247,7 +247,7 @@
               <tr>
                 <th>STT</th>
                 <th>IP Address</th>
-                <!-- <th>Description</th> -->
+                <th>Description</th>
                 <th>Status</th>
                 <th>Tags</th>
                 <!-- <th>Created At</th> -->
@@ -263,7 +263,15 @@
                   <tr>
                     <td><%= (page - 1) * pageSize + idx + 1 %></td>
                     <td><%= ip.ip_address %></td>
-                    <!-- <td><% if (ip.description && ip.description.trim()) { %><span class="desc-text"><%- ip.description.replace(/\n/g, '<br>') %></span><% } %></td> -->
+                    <td>
+                      <% if (ip.description && ip.description.trim()) { %>
+                        <span title="<%= ip.description.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
+                          <%= ip.description.length > 60 ? ip.description.substring(0, 60) + '…' : ip.description %>
+                        </span>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
                     <td><% if (ip.status) { %><span class="badge bg-secondary"><%= ip.status %></span><% } else { %><span class="text-muted">-</span><% } %></td>
                     <td>
                       <% if (ip.tags && ip.tags.length > 0) { %>
@@ -279,9 +287,15 @@
                     <!-- <td><%= ip.updated_by || '' %></td> -->
                     <td>
                       <% if (ip.systems && ip.systems.length > 0) { %>
-                        <% ip.systems.forEach(function(system, i) { %>
-                          <%= system.name %><%= i < ip.systems.length - 1 ? ', ' : '' %>
-                        <% }) %>
+                        <div class="d-flex flex-wrap">
+                          <% ip.systems.forEach(function(system) { %>
+                            <a href="/system/system?search=<%= encodeURIComponent(system.name) %>" target="_blank" class="text-decoration-none me-1 mb-1">
+                              <span class="badge bg-primary text-white me-1 mb-1" style="font-size:0.95em; font-weight:500; letter-spacing:0.5px; padding:0.35em 0.8em;">
+                                <%= system.name + (system.system_id ? ' (' + system.system_id + ')' : '') %>
+                              </span>
+                            </a>
+                          <% }) %>
+                        </div>
                       <% } else { %>
                         <span class="text-muted">No system</span>
                       <% } %>

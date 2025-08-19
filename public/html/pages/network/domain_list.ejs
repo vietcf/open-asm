@@ -85,7 +85,15 @@
                   <tr>
                     <td><%= (page - 1) * pageSize + idx + 1 %></td>
                     <td><%= domain.domain %></td>
-                    <td><%= domain.description %></td>
+                    <td>
+                      <% if (domain.description && domain.description.trim()) { %>
+                        <span title="<%= domain.description.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
+                          <%= domain.description.length > 60 ? domain.description.substring(0, 60) + '…' : domain.description %>
+                        </span>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
                     <td>
                       <% if (domain.ip && domain.ip.ip_address) { %>
                         <span class="badge bg-primary"><%= domain.ip.ip_address %></span>
