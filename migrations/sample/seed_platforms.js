@@ -1,4 +1,4 @@
-module.exports = async (pool) => {
+export default async (pool) => {
   await pool.query(`
     INSERT INTO platforms (name, description) VALUES
       ('Windows Server 2022', 'Microsoft Windows Server'),

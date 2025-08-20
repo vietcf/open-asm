@@ -1,5 +1,5 @@
 // filepath: migrations/seed_priv_role_permissions.js
-module.exports = async (pool) => {
+export default async (pool) => {
   // Get all roles and permissions
   const { rows: roles } = await pool.query('SELECT id, name FROM priv_roles');
   const { rows: permissions } = await pool.query('SELECT id, name FROM priv_permissions');

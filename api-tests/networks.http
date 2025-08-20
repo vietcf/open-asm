@@ -1,0 +1,59 @@
+# ========================================
+# 🌐 NETWORK & IP ADDRESS API TESTS
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+# Environment: development (change in VS Code status bar)
+# ========================================
+
+### 0. Login to get JWT Token (Run this first!)
+# @name networkAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+### Get IP Addresses List
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses
+Authorization: Bearer {{networkAuth.response.body.token}}
+
+### Search IP Addresses by Subnet
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?search=192.168
+Authorization: Bearer {{networkAuth.response.body.token}}
+
+### Search IP Addresses by Exact IP
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?search=192.168.1.1
+Authorization: Bearer {{networkAuth.response.body.token}}
+
+### Get IP Address Detail
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses/2
+Authorization: Bearer {{networkAuth.response.body.token}}
+
+### Create New IP Address
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Content-Type: application/json
+Authorization: Bearer {{networkAuth.response.body.token}}
+
+{
+  "ip_address": "192.168.1.100",
+  "subnet_id": 1,
+  "description": "Test IP via REST Client",
+  "status": "available"
+}
+
+### Update IP Address
+PUT {{baseUrl}}/{{apiVersion}}/ip-addresses/1
+Content-Type: application/json
+Authorization: Bearer {{networkAuth.response.body.token}}
+
+{
+  "description": "Updated IP description",
+  "status": "assigned"
+}
+
+### Delete IP Address
+DELETE {{baseUrl}}/{{apiVersion}}/ip-addresses/1
+Authorization: Bearer {{networkAuth.response.body.token}}

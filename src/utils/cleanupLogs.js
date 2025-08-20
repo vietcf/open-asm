@@ -1,11 +1,12 @@
 // src/utils/cleanupLogs.js
 // Scheduled job to delete system logs older than X days using node-cron
-const cron = require('node-cron');
-const { pool } = require('../../config/config');
-const Configuration = require('../models/Configuration');
+import cron from 'node-cron';
+import { pool } from '../../config/config.js';
+import Configuration from '../models/Configuration.js';
 
 // Get retention days from config or default to 30
-defaultRetention = 30;
+
+const defaultRetention = 30;
 
 async function getRetentionDays() {
   // Try to get from configuration table
@@ -42,4 +43,4 @@ const job = cron.schedule('0 2 * * *', async () => {
   scheduled: false // Only start when called
 });
 
-module.exports = job;
+export default job;

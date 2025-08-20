@@ -2,7 +2,7 @@
   <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/organize/unit" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
     <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search unit..." aria-label="Search" value="<%= search %>">
     <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
-      <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+      <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
         <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
       <% }) %>
     </select>
@@ -10,7 +10,7 @@
   </form>
   <div class="row mb-3">
     <div class="col-12 d-flex justify-content-end align-items-center position-relative">
-      <% if (hasPermission && hasPermission(user, 'unit.create')) { %>
+      <% if (hasPermission('unit.create')) { %>
         <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addUnitModal">
           <i class="bi bi-plus"></i> Add Unit
         </button>
@@ -88,18 +88,66 @@
                     <td><%= u.code %></td>
                     <td><%= u.description %></td>
                     <td class="text-end">
-                      <% if (hasPermission && hasPermission(user, 'unit.update')) { %>
-                        <button class="btn btn-warning btn-sm me-1" data-bs-toggle="modal" data-bs-target="#editUnitModal-<%= u.id %>"><i class="bi bi-pencil"></i></button>
+                      <button class="btn btn-info btn-sm me-1" title="Show Detail" data-bs-toggle="modal" data-bs-target="#showUnitModal-<%= u.id %>"><i class="bi bi-eye"></i></button>
+                      <% if (hasPermission('unit.update')) { %>
+                        <button class="btn btn-warning btn-sm me-1" title="Edit" data-bs-toggle="modal" data-bs-target="#editUnitModal-<%= u.id %>"><i class="bi bi-pencil"></i></button>
                       <% } %>
-                      <% if (hasPermission && hasPermission(user, 'unit.delete')) { %>
+                      <% if (hasPermission('unit.delete')) { %>
                         <form action="/organize/unit/<%= u.id %>?_method=DELETE" method="POST" style="display:inline;">
-                          <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this unit?')"><i class="bi bi-trash"></i></button>
+                          <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete this unit?')"><i class="bi bi-trash"></i></button>
                         </form>
                       <% } %>
                     </td>
                   </tr>
+                  <!-- Show Unit Detail Modal -->
+                  <div class="modal fade" id="showUnitModal-<%= u.id %>" tabindex="-1" aria-labelledby="showUnitModalLabel-<%= u.id %>" aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="showUnitModalLabel-<%= u.id %>">Organization Unit Detail</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <dl class="row mb-0">
+                            <dt class="col-sm-4">ID</dt>
+                            <dd class="col-sm-8"><%= u.id %></dd>
+                            <dt class="col-sm-4">Unit Name</dt>
+                            <dd class="col-sm-8"><%= u.name %></dd>
+                            <dt class="col-sm-4">Code</dt>
+                            <dd class="col-sm-8"><%= u.code || '' %></dd>
+                            <dt class="col-sm-4">Description</dt>
+                            <dd class="col-sm-8">
+                              <% if (u.description && u.description.trim()) { %>
+                                <div style="white-space: pre-wrap; word-wrap: break-word;"><%= u.description %></div>
+                              <% } else { %>
+                                <span class="text-muted">No description</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-4">Created At</dt>
+                            <dd class="col-sm-8">
+                              <% if (u.created_at) { %>
+                                <%= new Date(u.created_at).toLocaleString('en-US', { 
+                                  year: 'numeric', 
+                                  month: '2-digit', 
+                                  day: '2-digit', 
+                                  hour: '2-digit', 
+                                  minute: '2-digit',
+                                  second: '2-digit'
+                                }) %>
+                              <% } else { %>
+                                <span class="text-muted">Not available</span>
+                              <% } %>
+                            </dd>
+                          </dl>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                  <!-- Edit Unit Modal -->
-                 <% if (hasPermission && hasPermission(user, 'unit.update')) { %>
+                 <% if (hasPermission('unit.update')) { %>
                  <div class="modal fade" id="editUnitModal-<%= u.id %>" tabindex="-1" aria-labelledby="editUnitModalLabel-<%= u.id %>" aria-hidden="true">
                    <div class="modal-dialog">
                      <div class="modal-content">

@@ -1,4 +1,4 @@
-module.exports = async (db) => {
+export default async (db) => {
   await db.query(`
     CREATE TABLE IF NOT EXISTS tags (
       id SERIAL PRIMARY KEY,

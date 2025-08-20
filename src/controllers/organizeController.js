@@ -1,35 +1,26 @@
-const path = require('path');
-const fs = require('fs');
-const ejs = require('ejs');
-const config = require('../../config/config');
-const Contact = require('../models/Contact');
-const Unit = require('../models/Unit');
-const Configuration = require('../models/Configuration');
+import { config } from '../../config/config.js';
+import Contact from '../models/Contact.js';
+import Unit from '../models/Unit.js';
+import Tag from '../models/Tag.js';
+import Configuration from '../models/Configuration.js';
+import QRCode from 'qrcode';
+
+const organizeController = {};
 
 // Contact List page handler
-exports.contactList = async (req, res) => {
+organizeController.contactList = async (req, res) => {
   try {
     const search = req.query.search ? req.query.search.trim() : '';
     const page = parseInt(req.query.page, 10) || 1;
-    // Load config for allowed page sizes from database
-    let allowedPageSizes = [10, 20, 50];
-    try {
-      const pageSizeConfig = await Configuration.findByKey('page_size');
-      if (pageSizeConfig && pageSizeConfig.value) {
-        allowedPageSizes = pageSizeConfig.value.split(',').map(v => parseInt(v.trim(), 10)).filter(v => !isNaN(v));
-      }
-    } catch (e) {
-      // fallback to default if config not found or error
-    }
-    // Ensure pageSize is always a valid value from allowedPageSizes
+    // Use global page size options
     let pageSize = parseInt(req.query.pageSize, 10);
-    if (!allowedPageSizes.includes(pageSize)) {
-      pageSize = allowedPageSizes[0];
+    if (!res.locals.pageSizeOptions.includes(pageSize)) {
+      pageSize = res.locals.defaultPageSize;
     }
     let contactList, totalCount;
     if (search) {
-      totalCount = await Contact.searchCount(search);
-      contactList = await Contact.searchPage(search, page, pageSize);
+      totalCount = await Contact.countSearch(search);
+      contactList = await Contact.findSearchPage(search, page, pageSize);
     } else {
       totalCount = await Contact.countAll();
       contactList = await Contact.findPage(page, pageSize);
@@ -40,21 +31,20 @@ exports.contactList = async (req, res) => {
     // bubble any error message
     const errorMessage = req.query.error || null;
     const successMessage = req.query.success || null;
-    const content = ejs.render(
-      fs.readFileSync(path.join(__dirname, '../../public/html/pages/organize/contact_list.ejs'), 'utf8'),
-      { contactList, units, search, page, totalPages, errorMessage, successMessage, user: req.session.user, hasPermission: req.app.locals.hasPermission, pageSize, totalCount, startItem: totalCount === 0 ? 0 : (page - 1) * pageSize + 1, endItem: totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount), allowedPageSizes }
-    );
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    return res.render('layouts/layout', {
-      cssPath: config.cssPath,
-      jsPath: config.jsPath,
-      imgPath: config.imgPath,
-      body: content,
+    return res.render('pages/organize/contact_list', {
+      contactList,
+      units,
+      search,
+      page,
+      totalPages,
+      errorMessage,
+      successMessage,
+      pageSize,
+      totalCount,
+      startItem: totalCount === 0 ? 0 : (page - 1) * pageSize + 1,
+      endItem: totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount),
       title: 'Contact List',
-      activeMenu: 'contact',
-      user: req.session.user,
-      siteName
+      activeMenu: 'contact'
     });
   } catch (err) {
     console.error('Error loading contacts:', err);
@@ -63,14 +53,14 @@ exports.contactList = async (req, res) => {
 };
 
 // Create new contact
-exports.createContact = async (req, res) => {
+organizeController.createContact = async (req, res) => {
   try {
-    let { name, email, position, unit_id, phone, note } = req.body;
+    let { name, email, position, unit_id, phone, description } = req.body;
     name = (name || '').trim();
     email = (email || '').trim();
     position = (position || '').trim();
     phone = (phone || '').trim();
-    note = (note || '').trim();
+    description = (description || '').trim();
     // Validate required fields
     if (!name || !email || !position) {
       return res.redirect('/organize/contact?error=Name, Email, and Position are required');
@@ -82,7 +72,7 @@ exports.createContact = async (req, res) => {
       return res.redirect('/organize/contact?error=Email already exists');
     }
     // Insert new contact
-    await Contact.create({ name, email, position, unit_id, phone, note });
+    await Contact.create({ name, email, position, unit_id, phone, description });
     res.redirect('/organize/contact?success=Contact added successfully');
   } catch (err) {
     console.error('Add contact error:', err);
@@ -91,18 +81,18 @@ exports.createContact = async (req, res) => {
 };
 
 // Update existing contact
-exports.updateContact = async (req, res) => {
+organizeController.updateContact = async (req, res) => {
   try {
-    let { name, email, position, unit_id, phone, note } = req.body;
+    let { name, email, position, unit_id, phone, description } = req.body;
     name = (name || '').trim();
     email = (email || '').trim();
     position = (position || '').trim();
     phone = (phone || '').trim();
-    note = (note || '').trim();
+    description = (description || '').trim();
     if (!name || !email || !position) {
       return res.redirect('/organize/contact?error=Name, Email, and Position are required');
     }
-    await Contact.update(req.params.id, { name, email, position, unit_id, phone, note });
+    await Contact.update(req.params.id, { name, email, position, unit_id, phone, description });
     res.redirect('/organize/contact?success=Contact updated successfully');
   } catch(err) {
     console.error(err);
@@ -111,7 +101,7 @@ exports.updateContact = async (req, res) => {
 };
 
 // Delete contact
-exports.deleteContact = async (req, res) => {
+organizeController.deleteContact = async (req, res) => {
   try {
     await Contact.delete(req.params.id);
     res.redirect('/organize/contact?success=Contact deleted successfully');
@@ -122,29 +112,19 @@ exports.deleteContact = async (req, res) => {
 };
 
 // Organization Unit List page handler
-exports.unitList = async (req, res) => {
+organizeController.unitList = async (req, res) => {
   try {
     const search = req.query.search ? req.query.search.trim() : '';
     const page = parseInt(req.query.page, 10) || 1;
-    // Load config for allowed page sizes from database
-    let allowedPageSizes = [10, 20, 50];
-    try {
-      const pageSizeConfig = await Configuration.findByKey('page_size');
-      if (pageSizeConfig && pageSizeConfig.value) {
-        allowedPageSizes = pageSizeConfig.value.split(',').map(v => parseInt(v.trim(), 10)).filter(v => !isNaN(v));
-      }
-    } catch (e) {
-      // fallback to default if config not found or error
-    }
-    // Ensure pageSize is always a valid value from allowedPageSizes
+    // Use global page size options
     let pageSize = parseInt(req.query.pageSize, 10);
-    if (!allowedPageSizes.includes(pageSize)) {
-      pageSize = allowedPageSizes[0];
+    if (!res.locals.pageSizeOptions.includes(pageSize)) {
+      pageSize = res.locals.defaultPageSize;
     }
     let totalCount, unitList;
     if (search) {
-      totalCount = await Unit.searchCount(search);
-      unitList = await Unit.searchPage(search, page, pageSize);
+      totalCount = await Unit.countSearch(search);
+      unitList = await Unit.findSearchPage(search, page, pageSize);
     } else {
       totalCount = await Unit.countAll();
       unitList = await Unit.findPage(page, pageSize);
@@ -152,22 +132,19 @@ exports.unitList = async (req, res) => {
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const errorMessage = req.query.error || null;
     const successMessage = req.query.success || null;
-    const content = ejs.render(
-      fs.readFileSync(path.join(__dirname, '../../public/html/pages/organize/unit_list.ejs'), 'utf8'),
-      { unitList, search, page, totalPages, errorMessage, successMessage, user: req.session.user, hasPermission: req.app.locals.hasPermission, pageSize, totalCount, startItem: totalCount === 0 ? 0 : (page - 1) * pageSize + 1, endItem: totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount), allowedPageSizes }
-    );
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-
-    res.render('layouts/layout', {
-      cssPath: config.cssPath,
-      jsPath: config.jsPath,
-      imgPath: config.imgPath,
-      body: content,
+    res.render('pages/organize/unit_list', {
+      unitList,
+      search,
+      page,
+      totalPages,
+      errorMessage,
+      successMessage,
+      pageSize,
+      totalCount,
+      startItem: totalCount === 0 ? 0 : (page - 1) * pageSize + 1,
+      endItem: totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount),
       title: 'Organization Unit',
-      activeMenu: 'unit',
-      user: req.session.user,
-      siteName
+      activeMenu: 'unit'
     });
   } catch (err) {
     console.error('Error loading units:', err);
@@ -176,7 +153,7 @@ exports.unitList = async (req, res) => {
 };
 
 // Create new unit
-exports.createUnit = async (req, res) => {
+organizeController.createUnit = async (req, res) => {
   let { name, code, description, page, search } = req.body;
   name = (name || '').trim();
   code = (code || '').trim();
@@ -212,7 +189,7 @@ exports.createUnit = async (req, res) => {
 };
 
 // Update existing unit
-exports.updateUnit = async (req, res) => {
+organizeController.updateUnit = async (req, res) => {
   const { id } = req.params;
   let { name, code, description, page, search } = req.body;
   name = (name || '').trim();
@@ -249,7 +226,7 @@ exports.updateUnit = async (req, res) => {
 };
 
 // Delete unit
-exports.deleteUnit = async (req, res) => {
+organizeController.deleteUnit = async (req, res) => {
   const { id } = req.params;
   try {
     await Unit.delete(id);
@@ -261,20 +238,11 @@ exports.deleteUnit = async (req, res) => {
 };
 
 // API for select2 ajax contact search
-exports.apiContactSearch = async (req, res) => {
+organizeController.apiContactSearch = async (req, res) => {
   try {
     const search = req.query.search ? req.query.search.trim() : '';
-    const pool = require('../../config/config').pool;
-    let sql = 'SELECT id, name, email FROM contacts';
-    let params = [];
-    if (search) {
-      sql += ' WHERE name ILIKE $1 OR email ILIKE $1';
-      params.push(`%${search}%`);
-    }
-    sql += ' ORDER BY name LIMIT 20';
-    const result = await pool.query(sql, params);
-    // Format for select2
-    const data = result.rows.map(row => ({ id: row.id, text: row.name + (row.email ? ` (${row.email})` : '') }));
+    const contacts = await Contact.contactSearchSelect2(search);
+    const data = contacts.map(row => ({ id: row.id, text: row.name + (row.email ? ` (${row.email})` : '') }));
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: 'Error loading contacts', detail: err.message });
@@ -282,19 +250,12 @@ exports.apiContactSearch = async (req, res) => {
 };
 
 // API for select2 ajax unit (organize) search
-exports.apiUnitSearch = async (req, res) => {
+organizeController.apiUnitSearch = async (req, res) => {
   try {
     const search = req.query.search ? req.query.search.trim() : '';
-    let sql = 'SELECT id, name FROM units';
-    let params = [];
-    if (search) {
-      sql += ' WHERE name ILIKE $1 OR code ILIKE $1 OR description ILIKE $1';
-      params.push(`%${search}%`);
-    }
-    sql += ' ORDER BY name LIMIT 20';
-    const result = await require('../../config/config').pool.query(sql, params);
-    // Format for select2
-    const data = result.rows.map(row => ({ id: row.id, text: row.name }));
+    // Move DB logic to Unit model
+    const units = await Unit.unitSearchSelect2(search);
+    const data = units.map(row => ({ id: row.id, text: row.name }));
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: 'Error loading units', detail: err.message });
@@ -303,25 +264,14 @@ exports.apiUnitSearch = async (req, res) => {
 
 // ===== TAG MENU =====
 // Render tag list page with pagination
-exports.tagList = async (req, res) => {
+organizeController.tagList = async (req, res) => {
   try {
-    const Tag = require('../models/Tag');
     const search = req.query.search ? req.query.search.trim() : '';
     const page = parseInt(req.query.page, 10) || 1;
-    // Load config for allowed page sizes from database
-    let allowedPageSizes = [10, 20, 50];
-    try {
-      const pageSizeConfig = await Configuration.findByKey('page_size');
-      if (pageSizeConfig && pageSizeConfig.value) {
-        allowedPageSizes = pageSizeConfig.value.split(',').map(v => parseInt(v.trim(), 10)).filter(v => !isNaN(v));
-      }
-    } catch (e) {
-      // fallback to default if config not found or error
-    }
-    // Ensure pageSize is always a valid value from allowedPageSizes
+    // Use global page size options
     let pageSize = parseInt(req.query.pageSize, 10);
-    if (!allowedPageSizes.includes(pageSize)) {
-      pageSize = allowedPageSizes[0];
+    if (!res.locals.pageSizeOptions.includes(pageSize)) {
+      pageSize = res.locals.defaultPageSize;
     }
     let tagList, totalCount;
     if (search) {
@@ -336,21 +286,19 @@ exports.tagList = async (req, res) => {
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
     const errorMessage = req.query.error || null;
     const successMessage = req.query.success || null;
-    const content = ejs.render(
-      fs.readFileSync(path.join(__dirname, '../../public/html/pages/organize/tag_list.ejs'), 'utf8'),
-      { tagList, search, page, totalPages, errorMessage, successMessage, startItem, endItem, totalCount, allowedPageSizes, pageSize, user: req.session.user, hasPermission: req.app.locals.hasPermission }
-    );
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    res.render('layouts/layout', {
-      cssPath: config.cssPath,
-      jsPath: config.jsPath,
-      imgPath: config.imgPath,
-      body: content,
+    res.render('pages/organize/tag_list', {
+      tagList,
+      search,
+      page,
+      totalPages,
+      errorMessage,
+      successMessage,
+      startItem,
+      endItem,
+      totalCount,
+      pageSize,
       title: 'Tag List',
-      activeMenu: 'tag',
-      user: req.session.user,
-      siteName
+      activeMenu: 'tag'
     });
   } catch (err) {
     res.status(500).send('Error loading tags: ' + err.message);
@@ -358,9 +306,8 @@ exports.tagList = async (req, res) => {
 };
 
 // Create a new tag
-exports.createTag = async (req, res) => {
+organizeController.createTag = async (req, res) => {
   try {
-    const Tag = require('../models/Tag');
     let { name, description } = req.body;
     name = (name || '').trim();
     description = (description || '').trim();
@@ -379,9 +326,8 @@ exports.createTag = async (req, res) => {
 };
 
 // Update Tag (PUT/POST for modal form)
-exports.updateTag = async (req, res) => {
+organizeController.updateTag = async (req, res) => {
   try {
-    const Tag = require('../models/Tag');
     const id = req.params.id;
     let { name, description } = req.body;
     name = (name || '').trim();
@@ -401,9 +347,8 @@ exports.updateTag = async (req, res) => {
 };
 
 // Delete a tag
-exports.deleteTag = async (req, res) => {
+organizeController.deleteTag = async (req, res) => {
   try {
-    const Tag = require('../models/Tag');
     const id = req.params.id;
     await Tag.delete(id);
     res.redirect('/organize/tag?success=Tag deleted successfully');
@@ -416,13 +361,53 @@ exports.deleteTag = async (req, res) => {
 // tag used in system add/edit forms
 // tag use in ip address add/edit forms
 // tag use in subnet add/edit forms
-exports.apiTagSearch = async (req, res) => {
+organizeController.apiTagSearch = async (req, res) => {
   try {
-    const Tag = require('../models/Tag');
     const search = req.query.search ? req.query.search.trim() : '';
-    const tags = await Tag.searchForSelect2(search);
+    const tags = await Tag.findSearchForSelect2(search);
     res.json(tags.map(tag => ({ id: tag.id, text: tag.name })));
   } catch (err) {
     res.status(500).json({ error: 'Error loading tags' });
   }
 };
+
+// API: Serve contact QR vCard as base64 PNG (for AJAX modal)
+organizeController.apiContactQrVcard = async (req, res) => {
+  try {
+    const contactId = req.params.id;
+    const contact = await Contact.findById(contactId);
+    if (!contact) return res.status(404).json({ error: 'Contact not found' });
+    // Tách tên cho trường N:
+    let nField = '';
+    if (contact.name) {
+      const parts = contact.name.trim().split(/\s+/);
+      if (parts.length === 1) {
+        nField = `${parts[0]};;;;`;
+      } else if (parts.length === 2) {
+        nField = `${parts[1]};${parts[0]};;;`;
+      } else {
+        const last = parts.pop();
+        const first = parts.shift();
+        nField = `${last};${first};${parts.join(' ')};;`;
+      }
+    }
+    const vcard = [
+      'BEGIN:VCARD',
+      'VERSION:3.0',
+      nField ? `N:${nField}` : '',
+      `FN:${contact.name || ''}`,
+      contact.email ? `EMAIL:${contact.email}` : '',
+      contact.phone ? `TEL:${contact.phone}` : '',
+      contact.unit_name ? `ORG:${contact.unit_name}` : '',
+      contact.position ? `TITLE:${contact.position}` : '',
+      'END:VCARD'
+    ].filter(Boolean).join('\n');
+    const qrDataUrl = await QRCode.toDataURL(vcard, { type: 'image/png', errorCorrectionLevel: 'M', margin: 1, width: 256 });
+    const base64 = qrDataUrl.replace(/^data:image\/png;base64,/, '');
+    res.json({ image: base64, mime: 'image/png' });
+  } catch (err) {
+    res.status(500).json({ error: 'Unable to generate QR vCard', detail: err.message });
+  }
+};
+
+export default organizeController;

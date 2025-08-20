@@ -2,7 +2,7 @@
   <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/network/ip-address" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
     <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search IP or Description..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
     <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
-      <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+      <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
         <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
       <% }) %>
     </select>
@@ -10,7 +10,7 @@
   </form>
   <div class="row mb-3">
     <div class="col-12 d-flex justify-content-end align-items-center">
-      <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addIpModal" <% if (!hasPermission(user, 'ip_address.create')) { %>style="display:none"<% } %>>
+      <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addIpModal" <% if (!hasPermission('ip_address.create')) { %>style="display:none"<% } %>>
         <i class="bi bi-plus"></i> Add IP
       </button>
       <!-- Add IP Modal -->
@@ -36,9 +36,9 @@
                   <label for="ipStatus" class="form-label">Status</label>
                   <select class="form-select form-select-sm" id="ipStatus" name="status">
                     <option value="">-- No status --</option>
-                    <option value="assigned">Assigned</option>
-                    <option value="reserved">Reserved</option>
-                    <option value="inactive">Inactive</option>
+                    <% (ipStatusOptions || []).forEach(function(opt) { %>
+                      <option value="<%= opt.value %>" <%= typeof filterStatus !== 'undefined' && filterStatus === opt.value ? 'selected' : '' %>><%= opt.label %></option>
+                    <% }) %>
                   </select>
                 </div>
                 <div class="mb-3">
@@ -106,9 +106,9 @@
                     <label class="form-label">Status</label>
                     <select id="filterIpStatus" name="status" class="form-select select2">
                       <option value="">-- All Status --</option>
-                      <option value="assigned">Assigned</option>
-                      <option value="reserved">Reserved</option>
-                      <option value="inactive">Inactive</option>
+                      <% (ipStatusOptions || []).forEach(function(opt) { %>
+                        <option value="<%= opt.value %>" <%= typeof filterStatus !== 'undefined' && filterStatus === opt.value ? 'selected' : '' %>><%= opt.label %></option>
+                      <% }) %>
                     </select>
                   </div>
                   <div class="col-12 mb-2">
@@ -250,9 +250,9 @@
                 <th>Description</th>
                 <th>Status</th>
                 <th>Tags</th>
-                <th>Created At</th>
-                <th>Updated At</th>
-                <th>Updated By</th>
+                <!-- <th>Created At</th> -->
+                <!-- <th>Updated At</th> -->
+                <!-- <th>Updated By</th> -->
                 <th>Systems</th>
                 <th class="text-end">Actions</th>
               </tr>
@@ -263,7 +263,15 @@
                   <tr>
                     <td><%= (page - 1) * pageSize + idx + 1 %></td>
                     <td><%= ip.ip_address %></td>
-                    <td><% if (ip.description && ip.description.trim()) { %><span class="desc-text"><%- ip.description.replace(/\n/g, '<br>') %></span><% } %></td>
+                    <td>
+                      <% if (ip.description && ip.description.trim()) { %>
+                        <span title="<%= ip.description.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
+                          <%= ip.description.length > 60 ? ip.description.substring(0, 60) + '…' : ip.description %>
+                        </span>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
                     <td><% if (ip.status) { %><span class="badge bg-secondary"><%= ip.status %></span><% } else { %><span class="text-muted">-</span><% } %></td>
                     <td>
                       <% if (ip.tags && ip.tags.length > 0) { %>
@@ -274,23 +282,29 @@
                         <span class="text-muted">No tags</span>
                       <% } %>
                     </td>
-                    <td><%= ip.created_at ? (ip.created_at.toLocaleString ? ip.created_at.toLocaleString() : ip.created_at) : '' %></td>
-                    <td><%= ip.updated_at ? (ip.updated_at.toLocaleString ? ip.updated_at.toLocaleString() : ip.updated_at) : '' %></td>
-                    <td><%= ip.updated_by || '' %></td>
+                    <!-- <td><%= ip.created_at ? (ip.created_at.toLocaleString ? ip.created_at.toLocaleString() : ip.created_at) : '' %></td> -->
+                    <!-- <td><%= ip.updated_at ? (ip.updated_at.toLocaleString ? ip.updated_at.toLocaleString() : ip.updated_at) : '' %></td> -->
+                    <!-- <td><%= ip.updated_by || '' %></td> -->
                     <td>
                       <% if (ip.systems && ip.systems.length > 0) { %>
-                        <% ip.systems.forEach(function(system, i) { %>
-                          <%= system.name %><%= i < ip.systems.length - 1 ? ', ' : '' %>
-                        <% }) %>
+                        <div class="d-flex flex-wrap">
+                          <% ip.systems.forEach(function(system) { %>
+                            <a href="/system/system?search=<%= encodeURIComponent(system.name) %>" target="_blank" class="text-decoration-none me-1 mb-1">
+                              <span class="badge bg-primary text-white me-1 mb-1" style="font-size:0.95em; font-weight:500; letter-spacing:0.5px; padding:0.35em 0.8em;">
+                                <%= system.name + (system.system_id ? ' (' + system.system_id + ')' : '') %>
+                              </span>
+                            </a>
+                          <% }) %>
+                        </div>
                       <% } else { %>
                         <span class="text-muted">No system</span>
                       <% } %>
                     </td>
                     <td class="text-end">
                       <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#ipDetailModal-<%= ip.id %>"><i class="bi bi-eye"></i></a>
-                      <button type="button" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#ipEditModal-<%= ip.id %>" <% if (!hasPermission(user, 'ip_address.update')) { %>style="display:none"<% } %>><i class="bi bi-pencil"></i></button>
+                      <button type="button" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#ipEditModal-<%= ip.id %>" <% if (!hasPermission('ip_address.update')) { %>style="display:none"<% } %>><i class="bi bi-pencil"></i></button>
                       <form action="/network/ip-address/<%= ip.id %>?_method=DELETE" method="POST" style="display:inline">
-                        <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure?')" <% if (!hasPermission(user, 'ip_address.delete')) { %>style="display:none"<% } %>><i class="bi bi-trash"></i></button>
+                        <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure?')" <% if (!hasPermission('ip_address.delete')) { %>style="display:none"<% } %>><i class="bi bi-trash"></i></button>
                       </form>
                     </td>
                   </tr>
@@ -399,9 +413,9 @@
                               <label for="editIpStatus-<%= ip.id %>" class="form-label">Status</label>
                               <select class="form-select form-select-sm" id="editIpStatus-<%= ip.id %>" name="status">
                                 <option value="">-- No status --</option>
-                                <option value="assigned" <%= ip.status === 'assigned' ? 'selected' : '' %>>Assigned</option>
-                                <option value="reserved" <%= ip.status === 'reserved' ? 'selected' : '' %>>Reserved</option>
-                                <option value="inactive" <%= ip.status === 'inactive' ? 'selected' : '' %>>Inactive</option>
+                                <% (ipStatusOptions || []).forEach(function(opt) { %>
+                                  <option value="<%= opt.value %>" <%= ip.status === opt.value ? 'selected' : '' %>><%= opt.label %></option>
+                                <% }) %>
                               </select>
                             </div>
                             <div class="mb-3">
@@ -498,7 +512,7 @@
   }
 </style>
 <script>
-window.ipList = JSON.parse('<%- JSON.stringify(ipList || []) %>');
+window.ipList = <%- JSON.stringify(ipList || []) %>;
 </script>
 <script>
   // Hide select2 fields in Add IP modal until initialized

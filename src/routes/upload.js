@@ -1,9 +1,8 @@
-const express = require('express');
+
+import express from 'express';
+import createUploadMiddleware from '../middlewares/fileUpload.middleware.js';
+import requireLogin from '../middlewares/requireLogin.middleware.js';
 const router = express.Router();
-const checkPermission = require('../middlewares/checkPermission');
-const createUploadMiddleware = require('../middlewares/fileUpload');
-const requireLogin = require('../middlewares/requireLogin');
-const require2fa = require('../middlewares/require2fa');
 
 // Middleware: upload file to /uploads/tmp or S3 'tmp' folder
 const uploadTmp = createUploadMiddleware({ fieldName: 'file', folder: 'tmp', maxCount: 10 });
@@ -27,4 +26,4 @@ router.post('/', requireLogin, uploadTmp, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

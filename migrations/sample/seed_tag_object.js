@@ -1,5 +1,5 @@
 // Seed mẫu cho bảng tag_object: gán tag cho nhiều loại đối tượng
-module.exports = async (db) => {
+export default async (db) => {
   // Lấy id các tag mẫu
   const { rows: tags } = await db.query('SELECT id, name FROM tags');
   // Ví dụ: gán tag cho IP (object_type: 'ip_address'), server (object_type: 'server')

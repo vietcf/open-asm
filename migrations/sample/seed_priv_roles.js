@@ -1,5 +1,5 @@
 // filepath: migrations/seed_priv_roles.js
-module.exports = async (pool) => {
+export default async (pool) => {
   // Insert roles in order: admin, manager, user (ID will auto-increment)
   await pool.query(`
     INSERT INTO priv_roles (name, description, created_at, updated_date, updated_by)

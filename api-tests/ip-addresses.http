@@ -1,0 +1,698 @@
+# ========================================
+# 🌐 IP ADDRESSES API TESTS (MINIMAL)
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+# Environment: development (change in VS Code status bar)
+# ========================================
+
+### 0. Login to get JWT Token (Run this first!)
+# @name ipAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+# ========================================
+# 📋 BASIC IP ADDRESS CRUD OPERATIONS
+# ========================================
+
+### 1. Get All IP Addresses
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 2. Get IP Address by ID
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses/2
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 3. Create New IP Address (Minimal)
+# @name createIpMinimal
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "address": "192.168.1.200"
+}
+
+### 4. Create New IP Address (Complete)
+# @name createIpComplete
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "address": "192.168.1.103",
+  "description": "Test web server IP",
+  "status": "assigned",
+  "tags": [5, 6],
+  "contacts": [768],
+  "systems": [2]
+}
+
+### 5. Update IP Address (Complete Update)
+PUT {{baseUrl}}/{{apiVersion}}/ip-addresses/16
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "description": "Updated web server IP description",
+  "status": "reserved",
+  "tags": []
+}
+# Expected: Response should include updated relationships (tags, contacts, systems)
+
+### 6. Update IP Address (Status Only)
+PUT {{baseUrl}}/{{apiVersion}}/ip-addresses/16
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "status": "assigned"
+}
+
+### 7. Update IP Address (Description Only)
+PUT {{baseUrl}}/{{apiVersion}}/ip-addresses/16
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "description": "Updated description only"
+}
+
+### 8. Update IP Address (Clear Relationships)
+PUT {{baseUrl}}/{{apiVersion}}/ip-addresses/16
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "tags": [],
+  "contacts": [],
+  "systems": []
+}
+
+### 9. Delete IP Address
+DELETE {{baseUrl}}/{{apiVersion}}/ip-addresses/15
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+# ========================================
+# 🔍 SEARCH & FIND OPERATIONS
+# ========================================
+
+### 10. Find IP Address by Exact Address
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses/find?address=192.168.1.11
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 11. Find IP Address - Non-existent
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses/find?address=10.10.10.999
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 12. Search IP Addresses by Text
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?search=192.168
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 13. Search IP Addresses by Description
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?search=server
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+# ========================================
+# 🔧 FILTERING TESTS
+# ========================================
+
+### 14. Filter by Status - Reserved
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?status=reserved
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 15. Filter by Status - Assigned
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?status=assigned
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 16. Filter by Status - Inactive
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?status=inactved
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 17. Filter by Single Tag
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?tags=1
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 18. Filter by Multiple Tags
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?tags=1&tags=2
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 19. Filter by Single Contact
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?contacts=1
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 20. Filter by Multiple Contacts
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?contacts=1&contacts=2
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 21. Filter by Single System
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?systems=1
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 22. Filter by Multiple Systems
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?systems=1&systems=2
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 23. Combined Filters - Status + Tags + Search
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?status=assigned&tags=1&search=192.168
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 24. Combined Filters - All Parameters
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?status=assigned&tags=1&contacts=1&systems=1&search=server
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+# ========================================
+# 📄 PAGINATION TESTS
+# ========================================
+
+### 25. Pagination - First Page (Default)
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?page=1&pageSize=5
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 26. Pagination - Second Page
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?page=2&pageSize=5
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 27. Pagination - Large Page Size
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?pageSize=50
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 28. Pagination - Small Page Size
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?pageSize=2
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 29. Pagination with Filters
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?status=assigned&page=1&pageSize=3
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+# ========================================
+# ❌ ERROR HANDLING TESTS
+# ========================================
+
+### 30. Get Non-existent IP Address (404)
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses/99999
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 31. Find without Address Parameter (400)
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses/find
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 32. Find with Empty Address (400)
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses/find?address=
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 33. Create IP Address without Address (400)
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "description": "Missing required address field"
+}
+
+### 34. Create IP Address with Invalid IP Format (400)
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "address": "invalid.ip.format"
+}
+
+### 35. Create IP Address with Invalid Status (400)
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "address": "192.168.1.102",
+  "status": "invalid_status"
+}
+
+### 36. Create IP Address with Duplicate Address (400)
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "address": "192.168.1.1"
+}
+
+### 37. Create IP Address with Invalid Tag IDs (400)
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "address": "192.168.1.103",
+  "tags": [99999]
+}
+
+### 38. Create IP Address with Invalid Contact IDs (400)
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "address": "192.168.1.104",
+  "contacts": [99999]
+}
+
+### 39. Create IP Address with Invalid System IDs (400)
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "address": "192.168.1.105",
+  "systems": [99999]
+}
+
+### 40. Update Non-existent IP Address (404)
+PUT {{baseUrl}}/{{apiVersion}}/ip-addresses/99999
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "description": "non-existent-ip"
+}
+
+### 41. Update IP Address with Invalid Status (400)
+PUT {{baseUrl}}/{{apiVersion}}/ip-addresses/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "status": "invalid_status"
+}
+
+### 42. Delete Non-existent IP Address (404)
+DELETE {{baseUrl}}/{{apiVersion}}/ip-addresses/99999
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 43. Filter with Invalid Status Value
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?status=invalid_status
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 44. Filter with Invalid Tag ID
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?tags=invalid
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 45. Pagination with Invalid Page Number
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?page=-1
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 46. Pagination with Invalid Page Size
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?pageSize=0
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+# ========================================
+# 🧪 ADVANCED IP ADDRESS TESTS
+# ========================================
+
+### 47. Create IPv6 Address
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "address": "2001:0db8:85a3:0000:0000:8a2e:0370:7334",
+  "description": "IPv6 test address",
+  "status": "reserved"
+}
+
+### 48. Create IP Address with All Valid Statuses
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "address": "192.168.1.106",
+  "status": "inactved"
+}
+
+### 49. Update IP Address - Add Multiple Relationships
+PUT {{baseUrl}}/{{apiVersion}}/ip-addresses/2
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "description": "Server with multiple relationships",
+  "tags": [1, 2, 3],
+  "contacts": [1, 2, 3],
+  "systems": [1, 2]
+}
+
+### 50. Create IP Address with Long Description
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "address": "192.168.1.107",
+  "description": "This is a very long description for an IP address that contains multiple sentences and explains in detail what the IP address is used for, which services run on it, and how it fits into the overall network architecture of the organization.",
+  "status": "assigned"
+}
+
+### 51. Update IP Address - Change Status from Reserved to Assigned
+PUT {{baseUrl}}/{{apiVersion}}/ip-addresses/3
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "status": "assigned",
+  "description": "Status changed from reserved to assigned"
+}
+
+### 52. Search with Special Characters
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?search=web%20server
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 53. Test Edge Case IP Addresses
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "address": "255.255.255.255",
+  "description": "Broadcast address",
+  "status": "reserved"
+}
+
+### 54. Test Network Address
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "address": "192.168.0.0",
+  "description": "Network address",
+  "status": "reserved"
+}
+
+### 55. Update IP Address - Clear All Optional Fields
+PUT {{baseUrl}}/{{apiVersion}}/ip-addresses/4
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "description": null,
+  "tags": [],
+  "contacts": [],
+  "systems": []
+}
+
+# ========================================
+# 🔍 COMPLEX SEARCH COMBINATIONS
+# ========================================
+
+### 56. Search + Filter + Pagination Combined
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?search=192.168&status=assigned&tags=1&page=1&pageSize=5
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 57. Multiple Filters with OR Logic (Multiple Tags)
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?tags=1&tags=2&tags=3
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 58. Multiple Filters with OR Logic (Multiple Contacts)
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?contacts=1&contacts=2&contacts=3
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 59. Multiple Filters with OR Logic (Multiple Systems)
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?systems=1&systems=2&systems=3
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 60. Empty Result Set Test
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?search=nonexistent&status=assigned&tags=99999
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+# ========================================
+# 🔍 RESPONSE STRUCTURE VERIFICATION
+# ========================================
+
+### 61. Verify Create Response Includes Relationships
+# @name verifyCreateResponse
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "address": "192.168.1.199",
+  "description": "Verify relationships in response",
+  "status": "assigned",
+  "tags": [1, 2],
+  "contacts": [1],
+  "systems": [1]
+}
+# Expected response should include:
+# - Basic IP fields (id, ip_address, description, status)
+# - tags array with full tag objects (id, name)
+# - contacts array with full contact objects (id, name, email, phone)
+# - systems array with full system objects (id, name, system_id)
+
+### 62. Verify Update Response Includes Relationships
+PUT {{baseUrl}}/{{apiVersion}}/ip-addresses/{{verifyCreateResponse.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "description": "Updated with new relationships",
+  "tags": [3, 4],
+  "contacts": [2, 3],
+  "systems": [2]
+}
+# Expected response should include updated relationships
+
+### 63. Verify Get By ID Response Structure
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses/{{verifyCreateResponse.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+# Response structure should be consistent across all endpoints
+
+### 64. Verify Find Response Structure
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses/find?address=192.168.1.199
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+# Find response should match create/update response structure
+
+# ========================================
+# ✅ IP ADDRESSES API TEST CHECKLIST
+# ========================================
+# 
+# BASIC CRUD OPERATIONS:
+# ⏳ GET /api/v1/ip-addresses (get all IP addresses)
+# ⏳ GET /api/v1/ip-addresses/:id (get IP address by ID)
+# ⏳ POST /api/v1/ip-addresses (create new IP address)
+# ⏳ PUT /api/v1/ip-addresses/:id (update IP address)
+# ⏳ DELETE /api/v1/ip-addresses/:id (delete IP address)
+#
+# SEARCH & FIND:
+# ⏳ GET /api/v1/ip-addresses/find?address=exact_ip (find by exact IP address)
+# ⏳ GET /api/v1/ip-addresses?search=text (search by IP or description)
+#
+# FILTERING CAPABILITIES:
+# ⏳ Filter by status (reserved, assigned, inactved)
+# ⏳ Filter by tags (array of tag IDs)
+# ⏳ Filter by contacts (array of contact IDs)
+# ⏳ Filter by systems (array of system IDs)
+# ⏳ Combined filters (status + tags + contacts + systems + search)
+#
+# PAGINATION:
+# ⏳ Page number control (page parameter)
+# ⏳ Page size control (pageSize parameter, default: 10)
+# ⏳ Pagination with filters
+#
+# API STRUCTURE NOTES:
+# ✅ Direct GET /api/v1/ip-addresses endpoint with advanced filtering
+# ✅ Find endpoint requires 'address' parameter (exact match)
+# ✅ Response uses data/total format
+# ✅ /find endpoint properly placed BEFORE /:id (no routing conflicts)
+# ✅ Complex relationships with tags, contacts, and systems
+#
+# FIELD VALIDATION:
+# ⏳ Required fields: address (unique, valid IP format)
+# ⏳ Optional fields: description, status, tags, contacts, systems
+# ⏳ Status enum: reserved, assigned, inactved
+# ⏳ Relationship validation (IDs must exist)
+# ⏳ Partial update support (only provided fields updated)
+#
+# ERROR HANDLING:
+# ⏳ 400 - Invalid data/missing address/invalid IP format/invalid status
+# ⏳ 400 - Invalid relationship IDs (tags, contacts, systems)
+# ⏳ 404 - IP address not found
+# ⏳ 500 - Internal server error
+#
+# RELATIONSHIP MANAGEMENT:
+# ⏳ Create with relationships (tags, contacts, systems)
+# ⏳ Update relationships (add/remove/clear)
+# ⏳ Filter by relationships
+# ⏳ Validate relationship IDs exist
+#
+# SPECIAL CASES:
+# ⏳ IPv4 and IPv6 address support
+# ⏳ Edge case IP addresses (0.0.0.0, 255.255.255.255)
+# ⏳ Status transitions (reserved → assigned → inactved)
+# ⏳ Search case sensitivity
+# ⏳ Empty result sets
+# ⏳ Complex filter combinations
+# ⏳ Pagination edge cases
+# ⏳ Null vs empty array handling for relationships
+#
+# UNIQUE FEATURES:
+# ⏳ Advanced filtering by multiple criteria
+# ⏳ Relationship-based filtering
+# ⏳ Full-text search in IP and description
+# ⏳ Comprehensive pagination support
+# ⏳ Status-based workflow management
+#
+# ========================================
+# 🚫 IP DELETION BLOCKING TESTS
+# ========================================
+
+### 41. Create IP for Server Assignment Test
+# @name createIpForServer
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "address": "192.168.100.50",
+  "description": "IP for server assignment test",
+  "status": "available"
+}
+
+### 42. Create IP for Device Assignment Test
+# @name createIpForDevice
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+{
+  "address": "192.168.100.51",
+  "description": "IP for device assignment test",
+  "status": "available"
+}
+
+### 43. Delete Available IP (Should succeed)
+DELETE {{baseUrl}}/{{apiVersion}}/ip-addresses/22
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 44. Try to Delete IP Assigned to Server (Should fail with 409)
+# First, assign IP to a server manually in database or UI
+# Then try to delete it - this should return 409 Conflict
+DELETE {{baseUrl}}/{{apiVersion}}/ip-addresses/1
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 45. Try to Delete IP Assigned to Device (Should fail with 409)
+# First, assign IP to a device manually in database or UI
+# Then try to delete it - this should return 409 Conflict
+DELETE {{baseUrl}}/{{apiVersion}}/ip-addresses/2
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+### 46. Try to Delete Non-existent IP (Should fail with 404)
+DELETE {{baseUrl}}/{{apiVersion}}/ip-addresses/99999
+Authorization: Bearer {{ipAuth.response.body.token}}
+
+# ========================================
+# 📝 IP DELETION BLOCKING TEST NOTES
+# ========================================
+#
+# NEW FEATURE: IP Deletion Blocking
+# ✅ Block deletion of IP addresses assigned to servers
+# ✅ Block deletion of IP addresses assigned to devices
+# ✅ Return 409 Conflict with descriptive error message
+# ✅ Allow deletion of unassigned IP addresses
+# ✅ Proper error handling (404 for not found, 409 for conflict)
+#
+# ERROR RESPONSES:
+# ✅ 409 - "Cannot delete IP address: it is assigned to server 'Server Name'"
+# ✅ 409 - "Cannot delete IP address: it is assigned to device 'Device Name'"
+# ✅ 409 - "Cannot delete IP address: it is assigned to server 'Server Name' and device 'Device Name'"
+# ✅ 404 - "IP address not found"
+# ✅ 204 - No Content (successful deletion)
+#
+# IMPLEMENTATION DETAILS:
+# ✅ Check server_id and device_id columns in ip_addresses table
+# ✅ Query related server and device names for error messages
+# ✅ Prevent deletion if either server_id OR device_id is not null
+# ✅ Use HTTP 409 Conflict status code for assignment conflicts
+# ✅ Maintain referential integrity and business rules
+#
+# TEST SCENARIOS:
+# ⏳ Delete available IP (should succeed)
+# ⏳ Delete IP assigned to server only (should fail)
+# ⏳ Delete IP assigned to device only (should fail)
+# ⏳ Delete IP assigned to both server and device (should fail)
+# ⏳ Delete non-existent IP (should return 404)
+# ⏳ Verify error message contains entity names
+#
+# ========================================

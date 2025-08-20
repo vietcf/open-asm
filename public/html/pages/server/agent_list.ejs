@@ -14,7 +14,7 @@
   <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/server/agent/list" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
     <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search Agent Name..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
     <select class="form-select form-select-sm me-2" name="page_size" onchange="this.form.submit()" style="width:90px;max-width:90px;">
-      <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+      <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
         <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
       <% }) %>
     </select>
@@ -22,7 +22,7 @@
   </form>
   <div class="row mb-3">
     <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
-      <% if (hasPermission && hasPermission(user, 'agent.create')) { %>
+      <% if (hasPermission('agent.create')) { %>
         <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAgentModal">
           <i class="bi bi-plus"></i> Add Agent
         </button>
@@ -53,14 +53,22 @@
                     <td><%= idx + 1 %></td>
                     <td><%= agent.name %></td>
                     <td><%= agent.version || '' %></td>
-                    <td><%= agent.description || '' %></td>
+                    <td>
+                      <% if (agent.description && agent.description.trim()) { %>
+                        <span title="<%= agent.description.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
+                          <%= agent.description.length > 60 ? agent.description.substring(0, 60) + '…' : agent.description %>
+                        </span>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
                     <td class="text-end align-middle">
                       <div class="d-inline-flex justify-content-center align-items-center gap-1">
                         <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#agentDetailModal-<%= agent.id %>"><i class="bi bi-eye"></i></a>
-                        <% if (hasPermission && hasPermission(user, 'agent.update')) { %>
+                        <% if (hasPermission('agent.update')) { %>
                           <button type="button" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#editAgentModal-<%= agent.id %>"><i class="bi bi-pencil"></i></button>
                         <% } %>
-                        <% if (hasPermission && hasPermission(user, 'agent.delete')) { %>
+                        <% if (hasPermission('agent.delete')) { %>
                           <form action="/server/agent/<%= agent.id %>/delete" method="POST" style="display:inline" onsubmit="return confirm('Are you sure you want to delete this agent?')">
                             <button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="bi bi-trash"></i></button>
                           </form>
@@ -92,7 +100,7 @@
                       </div>
                     </div>
                   </div>
-                  <% if (hasPermission && hasPermission(user, 'agent.update')) { %>
+                  <% if (hasPermission('agent.update')) { %>
                   <!-- Edit Agent Modal -->
                   <div class="modal fade" id="editAgentModal-<%= agent.id %>" tabindex="-1" aria-labelledby="editAgentModalLabel-<%= agent.id %>" aria-hidden="true">
                     <div class="modal-dialog">

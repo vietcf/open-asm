@@ -16,7 +16,7 @@
               <%= success %>
             </div>
           <% } %>
-          <form id="addDeviceForm" action="/device/device/add" method="POST">
+          <form id="addDeviceForm" action="/device/device" method="POST">
             <div class="mb-3">
               <label class="form-label">Device Type <span class="text-danger">*</span></label>
               <select id="device-type-select" name="device_type_id" class="form-select form-select-sm select2" required></select>
@@ -24,8 +24,8 @@
             <div class="mb-3">
               <label class="form-label">IP Address(es) <span class="text-danger">*</span></label>
               <div class="d-flex align-items-center gap-2">
-                <select id="ip-select" name="ip_addresses[]" class="form-select form-select-sm select2 flex-grow-1" multiple required></select>
-                <button type="button" class="btn btn-outline-success btn-sm" id="add-ip-btn" title="Add new IP"><i class="bi bi-plus-circle"></i> Add IP</button>
+                <select id="ip-select" name="ip_addresses[]" class="form-select form-select-sm select2 flex-grow-1 align-self-stretch" multiple required style="min-width:220px; min-height:38px;"></select>
+                <button type="button" class="btn btn-outline-success btn-sm align-self-stretch" id="add-ip-btn" title="Add new IP" style="min-width:110px; min-height:38px; white-space:nowrap;"><i class="bi bi-plus-circle"></i> Add IP</button>
               </div>
               <div id="ipNotFoundMsg" class="form-text text-danger mt-1" style="display:none;">No IP found, please click <b>Add IP</b> to create a new one.</div>
             </div>
@@ -41,9 +41,9 @@
               <label class="form-label">Location</label>
               <select name="location" class="form-select form-select-sm">
                 <option value="">-- Select location --</option>
-                <% if (locationOptions) { Object.keys(locationOptions).forEach(function(key) { %>
-                  <option value="<%= key %>"><%= locationOptions[key] %></option>
-                <% }); } %>
+                <% if (locationOptions && Array.isArray(locationOptions)) { locationOptions.forEach(function(opt) { %>
+                  <option value="<%= opt.value %>"><%= opt.label %></option>
+                <% }) } %>
               </select>
             </div>
             <div class="mb-3">
@@ -80,10 +80,10 @@
     </div>
   </div>
 </div>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/jquery-3.6.0.min.js"></script>
+<link href="/css/select2.min.css" rel="stylesheet" />
+<script src="/js/select2.min.js"></script>
+<script src="/js/bootstrap.bundle.min.js"></script>
 <script>
   $(function() {
     $('#ip-select').select2({

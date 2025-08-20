@@ -7,4 +7,4 @@ function requireLogin(req, res, next) {
   res.redirect('/login');
 }
 
-module.exports = requireLogin;
+export default requireLogin;

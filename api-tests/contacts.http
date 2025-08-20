@@ -1,0 +1,298 @@
+# ========================================
+# 👥 CONTACTS API TESTS (MINIMAL)
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+# Environment: development (change in VS Code status bar)
+# ========================================
+
+### 0. Login to get JWT Token (Run this first!)
+# @name contactAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+# ========================================
+# 📋 BASIC CONTACT CRUD OPERATIONS
+# ========================================
+
+### 1. Get All Contacts (via Search without query)
+GET {{baseUrl}}/{{apiVersion}}/contacts/search?page=1&pageSize=20
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+### 2. Get Contact by ID
+GET {{baseUrl}}/{{apiVersion}}/contacts/768
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+### 3. Create New Contact
+# @name createContact
+POST {{baseUrl}}/{{apiVersion}}/contacts
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+{
+  "name": "Test Contact",
+  "email": "test.contact@example.com",
+  "phone": "0123456789",
+  "position": "STAFF",
+  "unit_id": 1,
+  "description": "Test contact for API testing"
+}
+
+### 4. Update Contact (Complete Update)
+PUT {{baseUrl}}/{{apiVersion}}/contacts/{{createContact.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+{
+  "name": "Test Contact Updated",
+  "email": "test.contact.updated@example.com",
+  "phone": "0987654321",
+  "position": "MANAGER",
+  "unit_id": 2,
+  "description": "Updated test contact"
+}
+
+### 5. Update Contact (Name Only)
+PUT {{baseUrl}}/{{apiVersion}}/contacts/{{createContact.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+{
+  "name": "Test Contact Name Only"
+}
+
+### 6. Update Contact (Email Only)
+PUT {{baseUrl}}/{{apiVersion}}/contacts/{{createContact.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+{
+  "email": "test.email.only@example.com"
+}
+
+### 7. Update Contact (Phone Only)
+PUT {{baseUrl}}/{{apiVersion}}/contacts/{{createContact.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+{
+  "phone": "0111222333"
+}
+
+### 8. Update Contact (Position Only)
+PUT {{baseUrl}}/{{apiVersion}}/contacts/{{createContact.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+{
+  "position": "MANAGER"
+}
+
+### 9. Delete Contact
+DELETE {{baseUrl}}/{{apiVersion}}/contacts/{{createContact.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+# ========================================
+# 🔍 SEARCH & FIND OPERATIONS
+# ========================================
+
+### 10. Search Contacts with Pagination
+GET {{baseUrl}}/{{apiVersion}}/contacts/search?query=Toan&page=1&pageSize=5
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+### 11. Search Contacts by Name
+GET {{baseUrl}}/{{apiVersion}}/contacts/search?query=toannn1.ho
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+### 12. Search Contacts by Email
+GET {{baseUrl}}/{{apiVersion}}/contacts/search?query=toannn1.ho@vietcombank.com.vn
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+### 13. Find Contact by Email
+GET {{baseUrl}}/{{apiVersion}}/contacts/find?email=toannn1.ho@vietcombank.com.vn
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+### 14. Find Contact by Email Prefix
+GET {{baseUrl}}/{{apiVersion}}/contacts/find?email=toannn1.ho
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+# ========================================
+# ❌ ERROR HANDLING TESTS
+# ========================================
+
+### 15. Get Non-existent Contact (404)
+GET {{baseUrl}}/{{apiVersion}}/contacts/99999
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+### 16. Search without Query Parameter (Required according to Swagger)
+GET {{baseUrl}}/{{apiVersion}}/contacts/search
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+### 17. Find without Email Parameter (400)
+GET {{baseUrl}}/{{apiVersion}}/contacts/find
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+### 18. Find with Empty Email (400)
+GET {{baseUrl}}/{{apiVersion}}/contacts/find?email=
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+### 19. Create Contact with Invalid Data (400)
+POST {{baseUrl}}/{{apiVersion}}/contacts
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+{
+  "phone": "0123456789",
+  "description": "Missing required name and email fields"
+}
+
+### 20. Create Contact with Empty Name (400)
+POST {{baseUrl}}/{{apiVersion}}/contacts
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+{
+  "name": "",
+  "email": "empty.name@example.com",
+  "description": "Empty name should fail"
+}
+
+### 21. Create Contact with Empty Email (400)
+POST {{baseUrl}}/{{apiVersion}}/contacts
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+{
+  "name": "Test Contact",
+  "email": "",
+  "description": "Empty email should fail"
+}
+
+### 22. Create Contact with Invalid Email Format (400)
+POST {{baseUrl}}/{{apiVersion}}/contacts
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+{
+  "name": "Test Contact",
+  "email": "invalid-email-format",
+  "description": "Invalid email format"
+}
+
+### 23. Create Contact with Invalid Position (400)
+POST {{baseUrl}}/{{apiVersion}}/contacts
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+{
+  "name": "Test Contact",
+  "email": "test@example.com",
+  "position": "INVALID_POSITION",
+  "description": "Invalid position value"
+}
+
+### 24. Create Contact with Duplicate Email (409)
+POST {{baseUrl}}/{{apiVersion}}/contacts
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+{
+  "name": "Duplicate Contact",
+  "email": "admin@example.com",
+  "description": "Duplicate email test"
+}
+
+### 25. Update Non-existent Contact (404)
+PUT {{baseUrl}}/{{apiVersion}}/contacts/99999
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+{
+  "name": "non-existent-contact"
+}
+
+### 26. Update Contact with Duplicate Email (409)
+PUT {{baseUrl}}/{{apiVersion}}/contacts/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+{
+  "email": "admin@example.com"
+}
+
+### 27. Delete Non-existent Contact (404)
+DELETE {{baseUrl}}/{{apiVersion}}/contacts/99999
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+# ========================================
+# ✅ BASIC CONTACTS API TEST CHECKLIST 
+# ========================================
+# 
+# BASIC CRUD OPERATIONS:
+# ⏳ GET /api/v1/contacts/search (list all via search - NO direct /contacts endpoint)
+# ⏳ GET /api/v1/contacts/:id (get contact by ID)
+# ⏳ POST /api/v1/contacts (create new contact)
+# ⏳ PUT /api/v1/contacts/:id (update contact)
+# ⏳ DELETE /api/v1/contacts/:id (delete contact)
+#
+# SEARCH & FIND:
+# ⏳ GET /api/v1/contacts/search?query=keyword (search contacts - REQUIRED param)
+# ⏳ GET /api/v1/contacts/find?email=email (find by email/prefix)
+#
+# API STRUCTURE NOTES:
+# ❗ NO direct GET /api/v1/contacts endpoint exists
+# ❗ Search endpoint requires 'query' parameter (not optional)
+# ❗ Response uses 'results' array (not 'data')
+# ❗ Create response returns direct object (not wrapped in 'data')
+#
+# FIELD VALIDATION:
+# ⏳ Required fields: name, email
+# ⏳ Optional fields: phone, position, unit_id, description
+# ⏳ Position enum: MANAGER, STAFF
+# ⏳ Email format validation
+# ⏳ Unique email constraint
+#
+# ERROR HANDLING:
+# ⏳ 400 - Invalid data/missing fields
+# ⏳ 404 - Contact not found
+# ⏳ 409 - Duplicate email/conflict
+#
+# PARTIAL UPDATE TESTS:
+# ⏳ Update name only
+# ⏳ Update email only
+# ⏳ Update phone only
+# ⏳ Update position only
+#
+# ========================================

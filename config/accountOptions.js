@@ -1,5 +1,5 @@
 // config/accountOptions.js
-module.exports = {
+const accountOptions = {
   accountTypes: [
     { value: 'OS', label: 'Operating System (OS)' },
     { value: 'APP', label: 'Application (APP)' },
@@ -11,3 +11,5 @@ module.exports = {
     { value: 'ENVELOPE', label: 'Envelope method' }
   ]
 };
+
+export default accountOptions;

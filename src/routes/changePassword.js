@@ -1,12 +1,12 @@
-const express = require('express');
+import express from 'express';
+import changePasswordController from '../controllers/changePasswordController.js';
+
 const router = express.Router();
-const changePasswordController = require('../controllers/changePasswordController');
-const requireLogin = require('../middlewares/requireLogin');
-const require2fa = require('../middlewares/require2fa');
 
-// Show change password form
-router.get('/change-password', requireLogin, require2fa, changePasswordController.getChangePassword);
-// Handle change password submission
-router.post('/change-password', requireLogin, require2fa, changePasswordController.postChangePassword);
+// GET /change-password - Show change password form
+router.get('/', changePasswordController.getChangePassword);
 
-module.exports = router;
+// POST /change-password - Process password change
+router.post('/', changePasswordController.postChangePassword);
+
+export default router;

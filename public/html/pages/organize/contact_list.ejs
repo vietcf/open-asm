@@ -2,7 +2,7 @@
   <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/organize/contact" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
     <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search name, email..." aria-label="Search" value="<%= search %>">
     <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
-      <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+      <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
         <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
       <% }) %>
     </select>
@@ -10,7 +10,7 @@
   </form>
   <div class="row mb-3">
     <div class="col-12 d-flex justify-content-end align-items-center position-relative">
-      <% if (hasPermission && hasPermission(user, 'contact.create')) { %>
+      <% if (hasPermission('contact.create')) { %>
         <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addContactModal">
           <i class="bi bi-plus"></i> Add Contact
         </button>
@@ -50,9 +50,13 @@
                   <div class="mb-3">
                     <label class="form-label">Position <span class="text-danger">*</span></label>
                     <select name="position" class="form-select form-select-sm" required>
-                      <option value="Manager">Manager</option>
-                      <option value="Staff" selected>Staff</option>
+                      <option value="MANAGER">MANAGER</option>
+                      <option value="STAFF" selected>STAFF</option>
                     </select>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea name="description" class="form-control form-control-sm" rows="2"></textarea>
                   </div>
                 </div>
                 <div class="modal-footer">
@@ -108,18 +112,58 @@
                     <td><%= c.unit_name || '' %></td>
                     <td><%= c.position %></td>
                     <td class="text-end">
-                      <% if (hasPermission && hasPermission(user, 'contact.update')) { %>
+                      <button class="btn btn-info btn-sm me-1" title="Show Detail" data-bs-toggle="modal" data-bs-target="#showContactModal-<%= c.id %>"><i class="bi bi-eye"></i></button>
+                      <% if (hasPermission('contact.update')) { %>
                         <button class="btn btn-warning btn-sm me-1" title="Edit" data-bs-toggle="modal" data-bs-target="#editContactModal-<%= c.id %>"><i class="bi bi-pencil"></i></button>
                       <% } %>
-                      <% if (hasPermission && hasPermission(user, 'contact.delete')) { %>
+                      <% if (hasPermission('contact.delete')) { %>
                         <form action="/organize/contact/<%= c.id %>?_method=DELETE" method="POST" style="display:inline;">
                           <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure?')"><i class="bi bi-trash"></i></button>
                         </form>
                       <% } %>
                     </td>
                   </tr>
+                  <!-- Show Contact Detail Modal -->
+                  <div class="modal fade" id="showContactModal-<%= c.id %>" data-phone="<%= c.phone || '' %>" tabindex="-1" aria-labelledby="showContactModalLabel-<%= c.id %>" aria-hidden="true">
+                    <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="showContactModalLabel-<%= c.id %>">Contact Detail</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <dl class="row mb-0">
+                            <dt class="col-sm-4">ID</dt>
+                            <dd class="col-sm-8"><%= c.id %></dd>
+                            <dt class="col-sm-4">Name</dt>
+                            <dd class="col-sm-8"><%= c.name %></dd>
+                            <dt class="col-sm-4">Email</dt>
+                            <dd class="col-sm-8"><%= c.email %></dd>
+                            <dt class="col-sm-4">Phone</dt>
+                            <dd class="col-sm-8"><%= c.phone %></dd>
+                            <dt class="col-sm-4">Org Unit</dt>
+                            <dd class="col-sm-8"><%= c.unit_name || '' %></dd>
+                            <dt class="col-sm-4">Position</dt>
+                            <dd class="col-sm-8"><%= c.position %></dd>
+                            <dt class="col-sm-4">Description</dt>
+                            <dd class="col-sm-8">
+                              <% if (c.description && c.description.trim()) { %>
+                                <div style="white-space: pre-wrap; word-wrap: break-word;"><%= c.description %></div>
+                              <% } else { %>
+                                <span class="text-muted">No description</span>
+                              <% } %>
+                            </dd>
+                          </dl>
+                          <div class="text-center mt-3 contact-image-placeholder" id="contact-image-<%= c.id %>"></div>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                   <!-- Edit Contact Modal -->
-                  <% if (hasPermission && hasPermission(user, 'contact.update')) { %>
+                  <% if (hasPermission('contact.update')) { %>
                   <div class="modal fade" id="editContactModal-<%= c.id %>" tabindex="-1" aria-labelledby="editContactModalLabel-<%= c.id %>" aria-hidden="true">
                     <div class="modal-dialog">
                       <div class="modal-content">
@@ -144,9 +188,13 @@
                             <div class="mb-3">
                               <label class="form-label">Position</label>
                               <select name="position" class="form-select form-select-sm" required>
-                                <option value="Manager" <%= c.position === 'Manager' ? 'selected' : '' %>>Manager</option>
-                                <option value="Staff" <%= c.position === 'Staff' ? 'selected' : '' %>>Staff</option>
+                                <option value="MANAGER" <%= c.position === 'MANAGER' ? 'selected' : '' %>>MANAGER</option>
+                                <option value="STAFF" <%= c.position === 'STAFF' ? 'selected' : '' %>>STAFF</option>
                               </select>
+                            </div>
+                            <div class="mb-3">
+                              <label class="form-label">Description</label>
+                              <textarea name="description" class="form-control form-control-sm" rows="2"><%= c.description || '' %></textarea>
                             </div>
                           </div>
                           <div class="modal-footer">
@@ -214,61 +262,43 @@
   </div>
 </div>
 <script>
-// Validate Contact Add/Edit Form
-function validateContactForm(form) {
-  var nameInput = form.querySelector('[name="name"]');
-  var emailInput = form.querySelector('[name="email"]');
-  var positionInput = form.querySelector('[name="position"]');
-  var valid = true;
-  // Trim values
-  if (nameInput) nameInput.value = nameInput.value.trim();
-  if (emailInput) emailInput.value = emailInput.value.trim();
-  if (positionInput) positionInput.value = positionInput.value.trim();
-  // Validate Name
-  if (!nameInput.value) {
-    nameInput.classList.add('is-invalid');
-    valid = false;
-  } else {
-    nameInput.classList.remove('is-invalid');
-  }
-  // Validate Email
-  if (!emailInput.value) {
-    emailInput.classList.add('is-invalid');
-    valid = false;
-  } else {
-    emailInput.classList.remove('is-invalid');
-  }
-  // Validate Position
-  if (!positionInput.value) {
-    positionInput.classList.add('is-invalid');
-    valid = false;
-  } else {
-    positionInput.classList.remove('is-invalid');
-  }
-  // Show error toast if invalid
-  if (!valid) {
-    if (typeof showToast === 'function') {
-      showToast('Please fill in all required fields (Name, Email, Position).', 'danger');
-    } else {
-      alert('Please fill in all required fields (Name, Email, Position).');
-    }
-  }
-  return valid;
-}
-// Attach validateContactForm to all add/edit contact forms
-window.addEventListener('DOMContentLoaded', function() {
-  // Add Contact Modal
-  var addForm = document.querySelector('#addContactModal form');
-  if (addForm) {
-    addForm.onsubmit = function(e) {
-      if (!validateContactForm(this)) e.preventDefault();
-    };
-  }
-  // Edit Contact Modals
-  document.querySelectorAll('[id^="editContactModal-"] form').forEach(function(form) {
-    form.onsubmit = function(e) {
-      if (!validateContactForm(this)) e.preventDefault();
-    };
+(function() {
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[id^="showContactModal-"]').forEach(function(modalEl) {
+      modalEl.addEventListener('show.bs.modal', function (event) {
+        var contactId = this.id.replace('showContactModal-', '');
+        var imgDiv = document.getElementById('contact-image-' + contactId);
+        if (!imgDiv) return;
+        
+        // Get contact phone from data attribute
+        var phoneValue = this.getAttribute('data-phone') || '';
+        
+        // Only show QR if contact has phone number
+        if (!phoneValue || phoneValue.trim() === '') {
+          imgDiv.innerHTML = '';
+          return;
+        }
+        
+        imgDiv.innerHTML = '<div class="spinner-border text-secondary" role="status" style="width:2rem;height:2rem;"></div>';
+        fetch('/organize/api/contact/' + contactId + '/qrcode')
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            if (data && data.image && data.mime) {
+              imgDiv.innerHTML = '<img src="data:' + data.mime + ';base64,' + data.image + '" alt="QR vCard" class="img-thumbnail" style="max-width:180px;max-height:180px;">' +
+                '<div class="small text-muted mt-2">Scan to save to phone contacts</div>';
+            } else {
+              imgDiv.innerHTML = '<div class="text-danger small">Unable to generate QR code</div>';
+            }
+          })
+          .catch(function() { imgDiv.innerHTML = '<div class="text-danger small">Unable to generate QR code</div>'; });
+      });
+      // Clear QR when modal is hidden
+      modalEl.addEventListener('hidden.bs.modal', function() {
+        var contactId = this.id.replace('showContactModal-', '');
+        var imgDiv = document.getElementById('contact-image-' + contactId);
+        if (imgDiv) imgDiv.innerHTML = '';
+      });
+    });
   });
-});
+})();
 </script>

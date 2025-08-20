@@ -1,5 +1,5 @@
 // Migration for creating the `systems` table and related many-to-many relationship tables
-module.exports = async (db) => {
+export default async (db) => {
   // Create the `systems` table
   await db.query(`
     CREATE TABLE IF NOT EXISTS systems (

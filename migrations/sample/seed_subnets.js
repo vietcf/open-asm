@@ -1,7 +1,5 @@
 // Seed data for subnets table
-const { pool } = require('../config/config');
-
-async function seedSubnets() {
+export default async (pool) => {
   await pool.query(`
     INSERT INTO subnets (address, description) VALUES
       ('192.168.1.0/24', 'Office LAN'),
@@ -12,10 +10,4 @@ async function seedSubnets() {
     ON CONFLICT (address) DO NOTHING;
   `);
   console.log('Seeded subnets table');
-}
-
-if (require.main === module) {
-  seedSubnets().then(() => process.exit(0)).catch(err => { console.error(err); process.exit(1); });
-}
-
-module.exports = seedSubnets;
+};

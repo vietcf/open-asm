@@ -1,7 +1,6 @@
-module.exports = async (pool) => {
+export default async (pool) => {
   await pool.query(`
-    DROP TABLE IF EXISTS configuration;
-    CREATE TABLE configuration (
+    CREATE TABLE IF NOT EXISTS configuration (
       id SERIAL PRIMARY KEY,
       key VARCHAR(100) NOT NULL UNIQUE,
       value TEXT,

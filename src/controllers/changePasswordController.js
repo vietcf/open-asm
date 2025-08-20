@@ -1,30 +1,20 @@
-const bcrypt = require('bcrypt');
-const User = require('../models/User');
+import bcrypt from 'bcrypt';
+import User from '../models/User.js';
+
+const changePasswordController = {};
 
 // GET change password page
-exports.getChangePassword = (req, res) => {
-  res.render('layouts/layout', {
-    cssPath: req.app.get('cssPath') || '/css/',
-    jsPath: req.app.get('jsPath') || '/js/',
-    imgPath: req.app.get('imgPath') || '/images/',
+changePasswordController.getChangePassword = (req, res) => {
+  res.render('pages/change_password', {
+    error: null,
+    success: null,
     title: 'Change Password',
-    user: req.session.user,
-    body: require('ejs').render(
-      require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/change_password.ejs'), 'utf8'),
-      {
-        error: null,
-        success: null,
-        user: req.session.user
-      }
-    ),
-    activeMenu: '', // Fix for sidebar.ejs expecting activeMenu
-    permissions: req.session.permissions || [], // Fix for sidebar.ejs expecting permissions
-    siteName: typeof req.app.locals.siteName !== 'undefined' ? req.app.locals.siteName : ''
+    activeMenu: '' // Fix for sidebar.ejs expecting activeMenu
   });
 };
 
 // POST change password
-exports.postChangePassword = async (req, res) => {
+changePasswordController.postChangePassword = async (req, res) => {
   const userId = req.session.user && req.session.user.id;
   if (!userId) {
     return res.redirect('/login');
@@ -77,22 +67,12 @@ exports.postChangePassword = async (req, res) => {
       error = 'An error occurred. Please try again.';
     }
   }
-  res.render('layouts/layout', {
-    cssPath: req.app.get('cssPath') || '/css/',
-    jsPath: req.app.get('jsPath') || '/js/',
-    imgPath: req.app.get('imgPath') || '/images/',
+  res.render('pages/change_password', {
+    error,
+    success,
     title: 'Change Password',
-    user: req.session.user,
-    body: require('ejs').render(
-      require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/change_password.ejs'), 'utf8'),
-      {
-        error,
-        success,
-        user: req.session.user
-      }
-    ),
-    activeMenu: '', // Fix for sidebar.ejs expecting activeMenu
-    permissions: req.session.permissions || [], // Fix for sidebar.ejs expecting permissions
-    siteName: typeof req.app.locals.siteName !== 'undefined' ? req.app.locals.siteName : ''
+    activeMenu: '' // Fix for sidebar.ejs expecting activeMenu
   });
 };
+
+export default changePasswordController;

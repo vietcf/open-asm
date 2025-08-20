@@ -1,7 +1,7 @@
 // migrations/init_data.js
 // Khởi tạo dữ liệu mẫu cho user, permission, role, configure
-const { pool } = require('../config/config');
-const bcrypt = require('bcrypt');
+import { pool } from '../config/config.js';
+import bcrypt from 'bcrypt';
 
 async function seedUsers(pool) {
   // Lấy id của role superadmin

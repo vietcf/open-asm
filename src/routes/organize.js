@@ -1,71 +1,32 @@
-const express = require('express');
-const path = require('path');
-const fs = require('fs');
-const ejs = require('ejs');
-const config = require('../../config/config');
-const organizeController = require('../controllers/organizeController');
-const checkPermission = require('../middlewares/checkPermission');
-const requireLogin = require('../middlewares/requireLogin');
-const require2fa = require('../middlewares/require2fa');
+import express from 'express';
+import organizeController from '../controllers/organizeController.js';
+import requirePermission from '../middlewares/requirePermission.middleware.js';
 
 const router = express.Router();
 
+// Contact Management
+router.get('/contact', requirePermission('contact.read'), organizeController.contactList);
+router.post('/contact', requirePermission('contact.create'), organizeController.createContact);
+router.put('/contact/:id', requirePermission('contact.update'), organizeController.updateContact);
+router.delete('/contact/:id', requirePermission('contact.delete'), organizeController.deleteContact);
 
-// ====== CONTAC MENU ======
-// Contact List page
-router.get('/contact', checkPermission('read', 'contact'), organizeController.contactList);
-// Create a new contact
-router.post('/contact', checkPermission('create', 'contact'), organizeController.createContact);
-// Update an existing contact
-router.put('/contact/:id', checkPermission('update', 'contact'), organizeController.updateContact);
-// Delete a contact
-router.delete('/contact/:id', checkPermission('delete', 'contact'), organizeController.deleteContact);
+// Organization Unit Management
+router.get('/unit', requirePermission('unit.read'), organizeController.unitList);
+router.post('/unit', requirePermission('unit.create'), organizeController.createUnit);
+router.put('/unit/:id', requirePermission('unit.update'), organizeController.updateUnit);
+router.delete('/unit/:id', requirePermission('unit.delete'), organizeController.deleteUnit);
 
-
-
-// ====== UNIT MENU ======
-// Organization Unit List page
-router.get('/unit', checkPermission('read', 'unit'), organizeController.unitList);
-// Create a new unit
-router.post('/unit', checkPermission('create', 'unit'), organizeController.createUnit);
-// Update an existing unit
-router.put('/unit/:id', checkPermission('update', 'unit'), organizeController.updateUnit);
-// Delete a unit
-router.delete('/unit/:id', checkPermission('delete', 'unit'), organizeController.deleteUnit);
-
-
-// ====== TAG MENU ======
-// Tag List page
-router.get('/tag', requireLogin, require2fa, checkPermission('read', 'tag'), organizeController.tagList);
-// Create a new tag
-router.post('/tag', checkPermission('create', 'tag'), organizeController.createTag);
-// Update an existing tag
-router.put('/tag/:id', checkPermission('update', 'tag'), organizeController.updateTag);
-// Delete a tag
-router.delete('/tag/:id', checkPermission('delete', 'tag'), organizeController.deleteTag);
+// Tag Management
+router.get('/tag', requirePermission('tag.read'), organizeController.tagList);
+router.post('/tag', requirePermission('tag.create'), organizeController.createTag);
+router.put('/tag/:id', requirePermission('tag.update'), organizeController.updateTag);
+router.delete('/tag/:id', requirePermission('tag.delete'), organizeController.deleteTag);
 
 // ====== API AJAX SEARCH ======
-
-// API: Contact search for select2 ajax (manager dropdown)
-// AJAX API for select2 Contacts dropdown in Privileged Account List
-// Used by /public/html/pages/privilege/priv_account_list.ejs
-// Example request: /organize/api/contact?search=abc
-// (Ensure this returns [{id, text}] for select2)
 router.get('/api/contact', organizeController.apiContactSearch);
-
-// API: Tag search for select2 ajax (used in system add/edit, ip address add/edit, server add/edit)
-// Permissions to access this API:
-// - tag.read: View tag list (e.g. for read-only or tag selection screens)
-// - system.create, system.update: When creating/updating a system, tags can be selected
-// - ip_address.create, ip_address.update: When creating/updating an IP address, tags can be selected
-// - server.create, server.update: When creating/updating a server, tags can be selected
 router.get('/api/tag',organizeController.apiTagSearch);
-
-// API: Unit search for select2 ajax (used in contact add/edit)
-// AJAX API for select2 Organize (unit) dropdown in Privileged Account List
-// Used by /public/html/pages/privilege/priv_account_list.ejs
-// Example request: /organize/api/unit?search=abc
-// (Ensure this returns [{id, text}] for select2)
 router.get('/api/unit', organizeController.apiUnitSearch);
+router.get('/api/contact/:id/qrcode', organizeController.apiContactQrVcard);
 
-module.exports = router;
+
+export default router;

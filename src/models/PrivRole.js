@@ -1,7 +1,60 @@
-// filepath: src/models/PrivRole.js
-const { pool } = require('../../config/config');
+import { pool } from '../../config/config.js';
 
+/**
+ * PrivRole Model - handles all database operations for privileged roles and their relationships.
+ * Naming convention: All methods use get/set prefix for clarity and consistency.
+ */
 class PrivRole {
+  /**
+   * List roles with optional search, system_id filter, pagination, and system join.
+   * Returns: { roles: [...], totalCount, totalPages }
+   */
+  static async findFilteredList({ search = '', system_id = '', page = 1, pageSize = 10 }) {
+    let where = [];
+    let params = [];
+    let idx = 1;
+    if (search) {
+      where.push(`(r.name ILIKE $${idx} OR r.description ILIKE $${idx})`);
+      params.push(`%${search}%`);
+      idx++;
+    }
+    if (system_id) {
+      where.push(`r.system_id = $${idx}`);
+      params.push(system_id);
+      idx++;
+    }
+    const whereClause = where.length ? ('WHERE ' + where.join(' AND ')) : '';
+    params.push(pageSize, (page - 1) * pageSize);
+    const pageRes = await pool.query(
+      `SELECT r.*, s.id as system_id, s.name as system_name FROM priv_roles r LEFT JOIN systems s ON r.system_id = s.id ${whereClause} ORDER BY r.id LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
+    );
+    const roles = pageRes.rows.map(row => ({
+      ...row,
+      system: row.system_id ? { id: row.system_id, name: row.system_name } : null
+    }));
+    return roles;
+  }
+
+  static async countFilteredList({ search = '', system_id = '' }) {
+    let where = [];
+    let params = [];
+    let idx = 1;
+    if (search) {
+      where.push(`(r.name ILIKE $${idx} OR r.description ILIKE $${idx})`);
+      params.push(`%${search}%`);
+      idx++;
+    }
+    if (system_id) {
+      where.push(`r.system_id = $${idx}`);
+      params.push(system_id);
+      idx++;
+    }
+    const whereClause = where.length ? ('WHERE ' + where.join(' AND ')) : '';
+    const countRes = await pool.query(`SELECT COUNT(*) FROM priv_roles r ${whereClause}`, params);
+    return parseInt(countRes.rows[0].count, 10);
+  }
+  // ===== CRUD METHODS =====
   static async findAll() {
     const res = await pool.query(`
       SELECT r.*, s.id as system_id, s.name as system_name
@@ -36,7 +89,6 @@ class PrivRole {
       );
       return res.rows[0];
     } catch (err) {
-      // Unique constraint violation for (name, system_id)
       if (err.code === '23505') {
         throw new Error('A role with this name already exists for the selected system. Please choose a different name or system.');
       }
@@ -50,11 +102,10 @@ class PrivRole {
     );
     return res.rows[0];
   }
-  static async delete(id) {
+  static async remove(id) {
     await pool.query('DELETE FROM priv_roles WHERE id = $1', [id]);
   }
-  // Search roles by name or description, with pagination
-  static async searchPage(search, page = 1, pageSize = 10) {
+  static async findFilteredPage(search, page = 1, pageSize = 10) {
     const offset = (page - 1) * pageSize;
     const q = `%${search}%`;
     const res = await pool.query(`
@@ -70,8 +121,7 @@ class PrivRole {
       system: row.system_id ? { id: row.system_id, name: row.system_name } : null
     }));
   }
-  // Count total roles matching the search keyword (name or description)
-  static async searchCount(search) {
+  static async countFiltered(search) {
     const q = `%${search}%`;
     const res = await pool.query(
       `SELECT COUNT(*) FROM priv_roles
@@ -80,10 +130,8 @@ class PrivRole {
     );
     return parseInt(res.rows[0].count, 10);
   }
-  // Search roles for select2 (by name or description, no pagination, limit 30)
-  static async apiSystemSearch(search, system_ids) {
+  static async findForSystemSelect2(search, system_ids) {
     const q = `%${search}%`;
-    // Lọc bỏ các giá trị rỗng/thừa
     if (Array.isArray(system_ids)) {
       system_ids = system_ids.filter(x => x !== undefined && x !== null && x !== '');
     }
@@ -93,24 +141,25 @@ class PrivRole {
       sql += ' AND system_id = ANY($2)';
       params.push(system_ids);
     } else {
-      // Nếu không có system hợp lệ, trả về []
       return [];
     }
     sql += ' ORDER BY name ASC LIMIT 30';
     const res = await pool.query(sql, params);
     return res.rows;
   }
-  // Get all permissions for a role
-  static async getPermissions(roleId) {
+  static async findPermissions(roleId) {
     const res = await pool.query(
       `SELECT p.* FROM priv_role_permissions rp JOIN priv_permissions p ON rp.permission_id = p.id WHERE rp.role_id = $1 ORDER BY p.name`,
       [roleId]
     );
     return res.rows;
   }
-
-  // Update permissions for a role (delete old, insert new)
-  static async updatePermissions(roleId, permissionIds) {
+  // ===== COMPATIBILITY SHIM =====
+  static async getPermissions(roleId) {
+    // For legacy compatibility: alias for findPermissions
+    return this.findPermissions(roleId);
+  }
+  static async setPermissions(roleId, permissionIds) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -126,10 +175,8 @@ class PrivRole {
       client.release();
     }
   }
-  // Find roles by system_ids (array)
   static async findBySystemIds(system_ids) {
     if (!Array.isArray(system_ids) || !system_ids.length) return [];
-    // Lọc bỏ các giá trị rỗng/thừa và ép kiểu về số nguyên
     system_ids = system_ids
       .filter(x => x !== undefined && x !== null && x !== '')
       .map(x => Number(x))
@@ -143,4 +190,4 @@ class PrivRole {
   }
 }
 
-module.exports = PrivRole;
+export default PrivRole;

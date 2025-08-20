@@ -1,4 +1,4 @@
-module.exports = async (pool) => {
+export default async (pool) => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS system_log (
       id SERIAL PRIMARY KEY,

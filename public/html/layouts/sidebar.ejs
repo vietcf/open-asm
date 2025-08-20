@@ -12,7 +12,7 @@
       <% function isMenuOpen(keys) { return keys.includes(activeMenu); } %>
       <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu" data-accordion="false">
         <!-- System Management -->
-        <% if (permissions.includes('system.read')) { %>
+        <% if (hasPermission('system.read')) { %>
         <li class="nav-item<%= isMenuOpen(['system']) ? ' menu-open' : '' %>">
           <a href="#" class="nav-link">
             <i class="nav-icon bi bi-list-ul"></i>
@@ -32,7 +32,7 @@
         </li>
         <% } %>
         <!-- Network -->
-        <% if (permissions.includes('ip_address.read') || permissions.includes('subnet.read') || permissions.includes('domain.read')) { %>
+        <% if (hasPermission('ip_address.read') || hasPermission('subnet.read') || hasPermission('domain.read')) { %>
         <li class="nav-item<%= isMenuOpen(['ip-address', 'subnet-address', 'domain']) ? ' menu-open' : '' %>">
           <a href="#" class="nav-link">
             <i class="nav-icon bi bi-diagram-3"></i>
@@ -42,7 +42,7 @@
             </p>
           </a>
           <ul class="nav nav-treeview"<%= isMenuOpen(['ip-address', 'subnet-address', 'domain']) ? ' style="display: block;"' : '' %>>
-            <% if (permissions.includes('ip_address.read')) { %>
+            <% if (hasPermission('ip_address.read')) { %>
             <li class="nav-item">
               <a href="/network/ip-address" class="nav-link<%= (activeMenu === 'ip-address') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle"></i>
@@ -50,7 +50,7 @@
               </a>
             </li>
             <% } %>
-            <% if (permissions.includes('subnet.read')) { %>
+            <% if (hasPermission('subnet.read')) { %>
             <li class="nav-item">
               <a href="/network/subnet-address" class="nav-link<%= (activeMenu === 'subnet-address') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle"></i>
@@ -58,7 +58,7 @@
               </a>
             </li>
             <% } %>
-            <% if (permissions.includes('domain.read')) { %>
+            <% if (hasPermission('domain.read')) { %>
             <li class="nav-item">
               <a href="/network/domain" class="nav-link<%= (activeMenu === 'domain') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle"></i>
@@ -70,7 +70,7 @@
         </li>
         <% } %>
         <!-- Server -->
-        <% if (permissions.includes('server.read')) { %>
+        <% if (hasPermission('server.read') || hasPermission('service.read') || hasPermission('agent.read')) { %>
         <li class="nav-item<%= isMenuOpen(['server-list', 'service', 'agent']) ? ' menu-open' : '' %>">
           <a href="#" class="nav-link<%= isMenuOpen(['server-list', 'service', 'agent']) ? ' active' : '' %>" style="<%= isMenuOpen(['server-list', 'service', 'agent']) ? 'background-color: #495057;' : '' %>">
             <i class="nav-icon bi bi-hdd-network"></i>
@@ -80,30 +80,35 @@
             </p>
           </a>
           <ul class="nav nav-treeview"<%= isMenuOpen(['server-list', 'service', 'agent']) ? ' style="display: block;"' : '' %>>
+            <% if (hasPermission('server.read')) { %>
             <li class="nav-item">
               <a href="/server/server/list" class="nav-link<%= (activeMenu === 'server-list') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'server-list') ? ' text-primary' : '' %>"></i>
                 <p>Server</p>
               </a>
             </li>
+            <% } %>
+            <% if (hasPermission('service.read')) { %>
             <li class="nav-item">
               <a href="/server/service/list" class="nav-link<%= (activeMenu === 'service') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'service') ? ' text-primary' : '' %>"></i>
                 <p>Service</p>
               </a>
             </li>
+            <% } %>
+            <% if (hasPermission('agent.read')) { %>
             <li class="nav-item">
               <a href="/server/agent/list" class="nav-link<%= (activeMenu === 'agent') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'agent') ? ' text-primary' : '' %>"></i>
                 <p>Agent</p>
               </a>
             </li>
+            <% } %>
           </ul>
         </li>
         <% } %>
         <!-- Device Management -->
-        <% if (permissions.includes('device.read')) { %>
-        <% const isDeviceMenuActive = ['device', 'device-type', 'device-platform'].includes(activeMenu); %>
+        <% if (hasPermission('device.read') || hasPermission('device_type.read') || hasPermission('platform.read')) { %>
         <li class="nav-item<%= isMenuOpen(['device', 'device-type', 'device-platform']) ? ' menu-open' : '' %>">
           <a href="#" class="nav-link<%= isMenuOpen(['device', 'device-type', 'device-platform']) ? ' active' : '' %>" style="<%= isMenuOpen(['device', 'device-type', 'device-platform']) ? 'background-color: #495057;' : '' %>">
             <i class="nav-icon bi bi-cpu"></i>
@@ -113,7 +118,7 @@
             </p>
           </a>
           <ul class="nav nav-treeview"<%= isMenuOpen(['device', 'device-type', 'device-platform']) ? ' style="display: block;"' : '' %>>
-            <% if (permissions.includes('device.read')) { %>
+            <% if (hasPermission('device.read')) { %>
             <li class="nav-item">
               <a href="/device/device" class="nav-link<%= (activeMenu === 'device') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'device') ? ' text-primary' : '' %>"></i>
@@ -121,7 +126,7 @@
               </a>
             </li>
             <% } %>
-            <% if (permissions.includes('device_type.read')) { %>
+            <% if (hasPermission('device_type.read')) { %>
             <li class="nav-item">
               <a href="/device/type" class="nav-link<%= (activeMenu === 'device-type') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'device-type') ? ' text-primary' : '' %>"></i>
@@ -129,7 +134,7 @@
               </a>
             </li>
             <% } %>
-            <% if (permissions.includes('platform.read')) { %>
+            <% if (hasPermission('platform.read')) { %>
             <li class="nav-item">
               <a href="/device/platform" class="nav-link<%= (activeMenu === 'device-platform') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'device-platform') ? ' text-primary' : '' %>"></i>
@@ -141,7 +146,11 @@
         </li>
         <% } %>
         <!-- Organization -->
-        <% if (permissions.includes('contact.read') || permissions.includes('unit.read') || permissions.includes('tag.read')) { %>
+        <% if (
+          hasPermission('contact.read') ||
+          hasPermission('unit.read') ||
+          hasPermission('tag.read')
+        ) { %>
         <li class="nav-item<%= isMenuOpen(['contact', 'unit', 'site', 'tag']) ? ' menu-open' : '' %>">
           <a href="#" class="nav-link">
             <i class="nav-icon bi bi-people"></i>
@@ -151,7 +160,7 @@
             </p>
           </a>
           <ul class="nav nav-treeview"<%= isMenuOpen(['contact', 'unit', 'site', 'tag']) ? ' style="display: block;"' : '' %>>
-            <% if (permissions.includes('contact.read')) { %>
+            <% if (hasPermission('contact.read')) { %>
             <li class="nav-item">
               <a href="/organize/contact" class="nav-link<%= (activeMenu === 'contact') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle"></i>
@@ -159,7 +168,7 @@
               </a>
             </li>
             <% } %>
-            <% if (permissions.includes('unit.read')) { %>
+            <% if (hasPermission('unit.read')) { %>
             <li class="nav-item">
               <a href="/organize/unit" class="nav-link<%= (activeMenu === 'unit') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle"></i>
@@ -167,7 +176,7 @@
               </a>
             </li>
             <% } %>
-            <% if (permissions.includes('tag.read')) { %>
+            <% if (hasPermission('tag.read')) { %>
             <li class="nav-item">
               <a href="/organize/tag" class="nav-link<%= (activeMenu === 'tag') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle"></i>
@@ -179,10 +188,11 @@
         </li>
         <% } %>
         <!-- Privileged Account Management -->
-        <% const hasPrivAccountRead = permissions.includes('priv_account.read'); %>
-        <% const hasPrivRoleRead = permissions.includes('priv_role.read'); %>
-        <% const hasPrivPermissionRead = permissions.includes('priv_permission.read'); %>
-        <% if (hasPrivAccountRead || hasPrivRoleRead || hasPrivPermissionRead) { %>
+        <% if (
+          hasPermission('priv_account.read') ||
+          hasPermission('priv_role.read') ||
+          hasPermission('priv_permission.read')
+        ) { %>
         <li class="nav-item<%= isMenuOpen(['priv-account-list', 'priv-role-list', 'priv-permission-list']) ? ' menu-open' : '' %>">
           <a href="#" class="nav-link">
             <i class="nav-icon bi bi-shield-lock"></i>
@@ -192,7 +202,7 @@
             </p>
           </a>
           <ul class="nav nav-treeview"<%= isMenuOpen(['priv-account-list', 'priv-role-list', 'priv-permission-list']) ? ' style="display: block;"' : '' %>>
-            <% if (hasPrivAccountRead) { %>
+            <% if (hasPermission('priv_account.read')) { %>
             <li class="nav-item">
               <a href="/priv-account/account" class="nav-link<%= (activeMenu === 'priv-account-list') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle"></i>
@@ -200,7 +210,7 @@
               </a>
             </li>
             <% } %>
-            <% if (hasPrivRoleRead) { %>
+            <% if (hasPermission('priv_role.read')) { %>
             <li class="nav-item">
               <a href="/priv-account/role" class="nav-link<%= (activeMenu === 'priv-role-list') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle"></i>
@@ -208,7 +218,7 @@
               </a>
             </li>
             <% } %>
-            <% if (hasPrivPermissionRead) { %>
+            <% if (hasPermission('priv_permission.read')) { %>
             <li class="nav-item">
               <a href="/priv-account/permission" class="nav-link<%= (activeMenu === 'priv-permission-list') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle"></i>
@@ -221,10 +231,10 @@
         <% } %>
         <!-- Firewall Rule Management -->
         <% if (
-          permissions.includes('rule.read') ||
-          permissions.includes('rule.create') ||
-          permissions.includes('rule.update') ||
-          permissions.includes('rule.delete')
+          hasPermission('rule.read') ||
+          hasPermission('rule.create') ||
+          hasPermission('rule.update') ||
+          hasPermission('rule.delete')
         ) { %>
         <li class="nav-item<%= isMenuOpen(['firewall-rule']) ? ' menu-open' : '' %>">
           <a href="#" class="nav-link">
@@ -245,7 +255,11 @@
         </li>
         <% } %>
         <!-- ADMINISTRATION -->
-        <% if (permissions.includes('user.read') || permissions.includes('role.read') || permissions.includes('permission.read')) { %>
+        <% if (
+          hasPermission('user.read') ||
+          hasPermission('role.read') ||
+          hasPermission('permission.read')
+        ) { %>
         <li class="nav-header">ADMINISTRATION</li>
         <li class="nav-item has-treeview<%= isMenuOpen(['user-management', 'role-management', 'permission-management']) ? ' menu-open' : '' %>"> 
           <a href="#" class="nav-link<%= isMenuOpen(['user-management', 'role-management', 'permission-management']) ? ' active' : '' %>" style="<%= isMenuOpen(['user-management', 'role-management', 'permission-management']) ? 'background-color: #495057;' : '' %>">
@@ -256,7 +270,7 @@
             </p>
           </a>
           <ul class="nav nav-treeview"<%= isMenuOpen(['user-management', 'role-management', 'permission-management']) ? ' style="display: block;"' : '' %>>
-            <% if (permissions.includes('user.read')) { %>
+            <% if (hasPermission('user.read')) { %>
             <li class="nav-item">
               <a href="/administrator/users" class="nav-link<%= (activeMenu === 'user-management') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-people"></i>
@@ -264,7 +278,7 @@
               </a>
             </li>
             <% } %>
-            <% if (permissions.includes('role.read')) { %>
+            <% if (hasPermission('role.read')) { %>
             <li class="nav-item">
               <a href="/administrator/roles" class="nav-link<%= (activeMenu === 'role-management') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-person-badge"></i>
@@ -272,7 +286,7 @@
               </a>
             </li>
             <% } %>
-            <% if (permissions.includes('permission.read')) { %>
+            <% if (hasPermission('permission.read')) { %>
             <li class="nav-item">
               <a href="/administrator/permissions" class="nav-link<%= (activeMenu === 'permission-management') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-shield-lock"></i>
@@ -284,7 +298,7 @@
         </li>
         <% } %>
         <% if (
-          permissions.includes('system_log.read')
+          hasPermission('system_log.read')
         ) { %>
         <!-- System Log -->
         <li class="nav-item">
@@ -295,7 +309,7 @@
         </li>
         <% } %>
         <% if (
-          permissions.includes('configuration.read')
+          hasPermission('configuration.read')
         ) { %>
         <!-- System Configuration -->
         <li class="nav-item">

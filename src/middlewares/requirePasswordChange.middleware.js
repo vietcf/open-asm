@@ -1,5 +1,5 @@
 // Middleware to force password change if must_change_password is true
-module.exports = (req, res, next) => {
+const requirePasswordChange = (req, res, next) => {
   if (
     req.session.user &&
     req.session.user.must_change_password &&
@@ -11,3 +11,5 @@ module.exports = (req, res, next) => {
   }
   next();
 };
+
+export default requirePasswordChange;

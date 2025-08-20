@@ -1,28 +1,23 @@
 // Server configuration options for filter dropdowns, etc.
 
-module.exports = {
+const serverOptions = {
   locations: [
-    'DC',
-    'DR',
-    'Cloud',
-    'On-premise',
-    'Colocation',
-    'Other'
+    { value: 'DC', label: 'DC' },
+    { value: 'DR', label: 'DR' },
+    { value: 'CMC', label: 'CMC' },
+    { value: 'BRANCH', label: 'BRANCH' },
+    { value: 'CLOUD', label: 'CLOUD' },
   ],
   status: [
-    'Active',
-    'Inactive',
-    'Online',
-    'Offline',
-    'Maintenance',
-    'Decommissioned'
+    { value: 'ONLINE', label: 'ONLINE' },
+    { value: 'OFFLINE', label: 'OFFLINE' },
+    { value: 'MAINTENANCE', label: 'MAINTENANCE' }
   ],
   types: [
-    'Physical',
-    'Virtualization',
-    'Cloud',
-    'VirtualMachine',
-    'Container',
-    'Other'
+    { value: 'PHYSICAL', label: 'PHYSICAL' },
+    { value: 'VIRTUAL-MACHINE', label: 'VIRTUAL-MACHINE' },
+    { value: 'CLOUD-INSTANCE', label: 'CLOUD-INSTANCE' }
   ]
 };
+
+export default serverOptions;

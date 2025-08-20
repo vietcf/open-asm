@@ -1,0 +1,881 @@
+# ========================================
+# 🖥️ SYSTEMS API TESTS (MINIMAL)
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+# Environment: development (change in VS Code status bar)
+# ========================================
+
+### 0. Login to get JWT Token (Run this first!)
+# @name systemAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+# ========================================
+# 📋 BASIC SYSTEM CRUD OPERATIONS
+# ========================================
+
+### 1. Get All Systems
+GET {{baseUrl}}/{{apiVersion}}/systems
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 2. Get System by ID
+GET {{baseUrl}}/{{apiVersion}}/systems/2
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 3. Create New System (Minimal)
+# @name createSystemMinimal
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TEST-001",
+  "name": "Test System Minimal"
+}
+
+### 4. Create New System (Complete)
+# @name createSystemComplete
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TEST-002",
+  "name": "Test System Complete",
+  "alias": ["Legacy System", "Core System"],
+  "description": "Complete test system with all fields",
+  "level": 2,
+  "department_id": 1,
+  "domains": [2],
+  "managers": [768],
+  "ip_addresses": [],
+  "tags": [5]
+}
+
+### 5. Update System (Complete Update)
+PUT {{baseUrl}}/{{apiVersion}}/systems/{{createSystemComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TEST-002-UPD",
+  "name": "Test System Complete Updated",
+  "alias": ["Updated Legacy", "Updated Core"],
+  "description": "Updated complete test system",
+  "level": 3,
+  "department_id": 2,
+  "domains": ["updated.example.com"],
+  "managers": [2, 3],
+  "ip_addresses": [3, 4],
+  "tags": [3, 4]
+}
+
+### 6. Update System (Name Only)
+PUT {{baseUrl}}/{{apiVersion}}/systems/{{createSystemComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "name": "Test System Name Only Updated"
+}
+
+### 7. Update System (System ID Only)
+PUT {{baseUrl}}/{{apiVersion}}/systems/{{createSystemComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TEST-NEW-ID"
+}
+
+### 8. Update System (Description Only)
+PUT {{baseUrl}}/{{apiVersion}}/systems/{{createSystemComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "description": "Updated description only"
+}
+
+### 9. Update System (Level Only)
+PUT {{baseUrl}}/{{apiVersion}}/systems/{{createSystemComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "level": 5
+}
+
+### 10. Update System (Clear Relationships)
+PUT {{baseUrl}}/{{apiVersion}}/systems/{{createSystemComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "alias": [],
+  "domains": [],
+  "managers": [],
+  "ip_addresses": [],
+  "tags": []
+}
+
+### 10a. Test Partial Update - Only Name (Should Keep Other Fields)
+# @name testPartialName
+PUT {{baseUrl}}/{{apiVersion}}/systems/{{createSystemComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "name": "Partially Updated Name Only"
+}
+
+### 10b. Get System After Partial Name Update (Verify Other Fields Preserved)
+GET {{baseUrl}}/{{apiVersion}}/systems/{{createSystemComplete.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 10c. Test Partial Update - Only Level (Should Keep Other Fields)
+PUT {{baseUrl}}/{{apiVersion}}/systems/{{createSystemComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "level": 4
+}
+
+### 10d. Get System After Partial Level Update (Verify Other Fields Preserved)
+GET {{baseUrl}}/{{apiVersion}}/systems/{{createSystemComplete.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 10e. Test Partial Update - Only Description (Should Keep Other Fields)
+PUT {{baseUrl}}/{{apiVersion}}/systems/{{createSystemComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "description": "Updated description via partial update"
+}
+
+### 10f. Get System After Partial Description Update (Verify Other Fields Preserved)
+GET {{baseUrl}}/{{apiVersion}}/systems/{{createSystemComplete.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 10g. Test Partial Update - Only Add New Manager (Should Keep Other Fields)
+PUT {{baseUrl}}/{{apiVersion}}/systems/{{createSystemComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "managers": [768, 2]
+}
+
+### 10h. Get System After Partial Manager Update (Verify Other Fields Preserved)
+GET {{baseUrl}}/{{apiVersion}}/systems/{{createSystemComplete.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 10i. Test Partial Update - Only Update Alias (Should Keep Other Fields)
+PUT {{baseUrl}}/{{apiVersion}}/systems/{{createSystemComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "alias": ["New Alias", "Updated Alias"]
+}
+
+### 10j. Get System After Partial Alias Update (Verify Other Fields Preserved)
+GET {{baseUrl}}/{{apiVersion}}/systems/{{createSystemComplete.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 11. Delete System
+DELETE {{baseUrl}}/{{apiVersion}}/systems/{{createSystemMinimal.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+# Expected: 204 No Content (no response body)
+
+# ========================================
+# 🔍 SEARCH & FIND OPERATIONS
+# ========================================
+
+### 12. Get All Systems with Search
+GET {{baseUrl}}/{{apiVersion}}/systems?search=abc
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 13. Get All Systems with Pagination
+GET {{baseUrl}}/{{apiVersion}}/systems?page=1&pageSize=5
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 14. Get All Systems with Search and Pagination
+GET {{baseUrl}}/{{apiVersion}}/systems?search=systabcem&page=1&pageSize=3
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 15. Find System by Name (Exact Match)
+GET {{baseUrl}}/{{apiVersion}}/systems/find?name=Core Banking System
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 16. Find System by Name - Non-existent
+GET {{baseUrl}}/{{apiVersion}}/systems/find?name=abc
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 17. Search Systems by System ID
+GET {{baseUrl}}/{{apiVersion}}/systems?search=abc
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 18. Search Systems by Description
+GET {{baseUrl}}/{{apiVersion}}/systems?search=banking
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+# ========================================
+# ❌ ERROR HANDLING TESTS
+# ========================================
+
+### 19. Get Non-existent System (404)
+GET {{baseUrl}}/{{apiVersion}}/systems/4
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 20. Find without Name Parameter (400)
+GET {{baseUrl}}/{{apiVersion}}/systems/find
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 21. Find with Empty Name (400)
+GET {{baseUrl}}/{{apiVersion}}/systems/find?name=
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 22. Create System without Required Fields (400)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "description": "Missing required system_id and name fields"
+}
+
+### 23. Create System without System ID (400)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "name": "Test System",
+  "description": "Missing system_id field"
+}
+
+### 24. Create System without Name (400)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TEST-NONAME",
+  "description": "Missing name field"
+}
+
+### 25. Create System with Empty System ID (400)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "",
+  "name": "Test System",
+  "description": "Empty system_id should fail"
+}
+
+### 26. Create System with Empty Name (400)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TEST-EMPTYNAME",
+  "name": "",
+  "description": "Empty name should fail"
+}
+
+### 27. Create System with Whitespace-only System ID (400)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "   ",
+  "name": "Test System",
+  "description": "Whitespace-only system_id should fail"
+}
+
+### 28. Create System with Whitespace-only Name (400)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TEST-WHITESPACE-NAME",
+  "name": "   ",
+  "description": "Whitespace-only name should fail"
+}
+
+### 29. Create System with Duplicate System ID (409)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TEST-001",
+  "name": "Duplicate System ID Test",
+  "description": "This should fail due to duplicate system_id from test case 3"
+}
+
+### 32. Create System with Duplicate System Name (409)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TEST-UNIQUE-ID",
+  "name": "Test System Minimal",
+  "description": "This should fail due to duplicate system name from test case 3"
+}
+
+### 32. Create System with Invalid Department ID (400)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TEST-INVALID-DEPT",
+  "name": "Test System",
+  "department_id": 99999,
+  "description": "Invalid department_id"
+}
+
+### 32. Create System with Invalid Manager IDs (400)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TEST-INVALID-MGR",
+  "name": "Test System",
+  "managers": [99999],
+  "description": "Invalid manager IDs"
+}
+
+### 32. Create System with Invalid IP Address IDs (400)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TEST-INVALID-IP",
+  "name": "Test System",
+  "ip_addresses": [99999],
+  "description": "Invalid IP address IDs"
+}
+
+### 32. Create System with Invalid Tag IDs (400)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TEST-INVALID-TAG",
+  "name": "Test System",
+  "tags": [99999],
+  "description": "Invalid tag IDs"
+}
+
+### 47. Create System with Invalid Domain IDs (400)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TEST-INVALID-DOMAIN",
+  "name": "Test System",
+  "domains": [99999],
+  "description": "Invalid domain IDs"
+}
+
+### 48. Create System with Invalid Level (400)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TEST-INVALID-LEVEL",
+  "name": "Test System",
+  "level": -1,
+  "description": "Invalid level (negative)"
+}
+
+### 49. Create System with Out of Range Level (400)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TEST-LEVEL-RANGE",
+  "name": "Test System",
+  "level": 10,
+  "description": "Invalid level (out of range 1-5)"
+}
+
+### 50. Update Non-existent System (404)
+PUT {{baseUrl}}/{{apiVersion}}/systems/99999
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "name": "Non-existent System Update"
+}
+
+### 47. Update System with Duplicate System ID (409)
+PUT {{baseUrl}}/{{apiVersion}}/systems/2
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TEST-001"
+}
+
+### 47. Update System with Duplicate System Name (409)
+PUT {{baseUrl}}/{{apiVersion}}/systems/4
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "name": "Test System Minimal"
+}
+
+### 48. Update System with Empty System ID (400)
+PUT {{baseUrl}}/{{apiVersion}}/systems/2
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": ""
+}
+
+### 49. Update System with Empty Name (400)
+PUT {{baseUrl}}/{{apiVersion}}/systems/4
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "name": ""
+}
+
+### 50. Update System with Whitespace-only System ID (400)
+PUT {{baseUrl}}/{{apiVersion}}/systems/4
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "1"
+}
+
+### 51. Update System with Whitespace-only Name (400)
+PUT {{baseUrl}}/{{apiVersion}}/systems/2
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "name": "   "
+}
+
+### 52. Update System with Invalid Level (400)
+PUT {{baseUrl}}/{{apiVersion}}/systems/3
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "level": -1
+}
+
+### 53. Update System with Invalid Level String (400)
+PUT {{baseUrl}}/{{apiVersion}}/systems/4
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "level": "invalid"
+}
+
+### 54. Update System with Out of Range Level (400)
+PUT {{baseUrl}}/{{apiVersion}}/systems/3
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "level": 10
+}
+
+### 55. Delete Non-existent System (404)
+DELETE {{baseUrl}}/{{apiVersion}}/systems/2
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 47. Search with Invalid Page Number
+GET {{baseUrl}}/{{apiVersion}}/systems?page=-1
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 47. Search with Invalid Page Size
+GET {{baseUrl}}/{{apiVersion}}/systems?pageSize=0
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+# ========================================
+# 🧪 ADVANCED SYSTEM TESTS
+# ========================================
+
+### 47. Create System with Multiple Aliases
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-MULTI-ALIAS",
+  "name": "Multi Alias System",
+  "alias": ["Old System", "Legacy", "Core System", "Main System"],
+  "description": "System with multiple aliases"
+}
+
+### 47. Create System with Multiple Domains
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-MULTI-DOMAIN",
+  "name": "Multi Domain System",
+  "domains": ["domain1.com", "domain2.org", "subdomain.example.net"],
+  "description": "System with multiple domains"
+}
+
+### 47. Create System with Complex Relationships
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-COMPLEX",
+  "name": "Complex System",
+  "alias": ["Complex", "Advanced"],
+  "description": "System with complex relationships",
+  "level": 4,
+  "department_id": 1,
+  "domains": ["complex.example.com", "advanced.example.com"],
+  "managers": [1, 2, 3],
+  "ip_addresses": [1, 2, 3, 4, 5],
+  "tags": [1, 2, 3, 4, 5]
+}
+
+### 47. Update System - Change All Core Properties
+PUT {{baseUrl}}/{{apiVersion}}/systems/4
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TRANSFORMED",
+  "name": "Transformed System",
+  "description": "System completely transformed",
+  "level": 1
+}
+
+### 47. Create System with Long Description
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-LONG-DESC",
+  "name": "Documented System",
+  "description": "This is a very long description for a system that contains multiple sentences and explains in detail what the system is used for, which services it provides, how it fits into the overall architecture, what maintenance schedules it follows, and who are the responsible contacts for various aspects of its operation and management."
+}
+
+### 47. Search with Special Characters
+GET {{baseUrl}}/{{apiVersion}}/systems?search=core%20banking
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 47. Complex Search with Pagination
+GET {{baseUrl}}/{{apiVersion}}/systems?search=system&page=1&pageSize=10
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 47. Empty Result Set Test
+GET {{baseUrl}}/{{apiVersion}}/systems?search=nonexistentsystemname
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 47. Update System - Level Transition
+PUT {{baseUrl}}/{{apiVersion}}/systems/3
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "level": 10,
+  "description": "System level increased to maximum"
+}
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 7. Create New System (Complete Data)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-REST-001",
+  "name": "Test System via REST Client",
+  "alias": ["Test", "REST-API"],
+  "description": "Comprehensive system created via REST Client testing",
+  "level": 2,
+  "department_id": 1,
+  "domains": ["test.example.com", "api.test.com"],
+  "managers": [1, 2],
+  "ip_addresses": [1, 2],
+  "tags": [1, 2],
+  "docs": [
+    {
+      "id": 1,
+      "name": "system-manual.pdf",
+      "url": "/uploads/system-manual.pdf"
+    }
+  ]
+}
+
+### 8. Create System (Minimal Required Data)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-MIN-001",
+  "name": "Minimal Test System"
+}
+
+### 9. Update System (Complete Update)
+PUT {{baseUrl}}/{{apiVersion}}/systems/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-UPD-001",
+  "name": "Updated System Name",
+  "alias": ["Updated", "Modified"],
+  "description": "This system has been updated via REST Client",
+  "level": 3,
+  "department_id": 2,
+  "domains": ["updated.example.com"],
+  "managers": [1],
+  "ip_addresses": [1, 3],
+  "tags": [2, 3],
+  "docs": [
+    {
+      "id": 2,
+      "name": "updated-manual.pdf",
+      "url": "/uploads/updated-manual.pdf"
+    }
+  ]
+}
+
+### 10. Update System (Partial Update)
+PUT {{baseUrl}}/{{apiVersion}}/systems/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "name": "Partially Updated System",
+  "description": "Only name and description updated"
+}
+
+### 11. Delete System
+DELETE {{baseUrl}}/{{apiVersion}}/systems/2
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+# ========================================
+# 🧪 ERROR HANDLING & EDGE CASES
+# ========================================
+
+### 12. Get Non-existent System
+GET {{baseUrl}}/{{apiVersion}}/systems/99999
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 13. Find Systems without Name Parameter (Should Fail)
+GET {{baseUrl}}/{{apiVersion}}/systems/find
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 14. Find Systems with Empty Name
+GET {{baseUrl}}/{{apiVersion}}/systems/find?name=
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 15. Create System with Duplicate system_id (Should Fail)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-REST-001",
+  "name": "Duplicate System ID Test"
+}
+
+### 16. Create System with Missing Required Fields (Should Fail)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "description": "Missing system_id and name"
+}
+
+### 17. Update Non-existent System (Should Fail)
+PUT {{baseUrl}}/{{apiVersion}}/systems/99999
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "name": "Non-existent System Update"
+}
+
+### 18. Delete Non-existent System (Should Fail)
+DELETE {{baseUrl}}/{{apiVersion}}/systems/99999
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+# ========================================
+# 📊 ADVANCED SEARCH & FILTERING
+# ========================================
+
+### 19. Search with Special Characters
+GET {{baseUrl}}/{{apiVersion}}/systems?search=test%20system
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 20. Large Page Size Test
+GET {{baseUrl}}/{{apiVersion}}/systems?page=1&pageSize=100
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 21. Find Multiple Systems by Common Name Pattern
+GET {{baseUrl}}/{{apiVersion}}/systems/find?name=System
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+# ========================================
+# 📋 SYSTEMS API TEST CHECKLIST
+# ========================================
+# 
+# ✅ = Tested & Working
+# ⚠️  = Tested with Issues  
+# ❌ = Failed
+# ⏳ = Not Tested Yet
+#
+# BASIC CRUD:
+# ⏳ GET /api/v1/systems (list all)
+# ⏳ GET /api/v1/systems/:id (get by ID)
+# ⏳ POST /api/v1/systems (create)
+# ⏳ PUT /api/v1/systems/:id (update)
+# ⏳ DELETE /api/v1/systems/:id (delete)
+#
+# SEARCH & FILTERING:
+# ⏳ GET /api/v1/systems?search=keyword
+# ⏳ GET /api/v1/systems?page=1&pageSize=10
+# ⏳ GET /api/v1/systems/find?name=exact_name
+#
+# DATA VALIDATION:
+# ⏳ Required fields: system_id, name
+# ⏳ Unique constraint: system_id
+# ⏳ Array fields: alias, domains, managers, ip_addresses, tags, docs
+# ⏳ Nested objects: docs array
+#
+# ERROR HANDLING:
+# ⏳ 404 - System not found
+# ⏳ 400 - Missing required fields
+# ⏳ 400 - Duplicate system_id
+# ⏳ 400 - Invalid search parameters
+#
+# RELATIONSHIPS:
+# ⏳ department_id (references units table)
+# ⏳ managers (references contacts table)
+# ⏳ ip_addresses (references ip_addresses table)  
+# ⏳ tags (references tags table)
+#
+# ========================================

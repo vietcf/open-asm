@@ -2,7 +2,7 @@
   <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/server/server/list" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
     <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search Server Name, IP or OS..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
     <select class="form-select form-select-sm me-2" name="page_size" onchange="this.form.submit()" style="width:90px;max-width:90px;">
-      <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+      <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
         <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
       <% }) %>
     </select>
@@ -10,9 +10,11 @@
   </form>
   <div class="row mb-3">
     <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
-      <button type="button" class="btn btn-primary btn-sm me-2" onclick="window.location.href='/server/server/add'">
-        <i class="bi bi-plus"></i> Add Server
-      </button>
+      <% if (hasPermission('server.create')) { %>
+        <button type="button" class="btn btn-primary btn-sm me-2" onclick="window.location.href='/server/server/add'">
+          <i class="bi bi-plus"></i> Add Server
+        </button>
+      <% } %>
       <form action="/server/import" method="POST" enctype="multipart/form-data" style="display:inline; margin-right: 8px;">
         <label class="btn btn-success btn-sm mb-0">
           <i class="bi bi-upload"></i> Import from file
@@ -87,27 +89,27 @@
                   <div class="col-12 mb-2">
                     <label class="form-label">Status</label>
                     <select id="filterStatus" name="status" class="form-select">
-                      <option value="">All</option>
+                      <option value="">-- All --</option>
                       <% (statusOptions || []).forEach(function(st) { %>
-                        <option value="<%= st %>" <%= filterStatus == st ? 'selected' : '' %>><%= st %></option>
+                        <option value="<%= st.value %>" <%= filterStatus == st.value ? 'selected' : '' %>><%= st.label %></option>
                       <% }) %>
                     </select>
                   </div>
                   <div class="col-12 mb-2">
                     <label class="form-label">Location</label>
                     <select id="filterLocation" name="location" class="form-select">
-                      <option value="">All</option>
+                      <option value="">-- All --</option>
                       <% (locations || []).forEach(function(loc) { %>
-                        <option value="<%= loc %>" <%= filterLocation == loc ? 'selected' : '' %>><%= loc %></option>
+                        <option value="<%= loc.value %>" <%= filterLocation == loc.value ? 'selected' : '' %>><%= loc.label %></option>
                       <% }) %>
                     </select>
                   </div>
                   <div class="col-12 mb-2">
                     <label class="form-label">Type</label>
                     <select id="filterType" name="type" class="form-select">
-                      <option value="">All</option>
-                      <% (typeOptions || []).forEach(function(tp) { %>
-                        <option value="<%= tp %>" <%= filterType == tp ? 'selected' : '' %>><%= tp %></option>
+                      <option value="">-- All --</option>
+                      <% (typesOptions || []).forEach(function(tp) { %>
+                        <option value="<%= tp.value %>" <%= filterType == tp.value ? 'selected' : '' %>><%= tp.label %></option>
                       <% }) %>
                     </select>
                   </div>
@@ -157,9 +159,9 @@
               <tr>
                 <th>No.</th>
                 <th>Server Name</th>
+                <th>Description</th>
                 <th>IP Address</th>
-                <th>Status</th>
-                <th>Location</th>
+                <th>Systems</th>
                 <th>Type</th>
                 <th>Tags</th>
                 <th class="text-end">Actions</th>
@@ -172,20 +174,40 @@
                     <td><%= idx + 1 %></td>
                     <td><%= server.name %></td>
                     <td>
-                      <% if (Array.isArray(server.ip_addresses) && server.ip_addresses.length) { %>
-                        <%= server.ip_addresses.map(ipObj => ipObj.ip_address).join(', ') %>
+                      <% if (server.description) { %>
+                        <span title="<%= server.description.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
+                          <%= server.description.length > 60 ? server.description.substring(0, 60) + '…' : server.description %>
+                        </span>
                       <% } else { %>
                         <span class="text-muted">-</span>
                       <% } %>
                     </td>
-                    <td><%= server.status %></td>
-                    <td><%= server.location %></td>
+                    <td>
+                      <% if (Array.isArray(server.ip) && server.ip.length) { %>
+                        <%= server.ip.map(ipObj => ipObj.ip_address).join(', ') %>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <% if (Array.isArray(server.systems) && server.systems.length) { %>
+                        <div class="d-flex flex-wrap">
+                          <% server.systems.forEach(function(sys) { %>
+                            <a href="/system/system?search=<%= encodeURIComponent(sys.name) %>" target="_blank" class="text-decoration-none me-1 mb-1">
+                              <span class="badge bg-primary text-white"><%= sys.name %></span>
+                            </a>
+                          <% }) %>
+                        </div>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
                     <td><%= server.type %></td>
                     <td>
                       <% if (Array.isArray(server.tags) && server.tags.length) { %>
                         <div class="d-flex flex-wrap">
                           <% server.tags.forEach(function(tag) { %>
-                            <span class="badge bg-light text-dark me-1 mb-1"><%= tag.name %></span>
+                            <span class="badge bg-light text-dark me-1 mb-1" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
                           <% }) %>
                         </div>
                       <% } else { %>
@@ -194,10 +216,14 @@
                     </td>
                     <td class="text-end">
                       <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#serverDetailModal-<%= server.id %>"><i class="bi bi-eye"></i></a>
-                      <a href="/server/server/<%= server.id %>/edit" class="btn btn-warning btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
-                      <form action="/server/<%= server.id %>?_method=DELETE" method="POST" style="display:inline">
-                        <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete?')"><i class="bi bi-trash"></i></button>
-                      </form>
+                      <% if (hasPermission('server.update')) { %>
+                        <a href="/server/server/<%= server.id %>/edit" class="btn btn-warning btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
+                      <% } %>
+                      <% if (hasPermission('server.delete')) { %>
+                        <form action="/server/server/<%= server.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirm('Are you sure you want to delete this server?')">
+                          <button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="bi bi-trash"></i></button>
+                        </form>
+                      <% } %>
                     </td>
                   </tr>
                   <!-- Server Detail Modal -->
@@ -210,14 +236,21 @@
                         </div>
                         <div class="modal-body">
                           <dl class="row mb-0">
+                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Server ID</dt>
+                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;"><%= server.id %></dd>
                             <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Server Name</dt>
                             <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;white-space: pre-line;"><%= server.name %></dd>
                             <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Description</dt>
                             <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;white-space: pre-line;"><%= (server.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') %></dd>
                             <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">IP Address</dt>
                             <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
-                              <% if (Array.isArray(server.ip_addresses) && server.ip_addresses.length) { %>
-                                <%= server.ip_addresses.map(ipObj => ipObj.ip_address).join(', ') %>
+                              <% if (Array.isArray(server.ip) && server.ip.length) { %>
+                                <% server.ip.forEach(function(ipObj, index) { %>
+                                  <% if (index > 0) { %>, <% } %>
+                                  <a href="/network/ip-address?search=<%= encodeURIComponent(ipObj.ip_address) %>&pageSize=10" target="_blank" class="text-decoration-none">
+                                    <%= ipObj.ip_address %>
+                                  </a>
+                                <% }) %>
                               <% } else { %>
                                 <span class="text-muted">-</span>
                               <% } %>
@@ -231,9 +264,27 @@
                             <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Manager</dt>
                             <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
                               <% if (Array.isArray(server.managers) && server.managers.length) { %>
-                                <%= server.managers.map(m => m.name).join(', ') %>
+                                <% server.managers.forEach(function(m, index) { %>
+                                  <% if (index > 0) { %>, <% } %>
+                                  <% 
+                                    var searchTerm = m.email || m.name || '';
+                                    var displayText = '';
+                                    if (m.email && m.name) {
+                                      displayText = m.email + ' (' + m.name + ')';
+                                    } else if (m.email) {
+                                      displayText = m.email;
+                                    } else if (m.name) {
+                                      displayText = m.name;
+                                    } else {
+                                      displayText = 'Unknown';
+                                    }
+                                  %>
+                                  <a href="/organize/contact?search=<%= encodeURIComponent(searchTerm) %>&pageSize=10" target="_blank" class="text-decoration-none">
+                                    <%= displayText %>
+                                  </a>
+                                <% }) %>
                               <% } else if (server.manager) { %>
-                                <a href="/organize/contact?search='+encodeURIComponent(server.manager)+'" target="_blank"><%= server.manager %></a>
+                                <a href="/organize/contact?search=<%= encodeURIComponent(server.manager) %>&pageSize=10" target="_blank" class="text-decoration-none"><%= server.manager %></a>
                               <% } else { %>
                                 <span class="text-muted">-</span>
                               <% } %>
@@ -270,12 +321,26 @@
                                 <span class="text-muted">-</span>
                               <% } %>
                             </dd>
+                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Systems</dt>
+                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
+                              <% if (Array.isArray(server.systems) && server.systems.length) { %>
+                                <div class="d-flex flex-wrap">
+                                  <% server.systems.forEach(function(sys) { %>
+                                    <a href="/system/system?search=<%= encodeURIComponent(sys.name) %>" target="_blank" class="text-decoration-none me-1 mb-1">
+                                      <span class="badge bg-primary text-white"><%= sys.name %></span>
+                                    </a>
+                                  <% }) %>
+                                </div>
+                              <% } else { %>
+                                <span class="text-muted">-</span>
+                              <% } %>
+                            </dd>
                             <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Tags</dt>
                             <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
                               <% if (Array.isArray(server.tags) && server.tags.length) { %>
                                 <div class="d-flex flex-wrap">
                                   <% server.tags.forEach(function(tag) { %>
-                                    <span class="badge bg-light text-dark me-1 mb-1"><%= tag.name %></span>
+                                    <span class="badge bg-light text-dark me-1 mb-1" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
                                   <% }) %>
                                 </div>
                               <% } else { %>
@@ -379,7 +444,7 @@
 </script>
 <link href="/css/select2.min.css" rel="stylesheet" />
 <link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="/js/jquery-3.6.0.min.js"></script>
 <script src="/js/select2.min.js"></script>
 <script>
 function restoreSelect2Value($el, values, url) {

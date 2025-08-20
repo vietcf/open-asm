@@ -1,0 +1,117 @@
+# ========================================
+# 📋 OPEN ASM API TESTS - MAIN INDEX
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+#
+# 🔄 Switch Environment: Ctrl+Shift+P → "Rest Client: Switch Environment"
+# 📁 Organized Tests: Check /api-tests/ folder for specific modules
+#
+# 🚀 QUICK START:
+# 1. Select environment (development/staging/production) 
+# 2. Run login request below to get JWT token
+# 3. Use token for authenticated requests
+# ========================================
+
+### 🔐 LOGIN - Get JWT Token (Run this first!)
+# @name mainAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+
+### 🖥️ Quick Server List
+GET {{baseUrl}}/{{apiVersion}}/servers?page=1&pageSize=5
+Accept: application/json
+Authorization: Bearer {{mainAuth.response.body.token}}
+
+### 🏢 Quick Systems List  
+GET {{baseUrl}}/{{apiVersion}}/systems?page=1&pageSize=5
+Accept: application/json
+Authorization: Bearer {{mainAuth.response.body.token}}
+
+### 🌐 Quick IP Addresses List
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses?page=1&pageSize=5
+Accept: application/json
+Authorization: Bearer {{mainAuth.response.body.token}}
+
+# ========================================
+# 📋 API TESTING CHECKLIST & STATUS
+# ========================================
+# 
+# ✅ = Tested & Working
+# ⚠️  = Tested with Issues  
+# ❌ = Failed
+# ⏳ = Not Tested Yet
+#
+# AUTHENTICATION:
+# ✅ POST /api/auth/login
+# ⏳ POST /api/auth/logout  
+# ⏳ POST /api/auth/refresh
+#
+# HEALTH & MONITORING:
+# ✅ GET /health
+# ✅ GET /api/status
+# ⏳ GET /api/health/database
+# ⏳ GET /api/health/memory
+# ⏳ GET /api/health/uptime
+#
+# SERVERS:
+# ✅ GET /api/servers (with pagination)
+# ⏳ GET /api/servers/:id
+# ⏳ POST /api/servers
+# ⏳ PUT /api/servers/:id
+# ⏳ DELETE /api/servers/:id
+# ⏳ GET /api/servers (search & filter)
+#
+# SYSTEMS:
+# ✅ GET /api/systems (with pagination)
+# ⏳ GET /api/systems/:id
+# ⏳ POST /api/systems
+# ⏳ PUT /api/systems/:id
+# ⏳ DELETE /api/systems/:id
+#
+# NETWORKS:
+# ✅ GET /api/ip-addresses
+# ⏳ GET /api/ip-addresses/:id  
+# ⏳ POST /api/ip-addresses
+# ⏳ PUT /api/ip-addresses/:id
+# ⏳ DELETE /api/ip-addresses/:id
+# ⏳ GET /api/subnets
+# ⏳ GET /api/firewalls
+#
+# CONTACTS:
+# ⏳ GET /api/contacts
+# ⏳ GET /api/contacts/:id
+# ⏳ POST /api/contacts
+# ⏳ PUT /api/contacts/:id
+# ⏳ DELETE /api/contacts/:id
+# ⏳ GET /api/contacts (search & filter)
+# ⏳ GET /api/servers/:id/contacts
+# ⏳ GET /api/systems/:id/contacts
+#
+# TAGS:
+# ⏳ GET /api/v1/tags
+# ⏳ GET /api/v1/tags/:id
+# ⏳ POST /api/v1/tags
+# ⏳ PUT /api/v1/tags/:id
+# ⏳ DELETE /api/v1/tags/:id
+# ⏳ GET /api/v1/tags/search?search=keyword
+# ⏳ GET /api/v1/tags/find?name=exact_name
+#
+# ========================================
+# 📁 DETAILED TESTS BY MODULE:
+# ========================================
+#
+# 🖥️  Servers: ./api-tests/servers.http
+# 🏢  Systems: ./api-tests/systems.http  
+# 👥  Contacts: ./api-tests/contacts.http
+# �️  Tags: ./api-tests/tags.http
+# �🌐  Networks: ./api-tests/networks.http
+# 🔧  Health: ./api-tests/health.http
+#
+# ========================================

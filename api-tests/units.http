@@ -1,0 +1,224 @@
+# ========================================
+# 🏢 UNITS API TESTS (MINIMAL)
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+# Environment: development (change in VS Code status bar)
+# ========================================
+
+### 0. Login to get JWT Token (Run this first!)
+# @name unitAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+# ========================================
+# 📋 BASIC UNIT CRUD OPERATIONS
+# ========================================
+
+### 1. Get All Units
+GET {{baseUrl}}/{{apiVersion}}/units
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+### 2. Get Unit by ID
+GET {{baseUrl}}/{{apiVersion}}/units/1
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+### 3. Create New Unit
+# @name createUnit
+POST {{baseUrl}}/{{apiVersion}}/units
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+{
+  "name": "test-unit",
+  "code": "TEST01",
+  "description": "Test unit for API testing"
+}
+
+### 4. Update Unit (Complete Update)
+PUT {{baseUrl}}/{{apiVersion}}/units/11
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+{
+  "name": "test-unit-updated",
+  "code": "TEST01-UPD",
+  "description": "Updated test unit"
+}
+
+### 5. Update Unit (Name Only)
+PUT {{baseUrl}}/{{apiVersion}}/units/11
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+{
+  "name": "test-unit-name-only"
+}
+
+### 6. Update Unit (Code Only)
+PUT {{baseUrl}}/{{apiVersion}}/units/11
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+{
+  "code": "TESTCODE"
+}
+
+### 7. Update Unit (Description Only)
+PUT {{baseUrl}}/{{apiVersion}}/units/11
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+{
+  "description": "Updated description only"
+}
+
+### 8. Delete Unit
+DELETE {{baseUrl}}/{{apiVersion}}/units/11
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+# ========================================
+# 🔍 SEARCH & FILTER OPERATIONS
+# ========================================
+
+### 9. Search Units with Pagination
+GET {{baseUrl}}/{{apiVersion}}/units?page=1&pageSize=5
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+### 10. Search Units by Keyword
+GET {{baseUrl}}/{{apiVersion}}/units?search=ANTT
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+### 11. Search Units with Keyword and Pagination
+GET {{baseUrl}}/{{apiVersion}}/units?search=ANTT&page=1&pageSize=10
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+### 12. Find Unit by Exact Name
+GET {{baseUrl}}/{{apiVersion}}/units/find?name=DACN
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+### 13. Find Unit with Case Sensitivity Test
+GET {{baseUrl}}/{{apiVersion}}/units/find?name=it department
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+# ========================================
+# ❌ ERROR HANDLING TESTS
+# ========================================
+
+### 14. Get Non-existent Unit (404)
+GET {{baseUrl}}/{{apiVersion}}/units/99999
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+### 15. Find Unit without Name Parameter (400)
+GET {{baseUrl}}/{{apiVersion}}/units/find
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+### 16. Find Unit with Empty Name (400)
+GET {{baseUrl}}/{{apiVersion}}/units/find?name=
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+### 17. Create Unit with Invalid Data (400)
+POST {{baseUrl}}/{{apiVersion}}/units
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+{
+  "code": "INVALID",
+  "description": "Missing required name field"
+}
+
+### 18. Create Unit with Empty Name (400)
+POST {{baseUrl}}/{{apiVersion}}/units
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+{
+  "name": "",
+  "description": "Empty name should fail"
+}
+
+### 19. Create Unit with Duplicate Name (409)
+POST {{baseUrl}}/{{apiVersion}}/units
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+{
+  "name": "IT Department",
+  "description": "Duplicate name test"
+}
+
+### 20. Update Non-existent Unit (404)
+PUT {{baseUrl}}/{{apiVersion}}/units/99999
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+{
+  "name": "non-existent-unit"
+}
+
+### 21. Update Unit with Duplicate Name (409)
+PUT {{baseUrl}}/{{apiVersion}}/units/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+{
+  "name": "HR Department"
+}
+
+### 22. Delete Non-existent Unit (404)
+DELETE {{baseUrl}}/{{apiVersion}}/units/99999
+Accept: application/json
+Authorization: Bearer {{unitAuth.response.body.token}}
+
+# ========================================
+# ✅ BASIC UNITS API TEST CHECKLIST
+# ========================================
+# 
+# BASIC CRUD OPERATIONS:
+# ⏳ GET /api/v1/units (get all units)
+# ⏳ GET /api/v1/units/:id (get unit by ID)
+# ⏳ POST /api/v1/units (create new unit)
+# ⏳ PUT /api/v1/units/:id (update unit)
+# ⏳ DELETE /api/v1/units/:id (delete unit)
+#
+# SEARCH & FILTERING:
+# ⏳ GET /api/v1/units?search=keyword (search units)
+# ⏳ GET /api/v1/units?page=1&pageSize=20 (pagination)
+# ⏳ GET /api/v1/units/find?name=exact_name (find by exact name)
+#
+# ERROR HANDLING:
+# ⏳ 400 - Invalid data/missing fields
+# ⏳ 404 - Unit not found
+# ⏳ 409 - Duplicate name/conflict
+#
+# IMPLEMENTATION STATUS:
+# ✅ /find endpoint has been implemented in apiUnit.js
+# ✅ findUnits method added to apiUnitController.js
+# ✅ Test cases ready for use
+#
+# ========================================

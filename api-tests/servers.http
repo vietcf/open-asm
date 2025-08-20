@@ -1,0 +1,795 @@
+# ========================================
+# 🖥️ SERVERS API TESTS (MINIMAL)
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+# Environment: development (change in VS Code status bar)
+# ========================================
+
+### 0. Login to get JWT Token (Run this first!)
+# @name serverAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+# ========================================
+# 📋 BASIC SERVER CRUD OPERATIONS
+# ========================================
+
+### 1. Get All Servers
+GET {{baseUrl}}/{{apiVersion}}/servers
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 2. Get Server by ID
+GET {{baseUrl}}/{{apiVersion}}/servers/3
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 3. Create New Server (Minimal)
+# @name createServerMinimal
+POST {{baseUrl}}/{{apiVersion}}/servers
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "Test Server Minimal",
+  "os": 1,
+  "status": "ONLINE",
+  "location": "DC",
+  "type": "PHYSICAL",
+  "ip_addresses": [12]
+}
+
+### 4. Create New Server (Complete)
+# @name createServerComplete
+POST {{baseUrl}}/{{apiVersion}}/servers
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "Test Web Server Complete",
+  "os": 1,
+  "status": "ONLINE",
+  "location": "DC",
+  "type": "PHYSICAL",
+  "managers": [1, 2],
+  "systems": [1],
+  "agents": [1, 2],
+  "services": [1, 2],
+  "tags": [1, 2],
+  "ip_addresses": [2, 3],
+  "description": "Complete test web server"
+}
+
+### 4.1. Verify Created Server Response Structure
+GET {{baseUrl}}/{{apiVersion}}/servers/10
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+# This should return the same complete server data as createServerComplete response
+
+### 4.2. Verify Created Server Has Complete Relationship Data
+# @note createServerComplete response should include:
+# - id, name, os (with platform details), status, location, type, description
+# - ip_addresses array with full IP details
+# - managers array with contact details  
+# - systems array with system details
+# - agents array with agent details
+# - services array with service details
+# - tags array with tag details
+# - created_at, updated_at, updated_by
+
+### 5. Update Server (Complete Update)
+PUT {{baseUrl}}/{{apiVersion}}/servers/10
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "ip_addresses": [19],
+  "description": "Updated complete test server"
+}
+
+### 6. Update Server (Name Only)
+PUT {{baseUrl}}/{{apiVersion}}/servers/10
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "Test Server Name Only"
+}
+
+### 7. Update Server (Status Only)
+PUT {{baseUrl}}/{{apiVersion}}/servers/10
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "status": "OFFLINE"
+}
+
+### 8. Update Server (Location Only)
+PUT {{baseUrl}}/{{apiVersion}}/servers/10
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "location": "CLOUD"
+}
+
+### 9. Update Server (Type Only)
+PUT {{baseUrl}}/{{apiVersion}}/servers/10
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "type": "CLOUD-INSTANCE"
+}
+
+### 10. Update Server (Clear Relationships)
+PUT {{baseUrl}}/{{apiVersion}}/servers/10
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "managers": [],
+  "systems": [],
+  "agents": [],
+  "services": [],
+  "tags": []
+}
+
+### 11. Delete Server
+DELETE {{baseUrl}}/{{apiVersion}}/servers/10
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+# Expected: 204 No Content (no response body)
+
+# ========================================
+# 🔍 SEARCH & FIND OPERATIONS
+# ========================================
+
+### 12. Find Server by Name
+GET {{baseUrl}}/{{apiVersion}}/servers/find?name=server_192.168.192.1
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 13. Find Server by IP Address
+GET {{baseUrl}}/{{apiVersion}}/servers/find?ip_address=192.168.192.1
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 14. Find Server - Non-existent Name
+GET {{baseUrl}}/{{apiVersion}}/servers/find?name=Non-existent Server
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 15. Find Server - Non-existent IP
+GET {{baseUrl}}/{{apiVersion}}/servers/find?ip_address=10.10.10.999
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 16. Search Servers by Text
+GET {{baseUrl}}/{{apiVersion}}/servers?search=web
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 17. Search Servers by Description
+GET {{baseUrl}}/{{apiVersion}}/servers?search=database
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+# ========================================
+# 🔧 FILTERING TESTS
+# ========================================
+
+### 18. Filter by Status - ONLINE
+GET {{baseUrl}}/{{apiVersion}}/servers?status=ONLINE
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 19. Filter by Status - OFFLINE
+GET {{baseUrl}}/{{apiVersion}}/servers?status=OFFLINE
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 20. Filter by Status - MAINTENANCE
+GET {{baseUrl}}/{{apiVersion}}/servers?status=MAINTENANCE
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 21. Filter by Type - PHYSICAL
+GET {{baseUrl}}/{{apiVersion}}/servers?type=PHYSICAL
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 22. Filter by Type - VIRTUAL-MACHINE
+GET {{baseUrl}}/{{apiVersion}}/servers?type=VIRTUAL-MACHINE
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 23. Filter by Type - CLOUD-INSTANCE
+GET {{baseUrl}}/{{apiVersion}}/servers?type=CLOUD-INSTANCE
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 24. Filter by Location - DC
+GET {{baseUrl}}/{{apiVersion}}/servers?location=DC
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 25. Filter by Location - DR
+GET {{baseUrl}}/{{apiVersion}}/servers?location=DR
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 26. Filter by Location - CLOUD
+GET {{baseUrl}}/{{apiVersion}}/servers?location=CLOUD
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 27. Filter by Single Tag
+GET {{baseUrl}}/{{apiVersion}}/servers?tags=1
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 28. Filter by Multiple Tags
+GET {{baseUrl}}/{{apiVersion}}/servers?tags=1&tags=2
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 29. Filter by Single IP Address
+GET {{baseUrl}}/{{apiVersion}}/servers?ip=1
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 30. Filter by Multiple IP Addresses
+GET {{baseUrl}}/{{apiVersion}}/servers?ip=1&ip=2
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 31. Filter by Single Manager
+GET {{baseUrl}}/{{apiVersion}}/servers?manager=1
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 32. Filter by Multiple Managers
+GET {{baseUrl}}/{{apiVersion}}/servers?manager=1&manager=2
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 33. Filter by Single System
+GET {{baseUrl}}/{{apiVersion}}/servers?systems=1
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 34. Filter by Multiple Systems
+GET {{baseUrl}}/{{apiVersion}}/servers?systems=1&systems=2
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 35. Filter by Single Service
+GET {{baseUrl}}/{{apiVersion}}/servers?services=1
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 36. Filter by Multiple Services
+GET {{baseUrl}}/{{apiVersion}}/servers?services=1&services=2
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 37. Filter by Single OS (Platform)
+GET {{baseUrl}}/{{apiVersion}}/servers?os=1
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 38. Filter by Multiple OS (Platforms)
+GET {{baseUrl}}/{{apiVersion}}/servers?os=1&os=2
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 39. Combined Filters - Status + Type + Location
+GET {{baseUrl}}/{{apiVersion}}/servers?status=ONLINE&type=PHYSICAL&location=DC
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 40. Combined Filters - All Parameters
+GET {{baseUrl}}/{{apiVersion}}/servers?status=ONLINE&type=PHYSICAL&location=DC&tags=1&ip=1&manager=1&systems=1&services=1&os=1&search=web
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+# ========================================
+# 📄 PAGINATION TESTS
+# ========================================
+
+### 41. Pagination - First Page (Default)
+GET {{baseUrl}}/{{apiVersion}}/servers?page=1&pageSize=5
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 42. Pagination - Second Page
+GET {{baseUrl}}/{{apiVersion}}/servers?page=2&pageSize=5
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 43. Pagination - Large Page Size
+GET {{baseUrl}}/{{apiVersion}}/servers?pageSize=50
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 44. Pagination - Small Page Size
+GET {{baseUrl}}/{{apiVersion}}/servers?pageSize=2
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 45. Pagination with Filters
+GET {{baseUrl}}/{{apiVersion}}/servers?status=ONLINE&page=1&pageSize=3
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+# ========================================
+# ❌ ERROR HANDLING TESTS
+# ========================================
+
+### 46. Get Non-existent Server (404)
+GET {{baseUrl}}/{{apiVersion}}/servers/99999
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 47. Find without Parameters (400)
+GET {{baseUrl}}/{{apiVersion}}/servers/find
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 48. Find with Empty Name (400)
+GET {{baseUrl}}/{{apiVersion}}/servers/find?name=
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 49. Find with Empty IP Address (400)
+GET {{baseUrl}}/{{apiVersion}}/servers/find?ip_address=
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 50. Create Server without Required Fields (400)
+POST {{baseUrl}}/{{apiVersion}}/servers
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "description": "Missing required fields"
+}
+
+### 51. Create Server without Name (400)
+POST {{baseUrl}}/{{apiVersion}}/servers
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "os": 1,
+  "status": "ONLINE",
+  "location": "DC",
+  "type": "PHYSICAL",
+  "ip_addresses": [10],
+  "description": "Missing name field"
+}
+
+### 52. Create Server without IP Addresses (400)
+POST {{baseUrl}}/{{apiVersion}}/servers
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "Test Server",
+  "os": 1,
+  "status": "ONLINE",
+  "location": "DC",
+  "type": "PHYSICAL",
+  "description": "Missing IP addresses"
+}
+
+### 53. Create Server with Invalid Status (400)
+POST {{baseUrl}}/{{apiVersion}}/servers
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "Test Server",
+  "os": 1,
+  "status": "INVALID_STATUS",
+  "location": "DC",
+  "type": "PHYSICAL",
+  "ip_addresses": [10]
+}
+
+### 54. Create Server with Invalid Type (400)
+POST {{baseUrl}}/{{apiVersion}}/servers
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "Test Server",
+  "os": 1,
+  "status": "ONLINE",
+  "location": "DC",
+  "type": "INVALID_TYPE",
+  "ip_addresses": [18]
+}
+
+### 55. Create Server with Invalid Location (400)
+POST {{baseUrl}}/{{apiVersion}}/servers
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "Test Server",
+  "os": 1,
+  "status": "ONLINE",
+  "location": "INVALID_LOCATION",
+  "type": "PHYSICAL",
+  "ip_addresses": [1]
+}
+
+### 56. Create Server with Invalid OS ID (400)
+POST {{baseUrl}}/{{apiVersion}}/servers
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "Test Server",
+  "os": 99999,
+  "status": "ONLINE",
+  "location": "DC",
+  "type": "PHYSICAL",
+  "ip_addresses": [1]
+}
+
+### 57. Create Server with Invalid Manager IDs (400)
+POST {{baseUrl}}/{{apiVersion}}/servers
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "Test Server1",
+  "os": 1,
+  "status": "ONLINE",
+  "location": "DC",
+  "type": "PHYSICAL",
+  "ip_addresses": [20,21],
+  "managers": []
+}
+
+### 58. Create Server with Invalid IP Address IDs (400)
+POST {{baseUrl}}/{{apiVersion}}/servers
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "Test Server",
+  "os": 1,
+  "status": "ONLINE",
+  "location": "DC",
+  "type": "PHYSICAL",
+  "ip_addresses": [99999]
+}
+
+### 58.1. Create Server with Duplicate Name (400)
+POST {{baseUrl}}/{{apiVersion}}/servers
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "Complex Server",
+  "os": 1,
+  "status": "ONLINE",
+  "location": "DC",
+  "type": "PHYSICAL",
+  "ip_addresses": [7],
+  "description": "Duplicate name test"
+}
+
+### 58.2. Create Server with Assigned IP Address (400)
+POST {{baseUrl}}/{{apiVersion}}/servers
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "Test Server with Assigned IP",
+  "os": 1,
+  "status": "ONLINE",
+  "location": "DC",
+  "type": "PHYSICAL",
+  "ip_addresses": [20],
+  "description": "Using assigned IP test - should fail if IP 20 has status 'assigned'"
+}
+
+### 59. Update Non-existent Server (404)
+PUT {{baseUrl}}/{{apiVersion}}/servers/16
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "non-existent-server"
+}
+
+### 60. Update Server with Invalid Status (400)
+PUT {{baseUrl}}/{{apiVersion}}/servers/16
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "status": "INVALID_STATUS"
+}
+
+### 60.1. Update Server with Duplicate Name (400)
+PUT {{baseUrl}}/{{apiVersion}}/servers/16
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "Complex Server"
+}
+
+### 60.2. Update Server with Assigned IP Address (400)
+PUT {{baseUrl}}/{{apiVersion}}/servers/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "ip_addresses": [20]
+}
+
+### 61. Delete Non-existent Server (404)
+DELETE {{baseUrl}}/{{apiVersion}}/servers/15
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 62. Filter with Invalid Status Value
+GET {{baseUrl}}/{{apiVersion}}/servers?status=INVALID_STATUS
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 63. Filter with Invalid Type Value
+GET {{baseUrl}}/{{apiVersion}}/servers?type=INVALID_TYPE
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 64. Filter with Invalid Location Value
+GET {{baseUrl}}/{{apiVersion}}/servers?location=INVALID_LOCATION
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 65. Pagination with Invalid Page Number
+GET {{baseUrl}}/{{apiVersion}}/servers?page=-1
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 66. Pagination with Invalid Page Size
+GET {{baseUrl}}/{{apiVersion}}/servers?pageSize=0
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+# ========================================
+# 🧪 ADVANCED SERVER TESTS
+# ========================================
+
+### 67. Create Server with All Status Types
+POST {{baseUrl}}/{{apiVersion}}/servers
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "Maintenance Server",
+  "os": 2,
+  "status": "MAINTENANCE",
+  "location": "DR",
+  "type": "VIRTUAL-MACHINE",
+  "ip_addresses": [14],
+  "description": "Server in maintenance mode"
+}
+
+### 68. Create Server with All Location Types
+POST {{baseUrl}}/{{apiVersion}}/servers
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "Branch Server",
+  "os": 1,
+  "status": "ONLINE",
+  "location": "BRANCH",
+  "type": "PHYSICAL",
+  "ip_addresses": [5],
+  "description": "Server at branch office"
+}
+
+### 69. Create Server with Complex Relationships
+POST {{baseUrl}}/{{apiVersion}}/servers
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "Complex Server",
+  "os": 3,
+  "status": "ONLINE",
+  "location": "DC",
+  "type": "PHYSICAL",
+  "managers": [1, 2, 3],
+  "systems": [1, 2, 3],
+  "agents": [1, 2, 3],
+  "services": [1, 2, 3, 4],
+  "tags": [1, 2, 3, 4, 5],
+  "ip_addresses": [1, 2, 3, 4, 5],
+  "description": "Server with complex relationships for testing"
+}
+
+### 70. Update Server - Change All Core Properties
+PUT {{baseUrl}}/{{apiVersion}}/servers/2
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "Transformed Server",
+  "os": 3,
+  "status": "OFFLINE",
+  "location": "CLOUD",
+  "type": "CLOUD-INSTANCE",
+  "description": "Server transformed to cloud instance"
+}
+
+### 71. Create Server with Long Description
+POST {{baseUrl}}/{{apiVersion}}/servers
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "name": "Documented Server",
+  "os": 1,
+  "status": "ONLINE",
+  "location": "DC",
+  "type": "PHYSICAL",
+  "ip_addresses": [6],
+  "description": "This is a very long description for a server that contains multiple sentences and explains in detail what the server is used for, which services run on it, how it fits into the overall infrastructure architecture, what maintenance schedules it follows, and who are the responsible contacts for various aspects of its operation and management."
+}
+
+### 72. Search with Special Characters
+GET {{baseUrl}}/{{apiVersion}}/servers?search=web%20server
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 73. Complex Filter Combination
+GET {{baseUrl}}/{{apiVersion}}/servers?status=ONLINE&type=PHYSICAL&location=DC&tags=1&tags=2&manager=1&systems=1&services=1&search=server&page=1&pageSize=10
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 74. Empty Result Set Test
+GET {{baseUrl}}/{{apiVersion}}/servers?search=nonexistent&status=MAINTENANCE&type=CLOUD-INSTANCE&location=BRANCH&tags=99999
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 75. Update Server - Status Transition Workflow
+PUT {{baseUrl}}/{{apiVersion}}/servers/3
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+{
+  "status": "MAINTENANCE",
+  "description": "Server taken offline for maintenance"
+}
+
+# ========================================
+# ✅ SERVERS API TEST CHECKLIST
+# ========================================
+# 
+# BASIC CRUD OPERATIONS:
+# ⏳ GET /api/v1/servers (get all servers with advanced filtering)
+# ⏳ GET /api/v1/servers/:id (get server by ID with full details)
+# ⏳ POST /api/v1/servers (create new server)
+# ⏳ PUT /api/v1/servers/:id (update server)
+# ⏳ DELETE /api/v1/servers/:id (delete server)
+#
+# SEARCH & FIND:
+# ⏳ GET /api/v1/servers/find?name=exact_name (find by exact name)
+# ⏳ GET /api/v1/servers/find?ip_address=ip (find by IP address)
+# ⏳ GET /api/v1/servers?search=text (search by name, IP, etc.)
+#
+# FILTERING CAPABILITIES:
+# ⏳ Filter by status (ONLINE, OFFLINE, MAINTENANCE)
+# ⏳ Filter by type (PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE)
+# ⏳ Filter by location (DC, DR, CMC, BRANCH, CLOUD)
+# ⏳ Filter by tags (array of tag IDs)
+# ⏳ Filter by ip (array of IP address IDs)
+# ⏳ Filter by manager (array of contact IDs)
+# ⏳ Filter by systems (array of system IDs)
+# ⏳ Filter by services (array of service IDs)
+# ⏳ Filter by os (array of platform IDs)
+# ⏳ Combined filters (all parameters together)
+#
+# PAGINATION:
+# ⏳ Page number control (page parameter, default: 1)
+# ⏳ Page size control (pageSize parameter, default: 10)
+# ⏳ Pagination with filters
+#
+# API STRUCTURE NOTES:
+# ✅ Direct GET /api/v1/servers endpoint with extensive filtering
+# ✅ Find endpoint requires name OR ip_address parameter
+# ✅ Response uses data/total format
+# ✅ /find endpoint properly placed BEFORE /:id (no routing conflicts)
+# ✅ Most complex relationships (managers, systems, agents, services, tags, ip_addresses)
+#
+# FIELD VALIDATION:
+# ⏳ Required fields: name, os, status, location, type, ip_addresses (at least one)
+# ⏳ Optional fields: managers, systems, agents, services, tags, description
+# ⏳ Status enum: ONLINE, OFFLINE, MAINTENANCE
+# ⏳ Type enum: PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE
+# ⏳ Location enum: DC, DR, CMC, BRANCH, CLOUD
+# ⏳ Relationship validation (all IDs must exist)
+# ⏳ Partial update support (only provided fields updated)
+# ✅ Server name uniqueness validation (case-insensitive)
+# ✅ IP address assignment status validation (cannot use assigned IPs)
+#
+# ERROR HANDLING:
+# ⏳ 400 - Invalid data/missing required fields/invalid enum values
+# ⏳ 400 - Invalid relationship IDs (os, managers, systems, agents, services, tags, ip_addresses)
+# ✅ 400 - Duplicate server name (create and update)
+# ✅ 400 - IP addresses with status 'assigned' (create and update)
+# ⏳ 404 - Server not found
+# ⏳ 500 - Internal server error
+#
+# RELATIONSHIP MANAGEMENT:
+# ⏳ Create with multiple relationship types
+# ⏳ Update relationships (add/remove/clear arrays)
+# ⏳ Filter by all relationship types
+# ⏳ Validate all relationship IDs exist
+#
+# SPECIAL CASES:
+# ⏳ All status transitions (ONLINE ↔ OFFLINE ↔ MAINTENANCE)
+# ⏳ All type transformations (PHYSICAL → VIRTUAL-MACHINE → CLOUD-INSTANCE)
+# ⏳ All location scenarios (DC, DR, CMC, BRANCH, CLOUD)
+# ⏳ Complex relationship combinations
+# ⏳ Search case sensitivity
+# ⏳ Empty result sets
+# ⏳ Complex filter combinations with pagination
+# ⏳ Long descriptions and special characters
+#
+# UNIQUE FEATURES:
+# ⏳ Most comprehensive filtering system (9 filter types)
+# ⏳ Multiple find methods (name, IP address)
+# ⏳ Complex relationship management (6 relationship types)
+# ⏳ Status-based workflow management
+# ⏳ Infrastructure categorization (status, type, location)
+# ⏳ Full-text search across multiple fields
+#
+# ========================================

@@ -1,7 +1,7 @@
 <div class="container-fluid">
   <div class="row mb-3">
     <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
-      <% if (hasPermission && hasPermission(user, 'role.create')) { %>
+      <% if (hasPermission('role.create')) { %>
       <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addRoleModal">
         <i class="bi bi-plus"></i> Add Role
       </button>
@@ -66,10 +66,10 @@
                     </td>
                     <td class="text-end">
                       <% if (role.name !== 'superadmin') { %>
-                        <% if (hasPermission && hasPermission(user, 'role.update')) { %>
+                        <% if (hasPermission('role.update')) { %>
                         <a href="#" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#roleEditModal-<%= role.id %>"><i class="bi bi-pencil"></i></a>
                         <% } %>
-                        <% if (hasPermission && hasPermission(user, 'role.delete')) { %>
+                        <% if (hasPermission('role.delete')) { %>
                         <form action="/administrator/roles/<%= role.id %>?_method=DELETE" method="POST" style="display:inline">
                           <input type="hidden" name="_method" value="DELETE">
                           <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete?')"><i class="bi bi-trash"></i></button>
@@ -81,7 +81,7 @@
                     </td>
                   </tr>
                   <!-- Edit Role Modal -->
-                  <% if (role.name !== 'superadmin' && hasPermission && hasPermission(user, 'role.update')) { %>
+                  <% if (role.name !== 'superadmin' && hasPermission('role.update')) { %>
                     <div class="modal fade" id="roleEditModal-<%= role.id %>" tabindex="-1" aria-labelledby="roleEditModalLabel-<%= role.id %>" aria-hidden="true">
                       <div class="modal-dialog">
                         <div class="modal-content">
@@ -263,7 +263,7 @@
     </div>
   </div>
   <!-- Add Role Modal -->
-  <% if (hasPermission && hasPermission(user, 'role.create')) { %>
+  <% if (hasPermission('role.create')) { %>
   <div class="modal fade" id="addRoleModal" tabindex="-1" aria-labelledby="addRoleModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">

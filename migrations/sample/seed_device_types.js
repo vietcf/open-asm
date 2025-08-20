@@ -1,4 +1,4 @@
-module.exports = async (pool) => {
+export default async (pool) => {
   // Seed một số loại thiết bị mẫu
   await pool.query(`
     INSERT INTO device_types (name, description)

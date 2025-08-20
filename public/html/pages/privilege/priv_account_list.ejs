@@ -2,7 +2,7 @@
     <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/priv-account/account" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
       <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search account name or description..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
       <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
-        <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+        <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
           <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
         <% }) %>
       </select>
@@ -10,7 +10,7 @@
     </form>
     <div class="row mb-3">
       <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px; gap: 8px;">
-        <% if (hasPermission(user, 'priv_account.create')) { %>
+        <% if (hasPermission('priv_account.create')) { %>
         <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addPrivUserModal">
           <i class="bi bi-plus"></i> Add Privileged Account
         </button>
@@ -189,11 +189,11 @@
                       <td><%= account.created_at ? account.created_at.toLocaleString() : '' %></td>
                       <td class="text-end">
                         <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#privUserDetailModal-<%= account.id %>"><i class="bi bi-eye"></i></a>
-                        <% if (hasPermission(user, 'priv_account.update')) { %>
+                        <% if (hasPermission('priv_account.update')) { %>
                         <a href="#" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#privUserEditModal-<%= account.id %>"><i class="bi bi-pencil"></i></a>
                         <% } %>
-                        <% if (hasPermission(user, 'priv_account.delete')) { %>
-                        <form action="/priv-account/account/<%= account.id %>/delete" method="POST" style="display:inline">
+                        <% if (hasPermission('priv_account.delete')) { %>
+                        <form action="/priv-account/account/<%= account.id %>?_method=DELETE" method="POST" style="display:inline">
                           <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete?')"><i class="bi bi-trash"></i></button>
                         </form>
                         <% } %>
@@ -282,7 +282,7 @@
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                           </div>
                           <div class="modal-body">
-                            <form id="editPrivUserForm-<%= account.id %>" action="/priv-account/account/<%= account.id %>/edit?_method=PUT" method="POST" autocomplete="off">
+                            <form id="editPrivUserForm-<%= account.id %>" action="/priv-account/account/<%= account.id %>?_method=PUT" method="POST" autocomplete="off">
                               <div class="mb-3">
                                 <label class="form-label">Account Name</label>
                                 <input type="text" class="form-control form-control-sm" name="username" value="<%= account.username %>" required>

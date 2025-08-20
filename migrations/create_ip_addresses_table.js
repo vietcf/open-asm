@@ -1,6 +1,6 @@
 // Migration for creating ip_addresses table
 // Updated: 02/06/2025 - Use INET type for address, address UNIQUE
-module.exports = async (db) => {
+export default async (db) => {
   await db.query(`
     CREATE TABLE IF NOT EXISTS ip_addresses (
       id SERIAL PRIMARY KEY,

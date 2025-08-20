@@ -1,0 +1,26 @@
+# ===== SHARED ENVIRONMENT VARIABLES =====
+# Import vào các file khác bằng: @import ./common-env.http
+
+@baseUrl = http://localhost:3000
+@apiVersion = api
+@contentType = application/json
+
+# ===== COMMON HEADERS =====
+@jsonHeader = Accept: application/json
+@postHeader = Content-Type: application/json
+@formHeader = Content-Type: application/x-www-form-urlencoded
+
+# ===== TEST DATA =====
+@testServerId = 1
+@testSystemId = 1
+@testIpAddress = 192.168.1.1
+
+# ===== ENVIRONMENTS =====
+# Development
+@devUrl = http://localhost:3000
+
+# Staging  
+@stagingUrl = http://staging.openasm.com
+
+# Production
+@prodUrl = http://api.openasm.com
