@@ -371,24 +371,38 @@
                     }
                   }
                 %>
+
+                <% 
+                  // Build filter query string for pagination links
+                  function buildPrivAccountFilterQuery() {
+                    let params = [];
+                    if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+                    if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
+                    if (typeof organize_id !== 'undefined' && organize_id) params.push('organize_id=' + encodeURIComponent(organize_id));
+                    if (typeof system_ids !== 'undefined' && Array.isArray(system_ids) && system_ids.length) system_ids.forEach(function(id) { params.push('system_ids[]=' + encodeURIComponent(id)); });
+                    if (typeof contact_ids !== 'undefined' && Array.isArray(contact_ids) && contact_ids.length) contact_ids.forEach(function(id) { params.push('contact_ids[]=' + encodeURIComponent(id)); });
+                    return params.join('&');
+                  }
+                  const privAccountFilterQuery = buildPrivAccountFilterQuery();
+                %>
                 <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page - 1 %>&pageSize=<%= pageSize %><%= search ? '&search=' + encodeURIComponent(search) : '' %>">Previous</a>
+                  <a class="page-link" href="?page=<%= page - 1 %><%= privAccountFilterQuery ? '&' + privAccountFilterQuery : '' %>">Previous</a>
                 </li>
                 <% if (startPage > 1) { %>
-                  <li class="page-item"><a class="page-link" href="?page=1&pageSize=<%= pageSize %><%= search ? '&search=' + encodeURIComponent(search) : '' %>">1</a></li>
+                  <li class="page-item"><a class="page-link" href="?page=1<%= privAccountFilterQuery ? '&' + privAccountFilterQuery : '' %>">1</a></li>
                   <% if (startPage > 2) { %>
                     <li class="page-item disabled"><span class="page-link">...</span></li>
                   <% } %>
                 <% } %>
                 <% for (let i = startPage; i <= endPage; i++) { %>
-                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %>&pageSize=<%= pageSize %><%= search ? '&search=' + encodeURIComponent(search) : '' %>"><%= i %></a></li>
+                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= privAccountFilterQuery ? '&' + privAccountFilterQuery : '' %>"><%= i %></a></li>
                 <% } %>
                 <% if (endPage < totalPages) { %>
                   <li class="page-item disabled"><span class="page-link">...</span></li>
-                  <li class="page-item"><a class="page-link" href="?page=<%= totalPages %>&pageSize=<%= pageSize %><%= search ? '&search=' + encodeURIComponent(search) : '' %>"><%= totalPages %></a></li>
+                  <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= privAccountFilterQuery ? '&' + privAccountFilterQuery : '' %>"><%= totalPages %></a></li>
                 <% } %>
                 <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page + 1 %>&pageSize=<%= pageSize %><%= search ? '&search=' + encodeURIComponent(search) : '' %>">Next</a>
+                  <a class="page-link" href="?page=<%= page + 1 %><%= privAccountFilterQuery ? '&' + privAccountFilterQuery : '' %>">Next</a>
                 </li>
               </ul>
             </div>
