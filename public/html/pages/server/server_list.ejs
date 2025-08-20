@@ -398,24 +398,44 @@
                   }
                 }
               %>
+
+              <% 
+                // Build filter query string for pagination links
+                function buildServerFilterQuery() {
+                  let params = [];
+                  if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+                  if (typeof pageSize !== 'undefined' && pageSize) params.push('page_size=' + encodeURIComponent(pageSize));
+                  if (typeof filterStatus !== 'undefined' && filterStatus) params.push('status=' + encodeURIComponent(filterStatus));
+                  if (typeof filterLocation !== 'undefined' && filterLocation) params.push('location=' + encodeURIComponent(filterLocation));
+                  if (typeof filterType !== 'undefined' && filterType) params.push('type=' + encodeURIComponent(filterType));
+                  if (typeof filterTags !== 'undefined' && filterTags.length) filterTags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag)); });
+                  if (typeof filterIp !== 'undefined' && filterIp.length) filterIp.forEach(function(ip) { params.push('ip[]=' + encodeURIComponent(ip)); });
+                  if (typeof filterManager !== 'undefined' && filterManager.length) filterManager.forEach(function(m) { params.push('manager[]=' + encodeURIComponent(m)); });
+                  if (typeof filterSystems !== 'undefined' && filterSystems.length) filterSystems.forEach(function(s) { params.push('systems[]=' + encodeURIComponent(s)); });
+                  if (typeof filterServices !== 'undefined' && filterServices.length) filterServices.forEach(function(sv) { params.push('services[]=' + encodeURIComponent(sv)); });
+                  if (typeof filterOs !== 'undefined' && filterOs.length) filterOs.forEach(function(os) { params.push('os[]=' + encodeURIComponent(os)); });
+                  return params.join('&');
+                }
+                const serverFilterQuery = buildServerFilterQuery();
+              %>
               <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= page - 1 %>&page_size=<%= pageSize %>" tabindex="-1">Previous</a>
+                <a class="page-link" href="?page=<%= page - 1 %><%= serverFilterQuery ? '&' + serverFilterQuery : '' %>" tabindex="-1">Previous</a>
               </li>
               <% if (startPage > 1) { %>
-                <li class="page-item"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=1&page_size=<%= pageSize %>">1</a></li>
+                <li class="page-item"><a class="page-link" href="?page=1<%= serverFilterQuery ? '&' + serverFilterQuery : '' %>">1</a></li>
                 <% if (startPage > 2) { %>
                   <li class="page-item disabled"><span class="page-link">...</span></li>
                 <% } %>
               <% } %>
               <% for (let i = startPage; i <= endPage; i++) { %>
-                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= i %>&page_size=<%= pageSize %>"><%= i %></a></li>
+                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= serverFilterQuery ? '&' + serverFilterQuery : '' %>"><%= i %></a></li>
               <% } %>
               <% if (endPage < totalPages) { %>
                 <li class="page-item disabled"><span class="page-link">...</span></li>
-                <li class="page-item"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= totalPages %>&page_size=<%= pageSize %>"><%= totalPages %></a></li>
+                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= serverFilterQuery ? '&' + serverFilterQuery : '' %>"><%= totalPages %></a></li>
               <% } %>
               <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= page + 1 %>&page_size=<%= pageSize %>">Next</a>
+                <a class="page-link" href="?page=<%= page + 1 %><%= serverFilterQuery ? '&' + serverFilterQuery : '' %>">Next</a>
               </li>
             </ul>
           </div>

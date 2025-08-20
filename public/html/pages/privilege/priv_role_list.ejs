@@ -197,25 +197,34 @@
                     endPage = page + 4;
                   }
                 }
+                // Build filter query string for pagination links
+                function buildPrivRoleFilterQuery() {
+                  let params = [];
+                  if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+                  if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
+                  if (typeof system_id !== 'undefined' && system_id) params.push('system_id=' + encodeURIComponent(system_id));
+                  return params.join('&');
+                }
+                const privRoleFilterQuery = buildPrivRoleFilterQuery();
               %>
               <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page - 1 %>&pageSize=<%= pageSize %><%= search ? '&search=' + encodeURIComponent(search) : '' %>">Previous</a>
+                <a class="page-link" href="?page=<%= page - 1 %><%= privRoleFilterQuery ? '&' + privRoleFilterQuery : '' %>">Previous</a>
               </li>
               <% if (startPage > 1) { %>
-                <li class="page-item"><a class="page-link" href="?page=1&pageSize=<%= pageSize %><%= search ? '&search=' + encodeURIComponent(search) : '' %>">1</a></li>
+                <li class="page-item"><a class="page-link" href="?page=1<%= privRoleFilterQuery ? '&' + privRoleFilterQuery : '' %>">1</a></li>
                 <% if (startPage > 2) { %>
                   <li class="page-item disabled"><span class="page-link">...</span></li>
                 <% } %>
               <% } %>
               <% for (let i = startPage; i <= endPage; i++) { %>
-                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %>&pageSize=<%= pageSize %><%= search ? '&search=' + encodeURIComponent(search) : '' %>"><%= i %></a></li>
+                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= privRoleFilterQuery ? '&' + privRoleFilterQuery : '' %>"><%= i %></a></li>
               <% } %>
               <% if (endPage < totalPages) { %>
                 <li class="page-item disabled"><span class="page-link">...</span></li>
-                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %>&pageSize=<%= pageSize %><%= search ? '&search=' + encodeURIComponent(search) : '' %>"><%= totalPages %></a></li>
+                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= privRoleFilterQuery ? '&' + privRoleFilterQuery : '' %>"><%= totalPages %></a></li>
               <% } %>
               <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page + 1 %>&pageSize=<%= pageSize %><%= search ? '&search=' + encodeURIComponent(search) : '' %>">Next</a>
+                <a class="page-link" href="?page=<%= page + 1 %><%= privRoleFilterQuery ? '&' + privRoleFilterQuery : '' %>">Next</a>
               </li>
             </ul>
           </div>

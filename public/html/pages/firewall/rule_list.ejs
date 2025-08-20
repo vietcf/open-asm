@@ -554,9 +554,6 @@
             </div>
           </div>
           <ul class="pagination pagination-sm m-0 float-end">
-            <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-              <a class="page-link" href="?page=<%= page - 1 %>&pageSize=<%= pageSize %>" tabindex="-1">Previous</a>
-            </li>
             <% 
               let startPage = 1;
               let endPage = totalPages;
@@ -572,15 +569,33 @@
                   endPage = page + 4;
                 }
               }
-              for (let i = startPage; i <= endPage; i++) { 
+              // Build filter query string for pagination links
+              function buildRuleFilterQuery() {
+                let params = [];
+                if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+                if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
+                if (typeof firewall_name !== 'undefined' && firewall_name) params.push('firewall_name=' + encodeURIComponent(firewall_name));
+                if (typeof filterUnitId !== 'undefined' && filterUnitId) params.push('ou_id=' + encodeURIComponent(filterUnitId));
+                if (typeof filterTagIds !== 'undefined' && Array.isArray(filterTagIds) && filterTagIds.length) filterTagIds.forEach(function(id) { params.push('tags[]=' + encodeURIComponent(id)); });
+                if (typeof filterContactIds !== 'undefined' && Array.isArray(filterContactIds) && filterContactIds.length) filterContactIds.forEach(function(id) { params.push('contacts[]=' + encodeURIComponent(id)); });
+                if (typeof audit_batch !== 'undefined' && audit_batch) params.push('audit_batch=' + encodeURIComponent(audit_batch));
+                if (typeof violation_type !== 'undefined' && violation_type) params.push('violation_type=' + encodeURIComponent(violation_type));
+                if (typeof status !== 'undefined' && status) params.push('status=' + encodeURIComponent(status));
+                return params.join('&');
+              }
+              const ruleFilterQuery = buildRuleFilterQuery();
             %>
-              <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %>&pageSize=<%= pageSize %>"><%= i %></a></li>
+            <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+              <a class="page-link" href="?page=<%= page - 1 %><%= ruleFilterQuery ? '&' + ruleFilterQuery : '' %>" tabindex="-1">Previous</a>
+            </li>
+            <% for (let i = startPage; i <= endPage; i++) { %>
+              <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= ruleFilterQuery ? '&' + ruleFilterQuery : '' %>"><%= i %></a></li>
             <% } %>
             <% if (endPage < totalPages) { %>
               <li class="page-item disabled"><span class="page-link">...</span></li>
             <% } %>
             <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-              <a class="page-link" href="?page=<%= page + 1 %>&pageSize=<%= pageSize %>">Next</a>
+              <a class="page-link" href="?page=<%= page + 1 %><%= ruleFilterQuery ? '&' + ruleFilterQuery : '' %>">Next</a>
             </li>
           </ul>
         </div>
