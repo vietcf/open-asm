@@ -1,4 +1,4 @@
-module.exports = async (pool) => {
+export default async (pool) => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS contacts (
       id SERIAL PRIMARY KEY,
@@ -7,6 +7,7 @@ module.exports = async (pool) => {
       phone VARCHAR(20),
       unit_id INTEGER,
       position VARCHAR(100),
+      description TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);

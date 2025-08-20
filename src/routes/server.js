@@ -1,53 +1,48 @@
-const express = require('express');
-const path = require('path');
-const fs = require('fs');
-const ejs = require('ejs');
-const config = require('../../config/config');
-const serverController = require('../controllers/serverController');
-const checkPermission = require('../middlewares/checkPermission');
-const requireLogin = require('../middlewares/requireLogin');
-const require2fa = require('../middlewares/require2fa');
+import express from 'express';
+import serverController from '../controllers/serverController.js';
+import requirePermission from '../middlewares/requirePermission.middleware.js';
+
 
 const router = express.Router();
 
 // ====== SERVER MENU ======
 // List servers
-router.get('/server/list', requireLogin, require2fa, checkPermission('read', 'server'), serverController.listServer);
+router.get('/server/list', requirePermission('server.read'), serverController.listServer);
 // Export server list as Excel (filtered)
-router.get('/server/export', requireLogin, require2fa, checkPermission('read', 'server'), serverController.exportServerList);
+router.get('/server/export', requirePermission('server.read'), serverController.exportServerList);
 // Add server
-router.get('/server/add', checkPermission('create', 'server'), serverController.addServerForm);
-router.post('/server/add', checkPermission('create', 'server'), serverController.createServer);
+router.get('/server/add', requirePermission('server.create'), serverController.addServerForm);
+router.post('/server/add', requirePermission('server.create'), serverController.createServer);
 // Edit server
-router.get('/server/:id/edit', checkPermission('update', 'server'), serverController.editServerForm);
-router.post('/server/:id/edit', checkPermission('update', 'server'), serverController.updateServer);
+router.get('/server/:id/edit', requirePermission('server.update'), serverController.editServerForm);
+router.post('/server/:id/edit', requirePermission('server.update'), serverController.updateServer);
 // Delete server
-router.post('/server/:id/delete', checkPermission('delete', 'server'), serverController.deleteServer);
+router.delete('/server/:id', requirePermission('server.delete'), serverController.deleteServer);
 
 // ====== SERVICE MENU ======
 // List services
-router.get('/service/list', checkPermission('read', 'service'), serverController.listService);
+router.get('/service/list', requirePermission('service.read'), serverController.listService);
 // Add service
-router.post('/service/add', checkPermission('create', 'service'), serverController.createService);
+router.post('/service/add', requirePermission('service.create'), serverController.createService);
 // Edit service
-router.post('/service/:id/edit', checkPermission('update', 'service'), serverController.updateService);
+router.post('/service/:id/edit', requirePermission('service.update'), serverController.updateService);
 // Delete service
-router.post('/service/:id/delete', checkPermission('delete', 'service'), serverController.deleteService);
+router.post('/service/:id/delete', requirePermission('service.delete'), serverController.deleteService);
 
 // ====== AGENT MENU ======
 // List agents
-router.get('/agent/list', checkPermission('read', 'agent'), serverController.listAgent);
+router.get('/agent/list', requirePermission('agent.read'), serverController.listAgent);
 // Add agent
-router.post('/agent/add', checkPermission('create', 'agent'), serverController.createAgent);
+router.post('/agent/add', requirePermission('agent.create'), serverController.createAgent);
 // Edit agent
-router.post('/agent/:id/edit', checkPermission('update', 'agent'), serverController.updateAgent);
+router.post('/agent/:id/edit', requirePermission('agent.update'), serverController.updateAgent);
 // Delete agent
-router.post('/agent/:id/delete', checkPermission('delete', 'agent'), serverController.deleteAgent);
+router.post('/agent/:id/delete', requirePermission('agent.delete'), serverController.deleteAgent);
 
 
 // ====== AJAX MENU ======
 // API: Get server detail by ID (for AJAX/modal)
-router.get('/server/api/:id/detail', checkPermission('read', 'server'), serverController.detailServer);
+router.get('/server/api/:id/detail', requirePermission('server.read'), serverController.detailServer);
 // API: Get services for select2 ajax. Call from server edit or add form
 router.get('/api/service', serverController.apiSearchService);
 // API: Get agents for select2 ajax. 
@@ -57,4 +52,4 @@ router.get('/api/agent',serverController.apiSearchAgent);
 // Call from system add/edit form
 router.get('/api/server',serverController.apiSearchServer);
 
-module.exports = router;
+export default router;

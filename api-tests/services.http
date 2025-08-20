@@ -1,0 +1,326 @@
+# ========================================
+# 🔧 SERVICES API TESTS (MINIMAL)
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+# Environment: development (change in VS Code status bar)
+# ========================================
+
+### 0. Login to get JWT Token (Run this first!)
+# @name serviceAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+# ========================================
+# 📋 BASIC SERVICE CRUD OPERATIONS
+# ========================================
+
+### 1. Get All Services
+GET {{baseUrl}}/{{apiVersion}}/services
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 2. Get Service by ID
+GET {{baseUrl}}/{{apiVersion}}/services/1
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 3. Create New Service
+# @name createService
+POST {{baseUrl}}/{{apiVersion}}/services
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+{
+  "name": "Test Web Service",
+  "description": "Test service for API testing"
+}
+
+### 4. Update Service (Complete Update)
+PUT {{baseUrl}}/{{apiVersion}}/services/{{createService.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+{
+  "name": "Test Web Service Updated",
+  "description": "Updated test service description"
+}
+
+### 5. Update Service (Name Only)
+PUT {{baseUrl}}/{{apiVersion}}/services/{{createService.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+{
+  "name": "Test Service Name Only"
+}
+
+### 6. Update Service (Description Only)
+PUT {{baseUrl}}/{{apiVersion}}/services/{{createService.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+{
+  "description": "Updated description only"
+}
+
+### 7. Delete Service
+DELETE {{baseUrl}}/{{apiVersion}}/services/{{createService.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+# ========================================
+# 🔍 SEARCH & FIND OPERATIONS
+# ========================================
+
+### 8. Find Service by Exact Name
+GET {{baseUrl}}/{{apiVersion}}/services/find?name=test121
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 9. Find Service with Case Sensitivity Test
+GET {{baseUrl}}/{{apiVersion}}/services/find?name=web server
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 10. Find Service - Non-existent Name
+GET {{baseUrl}}/{{apiVersion}}/services/find?name=Non-existent Service
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+# ========================================
+# ❌ ERROR HANDLING TESTS
+# ========================================
+
+### 11. Get Non-existent Service (404)
+GET {{baseUrl}}/{{apiVersion}}/services/99999
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 12. Find without Name Parameter (400)
+GET {{baseUrl}}/{{apiVersion}}/services/find
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 13. Find with Empty Name (400)
+GET {{baseUrl}}/{{apiVersion}}/services/find?name=
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 14. Create Service with Invalid Data (400)
+POST {{baseUrl}}/{{apiVersion}}/services
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+{
+  "description": "Missing required name field"
+}
+
+### 15. Create Service with Empty Name (400)
+POST {{baseUrl}}/{{apiVersion}}/services
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+{
+  "name": "",
+  "description": "Empty name should fail"
+}
+
+### 16. Create Service with Duplicate Name (400)
+POST {{baseUrl}}/{{apiVersion}}/services
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+{
+  "name": "Web Server",
+  "description": "Duplicate name test"
+}
+
+### 17. Update Non-existent Service (404)
+PUT {{baseUrl}}/{{apiVersion}}/services/99999
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+{
+  "name": "non-existent-service"
+}
+
+### 18. Update Service with Empty Name (400)
+PUT {{baseUrl}}/{{apiVersion}}/services/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+{
+  "name": ""
+}
+
+### 19. Update Service with Duplicate Name (400)
+PUT {{baseUrl}}/{{apiVersion}}/services/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+{
+  "name": "Database Service"
+}
+
+### 20. Delete Non-existent Service (404)
+DELETE {{baseUrl}}/{{apiVersion}}/services/99999
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 21. Delete Service in Use (400)
+DELETE {{baseUrl}}/{{apiVersion}}/services/1
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+# ========================================
+# 🧪 ADVANCED SERVICE TESTS
+# ========================================
+
+### 22. Create Service with Minimal Data
+POST {{baseUrl}}/{{apiVersion}}/services
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+{
+  "name": "Minimal Service"
+}
+
+### 23. Update Service with Null Values
+PUT {{baseUrl}}/{{apiVersion}}/services/2
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+{
+  "name": "Service With Null Fields",
+  "description": null
+}
+
+### 24. Create Service with Long Description
+POST {{baseUrl}}/{{apiVersion}}/services
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+{
+  "name": "Service with Long Description",
+  "description": "This is a very long description for a service that contains multiple sentences and explains in detail what the service does, how it operates, and what benefits it provides to the system architecture and overall application performance."
+}
+
+### 25. Create Service with Special Characters
+POST {{baseUrl}}/{{apiVersion}}/services
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+{
+  "name": "API Gateway (v2.0)",
+  "description": "RESTful API Gateway & Load Balancer"
+}
+
+### 26. Find Service with Special Characters
+GET {{baseUrl}}/{{apiVersion}}/services/find?name=API Gateway (v2.0)
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 27. Update Service - Clear Optional Fields
+PUT {{baseUrl}}/{{apiVersion}}/services/3
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+{
+  "name": "Cleared Fields Service",
+  "description": ""
+}
+
+### 28. Create Service with Numbers and Symbols
+POST {{baseUrl}}/{{apiVersion}}/services
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+{
+  "name": "Redis Cache 7.0.11",
+  "description": "In-memory data structure store - v7.0.11"
+}
+
+### 29. Find Service - Partial Name (Should Not Match)
+GET {{baseUrl}}/{{apiVersion}}/services/find?name=Web
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 30. Update Service - Only Description with Special Characters
+PUT {{baseUrl}}/{{apiVersion}}/services/4
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+{
+  "description": "Updated with special chars: @#$%^&*()_+ | Service v2.1"
+}
+
+# ========================================
+# ✅ BASIC SERVICES API TEST CHECKLIST
+# ========================================
+# 
+# BASIC CRUD OPERATIONS:
+# ⏳ GET /api/v1/services (get all services)
+# ⏳ GET /api/v1/services/:id (get service by ID)
+# ⏳ POST /api/v1/services (create new service)
+# ⏳ PUT /api/v1/services/:id (update service)
+# ⏳ DELETE /api/v1/services/:id (delete service)
+#
+# SEARCH & FIND:
+# ⏳ GET /api/v1/services/find?name=exact_name (find by exact name)
+#
+# API STRUCTURE NOTES:
+# ✅ Direct GET /api/v1/services endpoint exists
+# ✅ Find endpoint requires 'name' parameter
+# ✅ Response uses mixed format (data/total vs success/data/count)
+# ✅ Create response returns direct service object
+# ✅ /find endpoint properly placed BEFORE /:id (no routing conflicts)
+#
+# FIELD VALIDATION:
+# ⏳ Required fields: name (unique)
+# ⏳ Optional fields: description (nullable)
+# ⏳ Unique name constraint
+# ⏳ Partial update support (only provided fields updated)
+#
+# ERROR HANDLING:
+# ⏳ 400 - Invalid data/missing name/duplicate name/service in use
+# ⏳ 404 - Service not found
+# ⏳ 500 - Internal server error
+#
+# PARTIAL UPDATE TESTS:
+# ⏳ Update name only
+# ⏳ Update description only
+# ⏳ Update with null values
+#
+# SPECIAL CASES:
+# ⏳ Case sensitivity in find
+# ⏳ Special characters in names/descriptions
+# ⏳ Long descriptions
+# ⏳ Minimal required data (name only)
+# ⏳ Service in use cannot be deleted
+# ⏳ Empty vs null field handling
+# ⏳ Exact name matching (partial names should not match)
+#
+# ========================================

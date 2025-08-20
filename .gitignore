@@ -38,6 +38,7 @@ dist/
 
 # dotenv environment variables file
 .env
+pgdata/
 .env.*
 !.env.sample
 
@@ -63,3 +64,9 @@ yarn.lock
 .vscode/
 
 # Do NOT ignore .env.sample, allow it to be pushed to repo
+
+#docker images
+docker-images
+
+#ssl directory
+ssl

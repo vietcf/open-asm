@@ -1,0 +1,780 @@
+# ========================================
+# 📱 DEVICES API TESTS (MINIMAL)
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+# Environment: development (change in VS Code status bar)
+# ========================================
+
+### 0. Login to get JWT Token (Run this first!)
+# @name deviceAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+# ========================================
+# 📋 BASIC DEVICE CRUD OPERATIONS
+# ========================================
+
+### 1. Get All Devices
+GET {{baseUrl}}/{{apiVersion}}/devices
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 2. Get Device by ID
+GET {{baseUrl}}/{{apiVersion}}/devices/1
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 3. Create New Device (Missing Required Fields - Should Fail)
+# @name createDeviceMinimal
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "description": "Device missing required fields (name, device_type_id, ip_addresses)"
+}
+
+### 4. Create New Device (Missing Device Type & IPs - Should Fail)
+# @name createDeviceWithName
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "test device with name",
+  "description": "Device with name only"
+}
+
+### 5. Create New Device (Complete)
+# @name createDeviceComplete
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "test1 complete device",
+  "device_type_id": 1,
+  "platform_id": 1,
+  "location": "Data Center",
+  "serial": "DEV-001-SN",
+  "management": "192.168.1.100",
+  "manufacturer": "Cisco",
+  "description": "Complete test device with all fields",
+  "ip_addresses": [23]
+}
+
+### 5.1. Verify Created Device Response Structure
+GET {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+# This should return the same complete device data as createDeviceComplete response
+
+### 5.2. Verify Created Device Has Complete Relationship Data
+# @note createDeviceComplete response should include:
+# - id, name, device_type_id, device_type_name, platform_id, platform_name
+# - location, serial_number, management_address, manufacturer, description
+# - ip_addresses array with full IP details
+# - tags array with tag details
+# - contacts array with contact details
+# - created_at, updated_at, updated_by
+
+### 6. Update Device (Complete Update)
+PUT {{baseUrl}}/{{apiVersion}}/devices/5
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "tags": [5, 6]
+}
+
+### 7. Update Device (Name Only)
+PUT {{baseUrl}}/{{apiVersion}}/devices/5
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "device name only updated"
+}
+
+### 8. Update Device (Location Only)
+PUT {{baseUrl}}/{{apiVersion}}/devices/5
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "location": "Cloud"
+}
+
+### 9. Update Device (Manufacturer Only)
+PUT {{baseUrl}}/{{apiVersion}}/devices/5
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "manufacturer": "Dell"
+}
+
+### 10. Update Device (Serial Only)
+PUT {{baseUrl}}/{{apiVersion}}/devices/5
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "serial": "NEW-SERIAL-123"
+}
+
+### 11. Update Device (Management Address Only)
+PUT {{baseUrl}}/{{apiVersion}}/devices/5
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "management": "10.0.0.50"
+}
+
+### 12. Update Device (Clear Relationships)
+PUT {{baseUrl}}/{{apiVersion}}/devices/5
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "ip_addresses": [24],
+  "tags": [],
+  "contacts": []
+}
+
+### 13. Delete Device
+DELETE {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceMinimal.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+# Expected: 204 No Content (no response body)
+
+# ========================================
+# 🔍 SEARCH & FIND OPERATIONS
+# ========================================
+
+### 14. Search Devices by Name
+GET {{baseUrl}}/{{apiVersion}}/devices?search=firewall
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 15. Search Devices by Manufacturer
+GET {{baseUrl}}/{{apiVersion}}/devices?search=cisco
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 16. Search Devices by Platform
+GET {{baseUrl}}/{{apiVersion}}/devices?search=ios
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 17. Search Devices by IP Address
+GET {{baseUrl}}/{{apiVersion}}/devices?search=192.168
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 18. Search Devices by Description
+GET {{baseUrl}}/{{apiVersion}}/devices?search=core
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 19. Search with Pagination
+GET {{baseUrl}}/{{apiVersion}}/devices?search=device&page=1&pageSize=5
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 19.1. Find Device by Name (Exact Match)
+GET {{baseUrl}}/{{apiVersion}}/devices/find?name=test1 complete device
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 19.2. Find Device by IP Address (Exact Match)
+GET {{baseUrl}}/{{apiVersion}}/devices/find?ip_address=192.168.1.100
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 19.3. Find Device by Name and IP Address
+GET {{baseUrl}}/{{apiVersion}}/devices/find?name=test1 complete device&ip_address=192.168.1.100
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 19.4. Find Device - Non-existent Name (404)
+GET {{baseUrl}}/{{apiVersion}}/devices/find?name=Non-existent Device
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 19.5. Find Device - Non-existent IP (404)
+GET {{baseUrl}}/{{apiVersion}}/devices/find?ip_address=10.10.10.999
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 19.6. Find Device without Parameters (400)
+GET {{baseUrl}}/{{apiVersion}}/devices/find
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 19.7. Find Device with Empty Name (400)
+GET {{baseUrl}}/{{apiVersion}}/devices/find?name=
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 19.8. Find Device with Empty IP Address (400)
+GET {{baseUrl}}/{{apiVersion}}/devices/find?ip_address=
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+# ========================================
+# 🔧 FILTERING TESTS
+# ========================================
+
+### 20. Filter by Device Type
+GET {{baseUrl}}/{{apiVersion}}/devices?device_type_id=1
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 21. Filter by Multiple Device Types
+GET {{baseUrl}}/{{apiVersion}}/devices?device_type_id=1&device_type_id=2
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 22. Filter by Platform (OS)
+GET {{baseUrl}}/{{apiVersion}}/devices?platform_id=1
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 23. Filter by Multiple Platforms
+GET {{baseUrl}}/{{apiVersion}}/devices?platform_id=1&platform_id=2
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 24. Filter by Location
+GET {{baseUrl}}/{{apiVersion}}/devices?location=Data Center
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 25. Filter by Single Tag
+GET {{baseUrl}}/{{apiVersion}}/devices?tags=1
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 26. Filter by Multiple Tags
+GET {{baseUrl}}/{{apiVersion}}/devices?tags=1&tags=2
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 27. Combined Filters - Device Type + Platform
+GET {{baseUrl}}/{{apiVersion}}/devices?device_type_id=1&platform_id=1
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 28. Combined Filters - All Parameters
+GET {{baseUrl}}/{{apiVersion}}/devices?device_type_id=1&platform_id=1&location=Data Center&tags=1&tags=2&search=router
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+# ========================================
+# 📄 PAGINATION TESTS
+# ========================================
+
+### 29. Pagination - First Page (Default)
+GET {{baseUrl}}/{{apiVersion}}/devices?page=1&pageSize=5
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 30. Pagination - Second Page
+GET {{baseUrl}}/{{apiVersion}}/devices?page=2&pageSize=5
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 31. Pagination - Large Page Size
+GET {{baseUrl}}/{{apiVersion}}/devices?pageSize=50
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 32. Pagination - Small Page Size
+GET {{baseUrl}}/{{apiVersion}}/devices?pageSize=2
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 33. Pagination with Filters
+GET {{baseUrl}}/{{apiVersion}}/devices?device_type_id=1&page=1&pageSize=3
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+# ========================================
+# ❌ ERROR HANDLING TESTS
+# ========================================
+
+### 34. Get Non-existent Device (404)
+GET {{baseUrl}}/{{apiVersion}}/devices/1
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 35. Create Device with Empty Name (400)
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "",
+  "description": "Empty name should fail"
+}
+
+### 36. Create Device with Whitespace-only Name (400)
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "   ",
+  "description": "Whitespace-only name should fail"
+}
+
+### 37. Create Device with Empty Device Type ID (400)
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "device_type_id": "",
+  "description": "Empty device_type_id should fail"
+}
+
+### 38. Create Device with Empty IP Addresses Array (400)
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "ip_addresses": [],
+  "description": "Empty ip_addresses array should fail if provided"
+}
+
+### 39. Create Device with Invalid Device Type ID (400)
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "test device invalid type",
+  "device_type_id": 99999,
+  "description": "Invalid device_type_id"
+}
+
+### 40. Create Device with Invalid Platform ID (400)
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "test device invalid platform",
+  "platform_id": 99999,
+  "description": "Invalid platform_id"
+}
+
+### 41. Create Device with Invalid IP Address IDs (400)
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "test device invalid ip",
+  "ip_addresses": [99999],
+  "description": "Invalid IP address IDs"
+}
+
+### 42. Create Device with Invalid Tag IDs (400)
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "test device invalid tag",
+  "tags": [99999],
+  "description": "Invalid tag IDs"
+}
+
+### 43. Create Device with Invalid Contact IDs (400)
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "test device invalid contact",
+  "contacts": [99999],
+  "description": "Invalid contact IDs"
+}
+
+### 44. Create Device with Duplicate Name (409)
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "test device with name",
+  "description": "This should fail due to duplicate name from test case 4"
+}
+
+### 44.1. Create Device with Already Assigned IP Address (400)
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "test device with assigned ip",
+  "device_type_id": 1,
+  "description": "This should fail if IP address 6 is already assigned to createDeviceComplete",
+  "ip_addresses": [6]
+}
+
+### 44.2. Create Device with Multiple IPs Including Assigned One (400)
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "test device with mixed ips",
+  "device_type_id": 1,
+  "description": "This should fail if any IP in the array is already assigned",
+  "ip_addresses": [5, 6, 7]
+}
+
+### 45. Update Non-existent Device (404)
+PUT {{baseUrl}}/{{apiVersion}}/devices/99999
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "non-existent device"
+}
+
+### 46. Update Device with Empty Name (400)
+PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceWithName.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": ""
+}
+
+### 47. Update Device with Whitespace-only Name (400)
+PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceWithName.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "   "
+}
+
+### 48. Update Device with Empty Device Type ID (400)
+PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceWithName.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "device_type_id": ""
+}
+
+### 49. Update Device with Empty IP Addresses Array (400)
+PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceWithName.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "ip_addresses": []
+}
+
+### 50. Update Device with Duplicate Name (409)
+PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "test device with name"
+}
+
+### 51. Update Device with Invalid Device Type ID (400)
+PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceWithName.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "device_type_id": 99999
+}
+
+### 51.1. Update Device with Already Assigned IP Address (400)
+PUT {{baseUrl}}/{{apiVersion}}/devices/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "ip_addresses": [6]
+}
+
+### 52. Delete Non-existent Device (404)
+DELETE {{baseUrl}}/{{apiVersion}}/devices/99999
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 53. Filter with Invalid Device Type ID
+GET {{baseUrl}}/{{apiVersion}}/devices?device_type_id=99999
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 54. Filter with Invalid Platform ID
+GET {{baseUrl}}/{{apiVersion}}/devices?platform_id=99999
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 55. Filter with Invalid Tag ID
+GET {{baseUrl}}/{{apiVersion}}/devices?tags=99999
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 56. Pagination with Invalid Page Number
+GET {{baseUrl}}/{{apiVersion}}/devices?page=-1
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 57. Pagination with Invalid Page Size
+GET {{baseUrl}}/{{apiVersion}}/devices?pageSize=0
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+# ========================================
+# 🧪 ADVANCED DEVICE TESTS
+# ========================================
+
+### 58. Create Device with All Lowercase Name
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "lowercase device name test",
+  "device_type_id": 1,
+  "description": "Device with lowercase name (should be converted to lowercase)"
+}
+
+### 59. Create Device with Mixed Case Name
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "MixedCase Device Name Test",
+  "device_type_id": 2,
+  "description": "Device with mixed case name (should be converted to lowercase)"
+}
+
+### 60. Create Device with Complex Relationships
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "complex relationships device",
+  "device_type_id": 1,
+  "platform_id": 1,
+  "location": "Data Center Room A",
+  "serial": "COMPLEX-001",
+  "management": "192.168.100.1",
+  "manufacturer": "Juniper",
+  "description": "Device with complex relationships for testing",
+  "ip_addresses": [1, 2, 3, 4, 5],
+  "tags": [1, 2, 3, 4, 5],
+  "contacts": [1, 2, 3]
+}
+
+### 61. Update Device - Change All Core Properties
+PUT {{baseUrl}}/{{apiVersion}}/devices/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "transformed device name",
+  "device_type_id": 3,
+  "platform_id": 3,
+  "location": "Remote Site",
+  "serial": "TRANSFORM-001",
+  "management": "10.0.1.1",
+  "manufacturer": "Fortinet",
+  "description": "Device completely transformed"
+}
+
+### 62. Create Device with Long Description
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "documented device with long description",
+  "device_type_id": 1,
+  "platform_id": 1,
+  "location": "Main Data Center",
+  "serial": "DOC-LONG-001",
+  "management": "172.16.1.1",
+  "manufacturer": "Arista",
+  "description": "This is a very long description for a device that contains multiple sentences and explains in detail what the device is used for, which services run on it, how it fits into the overall network architecture, what maintenance schedules it follows, what firmware versions it runs, what protocols it supports, and who are the responsible contacts for various aspects of its operation, configuration, and management including escalation procedures."
+}
+
+### 63. Search with Special Characters
+GET {{baseUrl}}/{{apiVersion}}/devices?search=core%20switch
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 64. Complex Filter Combination
+GET {{baseUrl}}/{{apiVersion}}/devices?device_type_id=1&platform_id=1&location=Data Center&tags=1&tags=2&search=device&page=1&pageSize=10
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 65. Empty Result Set Test
+GET {{baseUrl}}/{{apiVersion}}/devices?search=nonexistentdevice&device_type_id=99&platform_id=99&location=nonexistentlocation&tags=99999
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 66. Update Device - Test Partial Update Preservation
+PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "description": "Only description updated - other fields should be preserved"
+}
+
+### 67. Get Device After Partial Update (Verify Other Fields Preserved)
+GET {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 68. Test Case Sensitivity in Search
+GET {{baseUrl}}/{{apiVersion}}/devices?search=CISCO
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 69. Test Case Sensitivity in Search (lowercase)
+GET {{baseUrl}}/{{apiVersion}}/devices?search=cisco
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 70. Filter by Location with Spaces
+GET {{baseUrl}}/{{apiVersion}}/devices?location=Data Center Room A
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+# ========================================
+# ✅ DEVICES API TEST CHECKLIST
+# ========================================
+# 
+# BASIC CRUD OPERATIONS:
+# ⏳ GET /api/v1/devices (get all devices with filtering and pagination)
+# ⏳ GET /api/v1/devices/:id (get device by ID with full details)
+# ⏳ POST /api/v1/devices (create new device)
+# ⏳ PUT /api/v1/devices/:id (update device)
+# ⏳ DELETE /api/v1/devices/:id (delete device)
+#
+# SEARCH CAPABILITIES:
+# ⏳ Search by device name
+# ⏳ Search by manufacturer
+# ⏳ Search by platform
+# ⏳ Search by IP address
+# ⏳ Search by description
+# ⏳ Search with pagination
+#
+# FILTERING CAPABILITIES:
+# ⏳ Filter by device_type_id (single and multiple)
+# ⏳ Filter by platform_id (single and multiple)
+# ⏳ Filter by location
+# ⏳ Filter by tags (array of tag IDs)
+# ⏳ Combined filters (all parameters together)
+#
+# PAGINATION:
+# ⏳ Page number control (page parameter, default: 1)
+# ⏳ Page size control (pageSize parameter, default: 10)
+# ⏳ Pagination with filters
+#
+# FIELD VALIDATION:
+# ⏳ No required fields (all optional)
+# ⏳ Name validation: if provided, must not be empty (converted to lowercase)
+# ⏳ Device type validation: if provided, must not be empty and must exist
+# ⏳ IP addresses validation: if provided, must not be empty array and all IDs must exist
+# ⏳ Platform validation: if provided, must exist
+# ⏳ Tags validation: all IDs must exist
+# ⏳ Contacts validation: all IDs must exist
+# ⏳ Device name uniqueness validation (case-insensitive)
+# ⏳ Partial update support (only provided fields updated)
+#
+# ERROR HANDLING:
+# ⏳ 400 - Invalid data/empty required fields when provided
+# ⏳ 400 - Invalid relationship IDs (device_type, platform, ip_addresses, tags, contacts)
+# ⏳ 404 - Device not found
+# ⏳ 409 - Duplicate device name
+# ⏳ 500 - Internal server error
+#
+# RELATIONSHIP MANAGEMENT:
+# ⏳ Create with multiple relationship types
+# ⏳ Update relationships (add/remove/clear arrays)
+# ⏳ Filter by relationship types
+# ⏳ Validate all relationship IDs exist
+#
+# SPECIAL CASES:
+# ⏳ Name case conversion (to lowercase)
+# ⏳ Empty and whitespace validation
+# ⏳ Complex relationship combinations
+# ⏳ Search case sensitivity
+# ⏳ Empty result sets
+# ⏳ Complex filter combinations with pagination
+# ⏳ Long descriptions and special characters
+# ⏳ Partial update field preservation
+#
+# UNIQUE FEATURES:
+# ⏳ No required fields (most flexible API)
+# ⏳ Automatic name lowercase conversion
+# ⏳ Comprehensive search across multiple fields
+# ⏳ Multiple filtering options
+# ⏳ Full relationship management
+# ⏳ Device type and platform categorization
+#
+# ========================================

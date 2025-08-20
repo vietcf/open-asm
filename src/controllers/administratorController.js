@@ -1,79 +1,82 @@
-const User = require('../models/User');
-const Role = require('../models/Role');
-const Permission = require('../models/Permission');
-const Configuration = require('../models/Configuration');
-const SystemLog = require('../models/SystemLog');
-const bcrypt = require('bcrypt');
-const { pool } = require('../../config/config');
+import User from '../models/User.js';
+import Role from '../models/Role.js';
+import Permission from '../models/Permission.js';
+import Configuration from '../models/Configuration.js';
+import SystemLog from '../models/SystemLog.js';
+import bcrypt from 'bcrypt';
+import { pool } from '../../config/config.js';
+import { clearPermissionsCache } from '../middlewares/permissions.middleware.js';
 
 // ===== USER MANAGEMENT =====
-exports.listUsers = async (req, res) => {
+const administratorController = {};
+
+administratorController.listUsers = async (req, res) => {
   try {
     let page = parseInt(req.query.page, 10) || 1;
     let pageSize = parseInt(req.query.pageSize, 10);
-    // Load page size options from configuration
-    let pageSizeOptions = [10, 20, 50];
-    const configPageSize = await Configuration.findByKey('page_size');
-    if (configPageSize && typeof configPageSize.value === 'string') {
-      pageSizeOptions = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      if (!pageSize || !pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
-    } else {
-      if (!pageSize) pageSize = 10;
+    // Use global pageSizeOptions from res.locals (set in app.js)
+    if (!pageSize || !res.locals.pageSizeOptions.includes(pageSize)) {
+      pageSize = res.locals.defaultPageSize;
     }
-    const totalCount = await User.countAll();
+
+    // Chuẩn hóa: dùng filter/search nếu có (có thể mở rộng sau)
+    const filters = {}; // Hiện tại chưa có filter, có thể lấy từ req.query nếu cần
+    const totalCount = await User.countFiltered(filters);
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     if (page > totalPages) {
       return res.redirect(`/administrator/users?page=${totalPages}&pageSize=${pageSize}`);
     }
-    const userList = await User.findPage(page, pageSize);
-    const roles = await Role.findAll(); // Get list of roles from DB
-    res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: require('ejs').render(
-        require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/administrator/user_list.ejs'), 'utf8'),
-        { userList, roles, page, totalPages, pageSize, pageSizeOptions, totalCount, success: (req.flash('success') || [])[0], error: (req.flash('error') || [])[0], user: req.session.user, hasPermission: req.app.locals.hasPermission }
-      ),
+    const userList = await User.findFilteredList({ ...filters, page, pageSize });
+    const roles = await Role.findAll();
+
+    res.render('pages/administrator/user_list', {
+      userList,
+      roles,
+      page,
+      totalPages,
+      pageSize,
+      totalCount,
+      success: (req.flash('success') || [])[0],
+      error: (req.flash('error') || [])[0],
       title: 'User Management',
-      activeMenu: 'user-management',
-      user: req.session.user // Removed to avoid EJS context confusion
+      activeMenu: 'user-management'
+      // pageSizeOptions, defaultPageSize, siteName, cssPath, jsPath, imgPath, permissions đã có trong res.locals
     });
   } catch (err) {
     res.status(500).send('Error loading user list: ' + err.message);
   }
 };
 
-exports.createUser = async (req, res) => {
+administratorController.createUser = async (req, res) => {
   try {
     const { username, email, fullname, role, password } = req.body;
     // Normalize and trim input fields
     const normUsername = username ? username.trim() : '';
     const normEmail = email ? email.trim() : '';
     const normFullname = fullname ? fullname.trim() : '';
-    const normRole = role ? role.trim() : '';
+    const normRole = role ? Number(role) : null;
     const normPassword = password ? password.trim() : '';
     // Validate required fields
     if (!normUsername || !normEmail || !normPassword) {
       req.flash('error', 'Username, email, and password are required!');
       return res.redirect('/administrator/users');
     }
-    if (!normRole) {
+    if (!normRole || isNaN(normRole)) {
       req.flash('error', 'Role is required!');
+      return res.redirect('/administrator/users');
+    }
+    // Kiểm tra role_id có tồn tại trong DB không
+    const validRole = await Role.findById(normRole);
+    if (!validRole) {
+      req.flash('error', 'Invalid role!');
       return res.redirect('/administrator/users');
     }
     if (normPassword.length < 4) {
       req.flash('error', 'Password must be at least 4 characters!');
       return res.redirect('/administrator/users');
     }
-    // Get role_id from role name
-    const roles = await Role.findAll();
-    const roleObj = roles.find(r => r.name === normRole);
-    const role_id = roleObj ? roleObj.id : null;
-    if (!role_id) {
-      req.flash('error', 'Invalid role!');
-      return res.redirect('/administrator/users');
-    }
+    // Lấy role_id trực tiếp từ form
+    const role_id = normRole;
     // Check duplicate username/email
     const existedUser = await User.findByUsername(normUsername);
     if (existedUser) {
@@ -82,8 +85,8 @@ exports.createUser = async (req, res) => {
     }
     // (Optional) Check duplicate email
     if (normEmail) {
-      const allUsers = await User.findAll();
-      if (allUsers.some(u => (u.email || '').trim() === normEmail)) {
+      const existingEmailUser = await User.findByEmail(normEmail);
+      if (existingEmailUser) {
         req.flash('error', 'Email already exists!');
         return res.redirect('/administrator/users');
       }
@@ -91,8 +94,13 @@ exports.createUser = async (req, res) => {
     // Read require_twofa from form (checkbox returns 'on' if checked)
     const requireTwofaRaw = req.body.require_twofa;
     const require_twofa = requireTwofaRaw === 'on' ? true : false;
+    
+    // Read must_change_password from form (checkbox returns 'on' if checked)
+    const mustChangePasswordRaw = req.body.must_change_password;
+    const must_change_password = mustChangePasswordRaw === 'on' ? true : false;
+    
     const passwordHash = await bcrypt.hash(normPassword, 10);
-    await User.create({ username: normUsername, email: normEmail, fullname: normFullname, role: role_id, passwordHash, require_twofa });
+    await User.create({ username: normUsername, email: normEmail, fullname: normFullname, role: role_id, passwordHash, require_twofa, must_change_password });
     req.flash('success', 'User added successfully!');
     res.redirect('/administrator/users');
   } catch (err) {
@@ -101,16 +109,17 @@ exports.createUser = async (req, res) => {
   }
 };
 
-exports.updateUser = async (req, res) => {
+administratorController.updateUser = async (req, res) => {
   try {
     const id = req.params.id;
-    const { username, email, fullname, role, password } = req.body;
+    const { username, email, fullname, role, password, repeat_password } = req.body;
     // Normalize and trim input fields
     const normUsername = username ? username.trim() : '';
     const normEmail = email ? email.trim() : '';
     const normFullname = fullname ? fullname.trim() : '';
-    const normRole = role ? role.trim() : '';
+    const normRole = role ? Number(role) : null;
     const normPassword = password ? password.trim() : '';
+    const normRepeatPassword = repeat_password ? repeat_password.trim() : '';
     // Get current user info
     const currentUser = await User.findById(id);
     if (!currentUser) throw new Error('User not found');
@@ -119,40 +128,69 @@ exports.updateUser = async (req, res) => {
     let newRole = normRole;
     if (currentUser.username === 'admin') {
       newUsername = currentUser.username;
-      newRole = currentUser.role_id; // Use role_id (number) instead of role (name)
+      newRole = currentUser.role_id;
     } else {
-      // Get role_id from role name
-      const roles = await Role.findAll();
-      const roleObj = roles.find(r => r.name === normRole);
-      newRole = roleObj ? roleObj.id : null;
-      if (!newRole) throw new Error('Invalid role');
+      if (!normRole || isNaN(normRole)) {
+        throw new Error('Role is required');
+      }
+      const validRole = await Role.findById(normRole);
+      if (!validRole) throw new Error('Invalid role');
+      newRole = normRole;
     }
+    
+    // Check for duplicate username (excluding current user)
+    if (newUsername !== currentUser.username) {
+      const existingUsernameUser = await User.findByUsername(newUsername);
+      if (existingUsernameUser && existingUsernameUser.id !== parseInt(id)) {
+        req.flash('error', 'Username already exists!');
+        return res.redirect('/administrator/users');
+      }
+    }
+    
+    // Check for duplicate email (excluding current user)
+    if (normEmail && normEmail !== (currentUser.email || '').trim()) {
+      const existingEmailUser = await User.findByEmail(normEmail);
+      if (existingEmailUser && existingEmailUser.id !== parseInt(id)) {
+        req.flash('error', 'Email already exists!');
+        return res.redirect('/administrator/users');
+      }
+    }
+    
     // Handle require_twofa from edit form
     const requireTwofaRaw = req.body.require_twofa;
     const require_twofa = requireTwofaRaw === 'on' ? true : false;
+    // Handle must_change_password from edit form
+    const mustChangePasswordRaw = req.body.must_change_password;
+    const must_change_password = mustChangePasswordRaw === 'on' ? true : false;
     // Lấy số ngày hết hạn setup OTP từ configuration
     let otpDeadlineDays = 3;
     const otpDeadlineConfig = await Configuration.findByKey('otp_deadline_time');
     if (otpDeadlineConfig && otpDeadlineConfig.value && !isNaN(parseInt(otpDeadlineConfig.value))) {
       otpDeadlineDays = parseInt(otpDeadlineConfig.value);
     }
-    // Nếu bật require_twofa và user chưa có 2FA, set deadline X ngày kể từ hiện tại
     if (require_twofa && (!currentUser.twofa_enabled || !currentUser.twofa_secret)) {
       const deadline = new Date(Date.now() + otpDeadlineDays * 24 * 60 * 60 * 1000);
       await User.updateTwofaDeadline(id, deadline);
     } else if (!require_twofa) {
-      // Nếu tắt require_twofa thì clear deadline
       await User.updateTwofaDeadline(id, null);
     }
-    // If turning off require_twofa, clear 2FA secret and disable 2FA
     if (!require_twofa && currentUser.require_twofa) {
       await User.updateTwoFA(id, null, false);
     }
     let passwordHash = undefined;
-    if (normPassword && normPassword.length >= 4) {
+    // Server-side validation: if password is entered, repeat_password must match
+    if (normPassword) {
+      if (!normRepeatPassword || normPassword !== normRepeatPassword) {
+        req.flash('error', 'Passwords do not match!');
+        return res.redirect('/administrator/users');
+      }
+      if (normPassword.length < 4) {
+        req.flash('error', 'Password must be at least 4 characters!');
+        return res.redirect('/administrator/users');
+      }
       passwordHash = await bcrypt.hash(normPassword, 10);
     }
-    await User.update(id, { username: newUsername, email: normEmail, fullname: normFullname, role: newRole, require_twofa, passwordHash });
+    await User.update(id, { username: newUsername, email: normEmail, fullname: normFullname, role: newRole, require_twofa, must_change_password, passwordHash });
     req.flash('success', 'User updated successfully!');
     res.redirect('/administrator/users');
   } catch (err) {
@@ -161,7 +199,7 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-exports.deleteUser = async (req, res) => {
+administratorController.deleteUser = async (req, res) => {
   try {
     const id = req.params.id;
     // Prevent deleting admin user
@@ -185,19 +223,15 @@ const getAllPermissions = async () => {
   return result.rows;
 };
 
-exports.listRoles = async (req, res) => {
+administratorController.listRoles = async (req, res) => {
   try {
     // Pagination and page size
     let page = parseInt(req.query.page, 10) || 1;
     let pageSize = parseInt(req.query.pageSize, 10);
-    // Load page size options from configuration
-    let pageSizeOptions = [10, 20, 50];
-    const configPageSize = await Configuration.findByKey('page_size');
-    if (configPageSize && typeof configPageSize.value === 'string') {
-      pageSizeOptions = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      if (!pageSize || !pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
-    } else {
-      if (!pageSize) pageSize = 10;
+    
+    // Use global pageSizeOptions from res.locals (set in app.js)
+    if (!pageSize || !res.locals.pageSizeOptions.includes(pageSize)) {
+      pageSize = res.locals.defaultPageSize;
     }
 
     // Get total count of roles
@@ -218,35 +252,26 @@ exports.listRoles = async (req, res) => {
         permissions: await Role.getPermissions(r.id)
       }))
     );
-    res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: require('ejs').render(
-        require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/administrator/role_list.ejs'), 'utf8'),
-        {
-          roleList,
-          allPermissions,
-          page,
-          totalPages,
-          pageSize,
-          pageSizeOptions,
-          totalCount,
-          success: (req.flash('success') || [])[0],
-          error: (req.flash('error') || [])[0],
-          user: req.session.user,
-          hasPermission: req.app.locals.hasPermission
-        }
-      ),
+    
+    res.render('pages/administrator/role_list', {
+      roleList,
+      allPermissions,
+      page,
+      totalPages,
+      pageSize,
+      totalCount,
+      success: (req.flash('success') || [])[0],
+      error: (req.flash('error') || [])[0],
       title: 'Role Management',
       activeMenu: 'role-management'
+      // pageSizeOptions, cssPath, jsPath, imgPath, permissions đã có trong res.locals
     });
   } catch (err) {
     res.status(500).send('Error loading role list: ' + err.message);
   }
 };
 
-exports.createRole = async (req, res) => {
+administratorController.createRole = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -265,6 +290,10 @@ exports.createRole = async (req, res) => {
     // Move DB logic to model
     await Role.createWithPermissions({ name, description, permissions: permissions.map(Number) }, client);
     await client.query('COMMIT');
+    
+    // Clear permissions cache since new role with permissions was created
+    clearPermissionsCache();
+    
     req.flash('success', 'Role added successfully!');
     res.redirect('/administrator/roles');
   } catch (err) {
@@ -276,7 +305,7 @@ exports.createRole = async (req, res) => {
   }
 };
 
-exports.updateRole = async (req, res) => {
+administratorController.updateRole = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -303,6 +332,10 @@ exports.updateRole = async (req, res) => {
     await Role.update(id, { name, description }, client);
     await Role.updatePermissions(id, permissions.map(Number), client);
     await client.query('COMMIT');
+    
+    // Clear permissions cache since role permissions were updated
+    clearPermissionsCache();
+    
     req.flash('success', 'Role updated successfully!');
     res.redirect('/administrator/roles');
   } catch (err) {
@@ -314,7 +347,7 @@ exports.updateRole = async (req, res) => {
   }
 };
 
-exports.deleteRole = async (req, res) => {
+administratorController.deleteRole = async (req, res) => {
   try {
     const id = req.params.id;
     // Prevent deleting superadmin role
@@ -333,63 +366,45 @@ exports.deleteRole = async (req, res) => {
 };
 
 // ===== PERMISSION MANAGEMENT =====
-exports.listPermissions = async (req, res) => {
+administratorController.listPermissions = async (req, res) => {
   try {
     // Pagination and page size
     let page = parseInt(req.query.page, 10) || 1;
     let pageSize = parseInt(req.query.pageSize, 10);
-    // Load page size options from configuration
-    let pageSizeOptions = [10, 20, 50];
-    const configPageSize = await Configuration.findByKey('page_size');
-    if (configPageSize && typeof configPageSize.value === 'string') {
-      pageSizeOptions = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      if (!pageSize || !pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
-    } else {
-      if (!pageSize) pageSize = 10;
+    
+    // Use global pageSizeOptions from res.locals (set in app.js)
+    if (!pageSize || !res.locals.pageSizeOptions.includes(pageSize)) {
+      pageSize = res.locals.defaultPageSize;
     }
 
-    // Use pool from config directly
-    const totalCountResult = await pool.query('SELECT COUNT(*) FROM permissions');
-    const totalCount = parseInt(totalCountResult.rows[0].count, 10);
+    // Chuẩn hóa: dùng filter/search nếu có (có thể mở rộng sau)
+    const filters = {}; // Hiện tại chưa có filter, có thể lấy từ req.query nếu cần
+    const totalCount = await Permission.countFiltered(filters);
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     // If requested page > totalPages, redirect to last page
     if (page > totalPages) {
       return res.redirect(`/administrator/permissions?page=${totalPages}&pageSize=${pageSize}`);
     }
-    const offset = (page - 1) * pageSize;
-    const permissionList = (await pool.query(
-      'SELECT id, name, description FROM permissions ORDER BY name LIMIT $1 OFFSET $2',
-      [pageSize, offset]
-    )).rows;
-
-    res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: require('ejs').render(
-        require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/administrator/permission_list.ejs'), 'utf8'),
-        {
-          permissionList,
-          page,
-          totalPages,
-          pageSize,
-          pageSizeOptions,
-          totalCount,
-          success: (req.flash('success') || [])[0],
-          error: (req.flash('error') || [])[0],
-          user: req.session.user,
-          hasPermission: req.app.locals.hasPermission
-        }
-      ),
+    const permissionList = await Permission.findFilteredList({ ...filters, page, pageSize });
+    
+    res.render('pages/administrator/permission_list', {
+      permissionList,
+      page,
+      totalPages,
+      pageSize,
+      totalCount,
+      success: (req.flash('success') || [])[0],
+      error: (req.flash('error') || [])[0],
       title: 'Permission Management',
       activeMenu: 'permission-management'
+      // pageSizeOptions, cssPath, jsPath, imgPath, permissions đã có trong res.locals
     });
   } catch (err) {
     res.status(500).send('Error loading permission list: ' + err.message);
   }
 };
 
-exports.createPermission = async (req, res) => {
+administratorController.createPermission = async (req, res) => {
   try {
     // Normalize and trim input fields
     const name = req.body.name ? req.body.name.trim() : '';
@@ -421,7 +436,7 @@ exports.createPermission = async (req, res) => {
   }
 };
 
-exports.updatePermission = async (req, res) => {
+administratorController.updatePermission = async (req, res) => {
   try {
     const id = req.params.id;
     const { description } = req.body;
@@ -440,7 +455,7 @@ exports.updatePermission = async (req, res) => {
   }
 };
 
-exports.deletePermission = async (req, res) => {
+administratorController.deletePermission = async (req, res) => {
   try {
     const id = req.params.id;
     await Permission.delete(id);
@@ -453,79 +468,82 @@ exports.deletePermission = async (req, res) => {
 };
 
 // ===== SYSTEM CONFIGURATION CRUD =====
-exports.listConfigurations = async (req, res) => {
+administratorController.listConfigurations = async (req, res) => {
   try {
     const configList = await Configuration.findAll();
-    // Fetch site_name from Configuration
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: require('ejs').render(
-        require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/administrator/configuration_list.ejs'), 'utf8'),
-        { configList, success: (req.flash('success') || [])[0], error: (req.flash('error') || [])[0], user: req.session.user, hasPermission: req.app.locals.hasPermission }
-      ),
+    // Fetch site_name from Configuration// Sử dụng layout mặc định
+    res.render('pages/administrator/configuration_list', {
+      configList, 
+      success: (req.flash('success') || [])[0], 
+      error: (req.flash('error') || [])[0],
       title: 'System Configuration',
-      activeMenu: 'system-configuration',
-      user: req.session.user,
-      siteName
+      activeMenu: 'system-configuration'
+      // cssPath, jsPath, imgPath, permissions đã có sẵn trong res.locals từ app.js
     });
   } catch (err) {
     res.status(500).send('Error loading configuration: ' + err.message);
   }
 };
 
-exports.createConfiguration = async (req, res) => {
+administratorController.createConfiguration = async (req, res) => {
   try {
     let { key, value, description } = req.body;
     // Normalize and validate
     key = key ? key.trim() : '';
     value = value ? value.trim() : '';
     description = description ? description.trim() : '';
+    const keyRegex = /^[a-zA-Z0-9_]+$/;
+    // Validate key and value
     if (!key || !value) {
       req.flash('error', 'Key and Value are required!');
       return res.redirect('/administrator/configuration');
     }
+    if (!keyRegex.test(key)) {
+      req.flash('error', 'Key can only contain letters, numbers, and underscores (a-z, A-Z, 0-9, _)!');
+      return res.redirect('/administrator/configuration');
+    }
+
     // Custom validation for known keys
     if (key === 'page_size') {
-      // Only allow comma-separated numbers from [5,10,15,20], unique, sorted ascending
-      const allowed = ['5','10','15','20'];
+      // Only allow comma-separated positive integers, unique, sorted ascending
       let sizes = value.split(',').map(v => v.trim());
-      // All must be numbers, allowed, unique, sorted
-      if (!sizes.length || sizes.some(v => !/^[0-9]+$/.test(v) || !allowed.includes(v))) {
-        req.flash('error', 'All values must be numeric, order and separated by commas');
+      // All must be positive integers
+      if (!sizes.length || sizes.some(v => !/^[1-9][0-9]*$/.test(v))) {
+        req.flash('error', 'All values must be positive integers, separated by commas!');
         return res.redirect('/administrator/configuration');
       }
       // Check uniqueness
       const uniqueSizes = Array.from(new Set(sizes));
       if (uniqueSizes.length !== sizes.length) {
-        req.flash('error', 'Page size values must be unique.');
+        req.flash('error', 'Page size values must be unique!');
         return res.redirect('/administrator/configuration');
       }
       // Check sorted ascending
       const sortedSizes = [...sizes].map(Number).sort((a, b) => a - b).map(String);
       if (JSON.stringify(sizes) !== JSON.stringify(sortedSizes)) {
-        req.flash('error', 'Page size values must be sorted in ascending order.');
+        req.flash('error', 'Page size values must be sorted in ascending order!');
         return res.redirect('/administrator/configuration');
       }
-    } else if (key === 'log_level') {
+    } 
+    else if (key === 'log_level') {
       // Only allow info, warning, critical
       const allowed = ['info','warning','critical'];
       if (!allowed.includes(value)) {
         req.flash('error', 'Log level must be one of: info, warning, critical.');
         return res.redirect('/administrator/configuration');
       }
-    } else if (key === 'log_retention_days') {
+    }
+    else if (key === 'log_retention_days') {
       // Must be a positive integer
       if (!/^[0-9]+$/.test(value) || parseInt(value) <= 0) {
-        req.flash('error', 'Log retention days must be a positive number.');
+        req.flash('error', 'Log retention days must be a positive integer!');
         return res.redirect('/administrator/configuration');
       }
     }
+
     const user = req.session.user ? req.session.user.username : null;
-    await Configuration.create(key, value, description, user);
+    console.log('Creating configuration:', { key, value, description });
+    await Configuration.create({ key, value, description, updatedBy: user });
     req.flash('success', 'Configuration added successfully!');
     res.redirect('/administrator/configuration');
   } catch (err) {
@@ -534,16 +552,69 @@ exports.createConfiguration = async (req, res) => {
   }
 };
 
-exports.updateConfiguration = async (req, res) => {
+administratorController.updateConfiguration = async (req, res) => {
   try {
-    // Hỗ trợ cả PUT (RESTful) và POST truyền thống
-    const key = req.params.key || req.body.key;
-    const { value, description } = req.body;
+    // Support both PUT (RESTful) and traditional POST
+    let key = req.params.key || req.body.key;
+    let { value, description } = req.body;
+    key = key ? key.trim() : '';
+    value = value ? value.trim() : '';
+    description = description ? description.trim() : '';
+    const keyRegex = /^[a-zA-Z0-9_]+$/;
+
+    // Validate key and value
     if (!key || !value) {
       req.flash('error', 'Key and Value are required.');
       return res.redirect('/administrator/configuration');
     }
-    await Configuration.updateByKey(key, value, req.session.user?.username || null, description);
+    if (!keyRegex.test(key)) {
+      req.flash('error', 'Key can only contain letters, numbers, and underscores (a-z, A-Z, 0-9, _)!');
+      return res.redirect('/administrator/configuration');
+    }
+
+    // Custom validation for known keys
+    if (key === 'page_size') {
+      // Only allow comma-separated positive integers, unique, sorted ascending
+      let sizes = value.split(',').map(v => v.trim());
+      // All must be positive integers
+      if (!sizes.length || sizes.some(v => !/^[1-9][0-9]*$/.test(v))) {
+        req.flash('error', 'All values must be positive integers, separated by commas!');
+        return res.redirect('/administrator/configuration');
+      }
+      // Check uniqueness
+      const uniqueSizes = Array.from(new Set(sizes));
+      if (uniqueSizes.length !== sizes.length) {
+        req.flash('error', 'Page size values must be unique!');
+        return res.redirect('/administrator/configuration');
+      }
+      // Check sorted ascending
+      const sortedSizes = [...sizes].map(Number).sort((a, b) => a - b).map(String);
+      if (JSON.stringify(sizes) !== JSON.stringify(sortedSizes)) {
+        req.flash('error', 'Page size values must be sorted in ascending order!');
+        return res.redirect('/administrator/configuration');
+      }
+    }
+    else if (key === 'log_level') {
+      // Only allow info, warning, critical
+      const allowed = ['info','warning','critical'];
+      if (!allowed.includes(value)) {
+        req.flash('error', 'Log level must be one of: info, warning, critical.');
+        return res.redirect('/administrator/configuration');
+      }
+    }
+    else if (key === 'log_retention_days') {
+      // Must be a positive integer
+      if (!/^[0-9]+$/.test(value) || parseInt(value) <= 0) {
+        req.flash('error', 'Log retention days must be a positive integer!');
+        return res.redirect('/administrator/configuration');
+      }
+    }
+
+    const user = req.session.user ? req.session.user.username : null;
+    await Configuration.update(key, { value, description, updatedBy: user });
+    // Reload site config cache after updating any configuration
+    const { siteConfig } = await import('../utils/siteConfig.js');
+    await siteConfig.initialize();
     req.flash('success', 'Configuration updated successfully!');
     res.redirect('/administrator/configuration');
   } catch (err) {
@@ -552,7 +623,7 @@ exports.updateConfiguration = async (req, res) => {
   }
 };
 
-exports.deleteConfiguration = async (req, res) => {
+administratorController.deleteConfiguration = async (req, res) => {
   try {
     // Hỗ trợ cả DELETE (RESTful) và POST truyền thống
     const key = req.params.key || req.body.key;
@@ -570,57 +641,37 @@ exports.deleteConfiguration = async (req, res) => {
 };
 
 // ===== SYSTEM LOG =====
-exports.listSystemLogs = async (req, res) => {
+administratorController.listSystemLogs = async (req, res) => {
   try {
-    // Get allowed page sizes from configuration using Configuration model
-    let configPageSize = 20;
-    let allowedPageSizes = [10, 20, 50, 100];
-    const configRow = await Configuration.findByKey('page_size');
-    if (configRow && configRow.value) {
-      allowedPageSizes = configRow.value.split(',').map(v => parseInt(v.trim(), 10)).filter(v => !isNaN(v));
-      if (allowedPageSizes.length > 0) configPageSize = allowedPageSizes[0];
-    }
-    // Get site_name from configuration
-    let siteName = '';
-    const siteNameConfig = await Configuration.findByKey('site_name');
-    if (siteNameConfig && siteNameConfig.value) {
-      siteName = siteNameConfig.value;
-    }
-    // Pagination params
+    // Use global pageSizeOptions from res.locals (set in app.js)
     const page = parseInt(req.query.page, 10) || 1;
-    const pageSize = parseInt(req.query.pageSize, 10) || configPageSize;
+    const pageSize = parseInt(req.query.pageSize, 10) || res.locals.defaultPageSize;
     const offset = (page - 1) * pageSize;
+    
     // Get total count
     const countResult = await pool.query('SELECT COUNT(*) FROM system_log');
     const totalCount = parseInt(countResult.rows[0].count, 10);
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    
     // Get logs for current page (newest first)
     const logsResult = await pool.query('SELECT * FROM system_log ORDER BY created_at DESC LIMIT $1 OFFSET $2', [pageSize, offset]);
     const logs = logsResult.rows;
-    res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: require('ejs').render(
-        require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/administrator/system_log.ejs'), 'utf8'),
-        {
-          logs,
-          page,
-          pageSize,
-          allowedPageSizes,
-          totalPages,
-          totalCount,
-          siteName,
-          success: (req.flash('success') || [])[0],
-          error: (req.flash('error') || [])[0]
-        }
-      ),
+    
+    res.render('pages/administrator/system_log', {
+      logs,
+      page,
+      pageSize,
+      totalPages,
+      totalCount,
+      success: (req.flash('success') || [])[0],
+      error: (req.flash('error') || [])[0],
       title: 'System Log',
-      activeMenu: 'system-log',
-      user: req.session.user,
-      siteName // truyền siteName cho layout
+      activeMenu: 'system-log'
+      // pageSizeOptions (as allowedPageSizes), cssPath, jsPath, imgPath, permissions đã có trong res.locals
     });
   } catch (err) {
     res.status(500).send('Error loading system log: ' + err.message);
   }
 };
+
+export default administratorController;

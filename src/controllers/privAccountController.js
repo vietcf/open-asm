@@ -1,34 +1,26 @@
-const PrivUser = require('../models/PrivUser');
-const PrivRole = require('../models/PrivRole');
-const PrivPermission = require('../models/PrivPermission');
-const config = require('../../config/config');
-const ejs = require('ejs');
-const fs = require('fs');
-const path = require('path');
-const { pool } = require('../../config/config');
-const Configuration = require('../models/Configuration');
-const System = require('../models/System');
-const ExcelJS = require('exceljs');
-const accountOptions = require('../../config/accountOptions');
+import PrivUser from '../models/PrivUser.js';
+import PrivRole from '../models/PrivRole.js';
+import PrivPermission from '../models/PrivPermission.js';
+import { pool } from '../../config/config.js';
+import Configuration from '../models/Configuration.js';
+import System from '../models/System.js';
+import Unit from '../models/Unit.js';
+import Contact from '../models/Contact.js';
+import ExcelJS from 'exceljs';
+import accountOptions from '../../config/accountOptions.js';
+import { clearPermissionsCache } from '../middlewares/permissions.middleware.js';
 
-//------------------------------------------------------
-//PRIVIGED ACCOUNT CONTROLLER
-//------------------------------------------------------
+const privAccountController = {};
 
 // Render Privileged Account List page with layout 
-exports.listAccounts = async (req, res) => {
+privAccountController.listAccounts = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    let pageSize = parseInt(req.query.pageSize) || 10;
+    let pageSize = parseInt(req.query.pageSize) || res.locals.defaultPageSize;
     
-    // Load allowed page sizes from configuration
-    let allowedPageSizes = [10, 20, 50]; 
-    const configPageSize = await Configuration.findByKey('page_size');
-    if (configPageSize && typeof configPageSize.value === 'string') {
-      allowedPageSizes = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = allowedPageSizes[0];
-    } else {
-      if (!pageSize) pageSize = 10;
+    // Use global pageSizeOptions from res.locals (set in app.js)
+    if (!pageSize || !res.locals.pageSizeOptions.includes(pageSize)) {
+      pageSize = res.locals.defaultPageSize;
     }
 
     // Get filter parameters
@@ -39,171 +31,46 @@ exports.listAccounts = async (req, res) => {
     let contact_ids = req.query['contact_ids[]'] || req.query.contact_ids || [];
     if (!Array.isArray(contact_ids)) contact_ids = contact_ids ? [contact_ids] : [];
 
-    let privUserList, totalCount;
 
-    // Build WHERE clause dynamically
-    let where = [];
-    let params = [];
-    let idx = 1;
-
-    if (search) {
-      where.push('(pu.username ILIKE $' + idx + ' OR pu.description ILIKE $' + idx + ')');
-      params.push(`%${search}%`);
-      idx++;
-    }
-
-    // Filter by systems (using priv_user_systems join table)
-    if (system_ids.length) {
-      where.push('EXISTS (SELECT 1 FROM priv_user_systems pus WHERE pus.user_id = pu.id AND pus.system_id = ANY($' + idx + '))');
-      params.push(system_ids);
-      idx++;
-    }
-
-    // Filter by organize unit
-    if (organize_id) {
-      where.push('pu.organize_id = $' + idx);
-      params.push(organize_id);
-      idx++;
-    }
-
-    // Filter by contacts (using priv_user_contacts join table)
-    if (contact_ids.length) {
-      where.push('EXISTS (SELECT 1 FROM priv_user_contacts puc WHERE puc.user_id = pu.id AND puc.contact_id = ANY($' + idx + '))');
-      params.push(contact_ids);
-      idx++;
-    }
-
-    let whereClause = where.length ? ('WHERE ' + where.join(' AND ')) : '';
-
-    // Get total count
-    const countSql = `
-      SELECT COUNT(DISTINCT pu.id) 
-      FROM priv_users pu
-      ${whereClause}
-    `;
-    const countResult = await pool.query(countSql, params);
-    totalCount = parseInt(countResult.rows[0].count, 10);
-
-    // Get paginated results
-    params.push(pageSize, (page - 1) * pageSize);
-    const sql = `
-      SELECT DISTINCT pu.* 
-      FROM priv_users pu
-      ${whereClause}
-      ORDER BY pu.id
-      LIMIT $${params.length - 1} 
-      OFFSET $${params.length}
-    `;
-    const result = await pool.query(sql, params);
-    privUserList = result.rows;
-
-    // Load details for each user
-    for (const user of privUserList) {
-      // Load contacts
-      const contactRows = await pool.query(
-        `SELECT c.id, c.name, c.email 
-         FROM priv_user_contacts puc 
-         JOIN contacts c ON puc.contact_id = c.id 
-         WHERE puc.user_id = $1`,
-        [user.id]
-      );
-      user.contacts = contactRows.rows;
-
-      // Load systems
-      const systemRows = await pool.query(
-        `SELECT s.id, s.name 
-         FROM priv_user_systems pus 
-         JOIN systems s ON pus.system_id = s.id 
-         WHERE pus.user_id = $1`,
-        [user.id]
-      );
-      user.systems = systemRows.rows;
-
-      // Load organize unit
-      if (user.organize_id) {
-        const orgRows = await pool.query('SELECT id, name FROM units WHERE id = $1', [user.organize_id]);
-        user.organize = orgRows.rows[0];
-      }
-
-      // Load role
-      if (user.role_id) {
-        const roleRows = await pool.query('SELECT id, name FROM priv_roles WHERE id = $1', [user.role_id]);
-        user.role = roleRows.rows[0];
-      }
-
-      // Load servers if needed
-      if (user.account_type === 'OS' || user.account_type === 'DB') {
-        const serverRows = await pool.query(
-          `SELECT s.id, s.name 
-           FROM priv_user_servers pus 
-           JOIN servers s ON pus.server_id = s.id 
-           WHERE pus.user_id = $1`,
-          [user.id]
-        );
-        user.servers = serverRows.rows;
-      }
-    }
+    // Use model methods for all DB logic
+    const totalCount = await PrivUser.countFilteredList({ search, system_ids, organize_id, contact_ids });
+    const privUserList = await PrivUser.findFilteredList({ search, system_ids, organize_id, contact_ids, page, pageSize });
 
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = Math.min(page * pageSize, totalCount);
 
-    // Load selected filters for re-populating the filter form
-    let selectedSystems = [];
-    if (system_ids.length) {
-      const systemRows = await pool.query('SELECT id, name FROM systems WHERE id = ANY($1)', [system_ids]);
-      selectedSystems = systemRows.rows;
-    }
-
-    let selectedOrganize = null;
-    if (organize_id) {
-      const orgRows = await pool.query('SELECT id, name FROM units WHERE id = $1', [organize_id]);
-      selectedOrganize = orgRows.rows[0];
-    }
-
-    let selectedContacts = [];
-    if (contact_ids.length) {
-      const contactRows = await pool.query('SELECT id, name FROM contacts WHERE id = ANY($1)', [contact_ids]);
-      selectedContacts = contactRows.rows;
-    }
+    // Load selected filters for re-populating the filter form (refactored, only if needed)
+    const selectedSystems = system_ids.length ? (await System.findByIds(system_ids)) : [];
+    const selectedOrganize = organize_id ? (await Unit.findById(organize_id)) : null;
+    const selectedContacts = contact_ids.length ? (await Contact.findByIds(contact_ids)) : [];
 
     const success = req.flash ? req.flash('success')[0] : (req.query.success || null);
     const error = req.flash ? req.flash('error')[0] : (req.query.error || null);
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-
-    const content = ejs.render(
-      fs.readFileSync(path.join(__dirname, '../../public/html/pages/privilege/priv_account_list.ejs'), 'utf8'),
-      {
-        privUserList, page, totalPages, pageSize, allowedPageSizes,
-        search, success, error,
-        // Truyền đủ các biến cho filter modal
-        system_ids,
-        system_names: selectedSystems.map(s => s.name),
-        organize_id: selectedOrganize ? selectedOrganize.id : '',
-        organize_name: selectedOrganize ? selectedOrganize.name : '',
-        contact_ids,
-        contact_names: selectedContacts.map(c => c.name),
-        // Thêm accountTypes và manageTypes cho EJS
-        accountTypes: accountOptions.accountTypes,
-        manageTypes: accountOptions.manageTypes,
-        user: req.session.user,
-        hasPermission: req.app.locals.hasPermission,
-        startItem, endItem, totalCount
-      }
-    );
-
-    res.render('layouts/layout', {
-      cssPath: config.cssPath,  
-      jsPath: config.jsPath,
-      imgPath: config.imgPath,
-      body: content,
-      title: 'Privileged Account List',
-      activeMenu: 'priv-account-list', 
-      user: req.session.user,
-      siteName
+    
+    res.render('pages/privilege/priv_account_list', {
+      privUserList,
+      page,
+      totalPages,
+      pageSize,
+      search,
+      success,
+      error,
+      system_ids,
+      system_names: selectedSystems.map(s => s.name),
+      organize_id: selectedOrganize ? selectedOrganize.id : '',
+      organize_name: selectedOrganize ? selectedOrganize.name : '',
+      contact_ids,
+      contact_names: selectedContacts.map(c => c.name),
+      accountTypes: accountOptions.accountTypes,
+      manageTypes: accountOptions.manageTypes,
+      startItem,
+      endItem,
+      totalCount,
+      // allowedPageSizes: res.locals.pageSizeOptions, // Không cần truyền, đã có global
+      title: 'Privileged Account',
+      activeMenu: 'priv-account-list'
     });
-
   } catch (err) {
     console.error('Error loading privileged accounts:', err);
     res.status(500).send('Error loading privileged accounts: ' + err.message);
@@ -211,9 +78,8 @@ exports.listAccounts = async (req, res) => {
 };
 
 // Handle creating a new privileged account (with all associations)
-exports.createAccount = async (req, res) => {
-  // Lấy và chuẩn hóa dữ liệu từ form
-  // Extract các trường form
+privAccountController.createAccount = async (req, res) => {
+  // Extract and normalize form fields
   let {
     username,
     description,
@@ -223,7 +89,6 @@ exports.createAccount = async (req, res) => {
     manage_type,
     app_url
   } = req.body;
-  // Khởi tạo giá trị mặc định nếu thiếu
   username = typeof username === 'string' ? username : '';
   description = typeof description === 'string' ? description : '';
   organize_id = organize_id || '';
@@ -238,9 +103,9 @@ exports.createAccount = async (req, res) => {
   let server_ids = req.body['server_ids[]'] || req.body.server_ids || [];
   if (!Array.isArray(contacts)) contacts = contacts ? [contacts] : [];
   if (!Array.isArray(system_ids)) system_ids = system_ids ? [system_ids] : [];
-  if (!Array.isArray(server_ids)) server_ids = server_ids ? [serverIds] : [];
+  if (!Array.isArray(server_ids)) server_ids = server_ids ? [server_ids] : [];
 
-  // Validate các trường bắt buộc
+  // Validate required fields
   const errors = [];
   if (!username.trim()) errors.push('Account Name is required.');
   if (!organize_id) errors.push('Organize Unit is required.');
@@ -271,10 +136,8 @@ exports.createAccount = async (req, res) => {
     server_ids = [];
   }
 
-  // Nếu có lỗi, trả về giao diện với dữ liệu đã nhập và thông báo lỗi
   if (errors.length) {
     req.flash && req.flash('error', errors.join(' '));
-    // Lưu lại dữ liệu đã nhập để repopulate form
     req.session.formData = {
       username, description, organize_id, role_id, account_type, manage_type, app_url,
       contacts, system_ids, server_ids
@@ -285,30 +148,23 @@ exports.createAccount = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    // Insert main account
-    const insertRes = await client.query(
-      `INSERT INTO priv_users (username, description, organize_id, role_id, account_type, manage_type, app_url, created_at, updated_date, updated_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW(), $8) RETURNING *`,
-      [username, description, organize_id || null, role_id || null, account_type, manage_type, app_url || null, req.session.user?.username || username]
-    );
-    const account = insertRes.rows[0];
-    // Insert contacts
-    for (const contactId of contacts) {
-      if (contactId) {
-        await client.query('INSERT INTO priv_user_contacts (user_id, contact_id) VALUES ($1, $2)', [account.id, contactId]);
-      }
-    }
-    // Insert systems
-    for (const systemId of system_ids) {
-      if (systemId) {
-        await client.query('INSERT INTO priv_user_systems (user_id, system_id) VALUES ($1, $2)', [account.id, systemId]);
-      }
-    }
-    // Insert servers
-    for (const serverId of server_ids) {
-      if (serverId) {
-        await client.query('INSERT INTO priv_user_servers (user_id, server_id) VALUES ($1, $2)', [account.id, serverId]);
-      }
+    // Create main user (priv_users)
+    const account = await PrivUser.create({
+      username,
+      description,
+      organize_id,
+      role_id,
+      account_type,
+      manage_type,
+      app_url,
+      updated_by: req.session.user?.username || username,
+      client
+    });
+    // Add relationships
+    await PrivUser.addContacts(account.id, contacts, client);
+    await PrivUser.addSystems(account.id, system_ids, client);
+    if (account_type === 'OS' || account_type === 'DB') {
+      await PrivUser.addServers(account.id, server_ids, client);
     }
     await client.query('COMMIT');
     req.flash && req.flash('success', 'Privileged account added successfully!');
@@ -323,7 +179,7 @@ exports.createAccount = async (req, res) => {
 };
 
 // Handle updating a privileged user
-exports.updateAccount = async (req, res) => {
+privAccountController.updateAccount = async (req, res) => {
   // Extract and normalize form fields
   let {
     username,
@@ -347,8 +203,8 @@ exports.updateAccount = async (req, res) => {
   let system_ids = req.body['system_ids[]'] || req.body.system_ids || [];
   let server_ids = req.body['server_ids[]'] || req.body.server_ids || [];
   if (!Array.isArray(contacts)) contacts = contacts ? [contacts] : [];
-  if (!Array.isArray(system_ids)) system_ids = system_ids ? [systemIds] : [];
-  if (!Array.isArray(server_ids)) server_ids = server_ids ? [serverIds] : [];
+  if (!Array.isArray(system_ids)) system_ids = system_ids ? [system_ids] : [];
+  if (!Array.isArray(server_ids)) server_ids = server_ids ? [server_ids] : [];
 
   // Validate required fields
   const errors = [];
@@ -394,30 +250,26 @@ exports.updateAccount = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    // Update main account
-    await client.query(
-      `UPDATE priv_users SET username=$1, description=$2, organize_id=$3, role_id=$4, account_type=$5, manage_type=$6, app_url=$7, updated_date=NOW(), updated_by=$8 WHERE id=$9`,
-      [username, description, organize_id || null, role_id || null, account_type, manage_type, app_url || null, req.session.user?.username || username, id]
-    );
-    // Remove old associations
-    await client.query('DELETE FROM priv_user_contacts WHERE user_id = $1', [id]);
-    await client.query('DELETE FROM priv_user_systems WHERE user_id = $1', [id]);
-    await client.query('DELETE FROM priv_user_servers WHERE user_id = $1', [id]);
-    // Insert new associations
-    for (const contactId of contacts) {
-      if (contactId) {
-        await client.query('INSERT INTO priv_user_contacts (user_id, contact_id) VALUES ($1, $2)', [id, contactId]);
-      }
-    }
-    for (const systemId of system_ids) {
-      if (systemId) {
-        await client.query('INSERT INTO priv_user_systems (user_id, system_id) VALUES ($1, $2)', [id, systemId]);
-      }
-    }
-    for (const serverId of server_ids) {
-      if (serverId) {
-        await client.query('INSERT INTO priv_user_servers (user_id, server_id) VALUES ($1, $2)', [id, serverId]);
-      }
+    // Update main user (priv_users) via model method
+    await PrivUser.update(id, {
+      username,
+      description,
+      organize_id,
+      role_id,
+      account_type,
+      manage_type,
+      app_url,
+      updated_by: req.session.user?.username || username,
+      client
+    });
+    // Set associations using model set* helpers
+    await PrivUser.setContacts(id, contacts, client);
+    await PrivUser.setSystems(id, system_ids, client);
+    if (account_type === 'OS' || account_type === 'DB') {
+      await PrivUser.setServers(id, server_ids, client);
+    } else {
+      // Always clear servers if not OS/DB
+      await PrivUser.setServers(id, [], client);
     }
     await client.query('COMMIT');
     req.flash && req.flash('success', 'Privileged account updated successfully!');
@@ -432,10 +284,10 @@ exports.updateAccount = async (req, res) => {
 };
 
 // Handle deleting a privileged user
-exports.deleteAccount = async (req, res) => {
+privAccountController.deleteAccount = async (req, res) => {
   try {
     const { id } = req.params;
-    await PrivUser.delete(id);
+    await PrivUser.remove(id);
     req.flash && req.flash('success', 'Privileged user deleted successfully!');
     res.redirect('/priv-account/account');
   } catch (err) {
@@ -445,7 +297,7 @@ exports.deleteAccount = async (req, res) => {
 };
 
 // API: Get account details for edit modal (AJAX)
-exports.getAccountDetails = async (req, res) => {
+privAccountController.getAccountDetails = async (req, res) => {
   try {
     const { id } = req.params;
     const user = await PrivUser.findByIdWithDetails(id);
@@ -460,57 +312,20 @@ exports.getAccountDetails = async (req, res) => {
 //PRIVIGED ROLE CONTROLLER
 //------------------------------------------------------
 // Render Privileged Role List page with layout
-exports.listRoles = async (req, res) => {
+privAccountController.listRoles = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    let pageSize = parseInt(req.query.pageSize) || 10;
-    // Load allowed page sizes from configuration
-    let allowedPageSizes = [10, 20, 50];
-    const configPageSize = await Configuration.findByKey('page_size');
-    if (configPageSize && typeof configPageSize.value === 'string') {
-      allowedPageSizes = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = allowedPageSizes[0];
-    } else {
-      if (!pageSize) pageSize = 10;
+    let pageSize = parseInt(req.query.pageSize) || res.locals.defaultPageSize;
+    if (!pageSize || !res.locals.pageSizeOptions.includes(pageSize)) {
+      pageSize = res.locals.defaultPageSize;
     }
     const search = req.query.search ? req.query.search.trim() : '';
     const system_id = req.query.system_id ? req.query.system_id.trim() : '';
-    let privRoleList, totalCount, totalPages;
-    // Filtering logic
-    if (search || system_id) {
-      // Custom search with system filter
-      let where = [];
-      let params = [];
-      let idx = 1;
-      if (search) {
-        where.push('(r.name ILIKE $' + idx + ' OR r.description ILIKE $' + idx + ')');
-        params.push(`%${search}%`);
-        idx++;
-      }
-      if (system_id) {
-        where.push('r.system_id = $' + idx);
-        params.push(system_id);
-        idx++;
-      }
-      let whereClause = where.length ? ('WHERE ' + where.join(' AND ')) : '';
-      // Count
-      const countRes = await pool.query(`SELECT COUNT(*) FROM priv_roles r ${whereClause}`, params);
-      totalCount = parseInt(countRes.rows[0].count, 10);
-      // Page
-      params.push(pageSize, (page - 1) * pageSize);
-      const pageRes = await pool.query(
-        `SELECT r.*, s.id as system_id, s.name as system_name FROM priv_roles r LEFT JOIN systems s ON r.system_id = s.id ${whereClause} ORDER BY r.id LIMIT $${params.length - 1} OFFSET $${params.length}`,
-        params
-      );
-      privRoleList = pageRes.rows.map(row => ({
-        ...row,
-        system: row.system_id ? { id: row.system_id, name: row.system_name } : null
-      }));
-    } else {
-      totalCount = await PrivRole.searchCount('');
-      privRoleList = await PrivRole.searchPage('', page, pageSize);
-    }
-    totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+    // Use model methods for filter and count
+    const privRoleList = await PrivRole.findFilteredList({ search, system_id, page, pageSize });
+    const totalCount = await PrivRole.countFilteredList({ search, system_id });
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     // Calculate summary range for 'Showing x - y of z' display
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = Math.min(page * pageSize, totalCount);
@@ -518,7 +333,7 @@ exports.listRoles = async (req, res) => {
     const allPermissions = await PrivPermission.findAll();
     // Attach permissions to each role
     for (const role of privRoleList) {
-      role.permissions = await PrivRole.getPermissions(role.id);
+      role.permissions = await PrivRole.findPermissions(role.id);
     }
     // Persist filter values for modal
     let system_name = '';
@@ -527,31 +342,34 @@ exports.listRoles = async (req, res) => {
     }
     const success = req.flash ? req.flash('success')[0] : (req.query.success || null);
     const error = req.flash ? req.flash('error')[0] : (req.query.error || null);
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    const user = req.session.user;
-    const content = ejs.render(
-      fs.readFileSync(path.join(__dirname, '../../public/html/pages/privilege/priv_role_list.ejs'), 'utf8'),
-      { privRoleList, page, totalPages, pageSize, allowedPageSizes, search, system_id, system_name, success, error, allPermissions, user: req.session.user, hasPermission: req.app.locals.hasPermission, startItem, endItem, totalCount }
-    );
-    res.render('layouts/layout', {
-      cssPath: config.cssPath,
-      jsPath: config.jsPath,
-      imgPath: config.imgPath,
-      body: content,
+
+    res.render('pages/privilege/priv_role_list', {
+      privRoleList,
+      page,
+      totalPages,
+      pageSize,
+      search,
+      system_id,
+      system_name,
+      success,
+      error,
+      allPermissions,
+      startItem,
+      endItem,
+      totalCount,
+      allowedPageSizes: res.locals.pageSizeOptions,
       title: 'Privileged Role List',
-      activeMenu: 'priv-role-list',
-      user: req.session.user,
-      siteName
+      activeMenu: 'priv-role-list'
     });
   } catch (err) {
     console.error('Error loading privileged roles:', err);
     res.status(500).send('Error loading privileged roles: ' + err.message);
   }
-};
+};   
+    
 
 // Handle creating a new privileged role
-exports.createRole = async (req, res) => {
+privAccountController.createRole = async (req, res) => {
   try {
     // Normalize and trim input fields
     const name = req.body.name ? req.body.name.trim() : '';
@@ -572,7 +390,11 @@ exports.createRole = async (req, res) => {
     }
     // Create role with system_id
     const newRole = await PrivRole.create({ name, description, system_id, updated_by });
-    await PrivRole.updatePermissions(newRole.id, permissions.map(Number));
+    await PrivRole.setPermissions(newRole.id, permissions.map(Number));
+    
+    // Clear permissions cache since new role with permissions was created
+    clearPermissionsCache();
+    
     req.flash && req.flash('success', 'Privileged role added successfully!');
     res.redirect('/priv-account/role');
   } catch (err) {
@@ -582,7 +404,7 @@ exports.createRole = async (req, res) => {
 };
 
 // Handle updating a privileged role
-exports.updateRole = async (req, res) => {
+privAccountController.updateRole = async (req, res) => {
   try {
     const { id } = req.params;
     const name = req.body.name ? req.body.name.trim() : '';
@@ -595,7 +417,11 @@ exports.updateRole = async (req, res) => {
     const updated_by = req.session.user?.username || '';
     await PrivRole.update(id, { name, description, system_id, updated_by });
     console.log('Updating permissions for role ID:', id, 'with permissions:', permissions);
-    await PrivRole.updatePermissions(id, permissions.map(Number));
+    await PrivRole.setPermissions(id, permissions.map(Number));
+    
+    // Clear permissions cache for all roles since permissions changed
+    clearPermissionsCache();
+    
     req.flash && req.flash('success', 'Privileged role updated successfully!');
     res.redirect('/priv-account/role');
   } catch (err) {
@@ -605,10 +431,14 @@ exports.updateRole = async (req, res) => {
 };
 
 // Handle deleting a privileged role
-exports.deleteRole = async (req, res) => {
+privAccountController.deleteRole = async (req, res) => {
   try {
     const { id } = req.params;
-    await PrivRole.delete(id);
+    await PrivRole.remove(id);
+    
+    // Clear permissions cache since role was deleted
+    clearPermissionsCache();
+    
     req.flash && req.flash('success', 'Privileged role deleted successfully!');
     res.redirect('/priv-account/role');
   } catch (err) {
@@ -624,84 +454,51 @@ exports.deleteRole = async (req, res) => {
 
 
 // Render Privileged Permission List page with layout
-exports.listPermissions = async (req, res) => {
+privAccountController.listPermissions = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    let pageSize = parseInt(req.query.pageSize) || 10;
-    // Load allowed page sizes from configuration
-    let allowedPageSizes = [10, 20, 50];
-    const configPageSize = await Configuration.findByKey('page_size');
-    if (configPageSize && typeof configPageSize.value === 'string') {
-      allowedPageSizes = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = allowedPageSizes[0];
-    } else {
-      if (!pageSize) pageSize = 10;
+    let pageSize = parseInt(req.query.pageSize) || res.locals.defaultPageSize;
+    if (!pageSize || !res.locals.pageSizeOptions.includes(pageSize)) {
+      pageSize = res.locals.defaultPageSize;
     }
     const search = req.query.search ? req.query.search.trim() : '';
-    const system_id = req.query.system_id ? req.query.system_id.trim() : '';
-    let privPermissionList, totalCount, totalPages;
-    // Filtering logic
-    if (search || system_id) {
-      // Custom search with system filter
-      let where = [];
-      let params = [];
-      let idx = 1;
-      if (search) {
-        where.push('(name ILIKE $' + idx + ' OR description ILIKE $' + idx + ')');
-        params.push(`%${search}%`);
-        idx++;
-      }
-      if (system_id) {
-        where.push('system_id = $' + idx);
-        params.push(system_id);
-        idx++;
-      }
-      let whereClause = where.length ? ('WHERE ' + where.join(' AND ')) : '';
-      // Count
-      const countRes = await pool.query(`SELECT COUNT(*) FROM priv_permissions ${whereClause}`, params);
-      totalCount = parseInt(countRes.rows[0].count, 10);
-      // Page
-      params.push(pageSize, (page - 1) * pageSize);
-      const pageRes = await pool.query(
-        `SELECT * FROM priv_permissions ${whereClause} ORDER BY id LIMIT $${params.length - 1} OFFSET $${params.length}`,
-        params
-      );
-      privPermissionList = pageRes.rows;
-    } else {
-      totalCount = await PrivPermission.searchCount('');
-      privPermissionList = await PrivPermission.searchPage('', page, pageSize);
+
+    // Use model methods for all DB logic
+    const totalCount = await PrivPermission.countFiltered({ search });
+    const privPermissionList = await PrivPermission.findFilteredList({ search, page, pageSize });
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
+    // Attach system info to each permission
+    for (const perm of privPermissionList) {
+      perm.system = await System.findById(perm.system_id);
     }
-    totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+
     // Calculate summary range for 'Showing x - y of z' display
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = Math.min(page * pageSize, totalCount);
     const success = req.flash ? req.flash('success')[0] : (req.query.success || null);
     const error = req.flash ? req.flash('error')[0] : (req.query.error || null);
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    const user = req.session.user;
-    // Ensure each permission has its system info (join or fetch system name)
-    for (const perm of privPermissionList) {
-      perm.system = await System.findById(perm.system_id);
-    }
-    // Persist filter values for modal
     let system_name = '';
-    if (system_id && privPermissionList.length > 0 && privPermissionList[0].system && privPermissionList[0].system.name) {
+    if (req.query.system_id && privPermissionList.length > 0 && privPermissionList[0].system && privPermissionList[0].system.name) {
       system_name = privPermissionList[0].system.name;
     }
-    const content = ejs.render(
-      fs.readFileSync(path.join(__dirname, '../../public/html/pages/privilege/priv_permission_list.ejs'), 'utf8'),
-      { privPermissionList, page, totalPages, pageSize, allowedPageSizes, search, system_id, system_name, success, error, user: req.session.user, hasPermission: req.app.locals.hasPermission, startItem, endItem, totalCount }
-    );
-    res.render('layouts/layout', {
-      cssPath: config.cssPath,
-      jsPath: config.jsPath,
-      imgPath: config.imgPath,
-      body: content,
+
+    res.render('pages/privilege/priv_permission_list', {
+      privPermissionList,
+      page,
+      totalPages,
+      pageSize,
+      search,
+      system_id: req.query.system_id || '',
+      system_name,
+      success,
+      error,
+      startItem,
+      endItem,
+      totalCount,
+      allowedPageSizes: res.locals.pageSizeOptions,
       title: 'Privileged Permission List',
-      activeMenu: 'priv-permission-list',
-      user: req.session.user,
-      siteName
+      activeMenu: 'priv-permission-list'
     });
   } catch (err) {
     console.error('Error loading privileged permissions:', err);
@@ -710,7 +507,7 @@ exports.listPermissions = async (req, res) => {
 };
 
 // Handle creating a new privileged permission
-exports.createPermission = async (req, res) => {
+privAccountController.createPermission = async (req, res) => {
   try {
     // Normalize and trim input fields
     const name = req.body.name ? req.body.name.trim() : '';
@@ -740,7 +537,7 @@ exports.createPermission = async (req, res) => {
 };
 
 // Handle updating a privileged permission
-exports.updatePermission = async (req, res) => {
+privAccountController.updatePermission = async (req, res) => {
   try {
     const { id } = req.params;
     // Normalize and trim input fields
@@ -767,10 +564,10 @@ exports.updatePermission = async (req, res) => {
 };
 
 // Handle deleting a privileged permission
-exports.deletePermission = async (req, res) => {
+privAccountController.deletePermission = async (req, res) => {
   try {
     const { id } = req.params;
-    await PrivPermission.delete(id);
+    await PrivPermission.remove(id);
     req.flash && req.flash('success', 'Privileged permission deleted successfully!');
     res.redirect('/priv-account/permission');
   } catch (err) {
@@ -780,7 +577,7 @@ exports.deletePermission = async (req, res) => {
 };
 
 // Export privileged permissions to Excel (with filter/search support)
-exports.exportPermissions = async (req, res) => {
+privAccountController.exportPermissions = async (req, res) => {
   try {
     // Debug: kiểm tra query param truyền lên
     // console.log('Export query:', req.query); 
@@ -836,7 +633,7 @@ exports.exportPermissions = async (req, res) => {
 };
 
 // Export privileged roles to Excel (with filter/search support)
-exports.exportRoles = async (req, res) => {
+privAccountController.exportRoles = async (req, res) => {
   try {
     const search = req.query.search ? req.query.search.trim() : '';
     const system_id = req.query.system_id ? req.query.system_id.trim() : '';
@@ -915,13 +712,13 @@ exports.exportRoles = async (req, res) => {
 
 // AJAX API: Privileged Role search for select2 ajax (role dropdown)
 // Used by /priv-account/api/role?search=xxx
-exports.apiRoleSearch = async (req, res) => {
+privAccountController.apiRoleSearch = async (req, res) => {
   try {
     const search = req.query.search || '';
     let system_ids = req.query.system_ids || [];
     if (typeof system_ids === 'string' && system_ids) system_ids = [system_ids];
     if (!Array.isArray(system_ids)) system_ids = [];
-    const roles = await PrivRole.apiSystemSearch(search, system_ids);
+    const roles = await PrivRole.findForSystemSelect2(search, system_ids);
     res.json(roles.map(r => ({ id: r.id, text: r.name })));
   } catch (err) {
     res.status(500).json([]);
@@ -929,7 +726,7 @@ exports.apiRoleSearch = async (req, res) => {
 };
 
 // AJAX API: Get roles by system(s) only (no search, for select2)
-exports.apiRoleBySystem = async (req, res) => {
+privAccountController.apiRoleBySystem = async (req, res) => {
   try {
     let system_ids = req.body.system_ids || [];
     console.log(system_ids);
@@ -944,7 +741,7 @@ exports.apiRoleBySystem = async (req, res) => {
 };
 
 // API: Get permissions by system_id (for Privileged Role add form AJAX)
-exports.apiPermissionsBySystem = async (req, res) => {
+privAccountController.apiPermissionsBySystem = async (req, res) => {
   try {
     const system_id = req.query.system_id;
     if (!system_id) {
@@ -958,8 +755,9 @@ exports.apiPermissionsBySystem = async (req, res) => {
   }
 };
 
+
 // Export privileged accounts to Excel (with filter/search support)
-exports.exportAccounts = async (req, res) => {
+privAccountController.exportAccounts = async (req, res) => {
   try {
     // Normalize filter parameters from query
     let filterParams = {
@@ -968,7 +766,6 @@ exports.exportAccounts = async (req, res) => {
       organize_id: req.query.organize_id ? req.query.organize_id.trim() : '',
       contact_ids: []
     };
-
     // Handle system_ids array
     const rawSystemIds = req.query['system_ids[]'] || req.query.system_ids;
     if (rawSystemIds) {
@@ -1135,3 +932,5 @@ exports.exportAccounts = async (req, res) => {
     res.status(500).send('Failed to export: ' + err.message);
   }
 };
+
+export default privAccountController;

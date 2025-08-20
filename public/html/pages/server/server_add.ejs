@@ -27,7 +27,7 @@
               <select name="status" class="form-select form-select-sm">
                 <option value="">-- Select Status --</option>
                 <% (statusOptions || []).forEach(function(st) { %>
-                  <option value="<%= st %>"><%= st %></option>
+                  <option value="<%= st.value %>"><%= st.label %></option>
                 <% }) %>
               </select>
             </div>
@@ -36,7 +36,7 @@
               <select name="location" class="form-select form-select-sm">
                 <option value="">-- Select location --</option>
                 <% (locations || []).forEach(function(loc) { %>
-                  <option value="<%= loc %>"><%= loc %></option>
+                  <option value="<%= loc.value %>"><%= loc.label %></option>
                 <% }) %>
               </select>
             </div>
@@ -44,30 +44,40 @@
               <label class="form-label">Type</label>
               <select name="type" class="form-select form-select-sm">
                 <option value="">-- Select type --</option>
-                <% (typeOptions || []).forEach(function(tp) { %>
-                  <option value="<%= tp %>"><%= tp %></option>
+                <% (typesOptions || []).forEach(function(tp) { %>
+                  <option value="<%= tp.value %>"><%= tp.label %></option>
                 <% }) %>
               </select>
             </div>
             <div class="mb-3">
               <label class="form-label">Managers</label>
-              <select id="manager-select" name="managers[]" class="form-select form-select-sm select2" multiple></select>
+              <select id="manager-select" name="managers[]" class="form-select form-select-sm" multiple>
+                <option></option>
+              </select>
             </div>
             <div class="mb-3">
               <label class="form-label">Systems</label>
-              <select id="system-select" name="systems[]" class="form-select form-select-sm select2" multiple></select>
+              <select id="system-select" name="systems[]" class="form-select form-select-sm" multiple>
+                <option></option>
+              </select>
             </div>
             <div class="mb-3">
               <label class="form-label">Agents</label>
-              <select id="agent-select" name="agents[]" class="form-select form-select-sm select2" multiple></select>
+              <select id="agent-select" name="agents[]" class="form-select form-select-sm" multiple>
+                <option></option>
+              </select>
             </div>
             <div class="mb-3">
               <label class="form-label">Services</label>
-              <select id="service-select" name="services[]" class="form-select form-select-sm select2" multiple></select>
+              <select id="service-select" name="services[]" class="form-select form-select-sm" multiple>
+                <option></option>
+              </select>
             </div>
             <div class="mb-3">
               <label class="form-label">Tags</label>
-              <select id="tag-select" name="tags[]" class="form-select form-select-sm select2" multiple></select>
+              <select id="tag-select" name="tags[]" class="form-select form-select-sm" multiple>
+                <option></option>
+              </select>
             </div>
             <div class="mb-3">
               <label for="serverDescription" class="form-label">Description</label>
@@ -83,9 +93,7 @@
     </div>
   </div>
 </div>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <script>
   $(function() {
     $('#ip-select').select2({
@@ -105,6 +113,7 @@
     $('#manager-select').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select manager(s)',
+      width: '100%',
       allowClear: true,
       ajax: {
         url: '/organize/api/contact',
@@ -119,6 +128,7 @@
     $('#system-select').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select system(s)',
+      width: '100%',
       allowClear: true,
       ajax: {
         url: '/system/api/system',
@@ -133,6 +143,7 @@
     $('#agent-select').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select agent(s)',
+      width: '100%',
       allowClear: true,
       ajax: {
         url: '/server/api/agent',
@@ -147,6 +158,7 @@
     $('#service-select').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select service(s)',
+      width: '100%',
       allowClear: true,
       ajax: {
         url: '/server/api/service',
@@ -210,5 +222,12 @@
       e.preventDefault();
       window.open('http://localhost:3000/network/ip-address?add=1', '_blank');
     });
+
+    // Fix: Remove blank <option> after select2 is initialized to avoid select2 placeholder bug
+    setTimeout(function() {
+      $('#manager-select, #system-select, #agent-select, #service-select, #tag-select').each(function() {
+        $(this).find('option').filter(function() { return !$(this).val(); }).remove();
+      });
+    }, 100);
   });
 </script>

@@ -1,5 +1,5 @@
 // Create permissions, roles, role_permissions tables
-module.exports = async (pool) => {
+export default async (pool) => {
   // Create permissions table
   await pool.query(`
     CREATE TABLE IF NOT EXISTS permissions (
@@ -23,7 +23,8 @@ module.exports = async (pool) => {
     CREATE TABLE IF NOT EXISTS role_permissions (
       id SERIAL PRIMARY KEY,
       role_id INT REFERENCES roles(id) ON DELETE CASCADE,
-      permission_id INT REFERENCES permissions(id) ON DELETE CASCADE
+      permission_id INT REFERENCES permissions(id) ON DELETE CASCADE,
+      UNIQUE (role_id, permission_id)
     );
   `);
 };

@@ -1,5 +1,5 @@
 // migrations/create_rulefirewall_table.js
-module.exports = async (pool) => {
+export default async (pool) => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS rulefirewall (
       id SERIAL PRIMARY KEY,
@@ -24,7 +24,9 @@ module.exports = async (pool) => {
       solution_proposal TEXT,
       solution_confirm TEXT,
       status VARCHAR(64),
-      description TEXT
+      description TEXT,
+      audit_batch TEXT,
+      work_order TEXT
     );
 
     CREATE TABLE IF NOT EXISTS rulefirewall_contact (

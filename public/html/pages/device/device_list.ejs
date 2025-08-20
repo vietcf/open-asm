@@ -10,12 +10,12 @@
   </form>
   <div class="row mb-3">
     <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
-      <% if (hasPermission && hasPermission(user, 'device.create')) { %>
+      <% if (hasPermission('device.create')) { %>
         <button type="button" class="btn btn-primary btn-sm me-2" onclick="window.location.href='/device/device/add'">
           <i class="bi bi-plus"></i> Add Device
         </button>
       <% } %>
-      <% if (hasPermission && hasPermission(user, 'device.read')) { %>
+      <% if (hasPermission('device.read')) { %>
         <form id="deviceExportForm" action="/device/device/export" method="GET" style="display:inline; margin-right: 8px;">
           <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
           <input type="hidden" name="device_type_id" value="<%= typeof device_type_id !== 'undefined' ? device_type_id : '' %>">
@@ -194,7 +194,7 @@
                 <th>Manufacturer</th>
                 <th>Platform (OS)</th>
                 <th>IP Address(es)</th>
-                <th>Management</th>
+            <th>Description</th>
                 <th>Tags</th>
                 <!-- <th>Contacts</th> -->
                 <th class="text-end">Actions</th>
@@ -225,7 +225,17 @@
                         <span class="text-muted">-</span>
                       <% } %>
                     </td>
-                    <td><%= device.management_address ? device.management_address : '-' %></td>
+                    <td>
+                      <% if (device.description) { %>
+                        <% let desc = device.description; %>
+                        <% let truncated = desc.length > 40 ? desc.substring(0, 40) + '…' : desc; %>
+                        <span title="<%- desc.replace(/\"/g, '&quot;') %>" style="cursor: pointer;" data-bs-toggle="tooltip" data-bs-placement="top">
+                          <%= truncated %>
+                        </span>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
                     <td>
                       <% if (device.tags && device.tags.length) { %>
                         <% device.tags.forEach(function(tag) { %>
@@ -250,11 +260,11 @@
                     -->
                     <td class="text-end">
                       <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#deviceDetailModal-<%= device.id %>"><i class="bi bi-eye"></i></a>
-                      <% if (hasPermission && hasPermission(user, 'device.update')) { %>
+                      <% if (hasPermission('device.update')) { %>
                         <a href="/device/device/edit/<%= device.id %>" class="btn btn-warning btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
                       <% } %>
-                      <% if (hasPermission && hasPermission(user, 'device.delete')) { %>
-                        <form action="/device/device/<%= device.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirm('Are you sure you want to delete this device?')">
+                      <% if (hasPermission('device.delete')) { %>
+                        <form action="/device/device/<%= device.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirm('Are you sure you want to delete this device? This action cannot be undone!')">
                           <button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="bi bi-trash"></i></button>
                         </form>
                       <% } %>
@@ -333,6 +343,8 @@
             </div>
             <div class="modal-body">
               <dl class="row">
+                <dt class="col-sm-3">ID</dt>
+                <dd class="col-sm-9"><%= device.id %></dd>
                 <dt class="col-sm-3">Name</dt>
                 <dd class="col-sm-9"><%= device.name %></dd>
                 <dt class="col-sm-3">Device Type</dt>
@@ -348,7 +360,13 @@
                   <% if (device.ip_addresses && device.ip_addresses.length) { %>
                     <ul class="list-unstyled mb-0">
                       <% device.ip_addresses.forEach(function(ip) { %>
-                        <li><%= ip.ip_address || ip.address || ip %></li>
+                        <li>
+                          <a href="ip-address?search=<%= encodeURIComponent(ip.ip_address || ip.address || ip) %>" 
+                             class="text-decoration-none" 
+                             title="Search for this IP address">
+                            <%= ip.ip_address || ip.address || ip %>
+                          </a>
+                        </li>
                       <% }) %>
                     </ul>
                   <% } else { %>
@@ -372,7 +390,13 @@
                   <% if (device.contacts && device.contacts.length) { %>
                     <ul class="list-unstyled mb-0">
                       <% device.contacts.forEach(function(contact) { %>
-                        <li><%= contact.name %> &lt;<%= contact.email %>&gt;</li>
+                        <li>
+                          <a href="contact?search=<%= encodeURIComponent(contact.email) %>" 
+                             class="text-decoration-none" 
+                             title="Search for this contact">
+                            <%= contact.email %> (<%= contact.name %>)
+                          </a>
+                        </li>
                       <% }) %>
                     </ul>
                   <% } else { %>

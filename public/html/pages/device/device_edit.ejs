@@ -16,7 +16,7 @@
               <%= success %>
             </div>
           <% } %>
-          <form action="/device/device/update/<%= device.id %>" method="POST">
+          <form action="/device/device/<%= device.id %>?_method=PUT" method="POST">
             <div class="mb-3">
               <label class="form-label">Device Type <span class="text-danger">*</span></label>
               <select id="device-type-select" name="device_type_id" class="form-select form-select-sm select2" required></select>
@@ -37,9 +37,9 @@
               <label class="form-label">Location</label>
               <select name="location" class="form-select form-select-sm">
                 <option value="">-- Select location --</option>
-                <% if (locationOptions) { Object.keys(locationOptions).forEach(function(key) { %>
-                  <option value="<%= key %>" <%= device.location === key ? 'selected' : '' %>><%= locationOptions[key] %></option>
-                <% }); } %>
+                <% if (locationOptions && Array.isArray(locationOptions)) { locationOptions.forEach(function(opt) { %>
+                  <option value="<%= opt.value %>" <%= device.location === opt.value ? 'selected' : '' %>><%= opt.label %></option>
+                <% }) } %>
               </select>
             </div>
             <div class="mb-3">
@@ -76,9 +76,9 @@
     </div>
   </div>
 </div>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="/js/jquery-3.6.0.min.js"></script>
+<link href="/css/select2.min.css" rel="stylesheet" />
+<script src="/js/select2.min.js"></script>
 <script>
   $(function() {
     $('#ip-select').select2({

@@ -1,4 +1,5 @@
 <div class="container-fluid">
+  <div id="wo-alert-container"></div>
   <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/firewall/rule" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
     <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search any field (name, src, dst, service, action, status, ...)" aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
     <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
@@ -10,11 +11,17 @@
   </form>
   <div class="row mb-3">
     <div class="col-12 d-flex justify-content-end align-items-center">
-      <% if (hasPermission && hasPermission(user, 'rule.create')) { %>
-      <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addRuleModal">
+      <% if (hasPermission('rule.create')) { %>
+      <button id="add-rule-btn" type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addRuleModal">
         <i class="bi bi-plus"></i> Add Rule
       </button>
       <% } %>
+      <button type="button" class="btn btn-success btn-sm me-2" id="editMultiWOButton">
+        <i class="bi bi-pencil-square"></i> Edit Batch WO
+      </button>
+      <div id="editWoWarning" class="alert alert-warning d-none" style="position:fixed; top:80px; right:30px; z-index:9999; min-width:200px; max-width:400px; text-align:center;">
+        Please select at least one rule to edit WO.
+      </div>
       <!-- Add Rule Modal -->
       <div class="modal fade" id="addRuleModal" tabindex="-1" aria-labelledby="addRuleModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -25,6 +32,15 @@
             </div>
             <div class="modal-body">
               <form id="addRuleForm" action="/firewall/rule" method="POST">
+                <div class="mb-3">
+                  <label for="firewall_name" class="form-label">Firewall Name <span class="text-danger">*</span></label>
+                  <select class="form-select form-select-sm" id="firewall_name" name="firewall_name" required>
+                    <option value="">-- Select Firewall Name --</option>
+                    <% (firewallNameOptions || []).forEach(function(fw) { %>
+                      <option value="<%= fw.value %>"><%= fw.label %></option>
+                    <% }) %>
+                  </select>
+                </div>
                 <div class="mb-3">
                   <label for="rulename" class="form-label">Rule Name <span class="text-danger">*</span></label>
                   <input type="text" class="form-control form-control-sm" id="rulename" name="rulename" required placeholder="Rule Name">
@@ -70,16 +86,8 @@
                   <select class="form-select form-select-sm" id="action" name="action" required>
                     <option value="">-- Select Action --</option>
                     <% (actionsOptions || []).forEach(function(act) { %>
-                      <option value="<%= act %>"><%= act.charAt(0).toUpperCase() + act.slice(1) %></option>
+                      <option value="<%= act.value %>"><%= act.label %></option>
                     <% }) %>
-                  </select>
-                </div>
-                <div class="mb-3">
-                  <label for="status" class="form-label">Status</label>
-                  <select class="form-select form-select-sm" id="status" name="status">
-                    <option value="">-- No status --</option>
-                    <option value="active">Enabled</option>
-                    <option value="inactive">Disabled</option>
                   </select>
                 </div>
                 <div class="mb-3">
@@ -87,7 +95,7 @@
                   <select class="form-select form-select-sm" id="violation_type" name="violation_type">
                     <option value="">-- None --</option>
                     <% (violationTypeOptions || []).forEach(function(vt) { %>
-                      <option value="<%= vt %>" <%= typeof violation_type !== 'undefined' && violation_type === vt ? 'selected' : '' %>><%= vt.charAt(0).toUpperCase() + vt.slice(1) %></option>
+                      <option value="<%= vt.value %>" <%= typeof violation_type !== 'undefined' && violation_type === vt.value ? 'selected' : '' %>><%= vt.label %></option>
                     <% }) %>
                   </select>
                 </div>
@@ -104,12 +112,40 @@
                   <textarea class="form-control form-control-sm" id="solution_confirm" name="solution_confirm" rows="1" placeholder="Solution Confirm"></textarea>
                 </div>
                 <div class="mb-3 position-relative">
+                  <label for="ruleOuId" class="form-label">OU (Unit)</label>
+                  <select id="ruleOuId" name="ou_id" class="form-select form-select-sm select2" style="width:100%" data-placeholder="Select OU (Unit)"></select>
+                </div>
+                <div class="mb-3">
+                  <label for="ruleContacts" class="form-label">Contacts</label>
+                  <select id="ruleContacts" name="contacts[]" class="form-select form-select-sm select2" multiple data-placeholder="Select contact(s)"></select>
+                </div>
+                <div class="mb-3 position-relative">
                   <label for="ruleTags" class="form-label">Tags</label>
                   <select id="ruleTags" name="tags[]" class="form-select form-select-sm select2" multiple></select>
                 </div>
                 <div class="mb-3">
+                  <label for="audit_batch" class="form-label">Audit Batch</label>
+                  <input type="text" class="form-control form-control-sm" id="audit_batch" name="audit_batch" placeholder="e.g. 2023-01,2023-02">
+                  <div class="invalid-feedback" id="auditBatchFeedback">
+                    Each audit batch must be in the format yyyy-01 or yyyy-02 (e.g. 2023-01,2024-02).
+                  </div>
+                </div>
+                <div class="mb-3">
                   <label for="description" class="form-label">Description</label>
                   <textarea class="form-control form-control-sm" id="description" name="description" rows="2" placeholder="Description"></textarea>
+                </div>
+                <div class="mb-3">
+                  <label for="status" class="form-label">Status</label>
+                  <select class="form-select form-select-sm" id="status" name="status">
+                    <option value="">-- No status --</option>
+                    <% (statusOptions || []).forEach(function(st) { %>
+                      <option value="<%= st.value %>"><%= st.label %></option>
+                    <% }) %>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label for="work_order" class="form-label">Work Order</label>
+                  <input type="text" class="form-control form-control-sm" id="work_order" name="work_order" placeholder="Work Order">
                 </div>
                 <div class="modal-footer d-flex justify-content-end">
                   <button type="submit" class="btn btn-primary btn-sm">Add Rule</button>
@@ -122,15 +158,16 @@
       </div>
       <form action="/firewall/rule/export" method="GET" style="display:inline;" class="me-2" id="exportRuleForm">
         <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-        <input type="hidden" name="ou_id" value="<%= typeof ou_id !== 'undefined' ? ou_id : '' %>">
-        <% if (typeof tags !== 'undefined' && Array.isArray(tags)) { tags.forEach(function(t) { %>
+        <input type="hidden" name="ou_id" value="<%= typeof filterUnitId !== 'undefined' ? filterUnitId : '' %>">
+        <% if (typeof filterTagIds !== 'undefined' && Array.isArray(filterTagIds)) { filterTagIds.forEach(function(t) { %>
           <input type="hidden" name="tags[]" value="<%= t %>">
         <% }) } %>
-        <% if (typeof contacts !== 'undefined' && Array.isArray(contacts)) { contacts.forEach(function(c) { %>
+        <% if (typeof filterContactIds !== 'undefined' && Array.isArray(filterContactIds)) { filterContactIds.forEach(function(c) { %>
           <input type="hidden" name="contacts[]" value="<%= c %>">
         <% }) } %>
         <input type="hidden" name="violation_type" value="<%= typeof violation_type !== 'undefined' ? violation_type : '' %>">
         <input type="hidden" name="status" value="<%= typeof status !== 'undefined' ? status : '' %>">
+        <input type="hidden" name="firewall_name" value="<%= typeof firewall_name !== 'undefined' ? firewall_name : '' %>">
         <button type="submit" class="btn btn-warning btn-sm">
           <i class="bi bi-download"></i> Export
         </button>
@@ -151,6 +188,15 @@
         <form method="get" action="/firewall/rule">
           <div class="modal-body">
             <div class="mb-3">
+              <label for="filterRuleFirewallName" class="form-label">Firewall Name</label>
+              <select class="form-select form-select-sm" id="filterRuleFirewallName" name="firewall_name">
+                <option value="">-- All --</option>
+                <% (firewallNameOptions || []).forEach(function(fw) { %>
+                  <option value="<%= fw.value %>" <%= typeof firewall_name !== 'undefined' && firewall_name === fw.value ? 'selected' : '' %>><%= fw.label %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="mb-3">
               <label for="filterRuleOuId" class="form-label">OU (Unit)</label>
               <select id="filterRuleOuId" name="ou_id" class="form-select form-select-sm select2" style="width:100%"></select>
             </div>
@@ -163,11 +209,15 @@
               <select id="filterRuleTags" name="tags[]" class="form-select form-select-sm select2" multiple></select>
             </div>
             <div class="mb-3">
+              <label for="filterRuleAuditBatch" class="form-label">Audit Batch</label>
+              <input type="text" class="form-control form-control-sm" id="filterRuleAuditBatch" name="audit_batch" placeholder="e.g. 2023-01,2023-02" value="<%= typeof audit_batch !== 'undefined' ? audit_batch : '' %>">
+            </div>
+            <div class="mb-3">
               <label for="filterRuleViolationType" class="form-label">Violation Type</label>
               <select class="form-select form-select-sm" id="filterRuleViolationType" name="violation_type">
                 <option value="">-- All --</option>
                 <% (violationTypeOptions || []).forEach(function(vt) { %>
-                  <option value="<%= vt %>" <%= typeof violation_type !== 'undefined' && violation_type === vt ? 'selected' : '' %>><%= vt.charAt(0).toUpperCase() + vt.slice(1) %></option>
+                  <option value="<%= vt.value %>" <%= typeof violation_type !== 'undefined' && violation_type === vt.value ? 'selected' : '' %>><%= vt.label %></option>
                 <% }) %>
               </select>
             </div>
@@ -176,7 +226,7 @@
               <select class="form-select form-select-sm" id="filterRuleStatus" name="status">
                 <option value="">-- All --</option>
                 <% (statusOptions || []).forEach(function(st) { %>
-                  <option value="<%= st %>" <%= typeof status !== 'undefined' && status === st ? 'selected' : '' %>><%= st.charAt(0).toUpperCase() + st.slice(1) %></option>
+                  <option value="<%= st.value %>" <%= typeof status !== 'undefined' && status === st.value ? 'selected' : '' %>><%= st.label %></option>
                 <% }) %>
               </select>
             </div>
@@ -202,24 +252,27 @@
             <div id="toast-error" class="toast-error alert alert-danger" style="position:absolute; left:0; right:0; top:0; margin:auto; z-index:9999; min-width:200px; max-width:400px; text-align:center;">
               <%= error %>
             </div>
-            <script>setTimeout(function(){var el=document.getElementById('toast-error');if(el)el.style.display='none';},3000);</script>
+            <script>setTimeout(function(){var el=document.getElementById('toast-error');if(el)el.style.display='none';},6000);</script>
           <% } %>
           <% if (typeof success !== 'undefined' && success) { %>
             <div id="toast-success" class="toast-success alert alert-success" style="position:absolute; left:0; right:0; top:40px; margin:auto; z-index:9999; min-width:200px; max-width:400px; text-align:center;">
               <%= success %>
             </div>
-            <script>setTimeout(function(){var el=document.getElementById('toast-success');if(el)el.style.display='none';},3000);</script>
+            <script>setTimeout(function(){var el=document.getElementById('toast-success');if(el)el.style.display='none';},6000);</script>
           <% } %>
           <table class="table table-hover text-nowrap">
             <thead>
               <tr>
+                <th style="width:32px;"><input type="checkbox" id="selectAllRules"></th>
                 <th>#</th>
+                <th>Firewall Name</th>
                 <th>Rule Name</th>
                 <th>Source</th>
                 <th>Destination</th>
-                <th>Port</th>
+                <th>Service</th>
                 <!-- <th>Protocol</th> -->
                 <th>Status</th>
+                <th>Work Order</th>
                 <!-- <th>Created At</th> -->
                 <th>OU (Unit)</th>
                 <th>Violation Type</th>
@@ -231,19 +284,16 @@
               <% if (ruleList && ruleList.length > 0) { %>
                 <% ruleList.forEach(function(rule, idx) { %>
                   <tr>
+                    <td><input type="checkbox" class="rule-checkbox" value="<%= rule.id %>"></td>
                     <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                    <td><%= rule.firewall_name || '' %></td>
                     <td><%= rule.rulename %></td>
                     <td><%= rule.src %></td>
                     <td><%= rule.dst %></td>
                     <td><%= rule.services %></td>
                     <!-- <td><%= rule.protocol || '' %></td> -->
-                    <td>
-                      <% if (rule.status === 'active' || rule.status === 1) { %>
-                        <span class="badge bg-success">Enabled</span>
-                      <% } else { %>
-                        <span class="badge bg-secondary">Disabled</span>
-                      <% } %>
-                    </td>
+                    <td><%= rule.status || '' %></td>
+                    <td><%= rule.work_order || '' %></td>
                     <!-- <td><%= rule.created_at ? (rule.created_at.toLocaleString ? rule.created_at.toLocaleString() : rule.created_at) : '' %></td> -->
                     <td><%= rule.ou_name || '' %></td>
                     <td><%= rule.violation_type || '' %></td>
@@ -258,10 +308,10 @@
                     </td>
                     <td class="text-end">
                       <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#ruleDetailModal-<%= rule.id %>"><i class="bi bi-eye"></i></a>
-                      <% if (hasPermission && hasPermission(user, 'rule.update')) { %>
+                      <% if (hasPermission('rule.update')) { %>
                       <button type="button" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#ruleEditModal-<%= rule.id %>"><i class="bi bi-pencil"></i></button>
                       <% } %>
-                      <% if (hasPermission && hasPermission(user, 'rule.delete')) { %>
+                      <% if (hasPermission('rule.delete')) { %>
                       <form action="/firewall/rule/<%= rule.id %>?_method=DELETE" method="POST" style="display:inline">
                         <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete this rule?')"><i class="bi bi-trash"></i></button>
                       </form>
@@ -278,6 +328,10 @@
                         </div>
                         <div class="modal-body">
                           <dl class="row mb-0">
+                            <dt class="col-sm-4">ID</dt>
+                            <dd class="col-sm-8"><%= rule.id %></dd>
+                            <dt class="col-sm-4">Firewall Name</dt>
+                            <dd class="col-sm-8"><%= rule.firewall_name || '' %></dd>
                             <dt class="col-sm-4">Rule Name</dt>
                             <dd class="col-sm-8"><%= rule.rulename %></dd>
                             <dt class="col-sm-4">Source Zone</dt>
@@ -300,6 +354,32 @@
                             <dd class="col-sm-8"><%= rule.url || '' %></dd>
                             <dt class="col-sm-4">Action</dt>
                             <dd class="col-sm-8"><%= rule.action %></dd>
+                            <dt class="col-sm-4">Violation Type</dt>
+                            <dd class="col-sm-8"><%= rule.violation_type || '' %></dd>
+                            <dt class="col-sm-4">Violation Detail</dt>
+                            <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.violation_detail || '').replace(/\r?\n/g, '<br>') %></dd>
+                            <dt class="col-sm-4">Solution Proposal</dt>
+                            <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.solution_proposal || '').replace(/\r?\n/g, '<br>') %></dd>
+                            <dt class="col-sm-4">Solution Confirm</dt>
+                            <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.solution_confirm || '').replace(/\r?\n/g, '<br>') %></dd>
+                            <dt class="col-sm-4">Tags</dt>
+                            <dd class="col-sm-8">
+                              <% if (rule.tagNames && rule.tagNames.length > 0) { %>
+                                <% rule.tagNames.forEach(function(tag) { %>
+                                  <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag %></span>
+                                <% }) %>
+                              <% } else { %>
+                                <span class="text-muted">No tags</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-4">Audit Batch</dt>
+                            <dd class="col-sm-8"><%= rule.audit_batch || '' %></dd>
+                            <dt class="col-sm-4">Description</dt>
+                            <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.description || '').replace(/\r?\n/g, '<br>') %></dd>
+                            <dt class="col-sm-4">Status</dt>
+                            <dd class="col-sm-8"><%= rule.status || '' %></dd>
+                            <dt class="col-sm-4">Work Order</dt>
+                            <dd class="col-sm-8"><%= rule.work_order || '' %></dd>
                             <dt class="col-sm-4">OU (Unit)</dt>
                             <dd class="col-sm-8"><%= rule.ou_name || '' %></dd>
                             <dt class="col-sm-4">Contacts</dt>
@@ -310,28 +390,6 @@
                                 <% }) %>
                               <% } else { %>
                                 <span class="text-muted">No contacts</span>
-                              <% } %>
-                            </dd>
-                            <dt class="col-sm-4">Violation Type</dt>
-                            <dd class="col-sm-8"><%= rule.violation_type || '' %></dd>
-                            <dt class="col-sm-4">Violation Detail</dt>
-                            <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.violation_detail || '').replace(/\r?\n/g, '<br>') %></dd>
-                            <dt class="col-sm-4">Solution Proposal</dt>
-                            <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.solution_proposal || '').replace(/\r?\n/g, '<br>') %></dd>
-                            <dt class="col-sm-4">Solution Confirm</dt>
-                            <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.solution_confirm || '').replace(/\r?\n/g, '<br>') %></dd>
-                            <dt class="col-sm-4">Status</dt>
-                            <dd class="col-sm-8"><%= rule.status || '' %></dd>
-                            <dt class="col-sm-4">Description</dt>
-                            <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.description || '').replace(/\r?\n/g, '<br>') %></dd>
-                            <dt class="col-sm-4">Tags</dt>
-                            <dd class="col-sm-8">
-                              <% if (rule.tagNames && rule.tagNames.length > 0) { %>
-                                <% rule.tagNames.forEach(function(tag) { %>
-                                  <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag %></span>
-                                <% }) %>
-                              <% } else { %>
-                                <span class="text-muted">No tags</span>
                               <% } %>
                             </dd>
                             <dt class="col-sm-4">Created At</dt>
@@ -358,6 +416,15 @@
                         </div>
                         <div class="modal-body">
                           <form action="/firewall/rule/<%= rule.id %>" method="POST">
+                            <div class="mb-3">
+                              <label for="editFirewallName-<%= rule.id %>" class="form-label">Firewall Name <span class="text-danger">*</span></label>
+                              <select class="form-select form-select-sm" id="editFirewallName-<%= rule.id %>" name="firewall_name" required>
+                                <option value="">-- Select Firewall Name --</option>
+                                <% (firewallNameOptions || []).forEach(function(fw) { %>
+                                  <option value="<%= fw.value %>" <%= rule.firewall_name === fw.value ? 'selected' : '' %>><%= fw.label %></option>
+                                <% }) %>
+                              </select>
+                            </div>
                             <div class="mb-3">
                               <label for="editRulename-<%= rule.id %>" class="form-label">Rule Name <span class="text-danger">*</span></label>
                               <input type="text" class="form-control form-control-sm" id="editRulename-<%= rule.id %>" name="rulename" value="<%= rule.rulename %>" required>
@@ -403,33 +470,24 @@
                               <select class="form-select form-select-sm" id="editAction-<%= rule.id %>" name="action" required>
                                 <option value="">-- Select Action --</option>
                                 <% (actionsOptions || []).forEach(function(act) { %>
-                                  <option value="<%= act %>" <%= rule.action === act ? 'selected' : '' %>><%= act.charAt(0).toUpperCase() + act.slice(1) %></option>
+                                  <option value="<%= act.value %>" <%= rule.action === act.value ? 'selected' : '' %>><%= act.label %></option>
                                 <% }) %>
                               </select>
                             </div>
                             <div class="mb-3 position-relative">
                               <label for="editRuleOuId-<%= rule.id %>" class="form-label">OU (Unit)</label>
-                              <select id="editRuleOuId-<%= rule.id %>" name="ou_id" class="form-select form-select-sm select2" style="width:100%"></select>
+                              <select id="editRuleOuId-<%= rule.id %>" name="ou_id" class="form-select form-select-sm select2" style="width:100%" data-placeholder="Select OU (Unit)"></select>
                             </div>
                             <div class="mb-3">
                               <label for="editRuleContacts-<%= rule.id %>" class="form-label">Contacts</label>
-                              <select id="editRuleContacts-<%= rule.id %>" name="contacts[]" class="form-select form-select-sm select2" multiple data-selected='<%- JSON.stringify(rule.contacts || []) %>'></select>
-                            </div>
-                            <div class="mb-3">
-                              <label for="editStatus-<%= rule.id %>" class="form-label">Status</label>
-                              <select class="form-select form-select-sm" id="editStatus-<%= rule.id %>" name="status">
-                                <option value="">-- No status --</option>
-                                <% (statusOptions || []).forEach(function(st) { %>
-                                  <option value="<%= st %>" <%= rule.status === st ? 'selected' : '' %>><%= st.charAt(0).toUpperCase() + st.slice(1) %></option>
-                                <% }) %>
-                              </select>
+                              <select id="editRuleContacts-<%= rule.id %>" name="contacts[]" class="form-select form-select-sm select2" multiple data-selected='<%- JSON.stringify(rule.contacts || []) %>' data-placeholder="Select contact(s)"></select>
                             </div>
                             <div class="mb-3">
                               <label for="editViolationType-<%= rule.id %>" class="form-label">Violation Type</label>
                               <select class="form-select form-select-sm" id="editViolationType-<%= rule.id %>" name="violation_type">
                                 <option value="">-- None --</option>
                                 <% (violationTypeOptions || []).forEach(function(vt) { %>
-                                  <option value="<%= vt %>" <%= rule.violation_type === vt ? 'selected' : '' %>><%= vt.charAt(0).toUpperCase() + vt.slice(1) %></option>
+                                  <option value="<%= vt.value %>" <%= rule.violation_type === vt.value ? 'selected' : '' %>><%= vt.label %></option>
                                 <% }) %>
                               </select>
                             </div>
@@ -437,13 +495,41 @@
                               <label for="editViolationDetail-<%= rule.id %>" class="form-label">Violation Detail</label>
                               <textarea class="form-control form-control-sm" id="editViolationDetail-<%= rule.id %>" name="violation_detail" rows="1"><%= rule.violation_detail || '' %></textarea>
                             </div>
+                            <div class="mb-3">
+                              <label for="editSolutionProposal-<%= rule.id %>" class="form-label">Solution Proposal</label>
+                              <textarea class="form-control form-control-sm" id="editSolutionProposal-<%= rule.id %>" name="solution_proposal" rows="1"><%= rule.solution_proposal || '' %></textarea>
+                            </div>
+                            <div class="mb-3">
+                              <label for="editSolutionConfirm-<%= rule.id %>" class="form-label">Solution Confirm</label>
+                              <textarea class="form-control form-control-sm" id="editSolutionConfirm-<%= rule.id %>" name="solution_confirm" rows="1"><%= rule.solution_confirm || '' %></textarea>
+                            </div>
                             <div class="mb-3 position-relative">
                               <label for="editRuleTags-<%= rule.id %>" class="form-label">Tags</label>
                               <select id="editRuleTags-<%= rule.id %>" name="tags[]" class="form-select form-select-sm select2" multiple data-selected='<%- JSON.stringify(rule.tags || []) %>'></select>
                             </div>
                             <div class="mb-3">
+                              <label for="editAuditBatch-<%= rule.id %>" class="form-label">Audit Batch</label>
+                              <input type="text" class="form-control form-control-sm edit-audit-batch" id="editAuditBatch-<%= rule.id %>" name="audit_batch" value="<%= rule.audit_batch || '' %>" placeholder="e.g. 2023-01,2023-02">
+                              <div class="invalid-feedback">
+                                Each audit batch must be in the format yyyy-01 or yyyy-02 (e.g. 2023-01,2024-02).
+                              </div>
+                            </div>
+                            <div class="mb-3">
                               <label for="editDescription-<%= rule.id %>" class="form-label">Description</label>
                               <textarea class="form-control form-control-sm" id="editDescription-<%= rule.id %>" name="description" rows="2"><%= rule.description || '' %></textarea>
+                            </div>
+                            <div class="mb-3">
+                              <label for="editStatus-<%= rule.id %>" class="form-label">Status</label>
+                              <select class="form-select form-select-sm" id="editStatus-<%= rule.id %>" name="status">
+                                <option value="">-- No status --</option>
+                                <% (statusOptions || []).forEach(function(st) { %>
+                                  <option value="<%= st.value %>" <%= rule.status === st.value ? 'selected' : '' %>><%= st.label %></option>
+                                <% }) %>
+                              </select>
+                            </div>
+                            <div class="mb-3">
+                              <label for="editWorkOrder-<%= rule.id %>" class="form-label">Work Order</label>
+                              <input type="text" class="form-control form-control-sm" id="editWorkOrder-<%= rule.id %>" name="work_order" value="<%= rule.work_order || '' %>">
                             </div>
                             <div class="modal-footer d-flex justify-content-end">
                               <button type="submit" class="btn btn-primary btn-sm">Save changes</button>
@@ -553,20 +639,6 @@
               <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.solution_proposal || '').replace(/\r?\n/g, '<br>') %></dd>
               <dt class="col-sm-4">Solution Confirm</dt>
               <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.solution_confirm || '').replace(/\r?\n/g, '<br>') %></dd>
-              <dt class="col-sm-4">Status</dt>
-              <dd class="col-sm-8"><%= rule.status || '' %></dd>
-              <dt class="col-sm-4">Description</dt>
-              <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.description || '').replace(/\r?\n/g, '<br>') %></dd>
-              <dt class="col-sm-4">Tags</dt>
-              <dd class="col-sm-8">
-                <% if (rule.tagNames && rule.tagNames.length > 0) { %>
-                  <% rule.tagNames.forEach(function(tag) { %>
-                    <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag %></span>
-                  <% }) %>
-                <% } else { %>
-                  <span class="text-muted">No tags</span>
-                <% } %>
-              </dd>
               <dt class="col-sm-4">Created At</dt>
               <dd class="col-sm-8"><%= rule.created_at ? (rule.created_at.toLocaleString ? rule.created_at.toLocaleString() : rule.created_at) : '' %></dd>
               <dt class="col-sm-4">Updated At</dt>
@@ -582,6 +654,29 @@
       </div>
     </div>
   <% }) } %>
+  <!-- Edit WO Modal -->
+  <div class="modal fade" id="editWoModal" tabindex="-1" aria-labelledby="editWoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editWoModalLabel">Edit Work Order (WO)</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editWoForm">
+            <div class="mb-3">
+              <label for="woInput" class="form-label">Work Order</label>
+              <input type="text" class="form-control form-control-sm" id="woInput" name="work_order" placeholder="Enter WO">
+            </div>
+            <div class="modal-footer d-flex justify-content-end">
+              <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-primary btn-sm ms-2" id="saveWoBtn">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 <style>
 #addRuleModal .mb-3.position-relative { position: relative; }
@@ -606,12 +701,17 @@
 }
 </style>
 <script>
+// --- GLOBAL DEBUG: Confirm script loaded and catch JS errors ---
+console.log('[Firewall Rule List] Script loaded');
+window.onerror = function(msg, url, line, col, error) {
+  console.error('[Global JS Error]', msg, url, line, col, error);
+};
 $(function() {
   function getDropdownParent(element) {
     return $(element).closest('.modal-content');
   }
 
-  // --- TỐI ƯU FILTER MODAL: KHỞI TẠO SELECT2 NGAY TỪ ĐẦU, KHÔNG KHỞI TẠO LẠI MỖI LẦN MỞ MODAL ---
+  // --- TỐI ƯU FILTER MODAL: KHỞI TẠO SELECT2 NGAY TỪ ĐẦU, KHÔNG KHỞI TẠO LẠI MỖI LẦN ---
   var $filterOu = $('#filterRuleOuId');
   var $filterTags = $('#filterRuleTags');
   var $filterContacts = $('#filterRuleContacts');
@@ -631,7 +731,10 @@ $(function() {
       dataType: 'json',
       delay: 250,
       data: function(params) { return { search: params.term }; },
-      processResults: function(data) { return { results: data }; },
+      processResults: function(data) {
+        console.log('[Select2 OU] AJAX response:', data);
+        return { results: data };
+      },
       cache: true
     }
   });
@@ -647,7 +750,10 @@ $(function() {
       dataType: 'json',
       delay: 250,
       data: function(params) { return { search: params.term }; },
-      processResults: function(data) { return { results: data }; },
+      processResults: function(data) {
+        console.log('[Select2 Tags] AJAX response:', data);
+        return { results: data };
+      },
       cache: true
     }
   });
@@ -663,7 +769,10 @@ $(function() {
       dataType: 'json',
       delay: 250,
       data: function(params) { return { search: params.term }; },
-      processResults: function(data) { return { results: data }; },
+      processResults: function(data) {
+        console.log('[Select2 Contacts] AJAX response:', data);
+        return { results: data };
+      },
       cache: true
     }
   });
@@ -672,21 +781,10 @@ $(function() {
   $('#filterRuleModal').on('shown.bs.modal', function() {
     // Reset OU
     $filterOu.val(null).trigger('change');
-    <% if (typeof ou_id !== 'undefined' && ou_id) { %>
-      $filterOu.val('<%= ou_id %>').trigger('change');
-    <% } %>
     // Reset Tags
     $filterTags.val(null).trigger('change');
-    <% if (typeof tags !== 'undefined' && Array.isArray(tags) && tags.length > 0) { %>
-      var tagData = <%- JSON.stringify(tags) %>;
-      $filterTags.val(tagData).trigger('change');
-    <% } %>
     // Reset Contacts
     $filterContacts.val(null).trigger('change');
-    <% if (typeof contacts !== 'undefined' && Array.isArray(contacts) && contacts.length > 0) { %>
-      var contactData = <%- JSON.stringify(contacts) %>;
-      $filterContacts.val(contactData).trigger('change');
-    <% } %>
   });
 
   // Destroy select2 when modal closes to avoid duplicate init
@@ -700,10 +798,23 @@ $(function() {
 
   // Init select2 when modal opens, so dropdownParent is always correct
   $('#addRuleModal').on('shown.bs.modal', function() {
+    console.log('==> [AddRuleModal] Modal opened');
+    // --- DEBUG: Confirm jQuery and select2 loaded ---
+    if (typeof $ === 'undefined') {
+      console.error('jQuery ($) is NOT loaded!');
+    } else {
+      console.log('jQuery ($) is loaded:', $);
+    }
+    if (typeof $.fn.select2 === 'undefined') {
+      console.error('select2 is NOT loaded!');
+    } else {
+      console.log('select2 is loaded:', $.fn.select2);
+    }
     var $modalContent = $('#addRuleModal .modal-content');
     if ($('#ruleOuId').hasClass('select2-hidden-accessible')) $('#ruleOuId').select2('destroy');
     if ($('#ruleTags').hasClass('select2-hidden-accessible')) $('#ruleTags').select2('destroy');
     if ($('#ruleContacts').hasClass('select2-hidden-accessible')) $('#ruleContacts').select2('destroy');
+    console.log('==> [AddRuleModal] Initializing select2 for OU, Tags, Contacts');
     $('#ruleOuId').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select OU (Unit)',
@@ -715,8 +826,17 @@ $(function() {
         url: '/organize/api/unit',
         dataType: 'json',
         delay: 250,
-        data: function(params) { return { search: params.term }; },
-        processResults: function(data) { return { results: data }; },
+        data: function(params) {
+          console.log('[AddRule Select2 OU] AJAX data params:', params);
+          return { search: params.term };
+        },
+        processResults: function(data) {
+          console.log('[AddRule Select2 OU] AJAX response:', data);
+          return { results: data };
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+          console.error('[AddRule Select2 OU] AJAX ERROR:', textStatus, errorThrown);
+        },
         cache: true
       }
     });
@@ -731,11 +851,35 @@ $(function() {
         url: '/organize/api/tag',
         dataType: 'json',
         delay: 250,
-        data: function(params) { return { search: params.term }; },
-        processResults: function(data) { return { results: data }; },
+        data: function(params) {
+          console.log('[AddRule Select2 Tags] AJAX data params:', params);
+          return { search: params.term };
+        },
+        processResults: function(data) {
+          console.log('[AddRule Select2 Tags] AJAX response:', data);
+          // Accept both [{id, name}] and [{id, text}] formats
+          if (Array.isArray(data)) {
+            return { results: data.map(tag => {
+              if (tag.text) return tag;
+              return { id: tag.id, text: tag.name };
+            }) };
+          }
+          return { results: [] };
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+          console.error('[AddRule Select2 Tags] AJAX ERROR:', textStatus, errorThrown);
+        },
         cache: true
       }
     });
+    // Auto-select tags if provided from controller (selectedTags: [{id, name}])
+    <% if (typeof selectedTags !== 'undefined' && Array.isArray(selectedTags) && selectedTags.length > 0) { %>
+      var selectedTags = <%- JSON.stringify(selectedTags) %>;
+      selectedTags.forEach(function(tag) {
+        var option = new Option(tag.name, tag.id, true, true);
+        $('#ruleTags').append(option).trigger('change');
+      });
+    <% } %>
     $('#ruleContacts').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select contact(s)',
@@ -747,11 +891,38 @@ $(function() {
         url: '/organize/api/contact',
         dataType: 'json',
         delay: 250,
-        data: function(params) { return { search: params.term }; },
-        processResults: function(data) { return { results: data }; },
+        data: function(params) {
+          console.log('[AddRule Select2 Contacts] AJAX data params:', params);
+          return { search: params.term };
+        },
+        processResults: function(data) {
+          console.log('[AddRule Select2 Contacts] AJAX response:', data);
+          // Accept both [{id, name}] and [{id, text}] formats
+          if (Array.isArray(data)) {
+            return { results: data.map(c => {
+              if (c.text) return c;
+              return { id: c.id, text: c.name + (c.email ? ' (' + c.email + ')' : '') };
+            }) };
+          }
+          return { results: [] };
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+          console.error('[AddRule Select2 Contacts] AJAX ERROR:', textStatus, errorThrown);
+        },
         cache: true
       }
     });
+    console.log('[AddRuleModal] select2 initialized for OU, Tags, Contacts');
+    // Tự động trigger tìm kiếm rỗng cho OU, Tags, Contacts khi mở modal
+    setTimeout(function() {
+      console.log('==> [AddRuleModal] Trigger select2 open/close for AJAX');
+      $('#ruleOuId').select2('open');
+      $('#ruleOuId').select2('close');
+      $('#ruleTags').select2('open');
+      $('#ruleTags').select2('close');
+      $('#ruleContacts').select2('open');
+      $('#ruleContacts').select2('close');
+    }, 300);
   });
   <% ruleList.forEach(function(rule) { %>
     $('#ruleEditModal-<%= rule.id %>').on('shown.bs.modal', function() {
@@ -762,6 +933,10 @@ $(function() {
       if ($ou.hasClass('select2-hidden-accessible')) $ou.select2('destroy');
       if ($tags.hasClass('select2-hidden-accessible')) $tags.select2('destroy');
       if ($contacts.hasClass('select2-hidden-accessible')) $contacts.select2('destroy');
+      // Xóa hết các option cũ trước khi append mới
+      $ou.empty();
+      $tags.empty();
+      $contacts.empty();
       $ou.select2({
         theme: 'bootstrap-5',
         placeholder: 'Select OU (Unit)',
@@ -816,8 +991,8 @@ $(function() {
         $ou.append(ouOption).trigger('change');
       }
       // Pre-select tags if present
-      var tagData = <%- JSON.stringify((rule.tags || []).map(function(t) { return t.id !== undefined ? t.id : t; })) %>;
-      var tagNames = <%- JSON.stringify((rule.tags || []).map(function(t) { return t.name || t; })) %>;
+      var tagData = <%- JSON.stringify((rule.tags || []).map(t => t.id !== undefined ? t.id : t)) %>;
+      var tagNames = <%- JSON.stringify((rule.tags || []).map(t => t.name || t)) %>;
       if (tagData.length > 0) {
         tagData.forEach(function(tid, i) {
           var tagOption = new Option(tagNames[i] || tid, tid, true, true);
@@ -902,30 +1077,128 @@ $(function() {
       }
     });
     // --- Persist filter values ---
-    <% if (typeof ou_id !== 'undefined' && ou_id) { %>
-      var ouOption = new Option('<%= typeof ou_name !== 'undefined' ? ou_name : '' %>', '<%= ou_id %>', true, true);
+    <% if (typeof filterUnitId !== 'undefined' && filterUnitId) { %>
+      var ouOption = new Option('<%= typeof selectedUnit !== 'undefined' ? selectedUnit : '' %>', '<%= filterUnitId %>', true, true);
       $ou.append(ouOption).trigger('change');
     <% } %>
-    <% if (typeof tags !== 'undefined' && Array.isArray(tags) && tags.length > 0) { %>
-      var tagData = <%- JSON.stringify(tags) %>;
-      var tagNames = <%- JSON.stringify(typeof tagNames !== 'undefined' ? tagNames : []) %>;
+    <% if (typeof filterTagIds !== 'undefined' && Array.isArray(filterTagIds) && filterTagIds.length > 0) { %>
+      var tagData = <%- JSON.stringify(filterTagIds) %>;
+      var tagNames = <%- JSON.stringify(typeof selectedTags !== 'undefined' ? selectedTags : []) %>;
       tagData.forEach(function(tid, i) {
         var tagOption = new Option(tagNames[i] || tid, tid, true, true);
         $tags.append(tagOption).trigger('change');
       });
     <% } %>
-    <% if (typeof contacts !== 'undefined' && Array.isArray(contacts) && contacts.length > 0) { %>
-      var contactData = <%- JSON.stringify(contacts) %>;
-      var contactNames = <%- JSON.stringify(typeof contactNames !== 'undefined' ? contactNames : []) %>;
+    <% if (typeof filterContactIds !== 'undefined' && Array.isArray(filterContactIds) && filterContactIds.length > 0) { %>
+      var contactData = <%- JSON.stringify(filterContactIds) %>;
+      var contactNames = <%- JSON.stringify(typeof selectedContacts !== 'undefined' ? selectedContacts : []) %>;
       contactData.forEach(function(cid, i) {
         var contactOption = new Option(contactNames[i] || cid, cid, true, true);
         $contacts.append(contactOption).trigger('change');
       });
     <% } %>
   });
-  // Nút clear all filter
+  // Button to clear all filters
   $('#clearAllFilterBtn').on('click', function() {
     window.location.href = '/firewall/rule';
   });
+  // Select all rules functionality
+  $('#selectAllRules').on('change', function() {
+    $('.rule-checkbox').prop('checked', this.checked);
+  });
+
+  // If one checkbox is unchecked, uncheck selectAllRules
+  $(document).on('change', '.rule-checkbox', function() {
+    if (!this.checked) {
+      $('#selectAllRules').prop('checked', false);
+    } else if ($('.rule-checkbox:checked').length === $('.rule-checkbox').length) {
+      $('#selectAllRules').prop('checked', true);
+    }
+  });
+
+  // Handle Edit WO button
+  $('#editMultiWOButton').on('click', function() {
+    var checked = $('.rule-checkbox:checked');
+    if (checked.length === 0) {
+      $('#editWoWarning').removeClass('d-none');
+      setTimeout(function() { $('#editWoWarning').addClass('d-none'); }, 2000);
+    } else {
+      $('#editWoModal').modal('show');
+    }
+  });
+  // Show alert in the same position and style as single rule edit, centered below the button row
+  function showWoAlert(message, type) {
+    var $container = $('#wo-alert-container');
+    $container.html(
+      '<div class="alert alert-' + (type === 'success' ? 'success' : 'danger') + ' alert-dismissible fade show" role="alert" style="position:absolute; left:0; right:0; top:40px; margin:auto; z-index:9999; min-width:220px; max-width:400px; text-align:center;">'
+      + message +
+      '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
+      '</div>'
+    );
+    setTimeout(function() {
+      $container.find('.alert').alert('close');
+    }, 1200);
+    $container.find('.alert').on('closed.bs.alert', function() {
+      $container.empty();
+      location.reload();
+    });
+  }
+  // Handle Save button for batch WO
+  $('#saveWoBtn').on('click', function() {
+    var selectedIds = $('.rule-checkbox:checked').map(function() { return $(this).val(); }).get();
+    var woValue = $('#woInput').val().trim();
+    if (!woValue) {
+      $('#woInput').addClass('is-invalid');
+      if ($('#woInput').next('.invalid-feedback').length === 0) {
+        $('#woInput').after('<div class="invalid-feedback">Work Order is required.</div>');
+      }
+      return;
+    } else {
+      $('#woInput').removeClass('is-invalid');
+      $('#woInput').next('.invalid-feedback').remove();
+    }
+    $.ajax({
+      url: '/firewall/api/batch-update-wo',
+      method: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ ids: selectedIds, work_order: woValue }),
+      success: function(res) {
+        $('#editWoModal').modal('hide');
+        // Truyền thông báo thành công qua query string để đồng bộ alert (KHÔNG encode)
+        var url = new URL(window.location.href);
+        url.searchParams.set('success', res.message || 'Work Order updated successfully!');
+        window.location.href = url.toString();
+      },
+      error: function(xhr) {
+        let msg = 'Update failed!';
+        if (xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+        $('#editWoModal').modal('hide');
+        // Truyền thông báo lỗi qua query string để đồng bộ alert (KHÔNG encode)
+        var url = new URL(window.location.href);
+        url.searchParams.set('error', msg);
+        window.location.href = url.toString();
+      }
+    });
+  });
+
+  // Hiển thị alert thành công/thất bại từ query string (nếu có) sau khi reload trang (batch WO)
+  var params = new URLSearchParams(window.location.search);
+  if (params.has('success')) {
+    var msg = params.get('success');
+    var $alert = $('<div id="toast-success" class="toast-success alert alert-success" style="position:absolute; left:0; right:0; top:40px; margin:auto; z-index:9999; min-width:200px; max-width:400px; text-align:center;">'+msg+'</div>');
+    $('#wo-alert-container').html($alert);
+    setTimeout(function(){ $alert.fadeOut(400, function(){ $alert.remove(); }); }, 3000);
+    params.delete('success');
+    window.history.replaceState({}, '', window.location.pathname + (params.toString() ? '?' + params.toString() : ''));
+  }
+  if (params.has('error')) {
+    var msg = params.get('error');
+    var $alert = $('<div id="toast-error" class="toast-error alert alert-danger" style="position:absolute; left:0; right:0; top:0; margin:auto; z-index:9999; min-width:200px; max-width:400px; text-align:center;">'+msg+'</div>');
+    $('#wo-alert-container').html($alert);
+    setTimeout(function(){ $alert.fadeOut(400, function(){ $alert.remove(); }); }, 3000);
+    params.delete('error');
+    window.history.replaceState({}, '', window.location.pathname + (params.toString() ? '?' + params.toString() : ''));
+  }
 });
 </script>
+<!-- END SCRIPT -->

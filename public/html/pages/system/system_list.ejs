@@ -2,7 +2,7 @@
   <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/system/system" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
     <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search System, Alias..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
     <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
-      <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+      <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
         <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
       <% }) %>
     </select>
@@ -10,9 +10,11 @@
   </form>
   <div class="row mb-3">
     <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
+      <% if (hasPermission('system.create')) { %>
       <a href="/system/system/add" class="btn btn-primary btn-sm me-2">
         <i class="bi bi-plus"></i> Add System
       </a>
+      <% } %>
       <!--
       <form action="/system/import" method="POST" enctype="multipart/form-data" style="display:inline;">
         <label class="btn btn-success btn-sm mb-0">
@@ -73,6 +75,7 @@
                 <th>No.</th>
                 <th>System ID</th>
                 <th>System Name</th>
+                <th>Description</th>
                 <th>Alias</th>
                 <th>Tags</th>
                 <th class="text-end">Actions</th>
@@ -85,6 +88,15 @@
                     <td><%= (page - 1) * pageSize + idx + 1 %></td>
                     <td><%= system.system_id %></td>
                     <td><%= system.name %></td>
+                    <td>
+                      <% if (system.description && system.description.trim()) { %>
+                        <span title="<%= system.description.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
+                          <%= system.description.length > 60 ? system.description.substring(0, 60) + '…' : system.description %>
+                        </span>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
                     <td>
                       <% if (Array.isArray(system.alias) && system.alias.length > 0) { %>
                         <%= system.alias.join(', ') %>
@@ -105,12 +117,16 @@
                     </td>
                     <td class="text-end">
                       <button type="button" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#systemDetailModal-<%= system.id %>" onclick='showSystemDetail(<%= JSON.stringify(system) %>)'><i class="bi bi-eye"></i></button>
+                      <% if (hasPermission('system.update')) { %>
                       <a href="/system/system/<%= system.id %>/edit" class="btn btn-warning btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
+                      <% } %>
+                      <% if (hasPermission('system.delete')) { %>
                       <form action="/system/system/<%= system.id %>/delete" method="POST" style="display:inline" onsubmit="return confirmDeleteSystem(this, '<%= system.name %>')">
                         <button type="submit" class="btn btn-danger btn-sm" title="Delete">
                           <i class="bi bi-trash"></i>
                         </button>
                       </form>
+                      <% } %>
                     </td>
                   </tr>
                   <!-- System Detail Modal -->
@@ -237,7 +253,7 @@
                               <% system.ip_addresses.forEach(function(ipObj) { %>
                                 <li>
                                   <% if (typeof ipObj === 'object' && ipObj.ip) { %>
-                                    <%= ipObj.ip %>
+                                    <a href="/network/ip-address?search=<%= encodeURIComponent(ipObj.ip) %>" target="_blank"><%= ipObj.ip %></a>
                                     <% if (ipObj.contact_name && ipObj.contact_email) { %>
                                       - <a href="/organize/contact?search=<%= encodeURIComponent(ipObj.contact_email) %>" target="_blank"><%= ipObj.contact_email %></a>
                                     <% } else if (ipObj.contact_name) { %>
@@ -247,7 +263,7 @@
                                       (<a href="/server/server/list?search=<%= encodeURIComponent(ipObj.ip) %>" target="_blank"><%= ipObj.server_name %></a>)
                                     <% } %>
                                   <% } else { %>
-                                    <%= ipObj %>
+                                    <a href="/network/ip-address?search=<%= encodeURIComponent(ipObj) %>" target="_blank"><%= ipObj %></a>
                                   <% } %>
                                 </li>
                               <% }) %>

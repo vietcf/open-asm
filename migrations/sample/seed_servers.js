@@ -1,5 +1,5 @@
 // Seed data for servers table (new structure)
-module.exports = async (db) => {
+export default async (db) => {
   // Giả sử đã có sẵn platforms và systems, lấy id tương ứng
   // Ví dụ: Ubuntu 22.04 (id=1), Windows Server 2019 (id=2), CentOS 7 (id=3)
   // Seed servers

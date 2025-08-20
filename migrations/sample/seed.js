@@ -1,25 +1,31 @@
-const { pool } = require('../config/config');
-const seedUsers = require('./seed_users');
-const seedIpAddresses = require('./seed_ip_addresses');
-const seedSubnets = require('./seed_subnets');
-const seedServers = require('./seed_servers');
-const seedContacts = require('./seed_contacts');
-const seedUnits = require('./seed_units');
-const seedPlatforms = require('./seed_platforms');
-const seedSystems = require('./seed_systems');
-const seedAgents = require('./seed_agents');
-const seedServices = require('./seed_services');
-const seedDomains = require('./seed_domains');
-const seedPermissionsAndRoles = require('./seed_permissions_and_roles');
-const seedDeviceTypes = require('./seed_device_types');
-const seedTags = require('./seed_tags');
-const seedDevices = require('./seed_devices');
-const seedPrivUsers = require('./seed_priv_users');
-const seedPrivRoles = require('./seed_priv_roles');
-const seedPrivPermissions = require('./seed_priv_permissions');
-const seedPrivUserRoles = require('./seed_priv_user_roles');
-const seedPrivRolePermissions = require('./seed_priv_role_permissions');
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { pool } from '../../config/config.js';
+import seedUsers from './seed_users.js';
+import seedIpAddresses from './seed_ip_addresses.js';
+import seedSubnets from './seed_subnets.js';
+import seedServers from './seed_servers.js';
+import seedContacts from './seed_contacts.js';
+import seedUnits from './seed_units.js';
+import seedPlatforms from './seed_platforms.js';
+import seedSystems from './seed_systems.js';
+import seedAgents from './seed_agents.js';
+import seedServices from './seed_services.js';
+import seedDomains from './seed_domains.js';
+import seedPermissionsAndRoles from './seed_permissions_and_roles.js';
+import seedDeviceTypes from './seed_device_types.js';
+import seedTags from './seed_tags.js';
+import seedDevices from './seed_devices.js';
+import seedPrivUsers from './seed_priv_users.js';
+import seedPrivRoles from './seed_priv_roles.js';
+import seedPrivPermissions from './seed_priv_permissions.js';
+import seedPrivUserRoles from './seed_priv_user_roles.js';
+import seedPrivRolePermissions from './seed_priv_role_permissions.js';
+import seedRuleFirewall from './seed_rulefirewall.js';
 // Add more seed files here as needed
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 async function seedData() {
   try {
@@ -31,13 +37,13 @@ async function seedData() {
     await seedUnits(pool);
     await seedContacts(pool);
     await seedServers(pool);
+    await seedTags(pool);
     await seedIpAddresses(pool);
     await seedDomains(pool);
     await seedSubnets(pool);
     await seedPlatforms(pool);
     await seedSystems(pool);
     await seedDeviceTypes(pool);
-    await seedTags(pool);
     await seedDevices(pool);
     // Privilege tables: seed roles and permissions first, then users, then user_roles and role_permissions
     await seedPrivRoles(pool);
@@ -47,7 +53,7 @@ async function seedData() {
     await seedPrivRolePermissions(pool);
     // await seedTagObject(pool); // Uncomment if you want to seed tag_object
     // Seed firewall rules
-    await require('./seed_rulefirewall')(pool);
+    await seedRuleFirewall(pool);
     console.log('Seeding completed.');
   } catch (err) {
     console.error('Seeding failed:', err);

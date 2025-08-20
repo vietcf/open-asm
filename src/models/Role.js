@@ -1,4 +1,5 @@
-const { pool } = require('../../config/config');
+
+import { pool } from '../../config/config.js';
 
 const Role = {
   findAll: async () => {
@@ -49,4 +50,4 @@ const Role = {
   }
 };
 
-module.exports = Role;
+export default Role;

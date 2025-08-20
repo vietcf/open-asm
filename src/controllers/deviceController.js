@@ -1,16 +1,15 @@
-const config = require('../../config/config');
-const ejs = require('ejs');
-const fs = require('fs');
-const path = require('path');
-const Platform = require('../models/Platform');
-const DeviceType = require('../models/DeviceType');
-const Device = require('../models/Device');
-const Configuration = require('../models/Configuration');
-const { pool } = require('../../config/config');
-const ExcelJS = require('exceljs');
 
+import Platform from '../models/Platform.js';
+import DeviceType from '../models/DeviceType.js';
+import Device from '../models/Device.js';
+import Configuration from '../models/Configuration.js';
+import { pool } from '../../config/config.js';
+import ExcelJS from 'exceljs';
+
+
+const deviceController = {};
 // List all devices with search, filter, and pagination
-exports.listDevice = async (req, res) => {
+deviceController.listDevice = async (req, res) => {
   try {
     // Chuẩn hóa các tham số filter (device_type_id, tags, platform_id, location, search)
     const filterParams = {
@@ -27,61 +26,40 @@ exports.listDevice = async (req, res) => {
     const page = parseInt(req.query.page, 10) || 1;
     let pageSize = parseInt(req.query.page_size, 10);
     let allowedPageSizes = [10, 20, 50];
-    const configPageSize = await Configuration.findByKey('page_size');
-    if (configPageSize && typeof configPageSize.value === 'string') {
-      allowedPageSizes = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = allowedPageSizes[0];
-    } else {
-      if (!pageSize) pageSize = 10;
-    }
-    const deviceList = await Device.filterList({ ...filterParams, page, pageSize });
-    const totalCount = await Device.filterCount({ ...filterParams });
+    if (!pageSize) pageSize = 10;
+    const deviceList = await Device.findFilteredList({ ...filterParams, page, pageSize });
+    const totalCount = await Device.countFiltered({ ...filterParams });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
     const errorMessage = req.flash('error')[0] || req.query.error || null;
     const successMessage = req.flash('success')[0] || req.query.success || null;
-    const deviceConfig = require('../../config/deviceLocationOptions');
-    const locationOptions = deviceConfig.locationOptions;
-    // Đảm bảo truyền tags ra view luôn là mảng chuỗi (phù hợp với select2)
-    let tagsForView = req.query['tags[]'] || req.query.tags || [];
-    if (typeof tagsForView === 'string') tagsForView = [tagsForView];
-    tagsForView = tagsForView.map(String);
-    const content = require('ejs').render(
-      require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/device/device_list.ejs'), 'utf8'),
-      {
-        deviceList,
-        search: filterParams.search,
-        device_type_id: req.query.device_type_id || '',
-        tags: tagsForView,
-        platform_id: req.query.platform_id,
-        location: req.query.location,
-        page,
-        pageSize,
-        totalPages,
-        errorMessage,
-        successMessage,
-        totalCount,
-        startItem,
-        endItem,
-        allowedPageSizes,
-        user: req.session.user,
-        hasPermission: req.app.locals.hasPermission,
-        locationOptions
-      }
-    );
-    // Fetch site_name from Configuration
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    return res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: content,
+    // Đổi require sang file mới
+    const deviceConfig = await import('../../config/deviceOptions.js');
+    const locationOptions = deviceConfig.default.locationOptions;
+    // Đơn giản hóa truyền tags ra view (giống serverController)
+    const tagsForView = Array.isArray(req.query['tags[]']) ? req.query['tags[]'] :
+      (req.query['tags[]'] ? [req.query['tags[]']] : (Array.isArray(req.query.tags) ? req.query.tags : req.query.tags ? [req.query.tags] : []));
+
+    res.render('pages/device/device_list', {
+      deviceList,
+      search: filterParams.search,
+      device_type_id: req.query.device_type_id || '',
+      tags: tagsForView,
+      platform_id: req.query.platform_id,
+      location: req.query.location,
+      page,
+      pageSize,
+      totalPages,
+      errorMessage,
+      successMessage,
+      totalCount,
+      startItem,
+      endItem,
+      allowedPageSizes,
+      locationOptions,
       title: 'Device List',
-      activeMenu: 'device',
-      user: req.session.user,
-      siteName
+      activeMenu: 'device'
     });
   } catch (err) {
     console.error('Error loading devices:', err);
@@ -90,29 +68,20 @@ exports.listDevice = async (req, res) => {
 };
 
 // Render add device form
-exports.addDeviceForm = async (req, res) => {
+deviceController.addDeviceForm = async (req, res) => {
   try {
     const error = (req.flash('error') || [])[0];
     const success = (req.flash('success') || [])[0];
     // Load location options from config
-    const deviceConfig = require('../../config/deviceLocationOptions');
-    const locationOptions = deviceConfig.locationOptions;
-    const content = require('ejs').render(
-      require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/device/device_add.ejs'), 'utf8'),
-      { error, success, locationOptions }
-    );
-    // Fetch site_name from Configuration
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: content,
+    // Đổi require sang file mới
+    const deviceConfig = await import('../../config/deviceOptions.js');
+    const locationOptions = deviceConfig.default.locationOptions;
+    res.render('pages/device/device_add', {
+      error,
+      success,
+      locationOptions,
       title: 'Add Device',
-      activeMenu: 'device',
-      user: req.session.user,
-      siteName
+      activeMenu: 'device'
     });
   } catch (err) {
     res.status(500).send('Error loading add device form: ' + err.message);
@@ -120,10 +89,10 @@ exports.addDeviceForm = async (req, res) => {
 };
 
 // Render edit device form
-exports.editDeviceForm = async (req, res) => {
+deviceController.editDeviceForm = async (req, res) => {
   try {
-    // Lấy device đã enrich đủ trường từ model
-    const device = await Device.findByIdEnriched(req.params.id);
+    // Lấy device đủ thông tin chi tiết từ model
+    const device = await Device.getFullDetail(req.params.id);
     if (!device) return res.status(404).send('Device not found');
     // Map serial_number và management_address cho view
     device.serial = device.serial_number;
@@ -131,31 +100,17 @@ exports.editDeviceForm = async (req, res) => {
     const error = (req.flash('error') || [])[0];
     const success = (req.flash('success') || [])[0];
     // Load location options from config
-    const deviceConfig = require('../../config/deviceLocationOptions');
-    const locationOptions = deviceConfig.locationOptions;
-    const content = require('ejs').render(
-      require('fs').readFileSync(require('path').join(__dirname, '../../public/html/pages/device/device_edit.ejs'), 'utf8'),
-      {
-        device,
-        error,
-        success,
-        selectedTags: device.selectedTags,
-        selectedContacts: device.selectedContacts,
-        locationOptions
-      }
-    );
-    // Fetch site_name from Configuration
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    res.render('layouts/layout', {
-      cssPath: require('../../config/config').cssPath,
-      jsPath: require('../../config/config').jsPath,
-      imgPath: require('../../config/config').imgPath,
-      body: content,
+    const deviceConfig = await import('../../config/deviceOptions.js');
+    const locationOptions = deviceConfig.default.locationOptions;
+    res.render('pages/device/device_edit', {
+      device,
+      error,
+      success,
+      selectedTags: device.tags,
+      selectedContacts: device.contacts,
+      locationOptions,
       title: 'Edit Device',
-      activeMenu: 'device',
-      user: req.session.user,
-      siteName
+      activeMenu: 'device'
     });
   } catch (err) {
     res.status(500).send('Error loading edit device form: ' + err.message);
@@ -163,7 +118,7 @@ exports.editDeviceForm = async (req, res) => {
 };
 
 // Create a new device (with manufacturer)
-exports.createDevice = async (req, res) => {
+deviceController.createDevice = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -212,7 +167,7 @@ exports.createDevice = async (req, res) => {
       updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
     };
     // Insert device only
-    const device = await Device.insertDevice(data, client);
+    const device = await Device.create(data, client);
     // Set IP addresses
     if (ip_addresses) {
       const ipList = Array.isArray(ip_addresses) ? ip_addresses : [ip_addresses];
@@ -241,7 +196,7 @@ exports.createDevice = async (req, res) => {
 };
 
 // Update a device (with manufacturer)
-exports.updateDevice = async (req, res) => {
+deviceController.updateDevice = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -296,30 +251,21 @@ exports.updateDevice = async (req, res) => {
 };
 
 // Delete a device
-exports.deleteDevice = async (req, res) => {
-  const client = await pool.connect();
+deviceController.deleteDevice = async (req, res) => {
   try {
-    await client.query('BEGIN');
-    // Remove device_id from all IPs assigned to this device
-    await Device.setIpAddresses(req.params.id, [], client);
-    // Remove all tag_object links for this device
-    await Device.setTags(req.params.id, [], client);
-    // Remove all contacts for this device
-    await Device.setContacts(req.params.id, [], client);
-    // Delete the device
-    await Device.delete(req.params.id, client);
-    await client.query('COMMIT');
+    const id = req.params.id;
+    // Remove related links and cascade delete IPs (similar to server deletion)
+    await Device.remove(id, pool);
+    req.flash('success', 'Device deleted successfully!');
     res.redirect('/device/device');
   } catch (err) {
-    await client.query('ROLLBACK');
-    res.status(500).send('Error deleting device: ' + err.message);
-  } finally {
-    client.release();
+    req.flash('error', 'Unable to delete device: ' + err.message);
+    res.redirect('/device/device');
   }
 };
 
 // Create a new platform
-exports.createPlatform = async (req, res) => {
+deviceController.createPlatform = async (req, res) => {
   // Normalize and trim input
   const name = req.body.name ? req.body.name.trim() : '';
   const description = req.body.description ? req.body.description.trim() : '';
@@ -352,7 +298,7 @@ exports.createPlatform = async (req, res) => {
 };
 
 // Update an existing platform
-exports.updatePlatform = async (req, res) => {
+deviceController.updatePlatform = async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const { description } = req.body;
   const page = parseInt(req.body.page, 10) || 1;
@@ -370,12 +316,12 @@ exports.updatePlatform = async (req, res) => {
 };
 
 // Delete a platform
-exports.deletePlatform = async (req, res) => {
+deviceController.deletePlatform = async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const page = parseInt(req.body.page, 10) || 1;
   const search = req.body.search ? req.body.search.trim() : '';
   try {
-    await Platform.delete(id);
+    await Platform.remove(id);
     const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&success=Platform deleted successfully`;
     return res.redirect(`/device/platform${query}`);
   } catch (err) {
@@ -386,20 +332,14 @@ exports.deletePlatform = async (req, res) => {
 };
 
 // List platforms with search and pagination
-exports.listPlatform = async (req, res) => {
+deviceController.listPlatform = async (req, res) => {
   try {
     const search = req.query.search ? req.query.search.trim() : '';
     const page = parseInt(req.query.page, 10) || 1;
     let pageSize = parseInt(req.query.pageSize, 10);
     // Load allowed page sizes from configuration
     let allowedPageSizes = [10, 20, 50];
-    const configPageSize = await Configuration.findByKey('page_size');
-    if (configPageSize && typeof configPageSize.value === 'string') {
-      allowedPageSizes = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = allowedPageSizes[0];
-    } else {
-      if (!pageSize) pageSize = 10;
-    }
+    if (!pageSize) pageSize = 10;
     let platformList, totalCount;
     if (search) {
       totalCount = await Platform.searchCount(search);
@@ -411,34 +351,18 @@ exports.listPlatform = async (req, res) => {
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const errorMessage = req.query.error || null;
     const successMessage = req.flash('success')[0] || req.query.success || null;
-    const content = ejs.render(
-      fs.readFileSync(path.join(__dirname, '../../public/html/pages/device/device_platform.ejs'), 'utf8'),
-      {
-        platformList,
-        search,
-        page,
-        pageSize,
-        totalPages,
-        totalCount,
-        errorMessage,
-        successMessage,
-        allowedPageSizes,
-        user: req.session.user,
-        hasPermission: req.app.locals.hasPermission
-      }
-    );
-    // Fetch site_name from Configuration
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    return res.render('layouts/layout', {
-      cssPath: config.cssPath,
-      jsPath: config.jsPath,
-      imgPath: config.imgPath,
-      body: content,
+    res.render('pages/device/device_platform', {
+      platformList,
+      search,
+      page,
+      pageSize,
+      totalPages,
+      totalCount,
+      errorMessage,
+      successMessage,
+      allowedPageSizes,
       title: 'Platform List',
-      activeMenu: 'device-platform',
-      user: req.session.user,
-      siteName
+      activeMenu: 'device-platform'
     });
   } catch (err) {
     console.error('Error loading platforms:', err);
@@ -447,10 +371,10 @@ exports.listPlatform = async (req, res) => {
 };
 
 // API for select2 ajax platform search
-exports.apiPlatformSearch = async (req, res) => {
+deviceController.apiPlatformSearch = async (req, res) => {
   try {
     const search = req.query.q ? req.query.q.trim() : '';
-    const results = await Platform.searchForSelect2(search);
+    const results = await Platform.select2Search(search);
     return res.json(results);
   } catch (err) {
     console.error('Error searching platforms:', err);
@@ -459,10 +383,10 @@ exports.apiPlatformSearch = async (req, res) => {
 };
 
 // API for select2 ajax device type search
-exports.apiDeviceTypeSearch = async (req, res) => {
+deviceController.apiDeviceTypeSearch = async (req, res) => {
   try {
     const search = req.query.q ? req.query.q.trim() : '';
-    const results = await DeviceType.searchForSelect2(search);
+    const results = await DeviceType.select2Search(search);
     return res.json(results);
   } catch (err) {
     console.error('Error searching device types:', err);
@@ -471,10 +395,10 @@ exports.apiDeviceTypeSearch = async (req, res) => {
 };
 
 // API for select2 ajax device search (used in platform and device type forms)
-exports.apiDeviceSearch = async (req, res) => {
+deviceController.apiDeviceSearch = async (req, res) => {
   try {
     const search = req.query.q ? req.query.q.trim() : '';
-    const results = await Device.searchForSelect2(search);
+    const results = await Device.select2Search(search);
     return res.json(results);
   } catch (err) {
     console.error('Error searching devices:', err);
@@ -483,68 +407,34 @@ exports.apiDeviceSearch = async (req, res) => {
 };
 
 // ===== DEVICE TYPE MENU HANDLERS =====
-exports.listDeviceType = async (req, res) => {
+deviceController.listDeviceType = async (req, res) => {
   try {
     const search = req.query.search ? req.query.search.trim() : '';
     const page = parseInt(req.query.page, 10) || 1;
     let pageSize = parseInt(req.query.pageSize, 10);
     let allowedPageSizes = [10, 20, 50];
-    const configPageSize = await Configuration.findByKey('page_size');
-    if (configPageSize && typeof configPageSize.value === 'string') {
-      allowedPageSizes = configPageSize.value.split(',').map(s => parseInt(s.trim(), 10)).filter(Boolean);
-      if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = allowedPageSizes[0];
-    } else {
-      if (!pageSize) pageSize = 10;
-    }
-    // Pagination
-    const offset = (page - 1) * pageSize;
-    let deviceTypeList, totalCount;
-    if (search) {
-      const q = `%${search}%`;
-      const countRes = await pool.query('SELECT COUNT(*) FROM device_types WHERE name ILIKE $1 OR description ILIKE $1', [q]);
-      totalCount = parseInt(countRes.rows[0].count, 10);
-      const result = await pool.query('SELECT * FROM device_types WHERE name ILIKE $1 OR description ILIKE $1 ORDER BY id LIMIT $2 OFFSET $3', [q, pageSize, offset]);
-      deviceTypeList = result.rows;
-    } else {
-      const countRes = await pool.query('SELECT COUNT(*) FROM device_types');
-      totalCount = parseInt(countRes.rows[0].count, 10);
-      const result = await pool.query('SELECT * FROM device_types ORDER BY id LIMIT $1 OFFSET $2', [pageSize, offset]);
-      deviceTypeList = result.rows;
-    }
+    if (!pageSize) pageSize = 10;
+    const totalCount = await DeviceType.countFiltered(search);
+    const deviceTypeList = await DeviceType.findFilteredPage({ search, page, pageSize });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
     const errorMessage = req.flash('error')[0] || req.query.error || null;
     const successMessage = req.flash('success')[0] || req.query.success || null;
-    const content = ejs.render(
-      fs.readFileSync(path.join(__dirname, '../../public/html/pages/device/device_type_list.ejs'), 'utf8'),
-      {
-        deviceTypeList,
-        search,
-        page,
-        pageSize,
-        totalPages,
-        totalCount,
-        startItem,
-        endItem,
-        errorMessage,
-        successMessage,
-        allowedPageSizes,
-        user: req.session.user,
-        hasPermission: req.app.locals.hasPermission
-      }
-    );
-    const siteConfig = await Configuration.findByKey('site_name');
-    const siteName = siteConfig ? siteConfig.value : undefined;
-    return res.render('layouts/layout', {
-      cssPath: config.cssPath,
-      jsPath: config.jsPath,
-      imgPath: config.imgPath,
-      body: content,
+    return res.render('pages/device/device_type_list', {
+      deviceTypeList,
+      search,
+      page,
+      pageSize,
+      totalPages,
+      totalCount,
+      startItem,
+      endItem,
+      errorMessage,
+      successMessage,
+      allowedPageSizes,
       title: 'Device Type List',
-      activeMenu: 'device-type',
-      user: req.session.user,
-      siteName
+      activeMenu: 'device-type'
     });
   } catch (err) {
     console.error('Error loading device types:', err);
@@ -552,7 +442,7 @@ exports.listDeviceType = async (req, res) => {
   }
 };
 
-exports.createDeviceType = async (req, res) => {
+deviceController.createDeviceType = async (req, res) => {
   try {
     const { name, description } = req.body;
     const page = parseInt(req.body.page, 10) || 1;
@@ -581,7 +471,7 @@ exports.createDeviceType = async (req, res) => {
   }
 };
 
-exports.updateDeviceType = async (req, res) => {
+deviceController.updateDeviceType = async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const { description } = req.body;
@@ -600,12 +490,12 @@ exports.updateDeviceType = async (req, res) => {
   }
 };
 
-exports.deleteDeviceType = async (req, res) => {
+deviceController.deleteDeviceType = async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     const page = parseInt(req.body.page, 10) || 1;
     const search = req.body.search ? req.body.search.trim() : '';
-    await DeviceType.delete(id);
+    await DeviceType.remove(id);
     const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&success=Device type deleted successfully`;
     return res.redirect(`/device/type${query}`);
   } catch (err) {
@@ -621,7 +511,7 @@ exports.deleteDeviceType = async (req, res) => {
 };
 
 // Export device list as CSV or Excel (filtered)
-exports.exportDeviceList = async (req, res) => {
+deviceController.exportDeviceList = async (req, res) => {
   try {
     // Chuẩn hóa các tham số filter (device_type_id, tags, search)
     const filterParams = {
@@ -633,7 +523,7 @@ exports.exportDeviceList = async (req, res) => {
     filterParams.tags = (filterParams.tags || []).map(t => Number(t)).filter(Boolean);
     if (!filterParams.tags.length) delete filterParams.tags;
     // Lấy toàn bộ danh sách (không phân trang)
-    const deviceList = await Device.filterList({ ...filterParams, page: 1, pageSize: 10000 });
+    const deviceList = await Device.findFilteredList({ ...filterParams, page: 1, pageSize: 10000 });
     const headers = [
       'ID', 'Name', 'Device Type', 'Manufacturer', 'Serial Number', 'Management Address',
       'IP Address(es)', 'Location', 'Tags', 'Contacts', 'Description', 'Updated By', 'Updated At'
@@ -668,3 +558,6 @@ exports.exportDeviceList = async (req, res) => {
     res.status(500).send('Error exporting device list: ' + err.message);
   }
 };
+
+
+export default deviceController;

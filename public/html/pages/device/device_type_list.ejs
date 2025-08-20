@@ -10,7 +10,7 @@
   </form>
   <div class="row mb-3">
     <div class="col-12 d-flex justify-content-end align-items-center position-relative" style="margin-top: 16px;">
-      <% if (hasPermission && hasPermission(user, 'device_type.create')) { %>
+      <% if (hasPermission('device_type.create')) { %>
         <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addDeviceTypeModal">
           <i class="bi bi-plus"></i> Add Device Type
         </button>
@@ -28,7 +28,7 @@
         <script>setTimeout(()=>{var el=document.getElementById('toast-success'); if(el) el.remove(); window.history.replaceState({}, '', window.location.pathname);},5000)</script>
       <% } %>
       <!-- Add Device Type Modal -->
-      <% if (hasPermission && hasPermission(user, 'device_type.create')) { %>
+      <% if (hasPermission('device_type.create')) { %>
         <div class="modal fade" id="addDeviceTypeModal" tabindex="-1" aria-labelledby="addDeviceTypeModalLabel" aria-hidden="true">
           <div class="modal-dialog">
             <div class="modal-content">
@@ -82,13 +82,21 @@
                   <tr>
                     <td><%= idx + 1 %></td>
                     <td><%= type.name %></td>
-                    <td><%= type.description %></td>
+                    <td>
+                      <% if (type.description && type.description.trim()) { %>
+                        <span title="<%= type.description.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
+                          <%= type.description.length > 60 ? type.description.substring(0, 60) + '…' : type.description %>
+                        </span>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </td>
                     <td class="text-end">
                       <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#deviceTypeDetailModal-<%= type.id %>"><i class="bi bi-eye"></i></a>
-                      <% if (hasPermission && hasPermission(user, 'device_type.update')) { %>
+                      <% if (hasPermission('device_type.update')) { %>
                         <a href="#" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#deviceTypeEditModal-<%= type.id %>"><i class="bi bi-pencil"></i></a>
                       <% } %>
-                      <% if (hasPermission && hasPermission(user, 'device_type.delete')) { %>
+                      <% if (hasPermission('device_type.delete')) { %>
                         <form action="/device/type/<%= type.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirm('Are you sure you want to delete this device type?')">
                           <button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="bi bi-trash"></i></button>
                         </form>
@@ -124,7 +132,7 @@
                     </div>
                   </div>
                   <!-- Device Type Edit Modal -->
-                  <% if (hasPermission && hasPermission(user, 'device_type.update')) { %>
+                  <% if (hasPermission('device_type.update')) { %>
                     <div class="modal fade" id="deviceTypeEditModal-<%= type.id %>" tabindex="-1" aria-labelledby="deviceTypeEditModalLabel-<%= type.id %>" aria-hidden="true">
                       <div class="modal-dialog">
                         <div class="modal-content">

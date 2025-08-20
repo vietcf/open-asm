@@ -1,7 +1,7 @@
 // migrations/seed_devices.js
 // Seed sample devices data
 
-module.exports = async (pool) => {
+export default async (pool) => {
   await pool.query(`
     INSERT INTO devices (name, serial_number, device_type_id, platform_id, location, management_address, description, manufacturer, updated_by)
     VALUES

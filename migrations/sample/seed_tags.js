@@ -2,7 +2,7 @@
  * Seed sample tags into the tags table.
  * Tags are used for categorizing objects (e.g., IPs, systems, contacts, ...)
  */
-module.exports = async function seedTags(pool) {
+export default async function seedTags(pool) {
   const tags = [
     { name: 'Critical', description: 'Đối tượng quan trọng, cần ưu tiên' },
     { name: 'Production', description: 'Đối tượng thuộc môi trường production' },

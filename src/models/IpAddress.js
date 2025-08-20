@@ -1,55 +1,226 @@
-// Import required modules
-const { pool } = require('../../config/config');
+/**
+ * IpAddress Model - handles all database operations for IP addresses and their relationships.
+ *
+ * Naming convention: All methods use get/set prefix for clarity and consistency.
+ * - get...: Fetch data (single/multiple records, filtered, paginated, etc.)
+ * - set...: Update or assign relationships (tags, contacts, systems, etc.)
+ *
+ * Relationships handled:
+ *   - Tags (tag_object)
+ *   - Contacts (ip_contact)
+ *   - Systems (system_ip)
+ *   - Device/Server (joins for info only)
+ *
+ * All business logic for IP address CRUD and relationship management is encapsulated here.
+ */
+import { pool } from '../../config/config.js';
 
 class IpAddress {
-  static async findAll() {
-    const result = await pool.query('SELECT * FROM ip_addresses ORDER BY id');
-    return result.rows;
-  }
 
-  static async findById(id) {
-    const result = await pool.query('SELECT * FROM ip_addresses WHERE id = $1', [id]);
-    return result.rows[0];
-  }
+  // ===== CRUD METHODS =====
 
-  static async create({ address, description, status, updated_by }) {
-    const result = await pool.query(
+  
+  /**
+   * Create a new IP address
+   * @param {Object} data
+   * @param {string} data.address
+   * @param {string} data.description
+   * @param {string} data.status
+   * @param {string} data.updated_by
+   * @param {object} [client=pool]
+   * @returns {Promise<Object>} The created IP address
+   */
+  static async create({ address, description, status, updated_by }, client = pool) {
+    const result = await client.query(
       'INSERT INTO ip_addresses (ip_address, description, status, updated_by) VALUES ($1, $2, $3, $4) RETURNING *',
       [address, description, status, updated_by]
     );
     return result.rows[0];
   }
 
-  // Update only description, status, updated_by (KHÔNG update ip_address)
-  static async update(id, { description, status, updated_by }) {
-    const result = await pool.query(
+  /**
+   * Get all IP addresses (no filter, ordered by id)
+   * @returns {Promise<Array>} List of all IP addresses
+   */
+  static async findAll() {
+    const result = await pool.query('SELECT * FROM ip_addresses ORDER BY id');
+    return result.rows;
+  }
+
+  /**
+   * Get an IP address by id
+   * @param {number} id
+   * @returns {Promise<Object|null>}
+   */
+  static async findById(id) {
+    const result = await pool.query('SELECT * FROM ip_addresses WHERE id = $1', [id]);
+    return result.rows[0];
+  }
+
+  /**
+   * Get an IP address by ID with full details (tags, contacts, systems)
+   * @param {number} id
+   * @returns {Promise<Object|null>}
+   */
+  static async findByIdWithDetails(id) {
+    const sql = `SELECT ip.*, 
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email, 'phone', c.phone)) FILTER (WHERE c.id IS NOT NULL), '[]') AS contacts,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', s.id, 'name', s.name, 'system_id', s.system_id)) FILTER (WHERE s.id IS NOT NULL), '[]') AS systems,
+      d.id AS device_id, d.name AS device_name, srv.id AS server_id, srv.name AS server_name
+      FROM ip_addresses ip
+      LEFT JOIN tag_object tobj ON tobj.object_type = 'ip_address' AND tobj.object_id = ip.id
+      LEFT JOIN tags t ON t.id = tobj.tag_id
+      LEFT JOIN ip_contact ic ON ic.ip_id = ip.id
+      LEFT JOIN contacts c ON c.id = ic.contact_id
+      LEFT JOIN system_ip si ON si.ip_id = ip.id
+      LEFT JOIN systems s ON s.id = si.system_id
+      LEFT JOIN devices d ON d.id = ip.device_id
+      LEFT JOIN servers srv ON srv.id = ip.server_id
+      WHERE ip.id = $1
+      GROUP BY ip.id, d.id, srv.id`;
+    
+    const result = await pool.query(sql, [id]);
+    if (result.rows.length === 0) return null;
+    
+    const row = result.rows[0];
+    // Map device/server info into IP object
+    if (row.device_id) {
+      row.device = { id: row.device_id, name: row.device_name };
+    }
+    if (row.server_id) {
+      row.server = { id: row.server_id, name: row.server_name };
+    }
+    delete row.device_id;
+    delete row.device_name;
+    delete row.server_id;
+    delete row.server_name;
+    return row;
+  }
+
+  /**
+   * Get an IP address by address string
+   * @param {string} address
+   * @returns {Promise<Object|null>}
+   */
+  static async findByAddress(address) {
+    const result = await pool.query('SELECT * FROM ip_addresses WHERE ip_address = $1', [address]);
+    return result.rows[0];
+  }
+
+  /**
+   * Get an IP address by address string with full details (tags, contacts, systems)
+   * @param {string} address
+   * @returns {Promise<Object|null>}
+   */
+  static async findByAddressWithDetails(address) {
+    const sql = `SELECT ip.*, 
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email, 'phone', c.phone)) FILTER (WHERE c.id IS NOT NULL), '[]') AS contacts,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', s.id, 'name', s.name, 'system_id', s.system_id)) FILTER (WHERE s.id IS NOT NULL), '[]') AS systems,
+      d.id AS device_id, d.name AS device_name, srv.id AS server_id, srv.name AS server_name
+      FROM ip_addresses ip
+      LEFT JOIN tag_object tobj ON tobj.object_type = 'ip_address' AND tobj.object_id = ip.id
+      LEFT JOIN tags t ON t.id = tobj.tag_id
+      LEFT JOIN ip_contact ic ON ic.ip_id = ip.id
+      LEFT JOIN contacts c ON c.id = ic.contact_id
+      LEFT JOIN system_ip si ON si.ip_id = ip.id
+      LEFT JOIN systems s ON s.id = si.system_id
+      LEFT JOIN devices d ON d.id = ip.device_id
+      LEFT JOIN servers srv ON srv.id = ip.server_id
+      WHERE ip.ip_address = $1
+      GROUP BY ip.id, d.id, srv.id`;
+    
+    const result = await pool.query(sql, [address]);
+    if (result.rows.length === 0) return null;
+    
+    const row = result.rows[0];
+    // Map device/server info into IP object
+    if (row.device_id) {
+      row.device = { id: row.device_id, name: row.device_name };
+    }
+    if (row.server_id) {
+      row.server = { id: row.server_id, name: row.server_name };
+    }
+    delete row.device_id;
+    delete row.device_name;
+    delete row.server_id;
+    delete row.server_name;
+    return row;
+  }
+
+  /**
+   * Update an IP address
+   * @param {number} id
+   * @param {Object} data
+   * @param {string} data.description
+   * @param {string} data.status
+   * @param {string} data.updated_by
+   * @returns {Promise<Object>} The updated IP address
+   */
+  static async update(id, { description, status, updated_by }, client) {
+    const executor = client || pool;
+    const result = await executor.query(
       'UPDATE ip_addresses SET description = $1, status = $2, updated_at = NOW(), updated_by = $3 WHERE id = $4 RETURNING *',
       [description, status, updated_by, id]
     );
     return result.rows[0];
   }
 
-  static async delete(id) {
-    await pool.query('DELETE FROM ip_addresses WHERE id = $1', [id]);
+  /**
+   * Delete an IP address by id
+   * @param {number} id
+   * @returns {Promise<void>}
+   */
+  /**
+   * Delete an IP address
+   * @param {number} id - IP address ID
+   * @param {object} [client=pool] - Database client
+   * @returns {Promise<void>}
+   * @throws {Error} If IP is assigned to server or device
+   */
+  static async delete(id, client = pool) {
+    // Check if IP is assigned to any server or device
+    const assignment = await this.checkAssignment(id);
+    if (assignment) {
+      let assignedTo = [];
+      if (assignment.server) assignedTo.push(`server "${assignment.server.name}"`);
+      if (assignment.device) assignedTo.push(`device "${assignment.device.name}"`);
+      throw new Error(`Cannot delete IP address: it is assigned to ${assignedTo.join(' and ')}`);
+    }
+    
+    await client.query('DELETE FROM ip_addresses WHERE id = $1', [id]);
   }
 
+  /**
+   * Count all IP addresses
+   * @returns {Promise<number>}
+   */
   static async countAll() {
     const result = await pool.query('SELECT COUNT(*) FROM ip_addresses');
     return parseInt(result.rows[0].count, 10);
   }
 
+  /**
+   * Get paginated list of IP addresses
+   * @param {number} page
+   * @param {number} pageSize
+   * @returns {Promise<Array>}
+   */
   static async findPage(page, pageSize) {
     const offset = (page - 1) * pageSize;
     const result = await pool.query('SELECT * FROM ip_addresses ORDER BY id LIMIT $1 OFFSET $2', [pageSize, offset]);
     return result.rows;
   }
 
-  static async findByAddress(address) {
-    const result = await pool.query('SELECT * FROM ip_addresses WHERE ip_address = $1', [address]);
-    return result.rows[0];
-  }
-
-  static async searchPage(search, page, pageSize) {
+  /**
+   * Get paginated list of IP addresses by search
+   * @param {string} search
+   * @param {number} page
+   * @param {number} pageSize
+   * @returns {Promise<Array>}
+   */
+  static async findSearchPage(search, page, pageSize) {
     const offset = (page - 1) * pageSize;
     const result = await pool.query(
       `SELECT * FROM ip_addresses WHERE ip_address::text ILIKE $1 OR description ILIKE $1 ORDER BY id LIMIT $2 OFFSET $3`,
@@ -58,7 +229,12 @@ class IpAddress {
     return result.rows;
   }
 
-  static async searchCount(search) {
+  /**
+   * Count IP addresses by search
+   * @param {string} search
+   * @returns {Promise<number>}
+   */
+  static async countSearch(search) {
     const result = await pool.query(
       `SELECT COUNT(*) FROM ip_addresses WHERE ip_address::text ILIKE $1 OR description ILIKE $1`,
       [`%${search}%`]
@@ -66,6 +242,11 @@ class IpAddress {
     return parseInt(result.rows[0].count, 10);
   }
 
+  /**
+   * Get all IP addresses in a subnet
+   * @param {string} subnetAddress
+   * @returns {Promise<Array>}
+   */
   static async findBySubnet(subnetAddress) {
     const result = await pool.query(
       'SELECT * FROM ip_addresses WHERE ip_address::inet <<= $1::inet ORDER BY ip_address::inet',
@@ -74,13 +255,40 @@ class IpAddress {
     return result.rows;
   }
 
+  /**
+   * Get all IP addresses by server id
+   * @param {number} serverId
+   * @returns {Promise<Array>}
+   */
   static async findByServerId(serverId) {
     const res = await pool.query('SELECT * FROM ip_addresses WHERE server_id = $1 ORDER BY id', [serverId]);
     return res.rows;
   }
 
+  /**
+   * Get unassigned IP addresses (for select2 ajax, etc.)
+   * @param {Object} params
+   * @param {string} params.search
+   * @param {number} params.limit
+   * @returns {Promise<Array<{id:number, ip_address:string}>>}
+   */
+  static async findUnassignIP({ search = '', limit = 20 }) {
+    const result = await pool.query(
+      "SELECT id, ip_address FROM ip_addresses WHERE (status IS NULL OR status != 'assigned') AND ip_address::text ILIKE $1 ORDER BY ip_address LIMIT $2",
+      [`%${search}%`, limit]
+    );
+    return result.rows;
+  }
+
+  // ===== ADVANCED FILTERED LISTS =====
+
   // Filtered IP list with pagination, search, tags, status, systems, contacts
-  static async filterList({ search, tags, status, systems, contacts, page = 1, pageSize = 10 }) {
+  /**
+   * Get filtered list of IP addresses (with pagination, search, tags, status, systems, contacts)
+   * @param {Object} filters { search, tags, status, systems, contacts, page, pageSize }
+   * @returns {Promise<Array>} Filtered list of IP addresses
+   */
+  static async findFilteredList({ search, tags, status, systems, contacts, page = 1, pageSize = 10 }) {
     let params = [];
     let whereClauses = [];
     let joinClauses = [];
@@ -163,7 +371,12 @@ class IpAddress {
   }
 
   // Count for filtered IP list
-  static async filterCount({ search, tags, status, systems, contacts }) {
+  /**
+   * Get count for filtered IP address list (search, tags, status, systems, contacts)
+   * @param {Object} filters { search, tags, status, systems, contacts }
+   * @returns {Promise<number>} Count of filtered IP addresses
+   */
+  static async countFiltered({ search, tags, status, systems, contacts }) {
     let params = [];
     let whereClauses = [];
     let joinClauses = [];
@@ -212,7 +425,100 @@ class IpAddress {
     const result = await pool.query(sql, params);
     return parseInt(result.rows[0].count, 10);
   }
+
+  // Set all tags for an IP address (remove all old, add new)
+  /**
+   * Set all tags for an IP address (removes all old, adds new)
+   * @param {number} ipId
+   * @param {Array<number>} tagIds
+   * @returns {Promise<void>}
+   */
+  static async setTags(ipId, tagIds, client = pool) {
+    // Remove all old tags
+    await client.query("DELETE FROM tag_object WHERE object_type = 'ip_address' AND object_id = $1", [ipId]);
+    // Add new tags if any
+    if (Array.isArray(tagIds) && tagIds.length > 0) {
+      const values = tagIds.map((tagId, idx) => `($1, $${idx + 2}, 'ip_address')`).join(',');
+      await client.query(
+        `INSERT INTO tag_object (object_id, tag_id, object_type) VALUES ${values}`,
+        [ipId, ...tagIds]
+      );
+    }
+  }
+
+  // Set all contacts for an IP address (remove all old, add new)
+  /**
+   * Set all contacts for an IP address (removes all old, adds new)
+   * @param {number} ipId
+   * @param {Array<number>} contactIds
+   * @returns {Promise<void>}
+   */
+  static async setContacts(ipId, contactIds, client = pool) {
+    await client.query('DELETE FROM ip_contact WHERE ip_id = $1', [ipId]);
+    if (Array.isArray(contactIds) && contactIds.length > 0) {
+      const values = contactIds.map((cid, idx) => `($1, $${idx + 2})`).join(',');
+      await client.query(
+        `INSERT INTO ip_contact (ip_id, contact_id) VALUES ${values}`,
+        [ipId, ...contactIds]
+      );
+    }
+  }
+
+  // Set all systems for an IP address (remove all old, add new)
+  /**
+   * Set all systems for an IP address (removes all old, adds new)
+   * @param {number} ipId
+   * @param {Array<number>} systemIds
+   * @returns {Promise<void>}
+   */
+  static async setSystems(ipId, systemIds, client = pool) {
+    await client.query('DELETE FROM system_ip WHERE ip_id = $1', [ipId]);
+    if (Array.isArray(systemIds) && systemIds.length > 0) {
+      const values = systemIds.map((sid, idx) => `($1, $${idx + 2})`).join(',');
+      await client.query(
+        `INSERT INTO system_ip (ip_id, system_id) VALUES ${values}`,
+        [ipId, ...systemIds]
+      );
+    }
+  }
+
+  /**
+   * Check if an IP address exists by id
+   * @param {number|string} id
+   * @returns {Promise<boolean>}
+   */
+  static async exists(id) {
+    const result = await pool.query('SELECT 1 FROM ip_addresses WHERE id = $1 LIMIT 1', [id]);
+    return result.rowCount > 0;
+  }
+
+  /**
+   * Check if IP address is assigned to any server or device
+   * @param {number} id - IP address ID
+   * @returns {Promise<Object|null>} Returns object with assignment info or null if not assigned
+   */
+  static async checkAssignment(id) {
+    const result = await pool.query(`
+      SELECT 
+        server_id, 
+        device_id,
+        s.name AS server_name,
+        d.name AS device_name
+      FROM ip_addresses ip
+      LEFT JOIN servers s ON s.id = ip.server_id
+      LEFT JOIN devices d ON d.id = ip.device_id
+      WHERE ip.id = $1 AND (ip.server_id IS NOT NULL OR ip.device_id IS NOT NULL)
+    `, [id]);
+    
+    if (result.rows.length === 0) return null;
+    
+    const row = result.rows[0];
+    return {
+      server: row.server_id ? { id: row.server_id, name: row.server_name } : null,
+      device: row.device_id ? { id: row.device_id, name: row.device_name } : null
+    };
+  }
 }
 
 // Export the IpAddress model
-module.exports = IpAddress;
+export default IpAddress;

@@ -1,0 +1,44 @@
+// Controller for API authentication (JWT login)
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
+import { pool } from '../../../config/config.js';
+import User from '../../models/User.js';
+import Permission from '../../models/Permission.js';
+const JWT_SECRET = process.env.JWT_SECRET || 'VcB_your_jwt_secret';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
+
+const apiAuthController = {
+  login: async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      if (!username || !password) {
+        return res.status(400).json({ error: 'Username and password required' });
+      }
+      const user = await User.findByUsername(username);
+      if (!user || !(await bcrypt.compare(password, user.password_hash))) {
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
+      // Get the actual permissions list for the user (using Permission model)
+      let permissions = [];
+      if (user.role_id) {
+        permissions = await Permission.findByRoleId(user.role_id);
+        permissions = permissions.map(p => p.name);
+      }
+      // Build JWT payload (include permissions)
+      const payload = {
+        sub: user.id,
+        username: user.username,
+        role: user.role_name || user.role,
+        role_id: user.role_id || null,
+        allowed_ips: user.allowed_ips || null,
+        permissions
+      };
+      const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+      res.json({ token });
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  }
+};
+
+export default apiAuthController;

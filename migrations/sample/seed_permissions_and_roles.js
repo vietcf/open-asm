@@ -1,4 +1,4 @@
-module.exports = async (pool) => {
+export default async (pool) => {
   // Seed roles
   await pool.query(`
     INSERT INTO roles (name, description) VALUES
