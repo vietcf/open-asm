@@ -276,7 +276,7 @@
                     <td>
                       <% if (ip.tags && ip.tags.length > 0) { %>
                         <% ip.tags.forEach(function(tag) { %>
-                          <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                          <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                         <% }) %>
                       <% } else { %>
                         <span class="text-muted">No tags</span>
@@ -289,10 +289,8 @@
                       <% if (ip.systems && ip.systems.length > 0) { %>
                         <div class="d-flex flex-wrap">
                           <% ip.systems.forEach(function(system) { %>
-                            <a href="/system/system?search=<%= encodeURIComponent(system.name) %>" target="_blank" class="text-decoration-none me-1 mb-1">
-                              <span class="badge bg-primary text-white me-1 mb-1" style="font-size:0.95em; font-weight:500; letter-spacing:0.5px; padding:0.35em 0.8em;">
-                                <%= system.name + (system.system_id ? ' (' + system.system_id + ')' : '') %>
-                              </span>
+                            <a href="/system/system?search=<%= encodeURIComponent(system.name) %>" target="_blank" class="me-1 mb-1 text-primary" style="text-decoration:underline; font-size:0.95em; font-weight:500;">
+                              <%= system.name + (system.system_id ? ' (' + system.system_id + ')' : '') %>
                             </a>
                           <% }) %>
                         </div>
@@ -330,7 +328,7 @@
                             <dd class="col-sm-8">
                               <% if (ip.tags && ip.tags.length > 0) { %>
                                 <% ip.tags.forEach(function(tag) { %>
-                                  <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                                  <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                                 <% }) %>
                               <% } else { %>
                                 <span class="text-muted">No tags</span>
@@ -347,9 +345,7 @@
                               <% if (ip.contacts && ip.contacts.length > 0) { %>
                                 <% ip.contacts.forEach(function(contact, idx) { %>
                                   <% if (contact.email) { %>
-                                    <div><a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>" target="_blank"><%= contact.name %> (<%= contact.email %>)</a></div>
-                                  <% } else { %>
-                                    <div><%= contact.name %></div>
+                                    <div><a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>" target="_blank"><%= contact.email %></a></div>
                                   <% } %>
                                 <% }) %>
                               <% } else { %>
@@ -476,24 +472,39 @@
                   }
                 }
               %>
+
+              <% 
+                // Build filter query string for pagination links
+                function buildFilterQuery() {
+                  let params = [];
+                  if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+                  if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
+                  if (typeof filterStatus !== 'undefined' && filterStatus) params.push('status=' + encodeURIComponent(filterStatus));
+                  if (typeof filterTags !== 'undefined' && filterTags.length) filterTags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag)); });
+                  if (typeof filterSystems !== 'undefined' && filterSystems.length) filterSystems.forEach(function(s) { params.push('systems[]=' + encodeURIComponent(s)); });
+                  if (typeof filterContacts !== 'undefined' && filterContacts.length) filterContacts.forEach(function(c) { params.push('contacts[]=' + encodeURIComponent(c)); });
+                  return params.join('&');
+                }
+                const filterQuery = buildFilterQuery();
+              %>
               <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page - 1 %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>" tabindex="-1">Previous</a>
+                <a class="page-link" href="?page=<%= page - 1 %><%= filterQuery ? '&' + filterQuery : '' %>" tabindex="-1">Previous</a>
               </li>
               <% if (startPage > 1) { %>
-                <li class="page-item"><a class="page-link" href="?page=1&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>">1</a></li>
+                <li class="page-item"><a class="page-link" href="?page=1<%= filterQuery ? '&' + filterQuery : '' %>">1</a></li>
                 <% if (startPage > 2) { %>
                   <li class="page-item disabled"><span class="page-link">...</span></li>
                 <% } %>
               <% } %>
               <% for (let i = startPage; i <= endPage; i++) { %>
-                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>"><%= i %></a></li>
+                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= filterQuery ? '&' + filterQuery : '' %>"><%= i %></a></li>
               <% } %>
               <% if (endPage < totalPages) { %>
                 <li class="page-item disabled"><span class="page-link">...</span></li>
-                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>"><%= totalPages %></a></li>
+                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= filterQuery ? '&' + filterQuery : '' %>"><%= totalPages %></a></li>
               <% } %>
               <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page + 1 %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>">Next</a>
+                <a class="page-link" href="?page=<%= page + 1 %><%= filterQuery ? '&' + filterQuery : '' %>">Next</a>
               </li>
             </ul>
           </div>

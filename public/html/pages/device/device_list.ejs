@@ -239,7 +239,7 @@
                     <td>
                       <% if (device.tags && device.tags.length) { %>
                         <% device.tags.forEach(function(tag) { %>
-                          <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em; margin-right:2px; margin-bottom:2px;"><%= tag.name %></span>
+                          <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                         <% }) %>
                       <% } else { %>
                         <span class="text-muted">-</span>
@@ -307,24 +307,37 @@
                   }
                 }
               %>
+
+              <% 
+                // Build filter query string for pagination links
+                function buildDeviceFilterQuery() {
+                  let params = [];
+                  if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+                  if (typeof pageSize !== 'undefined' && pageSize) params.push('page_size=' + encodeURIComponent(pageSize));
+                  if (typeof device_type_id !== 'undefined' && device_type_id) params.push('device_type_id=' + encodeURIComponent(device_type_id));
+                  if (typeof tags !== 'undefined' && tags.length) tags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag)); });
+                  return params.join('&');
+                }
+                const deviceFilterQuery = buildDeviceFilterQuery();
+              %>
               <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= page - 1 %>&page_size=<%= pageSize %>" tabindex="-1">Previous</a>
+                <a class="page-link" href="?page=<%= page - 1 %><%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>" tabindex="-1">Previous</a>
               </li>
               <% if (startPage > 1) { %>
-                <li class="page-item"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=1&page_size=<%= pageSize %>">1</a></li>
+                <li class="page-item"><a class="page-link" href="?page=1<%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>">1</a></li>
                 <% if (startPage > 2) { %>
                   <li class="page-item disabled"><span class="page-link">...</span></li>
                 <% } %>
               <% } %>
               <% for (let i = startPage; i <= endPage; i++) { %>
-                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= i %>&page_size=<%= pageSize %>"><%= i %></a></li>
+                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>"><%= i %></a></li>
               <% } %>
               <% if (endPage < totalPages) { %>
                 <li class="page-item disabled"><span class="page-link">...</span></li>
-                <li class="page-item"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= totalPages %>&page_size=<%= pageSize %>"><%= totalPages %></a></li>
+                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>"><%= totalPages %></a></li>
               <% } %>
               <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= page + 1 %>&page_size=<%= pageSize %>">Next</a>
+                <a class="page-link" href="?page=<%= page + 1 %><%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>">Next</a>
               </li>
             </ul>
           </div>
@@ -379,13 +392,13 @@
                 <dd class="col-sm-9">
                   <% if (device.tags && device.tags.length) { %>
                     <% device.tags.forEach(function(tag) { %>
-                      <span class="badge bg-light text-dark me-1 mb-1"><%= tag.name %></span>
+                      <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                     <% }) %>
                   <% } else { %>
                     <span class="text-muted">-</span>
                   <% } %>
                 </dd>
-                <dt class="col-sm-3">Contacts</dt>
+                <dt class="col-sm-3">Manager</dt>
                 <dd class="col-sm-9">
                   <% if (device.contacts && device.contacts.length) { %>
                     <ul class="list-unstyled mb-0">
@@ -394,7 +407,7 @@
                           <a href="contact?search=<%= encodeURIComponent(contact.email) %>" 
                              class="text-decoration-none" 
                              title="Search for this contact">
-                            <%= contact.email %> (<%= contact.name %>)
+                            <%= contact.email %>
                           </a>
                         </li>
                       <% }) %>
