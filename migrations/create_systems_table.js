@@ -9,6 +9,7 @@ export default async (db) => {
       level VARCHAR(50),
       department_id INT REFERENCES units(id),
       alias TEXT[],
+      fqdn TEXT[],
       description TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

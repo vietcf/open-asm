@@ -193,8 +193,8 @@
                       <% if (Array.isArray(server.systems) && server.systems.length) { %>
                         <div class="d-flex flex-wrap">
                           <% server.systems.forEach(function(sys) { %>
-                            <a href="/system/system?search=<%= encodeURIComponent(sys.name) %>" target="_blank" class="text-decoration-none me-1 mb-1">
-                              <span class="badge bg-primary text-white"><%= sys.name %></span>
+                            <a href="/system/system?search=<%= encodeURIComponent(sys.name) %>" target="_blank" class="me-1 mb-1 text-primary" style="text-decoration:underline; font-size:1rem; font-weight:500;">
+                              <%= sys.name %>
                             </a>
                           <% }) %>
                         </div>
@@ -207,7 +207,7 @@
                       <% if (Array.isArray(server.tags) && server.tags.length) { %>
                         <div class="d-flex flex-wrap">
                           <% server.tags.forEach(function(tag) { %>
-                            <span class="badge bg-light text-dark me-1 mb-1" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                            <span class="badge bg-primary text-white me-1 mb-1" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                           <% }) %>
                         </div>
                       <% } else { %>
@@ -266,21 +266,9 @@
                               <% if (Array.isArray(server.managers) && server.managers.length) { %>
                                 <% server.managers.forEach(function(m, index) { %>
                                   <% if (index > 0) { %>, <% } %>
-                                  <% 
-                                    var searchTerm = m.email || m.name || '';
-                                    var displayText = '';
-                                    if (m.email && m.name) {
-                                      displayText = m.email + ' (' + m.name + ')';
-                                    } else if (m.email) {
-                                      displayText = m.email;
-                                    } else if (m.name) {
-                                      displayText = m.name;
-                                    } else {
-                                      displayText = 'Unknown';
-                                    }
-                                  %>
+                                  <% var searchTerm = m.email || m.name || ''; %>
                                   <a href="/organize/contact?search=<%= encodeURIComponent(searchTerm) %>&pageSize=10" target="_blank" class="text-decoration-none">
-                                    <%= displayText %>
+                                    <%= m.email ? m.email : (m.name || 'Unknown') %>
                                   </a>
                                 <% }) %>
                               <% } else if (server.manager) { %>
@@ -326,8 +314,8 @@
                               <% if (Array.isArray(server.systems) && server.systems.length) { %>
                                 <div class="d-flex flex-wrap">
                                   <% server.systems.forEach(function(sys) { %>
-                                    <a href="/system/system?search=<%= encodeURIComponent(sys.name) %>" target="_blank" class="text-decoration-none me-1 mb-1">
-                                      <span class="badge bg-primary text-white"><%= sys.name %></span>
+                                    <a href="/system/system?search=<%= encodeURIComponent(sys.name) %>" target="_blank" class="me-1 mb-1 text-primary" style="text-decoration:underline; font-size:1rem; font-weight:500;">
+                                      <%= sys.name %>
                                     </a>
                                   <% }) %>
                                 </div>
@@ -340,7 +328,7 @@
                               <% if (Array.isArray(server.tags) && server.tags.length) { %>
                                 <div class="d-flex flex-wrap">
                                   <% server.tags.forEach(function(tag) { %>
-                                    <span class="badge bg-light text-dark me-1 mb-1" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                                    <span class="badge bg-primary text-white me-1 mb-1" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                                   <% }) %>
                                 </div>
                               <% } else { %>

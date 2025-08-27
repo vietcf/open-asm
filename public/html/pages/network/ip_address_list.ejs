@@ -276,7 +276,7 @@
                     <td>
                       <% if (ip.tags && ip.tags.length > 0) { %>
                         <% ip.tags.forEach(function(tag) { %>
-                          <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                          <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                         <% }) %>
                       <% } else { %>
                         <span class="text-muted">No tags</span>
@@ -289,10 +289,8 @@
                       <% if (ip.systems && ip.systems.length > 0) { %>
                         <div class="d-flex flex-wrap">
                           <% ip.systems.forEach(function(system) { %>
-                            <a href="/system/system?search=<%= encodeURIComponent(system.name) %>" target="_blank" class="text-decoration-none me-1 mb-1">
-                              <span class="badge bg-primary text-white me-1 mb-1" style="font-size:0.95em; font-weight:500; letter-spacing:0.5px; padding:0.35em 0.8em;">
-                                <%= system.name + (system.system_id ? ' (' + system.system_id + ')' : '') %>
-                              </span>
+                            <a href="/system/system?search=<%= encodeURIComponent(system.name) %>" target="_blank" class="me-1 mb-1 text-primary" style="text-decoration:underline; font-size:0.95em; font-weight:500;">
+                              <%= system.name + (system.system_id ? ' (' + system.system_id + ')' : '') %>
                             </a>
                           <% }) %>
                         </div>
@@ -330,7 +328,7 @@
                             <dd class="col-sm-8">
                               <% if (ip.tags && ip.tags.length > 0) { %>
                                 <% ip.tags.forEach(function(tag) { %>
-                                  <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                                  <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                                 <% }) %>
                               <% } else { %>
                                 <span class="text-muted">No tags</span>
@@ -347,9 +345,7 @@
                               <% if (ip.contacts && ip.contacts.length > 0) { %>
                                 <% ip.contacts.forEach(function(contact, idx) { %>
                                   <% if (contact.email) { %>
-                                    <div><a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>" target="_blank"><%= contact.name %> (<%= contact.email %>)</a></div>
-                                  <% } else { %>
-                                    <div><%= contact.name %></div>
+                                    <div><a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>" target="_blank"><%= contact.email %></a></div>
                                   <% } %>
                                 <% }) %>
                               <% } else { %>

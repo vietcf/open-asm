@@ -239,7 +239,7 @@
                     <td>
                       <% if (device.tags && device.tags.length) { %>
                         <% device.tags.forEach(function(tag) { %>
-                          <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em; margin-right:2px; margin-bottom:2px;"><%= tag.name %></span>
+                          <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                         <% }) %>
                       <% } else { %>
                         <span class="text-muted">-</span>
@@ -392,13 +392,13 @@
                 <dd class="col-sm-9">
                   <% if (device.tags && device.tags.length) { %>
                     <% device.tags.forEach(function(tag) { %>
-                      <span class="badge bg-light text-dark me-1 mb-1"><%= tag.name %></span>
+                      <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                     <% }) %>
                   <% } else { %>
                     <span class="text-muted">-</span>
                   <% } %>
                 </dd>
-                <dt class="col-sm-3">Contacts</dt>
+                <dt class="col-sm-3">Manager</dt>
                 <dd class="col-sm-9">
                   <% if (device.contacts && device.contacts.length) { %>
                     <ul class="list-unstyled mb-0">
@@ -407,7 +407,7 @@
                           <a href="contact?search=<%= encodeURIComponent(contact.email) %>" 
                              class="text-decoration-none" 
                              title="Search for this contact">
-                            <%= contact.email %> (<%= contact.name %>)
+                            <%= contact.email %>
                           </a>
                         </li>
                       <% }) %>

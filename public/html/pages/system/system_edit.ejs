@@ -53,6 +53,10 @@
               <input type="text" name="alias" class="form-control form-control-sm" value="<%= Array.isArray(system.alias) ? system.alias.join(', ') : (system.alias || '') %>">
             </div>
             <div class="mb-3">
+              <label class="form-label">FQDN (comma separated, optional)</label>
+              <input type="text" name="fqdn" class="form-control form-control-sm" value="<%= Array.isArray(system.fqdn) ? system.fqdn.join(', ') : (system.fqdn || '') %>" placeholder="e.g. host1.example.com, host2.example.com">
+            </div>
+            <div class="mb-3">
               <label class="form-label">Managers</label>
               <select id="manager-select" name="managers[]" class="form-select form-select-sm" multiple>
                 <% if (selectedManagerObjects && selectedManagerObjects.length > 0) { %>

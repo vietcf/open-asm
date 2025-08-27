@@ -3,11 +3,11 @@ import { pool } from '../../config/config.js';
 
 class System {
   // ===== CRUD METHODS =====
-  static async create({ system_id, name, level, department_id, alias, description, updated_by }) {
+  static async create({ system_id, name, level, department_id, alias, description, fqdn, updated_by }) {
     const result = await pool.query(
-      `INSERT INTO systems (system_id, name, level, department_id, alias, description, updated_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [system_id, name, level, department_id, alias, description, updated_by]
+      `INSERT INTO systems (system_id, name, level, department_id, alias, description, fqdn, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [system_id, name, level, department_id, alias, description, fqdn, updated_by]
     );
     return result.rows[0];
   }
@@ -32,12 +32,7 @@ class System {
 
   static async findById(id) {
     const result = await pool.query(
-      `SELECT s.*, u.name AS department_name,
-        ARRAY(
-          SELECT c.name FROM system_contact sc
-          JOIN contacts c ON sc.contact_id = c.id
-          WHERE sc.system_id = s.id
-        ) AS managers
+      `SELECT s.*, u.name AS department_name
        FROM systems s
        LEFT JOIN units u ON s.department_id = u.id
        WHERE s.id = $1`,
@@ -46,12 +41,12 @@ class System {
     return result.rows[0];
   }
 
-  static async update(id, { system_id, name, level, department_id, alias, description, updated_by }, client) {
+  static async update(id, { system_id, name, level, department_id, alias, description, fqdn, updated_by }, client) {
     const executor = client || pool;
     const result = await executor.query(
-      `UPDATE systems SET system_id=$1, name=$2, level=$3, department_id=$4, alias=$5, description=$6, updated_at=CURRENT_TIMESTAMP, updated_by=$7
-       WHERE id=$8 RETURNING *`,
-      [system_id, name, level, department_id, alias, description, updated_by, id]
+      `UPDATE systems SET system_id=$1, name=$2, level=$3, department_id=$4, alias=$5, description=$6, fqdn=$7, updated_at=CURRENT_TIMESTAMP, updated_by=$8
+       WHERE id=$9 RETURNING *`,
+      [system_id, name, level, department_id, alias, description, fqdn, updated_by, id]
     );
     return result.rows[0];
   }

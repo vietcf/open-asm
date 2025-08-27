@@ -89,7 +89,7 @@
                         <td>
                           <% if (component.tags && component.tags.length > 0) { %>
                             <% component.tags.forEach(function(tag) { %>
-                              <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                              <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                             <% }) %>
                           <% } else { %>
                             <span class="text-muted">No tags</span>
@@ -184,7 +184,13 @@
                                   <% if (component.fqdn && Array.isArray(component.fqdn) && component.fqdn.length > 0) { %>
                                     <ul class="mb-0 ps-3">
                                       <% component.fqdn.forEach(function(f) { %>
-                                        <li><%= f %></li>
+                                        <li>
+                                          <% if (/^https?:\/\//.test(f)) { %>
+                                            <a href="<%= f %>" target="_blank" rel="noopener noreferrer"><%= f %></a>
+                                          <% } else { %>
+                                            <code><%= f %></code>
+                                          <% } %>
+                                        </li>
                                       <% }) %>
                                     </ul>
                                   <% } else if (typeof component.fqdn === 'string' && component.fqdn.trim()) { %>
@@ -205,7 +211,7 @@
                                 <dd class="col-sm-9">
                                   <% if (component.tags && component.tags.length > 0) { %>
                                     <% component.tags.forEach(function(tag) { %>
-                                      <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                                      <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                                     <% }) %>
                                   <% } else { %>
                                     No tags
