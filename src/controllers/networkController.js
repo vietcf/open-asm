@@ -499,7 +499,7 @@ networkController.detailSubnet = async (req, res) => {
       );
       ip.tags = tagRows.rows.map(row => row.name);
     }
-    console.log('DEBUG subnet detail:', JSON.stringify(subnet, null, 2)); // Debug log
+  // Đã xóa debug log
 
     res.json(subnet);
   } catch (err) {

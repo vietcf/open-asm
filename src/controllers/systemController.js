@@ -248,7 +248,7 @@ systemController.updateSystemComponent = async (req, res) => {
       return res.redirect('/system/component');
     }
   // Extract and normalize fields from req.body
-  let { name, description, ips, tags, contacts, app_type, fqdn } = req.body;
+  let { name, description, ips, tags, contacts, app_type, fqdn, system_id } = req.body;
   name = typeof name === 'string' ? name.trim() : currentComponent.name;
   description = typeof description === 'string' ? description : (currentComponent.description || '');
   // App type: string or null
@@ -262,6 +262,8 @@ systemController.updateSystemComponent = async (req, res) => {
   } else if (Array.isArray(currentComponent.fqdn)) {
     fqdnList = currentComponent.fqdn;
   }
+  // system_id: lấy từ req.body nếu có, fallback về cũ nếu không
+  system_id = typeof system_id === 'string' && system_id.trim() ? system_id.trim() : currentComponent.system_id;
   // Contacts, IPs, Tags: always array
   contacts = !contacts ? [] : Array.isArray(contacts) ? contacts : [contacts];
   ips = !ips ? [] : Array.isArray(ips) ? ips : [ips];
@@ -274,7 +276,7 @@ systemController.updateSystemComponent = async (req, res) => {
       await client.query('ROLLBACK');
       return res.redirect('/system/component');
     }
-    if (!currentComponent.system_id) {
+    if (!system_id) {
       req.flash('error', 'Component must belong to a system.');
       await client.query('ROLLBACK');
       return res.redirect('/system/component');
@@ -323,7 +325,7 @@ systemController.updateSystemComponent = async (req, res) => {
       description,
       app_type,
       fqdn: fqdnList,
-      system_id: currentComponent.system_id,
+      system_id,
       updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
     };
     await SystemComponent.update(id, updateObj);
@@ -335,14 +337,12 @@ systemController.updateSystemComponent = async (req, res) => {
     await SystemComponent.setTags(id, tags, client);
 
     // --- Sync IPs between component and system (edit) ---
-    let system_id = currentComponent.system_id;
     let systemIpIds = [];
     if (system_id) {
       try {
         systemIpIds = await System.getIpIdsBySystemId(system_id);
       } catch (e) {
         systemIpIds = [];
-  // ...
       }
     }
     // Find IPs assigned to component but not yet in system
@@ -350,9 +350,8 @@ systemController.updateSystemComponent = async (req, res) => {
     if (ipsToAdd.length > 0 && system_id) {
       try {
         await System.addIPs(system_id, ipsToAdd, client);
-  // ...
       } catch (e) {
-  // ...
+        // ...
       }
     }
 
@@ -533,14 +532,17 @@ systemController.updateSystem = async (req, res) => {
       ip_addresses,
       tags,
       domains,
-      description
+      description,
+      fqdn
     } = req.body;
     // Now check and initialize each field as needed
     system_id = (system_id === undefined || system_id === null) ? '' : String(system_id).trim();
     name = (name === undefined || name === null) ? '' : String(name).trim();
     level = (level === undefined || level === null || level === '') ? null : level;
     department_id = (department_id === undefined || department_id === null || department_id === '') ? null : department_id;
-    // Alias: always an array
+    // Lấy giá trị cũ từ DB để fallback nếu trường nào không nhập
+    const currentSystem = await System.findById(id);
+    // Alias: giữ lại nếu không nhập
     let aliasValue = [];
     if (alias !== undefined && alias !== null && alias !== '') {
       if (Array.isArray(alias)) {
@@ -548,19 +550,36 @@ systemController.updateSystem = async (req, res) => {
       } else {
         aliasValue = String(alias).split(',').map(s => s.trim()).filter(Boolean);
       }
+    } else {
+      aliasValue = Array.isArray(currentSystem?.alias) ? currentSystem.alias : [];
     }
-    // Managers: always an array
+    // FQDN: giữ lại nếu không nhập
+    let fqdnList = [];
+    if (typeof fqdn === 'string') {
+      fqdnList = fqdn.split(',').map(s => s.trim()).filter(Boolean);
+    } else if (Array.isArray(fqdn)) {
+      fqdnList = fqdn.map(s => String(s).trim()).filter(Boolean);
+    }
+    if ((!fqdn || fqdnList.length === 0)) {
+      fqdnList = Array.isArray(currentSystem?.fqdn) ? currentSystem.fqdn : [];
+    }
+    // Managers: giữ lại nếu không nhập
     if (!Array.isArray(managers)) managers = managers ? [managers] : [];
-    // Servers: always an array
+    if (!managers || managers.length === 0) managers = Array.isArray(currentSystem?.managers) ? currentSystem.managers : [];
+    // Servers: giữ lại nếu không nhập
     if (!Array.isArray(servers)) servers = servers ? [servers] : [];
-    // IP addresses: always an array
+    if (!servers || servers.length === 0) servers = Array.isArray(currentSystem?.servers) ? currentSystem.servers : [];
+    // IP addresses: giữ lại nếu không nhập
     if (!Array.isArray(ip_addresses)) ip_addresses = ip_addresses ? [ip_addresses] : [];
-    // Tags: always an array
+    if (!ip_addresses || ip_addresses.length === 0) ip_addresses = Array.isArray(currentSystem?.ip_addresses) ? currentSystem.ip_addresses : [];
+    // Tags: giữ lại nếu không nhập
     if (!Array.isArray(tags)) tags = tags ? [tags] : [];
-    // Domains: always an array
+    if (!tags || tags.length === 0) tags = Array.isArray(currentSystem?.tags) ? currentSystem.tags : [];
+    // Domains: giữ lại nếu không nhập
     if (!Array.isArray(domains)) domains = domains ? [domains] : [];
-    // Description: always a string
-    description = (description === undefined || description === null) ? '' : String(description);
+    if (!domains || domains.length === 0) domains = Array.isArray(currentSystem?.domains) ? currentSystem.domains : [];
+    // Description: giữ lại nếu không nhập
+    description = (description === undefined || description === null) ? (currentSystem?.description || '') : String(description);
 
     // Explicit required field validation (only required fields in the form)
     const requiredFields = [
@@ -573,9 +592,10 @@ systemController.updateSystem = async (req, res) => {
       return res.redirect('/system/system');
     }
 
-    // Validate level if present, use allowed values from systemOptions.levels
+    // Validate level if present, use allowed values from levelOptions
     if (level !== null) {
-      const allowedLevels = (systemOptions.levels || []).map(l => l.value);
+      const levelOptions = await getLevelOptionsFromConfig();
+      const allowedLevels = (levelOptions || []).map(l => l.value);
       if (!allowedLevels.includes(level)) {
         req.flash('error', 'Invalid level value.');
         return res.redirect('/system/system');
@@ -646,6 +666,7 @@ systemController.updateSystem = async (req, res) => {
       department_id,
       alias: aliasValue,
       description,
+      fqdn: fqdnList,
       updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
     }, client);
     await System.setContacts(id, managers, client);
@@ -722,7 +743,7 @@ systemController.addSystemForm = async (req, res) => {
   try {
     const levelOptions = await getLevelOptionsFromConfig();
     res.render('pages/system/system_add', {
-      error: null, // Always pass error as null, no error message on add form
+      error: null,
       levelOptions,
       title: 'Add System',
       activeMenu: 'system'
@@ -768,6 +789,13 @@ systemController.addSystem = async (req, res) => {
     department_id = (department_id === undefined || department_id === null || department_id === '') ? null : department_id;
 
     // Explicit required field validation (only required fields in the form)
+    let fqdn = req.body.fqdn;
+    let fqdnList = [];
+    if (typeof fqdn === 'string') {
+      fqdnList = fqdn.split(',').map(s => s.trim()).filter(Boolean);
+    } else if (Array.isArray(fqdn)) {
+      fqdnList = fqdn.map(s => String(s).trim()).filter(Boolean);
+    }
     const requiredFields = [
       { key: 'system_id', value: system_id, label: 'System ID' },
       { key: 'name', value: name, label: 'System Name' }
@@ -778,9 +806,10 @@ systemController.addSystem = async (req, res) => {
       return res.redirect('/system/system');
     }
 
-    // Validate level if present, use allowed values from systemOptions.levels
+    // Validate level if present, use allowed values from levelOptions
     if (level !== null) {
-      const allowedLevels = (systemOptions.levels || []).map(l => l.value);
+      const levelOptions = await getLevelOptionsFromConfig();
+      const allowedLevels = (levelOptions || []).map(l => l.value);
       if (!allowedLevels.includes(level)) {
         req.flash('error', 'Invalid level value.');
         return res.redirect('/system/system');
@@ -818,6 +847,15 @@ systemController.addSystem = async (req, res) => {
         req.flash('error', 'Invalid IP address IDs: ' + invalidIps.join(', '));
         return res.redirect('/system/system');
       }
+      let fqdn = req.body.fqdn; // Added fqdn to the destructuring
+      let fqdnList = [];
+      if (fqdn !== undefined && fqdn !== null && fqdn !== '') {
+        if (Array.isArray(fqdn)) {
+          fqdnList = fqdn.map(s => String(s).trim()).filter(Boolean);
+        } else {
+          fqdnList = String(fqdn).split(',').map(s => s.trim()).filter(Boolean);
+        }
+      }
     }
 
     // Validate tags
@@ -827,6 +865,7 @@ systemController.addSystem = async (req, res) => {
         if (!(await Tag.exists(tid))) invalidTags.push(tid);
       }
       if (invalidTags.length > 0) {
+        fqdn: fqdnList,
         req.flash('error', 'Invalid tag IDs: ' + invalidTags.join(', '));
         return res.redirect('/system/system');
       }
@@ -851,6 +890,7 @@ systemController.addSystem = async (req, res) => {
       department_id,
       alias,
       description,
+      fqdn: fqdnList,
       updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
     }, client);
 

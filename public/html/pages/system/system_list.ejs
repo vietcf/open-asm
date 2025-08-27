@@ -124,7 +124,7 @@
                     <td>
                       <% if (system.tags && system.tags.length > 0) { %>
                         <% system.tags.forEach(function(tag) { %>
-                          <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                          <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                         <% }) %>
                       <% } else { %>
                         <span class="text-muted">No tags</span>
@@ -174,9 +174,9 @@
                               <% if (system.contacts && system.contacts.length > 0) { %>
                                 <% system.contacts.forEach(function(contact, idx) { %>
                                   <% if (contact.email) { %>
-                                    <a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>" target="_blank"><%= contact.name %> (<%= contact.email %>)</a><%= idx < system.contacts.length - 1 ? ', ' : '' %>
+                                    <a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>" target="_blank"><%= contact.email %></a><%= idx < system.contacts.length - 1 ? ', ' : '' %>
                                   <% } else { %>
-                                    <%= contact.name %><%= idx < system.contacts.length - 1 ? ', ' : '' %>
+                                    <span class="text-muted">No email</span><%= idx < system.contacts.length - 1 ? ', ' : '' %>
                                   <% } %>
                                 <% }) %>
                               <% } else { %>
@@ -184,7 +184,13 @@
                               <% } %>
                             </dd>
                             <dt class="col-sm-3">Department</dt>
-                            <dd class="col-sm-9"><%= system.department_name || 'No data' %></dd>
+                            <dd class="col-sm-9">
+                              <% if (system.department_name) { %>
+                                <a href="/organize/unit?search=<%= encodeURIComponent(system.department_name) %>" target="_blank"><%= system.department_name %></a>
+                              <% } else { %>
+                                <span class="text-muted">No data</span>
+                              <% } %>
+                            </dd>
                             <dt class="col-sm-3">Alias</dt>
                             <dd class="col-sm-9">
                               <% if (Array.isArray(system.alias) && system.alias.length > 0) { %>
@@ -195,11 +201,29 @@
                                 <span class="text-muted">No alias</span>
                               <% } %>
                             </dd>
+                            <dt class="col-sm-3">FQDN</dt>
+                            <dd class="col-sm-9">
+                              <% if (Array.isArray(system.fqdn) && system.fqdn.length > 0) { %>
+                                <ul class="mb-0 ps-3" style="list-style: disc inside;">
+                                  <% system.fqdn.forEach(function(f) { %>
+                                    <li>
+                                      <% if (/^https?:\/\//.test(f)) { %>
+                                        <a href="<%= f %>" target="_blank" rel="noopener noreferrer"><%= f %></a>
+                                      <% } else { %>
+                                        <code><%= f %></code>
+                                      <% } %>
+                                    </li>
+                                  <% }) %>
+                                </ul>
+                              <% } else { %>
+                                <span class="text-muted">No FQDN</span>
+                              <% } %>
+                            </dd>
                             <dt class="col-sm-3">Tags</dt>
                             <dd class="col-sm-9">
                               <% if (system.tags && system.tags.length > 0) { %>
                                 <% system.tags.forEach(function(tag) { %>
-                                  <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                                  <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                                 <% }) %>
                               <% } else { %>
                                 <span class="text-muted">No tags</span>
@@ -268,7 +292,7 @@
                             <% } %>
                           </ul>
                           <hr>
-                          <h6>Component List</h6>
+                          <h6 class="text-center fw-bold">Component List</h6>
                           <div id="component-list-<%= system.id %>">
                             <div class="text-muted">Loading components...</div>
                           </div>
@@ -465,7 +489,7 @@ document.addEventListener('DOMContentLoaded', function() {
             html += `<div>App type: ${c.app_type ? `<span class='badge bg-secondary ms-2'>${c.app_type}</span>` : '-'}</div>`;
             html += `<div>Description: <span class='text-muted small'>${c.description ? c.description.replace(/</g,'&lt;').replace(/>/g,'&gt;') : '-'}</span></div>`;
             if (c.tags && c.tags.length > 0) {
-              html += `<div>Tags: ` + c.tags.map(tag => `<span class='badge bg-light text-dark me-1'>${tag.name}</span>`).join('') + `</div>`;
+              html += `<div>Tags: ` + c.tags.map(tag => `<span class='badge bg-primary text-white me-1' style='font-size:0.93em; padding:0.15em 0.5em;'>${tag.name}</span>`).join('') + `</div>`;
             } else {
               html += `<div>Tags: <span class='text-muted'>no tags</span></div>`;
             }

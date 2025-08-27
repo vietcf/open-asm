@@ -28,6 +28,31 @@ async function getLocationOptionsFromConfig() {
   return locationOptions;
 }
 
+// Helper: Load allowed page sizes for device list from DB config (ưu tiên device_page_size, fallback page_size)
+async function getPageSizeOptionsFromConfig() {
+  let pageSizeOptions = [];
+  let config = null;
+  try {
+    config = await Configuration.findById('device_page_size');
+    if (!config || !config.value) {
+      config = await Configuration.findById('page_size');
+    }
+    if (config && config.value) {
+      let parsed;
+      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
+      if (Array.isArray(parsed)) {
+        pageSizeOptions = parsed.map(item => typeof item === 'object' ? item : Number(item)).filter(x => !isNaN(x));
+      } else if (typeof config.value === 'string') {
+        pageSizeOptions = config.value.split(',').map(v => Number(v.trim())).filter(x => !isNaN(x));
+      }
+    }
+  } catch (e) { pageSizeOptions = []; }
+  if (!Array.isArray(pageSizeOptions) || pageSizeOptions.length === 0) {
+    pageSizeOptions = [10, 20, 50];
+  }
+  return pageSizeOptions;
+}
+
 const deviceController = {};
 // List all devices with search, filter, and pagination
 deviceController.listDevice = async (req, res) => {
@@ -46,8 +71,8 @@ deviceController.listDevice = async (req, res) => {
     if (!filterParams.tags.length) delete filterParams.tags;
     const page = parseInt(req.query.page, 10) || 1;
     let pageSize = parseInt(req.query.page_size, 10);
-    let allowedPageSizes = [10, 20, 50];
-    if (!pageSize) pageSize = 10;
+    const allowedPageSizes = await getPageSizeOptionsFromConfig();
+    if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = allowedPageSizes[0] || 10;
     const deviceList = await Device.findFilteredList({ ...filterParams, page, pageSize });
     const totalCount = await Device.countFiltered({ ...filterParams });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -55,8 +80,8 @@ deviceController.listDevice = async (req, res) => {
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
     const errorMessage = req.flash('error')[0] || req.query.error || null;
     const successMessage = req.flash('success')[0] || req.query.success || null;
-  // Load location options from DB config (shared helper)
-  const locationOptions = await getLocationOptionsFromConfig();
+    // Load location options from DB config (shared helper)
+    const locationOptions = await getLocationOptionsFromConfig();
     // Đơn giản hóa truyền tags ra view (giống serverController)
     const tagsForView = Array.isArray(req.query['tags[]']) ? req.query['tags[]'] :
       (req.query['tags[]'] ? [req.query['tags[]']] : (Array.isArray(req.query.tags) ? req.query.tags : req.query.tags ? [req.query.tags] : []));
