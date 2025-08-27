@@ -6,7 +6,6 @@ const uploadSystemDocs = createUploadMiddleware({ fieldName: 'docs[]', folder: '
 
 const router = express.Router();
 
-
 // ====== SYSTEM MENU ======
 // System list page (DB)
 router.get('/system', requirePermission('system.read'), systemController.listSystem);
@@ -22,10 +21,23 @@ router.post('/system/:id/edit', requirePermission('system.update'), uploadSystem
 // Delete system
 router.post('/system/:id/delete', requirePermission('system.delete'), systemController.deleteSystem);
 
+// ====== SYSTEM COMPONENT MENU ======
+// List components
+router.get('/component', requirePermission('system.read'), systemController.listSystemComponent);
+// Add component
+router.get('/component/add', requirePermission('system.create'), systemController.addSystemComponentForm);
+// If you want to support file upload for component, add upload middleware here
+router.post('/component/add', requirePermission('system.create'), systemController.addSystemComponent);
+// Edit component
+router.get('/component/:id/edit', requirePermission('system.update'), systemController.editSystemComponentForm);
+router.post('/component/:id/edit', requirePermission('system.update'), systemController.updateSystemComponent);
+// Delete component
+router.post('/component/:id/delete', requirePermission('system.delete'), systemController.deleteSystemComponent);
 
 // ====== AJAX API ======
 // API: System search for select2 ajax (system dropdown)
 router.get('/api/system', systemController.apiSystemSearch);
-
+// API: Get all components of a system (for AJAX in system detail)
+router.get('/api/system/:id/components', requirePermission('system.read'), systemController.apiSystemComponents);
 
 export default router;

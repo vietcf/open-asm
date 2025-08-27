@@ -7,10 +7,74 @@ import IpAddress from '../models/IpAddress.js';
 import Service from '../models/Service.js';
 import Agent from '../models/Agent.js';
 import Platform from '../models/Platform.js';
-import serverOptions from '../../config/serverOptions.js';
+import Configuration from '../models/Configuration.js';
 import ExcelJS from 'exceljs';
 
+// Helper: Load server options from DB config
+async function getServerLocationsFromConfig() {
+  let options = [];
+  try {
+    const config = await Configuration.findById('device_location');
+    if (config && config.value) {
+      let parsed;
+      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
+      if (Array.isArray(parsed)) {
+        options = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+      }
+    }
+  } catch (e) { options = []; }
+  if (!Array.isArray(options) || options.length === 0) {
+    options = [
+      { value: 'DC', label: 'DC' },
+      { value: 'DR', label: 'DR' }
+    ];
+  }
+  return options;
+}
 
+async function getServerStatusOptionsFromConfig() {
+  let options = [];
+  try {
+    const config = await Configuration.findById('server_status');
+    if (config && config.value) {
+      let parsed;
+      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
+      if (Array.isArray(parsed)) {
+        options = parsed.map(item => typeof item === 'object' ? item : { value: String(item.value), label: String(item.label) });
+      }
+    }
+  } catch (e) { options = []; }
+  if (!Array.isArray(options) || options.length === 0) {
+    options = [
+      { value: 'ONLINE', label: 'ONLINE' },
+      { value: 'OFFLINE', label: 'OFFLINE' },
+      { value: 'MAINTENANCE', label: 'MAINTENANCE' }
+    ];
+  }
+  return options;
+}
+
+async function getServerTypeOptionsFromConfig() {
+  let options = [];
+  try {
+    const config = await Configuration.findById('server_type');
+    if (config && config.value) {
+      let parsed;
+      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
+      if (Array.isArray(parsed)) {
+        options = parsed.map(item => typeof item === 'object' ? item : { value: String(item.value), label: String(item.label) });
+      }
+    }
+  } catch (e) { options = []; }
+  if (!Array.isArray(options) || options.length === 0) {
+    options = [
+      { value: 'PHYSICAL', label: 'PHYSICAL' },
+      { value: 'VIRTUAL-MACHINE', label: 'VIRTUAL-MACHINE' },
+      { value: 'CLOUD-INSTANCE', label: 'CLOUD-INSTANCE' }
+    ];
+  }
+  return options;
+}
 
 // Helper: always return array of strings for select2 filters
 function normalizeFilterArray(val) {
@@ -19,6 +83,7 @@ function normalizeFilterArray(val) {
   if (typeof val === 'string') return [val];
   return [];
 }
+
 
 const serverController = {};
 
@@ -80,6 +145,11 @@ serverController.listServer = async (req, res) => {
     const success = req.flash('success')[0];
     const error = req.flash('error')[0];
 
+    const [locations, statusOptions, typesOptions] = await Promise.all([
+      getServerLocationsFromConfig(),
+      getServerStatusOptionsFromConfig(),
+      getServerTypeOptionsFromConfig()
+    ]);
     res.render('pages/server/server_list', {
       serverList,
       search: filterParams.search,
@@ -91,9 +161,9 @@ serverController.listServer = async (req, res) => {
       endItem,
       success,
       error,
-      locations: serverOptions.locations,
-      statusOptions: serverOptions.status,
-      typesOptions: serverOptions.types,
+      locations,
+      statusOptions,
+      typesOptions,
       filterLocation: filterParams.location,
       filterType: filterParams.type,
       filterStatus: filterParams.status,
@@ -207,6 +277,11 @@ serverController.editServerForm = async (req, res) => {
     let selectedPlatform = server.os_id;
     // Truyền platform đã chọn (id, text) cho select2 ajax pre-populate
     const selectedPlatformObj = server.os_id && server.platform_name ? { id: server.os_id, text: server.platform_name } : null;
+    const [locations, statusOptions, typesOptions] = await Promise.all([
+      getServerLocationsFromConfig(),
+      getServerStatusOptionsFromConfig(),
+      getServerTypeOptionsFromConfig()
+    ]);
     res.render('pages/server/server_edit', {
       server,
       selectedContacts,
@@ -217,9 +292,9 @@ serverController.editServerForm = async (req, res) => {
       selectedPlatformObj,
       selectedIPs,
       selectedTags,
-      locations: serverOptions.locations,
-      statusOptions: serverOptions.status,
-      typesOptions: serverOptions.types,
+      locations,
+      statusOptions,
+      typesOptions,
       title: 'Edit Server',
       activeMenu: 'server-list'
     });
@@ -231,10 +306,15 @@ serverController.editServerForm = async (req, res) => {
 // Render add server form
 serverController.addServerForm = async (req, res) => {
   try {
+    const [locations, statusOptions, typesOptions] = await Promise.all([
+      getServerLocationsFromConfig(),
+      getServerStatusOptionsFromConfig(),
+      getServerTypeOptionsFromConfig()
+    ]);
     res.render('pages/server/server_add', {
-      locations: serverOptions.locations, 
-      statusOptions: serverOptions.status, 
-      typesOptions: serverOptions.types,
+      locations,
+      statusOptions,
+      typesOptions,
       title: 'Add Server',
       activeMenu: 'server-list'
     });

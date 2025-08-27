@@ -8,32 +8,438 @@ import FileUpload from '../models/FileUpload.js';
 import Configuration from '../models/Configuration.js';
 import IpAddress from '../models/IpAddress.js';
 import Tag from '../models/Tag.js';
-import systemOptions from '../../config/systemOptions.js';
 import { pool } from '../../config/config.js';
+import SystemComponent from '../models/SystemComponent.js';
+
+
+// Tiện ích lấy levelOptions từ DB (Configuration)
+async function getLevelOptionsFromConfig() {
+  let levelOptions = [];
+  try {
+    const config = await Configuration.findById('system_level');
+    if (config && config.value) {
+      let parsed;
+      try {
+        parsed = JSON.parse(config.value);
+      } catch {
+        parsed = null;
+      }
+      if (parsed) {
+        if (Array.isArray(parsed)) {
+          levelOptions = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+        } else if (parsed.levels && Array.isArray(parsed.levels)) {
+          levelOptions = parsed.levels.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+        }
+      } else {
+        // fallback: comma string
+        levelOptions = String(config.value).split(',').map(v => ({ value: v.trim(), label: v.trim() })).filter(x => x.value);
+      }
+    }
+  } catch (e) {
+    levelOptions = [];
+  }
+  if (!Array.isArray(levelOptions) || levelOptions.length === 0) {
+    levelOptions = [1,2,3,4,5].map(v => ({ value: String(v), label: `level ${v}` }));
+  }
+  return levelOptions;
+}
+
+
 
 const systemController = {};
-
-// System list page (with DB)
-systemController.listSystem = async (req, res) => {
+// System Component list page
+systemController.listSystemComponent = async (req, res) => {
   try {
-    // Paging & search params
     const allowedPageSizes = res.locals.pageSizeOptions;
     let pageSize = parseInt(req.query.pageSize, 10);
     if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = res.locals.defaultPageSize;
     const page = parseInt(req.query.page, 10) || 1;
     const search = req.query.search?.trim() || '';
+    // Filter tags and contacts
+    const normalizeArray = v => (Array.isArray(v) ? v : (v ? [v] : []));
+    let filterTags = req.query['tags[]'] || req.query.tags || [];
+    let filterContacts = req.query['contacts[]'] || req.query.contacts || [];
+    filterTags = normalizeArray(filterTags).filter(x => x !== '');
+    filterContacts = normalizeArray(filterContacts).filter(x => x !== '');
+    const componentList = await SystemComponent.findFilteredList({ search, page, pageSize, filterTags, filterContacts });
+    const totalCount = await SystemComponent.countFiltered({ search, filterTags, filterContacts });
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
+    const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
+    const [success, error] = [req.flash('success')[0], req.flash('error')[0]];
+    res.render('pages/system/component_list', {
+      componentList,
+      search,
+      page,
+      pageSize,
+      totalPages,
+      totalCount,
+      startItem,
+      endItem,
+      filterTags,
+      filterContacts,
+      success,
+      error,
+      title: 'System Component',
+      activeMenu: 'system-component',
+    });
+  } catch (err) {
+    res.status(500).send('Error loading system components: ' + err.message);
+  }
+};
 
-    // Data
-    const systemList = await System.findFilteredList({ search, page, pageSize });
-    const totalCount = await System.countFiltered({ search });
+// Render add component form
+systemController.addSystemComponentForm = async (req, res) => {
+  // Fetch App Type options from configuration table
+  let appTypeOptions = [];
+  try {
+    const config = await Configuration.findById('system_app_type');
+    if (config && config.value) {
+      try {
+        appTypeOptions = JSON.parse(config.value);
+      } catch (e) {
+        appTypeOptions = [];
+      }
+    }
+  } catch (e) {
+    appTypeOptions = [];
+  }
+  res.render('pages/system/component_add', {
+    error: null,
+    appTypeOptions,
+    title: 'Add System Component',
+    activeMenu: 'system-component',
+  });
+};
+
+// Handle add component
+systemController.addSystemComponent = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Extract raw data from form
+    let {
+      system_id,
+      name,
+      app_type,
+      description,
+      fqdn,
+      contacts,
+      ips,
+      tags
+    } = req.body;
+
+    // Normalize/validate fields
+    system_id = typeof system_id === 'string' ? system_id.trim() : null;
+    name = typeof name === 'string' ? name.trim() : '';
+    app_type = typeof app_type === 'string' ? app_type.trim() : null;
+    description = typeof description === 'string' ? description : '';
+    // FQDN: comma separated string to array
+    let fqdnList = [];
+    if (typeof fqdn === 'string') {
+      fqdnList = fqdn.split(',').map(s => s.trim()).filter(Boolean);
+    } else if (Array.isArray(fqdn)) {
+      fqdnList = fqdn.map(s => String(s).trim()).filter(Boolean);
+    }
+    // Contacts, IPs, Tags: always array
+    contacts = !contacts ? [] : Array.isArray(contacts) ? contacts : [contacts];
+    ips = !ips ? [] : Array.isArray(ips) ? ips : [ips];
+    tags = !tags ? [] : Array.isArray(tags) ? tags : [tags];
+
+    // Required field validation
+    if (!name) {
+      req.flash('error', 'Component name is required.');
+      return res.redirect('/system/component');
+    }
+
+    // Create new component
+    const newComponent = await SystemComponent.create({
+      system_id,
+      name,
+      app_type,
+      description,
+      fqdn: fqdnList,
+      updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
+    }, client);
+
+
+    // Set contacts, IPs, tags
+    await SystemComponent.setContacts(newComponent.id, contacts, client);
+    await SystemComponent.setIPs(newComponent.id, ips, client);
+    await SystemComponent.setTags(newComponent.id, tags, client);
+
+    // --- Sync IPs between component and system ---
+    // Get current IP list of the system
+    let systemIpIds = [];
+    if (system_id) {
+      try {
+        systemIpIds = await System.getIpIdsBySystemId(system_id);
+      } catch (e) {
+        systemIpIds = [];
+  // ...
+      }
+    }
+    // Find IPs assigned to component but not yet in system
+    const ipsToAdd = (ips || []).filter(ip => !systemIpIds.includes(ip));
+    if (ipsToAdd.length > 0 && system_id) {
+      try {
+        // Only add new IPs, do not remove existing ones
+        await System.addIPs(system_id, ipsToAdd, client);
+  // ...
+      } catch (e) {
+        // Log error, do not rollback
+  // ...
+      }
+    }
+
+    await client.query('COMMIT');
+    req.flash('success', 'Component added successfully');
+    return res.redirect('/system/component');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    req.flash('error', 'Error adding component: ' + err.message);
+    return res.redirect('/system/component');
+  } finally {
+    client.release();
+  }
+};
+
+// Render edit component form
+systemController.editSystemComponentForm = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const component = await SystemComponent.findByIdWithRelations(id);
+    if (!component) {
+      req.flash('error', 'Component not found.');
+      return res.redirect('/system/component');
+    }
+    // Lấy options cho app_type
+    let appTypeOptions = [];
+    try {
+      const config = await Configuration.findById('system_app_type');
+      if (config && config.value) {
+        appTypeOptions = JSON.parse(config.value);
+      }
+    } catch (e) { appTypeOptions = []; }
+    res.render('pages/system/component_edit', {
+      component,
+      appTypeOptions,
+      title: 'Edit System Component',
+      activeMenu: 'system-component',
+    });
+  } catch (err) {
+    res.status(500).send('Error loading component: ' + err.message);
+  }
+};
+
+// Handle update component
+systemController.updateSystemComponent = async (req, res) => {
+  // ...
+  
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const id = req.params.id;
+    // Fetch current component from DB
+    const currentComponent = await SystemComponent.findById(id);
+    if (!currentComponent || !currentComponent.system_id) {
+      req.flash('error', 'Component is missing system_id.');
+      await client.query('ROLLBACK');
+      return res.redirect('/system/component');
+    }
+  // Extract and normalize fields from req.body
+  let { name, description, ips, tags, contacts, app_type, fqdn } = req.body;
+  name = typeof name === 'string' ? name.trim() : currentComponent.name;
+  description = typeof description === 'string' ? description : (currentComponent.description || '');
+  // App type: string or null
+  app_type = typeof app_type === 'string' ? app_type.trim() : (currentComponent.app_type || null);
+  // FQDN: comma separated string to array
+  let fqdnList = [];
+  if (typeof fqdn === 'string') {
+    fqdnList = fqdn.split(',').map(s => s.trim()).filter(Boolean);
+  } else if (Array.isArray(fqdn)) {
+    fqdnList = fqdn.map(s => String(s).trim()).filter(Boolean);
+  } else if (Array.isArray(currentComponent.fqdn)) {
+    fqdnList = currentComponent.fqdn;
+  }
+  // Contacts, IPs, Tags: always array
+  contacts = !contacts ? [] : Array.isArray(contacts) ? contacts : [contacts];
+  ips = !ips ? [] : Array.isArray(ips) ? ips : [ips];
+  tags = !tags ? [] : Array.isArray(tags) ? tags : [tags];
+
+
+    // Validate required fields (name, system_id)
+    if (!name) {
+      req.flash('error', 'Component name is required.');
+      await client.query('ROLLBACK');
+      return res.redirect('/system/component');
+    }
+    if (!currentComponent.system_id) {
+      req.flash('error', 'Component must belong to a system.');
+      await client.query('ROLLBACK');
+      return res.redirect('/system/component');
+    }
+
+    // Validate contacts (if any)
+    if (contacts && contacts.length > 0) {
+      const invalidContacts = [];
+      for (const cid of contacts) {
+        if (!(await Contact.exists(cid))) invalidContacts.push(cid);
+      }
+      if (invalidContacts.length > 0) {
+        req.flash('error', 'Invalid contact IDs: ' + invalidContacts.join(', '));
+        await client.query('ROLLBACK');
+        return res.redirect('/system/component');
+      }
+    }
+    // Validate tags (if any)
+    if (tags && tags.length > 0) {
+      const invalidTags = [];
+      for (const tid of tags) {
+        if (!(await Tag.exists(tid))) invalidTags.push(tid);
+      }
+      if (invalidTags.length > 0) {
+        req.flash('error', 'Invalid tag IDs: ' + invalidTags.join(', '));
+        await client.query('ROLLBACK');
+        return res.redirect('/system/component');
+      }
+    }
+    // Validate IPs (if any)
+    if (ips && ips.length > 0) {
+      const invalidIps = [];
+      for (const ipid of ips) {
+        if (!(await IpAddress.exists(ipid))) invalidIps.push(ipid);
+      }
+      if (invalidIps.length > 0) {
+        req.flash('error', 'Invalid IP address IDs: ' + invalidIps.join(', '));
+        await client.query('ROLLBACK');
+        return res.redirect('/system/component');
+      }
+    }
+
+    // Build update object, only update fields that are changed
+    const updateObj = {
+      name,
+      description,
+      app_type,
+      fqdn: fqdnList,
+      system_id: currentComponent.system_id,
+      updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
+    };
+    await SystemComponent.update(id, updateObj);
+    // Update contacts for component
+    await SystemComponent.setContacts(id, contacts, client);
+    // Update IPs for component
+    await SystemComponent.setIPs(id, ips, client);
+    // Update tags for component
+    await SystemComponent.setTags(id, tags, client);
+
+    // --- Sync IPs between component and system (edit) ---
+    let system_id = currentComponent.system_id;
+    let systemIpIds = [];
+    if (system_id) {
+      try {
+        systemIpIds = await System.getIpIdsBySystemId(system_id);
+      } catch (e) {
+        systemIpIds = [];
+  // ...
+      }
+    }
+    // Find IPs assigned to component but not yet in system
+    const ipsToAdd = (ips || []).filter(ip => !systemIpIds.includes(ip));
+    if (ipsToAdd.length > 0 && system_id) {
+      try {
+        await System.addIPs(system_id, ipsToAdd, client);
+  // ...
+      } catch (e) {
+  // ...
+      }
+    }
+
+    await client.query('COMMIT');
+    req.flash('success', 'Component updated successfully');
+    return res.redirect('/system/component');
+  } catch (err) {
+  // ...
+    await client.query('ROLLBACK');
+    req.flash('error', 'Error updating component: ' + err.message);
+    return res.redirect('/system/component');
+  } finally {
+    client.release();
+  }
+};
+
+// Handle delete component
+systemController.deleteSystemComponent = async (req, res) => {
+  try {
+    const id = req.params.id;
+    // Get component info (to get system_id)
+    const component = await SystemComponent.findById(id);
+    if (!component) {
+      req.flash('error', 'Component not found.');
+      return res.redirect('/system/component');
+    }
+    // Get all IPs linked to this component
+    const ips = await SystemComponent.getIPs(id);
+    // Remove system_ip links for these IPs and the parent system
+    if (component.system_id && Array.isArray(ips) && ips.length > 0) {
+      for (const ip of ips) {
+        await System.removeIP(component.system_id, ip.id);
+      }
+    }
+    await SystemComponent.delete(id);
+    req.flash('success', 'Component deleted successfully');
+    return res.redirect('/system/component');
+  } catch (err) {
+    req.flash('error', 'Error deleting component: ' + err.message);
+    return res.redirect('/system/component');
+  }
+};
+
+// System list page (with DB)
+systemController.listSystem = async (req, res) => {
+  try {
+  // Paging & search params
+  const allowedPageSizes = res.locals.pageSizeOptions;
+  let pageSize = parseInt(req.query.pageSize, 10);
+  if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = res.locals.defaultPageSize;
+  const page = parseInt(req.query.page, 10) || 1;
+  const search = req.query.search?.trim() || '';
+  // Normalize filter from query (accept both tags[] and tags, contacts[] and contacts)
+  const normalizeArray = v => (Array.isArray(v) ? v : (v ? [v] : []));
+  let filterTags = req.query['tags[]'] || req.query.tags || [];
+  let filterContacts = req.query['contacts[]'] || req.query.contacts || [];
+  filterTags = normalizeArray(filterTags).filter(x => x !== '');
+  filterContacts = normalizeArray(filterContacts).filter(x => x !== '');
+  // Data
+  const systemList = await System.findFilteredList({ search, page, pageSize, filterTags, filterContacts });
+  const totalCount = await System.countFiltered({ search, filterTags, filterContacts });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
 
+    // Fetch all components for all systems in this page
+    const systemIds = systemList.map(s => s.id);
+    let componentsBySystem = {};
+    if (systemIds.length > 0) {
+      // Ensure systemIds is array of numbers (not strings)
+      let systemIdInts = systemIds.map(id => typeof id === 'number' ? id : parseInt(id, 10)).filter(id => !isNaN(id));
+      for (const sysId of systemIdInts) {
+        const comps = await SystemComponent.findFilteredList({ system_id: sysId, pageSize: 1000 });
+        if (comps && comps.length > 0) {
+          componentsBySystem[sysId] = comps.map(c => ({ name: c.name }));
+        }
+      }
+    }
+    // Attach to each system
+    systemList.forEach(s => {
+      // Only attach components if there are any; otherwise, leave as empty array
+      s.components = Array.isArray(componentsBySystem[s.id]) && componentsBySystem[s.id].length > 0 ? componentsBySystem[s.id] : [];
+    });
+
     // Flash messages
     const [success, error] = [req.flash('success')[0], req.flash('error')[0]];
 
-    // Render
     res.render('pages/system/system_list', {
       systemList,
       search,
@@ -45,8 +451,11 @@ systemController.listSystem = async (req, res) => {
       endItem,
       success,
       error,
+  // Ensure filterTags and filterContacts are always defined for EJS
+  filterTags,
+  filterContacts,
       title: 'System Management',
-      activeMenu: 'system',
+      activeMenu: 'system'
     });
   } catch (err) {
     res.status(500).send('Error loading systems: ' + err.message);
@@ -78,24 +487,27 @@ systemController.editSystemForm = async (req, res) => {
       name: f.original_name || f.name, // fallback if original_name is missing
       url: FileUpload.getUrl(f)
     }));
+
+    // Lấy toàn bộ component thuộc system này
+    const componentList = await SystemComponent.findFilteredList({ system_id: id, pageSize: 1000 });
     // Get info of selected managers (contacts) for select2 selected options
     let selectedManagerObjects = [];
     if (selectedContacts && selectedContacts.length > 0) {
       selectedManagerObjects = await Contact.findByIds(selectedContacts);
     }
+    const levelOptions = await getLevelOptionsFromConfig();
     res.render('pages/system/system_edit', {
       system,
-      // units,
-      //contacts,
       selectedContacts,
       ipAddresses,
       selectedIPs,
-      selectedTags, // <-- ensure this is passed
+      selectedTags,
       selectedDomains,
       selectedManagerObjects,
-      levelOptions: systemOptions.levels, // Add this line
+      levelOptions,
       title: 'Edit System',
-      activeMenu: 'system'
+      activeMenu: 'system',
+      componentList
     });
   } catch (err) {
     res.status(500).send('Error loading system: ' + err.message);
@@ -308,9 +720,10 @@ systemController.updateSystem = async (req, res) => {
 // Render add system form
 systemController.addSystemForm = async (req, res) => {
   try {
+    const levelOptions = await getLevelOptionsFromConfig();
     res.render('pages/system/system_add', {
       error: null, // Always pass error as null, no error message on add form
-      levelOptions: systemOptions.levels, // Add this line
+      levelOptions,
       title: 'Add System',
       activeMenu: 'system'
     });
@@ -440,26 +853,13 @@ systemController.addSystem = async (req, res) => {
       description,
       updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
     }, client);
-    // Use set... methods for consistency and future-proofing
+
+    // Set relationships (links) after creation
     await System.setContacts(newSystem.id, managers, client);
     await System.setIPs(newSystem.id, ip_addresses, client);
     await System.setDomains(newSystem.id, domains, client);
     await System.setTags(newSystem.id, tags, client);
-    // Save uploaded files info to file_uploads table if any
-    if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        let filePath = file.path || (file.location ? file.location : null);
-        await FileUpload.create({
-          object_type: 'system',
-          object_id: newSystem.id,
-          original_name: file.originalname,
-          file_path: filePath,
-          mime_type: file.mimetype,
-          size: file.size,
-          uploaded_by: req.session.user ? req.session.user.id : null
-        }, client);
-      }
-    }
+
     // Handle uploaded files from AJAX (hidden input: uploaded_docs)
     let uploadedDocs = [];
     if (req.body.uploaded_docs) {
@@ -508,6 +908,13 @@ systemController.deleteSystem = async (req, res) => {
   try {
     await client.query('BEGIN');
     const id = req.params.id;
+    // Check if system still has components
+    const componentCount = await SystemComponent.countBySystemId(id, client);
+    if (componentCount > 0) {
+      await client.query('ROLLBACK');
+      req.flash('error', 'You must delete all components of this system before deleting the system. Please remove all components first.');
+      return res.redirect('/system/system');
+    }
     // Delete related links via model
     await System.deleteTags(id, client);
     await System.deleteIPs(id, client);
@@ -539,6 +946,20 @@ systemController.apiSystemSearch = async (req, res) => {
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: 'Error loading systems', detail: err.message });
+  }
+};
+
+
+// API: Get all components of a system by system id
+systemController.apiSystemComponents = async (req, res) => {
+  try {
+    const systemId = req.params.id;
+    if (!systemId) return res.status(400).json({ error: 'Missing system id' });
+    // Get all components for this system (no paging, just all)
+    const componentList = await SystemComponent.findFilteredList({ system_id: systemId, pageSize: 1000 });
+    res.json({ components: componentList });
+  } catch (err) {
+    res.status(500).json({ error: 'Error loading components', detail: err.message });
   }
 };
 

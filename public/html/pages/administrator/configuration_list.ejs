@@ -31,7 +31,13 @@
                   <tr>
                     <td><%= idx + 1 %></td>
                     <td><%= config.key %></td>
-                    <td><%= config.value %></td>
+                    <td>
+                      <% if (typeof config.value === 'string' && config.value.length > 80) { %>
+                        <%= config.value.substring(0, 80) %>...
+                      <% } else { %>
+                        <%= config.value %>
+                      <% } %>
+                    </td>
                     <td><%= config.description %></td>
                     <td class="text-end">
                       <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#configShowModal-<%= config.key %>"><i class="bi bi-eye"></i></a>
@@ -60,7 +66,18 @@
                             <dt class="col-sm-4">Key</dt>
                             <dd class="col-sm-8"><%= config.key %></dd>
                             <dt class="col-sm-4">Value</dt>
-                            <dd class="col-sm-8"><%= config.value %></dd>
+                            <dd class="col-sm-8">
+                              <% let parsed = null; let isJson = false;
+                                 try { parsed = JSON.parse(config.value); isJson = true; } catch(e) { isJson = false; }
+                              %>
+                              <% if (isJson) { %>
+                                <pre class="mb-0" style="white-space: pre-wrap; word-break: break-all; background: #f8f9fa; border-radius: 4px; padding: 8px;">
+<%= JSON.stringify(parsed, null, 2) %>
+                                </pre>
+                              <% } else { %>
+                                <%= config.value %>
+                              <% } %>
+                            </dd>
                             <dt class="col-sm-4">Description</dt>
                             <dd class="col-sm-8"><%= config.description || '' %></dd>
                           </dl>
@@ -89,7 +106,8 @@
                             </div>
                             <div class="mb-3">
                               <label class="form-label">Value <span class="text-danger">*</span></label>
-                              <input type="text" class="form-control form-control-sm" name="value" value="<%= config.value %>" required>
+                              <textarea class="form-control form-control-sm" name="value" rows="4" required><%= config.value %></textarea>
+                              <div class="form-text">Bạn có thể nhập JSON hoặc nhiều dòng cho các cấu hình dạng danh sách.</div>
                             </div>
                             <div class="mb-3">
                               <label class="form-label">Description</label>
@@ -132,7 +150,8 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Value <span class="text-danger">*</span></label>
-              <input type="text" name="value" class="form-control form-control-sm" required>
+              <textarea name="value" class="form-control form-control-sm" rows="4" required placeholder='Nhập giá trị, ví dụ: [{ "value": "DC", "label": "Data Center DR" }, ...]'></textarea>
+              <div class="form-text">Bạn có thể nhập JSON hoặc nhiều dòng cho các cấu hình dạng danh sách.</div>
             </div>
             <div class="mb-3">
               <label class="form-label">Description</label>
