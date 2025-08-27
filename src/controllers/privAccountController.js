@@ -7,7 +7,66 @@ import System from '../models/System.js';
 import Unit from '../models/Unit.js';
 import Contact from '../models/Contact.js';
 import ExcelJS from 'exceljs';
-import accountOptions from '../../config/accountOptions.js';
+// Helper: load account types from DB config
+async function getAccountTypesFromConfig() {
+  let options = [];
+  try {
+    const config = await Configuration.findById('priv_account_type');
+    if (config && config.value) {
+      let parsed;
+      try {
+        parsed = JSON.parse(config.value);
+      } catch { parsed = null; }
+      if (parsed) {
+        if (Array.isArray(parsed)) {
+          options = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+        } else if (parsed.types && Array.isArray(parsed.types)) {
+          options = parsed.types.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+        }
+      } else {
+        options = String(config.value).split(',').map(v => ({ value: v.trim(), label: v.trim() })).filter(x => x.value);
+      }
+    }
+  } catch (e) { options = []; }
+  if (!Array.isArray(options) || options.length === 0) {
+    options = [
+      { value: 'OS', label: 'Operating System (OS)' },
+      { value: 'APP', label: 'Application (APP)' },
+      { value: 'DB', label: 'Database (DB)' }
+    ];
+  }
+  return options;
+}
+
+async function getManageTypesFromConfig() {
+  let options = [];
+  try {
+    const config = await Configuration.findById('priv_account_manage_type');
+    if (config && config.value) {
+      let parsed;
+      try {
+        parsed = JSON.parse(config.value);
+      } catch { parsed = null; }
+      if (parsed) {
+        if (Array.isArray(parsed)) {
+          options = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+        } else if (parsed.manageTypes && Array.isArray(parsed.manageTypes)) {
+          options = parsed.manageTypes.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+        }
+      } else {
+        options = String(config.value).split(',').map(v => ({ value: v.trim(), label: v.trim() })).filter(x => x.value);
+      }
+    }
+  } catch (e) { options = []; }
+  if (!Array.isArray(options) || options.length === 0) {
+    options = [
+      { value: 'SELF', label: 'Self-managed' },
+      { value: 'PAM', label: 'Managed by PAM' },
+      { value: 'ENVELOPE', label: 'Envelope method' }
+    ];
+  }
+  return options;
+}
 import { clearPermissionsCache } from '../middlewares/permissions.middleware.js';
 
 const privAccountController = {};
@@ -62,8 +121,8 @@ privAccountController.listAccounts = async (req, res) => {
       organize_name: selectedOrganize ? selectedOrganize.name : '',
       contact_ids,
       contact_names: selectedContacts.map(c => c.name),
-      accountTypes: accountOptions.accountTypes,
-      manageTypes: accountOptions.manageTypes,
+  accountTypes: await getAccountTypesFromConfig(),
+  manageTypes: await getManageTypesFromConfig(),
       startItem,
       endItem,
       totalCount,
@@ -111,8 +170,8 @@ privAccountController.createAccount = async (req, res) => {
   if (!organize_id) errors.push('Organize Unit is required.');
   if (!role_id) errors.push('Role is required.');
   // Validate account_type and manage_type against config
-  const allowedAccountTypes = accountOptions.accountTypes.map(opt => opt.value);
-  const allowedManageTypes = accountOptions.manageTypes.map(opt => opt.value);
+  const allowedAccountTypes = (await getAccountTypesFromConfig()).map(opt => opt.value);
+  const allowedManageTypes = (await getManageTypesFromConfig()).map(opt => opt.value);
   if (!account_type) {
     errors.push('Account Type is required.');
   } else if (!allowedAccountTypes.includes(account_type)) {
@@ -212,8 +271,8 @@ privAccountController.updateAccount = async (req, res) => {
   if (!organize_id) errors.push('Organize Unit is required.');
   if (!role_id) errors.push('Role is required.');
   // Validate account_type and manage_type against config
-  const allowedAccountTypes = accountOptions.accountTypes.map(opt => opt.value);
-  const allowedManageTypes = accountOptions.manageTypes.map(opt => opt.value);
+  const allowedAccountTypes = (await getAccountTypesFromConfig()).map(opt => opt.value);
+  const allowedManageTypes = (await getManageTypesFromConfig()).map(opt => opt.value);
   if (!account_type) {
     errors.push('Account Type is required.');
   } else if (!allowedAccountTypes.includes(account_type)) {

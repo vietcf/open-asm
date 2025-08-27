@@ -43,15 +43,6 @@ export default async (db) => {
     );
   `);
 
-  // Create the many-to-many relationship table between `systems` and `tags`
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS system_tag (
-      system_id INTEGER NOT NULL REFERENCES systems(id) ON DELETE CASCADE,
-      tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
-      PRIMARY KEY (system_id, tag_id)
-    );
-  `);
-
   // Create the many-to-many relationship table between `systems` and `domains`
   await db.query(`
     CREATE TABLE IF NOT EXISTS system_domain (

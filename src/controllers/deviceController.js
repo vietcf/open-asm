@@ -1,4 +1,3 @@
-
 import Platform from '../models/Platform.js';
 import DeviceType from '../models/DeviceType.js';
 import Device from '../models/Device.js';
@@ -6,6 +5,28 @@ import Configuration from '../models/Configuration.js';
 import { pool } from '../../config/config.js';
 import ExcelJS from 'exceljs';
 
+
+// Helper: Load device location options from DB config
+async function getLocationOptionsFromConfig() {
+  let locationOptions = [];
+  try {
+    const config = await Configuration.findById('device_location');
+    if (config && config.value) {
+      let parsed;
+      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
+      if (Array.isArray(parsed)) {
+        locationOptions = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+      }
+    }
+  } catch (e) { locationOptions = []; }
+  if (!Array.isArray(locationOptions) || locationOptions.length === 0) {
+    locationOptions = [
+      { value: 'DC', label: 'DC' },
+      { value: 'DR', label: 'DR' }
+    ];
+  }
+  return locationOptions;
+}
 
 const deviceController = {};
 // List all devices with search, filter, and pagination
@@ -34,9 +55,8 @@ deviceController.listDevice = async (req, res) => {
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
     const errorMessage = req.flash('error')[0] || req.query.error || null;
     const successMessage = req.flash('success')[0] || req.query.success || null;
-    // Đổi require sang file mới
-    const deviceConfig = await import('../../config/deviceOptions.js');
-    const locationOptions = deviceConfig.default.locationOptions;
+  // Load location options from DB config (shared helper)
+  const locationOptions = await getLocationOptionsFromConfig();
     // Đơn giản hóa truyền tags ra view (giống serverController)
     const tagsForView = Array.isArray(req.query['tags[]']) ? req.query['tags[]'] :
       (req.query['tags[]'] ? [req.query['tags[]']] : (Array.isArray(req.query.tags) ? req.query.tags : req.query.tags ? [req.query.tags] : []));
@@ -72,10 +92,8 @@ deviceController.addDeviceForm = async (req, res) => {
   try {
     const error = (req.flash('error') || [])[0];
     const success = (req.flash('success') || [])[0];
-    // Load location options from config
-    // Đổi require sang file mới
-    const deviceConfig = await import('../../config/deviceOptions.js');
-    const locationOptions = deviceConfig.default.locationOptions;
+  // Load location options from DB config (shared helper)
+  const locationOptions = await getLocationOptionsFromConfig();
     res.render('pages/device/device_add', {
       error,
       success,
@@ -99,9 +117,8 @@ deviceController.editDeviceForm = async (req, res) => {
     device.management = device.management_address;
     const error = (req.flash('error') || [])[0];
     const success = (req.flash('success') || [])[0];
-    // Load location options from config
-    const deviceConfig = await import('../../config/deviceOptions.js');
-    const locationOptions = deviceConfig.default.locationOptions;
+  // Load location options from DB config (shared helper)
+  const locationOptions = await getLocationOptionsFromConfig();
     res.render('pages/device/device_edit', {
       device,
       error,

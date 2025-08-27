@@ -4,10 +4,37 @@ import Subnet from '../models/Subnet.js';
 import Domain from '../models/Domain.js';
 import Configuration from '../models/Configuration.js';
 import { pool } from '../../config/config.js';
-import ipAddressOptions from '../../config/ipAddressOptions.js';
-import subnetOptions from '../../config/subnetOptions.js';
+// import ipAddressOptions from '../../config/ipAddressOptions.js';
+// import subnetOptions from '../../config/subnetOptions.js';
+// Helper: Load recordTypeOptions from DB (Configuration)
+async function getRecordTypeOptionsFromConfig() {
+  let recordTypeOptions = [];
+  try {
+    const config = await Configuration.findById('network_domain_record_type');
+    if (config && config.value) {
+      recordTypeOptions = JSON.parse(config.value);
+    }
+  } catch (e) {
+    recordTypeOptions = [];
+  }
+  return recordTypeOptions;
+}
 import ExcelJS from 'exceljs';
 
+
+// Helper: Load ipStatusOptions from DB (Configuration)
+async function getIpStatusOptionsFromConfig() {
+  let ipStatusOptions = [];
+  try {
+    const config = await Configuration.findById('ip_address_status');
+    if (config && config.value) {
+      ipStatusOptions = JSON.parse(config.value);
+    }
+  } catch (e) {
+    ipStatusOptions = [];
+  }
+  return ipStatusOptions;
+}
 
 //------------------------- IP ADDRESS MENU PROCESSING -------------------------
 // Render the IP address list page with layout
@@ -57,7 +84,10 @@ networkController.listIP = async (req, res) => {
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const successMessage = req.flash('success')[0];
     const errorMessage = req.flash('error')[0];
-    // console.log('IP List:',  ipList);
+
+  // Load ipStatusOptions from DB (Configuration) via helper
+  const ipStatusOptions = await getIpStatusOptionsFromConfig();
+
     res.render('pages/network/ip_address_list', {
       ipList,
       page,
@@ -71,7 +101,7 @@ networkController.listIP = async (req, res) => {
       filterContacts,
       successMessage,
       errorMessage,
-      ipStatusOptions: ipAddressOptions.status,
+      ipStatusOptions,
       title: 'IP Address',
       activeMenu: 'ip-address'
     });
@@ -327,8 +357,8 @@ networkController.listDomain = async (req, res) => {
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const success = req.flash('success')[0];
     const error = req.flash('error')[0];
-    // Load record type options from config
-    
+    // Load record type options from DB (Configuration)
+    const recordTypeOptions = await getRecordTypeOptionsFromConfig();
     res.render('pages/network/domain_list', {
       domainList,
       page,
@@ -338,7 +368,7 @@ networkController.listDomain = async (req, res) => {
       search,
       success,
       error,
-      recordTypeOptions: subnetOptions.recordTypes,
+      recordTypeOptions,
       title: 'Domain',
       activeMenu: 'domain'
     });

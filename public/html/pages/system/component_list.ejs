@@ -1,0 +1,375 @@
+<div class="container-fluid">
+  <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/system/component" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
+    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search Component..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+    <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
+      <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
+        <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
+      <% }) %>
+    </select>
+    <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
+  </form>
+  <div class="row mb-3">
+    <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
+      <a href="/system/component/add" class="btn btn-primary btn-sm me-2">
+        <i class="bi bi-plus"></i> Add Component
+      </a>
+      <button type="button" class="btn btn-secondary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#filterComponentModal">
+        <i class="bi bi-funnel"></i> Filter
+      </button>
+      <!-- Filter Modal -->
+      <div class="modal fade" id="filterComponentModal" tabindex="-1" aria-labelledby="filterComponentModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <form id="componentFilterForm" method="get" action="/system/component">
+              <div class="modal-header">
+                <h5 class="modal-title" id="filterComponentModalLabel">Filter Component List</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="row g-2">
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Tags</label>
+                    <select id="filterComponentTags" name="tags[]" class="form-select select2" multiple></select>
+                  </div>
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Contacts</label>
+                    <select id="filterComponentContacts" name="contacts[]" class="form-select select2" multiple></select>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <!-- Filter values for JS -->
+      <div id="filter-component-data"
+        data-tags='<%= JSON.stringify(filterTags || []) %>'
+        data-contacts='<%= JSON.stringify(filterContacts || []) %>' style="display:none"></div>
+    </div>
+  </div>
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title mb-0">Component List</h3>
+            </div>
+            <div class="card-body table-responsive p-0">
+              <table class="table table-hover text-nowrap">
+                <thead>
+                  <tr>
+                    <th>No.</th>
+                    <th>Component Name</th>
+                    <th>System</th>
+                    <th>Description</th>
+                    <th>Tags</th>
+                    <th>App Type</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% if (componentList && componentList.length > 0) { %>
+                    <% componentList.forEach(function(component, idx) { %>
+                      <tr>
+                        <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                        <td><%= component.name %></td>
+                        <td><%= component.system_name || '-' %></td>
+                        <td>
+                          <% if (component.description && component.description.trim()) { %>
+                            <span title="<%= component.description.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
+                              <%= component.description.length > 60 ? component.description.substring(0, 60) + '…' : component.description %>
+                            </span>
+                          <% } else { %>
+                            <span class="text-muted">-</span>
+                          <% } %>
+                        </td>
+                        <td>
+                          <% if (component.tags && component.tags.length > 0) { %>
+                            <% component.tags.forEach(function(tag) { %>
+                              <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                            <% }) %>
+                          <% } else { %>
+                            <span class="text-muted">No tags</span>
+                          <% } %>
+                        </td>
+                        <td>
+                          <% if (component.app_type) { %>
+                            <%= component.app_type %>
+                          <% } else { %>
+                            <span class="text-muted">No data</span>
+                          <% } %>
+                        </td>
+                        <td class="text-end">
+                          <button type="button" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#componentDetailModal-<%= component.id %>" onclick='showComponentDetail(<%= JSON.stringify(component) %>)'><i class="bi bi-eye"></i></button>
+                          <a href="/system/component/<%= component.id %>/edit" class="btn btn-sm btn-warning"><i class="bi bi-pencil"></i></a>
+                          <form action="/system/component/<%= component.id %>/delete" method="post" class="d-inline-block" onsubmit="return confirm('Delete this component?');">
+                            <button type="submit" class="btn btn-sm btn-danger"><i class="bi bi-trash"></i></button>
+                          </form>
+                        </td>
+                      </tr>
+                      <!-- Component Detail Modal -->
+                      <div class="modal fade" id="componentDetailModal-<%= component.id %>" tabindex="-1" aria-labelledby="componentDetailModalLabel-<%= component.id %>" aria-hidden="true">
+                        <div class="modal-dialog modal-lg">
+                          <div class="modal-content">
+                            <div class="modal-header">
+                              <h5 class="modal-title" id="componentDetailModalLabel-<%= component.id %>">Component Detail</h5>
+                              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                              <dl class="row mb-0">
+                                <dt class="col-sm-3">ID (DB)</dt>
+                                <dd class="col-sm-9"><%= component.id %></dd>
+                                <dt class="col-sm-3">Component Name</dt>
+                                <dd class="col-sm-9"><%= component.name %></dd>
+                                <dt class="col-sm-3">System</dt>
+                                <dd class="col-sm-9">
+                                  <% if (component.system_name) { %>
+                                    <a href="/system/system?search=<%= encodeURIComponent(component.system_name) %>" target="_blank">
+                                      <%= component.system_name %>
+                                      <i class="bi bi-search ms-1" title="Search system"></i>
+                                    </a>
+                                  <% } else { %>
+                                    <span class="text-muted">-</span>
+                                  <% } %>
+                                </dd>
+                                <dt class="col-sm-3">Contacts</dt>
+                                <dd class="col-sm-9">
+                                  <% if (component.contacts && component.contacts.length > 0) { %>
+                                    <% let first = true; %>
+                                    <% component.contacts.forEach(function(contact) { %>
+                                      <% if (contact.email) { %>
+                                        <% if (!first) { %>, <% } %>
+                                        <a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>" target="_blank"><%= contact.email %></a>
+                                      <% } %>
+                                      <% first = false; %>
+                                    <% }) %>
+                                  <% } else { %>
+                                    No contacts
+                                  <% } %>
+                                </dd>
+                                <dt class="col-sm-3">IP Addresses</dt>
+                                <dd class="col-sm-9">
+                                  <% if (component.ips && component.ips.length > 0) { %>
+                                    <ul class="mb-0 ps-3">
+                                      <% component.ips.forEach(function(ipObj) { %>
+                                        <li>
+                                          <% if (typeof ipObj === 'object' && ipObj.ip) { %>
+                                            <a href="/network/ip-address?search=<%= encodeURIComponent(ipObj.ip) %>" target="_blank"><%= ipObj.ip %></a>
+                                            <% if (ipObj.server_name) { %>
+                                              (<a href="/server/server/list?search=<%= encodeURIComponent(ipObj.ip) %>" target="_blank"><%= ipObj.server_name %></a>)
+                                            <% } %>
+                                          <% } else { %>
+                                            <%= ipObj %>
+                                          <% } %>
+                                        </li>
+                                      <% }) %>
+                                    </ul>
+                                  <% } else { %>
+                                    No IPs
+                                  <% } %>
+                                </dd>
+                                <dt class="col-sm-3">App Type</dt>
+                                <dd class="col-sm-9">
+                                  <% if (component.app_type) { %>
+                                    <%= component.app_type %>
+                                  <% } else { %>
+                                    No data
+                                  <% } %>
+                                </dd>
+                                <dt class="col-sm-3">FQDN</dt>
+                                <dd class="col-sm-9">
+                                  <% if (component.fqdn && Array.isArray(component.fqdn) && component.fqdn.length > 0) { %>
+                                    <ul class="mb-0 ps-3">
+                                      <% component.fqdn.forEach(function(f) { %>
+                                        <li><%= f %></li>
+                                      <% }) %>
+                                    </ul>
+                                  <% } else if (typeof component.fqdn === 'string' && component.fqdn.trim()) { %>
+                                    <%= component.fqdn %>
+                                  <% } else { %>
+                                    No data
+                                  <% } %>
+                                </dd>
+                                <dt class="col-sm-3">Description</dt>
+                                <dd class="col-sm-9">
+                                  <% if (component.description && component.description.trim()) { %>
+                                    <%= component.description %>
+                                  <% } else { %>
+                                    No description
+                                  <% } %>
+                                </dd>
+                                <dt class="col-sm-3">Tags</dt>
+                                <dd class="col-sm-9">
+                                  <% if (component.tags && component.tags.length > 0) { %>
+                                    <% component.tags.forEach(function(tag) { %>
+                                      <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                                    <% }) %>
+                                  <% } else { %>
+                                    No tags
+                                  <% } %>
+                                </dd>
+                                <dt class="col-sm-3">Created At</dt>
+                                <dd class="col-sm-9">
+                                  <% if (component.created_at) { %>
+                                    <%= component.created_at.toLocaleString ? component.created_at.toLocaleString() : component.created_at %>
+                                  <% } else { %>
+                                    No data
+                                  <% } %>
+                                </dd>
+                                <dt class="col-sm-3">Updated At</dt>
+                                <dd class="col-sm-9">
+                                  <% if (component.updated_at) { %>
+                                    <%= component.updated_at.toLocaleString ? component.updated_at.toLocaleString() : component.updated_at %>
+                                  <% } else { %>
+                                    No data
+                                  <% } %>
+                                </dd>
+                                <dt class="col-sm-3">Updated By</dt>
+                                <dd class="col-sm-9">
+                                  <% if (component.updated_by) { %>
+                                    <%= component.updated_by %>
+                                  <% } else { %>
+                                    No data
+                                  <% } %>
+                                </dd>
+                              </dl>
+                            </div>
+                            <div class="modal-footer">
+                              <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    <% }) %>
+                  <% } else { %>
+                    <tr><td colspan="7" class="text-center">No components found.</td></tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+            <div class="card-footer clearfix">
+              <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
+                <div>
+                  <% 
+                    let cStartItem = (page - 1) * pageSize + 1;
+                    let cEndItem = cStartItem + (componentList ? componentList.length : 0) - 1;
+                    if (!componentList || componentList.length === 0) {
+                      cStartItem = 0;
+                      cEndItem = 0;
+                    }
+                  %>
+                  <span>Showing <%= cStartItem %> - <%= cEndItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> components</span>
+                </div>
+                <ul class="pagination pagination-sm m-0 float-end">
+                  <% 
+                    let cStartPage = 1;
+                    let cEndPage = totalPages;
+                    if (totalPages > 10) {
+                      if (page <= 5) {
+                        cStartPage = 1;
+                        cEndPage = 10;
+                      } else if (page + 4 >= totalPages) {
+                        cStartPage = totalPages - 9;
+                        cEndPage = totalPages;
+                      } else {
+                        cStartPage = page - 5 + 1;
+                        cEndPage = page + 4;
+                      }
+                    }
+                    function buildFilterQuery() {
+                      let params = [];
+                      if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+                      if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
+                      if (typeof filterTags !== 'undefined' && filterTags.length) filterTags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag)); });
+                      if (typeof filterContacts !== 'undefined' && filterContacts.length) filterContacts.forEach(function(c) { params.push('contacts[]=' + encodeURIComponent(c)); });
+                      return params.join('&');
+                    }
+                    const filterQuery = buildFilterQuery();
+                  %>
+                  <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                    <a class="page-link" href="?page=<%= page - 1 %><%= filterQuery ? '&' + filterQuery : '' %>" tabindex="-1">Previous</a>
+                  </li>
+                  <% if (cStartPage > 1) { %>
+                    <li class="page-item"><a class="page-link" href="?page=1<%= filterQuery ? '&' + filterQuery : '' %>">1</a></li>
+                    <% if (cStartPage > 2) { %>
+                      <li class="page-item disabled"><span class="page-link">...</span></li>
+                    <% } %>
+                  <% } %>
+                  <% for (let i = cStartPage; i <= cEndPage; i++) { %>
+                    <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= filterQuery ? '&' + filterQuery : '' %>"><%= i %></a></li>
+                  <% } %>
+                  <% if (cEndPage < totalPages) { %>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= filterQuery ? '&' + filterQuery : '' %>"><%= totalPages %></a></li>
+                  <% } %>
+                  <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                    <a class="page-link" href="?page=<%= page + 1 %><%= filterQuery ? '&' + filterQuery : '' %>">Next</a>
+                  </li>
+                </ul>
+<script>
+function restoreSelect2Value($el, values, url) {
+  if (!values || !values.length) return;
+  $.ajax({
+    url: url,
+    data: { ids: values },
+    dataType: 'json',
+    traditional: true,
+    success: function(data) {
+      data.forEach(function(item) {
+        if ($el.find('option[value="' + item.id + '"]').length === 0) {
+          var option = new Option(item.text || item.name, item.id, true, true);
+          $el.append(option);
+        }
+      });
+      $el.val(values).trigger('change');
+    }
+  });
+}
+$(function() {
+  var $filterModal = $('#filterComponentModal');
+  var $modalContent = $filterModal.find('.modal-content');
+  var filterValues = {
+    tags: JSON.parse(document.getElementById('filter-component-data').dataset.tags || '[]'),
+    contacts: JSON.parse(document.getElementById('filter-component-data').dataset.contacts || '[]')
+  };
+  $('#filterComponentTags').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select tag(s)',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $modalContent,
+    ajax: {
+      url: '/organize/api/tag',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({ search: params.term }),
+      processResults: data => ({ results: data })
+    }
+  });
+  $('#filterComponentContacts').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select contact(s)',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $modalContent,
+    ajax: {
+      url: '/organize/api/contact',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({ search: params.term }),
+      processResults: data => ({ results: data })
+    }
+  });
+  restoreSelect2Value($('#filterComponentTags'), filterValues.tags, '/organize/api/tag');
+  restoreSelect2Value($('#filterComponentContacts'), filterValues.contacts, '/organize/api/contact');
+});
+</script>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>

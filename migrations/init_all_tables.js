@@ -23,6 +23,7 @@ import createPrivRolePermissionsTable from './create_priv_role_permissions_table
 import createConfigurationTable from './create_configuration_table.js';
 import createSystemLogTable from './create_system_log_table.js';
 import createRuleFirewallTable from './create_rulefirewall_table.js';
+import createSystemComponentsTable from './create_system_components_table.js';
 // Add more migration files here as needed
 
 async function createTables() {
@@ -42,6 +43,7 @@ async function createTables() {
     await createSubnetsTable(pool);
     await createPlatformsTable(pool);
     await createSystemsTable(pool);
+    await createSystemComponentsTable(pool);
     await createDeviceTypesTable(pool);
     await createFileUploadsTable(pool);
     await createDevicesTable(pool);
