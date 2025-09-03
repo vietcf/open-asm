@@ -13,7 +13,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">IP Address(es) <span class="text-danger">*</span></label>
-              <select id="ip-select" name="ip_addresses[]" class="form-select form-select-sm select2" multiple required></select>
+              <select id="ip-select" name="ip_addresses[]" class="form-control" multiple required></select>
               <div class="invalid-feedback" id="ipErrorMsg" style="display:none">At least one IP address is required.</div>
             </div>
             <div class="mb-3">
@@ -51,7 +51,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Managers</label>
-              <select id="manager-select" name="managers[]" class="form-select form-select-sm select2" multiple>
+              <select id="manager-select" name="managers[]" class="form-control" multiple>
                 <% if (selectedContacts && selectedContacts.length) { %>
                   <% selectedContacts.forEach(function(contact) { %>
                     <option value="<%= contact.id %>" selected><%= contact.text %></option>
@@ -61,7 +61,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Systems</label>
-              <select id="system-select" name="systems[]" class="form-select form-select-sm select2" multiple>
+              <select id="system-select" name="systems[]" class="form-control" multiple>
                 <% if (selectedSystems && selectedSystems.length) { %>
                   <% selectedSystems.forEach(function(system) { %>
                     <option value="<%= system.id %>" selected><%= system.text %></option>
@@ -71,7 +71,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Agents</label>
-              <select id="agent-select" name="agents[]" class="form-select form-select-sm select2" multiple>
+              <select id="agent-select" name="agents[]" class="form-control" multiple>
                 <% if (selectedAgents && selectedAgents.length) { %>
                   <% selectedAgents.forEach(function(agent) { %>
                     <option value="<%= agent.id %>" selected><%= agent.text %></option>
@@ -81,7 +81,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Services</label>
-              <select id="service-select" name="services[]" class="form-select form-select-sm select2" multiple>
+              <select id="service-select" name="services[]" class="form-control" multiple>
                 <% if (selectedServices && selectedServices.length) { %>
                   <% selectedServices.forEach(function(service) { %>
                     <option value="<%= service.id %>" selected><%= service.text %></option>
@@ -91,7 +91,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Tags</label>
-              <select id="tag-select" name="tags[]" class="form-select form-select-sm select2" multiple>
+              <select id="tag-select" name="tags[]" class="form-control" multiple>
                 <% if (selectedTags && selectedTags.length) { %>
                   <% selectedTags.forEach(function(tag) { %>
                     <option value="<%= tag.id %>" selected><%= tag.text %></option>
@@ -258,3 +258,10 @@
     });
   });
 </script>
+
+<script src="/vendor/jquery-3.6.0.min.js"></script>
+<link href="/vendor/select2.min.css" rel="stylesheet" />
+<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="/vendor/select2.min.js"></script>
+<script src="/vendor/bootstrap.min.js"></script>
+<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />

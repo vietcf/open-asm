@@ -31,11 +31,11 @@
                 <div class="row g-2">
                   <div class="col-12 mb-2">
                     <label class="form-label">Tags</label>
-                    <select id="filterSystemTags" name="tags[]" class="form-select select2" multiple></select>
+                    <select id="filterSystemTags" name="tags[]" class="form-control" multiple></select>
                   </div>
                   <div class="col-12 mb-2">
                     <label class="form-label">Contacts</label>
-                    <select id="filterSystemContacts" name="contacts[]" class="form-select select2" multiple></select>
+                    <select id="filterSystemContacts" name="contacts[]" class="form-control" multiple></select>
                   </div>
                 </div>
               </div>
@@ -373,148 +373,148 @@
       </div>
     </div>
   </div>
-              <!-- ...existing code... -->
-  <script>
-function confirmDeleteSystem(form, name) {
-  if (confirm('Are you sure you want to delete the system: ' + name + '?')) {
-    form._deleting = true;
-    return true;
-  }
-  return false;
-}
-function showToast(msg, type) {
-  const toast = document.createElement('div');
-  toast.className = `alert alert-${type}`;
-  toast.style.position = 'fixed';
-  toast.style.top = '16px';
-  toast.style.right = '16px';
-  toast.style.zIndex = 9999;
-  toast.style.minWidth = '200px';
-  toast.innerText = msg;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
-}
+<script>
+    function confirmDeleteSystem(form, name) {
+      if (confirm('Are you sure you want to delete the system: ' + name + '?')) {
+        form._deleting = true;
+        return true;
+      }
+      return false;
+    }
 
-// Filter modal select2 logic
-function restoreSelect2Value($el, values, url) {
-  if (!values || !values.length) return;
-  $.ajax({
-    url: url,
-    data: { ids: values },
-    dataType: 'json',
-    traditional: true,
-    success: function(data) {
-      data.forEach(function(item) {
-        if ($el.find('option[value="' + item.id + '"]').length === 0) {
-          var option = new Option(item.text || item.name, item.id, true, true);
-          $el.append(option);
+    function showToast(msg, type) {
+      const toast = document.createElement('div');
+      toast.className = `alert alert-${type}`;
+      toast.style.position = 'fixed';
+      toast.style.top = '16px';
+      toast.style.right = '16px';
+      toast.style.zIndex = 9999;
+      toast.style.minWidth = '200px';
+      toast.innerText = msg;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    // Filter modal select2 logic
+    function restoreSelect2Value($el, values, url) {
+      if (!values || !values.length) return;
+      $.ajax({
+        url: url,
+        data: { ids: values },
+        dataType: 'json',
+        traditional: true,
+        success: function(data) {
+          data.forEach(function(item) {
+            if ($el.find('option[value="' + item.id + '"]').length === 0) {
+              var option = new Option(item.text || item.name, item.id, true, true);
+              $el.append(option);
+            }
+          });
+          $el.val(values).trigger('change');
         }
       });
-      $el.val(values).trigger('change');
     }
-  });
-}
-$(function() {
-  var $filterModal = $('#filterSystemModal');
-  var $modalContent = $filterModal.find('.modal-content');
-  var filterValues = {
-    tags: JSON.parse(document.getElementById('filter-system-data').dataset.tags || '[]'),
-    contacts: JSON.parse(document.getElementById('filter-system-data').dataset.contacts || '[]')
-  };
-  $('#filterSystemTags').select2({
-    theme: 'bootstrap-5',
-    placeholder: 'Select tag(s)',
-    allowClear: true,
-    width: '100%',
-    dropdownParent: $modalContent,
-    ajax: {
-      url: '/organize/api/tag',
-      dataType: 'json',
-      delay: 250,
-      data: params => ({ search: params.term }),
-      processResults: data => ({ results: data })
-    }
-  });
-  $('#filterSystemContacts').select2({
-    theme: 'bootstrap-5',
-    placeholder: 'Select contact(s)',
-    allowClear: true,
-    width: '100%',
-    dropdownParent: $modalContent,
-    ajax: {
-      url: '/organize/api/contact',
-      dataType: 'json',
-      delay: 250,
-      data: params => ({ search: params.term }),
-      processResults: data => ({ results: data })
-    }
-  });
-  restoreSelect2Value($('#filterSystemTags'), filterValues.tags, '/organize/api/tag');
-  restoreSelect2Value($('#filterSystemContacts'), filterValues.contacts, '/organize/api/contact');
-  // Clear Filter button
-  $('#clearFilterBtnSystem').on('click', function() {
-    window.location.href = '/system/system';
-  });
-});
 
-// AJAX load component list for system detail modal
-document.addEventListener('DOMContentLoaded', function() {
-  // Attach event for all show system detail buttons
-  document.querySelectorAll('button[data-bs-target^="#systemDetailModal-"]').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      let system = null;
-      try {
-        system = JSON.parse(this.getAttribute('onclick').match(/showSystemDetail\((.*)\)/)[1]);
-      } catch (e) {}
-      const systemId = system && system.id ? system.id : this.getAttribute('data-bs-target').replace('#systemDetailModal-', '');
-      const container = document.getElementById('component-list-' + systemId);
-      if (!container) return;
-      container.innerHTML = '<div class="text-muted">Loading components...</div>';
-      fetch(`/system/api/system/${systemId}/components`)
-        .then(res => res.json())
-        .then(data => {
-          if (!data.components || !Array.isArray(data.components) || data.components.length === 0) {
-            container.innerHTML = '<div class="text-muted">No components</div>';
-            return;
-          }
-          let html = '';
-          data.components.forEach((c, idx) => {
-            if (idx > 0) html += '<hr class="my-2">';
-            html += `<div style='font-size: 0.93em;'>`;
-            if (c.name) {
-              html += `<div>Name: <a href='/system/component?search=${encodeURIComponent(c.name)}&pageSize=10' target='_blank'>${c.name}</a></div>`;
-            } else {
-              html += `<div>Name: (no name)</div>`;
-            }
-            html += `<div>App type: ${c.app_type ? `<span class='badge bg-secondary ms-2'>${c.app_type}</span>` : '-'}</div>`;
-            html += `<div>Description: <span class='text-muted small'>${c.description ? c.description.replace(/</g,'&lt;').replace(/>/g,'&gt;') : '-'}</span></div>`;
-            if (c.tags && c.tags.length > 0) {
-              html += `<div>Tags: ` + c.tags.map(tag => `<span class='badge bg-primary text-white me-1' style='font-size:0.93em; padding:0.15em 0.5em;'>${tag.name}</span>`).join('') + `</div>`;
-            } else {
-              html += `<div>Tags: <span class='text-muted'>no tags</span></div>`;
-            }
-            if (c.fqdn && Array.isArray(c.fqdn) && c.fqdn.length > 0) {
-              html += `<div>FQDN: ${c.fqdn.map(f=>`<code>${f}</code>`).join(', ')}</div>`;
-            }
-            if (c.ips && Array.isArray(c.ips) && c.ips.length > 0) {
-              html += `<div>IP: ` + c.ips.map(ipObj => {
-                if (typeof ipObj === 'object' && ipObj.ip) {
-                  return `<a href='/network/ip-address?search=${encodeURIComponent(ipObj.ip)}' target='_blank'>${ipObj.ip}</a>`;
-                } else {
-                  return `<code>${ipObj}</code>`;
-                }
-              }).join(', ') + `</div>`;
-            }
-            html += '</div>';
-          });
-          container.innerHTML = html;
-        })
-        .catch(() => {
-          container.innerHTML = '<div class="text-danger">Error loading components</div>';
-        });
+    $(function() {
+      var $filterModal = $('#filterSystemModal');
+      var $modalContent = $filterModal.find('.modal-content');
+      var filterValues = {
+        tags: JSON.parse(document.getElementById('filter-system-data').dataset.tags || '[]'),
+        contacts: JSON.parse(document.getElementById('filter-system-data').dataset.contacts || '[]')
+      };
+      $('#filterSystemTags').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Select tag(s)',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $modalContent,
+        ajax: {
+          url: '/organize/api/tag',
+          dataType: 'json',
+          delay: 250,
+          data: params => ({ search: params.term }),
+          processResults: data => ({ results: data })
+        }
+      });
+      $('#filterSystemContacts').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Select contact(s)',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $modalContent,
+        ajax: {
+          url: '/organize/api/contact',
+          dataType: 'json',
+          delay: 250,
+          data: params => ({ search: params.term }),
+          processResults: data => ({ results: data })
+        }
+      });
+      restoreSelect2Value($('#filterSystemTags'), filterValues.tags, '/organize/api/tag');
+      restoreSelect2Value($('#filterSystemContacts'), filterValues.contacts, '/organize/api/contact');
+      // Clear Filter button
+      $('#clearFilterBtnSystem').on('click', function() {
+        window.location.href = '/system/system';
+      });
     });
-  });
-});
+    // AJAX load component list for system detail modal
+    document.addEventListener('DOMContentLoaded', function() {
+      // Attach event for all show system detail buttons
+      document.querySelectorAll('button[data-bs-target^="#systemDetailModal-"]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          let system = null;
+          try {
+            system = JSON.parse(this.getAttribute('onclick').match(/showSystemDetail\((.*)\)/)[1]);
+          } catch (e) {}
+          const systemId = system && system.id ? system.id : this.getAttribute('data-bs-target').replace('#systemDetailModal-', '');
+          const container = document.getElementById('component-list-' + systemId);
+          if (!container) return;
+          container.innerHTML = '<div class="text-muted">Loading components...</div>';
+          fetch(`/system/api/system/${systemId}/components`)
+            .then(res => res.json())
+            .then(data => {
+              if (!data.components || !Array.isArray(data.components) || data.components.length === 0) {
+                container.innerHTML = '<div class="text-muted">No components</div>';
+                return;
+              }
+              let html = '';
+              data.components.forEach((c, idx) => {
+                if (idx > 0) html += '<hr class="my-2">';
+                html += `<div style='font-size: 0.93em;'>`;
+                if (c.name) {
+                  html += `<div>Name: <a href='/system/component?search=${encodeURIComponent(c.name)}&pageSize=10' target='_blank'>${c.name}</a></div>`;
+                } else {
+                  html += `<div>Name: (no name)</div>`;
+                }
+                html += `<div>App type: ${c.app_type ? `<span class='badge bg-secondary ms-2'>${c.app_type}</span>` : '-'}</div>`;
+                html += `<div>Description: <span class='text-muted small'>${c.description ? c.description.replace(/</g,'&lt;').replace(/>/g,'&gt;') : '-'}</span></div>`;
+                if (c.tags && c.tags.length > 0) {
+                  html += `<div>Tags: ` + c.tags.map(tag => `<span class='badge bg-primary text-white me-1' style='font-size:0.93em; padding:0.15em 0.5em;'>${tag.name}</span>`).join('') + `</div>`;
+                } else {
+                  html += `<div>Tags: <span class='text-muted'>no tags</span></div>`;
+                }
+                if (c.fqdn && Array.isArray(c.fqdn) && c.fqdn.length > 0) {
+                  html += `<div>FQDN: ${c.fqdn.map(f=>`<code>${f}</code>`).join(', ')}</div>`;
+                }
+                if (c.ips && Array.isArray(c.ips) && c.ips.length > 0) {
+                  html += `<div>IP: ` + c.ips.map(ipObj => {
+                    if (typeof ipObj === 'object' && ipObj.ip) {
+                      return `<a href='/network/ip-address?search=${encodeURIComponent(ipObj.ip)}' target='_blank'>${ipObj.ip}</a>`;
+                    } else {
+                      return `<code>${ipObj}</code>`;
+                    }
+                  }).join(', ') + `</div>`;
+                }
+                html += '</div>';
+              });
+              container.innerHTML = html;
+            })
+            .catch(() => {
+              container.innerHTML = '<div class="text-danger">Error loading components</div>';
+            });
+        });
+      });
+    });
 </script>
 <% if (success) { %>
   <script>
@@ -530,3 +530,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   </script>
 <% } %>
+
+<script src="/vendor/jquery-3.6.0.min.js"></script>
+<link href="/vendor/select2.min.css" rel="stylesheet" />
+<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="/vendor/select2.min.js"></script>
+<script src="/vendor/bootstrap.min.js"></script>
+<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />

@@ -44,19 +44,23 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Domains</label>
-              <select id="domain-select" name="domains[]" class="form-select form-select-sm" multiple></select>
+              <select id="domain-select" name="domains[]" class="form-control" multiple></select>
             </div>
             <div class="mb-3">
               <label class="form-label">Managers</label>
-              <select id="manager-select" name="managers[]" class="form-select form-select-sm" multiple></select>
+              <select id="manager-select" name="managers[]" class="form-control" multiple></select>
             </div>
             <div class="mb-3">
               <label class="form-label">IP Addresses</label>
-              <select id="ip-select" name="ip_addresses[]" class="form-select form-select-sm" multiple></select>
+              <div class="d-flex align-items-center gap-2">
+                <select id="ip-select" name="ip_addresses[]" class="form-control flex-grow-1" multiple></select>
+                <!-- Nếu muốn thêm nút Add IP, thêm vào đây -->
+                <!-- <button type="button" class="btn btn-outline-success btn-sm" id="add-ip-btn" title="Add new IP"><i class="bi bi-plus-circle"></i> Add IP</button> -->
+              </div>
             </div>
             <div class="mb-3">
               <label class="form-label">Tags</label>
-              <select id="tag-select" name="tags[]" class="form-select form-select-sm" multiple></select>
+              <select id="tag-select" name="tags[]" class="form-control" multiple></select>
             </div>
             <div class="mb-3">
               <label class="form-label">System Documents</label>
@@ -76,74 +80,7 @@
 </div>
 <script src="/vendor/jquery-3.6.0.min.js"></script>
 <link href="/vendor/select2.min.css" rel="stylesheet" />
-<link href="/vendor/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-<style>
-/* Đồng bộ style cho tất cả select2 multi-select (Contacts, IP, Tag, Domain) */
-.select2-container--bootstrap-5 .select2-selection--multiple,
-.select2-container--bootstrap-5 .select2-selection.select2-selection--multiple {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  align-items: flex-start;
-  min-height: 38px;
-  height: auto !important;
-  box-sizing: border-box;
-  padding: 0.25rem 0.5rem;
-  gap: 0.25rem;
-  border-radius: 0.375rem !important;
-  background: #fff !important;
-  border: 1px solid #ced4da !important;
-  box-shadow: none !important;
-  transition: border-color .15s ease-in-out,box-shadow .15s ease-in-out;
-}
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__placeholder {
-  order: -1 !important;
-  margin: 0 !important;
-  padding-left: 0 !important;
-  text-align: left !important;
-  display: inline-block !important;
-  align-self: flex-start !important;
-  opacity: 0.7;
-  width: auto !important;
-  min-width: 0 !important;
-  max-width: 100%;
-  visibility: visible !important;
-  line-height: 1.8 !important;
-  padding-top: 0.15rem !important;
-  padding-bottom: 0.15rem !important;
-}
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  align-items: center;
-  min-width: 120px;
-  width: 100%;
-  gap: 0.25rem;
-  overflow: auto;
-  box-sizing: border-box;
-  padding: 0;
-}
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
-  margin: 2px 2px 2px 0;
-  word-break: break-all;
-  max-width: 100%;
-}
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-search--inline {
-  margin-left: 0 !important;
-  padding-left: 0 !important;
-  width: auto !important;
-  min-width: 60px;
-  max-width: 200px;
-  flex: 0 0 auto !important;
-  align-self: center !important;
-  justify-content: flex-start !important;
-}
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-search__field {
-  text-align: left !important;
-  margin-left: 0 !important;
-  padding-left: 0 !important;
-  flex: unset !important;
-}
-</style>
+<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 <script src="/vendor/select2.min.js"></script>
 <script src="/vendor/bootstrap.min.js"></script>
 <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
