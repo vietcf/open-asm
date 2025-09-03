@@ -42,11 +42,11 @@
               <form id="deviceFilterForm">
                 <div class="mb-3">
                   <label for="filterDeviceType" class="form-label">Device Type</label>
-                  <select id="filterDeviceType" name="device_type_id" class="form-select form-select-sm select2" data-selected="<%= typeof device_type_id !== 'undefined' ? device_type_id : '' %>"></select>
+                  <select id="filterDeviceType" name="device_type_id" class="form-control" data-selected="<%= typeof device_type_id !== 'undefined' ? device_type_id : '' %>"></select>
                 </div>
                 <div class="mb-3">
                   <label for="filterDeviceTags" class="form-label">Tags</label>
-                  <select id="filterDeviceTags" name="tags[]" class="form-select form-select-sm select2" multiple data-selected='<%- JSON.stringify(typeof tags !== 'undefined' ? tags : []) %>'></select>
+                  <select id="filterDeviceTags" name="tags[]" class="form-control" multiple data-selected='<%- JSON.stringify(typeof tags !== 'undefined' ? tags : []) %>'></select>
                 </div>
               </form>
             </div>
@@ -374,7 +374,7 @@
                     <ul class="list-unstyled mb-0">
                       <% device.ip_addresses.forEach(function(ip) { %>
                         <li>
-                          <a href="ip-address?search=<%= encodeURIComponent(ip.ip_address || ip.address || ip) %>" 
+                          <a href="/network/ip-address?search=<%= encodeURIComponent(ip.ip_address || ip.address || ip) %>&pageSize=10" 
                              class="text-decoration-none" 
                              title="Search for this IP address">
                             <%= ip.ip_address || ip.address || ip %>
@@ -404,7 +404,7 @@
                     <ul class="list-unstyled mb-0">
                       <% device.contacts.forEach(function(contact) { %>
                         <li>
-                          <a href="contact?search=<%= encodeURIComponent(contact.email) %>" 
+                          <a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>&pageSize=10" 
                              class="text-decoration-none" 
                              title="Search for this contact">
                             <%= contact.email %>
@@ -434,3 +434,10 @@
     <% }) %>
   <% } %>
 </div>
+
+<script src="/vendor/jquery-3.6.0.min.js"></script>
+<link href="/vendor/select2.min.css" rel="stylesheet" />
+<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="/vendor/select2.min.js"></script>
+<script src="/vendor/bootstrap.min.js"></script>
+<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />

@@ -35,7 +35,7 @@
                 </div>
                 <div class="mb-3">
                   <label for="addSubnetTags" class="form-label">Tags</label>
-                  <select id="addSubnetTags" name="tags[]" class="form-select form-select-sm select2" multiple></select>
+                  <select id="addSubnetTags" name="tags[]" class="form-control" multiple></select>
                 </div>
               </form>
             </div>
@@ -84,7 +84,7 @@
                   <td>
                     <% if (subnet.tags && subnet.tags.length > 0) { %>
                       <% subnet.tags.forEach(function(tag) { %>
-                        <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                        <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                       <% }) %>
                     <% } else { %>
                       <span class="text-muted">No tags</span>
@@ -118,6 +118,16 @@
                           <dd class="col-sm-9" data-field="address"></dd>
                           <dt class="col-sm-3">Description</dt>
                           <dd class="col-sm-9" data-field="description"></dd>
+                          <dt class="col-sm-3">Tags</dt>
+                          <dd class="col-sm-9">
+                            <% if (subnet.tags && subnet.tags.length > 0) { %>
+                              <% subnet.tags.forEach(function(tag) { %>
+                                <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
+                              <% }) %>
+                            <% } else { %>
+                              <span class="text-muted">No tags</span>
+                            <% } %>
+                          </dd>
                         </dl>
                         <div class="row mb-2 mt-3">
                           <div class="col-sm-3">
@@ -165,7 +175,7 @@
                           </div>
                           <div class="mb-3">
                             <label for="editSubnetTags-<%= subnet.id %>" class="form-label">Tags</label>
-                            <select id="editSubnetTags-<%= subnet.id %>" name="tags[]" class="form-select form-select-sm select2" multiple data-tags='<%- JSON.stringify(subnet.tags || []) %>' style="min-height:38px;"></select>
+                            <select id="editSubnetTags-<%= subnet.id %>" name="tags[]" class="form-control" multiple data-tags='<%- JSON.stringify(subnet.tags || []) %>' style="min-height:38px;"></select>
                           </div>
                           <div class="modal-footer d-flex justify-content-end px-0">
                             <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
@@ -494,3 +504,10 @@ window.addEventListener('DOMContentLoaded', function() {
     z-index: 2055 !important;
   }
 </style>
+
+<script src="/vendor/jquery-3.6.0.min.js"></script>
+<link href="/vendor/select2.min.css" rel="stylesheet" />
+<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="/vendor/select2.min.js"></script>
+<script src="/vendor/bootstrap.min.js"></script>
+<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
