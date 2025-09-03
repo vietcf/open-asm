@@ -5,6 +5,42 @@ import Contact from '../../models/Contact.js';
 import IpAddress from '../../models/IpAddress.js';
 import Platform from '../../models/Platform.js';
 import DeviceType from '../../models/DeviceType.js';
+import Configuration from '../../models/Configuration.js';
+
+
+// Helper: Load device location options from DB config
+async function getLocationOptionsFromConfig() {
+  let locationOptions = [];
+  try {
+    const config = await Configuration.findById('device_location');
+    if (config && config.value) {
+      let parsed;
+      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
+      if (Array.isArray(parsed)) {
+        locationOptions = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+      }
+    }
+  } catch (e) { locationOptions = []; }
+  if (!Array.isArray(locationOptions) || locationOptions.length === 0) {
+    locationOptions = [
+      { value: 'DC', label: 'DC' },
+      { value: 'DR', label: 'DR' }
+    ];
+  }
+  return locationOptions;
+}
+
+
+// API: Get device location options (for dropdowns, etc)
+async function getLocationOptions(req, res) {
+  try {
+    const options = await getLocationOptionsFromConfig();
+    res.json(options);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}
+
 
 const apiDeviceController = {};
 

@@ -4,7 +4,21 @@ import IpAddress from '../../models/IpAddress.js';
 import Contact from '../../models/Contact.js';
 import System from '../../models/System.js';
 import Tag from '../../models/Tag.js';
-import ipAddressOptions from '../../../config/ipAddressOptions.js';
+import Configuration from '../../models/Configuration.js';
+
+// Helper: Load ipStatusOptions from DB (Configuration)
+async function getIpStatusOptionsFromConfig() {
+  let ipStatusOptions = [];
+  try {
+    const config = await Configuration.findById('ip_address_status');
+    if (config && config.value) {
+      ipStatusOptions = JSON.parse(config.value);
+    }
+  } catch (e) {
+    ipStatusOptions = [];
+  }
+  return ipStatusOptions;
+}
 
 // List all IP addresses (with optional filters)
 const apiIpAddressController = {};
@@ -66,10 +80,13 @@ apiIpAddressController.createIpAddress = async (req, res) => {
     if (!ipv4Regex.test(address)) {
       return res.status(400).json({ error: 'Invalid IPv4 address format' });
     }
-    // Validate status against config
-    const allowedStatus = ipAddressOptions.status.map(s => s.value);
-    if (status && !allowedStatus.includes(status)) {
-      return res.status(400).json({ error: `Invalid status. Allowed: ${allowedStatus.join(', ')}` });
+    // Validate status against config (DB)
+    if (status) {
+      const ipStatusOptions = await getIpStatusOptionsFromConfig();
+      const allowedStatus = ipStatusOptions.map(s => s.value);
+      if (!allowedStatus.includes(status)) {
+        return res.status(400).json({ error: `Invalid status. Allowed: ${allowedStatus.join(', ')}` });
+      }
     }
     // Normalize arrays
     if (tags && !Array.isArray(tags)) tags = [tags];
@@ -144,7 +161,8 @@ apiIpAddressController.updateIpAddress = async (req, res) => {
 
     // Status: only update if provided and not empty string
     if (typeof status === 'string' && status.trim() !== '') {
-      const allowedStatus = ipAddressOptions.status.map(s => s.value);
+      const ipStatusOptions = await getIpStatusOptionsFromConfig();
+      const allowedStatus = ipStatusOptions.map(s => s.value);
       if (!allowedStatus.includes(status.trim())) {
         return res.status(400).json({ error: `Invalid status. Allowed: ${allowedStatus.join(', ')}` });
       }

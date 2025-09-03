@@ -5,8 +5,98 @@ import Configuration from '../models/Configuration.js';
 import Unit from '../models/Unit.js';
 import Contact from '../models/Contact.js';
 import Tag from '../models/Tag.js';
-import firewallConfig from '../../config/firewallOptions.js';
 import ExcelJS from 'exceljs';
+// Helper: load firewall options from DB config
+async function getActionsOptionsFromConfig() {
+  let options = [];
+  try {
+    const config = await Configuration.findById('firewall_rule_action');
+    if (config && config.value) {
+      let parsed;
+      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
+      if (Array.isArray(parsed)) {
+        options = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+      }
+    }
+  } catch (e) { options = []; }
+  if (!Array.isArray(options) || options.length === 0) {
+    options = [
+      { value: 'ALLOW', label: 'Allow' },
+      { value: 'DENY', label: 'Deny' }
+    ];
+  }
+  return options;
+}
+
+async function getStatusOptionsFromConfig() {
+  let options = [];
+  try {
+    const config = await Configuration.findById('firewall_rule_status');
+    if (config && config.value) {
+      let parsed;
+      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
+      if (Array.isArray(parsed)) {
+        options = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+      }
+    }
+  } catch (e) { options = []; }
+  if (!Array.isArray(options) || options.length === 0) {
+    options = [
+      { value: 'ACTIVE', label: 'Active' },
+      { value: 'INACTIVE', label: 'Inactive' }
+    ];
+  }
+  return options;
+}
+
+async function getViolationTypeOptionsFromConfig() {
+  let options = [];
+  try {
+    const config = await Configuration.findById('firewall_rule_violation_type');
+    if (config && config.value) {
+      let parsed;
+      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
+      if (Array.isArray(parsed)) {
+        options = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+      }
+    }
+  } catch (e) { options = []; }
+  if (!Array.isArray(options) || options.length === 0) {
+    options = [
+      { value: 'POLICY', label: 'Policy Violation' },
+      { value: 'CONFIG', label: 'Config Violation' }
+    ];
+  }
+  return options;
+}
+
+async function getFirewallNameOptionsFromConfig() {
+  let options = [];
+  try {
+    const config = await Configuration.findById('firewall_name');
+    if (config && config.value) {
+      let parsed;
+      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
+      if (Array.isArray(parsed)) {
+        options = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+      }
+    }
+  } catch (e) { options = []; }
+  if (!Array.isArray(options) || options.length === 0) {
+    options = [
+      { value: 'USER', label: 'USER' },
+      { value: 'SERVER', label: 'SERVER' },
+      { value: 'INTERNET-IN', label: 'INTERNET-IN' },
+      { value: 'INTERNET-OUT', label: 'INTERNET-OUT' },
+      { value: 'BACKBOND', label: 'BACKBOND' },
+      { value: 'DMZ', label: 'DMZ' },
+      { value: 'PARTNER', label: 'PARTNER' },
+      { value: 'DIGI', label: 'DIGI' }
+    ];
+  }
+  return options;
+}
+
 
 const firewallController = {};
 
@@ -95,10 +185,10 @@ firewallController.ruleList = async (req, res) => {
       success,
       error,
       allowedPageSizes: pageSizeOptions,
-      actionsOptions: firewallConfig.actionsOptions,
-      statusOptions: firewallConfig.statusOptions,
-      violationTypeOptions: firewallConfig.violationTypeOptions,
-      firewallNameOptions: firewallConfig.firewallNameOptions,
+  actionsOptions: await getActionsOptionsFromConfig(),
+  statusOptions: await getStatusOptionsFromConfig(),
+  violationTypeOptions: await getViolationTypeOptionsFromConfig(),
+  firewallNameOptions: await getFirewallNameOptionsFromConfig(),
       firewall_name: filterFirewallName,
       // Pass filter values for modal persistence
       filterUnitId,
@@ -178,22 +268,22 @@ firewallController.addRule = async (req, res) => {
       .map(t => parseInt(t, 10))
       .filter(t => !isNaN(t));
     // Validate action, status, violation_type against config
-    const allowedActions = firewallConfig.actionsOptions.map(a => a.value);
+  const allowedActions = (await getActionsOptionsFromConfig()).map(a => a.value);
     if (!allowedActions.includes(normAction)) {
       req.flash('error', 'Invalid action value.');
       return res.redirect('/firewall/rule');
     }
-    const allowedStatus = firewallConfig.statusOptions.map(s => s.value);
+  const allowedStatus = (await getStatusOptionsFromConfig()).map(s => s.value);
     if (normStatus && !allowedStatus.includes(normStatus)) {
       req.flash('error', 'Invalid status value.');
       return res.redirect('/firewall/rule');
     }
-    const allowedViolationTypes = firewallConfig.violationTypeOptions.map(v => v.value);
+  const allowedViolationTypes = (await getViolationTypeOptionsFromConfig()).map(v => v.value);
     if (normViolationType && !allowedViolationTypes.includes(normViolationType)) {
       req.flash('error', 'Invalid violation type value.');
       return res.redirect('/firewall/rule');
     }
-    const allowedFirewallNames = firewallConfig.firewallNameOptions.map(f => f.value);
+  const allowedFirewallNames = (await getFirewallNameOptionsFromConfig()).map(f => f.value);
     if (!normFirewallName || !allowedFirewallNames.includes(normFirewallName)) {
       req.flash('error', 'Invalid or missing firewall name.');
       return res.redirect('/firewall/rule');
@@ -333,22 +423,22 @@ firewallController.editRule = async (req, res) => {
       return res.redirect('/firewall/rule');
     }
     // Validate enums
-    const allowedActions = firewallConfig.actionsOptions.map(a => a.value);
+  const allowedActions = (await getActionsOptionsFromConfig()).map(a => a.value);
     if (!allowedActions.includes(action)) {
       req.flash('error', 'Invalid action value.');
       return res.redirect('/firewall/rule');
     }
-    const allowedStatus = firewallConfig.statusOptions.map(s => s.value);
+  const allowedStatus = (await getStatusOptionsFromConfig()).map(s => s.value);
     if (status && !allowedStatus.includes(status)) {
       req.flash('error', 'Invalid status value.');
       return res.redirect('/firewall/rule');
     }
-    const allowedViolationTypes = firewallConfig.violationTypeOptions.map(v => v.value);
+  const allowedViolationTypes = (await getViolationTypeOptionsFromConfig()).map(v => v.value);
     if (violation_type && !allowedViolationTypes.includes(violation_type)) {
       req.flash('error', 'Invalid violation type value.');
       return res.redirect('/firewall/rule');
     }
-    const allowedFirewallNames = firewallConfig.firewallNameOptions.map(f => f.value);
+  const allowedFirewallNames = (await getFirewallNameOptionsFromConfig()).map(f => f.value);
     if (!allowedFirewallNames.includes(firewall_name)) {
       req.flash('error', 'Invalid firewall name value.');
       return res.redirect('/firewall/rule');

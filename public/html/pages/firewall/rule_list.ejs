@@ -113,15 +113,15 @@
                 </div>
                 <div class="mb-3 position-relative">
                   <label for="ruleOuId" class="form-label">OU (Unit)</label>
-                  <select id="ruleOuId" name="ou_id" class="form-select form-select-sm select2" style="width:100%" data-placeholder="Select OU (Unit)"></select>
+                  <select id="ruleOuId" name="ou_id" class="form-control" style="width:100%" data-placeholder="Select OU (Unit)"></select>
                 </div>
                 <div class="mb-3">
                   <label for="ruleContacts" class="form-label">Contacts</label>
-                  <select id="ruleContacts" name="contacts[]" class="form-select form-select-sm select2" multiple data-placeholder="Select contact(s)"></select>
+                  <select id="ruleContacts" name="contacts[]" class="form-control" multiple data-placeholder="Select contact(s)"></select>
                 </div>
                 <div class="mb-3 position-relative">
                   <label for="ruleTags" class="form-label">Tags</label>
-                  <select id="ruleTags" name="tags[]" class="form-select form-select-sm select2" multiple></select>
+                  <select id="ruleTags" name="tags[]" class="form-control" multiple></select>
                 </div>
                 <div class="mb-3">
                   <label for="audit_batch" class="form-label">Audit Batch</label>
@@ -198,15 +198,15 @@
             </div>
             <div class="mb-3">
               <label for="filterRuleOuId" class="form-label">OU (Unit)</label>
-              <select id="filterRuleOuId" name="ou_id" class="form-select form-select-sm select2" style="width:100%"></select>
+              <select id="filterRuleOuId" name="ou_id" class="form-control" style="width:100%"></select>
             </div>
             <div class="mb-3">
               <label for="filterRuleContacts" class="form-label">Contacts</label>
-              <select id="filterRuleContacts" name="contacts[]" class="form-select form-select-sm select2" multiple></select>
+              <select id="filterRuleContacts" name="contacts[]" class="form-control" multiple></select>
             </div>
             <div class="mb-3">
               <label for="filterRuleTags" class="form-label">Tags</label>
-              <select id="filterRuleTags" name="tags[]" class="form-select form-select-sm select2" multiple></select>
+              <select id="filterRuleTags" name="tags[]" class="form-control" multiple></select>
             </div>
             <div class="mb-3">
               <label for="filterRuleAuditBatch" class="form-label">Audit Batch</label>
@@ -300,7 +300,7 @@
                     <td>
                       <% if (rule.tagNames && rule.tagNames.length > 0) { %>
                         <% rule.tagNames.forEach(function(tag) { %>
-                          <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag %></span>
+                          <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag %></span>
                         <% }) %>
                       <% } else { %>
                         <span class="text-muted">No tags</span>
@@ -366,7 +366,7 @@
                             <dd class="col-sm-8">
                               <% if (rule.tagNames && rule.tagNames.length > 0) { %>
                                 <% rule.tagNames.forEach(function(tag) { %>
-                                  <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag %></span>
+                                  <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag %></span>
                                 <% }) %>
                               <% } else { %>
                                 <span class="text-muted">No tags</span>
@@ -476,11 +476,11 @@
                             </div>
                             <div class="mb-3 position-relative">
                               <label for="editRuleOuId-<%= rule.id %>" class="form-label">OU (Unit)</label>
-                              <select id="editRuleOuId-<%= rule.id %>" name="ou_id" class="form-select form-select-sm select2" style="width:100%" data-placeholder="Select OU (Unit)"></select>
+                              <select id="editRuleOuId-<%= rule.id %>" name="ou_id" class="form-control" style="width:100%" data-placeholder="Select OU (Unit)"></select>
                             </div>
                             <div class="mb-3">
                               <label for="editRuleContacts-<%= rule.id %>" class="form-label">Contacts</label>
-                              <select id="editRuleContacts-<%= rule.id %>" name="contacts[]" class="form-select form-select-sm select2" multiple data-selected='<%- JSON.stringify(rule.contacts || []) %>' data-placeholder="Select contact(s)"></select>
+                              <select id="editRuleContacts-<%= rule.id %>" name="contacts[]" class="form-control" multiple data-selected='<%- JSON.stringify(rule.contacts || []) %>' data-placeholder="Select contact(s)"></select>
                             </div>
                             <div class="mb-3">
                               <label for="editViolationType-<%= rule.id %>" class="form-label">Violation Type</label>
@@ -505,7 +505,7 @@
                             </div>
                             <div class="mb-3 position-relative">
                               <label for="editRuleTags-<%= rule.id %>" class="form-label">Tags</label>
-                              <select id="editRuleTags-<%= rule.id %>" name="tags[]" class="form-select form-select-sm select2" multiple data-selected='<%- JSON.stringify(rule.tags || []) %>'></select>
+                              <select id="editRuleTags-<%= rule.id %>" name="tags[]" class="form-control" multiple data-selected='<%- JSON.stringify(rule.tags || []) %>'></select>
                             </div>
                             <div class="mb-3">
                               <label for="editAuditBatch-<%= rule.id %>" class="form-label">Audit Batch</label>
@@ -554,9 +554,6 @@
             </div>
           </div>
           <ul class="pagination pagination-sm m-0 float-end">
-            <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-              <a class="page-link" href="?page=<%= page - 1 %>&pageSize=<%= pageSize %>" tabindex="-1">Previous</a>
-            </li>
             <% 
               let startPage = 1;
               let endPage = totalPages;
@@ -572,15 +569,33 @@
                   endPage = page + 4;
                 }
               }
-              for (let i = startPage; i <= endPage; i++) { 
+              // Build filter query string for pagination links
+              function buildRuleFilterQuery() {
+                let params = [];
+                if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+                if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
+                if (typeof firewall_name !== 'undefined' && firewall_name) params.push('firewall_name=' + encodeURIComponent(firewall_name));
+                if (typeof filterUnitId !== 'undefined' && filterUnitId) params.push('ou_id=' + encodeURIComponent(filterUnitId));
+                if (typeof filterTagIds !== 'undefined' && Array.isArray(filterTagIds) && filterTagIds.length) filterTagIds.forEach(function(id) { params.push('tags[]=' + encodeURIComponent(id)); });
+                if (typeof filterContactIds !== 'undefined' && Array.isArray(filterContactIds) && filterContactIds.length) filterContactIds.forEach(function(id) { params.push('contacts[]=' + encodeURIComponent(id)); });
+                if (typeof audit_batch !== 'undefined' && audit_batch) params.push('audit_batch=' + encodeURIComponent(audit_batch));
+                if (typeof violation_type !== 'undefined' && violation_type) params.push('violation_type=' + encodeURIComponent(violation_type));
+                if (typeof status !== 'undefined' && status) params.push('status=' + encodeURIComponent(status));
+                return params.join('&');
+              }
+              const ruleFilterQuery = buildRuleFilterQuery();
             %>
-              <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %>&pageSize=<%= pageSize %>"><%= i %></a></li>
+            <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+              <a class="page-link" href="?page=<%= page - 1 %><%= ruleFilterQuery ? '&' + ruleFilterQuery : '' %>" tabindex="-1">Previous</a>
+            </li>
+            <% for (let i = startPage; i <= endPage; i++) { %>
+              <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= ruleFilterQuery ? '&' + ruleFilterQuery : '' %>"><%= i %></a></li>
             <% } %>
             <% if (endPage < totalPages) { %>
               <li class="page-item disabled"><span class="page-link">...</span></li>
             <% } %>
             <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-              <a class="page-link" href="?page=<%= page + 1 %>&pageSize=<%= pageSize %>">Next</a>
+              <a class="page-link" href="?page=<%= page + 1 %><%= ruleFilterQuery ? '&' + ruleFilterQuery : '' %>">Next</a>
             </li>
           </ul>
         </div>
@@ -1202,3 +1217,10 @@ $(function() {
 });
 </script>
 <!-- END SCRIPT -->
+
+<script src="/vendor/jquery-3.6.0.min.js"></script>
+<link href="/vendor/select2.min.css" rel="stylesheet" />
+<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="/vendor/select2.min.js"></script>
+<script src="/vendor/bootstrap.min.js"></script>
+<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />

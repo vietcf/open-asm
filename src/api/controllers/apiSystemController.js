@@ -1,11 +1,14 @@
 // API Controller for System (ES6 style, refactored)
+
 import System from '../../models/System.js';
 import Unit from '../../models/Unit.js';
 import Tag from '../../models/Tag.js';
 import Contact from '../../models/Contact.js';
 import IpAddress from '../../models/IpAddress.js';
 import Domain from '../../models/Domain.js';
-import systemOptions from '../../../config/systemOptions.js';
+import SystemComponent from '../../models/SystemComponent.js';
+
+import Configuration from '../../models/Configuration.js';
 
 const apiSystemController = {};
 
@@ -16,17 +19,48 @@ function parseArrayField(val) {
   return [];
 }
 
-// Helper: validate system level
-function validateLevel(level) {
+
+// Helper: get level options from DB (same logic as systemController)
+async function getLevelOptionsFromConfig() {
+  let levelOptions = [];
+  try {
+    const config = await Configuration.findById('system_level');
+    if (config && config.value) {
+      let parsed;
+      try {
+        parsed = JSON.parse(config.value);
+      } catch {
+        parsed = null;
+      }
+      if (parsed) {
+        if (Array.isArray(parsed)) {
+          levelOptions = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+        } else if (parsed.levels && Array.isArray(parsed.levels)) {
+          levelOptions = parsed.levels.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+        }
+      } else {
+        // fallback: comma string
+        levelOptions = String(config.value).split(',').map(v => ({ value: v.trim(), label: v.trim() })).filter(x => x.value);
+      }
+    }
+  } catch (e) {
+    levelOptions = [];
+  }
+  if (!Array.isArray(levelOptions) || levelOptions.length === 0) {
+    levelOptions = [1,2,3,4,5].map(v => ({ value: String(v), label: String(v) }));
+  }
+  return levelOptions;
+}
+
+// Helper: validate system level (async)
+async function validateLevel(level) {
   if (level === undefined || level === null || level === '') return null; // Allow empty/null
-  
   const levelStr = String(level);
-  const validLevels = systemOptions.levels.map(l => l.value);
-  
+  const levelOptions = await getLevelOptionsFromConfig();
+  const validLevels = levelOptions.map(l => l.value);
   if (!validLevels.includes(levelStr)) {
     return `Level must be one of: ${validLevels.join(', ')}`;
   }
-  
   return null; // Valid
 }
 
@@ -107,7 +141,7 @@ apiSystemController.create = async (req, res) => {
     }
     
     // Validate level field
-    const levelError = validateLevel(level);
+    const levelError = await validateLevel(level);
     if (levelError) {
       return res.status(400).json({ error: levelError });
     }
@@ -244,7 +278,7 @@ apiSystemController.update = async (req, res) => {
     
     // Validate level field if it's being changed
     if (level !== undefined) {
-      const levelError = validateLevel(level);
+      const levelError = await validateLevel(level);
       if (levelError) {
         return res.status(400).json({ error: levelError });
       }
@@ -366,6 +400,11 @@ apiSystemController.remove = async (req, res) => {
     const id = req.params.id;
     const system = await System.findById(id);
     if (!system) return res.status(404).json({ error: 'System not found' });
+    // Kiểm tra nếu còn component thì không cho xóa system
+  const count = await SystemComponent.countBySystemId(id);
+    if (count > 0) {
+      return res.status(400).json({ error: 'You must delete all components of this system before deleting the system.' });
+    }
     await System.remove(id);
     res.status(204).end();
   } catch (err) {

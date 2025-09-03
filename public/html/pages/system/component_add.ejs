@@ -1,0 +1,135 @@
+<div class="container-fluid">
+<link href="/vendor/select2.min.css" rel="stylesheet" />
+<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+  <div class="row justify-content-center">
+    <div class="col-lg-7 col-md-9">
+      <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Add System Component</h5>
+        </div>
+        <form action="/system/component/add" method="POST">
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label">Component Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control form-control-sm" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Description</label>
+              <textarea name="description" class="form-control form-control-sm" rows="4" placeholder="Enter component description (optional)"></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">System <span class="text-danger">*</span></label>
+              <select id="system-select" name="system_id" class="form-select form-select-sm" required></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">App Type</label>
+              <select name="app_type" class="form-select form-select-sm">
+                <option value="">-- Select App Type --</option>
+                <% if (typeof appTypeOptions !== 'undefined' && Array.isArray(appTypeOptions)) { %>
+                  <% appTypeOptions.forEach(function(opt) { %>
+                    <option value="<%= opt.value %>"><%= opt.label %></option>
+                  <% }) %>
+                <% } %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">FQDN / Domain / IP / URL (comma separated)</label>
+              <textarea name="fqdn" class="form-control form-control-sm" rows="3" placeholder="Example: http://domain:8443, https://domain.com, http://192.168.1.3:8443, ..."></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Contacts</label>
+              <select id="contact-select" name="contacts[]" class="form-control" multiple></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">IP Addresses</label>
+              <select id="ip-select" name="ips[]" class="form-control" multiple></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Tags</label>
+              <select id="tag-select" name="tags[]" class="form-control" multiple></select>
+            </div>
+          </div>
+          <div class="card-footer text-end">
+            <button type="submit" class="btn btn-primary btn-sm">Add Component</button>
+            <a href="/system/component" class="btn btn-outline-secondary btn-sm ms-2">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+$(function() {
+  $('#system-select').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select system',
+    allowClear: true,
+    width: '100%',
+    ajax: {
+      url: '/system/api/system',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({ search: params.term }),
+      processResults: data => ({ results: data }),
+      cache: true
+    }
+  });
+  $('#contact-select').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select contacts',
+    allowClear: true,
+    width: '100%',
+    ajax: {
+      url: '/organize/api/contact',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({ search: params.term }),
+      processResults: data => ({ results: data }),
+      cache: true
+    }
+  });
+  $('#ip-select').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select IP addresses',
+    allowClear: true,
+    width: '100%',
+    ajax: {
+      url: '/network/api/ip-addresses',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({ search: params.term }),
+      processResults: data => ({ results: data }),
+      cache: true
+    }
+  });
+  $('#tag-select').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select tag(s)',
+    allowClear: true,
+    width: '100%',
+    ajax: {
+      url: '/organize/api/tag',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({ search: params.term }),
+      processResults: data => ({ results: data }),
+      cache: true
+    }
+  });
+  $('#domain-select').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select domain(s)',
+    allowClear: true,
+    width: '100%',
+    ajax: {
+      url: '/network/api/domain',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({ search: params.term }),
+      processResults: data => ({ results: data }),
+      cache: true
+    }
+  });
+});
+</script>
+

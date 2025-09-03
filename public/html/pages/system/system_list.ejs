@@ -1,6 +1,6 @@
 <div class="container-fluid">
-  <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/system/system" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
-    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search System, Alias..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+  <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/system/system" style="max-width: 500px; margin-left: auto; margin-top: 2.5rem;">
+    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search by name, system ID..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
     <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
       <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
         <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
@@ -10,58 +10,72 @@
   </form>
   <div class="row mb-3">
     <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
-      <% if (hasPermission('system.create')) { %>
-      <a href="/system/system/add" class="btn btn-primary btn-sm me-2">
-        <i class="bi bi-plus"></i> Add System
-      </a>
+      <% if (hasPermission && hasPermission('system.create')) { %>
+        <a href="/system/system/add" class="btn btn-primary btn-sm me-2">
+          <i class="bi bi-plus"></i> Add System
+        </a>
       <% } %>
-      <!--
-      <form action="/system/import" method="POST" enctype="multipart/form-data" style="display:inline;">
-        <label class="btn btn-success btn-sm mb-0">
-          <i class="bi bi-upload"></i> Import from file
-          <input type="file" name="systemfile" accept=".csv,.txt" style="display:none" onchange="this.form.submit()">
-        </label>
-      </form>
-      -->
-      <!--
-      <button type="button" class="btn btn-secondary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#filterModal">
+      <button type="button" class="btn btn-secondary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#filterSystemModal">
         <i class="bi bi-funnel"></i> Filter
       </button>
-      -->
       <!-- Filter Modal -->
-      <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
+      <div class="modal fade" id="filterSystemModal" tabindex="-1" aria-labelledby="filterSystemModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
           <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="filterModalLabel">Filter Systems</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              <form id="filterForm" method="get" action="">
-                <div class="mb-3">
-                  <label for="filterId" class="form-label">System ID</label>
-                  <input type="text" class="form-control form-control-sm" id="filterId" name="id" placeholder="System ID" value="<%= typeof id !== 'undefined' ? id : '' %>">
+            <form id="systemFilterForm" method="get" action="/system/system">
+              <div class="modal-header">
+                <h5 class="modal-title" id="filterSystemModalLabel">Filter System List</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="row g-2">
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Tags</label>
+                    <select id="filterSystemTags" name="tags[]" class="form-control" multiple></select>
+                  </div>
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Contacts</label>
+                    <select id="filterSystemContacts" name="contacts[]" class="form-control" multiple></select>
+                  </div>
                 </div>
-                <div class="mb-3">
-                  <label for="filterName" class="form-label">System Name</label>
-                  <input type="text" class="form-control form-control-sm" id="filterName" name="name" placeholder="System Name" value="<%= typeof name !== 'undefined' ? name : '' %>">
-                </div>
-                <div class="mb-3">
-                  <label for="filterManager" class="form-label">Manager</label>
-                  <input type="text" class="form-control form-control-sm" id="filterManager" name="manager" placeholder="Manager" value="<%= typeof manager !== 'undefined' ? manager : '' %>">
-                </div>
-                <input type="hidden" name="pageSize" value="<%= pageSize %>">
-              </form>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-              <button type="submit" class="btn btn-primary btn-sm" form="filterForm">Apply Filter</button>
-            </div>
+              </div>
+              <div class="modal-footer d-flex justify-content-end">
+                <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
+              </div>
+            </form>
           </div>
         </div>
       </div>
+      <!-- Filter values for JS (an toàn cho EJS strict, giống IP Address List) -->
+      <div id="filter-system-data"
+        data-tags='<%= JSON.stringify(filterTags || []) %>'
+        data-contacts='<%= JSON.stringify(filterContacts || []) %>' style="display:none"></div>
     </div>
   </div>
+  <% // Declare pagination variables ONCE before the table, to avoid duplicate declaration errors and ReferenceError %>
+  <% 
+    let sysStartItem = (page - 1) * pageSize + 1;
+    let sysEndItem = sysStartItem + (systemList ? systemList.length : 0) - 1;
+    if (!systemList || systemList.length === 0) {
+      sysStartItem = 0;
+      sysEndItem = 0;
+    }
+    let sysStartPage = 1;
+    let sysEndPage = totalPages;
+    if (totalPages > 10) {
+      if (page <= 5) {
+        sysStartPage = 1;
+        sysEndPage = 10;
+      } else if (page + 4 >= totalPages) {
+        sysStartPage = totalPages - 9;
+        sysEndPage = totalPages;
+      } else {
+        sysStartPage = page - 5 + 1;
+        sysEndPage = page + 4;
+      }
+    }
+  %>
   <div class="row">
     <div class="col-12">
       <div class="card">
@@ -72,12 +86,13 @@
           <table class="table table-hover text-nowrap">
             <thead>
               <tr>
-                <th>No.</th>
-                <th>System ID</th>
-                <th>System Name</th>
+                <th>#</th>
+                <th>System Code</th>
+                <th>Name</th>
                 <th>Description</th>
                 <th>Alias</th>
                 <th>Tags</th>
+                <th>Components</th>
                 <th class="text-end">Actions</th>
               </tr>
             </thead>
@@ -109,10 +124,17 @@
                     <td>
                       <% if (system.tags && system.tags.length > 0) { %>
                         <% system.tags.forEach(function(tag) { %>
-                          <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                          <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                         <% }) %>
                       <% } else { %>
                         <span class="text-muted">No tags</span>
+                      <% } %>
+                    </td>
+                    <td>
+                      <% if (system.components && system.components.length > 0) { %>
+                        <% system.components.forEach(function(c, idx) { %>
+                          <a href="/system/component?search=<%= encodeURIComponent(c.name) %>&pageSize=10" target="_blank" class="text-decoration-underline"><%= c.name %></a><%= idx < system.components.length - 1 ? ', ' : '' %>
+                        <% }) %>
                       <% } %>
                     </td>
                     <td class="text-end">
@@ -140,55 +162,31 @@
                         <div class="modal-body">
                           <dl class="row mb-0">
                             <dt class="col-sm-3">ID (DB)</dt>
-                            <dd class="col-sm-9">
-                              <% if (typeof system.id !== 'undefined' && system.id !== null) { %>
-                                <%= system.id %>
-                              <% } else { %>
-                                <span class="text-muted">No data</span>
-                              <% } %>
-                            </dd>
+                            <dd class="col-sm-9"><%= typeof system.id !== 'undefined' && system.id !== null ? system.id : 'No data' %></dd>
                             <dt class="col-sm-3">System Code</dt>
-                            <dd class="col-sm-9">
-                              <% if (system.system_id) { %>
-                                <%= system.system_id %>
-                              <% } else { %>
-                                <span class="text-muted">No data</span>
-                              <% } %>
-                            </dd>
+                            <dd class="col-sm-9"><%= system.system_id || 'No data' %></dd>
                             <dt class="col-sm-3">System Name</dt>
-                            <dd class="col-sm-9">
-                              <% if (system.name) { %>
-                                <%= system.name %>
-                              <% } else { %>
-                                <span class="text-muted">No data</span>
-                              <% } %>
-                            </dd>
+                            <dd class="col-sm-9"><%= system.name || 'No data' %></dd>
                             <dt class="col-sm-3">Level</dt>
-                            <dd class="col-sm-9">
-                              <% if (system.level) { %>
-                                <%= system.level %>
-                              <% } else { %>
-                                <span class="text-muted">No data</span>
-                              <% } %>
-                            </dd>
+                            <dd class="col-sm-9"><%= system.level || 'No data' %></dd>
                             <dt class="col-sm-3">Manager(s)</dt>
                             <dd class="col-sm-9">
                               <% if (system.contacts && system.contacts.length > 0) { %>
                                 <% system.contacts.forEach(function(contact, idx) { %>
                                   <% if (contact.email) { %>
-                                    <a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>" target="_blank"><%= contact.name %> (<%= contact.email %>)</a><%= idx < system.contacts.length - 1 ? ', ' : '' %>
+                                    <a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>" target="_blank"><%= contact.email %></a><%= idx < system.contacts.length - 1 ? ', ' : '' %>
                                   <% } else { %>
-                                    <%= contact.name %><%= idx < system.contacts.length - 1 ? ', ' : '' %>
+                                    <span class="text-muted">No email</span><%= idx < system.contacts.length - 1 ? ', ' : '' %>
                                   <% } %>
                                 <% }) %>
                               <% } else { %>
-                                <span class="text-muted">No manager</span>
+                                No manager
                               <% } %>
                             </dd>
                             <dt class="col-sm-3">Department</dt>
                             <dd class="col-sm-9">
                               <% if (system.department_name) { %>
-                                <%= system.department_name %>
+                                <a href="/organize/unit?search=<%= encodeURIComponent(system.department_name) %>" target="_blank"><%= system.department_name %></a>
                               <% } else { %>
                                 <span class="text-muted">No data</span>
                               <% } %>
@@ -203,40 +201,40 @@
                                 <span class="text-muted">No alias</span>
                               <% } %>
                             </dd>
+                            <dt class="col-sm-3">FQDN</dt>
+                            <dd class="col-sm-9">
+                              <% if (Array.isArray(system.fqdn) && system.fqdn.length > 0) { %>
+                                <ul class="mb-0 ps-3" style="list-style: disc inside;">
+                                  <% system.fqdn.forEach(function(f) { %>
+                                    <li>
+                                      <% if (/^https?:\/\//.test(f)) { %>
+                                        <a href="<%= f %>" target="_blank" rel="noopener noreferrer"><%= f %></a>
+                                      <% } else { %>
+                                        <code><%= f %></code>
+                                      <% } %>
+                                    </li>
+                                  <% }) %>
+                                </ul>
+                              <% } else { %>
+                                <span class="text-muted">No FQDN</span>
+                              <% } %>
+                            </dd>
                             <dt class="col-sm-3">Tags</dt>
                             <dd class="col-sm-9">
                               <% if (system.tags && system.tags.length > 0) { %>
                                 <% system.tags.forEach(function(tag) { %>
-                                  <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                                  <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                                 <% }) %>
                               <% } else { %>
                                 <span class="text-muted">No tags</span>
                               <% } %>
                             </dd>
                             <dt class="col-sm-3">Created At</dt>
-                            <dd class="col-sm-9">
-                              <% if (system.created_at) { %>
-                                <%= system.created_at.toLocaleString ? system.created_at.toLocaleString() : system.created_at %>
-                              <% } else { %>
-                                <span class="text-muted">No data</span>
-                              <% } %>
-                            </dd>
+                            <dd class="col-sm-9"><%= system.created_at ? (system.created_at.toLocaleString ? system.created_at.toLocaleString() : system.created_at) : 'No data' %></dd>
                             <dt class="col-sm-3">Updated At</dt>
-                            <dd class="col-sm-9">
-                              <% if (system.updated_at) { %>
-                                <%= system.updated_at.toLocaleString ? system.updated_at.toLocaleString() : system.updated_at %>
-                              <% } else { %>
-                                <span class="text-muted">No data</span>
-                              <% } %>
-                            </dd>
+                            <dd class="col-sm-9"><%= system.updated_at ? (system.updated_at.toLocaleString ? system.updated_at.toLocaleString() : system.updated_at) : '<span class="text-muted">No data</span>' %></dd>
                             <dt class="col-sm-3">Updated By</dt>
-                            <dd class="col-sm-9">
-                              <% if (system.updated_by) { %>
-                                <%= system.updated_by %>
-                              <% } else { %>
-                                <span class="text-muted">No data</span>
-                              <% } %>
-                            </dd>
+                            <dd class="col-sm-9"><%= system.updated_by || '<span class="text-muted">No data</span>' %></dd>
                             <dt class="col-sm-3">Description</dt>
                             <dd class="col-sm-9">
                               <% if (system.description) { %>
@@ -254,16 +252,8 @@
                                 <li>
                                   <% if (typeof ipObj === 'object' && ipObj.ip) { %>
                                     <a href="/network/ip-address?search=<%= encodeURIComponent(ipObj.ip) %>" target="_blank"><%= ipObj.ip %></a>
-                                    <% if (ipObj.contact_name && ipObj.contact_email) { %>
-                                      - <a href="/organize/contact?search=<%= encodeURIComponent(ipObj.contact_email) %>" target="_blank"><%= ipObj.contact_email %></a>
-                                    <% } else if (ipObj.contact_name) { %>
-                                      - <%= ipObj.contact_name %>
-                                    <% } %>
-                                    <% if (ipObj.server_name) { %>
-                                      (<a href="/server/server/list?search=<%= encodeURIComponent(ipObj.ip) %>" target="_blank"><%= ipObj.server_name %></a>)
-                                    <% } %>
                                   <% } else { %>
-                                    <a href="/network/ip-address?search=<%= encodeURIComponent(ipObj) %>" target="_blank"><%= ipObj %></a>
+                                    <%= ipObj %>
                                   <% } %>
                                 </li>
                               <% }) %>
@@ -287,7 +277,6 @@
                               <li>No domains</li>
                             <% } %>
                           </ul>
-                          <!-- Insert docs section at end of modal-body -->
                           <h6>System Documents</h6>
                           <ul class="mb-3">
                             <% if (system.docs && system.docs.length > 0) { %>
@@ -302,6 +291,28 @@
                               <li>No documents</li>
                             <% } %>
                           </ul>
+                          <hr>
+                          <h6 class="text-center fw-bold">Component List</h6>
+                          <div id="component-list-<%= system.id %>">
+                            <div class="text-muted">Loading components...</div>
+                          </div>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- System Detail Modal -->
+                  <div class="modal fade" id="systemDetailModal-<%= system.id %>" tabindex="-1" aria-labelledby="systemDetailModalLabel-<%= system.id %>" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                      <div class="modal-content">
+                        <div class="modal-header">
+                          <h5 class="modal-title" id="systemDetailModalLabel-<%= system.id %>">System Detail</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                          <!-- ...existing modal content... -->
                         </div>
                         <div class="modal-footer">
                           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
@@ -320,50 +331,41 @@
           <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
             <div>
               <% 
-                let startItem = (page - 1) * pageSize + 1;
-                let endItem = startItem + (systemList ? systemList.length : 0) - 1;
-                if (!systemList || systemList.length === 0) {
-                  startItem = 0;
-                  endItem = 0;
-                }
+                // Only declare these variables ONCE at the top of the file or before the table, not here again
+                // So here, just use sysStartItem, sysEndItem, sysStartPage, sysEndPage if already declared
               %>
-              <span>Showing <%= startItem %> - <%= endItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : (typeof total !== 'undefined' ? total : 0) %> systems</span>
+              <span>Showing <%= sysStartItem %> - <%= sysEndItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> systems</span>
             </div>
             <ul class="pagination pagination-sm m-0 float-end">
               <% 
-                let startPage = 1;
-                let endPage = totalPages;
-                if (totalPages > 10) {
-                  if (page <= 5) {
-                    startPage = 1;
-                    endPage = 10;
-                  } else if (page + 4 >= totalPages) {
-                    startPage = totalPages - 9;
-                    endPage = totalPages;
-                  } else {
-                    startPage = page - 5 + 1;
-                    endPage = page + 4;
-                  }
+                function buildFilterQuery() {
+                  let params = [];
+                  if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+                  if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
+                  if (typeof filterTags !== 'undefined' && filterTags.length) filterTags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag)); });
+                  if (typeof filterContacts !== 'undefined' && filterContacts.length) filterContacts.forEach(function(c) { params.push('contacts[]=' + encodeURIComponent(c)); });
+                  return params.join('&');
                 }
+                const filterQuery = buildFilterQuery();
               %>
               <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= page - 1 %>&pageSize=<%= pageSize %>" tabindex="-1">Previous</a>
+                <a class="page-link" href="?page=<%= page - 1 %><%= filterQuery ? '&' + filterQuery : '' %>" tabindex="-1">Previous</a>
               </li>
-              <% if (startPage > 1) { %>
-                <li class="page-item"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=1&pageSize=<%= pageSize %>">1</a></li>
-                <% if (startPage > 2) { %>
+              <% if (sysStartPage > 1) { %>
+                <li class="page-item"><a class="page-link" href="?page=1<%= filterQuery ? '&' + filterQuery : '' %>">1</a></li>
+                <% if (sysStartPage > 2) { %>
                   <li class="page-item disabled"><span class="page-link">...</span></li>
                 <% } %>
               <% } %>
-              <% for (let i = startPage; i <= endPage; i++) { %>
-                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= i %>&pageSize=<%= pageSize %>"><%= i %></a></li>
+              <% for (let i = sysStartPage; i <= sysEndPage; i++) { %>
+                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= filterQuery ? '&' + filterQuery : '' %>"><%= i %></a></li>
               <% } %>
-              <% if (endPage < totalPages) { %>
+              <% if (sysEndPage < totalPages) { %>
                 <li class="page-item disabled"><span class="page-link">...</span></li>
-                <li class="page-item"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= totalPages %>&pageSize=<%= pageSize %>"><%= totalPages %></a></li>
+                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= filterQuery ? '&' + filterQuery : '' %>"><%= totalPages %></a></li>
               <% } %>
               <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= page + 1 %>&pageSize=<%= pageSize %>">Next</a>
+                <a class="page-link" href="?page=<%= page + 1 %><%= filterQuery ? '&' + filterQuery : '' %>">Next</a>
               </li>
             </ul>
           </div>
@@ -371,27 +373,148 @@
       </div>
     </div>
   </div>
-</div>
 <script>
-function confirmDeleteSystem(form, name) {
-  if (confirm('Are you sure you want to delete the system: ' + name + '?')) {
-    form._deleting = true;
-    return true;
-  }
-  return false;
-}
-function showToast(msg, type) {
-  const toast = document.createElement('div');
-  toast.className = `alert alert-${type}`;
-  toast.style.position = 'fixed';
-  toast.style.top = '16px';
-  toast.style.right = '16px';
-  toast.style.zIndex = 9999;
-  toast.style.minWidth = '200px';
-  toast.innerText = msg;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
-}
+    function confirmDeleteSystem(form, name) {
+      if (confirm('Are you sure you want to delete the system: ' + name + '?')) {
+        form._deleting = true;
+        return true;
+      }
+      return false;
+    }
+
+    function showToast(msg, type) {
+      const toast = document.createElement('div');
+      toast.className = `alert alert-${type}`;
+      toast.style.position = 'fixed';
+      toast.style.top = '16px';
+      toast.style.right = '16px';
+      toast.style.zIndex = 9999;
+      toast.style.minWidth = '200px';
+      toast.innerText = msg;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    // Filter modal select2 logic
+    function restoreSelect2Value($el, values, url) {
+      if (!values || !values.length) return;
+      $.ajax({
+        url: url,
+        data: { ids: values },
+        dataType: 'json',
+        traditional: true,
+        success: function(data) {
+          data.forEach(function(item) {
+            if ($el.find('option[value="' + item.id + '"]').length === 0) {
+              var option = new Option(item.text || item.name, item.id, true, true);
+              $el.append(option);
+            }
+          });
+          $el.val(values).trigger('change');
+        }
+      });
+    }
+
+    $(function() {
+      var $filterModal = $('#filterSystemModal');
+      var $modalContent = $filterModal.find('.modal-content');
+      var filterValues = {
+        tags: JSON.parse(document.getElementById('filter-system-data').dataset.tags || '[]'),
+        contacts: JSON.parse(document.getElementById('filter-system-data').dataset.contacts || '[]')
+      };
+      $('#filterSystemTags').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Select tag(s)',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $modalContent,
+        ajax: {
+          url: '/organize/api/tag',
+          dataType: 'json',
+          delay: 250,
+          data: params => ({ search: params.term }),
+          processResults: data => ({ results: data })
+        }
+      });
+      $('#filterSystemContacts').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Select contact(s)',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $modalContent,
+        ajax: {
+          url: '/organize/api/contact',
+          dataType: 'json',
+          delay: 250,
+          data: params => ({ search: params.term }),
+          processResults: data => ({ results: data })
+        }
+      });
+      restoreSelect2Value($('#filterSystemTags'), filterValues.tags, '/organize/api/tag');
+      restoreSelect2Value($('#filterSystemContacts'), filterValues.contacts, '/organize/api/contact');
+      // Clear Filter button
+      $('#clearFilterBtnSystem').on('click', function() {
+        window.location.href = '/system/system';
+      });
+    });
+    // AJAX load component list for system detail modal
+    document.addEventListener('DOMContentLoaded', function() {
+      // Attach event for all show system detail buttons
+      document.querySelectorAll('button[data-bs-target^="#systemDetailModal-"]').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          let system = null;
+          try {
+            system = JSON.parse(this.getAttribute('onclick').match(/showSystemDetail\((.*)\)/)[1]);
+          } catch (e) {}
+          const systemId = system && system.id ? system.id : this.getAttribute('data-bs-target').replace('#systemDetailModal-', '');
+          const container = document.getElementById('component-list-' + systemId);
+          if (!container) return;
+          container.innerHTML = '<div class="text-muted">Loading components...</div>';
+          fetch(`/system/api/system/${systemId}/components`)
+            .then(res => res.json())
+            .then(data => {
+              if (!data.components || !Array.isArray(data.components) || data.components.length === 0) {
+                container.innerHTML = '<div class="text-muted">No components</div>';
+                return;
+              }
+              let html = '';
+              data.components.forEach((c, idx) => {
+                if (idx > 0) html += '<hr class="my-2">';
+                html += `<div style='font-size: 0.93em;'>`;
+                if (c.name) {
+                  html += `<div>Name: <a href='/system/component?search=${encodeURIComponent(c.name)}&pageSize=10' target='_blank'>${c.name}</a></div>`;
+                } else {
+                  html += `<div>Name: (no name)</div>`;
+                }
+                html += `<div>App type: ${c.app_type ? `<span class='badge bg-secondary ms-2'>${c.app_type}</span>` : '-'}</div>`;
+                html += `<div>Description: <span class='text-muted small'>${c.description ? c.description.replace(/</g,'&lt;').replace(/>/g,'&gt;') : '-'}</span></div>`;
+                if (c.tags && c.tags.length > 0) {
+                  html += `<div>Tags: ` + c.tags.map(tag => `<span class='badge bg-primary text-white me-1' style='font-size:0.93em; padding:0.15em 0.5em;'>${tag.name}</span>`).join('') + `</div>`;
+                } else {
+                  html += `<div>Tags: <span class='text-muted'>no tags</span></div>`;
+                }
+                if (c.fqdn && Array.isArray(c.fqdn) && c.fqdn.length > 0) {
+                  html += `<div>FQDN: ${c.fqdn.map(f=>`<code>${f}</code>`).join(', ')}</div>`;
+                }
+                if (c.ips && Array.isArray(c.ips) && c.ips.length > 0) {
+                  html += `<div>IP: ` + c.ips.map(ipObj => {
+                    if (typeof ipObj === 'object' && ipObj.ip) {
+                      return `<a href='/network/ip-address?search=${encodeURIComponent(ipObj.ip)}' target='_blank'>${ipObj.ip}</a>`;
+                    } else {
+                      return `<code>${ipObj}</code>`;
+                    }
+                  }).join(', ') + `</div>`;
+                }
+                html += '</div>';
+              });
+              container.innerHTML = html;
+            })
+            .catch(() => {
+              container.innerHTML = '<div class="text-danger">Error loading components</div>';
+            });
+        });
+      });
+    });
 </script>
 <% if (success) { %>
   <script>
@@ -407,3 +530,10 @@ function showToast(msg, type) {
     });
   </script>
 <% } %>
+
+<script src="/vendor/jquery-3.6.0.min.js"></script>
+<link href="/vendor/select2.min.css" rel="stylesheet" />
+<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="/vendor/select2.min.js"></script>
+<script src="/vendor/bootstrap.min.js"></script>
+<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />

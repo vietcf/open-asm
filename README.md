@@ -132,6 +132,42 @@ pm2 start ecosystem.config.json
 
 The application will be available at `http://localhost:3000`
 
+## ⚙️ Dynamic Parameter Configuration (System Configuration UI)
+
+The application supports dynamic configuration of system parameters directly from the web UI (Administrator → System Configuration).
+
+### How to Use
+
+1. **Navigate to:** `Administrator` → `System Configuration` in the web interface.
+2. **Add/Edit Configuration:**
+	- Click **Add Configuration** to create a new parameter.
+	- Click the edit (pencil) icon to update an existing parameter.
+3. **Common Parameters:**
+	- `page_size`: Controls allowed page size options for all lists (e.g. `10,20,50,100` or `[10,20,50,100]`).
+	- `device_page_size`: (optional) Override page size options for Device List only.
+	- `system_level`: JSON object/array for system level options (see below).
+	- `device_location`, `server_type`, `ip_address_status`, ...: Option lists for select fields, as JSON array or string.
+
+### Example: Configure Page Size
+
+| Key              | Value                | Description                        |
+|------------------|----------------------|------------------------------------|
+| `page_size`      | `10,20,50,100`       | Allowed page sizes for all lists   |
+| `device_page_size` | `[10,20,50,100]`   | (Optional) Device List page sizes  |
+
+### Example: Configure System Level
+
+| Key            | Value (JSON)                                                                                 | Description                |
+|----------------|---------------------------------------------------------------------------------------------|----------------------------|
+| `system_level` | `{ "levels": [ { "value": "1", "label": "Level 1" }, { "value": "2", "label": "Level 2" } ] }` | System level options       |
+
+### Notes
+- Most select/multi-select option lists (device type, location, status, etc.) are loaded from the configuration table and can be managed via the UI.
+- Changes take effect immediately after saving.
+- For advanced options, use valid JSON for array/object values.
+
+See also: **Administrator → System Configuration** in the app for a full list of configurable parameters.
+
 ## 📁 Project Structure
 
 ```

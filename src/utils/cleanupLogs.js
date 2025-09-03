@@ -33,7 +33,7 @@ async function deleteOldLogs() {
 // Schedule: every day at 2:00 AM
 const job = cron.schedule('0 2 * * *', async () => {
   try {
-    const [result] = await deleteOldLogs();
+    const result = await deleteOldLogs();
     const retentionDays = await getRetentionDays();
     console.log(`[CLEANUP] Deleted old system logs older than ${retentionDays} days at`, new Date().toISOString());
   } catch (err) {

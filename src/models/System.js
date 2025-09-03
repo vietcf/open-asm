@@ -1,12 +1,13 @@
+
 import { pool } from '../../config/config.js';
 
 class System {
   // ===== CRUD METHODS =====
-  static async create({ system_id, name, level, department_id, alias, description, updated_by }) {
+  static async create({ system_id, name, level, department_id, alias, description, fqdn, updated_by }) {
     const result = await pool.query(
-      `INSERT INTO systems (system_id, name, level, department_id, alias, description, updated_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [system_id, name, level, department_id, alias, description, updated_by]
+      `INSERT INTO systems (system_id, name, level, department_id, alias, description, fqdn, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+      [system_id, name, level, department_id, alias, description, fqdn, updated_by]
     );
     return result.rows[0];
   }
@@ -31,12 +32,7 @@ class System {
 
   static async findById(id) {
     const result = await pool.query(
-      `SELECT s.*, u.name AS department_name,
-        ARRAY(
-          SELECT c.name FROM system_contact sc
-          JOIN contacts c ON sc.contact_id = c.id
-          WHERE sc.system_id = s.id
-        ) AS managers
+      `SELECT s.*, u.name AS department_name
        FROM systems s
        LEFT JOIN units u ON s.department_id = u.id
        WHERE s.id = $1`,
@@ -45,12 +41,12 @@ class System {
     return result.rows[0];
   }
 
-  static async update(id, { system_id, name, level, department_id, alias, description, updated_by }, client) {
+  static async update(id, { system_id, name, level, department_id, alias, description, fqdn, updated_by }, client) {
     const executor = client || pool;
     const result = await executor.query(
-      `UPDATE systems SET system_id=$1, name=$2, level=$3, department_id=$4, alias=$5, description=$6, updated_at=CURRENT_TIMESTAMP, updated_by=$7
-       WHERE id=$8 RETURNING *`,
-      [system_id, name, level, department_id, alias, description, updated_by, id]
+      `UPDATE systems SET system_id=$1, name=$2, level=$3, department_id=$4, alias=$5, description=$6, fqdn=$7, updated_at=CURRENT_TIMESTAMP, updated_by=$8
+       WHERE id=$9 RETURNING *`,
+      [system_id, name, level, department_id, alias, description, fqdn, updated_by, id]
     );
     return result.rows[0];
   }
@@ -229,6 +225,24 @@ class System {
   static async findFilteredList({ search = '', page = 1, pageSize = 10 }) {
     const offset = (page - 1) * pageSize;
     const q = `%${search}%`;
+    // filterTags and filterContacts are arrays of ids (as string)
+    const filterTags = arguments[0].filterTags || [];
+    const filterContacts = arguments[0].filterContacts || [];
+    let whereClauses = [
+      "($1 = '' OR s.name ILIKE $2 OR s.system_id ILIKE $2 OR s.description ILIKE $2 OR EXISTS (SELECT 1 FROM unnest(s.alias) a WHERE a ILIKE $2) OR t.name ILIKE $2 OR c.name ILIKE $2 OR ip.ip_address::text ILIKE $2 OR d.domain ILIKE $2 OR comp.name ILIKE $2)"
+    ];
+    let params = [search, q];
+    let paramIdx = 3;
+    if (filterTags.length > 0) {
+      whereClauses.push(`EXISTS (SELECT 1 FROM tag_object tobj2 WHERE tobj2.object_type = 'system' AND tobj2.object_id = s.id AND tobj2.tag_id = ANY($${paramIdx}))`);
+      params.push(filterTags.map(Number));
+      paramIdx++;
+    }
+    if (filterContacts.length > 0) {
+      whereClauses.push(`EXISTS (SELECT 1 FROM system_contact sc2 WHERE sc2.system_id = s.id AND sc2.contact_id = ANY($${paramIdx}))`);
+      params.push(filterContacts.map(Number));
+      paramIdx++;
+    }
     const result = await pool.query(`
       SELECT s.*,
         u.name AS department_name,
@@ -249,25 +263,34 @@ class System {
       LEFT JOIN system_domain sd ON sd.system_id = s.id
       LEFT JOIN domains d ON d.id = sd.domain_id
       LEFT JOIN file_uploads f ON f.object_type = 'system' AND f.object_id = s.id
-      WHERE (
-        $1 = '' OR
-        s.name ILIKE $2 OR
-        s.system_id ILIKE $2 OR
-        EXISTS (SELECT 1 FROM unnest(s.alias) a WHERE a ILIKE $2) OR
-        t.name ILIKE $2 OR
-        c.name ILIKE $2 OR
-        ip.ip_address::text ILIKE $2 OR
-        d.domain ILIKE $2
-      )
+      LEFT JOIN system_components comp ON comp.system_id = s.id
+      WHERE ${whereClauses.join(' AND ')}
       GROUP BY s.id, u.name
       ORDER BY s.id
-      LIMIT $3 OFFSET $4
-    `, [search, q, pageSize, offset]);
+      LIMIT $${paramIdx} OFFSET $${paramIdx + 1}
+    `, [...params, pageSize, offset]);
     return result.rows;
   }
 
   static async countFiltered({ search = '' }) {
     const q = `%${search}%`;
+    const filterTags = arguments[0].filterTags || [];
+    const filterContacts = arguments[0].filterContacts || [];
+    let whereClauses = [
+      "($1 = '' OR s.name ILIKE $2 OR s.system_id ILIKE $2 OR s.description ILIKE $2 OR EXISTS (SELECT 1 FROM unnest(s.alias) a WHERE a ILIKE $2) OR t.name ILIKE $2 OR c.name ILIKE $2 OR ip.ip_address::text ILIKE $2 OR d.domain ILIKE $2 OR comp.name ILIKE $2)"
+    ];
+    let params = [search, q];
+    let paramIdx = 3;
+    if (filterTags.length > 0) {
+      whereClauses.push(`EXISTS (SELECT 1 FROM tag_object tobj2 WHERE tobj2.object_type = 'system' AND tobj2.object_id = s.id AND tobj2.tag_id = ANY($${paramIdx}))`);
+      params.push(filterTags.map(Number));
+      paramIdx++;
+    }
+    if (filterContacts.length > 0) {
+      whereClauses.push(`EXISTS (SELECT 1 FROM system_contact sc2 WHERE sc2.system_id = s.id AND sc2.contact_id = ANY($${paramIdx}))`);
+      params.push(filterContacts.map(Number));
+      paramIdx++;
+    }
     const result = await pool.query(`
       SELECT COUNT(DISTINCT s.id) AS count
       FROM systems s
@@ -279,17 +302,9 @@ class System {
       LEFT JOIN ip_addresses ip ON ip.id = sip.ip_id
       LEFT JOIN system_domain sd ON sd.system_id = s.id
       LEFT JOIN domains d ON d.id = sd.domain_id
-      WHERE (
-        $1 = '' OR
-        s.name ILIKE $2 OR
-        s.system_id ILIKE $2 OR
-        EXISTS (SELECT 1 FROM unnest(s.alias) a WHERE a ILIKE $2) OR
-        t.name ILIKE $2 OR
-        c.name ILIKE $2 OR
-        ip.ip_address::text ILIKE $2 OR
-        d.domain ILIKE $2
-      )
-    `, [search, q]);
+      LEFT JOIN system_components comp ON comp.system_id = s.id
+      WHERE ${whereClauses.join(' AND ')}
+    `, params);
     return parseInt(result.rows[0].count, 10);
   }
 
@@ -368,6 +383,15 @@ class System {
     const result = await pool.query(sql, [name]);
     return result.rows;
   }
+
+    /**
+   * Remove a system-ip link for a given system and ip
+   */
+  static async removeIP(systemId, ipId, client) {
+    const executor = client || pool;
+    await executor.query('DELETE FROM system_ip WHERE system_id = $1 AND ip_id = $2', [systemId, ipId]);
+  }
+
 }
 
 export default System;

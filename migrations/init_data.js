@@ -85,11 +85,152 @@ async function seedPermissionsAndRoles(pool) {
 async function seedConfiguration(pool) {
   // Thêm cấu hình mặc định nếu cần
   try {
-    await pool.query(`INSERT INTO configuration (key, value) VALUES ('site_name', 'VCB ASM') ON CONFLICT (key) DO NOTHING;`);
-    // await pool.query(`INSERT INTO configuration (key, value) VALUES ('default_language', 'en') ON CONFLICT (key) DO NOTHING;`);
-    await pool.query(`INSERT INTO configuration (key, value) VALUES ('page_size', '10,20,50') ON CONFLICT (key) DO NOTHING;`);
-    await pool.query(`INSERT INTO configuration (key, value) VALUES ('log_level', 'info') ON CONFLICT (key) DO NOTHING;`);
-    await pool.query(`INSERT INTO configuration (key, value) VALUES ('log_retention_days', '30') ON CONFLICT (key) DO NOTHING;`);
+  await pool.query(`INSERT INTO configuration (key, value, description) VALUES ('site_name', 'VCB ASM', 'Cấu hình sitename') ON CONFLICT (key) DO NOTHING;`);
+  await pool.query(`INSERT INTO configuration (key, value, description) VALUES ('page_size', '10,20,50', 'Cấu hình page size') ON CONFLICT (key) DO NOTHING;`);
+  await pool.query(`INSERT INTO configuration (key, value, description) VALUES ('log_level', 'info', 'Cấu hình level log') ON CONFLICT (key) DO NOTHING;`);
+  await pool.query(`INSERT INTO configuration (key, value, description) VALUES ('log_retention_days', '30', 'Số ngày lưu log') ON CONFLICT (key) DO NOTHING;`);
+
+
+    // Chèn trực tiếp các giá trị JSON khởi tạo cho các cấu hình động
+    // Định nghĩa cấu hình động dạng JS object, dễ đọc và bảo trì
+    const dynamicConfigs = [
+      {
+        key: 'firewall_name',
+        value: [
+          { key: 'USER', label: 'USER' },
+          { key: 'SERVER', label: 'SERVER' },
+          { key: 'INTERNET-IN', label: 'INTERNET-IN' },
+          { key: 'INTERNET-OUT', label: 'INTERNET-OUT' },
+          { key: 'BACKBOND', label: 'BACKBOND' },
+          { key: 'DMZ', label: 'DMZ' },
+          { key: 'PARTNER', label: 'PARTNER' },
+          { key: 'DIGI', label: 'DIGI' }
+        ],
+        description: 'Tên firewall'
+      },
+      {
+        key: 'priv_account_type',
+        value: [
+          { value: 'OS', label: 'Operating System (OS)' },
+          { value: 'APP', label: 'Application (APP)' },
+          { value: 'DB', label: 'Database (DB)' }
+        ],
+        description: 'Loại tài khoản'
+      },
+      {
+        key: 'priv_account_manage_type',
+        value: [
+          { value: 'SELF', label: 'Self-managed' },
+          { value: 'PAM', label: 'Managed by PAM' },
+          { value: 'ENVELOPE', label: 'Envelope method' }
+        ],
+        description: 'Phương thức quản lý tài khoản'
+      },
+      {
+        key: 'device_location',
+        value: [
+          { value: 'DC', label: 'Data Center DR' },
+          { value: 'DR', label: 'Data Center DC' },
+          { value: 'CMC', label: 'CMC Data Center' },
+          { value: 'BRANCH', label: 'Branch Office' }
+        ],
+        description: 'Vị trí của Server hoặc Device'
+      },
+      {
+        key: 'firewall_rule_action',
+        value: [
+          { value: 'ALLOW', label: 'Allow' },
+          { value: 'DENY', label: 'Deny' }
+        ],
+        description: 'Action firewall rule'
+      },
+      {
+        key: 'ip_address_type',
+        value: [
+          { value: 'STATIC', label: 'Static' },
+          { value: 'DYNAMIC', label: 'Dynamic' }
+        ],
+        description: 'Kiểu IP address'
+      },
+      {
+        key: 'server_type',
+        value: [
+          { value: 'PHYSICAL', label: 'PHYSICAL' },
+          { value: 'VIRTUAL-MACHINE', label: 'VIRTUAL-MACHINE' },
+          { value: 'CLOUD-INSTANCE', label: 'CLOUD-INSTANCE' }
+        ],
+        description: 'Kiểu máy chủ'
+      },
+      {
+        key: 'server_status',
+        value: [
+          { value: 'ONLINE', label: 'ONLINE' },
+          { value: 'OFFLINE', label: 'OFFLINE' },
+          { value: 'MAINTENANCE', label: 'MAINTENANCE' }
+        ],
+        description: 'Trạng thái của máy chủ'
+      },
+      {
+        key: 'network_domain_record_type',
+        value: [
+          { value: 'A', label: 'A' },
+          { value: 'AAAA', label: 'AAAA' },
+          { value: 'CNAME', label: 'CNAME' },
+          { value: 'MX', label: 'MX' },
+          { value: 'TXT', label: 'TXT' },
+          { value: 'NS', label: 'NS' },
+          { value: 'SRV', label: 'SRV' },
+          { value: 'PTR', label: 'PTR' },
+          { value: 'SOA', label: 'SOA' },
+          { value: 'OTHER', label: 'Other' }
+        ],
+        description: 'Kiểu DNS record'
+      },
+      {
+        key: 'system_app_type',
+        value: [
+          { value: 'web', label: 'Web App' },
+          { value: 'mobile', label: 'Mobile App' }
+        ],
+        description: 'Các loại App Type selection trong menu add/edit System Components'
+      },
+      {
+        key: 'system_level',
+        value: {
+          levels: [
+            { value: '1', label: 'Level 1' },
+            { value: '2', label: 'Level 2' },
+            { value: '3', label: 'Level 3' },
+            { value: '4', label: 'Level 4' },
+            { value: '5', label: 'Level 5' }
+          ]
+        },
+        description: 'Cấp độ hệ thống thông tin'
+      },
+      {
+        key: 'ip_address_status',
+        value: [
+          { value: 'reserved', label: 'Reserved' },
+          { value: 'assigned', label: 'Assigned' },
+          { value: 'inactive', label: 'Inactive' }
+        ],
+        description: 'Trạng thái IP Address'
+      }
+    ];
+    for (const conf of dynamicConfigs) {
+      if (conf.description) {
+        await pool.query(
+          `INSERT INTO configuration (key, value, description) VALUES ($1, $2, $3) ON CONFLICT (key) DO NOTHING;`,
+          [conf.key, JSON.stringify(conf.value), conf.description]
+        );
+      } else {
+        await pool.query(
+          `INSERT INTO configuration (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING;`,
+          [conf.key, JSON.stringify(conf.value)]
+        );
+      }
+    }
+
     console.log('Default configuration seeded.');
   } catch (err) {
     console.error('Seed configuration failed:', err);

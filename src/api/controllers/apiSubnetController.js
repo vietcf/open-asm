@@ -1,8 +1,33 @@
-
-// API Controller for Subnet (ES6)
+import Configuration from '../../models/Configuration.js';
 import { pool } from '../../../config/config.js';
 import Subnet from '../../models/Subnet.js';
 import Tag from '../../models/Tag.js';
+
+// Helper: Load recordTypeOptions from DB (Configuration)
+async function getRecordTypeOptionsFromConfig() {
+  let recordTypeOptions = [];
+  try {
+    const config = await Configuration.findById('network_domain_record_type');
+    if (config && config.value) {
+      recordTypeOptions = JSON.parse(config.value);
+    }
+  } catch (e) {
+    recordTypeOptions = [];
+  }
+  // Nếu không có config hoặc rỗng thì dùng mặc định giống init_data.js
+  if (!Array.isArray(recordTypeOptions) || recordTypeOptions.length === 0) {
+    recordTypeOptions = [
+      { value: 'A', label: 'A' },
+      { value: 'AAAA', label: 'AAAA' },
+      { value: 'CNAME', label: 'CNAME' },
+      { value: 'MX', label: 'MX' },
+      { value: 'TXT', label: 'TXT' },
+      { value: 'OTHER', label: 'Other' }
+    ];
+  }
+  return recordTypeOptions;
+}
+
 
 const apiSubnetController = {};
 

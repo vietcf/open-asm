@@ -43,15 +43,15 @@
                 </div>
                 <div class="mb-3">
                   <label for="ipTags" class="form-label">Tags</label>
-                  <select id="ipTags" name="tags[]" class="form-select form-select-sm select2" multiple></select>
+                  <select id="ipTags" name="tags[]" class="form-control" multiple></select>
                 </div>
                 <div class="mb-3">
                   <label for="ipContacts" class="form-label">Contacts</label>
-                  <select id="ipContacts" name="contacts[]" class="form-select form-select-sm select2" multiple></select>
+                  <select id="ipContacts" name="contacts[]" class="form-control" multiple></select>
                 </div>
                 <div class="mb-3">
                   <label for="ipSystems" class="form-label">Systems</label>
-                  <select id="ipSystems" name="systems[]" class="form-select form-select-sm select2" multiple></select>
+                  <select id="ipSystems" name="systems[]" class="form-control" multiple></select>
                 </div>
                 <div class="modal-footer d-flex justify-content-end">
                   <button type="submit" class="btn btn-primary btn-sm">Add IP</button>
@@ -96,11 +96,11 @@
                 <div class="row g-2">
                   <div class="col-12 mb-2">
                     <label class="form-label">Systems</label>
-                    <select id="filterIpSystems" name="systems[]" class="form-select select2" multiple></select>
+                    <select id="filterIpSystems" name="systems[]" class="form-control" multiple></select>
                   </div>
                   <div class="col-12 mb-2">
                     <label class="form-label">Contacts</label>
-                    <select id="filterIpContacts" name="contacts[]" class="form-select select2" multiple></select>
+                    <select id="filterIpContacts" name="contacts[]" class="form-control" multiple></select>
                   </div>
                   <div class="col-12 mb-2">
                     <label class="form-label">Status</label>
@@ -113,7 +113,7 @@
                   </div>
                   <div class="col-12 mb-2">
                     <label class="form-label">Tags</label>
-                    <select id="filterIpTags" name="tags[]" class="form-select select2" multiple></select>
+                    <select id="filterIpTags" name="tags[]" class="form-control" multiple></select>
                   </div>
                 </div>
               </div>
@@ -276,7 +276,7 @@
                     <td>
                       <% if (ip.tags && ip.tags.length > 0) { %>
                         <% ip.tags.forEach(function(tag) { %>
-                          <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                          <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                         <% }) %>
                       <% } else { %>
                         <span class="text-muted">No tags</span>
@@ -289,10 +289,8 @@
                       <% if (ip.systems && ip.systems.length > 0) { %>
                         <div class="d-flex flex-wrap">
                           <% ip.systems.forEach(function(system) { %>
-                            <a href="/system/system?search=<%= encodeURIComponent(system.name) %>" target="_blank" class="text-decoration-none me-1 mb-1">
-                              <span class="badge bg-primary text-white me-1 mb-1" style="font-size:0.95em; font-weight:500; letter-spacing:0.5px; padding:0.35em 0.8em;">
-                                <%= system.name + (system.system_id ? ' (' + system.system_id + ')' : '') %>
-                              </span>
+                            <a href="/system/system?search=<%= encodeURIComponent(system.name) %>" target="_blank" class="me-1 mb-1 text-primary" style="text-decoration:underline; font-size:0.95em; font-weight:500;">
+                              <%= system.name + (system.system_id ? ' (' + system.system_id + ')' : '') %>
                             </a>
                           <% }) %>
                         </div>
@@ -330,7 +328,7 @@
                             <dd class="col-sm-8">
                               <% if (ip.tags && ip.tags.length > 0) { %>
                                 <% ip.tags.forEach(function(tag) { %>
-                                  <span class="badge bg-light text-dark" style="font-size:1rem; font-weight:400; padding:0.35em 0.8em;"><%= tag.name %></span>
+                                  <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
                                 <% }) %>
                               <% } else { %>
                                 <span class="text-muted">No tags</span>
@@ -347,9 +345,7 @@
                               <% if (ip.contacts && ip.contacts.length > 0) { %>
                                 <% ip.contacts.forEach(function(contact, idx) { %>
                                   <% if (contact.email) { %>
-                                    <div><a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>" target="_blank"><%= contact.name %> (<%= contact.email %>)</a></div>
-                                  <% } else { %>
-                                    <div><%= contact.name %></div>
+                                    <div><a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>" target="_blank"><%= contact.email %></a></div>
                                   <% } %>
                                 <% }) %>
                               <% } else { %>
@@ -420,15 +416,15 @@
                             </div>
                             <div class="mb-3">
                               <label for="editIpTags-<%= ip.id %>" class="form-label">Tags</label>
-                              <select id="editIpTags-<%= ip.id %>" name="tags[]" class="form-select form-select-sm select2" multiple data-selected='<%- JSON.stringify(ip.tags || []) %>'></select>
+                              <select id="editIpTags-<%= ip.id %>" name="tags[]" class="form-control" multiple data-selected='<%- JSON.stringify(ip.tags || []) %>'></select>
                             </div>
                             <div class="mb-3">
                               <label for="editIpContacts-<%= ip.id %>" class="form-label">Contacts</label>
-                              <select id="editIpContacts-<%= ip.id %>" name="contacts[]" class="form-select form-select-sm select2" multiple data-selected='<%- JSON.stringify(ip.contacts || []) %>'></select>
+                              <select id="editIpContacts-<%= ip.id %>" name="contacts[]" class="form-control" multiple data-selected='<%- JSON.stringify(ip.contacts || []) %>'></select>
                             </div>
                             <div class="mb-3">
                               <label for="editIpSystems-<%= ip.id %>" class="form-label">Systems</label>
-                              <select id="editIpSystems-<%= ip.id %>" name="systems[]" class="form-select form-select-sm select2" multiple data-selected='<%- JSON.stringify(ip.systems || []) %>'></select>
+                              <select id="editIpSystems-<%= ip.id %>" name="systems[]" class="form-control" multiple data-selected='<%- JSON.stringify(ip.systems || []) %>'></select>
                             </div>
                           </div>
                           <div class="modal-footer d-flex justify-content-end">
@@ -476,24 +472,39 @@
                   }
                 }
               %>
+
+              <% 
+                // Build filter query string for pagination links
+                function buildFilterQuery() {
+                  let params = [];
+                  if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+                  if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
+                  if (typeof filterStatus !== 'undefined' && filterStatus) params.push('status=' + encodeURIComponent(filterStatus));
+                  if (typeof filterTags !== 'undefined' && filterTags.length) filterTags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag)); });
+                  if (typeof filterSystems !== 'undefined' && filterSystems.length) filterSystems.forEach(function(s) { params.push('systems[]=' + encodeURIComponent(s)); });
+                  if (typeof filterContacts !== 'undefined' && filterContacts.length) filterContacts.forEach(function(c) { params.push('contacts[]=' + encodeURIComponent(c)); });
+                  return params.join('&');
+                }
+                const filterQuery = buildFilterQuery();
+              %>
               <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page - 1 %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>" tabindex="-1">Previous</a>
+                <a class="page-link" href="?page=<%= page - 1 %><%= filterQuery ? '&' + filterQuery : '' %>" tabindex="-1">Previous</a>
               </li>
               <% if (startPage > 1) { %>
-                <li class="page-item"><a class="page-link" href="?page=1&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>">1</a></li>
+                <li class="page-item"><a class="page-link" href="?page=1<%= filterQuery ? '&' + filterQuery : '' %>">1</a></li>
                 <% if (startPage > 2) { %>
                   <li class="page-item disabled"><span class="page-link">...</span></li>
                 <% } %>
               <% } %>
               <% for (let i = startPage; i <= endPage; i++) { %>
-                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>"><%= i %></a></li>
+                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= filterQuery ? '&' + filterQuery : '' %>"><%= i %></a></li>
               <% } %>
               <% if (endPage < totalPages) { %>
                 <li class="page-item disabled"><span class="page-link">...</span></li>
-                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>"><%= totalPages %></a></li>
+                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= filterQuery ? '&' + filterQuery : '' %>"><%= totalPages %></a></li>
               <% } %>
               <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page + 1 %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>">Next</a>
+                <a class="page-link" href="?page=<%= page + 1 %><%= filterQuery ? '&' + filterQuery : '' %>">Next</a>
               </li>
             </ul>
           </div>
@@ -511,65 +522,56 @@
     z-index: 2055 !important;
   }
 </style>
+  
 <script>
-window.ipList = <%- JSON.stringify(ipList || []) %>;
+  window.ipList = <%- JSON.stringify(ipList || []) %>;
 </script>
+
 <script>
-  // Hide select2 fields in Add IP modal until initialized
+  // Khởi tạo select2 multi-select Add IP giống hệt system_add.ejs
   $(function() {
-    $('#ipTags, #ipContacts, #ipSystems').css('visibility', 'hidden');
-    let selectsReady = 0;
-    function showIfReady() {
-      selectsReady++;
-      if (selectsReady === 3) {
-        $('#ipTags, #ipContacts, #ipSystems').css('visibility', 'visible');
-      }
-    }
     $('#ipTags').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select tag(s)',
       allowClear: true,
       width: '100%',
-      dropdownParent: $('#addIpModal'),
       ajax: {
         url: '/organize/api/tag',
         dataType: 'json',
         delay: 250,
-        data: function(params) { return { search: params.term }; },
-        processResults: function(data) { return { results: data }; },
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
         cache: true
       }
-    }).on('select2:open select2:close', showIfReady);
+    });
     $('#ipContacts').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select contact(s)',
+      placeholder: 'Select contacts',
       allowClear: true,
       width: '100%',
-      dropdownParent: $('#addIpModal'),
       ajax: {
         url: '/organize/api/contact',
         dataType: 'json',
         delay: 250,
-        data: function(params) { return { search: params.term }; },
-        processResults: function(data) { return { results: data }; },
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
         cache: true
       }
-    }).on('select2:open select2:close', showIfReady);
+    });
     $('#ipSystems').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select system(s)',
       allowClear: true,
       width: '100%',
-      dropdownParent: $('#addIpModal'),
       ajax: {
         url: '/system/api/system',
         dataType: 'json',
         delay: 250,
-        data: function(params) { return { search: params.term }; },
-        processResults: function(data) { return { results: data }; },
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
         cache: true
       }
-    }).on('select2:open select2:close', showIfReady);
+    });
   });
 </script>
 <script>
@@ -611,19 +613,19 @@ function showToast(msg, type) {
         var $tags = $('#editIpTags-' + ip.id);
         var $contacts = $('#editIpContacts-' + ip.id);
         var $systems = $('#editIpSystems-' + ip.id);
+        // Khởi tạo select2 giống hệt Add IP và system_add.ejs
         if ($.fn.select2 && $tags.length && !$tags.hasClass('select2-hidden-accessible')) {
           $tags.select2({
             theme: 'bootstrap-5',
             placeholder: 'Select tag(s)',
             allowClear: true,
             width: '100%',
-            dropdownParent: $('#ipEditModal-' + ip.id),
             ajax: {
               url: '/organize/api/tag',
               dataType: 'json',
               delay: 250,
-              data: function(params) { return { search: params.term }; },
-              processResults: function(data) { return { results: data }; },
+              data: params => ({ search: params.term }),
+              processResults: data => ({ results: data }),
               cache: true
             }
           });
@@ -631,16 +633,15 @@ function showToast(msg, type) {
         if ($.fn.select2 && $contacts.length && !$contacts.hasClass('select2-hidden-accessible')) {
           $contacts.select2({
             theme: 'bootstrap-5',
-            placeholder: 'Select contact(s)',
+            placeholder: 'Select contacts',
             allowClear: true,
             width: '100%',
-            dropdownParent: $('#ipEditModal-' + ip.id),
             ajax: {
               url: '/organize/api/contact',
               dataType: 'json',
               delay: 250,
-              data: function(params) { return { search: params.term }; },
-              processResults: function(data) { return { results: data }; },
+              data: params => ({ search: params.term }),
+              processResults: data => ({ results: data }),
               cache: true
             }
           });
@@ -651,13 +652,12 @@ function showToast(msg, type) {
             placeholder: 'Select system(s)',
             allowClear: true,
             width: '100%',
-            dropdownParent: $('#ipEditModal-' + ip.id),
             ajax: {
               url: '/system/api/system',
               dataType: 'json',
               delay: 250,
-              data: function(params) { return { search: params.term }; },
-              processResults: function(data) { return { results: data }; },
+              data: params => ({ search: params.term }),
+              processResults: data => ({ results: data }),
               cache: true
             }
           });
@@ -710,3 +710,10 @@ function showToast(msg, type) {
     }
   });
 </script>
+
+<script src="/vendor/jquery-3.6.0.min.js"></script>
+<link href="/vendor/select2.min.css" rel="stylesheet" />
+<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="/vendor/select2.min.js"></script>
+<script src="/vendor/bootstrap.min.js"></script>
+<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />

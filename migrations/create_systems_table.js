@@ -9,6 +9,7 @@ export default async (db) => {
       level VARCHAR(50),
       department_id INT REFERENCES units(id),
       alias TEXT[],
+      fqdn TEXT[],
       description TEXT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -40,15 +41,6 @@ export default async (db) => {
       id SERIAL PRIMARY KEY,
       system_id INT REFERENCES systems(id) ON DELETE CASCADE,
       contact_id INT REFERENCES contacts(id) ON DELETE CASCADE
-    );
-  `);
-
-  // Create the many-to-many relationship table between `systems` and `tags`
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS system_tag (
-      system_id INTEGER NOT NULL REFERENCES systems(id) ON DELETE CASCADE,
-      tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
-      PRIMARY KEY (system_id, tag_id)
     );
   `);
 
