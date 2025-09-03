@@ -14,15 +14,6 @@ export default async (db) => {
     );
   `);
 
-  // Create the many-to-many relationship table between ip_addresses and tags
-  await db.query(`
-    CREATE TABLE IF NOT EXISTS ip_tag (
-      ip_id INTEGER NOT NULL REFERENCES ip_addresses(id) ON DELETE CASCADE,
-      tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
-      PRIMARY KEY (ip_id, tag_id)
-    );
-  `);
-
   // Create the many-to-many relationship table between ip_addresses and contacts
   await db.query(`
     CREATE TABLE IF NOT EXISTS ip_contact (

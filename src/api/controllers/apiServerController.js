@@ -8,7 +8,33 @@ import Agent from '../../models/Agent.js';
 import Service from '../../models/Service.js';
 import Tag from '../../models/Tag.js';
 import { pool } from '../../../config/config.js';
-import serverOptions from '../../../config/serverOptions.js';
+import Configuration from '../../models/Configuration.js';
+
+// Helpers to load server options from DB (Configuration)
+async function getServerLocationOptions() {
+  let options = [];
+  try {
+    const config = await Configuration.findById('device_location');
+    if (config && config.value) options = JSON.parse(config.value);
+  } catch {}
+  return options;
+}
+async function getServerStatusOptions() {
+  let options = [];
+  try {
+    const config = await Configuration.findById('server_status');
+    if (config && config.value) options = JSON.parse(config.value);
+  } catch {}
+  return options;
+}
+async function getServerTypeOptions() {
+  let options = [];
+  try {
+    const config = await Configuration.findById('server_type');
+    if (config && config.value) options = JSON.parse(config.value);
+  } catch {}
+  return options;
+}
 
 const apiServerController = {};
 
@@ -109,11 +135,17 @@ apiServerController.createServer = async (req, res) => {
       return res.status(400).json({ error: 'Server name already exists' });
     }
     
-    if (location && !serverOptions.locations.some(opt => opt.value === location)) {
-      return res.status(400).json({ error: `Invalid location: ${location}` });
+    if (location) {
+      const locationOptions = await getServerLocationOptions();
+      if (!locationOptions.some(opt => opt.value === location)) {
+        return res.status(400).json({ error: `Invalid location: ${location}` });
+      }
     }
-    if (status && !serverOptions.status.some(opt => opt.value === status)) {
-      return res.status(400).json({ error: `Invalid status: ${status}` });
+    if (status) {
+      const statusOptions = await getServerStatusOptions();
+      if (!statusOptions.some(opt => opt.value === status)) {
+        return res.status(400).json({ error: `Invalid status: ${status}` });
+      }
     }
     if (os && !(await Platform.exists(os))) {
       return res.status(400).json({ error: `Invalid platform (os) ID: ${os}` });
@@ -265,13 +297,19 @@ apiServerController.updateServer = async (req, res) => {
     }
 
     // Validate enum fields if provided
-    if (has('location') && updateFields.location && !serverOptions.locations.some(opt => opt.value === updateFields.location)) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: `Invalid location: ${updateFields.location}` });
+    if (has('location') && updateFields.location) {
+      const locationOptions = await getServerLocationOptions();
+      if (!locationOptions.some(opt => opt.value === updateFields.location)) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: `Invalid location: ${updateFields.location}` });
+      }
     }
-    if (has('status') && updateFields.status && !serverOptions.status.some(opt => opt.value === updateFields.status)) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: `Invalid status: ${updateFields.status}` });
+    if (has('status') && updateFields.status) {
+      const statusOptions = await getServerStatusOptions();
+      if (!statusOptions.some(opt => opt.value === updateFields.status)) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: `Invalid status: ${updateFields.status}` });
+      }
     }
     if (has('os') && updateFields.os && !(await Platform.exists(updateFields.os))) {
       await client.query('ROLLBACK');

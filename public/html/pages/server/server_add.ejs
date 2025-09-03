@@ -10,9 +10,29 @@
             <div class="mb-3">
               <label class="form-label">IP Address(es) <span class="text-danger">*</span></label>
               <div class="d-flex align-items-center gap-2">
-                <select id="ip-select" name="ip_addresses[]" class="form-select form-select-sm flex-grow-1" multiple required></select>
+                <select id="ip-select" name="ip_addresses[]" class="form-control flex-grow-1" multiple required></select>
                 <button type="button" class="btn btn-outline-success btn-sm" id="add-ip-btn" title="Add new IP"><i class="bi bi-plus-circle"></i> Add IP</button>
               </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Managers</label>
+              <select id="manager-select" name="managers[]" class="form-control" multiple></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Systems</label>
+              <select id="system-select" name="systems[]" class="form-control" multiple></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Agents</label>
+              <select id="agent-select" name="agents[]" class="form-control" multiple></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Services</label>
+              <select id="service-select" name="services[]" class="form-control" multiple></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Tags</label>
+              <select id="tag-select" name="tags[]" class="form-control" multiple></select>
             </div>
             <div class="mb-3">
               <label class="form-label">Platform (OS)</label>
@@ -50,36 +70,6 @@
               </select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Managers</label>
-              <select id="manager-select" name="managers[]" class="form-select form-select-sm" multiple>
-                <option></option>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Systems</label>
-              <select id="system-select" name="systems[]" class="form-select form-select-sm" multiple>
-                <option></option>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Agents</label>
-              <select id="agent-select" name="agents[]" class="form-select form-select-sm" multiple>
-                <option></option>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Services</label>
-              <select id="service-select" name="services[]" class="form-select form-select-sm" multiple>
-                <option></option>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Tags</label>
-              <select id="tag-select" name="tags[]" class="form-select form-select-sm" multiple>
-                <option></option>
-              </select>
-            </div>
-            <div class="mb-3">
               <label for="serverDescription" class="form-label">Description</label>
               <textarea class="form-control form-control-sm" id="serverDescription" name="description" placeholder="Description" rows="2"></textarea>
             </div>
@@ -93,6 +83,13 @@
     </div>
   </div>
 </div>
+
+<script src="/vendor/jquery-3.6.0.min.js"></script>
+<link href="/vendor/select2.min.css" rel="stylesheet" />
+<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="/vendor/select2.min.js"></script>
+<script src="/vendor/bootstrap.min.js"></script>
+<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
 
 <script>
   $(function() {
@@ -219,8 +216,8 @@
 
     // Thêm nút Add IP: mở tab mới tới trang quản lý IP và tự động bật popup Add IP
     $('#add-ip-btn').off('click').on('click', function(e) {
-      e.preventDefault();
-      window.open('http://localhost:3000/network/ip-address?add=1', '_blank');
+  e.preventDefault();
+  window.open('/network/ip-address?add=1', '_blank');
     });
 
     // Fix: Remove blank <option> after select2 is initialized to avoid select2 placeholder bug

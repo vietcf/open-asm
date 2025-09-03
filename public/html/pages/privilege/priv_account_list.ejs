@@ -67,7 +67,7 @@
                   </div>
                   <div class="mb-3">
                     <label for="privUserContacts" class="form-label">Assign Contacts <span class="text-danger">*</span></label>
-                    <select id="privUserContacts" name="contacts[]" class="form-select form-select-sm" multiple style="width:100%" required></select>
+                    <select id="privUserContacts" name="contacts[]" class="form-control" multiple style="width:100%" required></select>
                   </div>
                   <div class="mb-3">
                     <label for="privUserOrganize" class="form-label">Organize Unit <span class="text-danger">*</span></label>
@@ -84,7 +84,7 @@
                   </div>
                   <div class="mb-3 d-none" id="privUserServerGroup">
                     <label for="privUserServers" class="form-label">Server(s) <span class="text-danger">*</span></label>
-                    <select id="privUserServers" name="server_ids[]" class="form-select form-select-sm" multiple style="width:100%" required></select>
+                    <select id="privUserServers" name="server_ids[]" class="form-control" multiple style="width:100%" required></select>
                   </div>
                   <div class="mb-3 d-none" id="privUserAppUrlGroup">
                     <label for="privUserAppUrl" class="form-label">Application URL <span class="text-danger">*</span></label>
@@ -92,7 +92,7 @@
                   </div>
                   <div class="mb-3" id="privUserSystemGroup">
                     <label for="privUserSystem" class="form-label">System(s) <span class="text-danger">*</span></label>
-                    <select id="privUserSystem" name="system_ids[]" class="form-select form-select-sm" multiple required style="width:100%"></select>
+                    <select id="privUserSystem" name="system_ids[]" class="form-control" multiple required style="width:100%"></select>
                   </div>
                   <div class="mb-3">
                     <label for="privUserManageType" class="form-label">Management Method <span class="text-danger">*</span></label>
@@ -128,7 +128,7 @@
                 <form id="filterPrivAccountForm" action="/priv-account/account" method="GET">
                   <div class="mb-3">
                     <label for="filterSystem" class="form-label">System(s)</label>
-                    <select id="filterSystem" name="system_ids[]" class="form-select form-select-sm" multiple style="width:100%">
+                    <select id="filterSystem" name="system_ids[]" class="form-control" multiple style="width:100%">
                     </select>
                   </div>
                   <div class="mb-3">
@@ -139,7 +139,7 @@
                   </div>
                   <div class="mb-3">
                     <label for="filterContacts" class="form-label">Contacts</label>
-                    <select id="filterContacts" name="contact_ids[]" class="form-select form-select-sm" multiple style="width:100%">
+                    <select id="filterContacts" name="contact_ids[]" class="form-control" multiple style="width:100%">
                     </select>
                   </div>
                 </form>
@@ -293,7 +293,7 @@
                               </div>
                               <div class="mb-3">
                                 <label class="form-label">Assign Contacts</label>
-                                <select id="editPrivUserContacts-<%= account.id %>" name="contacts[]" class="form-select form-select-sm" multiple style="width:100%" data-values='<%= JSON.stringify(account.contacts || []) %>'></select>
+                                <select id="editPrivUserContacts-<%= account.id %>" name="contacts[]" class="form-control" multiple style="width:100%" data-values='<%= JSON.stringify(account.contacts || []) %>'></select>
                               </div>
                               <div class="mb-3">
                                 <label class="form-label">Organize Unit</label>
@@ -310,7 +310,7 @@
                               </div>
                               <div class="mb-3 d-none" id="editPrivUserServerGroup-<%= account.id %>">
                                 <label class="form-label">Server(s)</label>
-                                <select id="editPrivUserServers-<%= account.id %>" name="server_ids[]" class="form-select form-select-sm" multiple style="width:100%" data-values='<%= JSON.stringify(account.servers || []) %>'></select>
+                                <select id="editPrivUserServers-<%= account.id %>" name="server_ids[]" class="form-control" multiple style="width:100%" data-values='<%= JSON.stringify(account.servers || []) %>'></select>
                               </div>
                               <div class="mb-3 d-none" id="editPrivUserAppUrlGroup-<%= account.id %>">
                                 <label class="form-label">Application URL</label>
@@ -318,7 +318,7 @@
                               </div>
                               <div class="mb-3" id="editPrivUserSystemGroup-<%= account.id %>">
                                 <label class="form-label">System(s)</label>
-                                <select id="editPrivUserSystem-<%= account.id %>" name="system_ids[]" class="form-select form-select-sm" multiple required style="width:100%" data-values='<%= JSON.stringify(account.systems || []) %>'></select>
+                                <select id="editPrivUserSystem-<%= account.id %>" name="system_ids[]" class="form-control" multiple required style="width:100%" data-values='<%= JSON.stringify(account.systems || []) %>'></select>
                               </div>
                               <div class="mb-3">
                                 <label class="form-label">Management Method</label>
@@ -371,24 +371,38 @@
                     }
                   }
                 %>
+
+                <% 
+                  // Build filter query string for pagination links
+                  function buildPrivAccountFilterQuery() {
+                    let params = [];
+                    if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+                    if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
+                    if (typeof organize_id !== 'undefined' && organize_id) params.push('organize_id=' + encodeURIComponent(organize_id));
+                    if (typeof system_ids !== 'undefined' && Array.isArray(system_ids) && system_ids.length) system_ids.forEach(function(id) { params.push('system_ids[]=' + encodeURIComponent(id)); });
+                    if (typeof contact_ids !== 'undefined' && Array.isArray(contact_ids) && contact_ids.length) contact_ids.forEach(function(id) { params.push('contact_ids[]=' + encodeURIComponent(id)); });
+                    return params.join('&');
+                  }
+                  const privAccountFilterQuery = buildPrivAccountFilterQuery();
+                %>
                 <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page - 1 %>&pageSize=<%= pageSize %><%= search ? '&search=' + encodeURIComponent(search) : '' %>">Previous</a>
+                  <a class="page-link" href="?page=<%= page - 1 %><%= privAccountFilterQuery ? '&' + privAccountFilterQuery : '' %>">Previous</a>
                 </li>
                 <% if (startPage > 1) { %>
-                  <li class="page-item"><a class="page-link" href="?page=1&pageSize=<%= pageSize %><%= search ? '&search=' + encodeURIComponent(search) : '' %>">1</a></li>
+                  <li class="page-item"><a class="page-link" href="?page=1<%= privAccountFilterQuery ? '&' + privAccountFilterQuery : '' %>">1</a></li>
                   <% if (startPage > 2) { %>
                     <li class="page-item disabled"><span class="page-link">...</span></li>
                   <% } %>
                 <% } %>
                 <% for (let i = startPage; i <= endPage; i++) { %>
-                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %>&pageSize=<%= pageSize %><%= search ? '&search=' + encodeURIComponent(search) : '' %>"><%= i %></a></li>
+                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= privAccountFilterQuery ? '&' + privAccountFilterQuery : '' %>"><%= i %></a></li>
                 <% } %>
                 <% if (endPage < totalPages) { %>
                   <li class="page-item disabled"><span class="page-link">...</span></li>
-                  <li class="page-item"><a class="page-link" href="?page=<%= totalPages %>&pageSize=<%= pageSize %><%= search ? '&search=' + encodeURIComponent(search) : '' %>"><%= totalPages %></a></li>
+                  <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= privAccountFilterQuery ? '&' + privAccountFilterQuery : '' %>"><%= totalPages %></a></li>
                 <% } %>
                 <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page + 1 %>&pageSize=<%= pageSize %><%= search ? '&search=' + encodeURIComponent(search) : '' %>">Next</a>
+                  <a class="page-link" href="?page=<%= page + 1 %><%= privAccountFilterQuery ? '&' + privAccountFilterQuery : '' %>">Next</a>
                 </li>
               </ul>
             </div>
@@ -772,3 +786,10 @@
     });
   });
   </script>
+
+<script src="/vendor/jquery-3.6.0.min.js"></script>
+<link href="/vendor/select2.min.css" rel="stylesheet" />
+<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="/vendor/select2.min.js"></script>
+<script src="/vendor/bootstrap.min.js"></script>
+<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
