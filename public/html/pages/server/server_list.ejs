@@ -15,12 +15,6 @@
           <i class="bi bi-plus"></i> Add Server
         </button>
       <% } %>
-      <form action="/server/import" method="POST" enctype="multipart/form-data" style="display:inline; margin-right: 8px;">
-        <label class="btn btn-success btn-sm mb-0">
-          <i class="bi bi-upload"></i> Import from file
-          <input type="file" name="serverfile" accept=".csv,.txt" style="display:none" onchange="this.form.submit()">
-        </label>
-      </form>
       <form id="serverExportForm" action="/server/server/export" method="GET" style="display:inline; margin-right: 8px;">
         <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
         <input type="hidden" name="location" value="<%= typeof filterLocation !== 'undefined' ? filterLocation : '' %>">
@@ -115,9 +109,12 @@
                   </div>
                 </div>
               </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary btn-sm" id="clearFilterBtn">Clear Filter</button>
-                <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
+              <div class="modal-footer d-flex justify-content-between">
+                <button type="button" id="clearFilterBtn" class="btn btn-outline-danger btn-sm">Clear All Filters</button>
+                <div>
+                  <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
+                </div>
               </div>
             </form>
           </div>
@@ -228,7 +225,7 @@
                   </tr>
                   <!-- Server Detail Modal -->
                   <div class="modal fade" id="serverDetailModal-<%= server.id %>" tabindex="-1" aria-labelledby="serverDetailModalLabel-<%= server.id %>" aria-hidden="true">
-                    <div class="modal-dialog">
+                    <div class="modal-dialog modal-lg">
                       <div class="modal-content">
                         <div class="modal-header">
                           <h5 class="modal-title" id="serverDetailModalLabel-<%= server.id %>">Server Detail</h5>
@@ -236,14 +233,14 @@
                         </div>
                         <div class="modal-body">
                           <dl class="row mb-0">
-                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Server ID</dt>
-                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;"><%= server.id %></dd>
-                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Server Name</dt>
-                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;white-space: pre-line;"><%= server.name %></dd>
-                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Description</dt>
-                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;white-space: pre-line;"><%= (server.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') %></dd>
-                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">IP Address</dt>
-                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
+                            <dt class="col-sm-3">Server ID</dt>
+                            <dd class="col-sm-9 text-monospace"><%= server.id %></dd>
+                            <dt class="col-sm-3">Server Name</dt>
+                            <dd class="col-sm-9"><%= server.name %></dd>
+                            <dt class="col-sm-3">Description</dt>
+                            <dd class="col-sm-9"><span class="desc-text"><%- (server.description || '').replace(/\n/g, '<br>') %></span></dd>
+                            <dt class="col-sm-3">IP Address</dt>
+                            <dd class="col-sm-9">
                               <% if (Array.isArray(server.ip) && server.ip.length) { %>
                                 <% server.ip.forEach(function(ipObj, index) { %>
                                   <% if (index > 0) { %>, <% } %>
@@ -255,14 +252,14 @@
                                 <span class="text-muted">-</span>
                               <% } %>
                             </dd>
-                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Status</dt>
-                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;"><%= server.status %></dd>
-                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Location</dt>
-                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;"><%= server.location %></dd>
-                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Type</dt>
-                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;"><%= server.type %></dd>
-                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Manager</dt>
-                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
+                            <dt class="col-sm-3">Status</dt>
+                            <dd class="col-sm-9"><%= server.status || '' %></dd>
+                            <dt class="col-sm-3">Location</dt>
+                            <dd class="col-sm-9"><%= server.location || '' %></dd>
+                            <dt class="col-sm-3">Type</dt>
+                            <dd class="col-sm-9"><%= server.type || '' %></dd>
+                            <dt class="col-sm-3">Manager</dt>
+                            <dd class="col-sm-9">
                               <% if (Array.isArray(server.managers) && server.managers.length) { %>
                                 <% server.managers.forEach(function(m, index) { %>
                                   <% if (index > 0) { %>, <% } %>
@@ -277,40 +274,40 @@
                                 <span class="text-muted">-</span>
                               <% } %>
                             </dd>
-                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Platform (OS)</dt>
-                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
+                            <dt class="col-sm-3">Platform (OS)</dt>
+                            <dd class="col-sm-9">
                               <% if (server.platform_name) { %>
                                 <%= server.platform_name %>
                               <% } else { %>
                                 <span class="text-muted">-</span>
                               <% } %>
                             </dd>
-                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Agents</dt>
-                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
+                            <dt class="col-sm-3">Agents</dt>
+                            <dd class="col-sm-9">
                               <% if (Array.isArray(server.agents) && server.agents.length) { %>
                                 <div class="d-flex flex-wrap">
                                   <% server.agents.forEach(function(a) { %>
-                                    <span class="badge bg-light text-dark me-1 mb-1"><%= a.name %></span>
+                                    <span class="badge bg-info text-white me-1 mb-1" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= a.name %><% if (a.version) { %> (<%= a.version %>)<% } %></span>
                                   <% }) %>
                                 </div>
                               <% } else { %>
-                                <span class="text-muted">-</span>
+                                <span class="text-muted">No agents</span>
                               <% } %>
                             </dd>
-                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Services</dt>
-                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
+                            <dt class="col-sm-3">Services</dt>
+                            <dd class="col-sm-9">
                               <% if (Array.isArray(server.services) && server.services.length) { %>
                                 <div class="d-flex flex-wrap">
                                   <% server.services.forEach(function(s) { %>
-                                    <span class="badge bg-light text-dark me-1 mb-1"><%= s.name %></span>
+                                    <span class="badge bg-success text-white me-1 mb-1" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= s.name %></span>
                                   <% }) %>
                                 </div>
                               <% } else { %>
-                                <span class="text-muted">-</span>
+                                <span class="text-muted">No services</span>
                               <% } %>
                             </dd>
-                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Systems</dt>
-                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
+                            <dt class="col-sm-3">Systems</dt>
+                            <dd class="col-sm-9">
                               <% if (Array.isArray(server.systems) && server.systems.length) { %>
                                 <div class="d-flex flex-wrap">
                                   <% server.systems.forEach(function(sys) { %>
@@ -323,8 +320,8 @@
                                 <span class="text-muted">-</span>
                               <% } %>
                             </dd>
-                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Tags</dt>
-                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;">
+                            <dt class="col-sm-3">Tags</dt>
+                            <dd class="col-sm-9">
                               <% if (Array.isArray(server.tags) && server.tags.length) { %>
                                 <div class="d-flex flex-wrap">
                                   <% server.tags.forEach(function(tag) { %>
@@ -335,12 +332,12 @@
                                 <span class="text-muted">No tags</span>
                               <% } %>
                             </dd>
-                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Created At</dt>
-                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;"><%= server.created_at ? new Date(server.created_at).toLocaleString() : '' %></dd>
-                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Updated At</dt>
-                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;"><%= server.updated_at ? new Date(server.updated_at).toLocaleString() : '' %></dd>
-                            <dt class="col-sm-4 py-1" style="padding-top:4px;padding-bottom:4px;">Updated By</dt>
-                            <dd class="col-sm-8 py-1" style="padding-top:4px;padding-bottom:4px;"><%= server.updated_by || '' %></dd>
+                            <dt class="col-sm-3">Created At</dt>
+                            <dd class="col-sm-9"><%= server.created_at ? new Date(server.created_at).toLocaleString('en-GB') : '' %></dd>
+                            <dt class="col-sm-3">Updated At</dt>
+                            <dd class="col-sm-9"><%= server.updated_at ? new Date(server.updated_at).toLocaleString('en-GB') : '' %></dd>
+                            <dt class="col-sm-3">Updated By</dt>
+                            <dd class="col-sm-9"><%= server.updated_by || '' %></dd>
                           </dl>
                         </div>
                         <div class="modal-footer">
@@ -578,6 +575,19 @@ $(function() {
 
   // Clear Filter button: reset tất cả filter về mặc định
   $('#clearFilterBtn').on('click', function() {
+    // Clear all select2 values
+    $('#filterTags').val(null).trigger('change');
+    $('#filterIp').val(null).trigger('change');
+    $('#filterManager').val(null).trigger('change');
+    $('#filterSystems').val(null).trigger('change');
+    $('#filterServices').val(null).trigger('change');
+    $('#filterOs').val(null).trigger('change');
+    $('#filterStatus').val(null).trigger('change');
+    $('#filterLocation').val(null).trigger('change');
+    $('#filterType').val(null).trigger('change');
+    // Close modal
+    $filterModal.modal('hide');
+    // Redirect to clean URL
     window.location.href = '/server/server/list';
   });
 });

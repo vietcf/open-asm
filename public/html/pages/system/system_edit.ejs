@@ -33,7 +33,7 @@
                 <option value="">-- Select Level --</option>
                 <% if (typeof levelOptions !== 'undefined' && Array.isArray(levelOptions)) { %>
                   <% levelOptions.forEach(function(opt) { %>
-                    <option value="<%= opt.value %>" <%= system.level == opt.value ? 'selected' : '' %>><%= opt.label %></option>
+                    <option value="<%= opt.id %>" <%= system.level == opt.id ? 'selected' : '' %>><%= opt.text %></option>
                   <% }) %>
                 <% } %>
               </select>
@@ -77,10 +77,32 @@
                   <% } %>
                 </select>
               </div>
-            </div>
+            </divb
             <div class="mb-3">
               <label class="form-label">Tags</label>
               <select id="tag-select" name="tags[]" class="form-control" multiple></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Scope user access</label>
+              <select id="scope-select" name="scopes[]" class="form-control" multiple>
+                <% if (scopeOptions && scopeOptions.length > 0) { %>
+                  <% scopeOptions.forEach(option => { %>
+                    <option value="<%= option.id %>" <%= (system.scopes && system.scopes.includes(option.id)) ? 'selected' : '' %>><%= option.text %></option>
+                  <% }) %>
+                <% } %>
+              </select>
+              <div class="form-text">Select applicable scopes for this system. Leave empty if no specific scope is defined.</div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">System Architecture</label>
+              <select id="architecture-select" name="architecture[]" class="form-select" multiple>
+                <% if (architectureOptions && architectureOptions.length > 0) { %>
+                  <% architectureOptions.forEach(option => { %>
+                    <option value="<%= option.id %>" <%= (system.architecture && system.architecture.includes(option.id)) ? 'selected' : '' %>><%= option.text %></option>
+                  <% }) %>
+                <% } %>
+              </select>
+              <div class="form-text">Select applicable architecture types for this system. Leave empty if no specific architecture is defined.</div>
             </div>
             <div id="existing-files-data" data-files='<%= JSON.stringify(system.docs || []) %>' style="display:none"></div>
             <div class="mb-3">
@@ -217,6 +239,18 @@
         processResults: data => ({ results: data }),
         cache: true
       }
+    });
+    $('#scope-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select scopes (optional)',
+      allowClear: true,
+      width: '100%'
+    });
+    $('#architecture-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select architecture types (optional)',
+      allowClear: true,
+      width: '100%'
     });
     $('#unit-select').select2({
       theme: 'bootstrap-5',

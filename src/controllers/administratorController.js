@@ -170,7 +170,7 @@ administratorController.updateUser = async (req, res) => {
     }
     if (require_twofa && (!currentUser.twofa_enabled || !currentUser.twofa_secret)) {
       const deadline = new Date(Date.now() + otpDeadlineDays * 24 * 60 * 60 * 1000);
-      await User.updateTwofaDeadline(id, deadline);
+      await User.updateTwofaDeadline(id, deadline.toISOString());
     } else if (!require_twofa) {
       await User.updateTwofaDeadline(id, null);
     }
@@ -288,6 +288,7 @@ administratorController.createRole = async (req, res) => {
       return res.redirect('/administrator/roles');
     }
     // Move DB logic to model
+    // @ts-ignore - client parameter is supported by model methods
     await Role.createWithPermissions({ name, description, permissions: permissions.map(Number) }, client);
     await client.query('COMMIT');
     
@@ -329,7 +330,9 @@ administratorController.updateRole = async (req, res) => {
       await client.query('ROLLBACK');
       return res.redirect('/administrator/roles');
     }
+    // @ts-ignore - client parameter is supported by model methods
     await Role.update(id, { name, description }, client);
+    // @ts-ignore - client parameter is supported by model methods
     await Role.updatePermissions(id, permissions.map(Number), client);
     await client.query('COMMIT');
     
@@ -631,7 +634,7 @@ administratorController.deleteConfiguration = async (req, res) => {
       req.flash('error', 'Key is required.');
       return res.redirect('/administrator/configuration');
     }
-    await Configuration.deleteByKey(key);
+    await Configuration.remove(key);
     req.flash('success', 'Configuration deleted successfully!');
     res.redirect('/administrator/configuration');
   } catch (err) {

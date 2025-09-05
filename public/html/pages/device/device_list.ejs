@@ -50,10 +50,12 @@
                 </div>
               </form>
             </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal" onclick="window.location.href='/device/device'">Close</button>
-              <button type="button" class="btn btn-secondary btn-sm" id="clearDeviceFilterBtn">Clear Filter</button>
-              <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal" onclick="applyDeviceFilter()">Apply Filter</button>
+            <div class="modal-footer d-flex justify-content-between">
+              <button type="button" id="clearDeviceFilterBtn" class="btn btn-outline-danger btn-sm">Clear All Filters</button>
+              <div>
+                <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal" onclick="applyDeviceFilter()">Apply Filter</button>
+                <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
+              </div>
             </div>
           </div>
         </div>
@@ -148,9 +150,12 @@
           window.location.href = '/device/device?' + params.toString();
         }
         $('#clearDeviceFilterBtn').on('click', function() {
+          // Clear all select2 values
           $('#filterDeviceType').val(null).trigger('change');
           $('#filterDeviceTags').val(null).trigger('change');
-          // Optionally, close modal and reload list without filters
+          // Close modal
+          $('#deviceFilterModal').modal('hide');
+          // Redirect to clean URL
           window.location.href = '/device/device';
         });
       </script>
@@ -386,8 +391,22 @@
                     <span class="text-muted">-</span>
                   <% } %>
                 </dd>
-                <dt class="col-sm-3">Management Address</dt>
-                <dd class="col-sm-9"><%= device.management_address || '-' %></dd>
+                <dt class="col-sm-3">Management</dt>
+                <dd class="col-sm-9">
+                  <% if (device.management_address) { %>
+                    <% const managementList = device.management_address.split(',').map(addr => addr.trim()); %>
+                    <% managementList.forEach(function(addr, index) { %>
+                      <% if (addr.match(/^https?:\/\//)) { %>
+                        <a href="<%= addr %>" target="_blank" class="text-decoration-none"><%= addr %></a>
+                      <% } else { %>
+                        <%= addr %>
+                      <% } %>
+                      <% if (index < managementList.length - 1) { %><br><% } %>
+                    <% }) %>
+                  <% } else { %>
+                    -
+                  <% } %>
+                </dd>
                 <dt class="col-sm-3">Tags</dt>
                 <dd class="col-sm-9">
                   <% if (device.tags && device.tags.length) { %>
