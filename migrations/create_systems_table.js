@@ -11,6 +11,7 @@ export default async (db) => {
       alias TEXT[],
       fqdn TEXT[],
       description TEXT,
+      scopes JSONB DEFAULT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_by VARCHAR(255)
@@ -51,5 +52,10 @@ export default async (db) => {
       domain_id INTEGER NOT NULL REFERENCES domains(id) ON DELETE CASCADE,
       PRIMARY KEY (system_id, domain_id)
     );
+  `);
+
+  // Create GIN index for JSONB scopes column for efficient querying
+  await db.query(`
+    CREATE INDEX IF NOT EXISTS idx_systems_scopes ON systems USING GIN (scopes);
   `);
 };

@@ -61,11 +61,31 @@ const router = express.Router();
  *           items:
  *             type: integer
  *           description: List of tag IDs
+ *         fqdn:
+ *           type: string
+ *           description: Fully Qualified Domain Name
+ *         scopes:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Scope user access
+ *         architecture:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: System architecture
  *         docs:
  *           type: array
  *           items:
  *             type: object
  *           description: List of attached documents
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *           description: Last updated timestamp
+ *         updated_by:
+ *           type: string
+ *           description: User who last updated
  *       example:
  *         id: 1
  *         system_id: "SYS001"
@@ -78,7 +98,12 @@ const router = express.Router();
  *         managers: [5, 7]
  *         ip_addresses: [101, 102]
  *         tags: [1, 2]
+ *         fqdn: "main.company.com"
+ *         scopes: ["public-internet", "internal"]
+ *         architecture: ["web", "api"]
  *         docs: [{ id: 1, name: "manual.pdf", url: "/uploads/manual.pdf" }]
+ *         updated_at: "2024-01-15T10:30:00Z"
+ *         updated_by: "admin"
  */
 
 /**
@@ -153,6 +178,16 @@ const router = express.Router();
  *                 type: array
  *                 items:
  *                   type: integer
+ *               fqdn:
+ *                 type: string
+ *               scopes:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               architecture:
+ *                 type: array
+ *                 items:
+ *                   type: string
  *               docs:
  *                 type: array
  *                 items:
@@ -230,6 +265,16 @@ const router = express.Router();
  *                 type: array
  *                 items:
  *                   type: integer
+ *               fqdn:
+ *                 type: string
+ *               scopes:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               architecture:
+ *                 type: array
+ *                 items:
+ *                   type: string
  *               docs:
  *                 type: array
  *                 items:

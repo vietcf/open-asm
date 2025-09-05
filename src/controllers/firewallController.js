@@ -507,10 +507,16 @@ firewallController.exportRuleList = async (req, res) => {
     if (typeof contacts === 'string') contacts = [contacts];
     contacts = contacts.map(c => parseInt(c, 10)).filter(c => !isNaN(c));
     if (contacts.length === 0) contacts = undefined;
+    
+    // Parse firewall_name and audit_batch filters
+    let firewall_name = req.query.firewall_name || '';
+    if (firewall_name === '') firewall_name = undefined;
+    let audit_batch = req.query.audit_batch || '';
+    if (audit_batch === '') audit_batch = undefined;
 
     // Get all filtered rules (no pagination)
     const { rules: ruleList } = await RuleFirewall.findAll({
-      search, page: 1, pageSize: 10000, ou_id, contacts, tags, violation_type, status
+      search, page: 1, pageSize: 10000, ou_id, contacts, tags, violation_type, status, firewall_name, audit_batch
     });
 
     // Create Excel workbook

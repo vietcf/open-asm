@@ -26,23 +26,153 @@ async function getLevelOptionsFromConfig() {
       }
       if (parsed) {
         if (Array.isArray(parsed)) {
-          levelOptions = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+          levelOptions = parsed.map(item => typeof item === 'object' ? { id: item.value, text: item.label } : { id: String(item), text: String(item) });
         } else if (parsed.levels && Array.isArray(parsed.levels)) {
-          levelOptions = parsed.levels.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+          levelOptions = parsed.levels.map(item => typeof item === 'object' ? { id: item.value, text: item.label } : { id: String(item), text: String(item) });
         }
       } else {
         // fallback: comma string
-        levelOptions = String(config.value).split(',').map(v => ({ value: v.trim(), label: v.trim() })).filter(x => x.value);
+        levelOptions = String(config.value).split(',').map(v => ({ id: v.trim(), text: v.trim() })).filter(x => x.id);
       }
     }
   } catch (e) {
     levelOptions = [];
   }
   if (!Array.isArray(levelOptions) || levelOptions.length === 0) {
-    levelOptions = [1,2,3,4,5].map(v => ({ value: String(v), label: `level ${v}` }));
+    levelOptions = [1,2,3,4,5].map(v => ({ id: String(v), text: `level ${v}` }));
   }
   return levelOptions;
 }
+
+// Tiện ích lấy scopeOptions từ DB (Configuration)
+async function getScopeOptionsFromConfig() {
+  let scopeOptions = [];
+  try {
+    const config = await Configuration.findById('system_user_scope');
+    
+    if (config && config.value) {
+      let parsed;
+      try {
+        parsed = JSON.parse(config.value);
+      } catch {
+        parsed = null;
+      }
+      
+      if (Array.isArray(parsed)) {
+        scopeOptions = parsed.map(item => typeof item === 'object' ? { id: item.value, text: item.label } : { id: String(item), text: String(item) });
+      } else if (parsed && typeof parsed === 'object') {
+        // Handle case where parsed is an object with nested structure
+        if (parsed.scopes && Array.isArray(parsed.scopes)) {
+          scopeOptions = parsed.scopes.map(item => typeof item === 'object' ? { id: item.value, text: item.label } : { id: String(item), text: String(item) });
+        } else if (parsed.options && Array.isArray(parsed.options)) {
+          scopeOptions = parsed.options.map(item => typeof item === 'object' ? { id: item.value, text: item.label } : { id: String(item), text: String(item) });
+        }
+      } else if (typeof parsed === 'string') {
+        // Handle comma-separated string
+        scopeOptions = parsed.split(',').map(s => ({ id: s.trim(), text: s.trim() })).filter(x => x.id);
+      }
+    }
+    
+    return scopeOptions;
+  } catch (e) {
+    scopeOptions = [];
+    return scopeOptions;
+  }
+}
+
+// Tiện ích lấy architectureOptions từ DB (Configuration)
+async function getArchitectureOptionsFromConfig() {
+  let architectureOptions = [];
+  try {
+    const config = await Configuration.findById('system_arch');
+    
+    if (config && config.value) {
+      let parsed;
+      try {
+        parsed = JSON.parse(config.value);
+      } catch {
+        parsed = null;
+      }
+      
+      if (Array.isArray(parsed)) {
+        architectureOptions = parsed.map(item => typeof item === 'object' ? { id: item.value, text: item.label } : { id: String(item), text: String(item) });
+      } else if (parsed && typeof parsed === 'object') {
+        // Handle case where parsed is an object with nested structure
+        if (parsed.architectures && Array.isArray(parsed.architectures)) {
+          architectureOptions = parsed.architectures.map(item => typeof item === 'object' ? { id: item.value, text: item.label } : { id: String(item), text: String(item) });
+        } else if (parsed.options && Array.isArray(parsed.options)) {
+          architectureOptions = parsed.options.map(item => typeof item === 'object' ? { id: item.value, text: item.label } : { id: String(item), text: String(item) });
+        }
+      } else if (typeof parsed === 'string') {
+        // Handle comma-separated string
+        architectureOptions = parsed.split(',').map(s => ({ id: s.trim(), text: s.trim() })).filter(x => x.id);
+      }
+    }
+    
+    return architectureOptions;
+  } catch (e) {
+    architectureOptions = [];
+    return architectureOptions;
+  }
+}
+
+// Tiện ích lấy appTypeOptions từ DB (Configuration)
+async function getAppTypeOptionsFromConfig() {
+  let appTypeOptions = [];
+  try {
+    const config = await Configuration.findById('system_app_type');
+    if (config && config.value) {
+      let parsed;
+      try {
+        parsed = JSON.parse(config.value);
+      } catch {
+        parsed = null;
+      }
+      
+      if (Array.isArray(parsed)) {
+        appTypeOptions = parsed.map(item => typeof item === 'object' ? { id: item.value, text: item.label } : { id: String(item), text: String(item) });
+      } else if (parsed && typeof parsed === 'object') {
+        // Handle case where parsed is an object with nested structure
+        if (parsed.appTypes && Array.isArray(parsed.appTypes)) {
+          appTypeOptions = parsed.appTypes.map(item => typeof item === 'object' ? { id: item.value, text: item.label } : { id: String(item), text: String(item) });
+        } else if (parsed.options && Array.isArray(parsed.options)) {
+          appTypeOptions = parsed.options.map(item => typeof item === 'object' ? { id: item.value, text: item.label } : { id: String(item), text: String(item) });
+        }
+      } else if (typeof parsed === 'string') {
+        // Handle comma-separated string
+        appTypeOptions = parsed.split(',').map(s => ({ id: s.trim(), text: s.trim() })).filter(x => x.id);
+      }
+    }
+  } catch (e) {
+    appTypeOptions = [];
+  }
+  return appTypeOptions;
+}
+
+// Helper function để validate scopes
+async function validateScopes(scopes) {
+  if (!scopes || scopes.length === 0) return null; // Allow empty
+  
+  const scopeOptions = await getScopeOptionsFromConfig();
+  const allowedScopes = (scopeOptions || []).map(s => s.id);
+  
+  // Filter only valid scopes
+  const validScopes = scopes.filter(scope => allowedScopes.includes(scope));
+  return validScopes.length > 0 ? validScopes : null;
+}
+
+// Helper function để validate architecture
+async function validateArchitecture(architecture) {
+  if (!architecture || architecture.length === 0) return null; // Allow empty
+  
+  const architectureOptions = await getArchitectureOptionsFromConfig();
+  const allowedArchitectures = (architectureOptions || []).map(a => a.id);
+  
+  // Filter only valid architectures
+  const validArchitectures = architecture.filter(arch => allowedArchitectures.includes(arch));
+  return validArchitectures.length > 0 ? validArchitectures : null;
+}
+
 
 
 
@@ -55,18 +185,27 @@ systemController.listSystemComponent = async (req, res) => {
     if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = res.locals.defaultPageSize;
     const page = parseInt(req.query.page, 10) || 1;
     const search = req.query.search?.trim() || '';
-    // Filter tags and contacts
+    // Filter tags, contacts, system_id, and app_type
     const normalizeArray = v => (Array.isArray(v) ? v : (v ? [v] : []));
     let filterTags = req.query['tags[]'] || req.query.tags || [];
     let filterContacts = req.query['contacts[]'] || req.query.contacts || [];
+    let filterSystemId = req.query.system_id || '';
+    let filterAppType = req.query.app_type || '';
     filterTags = normalizeArray(filterTags).filter(x => x !== '');
     filterContacts = normalizeArray(filterContacts).filter(x => x !== '');
-    const componentList = await SystemComponent.findFilteredList({ search, page, pageSize, filterTags, filterContacts });
-    const totalCount = await SystemComponent.countFiltered({ search, filterTags, filterContacts });
+    filterSystemId = filterSystemId ? String(filterSystemId).trim() : '';
+    filterAppType = filterAppType ? String(filterAppType).trim() : '';
+    // @ts-ignore - filterTags, filterContacts, filterSystemId, and filterAppType are supported by model methods
+    const componentList = await SystemComponent.findFilteredList({ search, page, pageSize, filterTags, filterContacts, system_id: filterSystemId, app_type: filterAppType });
+    // @ts-ignore - filterTags, filterContacts, filterSystemId, and filterAppType are supported by model methods
+    const totalCount = await SystemComponent.countFiltered({ search, filterTags, filterContacts, system_id: filterSystemId, app_type: filterAppType });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
     const [success, error] = [req.flash('success')[0], req.flash('error')[0]];
+    // Get app type options for filter
+    const appTypeOptions = await getAppTypeOptionsFromConfig();
+    
     res.render('pages/system/component_list', {
       componentList,
       search,
@@ -78,6 +217,9 @@ systemController.listSystemComponent = async (req, res) => {
       endItem,
       filterTags,
       filterContacts,
+      filterSystemId,
+      filterAppType,
+      appTypeOptions,
       success,
       error,
       title: 'System Component',
@@ -91,19 +233,7 @@ systemController.listSystemComponent = async (req, res) => {
 // Render add component form
 systemController.addSystemComponentForm = async (req, res) => {
   // Fetch App Type options from configuration table
-  let appTypeOptions = [];
-  try {
-    const config = await Configuration.findById('system_app_type');
-    if (config && config.value) {
-      try {
-        appTypeOptions = JSON.parse(config.value);
-      } catch (e) {
-        appTypeOptions = [];
-      }
-    }
-  } catch (e) {
-    appTypeOptions = [];
-  }
+  const appTypeOptions = await getAppTypeOptionsFromConfig();
   res.render('pages/system/component_add', {
     error: null,
     appTypeOptions,
@@ -164,8 +294,11 @@ systemController.addSystemComponent = async (req, res) => {
 
 
     // Set contacts, IPs, tags
+    // @ts-ignore - client parameter is supported by model methods
     await SystemComponent.setContacts(newComponent.id, contacts, client);
+    // @ts-ignore - client parameter is supported by model methods
     await SystemComponent.setIPs(newComponent.id, ips, client);
+    // @ts-ignore - client parameter is supported by model methods
     await SystemComponent.setTags(newComponent.id, tags, client);
 
     // --- Sync IPs between component and system ---
@@ -214,13 +347,7 @@ systemController.editSystemComponentForm = async (req, res) => {
       return res.redirect('/system/component');
     }
     // Lấy options cho app_type
-    let appTypeOptions = [];
-    try {
-      const config = await Configuration.findById('system_app_type');
-      if (config && config.value) {
-        appTypeOptions = JSON.parse(config.value);
-      }
-    } catch (e) { appTypeOptions = []; }
+    const appTypeOptions = await getAppTypeOptionsFromConfig();
     res.render('pages/system/component_edit', {
       component,
       appTypeOptions,
@@ -330,10 +457,13 @@ systemController.updateSystemComponent = async (req, res) => {
     };
     await SystemComponent.update(id, updateObj);
     // Update contacts for component
+    // @ts-ignore - client parameter is supported by model methods
     await SystemComponent.setContacts(id, contacts, client);
     // Update IPs for component
+    // @ts-ignore - client parameter is supported by model methods
     await SystemComponent.setIPs(id, ips, client);
     // Update tags for component
+    // @ts-ignore - client parameter is supported by model methods
     await SystemComponent.setTags(id, tags, client);
 
     // --- Sync IPs between component and system (edit) ---
@@ -404,15 +534,21 @@ systemController.listSystem = async (req, res) => {
   if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = res.locals.defaultPageSize;
   const page = parseInt(req.query.page, 10) || 1;
   const search = req.query.search?.trim() || '';
-  // Normalize filter from query (accept both tags[] and tags, contacts[] and contacts)
+  // Normalize filter from query (accept both tags[] and tags, contacts[] and contacts, scopes[] and scopes, architectures[] and architectures)
   const normalizeArray = v => (Array.isArray(v) ? v : (v ? [v] : []));
   let filterTags = req.query['tags[]'] || req.query.tags || [];
   let filterContacts = req.query['contacts[]'] || req.query.contacts || [];
+  let filterScopes = req.query['scopes[]'] || req.query.scopes || [];
+  let filterArchitecture = req.query['architectures[]'] || req.query.architectures || [];
   filterTags = normalizeArray(filterTags).filter(x => x !== '');
   filterContacts = normalizeArray(filterContacts).filter(x => x !== '');
+  filterScopes = normalizeArray(filterScopes).filter(x => x !== '');
+  filterArchitecture = normalizeArray(filterArchitecture).filter(x => x !== '');
   // Data
-  const systemList = await System.findFilteredList({ search, page, pageSize, filterTags, filterContacts });
-  const totalCount = await System.countFiltered({ search, filterTags, filterContacts });
+  // @ts-ignore - filterTags, filterContacts, filterScopes, and filterArchitecture are supported by model methods
+  const systemList = await System.findFilteredList({ search, page, pageSize, filterTags, filterContacts, filterScopes, filterArchitecture });
+  // @ts-ignore - filterTags, filterContacts, filterScopes, and filterArchitecture are supported by model methods
+  const totalCount = await System.countFiltered({ search, filterTags, filterContacts, filterScopes, filterArchitecture });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
@@ -439,6 +575,10 @@ systemController.listSystem = async (req, res) => {
     // Flash messages
     const [success, error] = [req.flash('success')[0], req.flash('error')[0]];
 
+    // Get scope and architecture options for filter modal
+    const scopeOptions = await getScopeOptionsFromConfig();
+    const architectureOptions = await getArchitectureOptionsFromConfig();
+
     res.render('pages/system/system_list', {
       systemList,
       search,
@@ -450,9 +590,13 @@ systemController.listSystem = async (req, res) => {
       endItem,
       success,
       error,
-  // Ensure filterTags and filterContacts are always defined for EJS
-  filterTags,
-  filterContacts,
+      // Ensure filterTags, filterContacts, filterScopes, and filterArchitecture are always defined for EJS
+      filterTags,
+      filterContacts,
+      filterScopes,
+      filterArchitecture,
+      scopeOptions,
+      architectureOptions,
       title: 'System Management',
       activeMenu: 'system'
     });
@@ -495,6 +639,8 @@ systemController.editSystemForm = async (req, res) => {
       selectedManagerObjects = await Contact.findByIds(selectedContacts);
     }
     const levelOptions = await getLevelOptionsFromConfig();
+    const scopeOptions = await getScopeOptionsFromConfig();
+    const architectureOptions = await getArchitectureOptionsFromConfig();
     res.render('pages/system/system_edit', {
       system,
       selectedContacts,
@@ -504,6 +650,8 @@ systemController.editSystemForm = async (req, res) => {
       selectedDomains,
       selectedManagerObjects,
       levelOptions,
+      scopeOptions,
+      architectureOptions,
       title: 'Edit System',
       activeMenu: 'system',
       componentList
@@ -533,7 +681,9 @@ systemController.updateSystem = async (req, res) => {
       tags,
       domains,
       description,
-      fqdn
+      fqdn,
+      scopes,
+      architecture
     } = req.body;
     // Now check and initialize each field as needed
     system_id = (system_id === undefined || system_id === null) ? '' : String(system_id).trim();
@@ -578,6 +728,12 @@ systemController.updateSystem = async (req, res) => {
     // Domains: giữ lại nếu không nhập
     if (!Array.isArray(domains)) domains = domains ? [domains] : [];
     if (!domains || domains.length === 0) domains = Array.isArray(currentSystem?.domains) ? currentSystem.domains : [];
+    // Scopes: giữ lại nếu không nhập
+    if (!Array.isArray(scopes)) scopes = scopes ? [scopes] : [];
+    if (!scopes || scopes.length === 0) scopes = currentSystem?.scopes || [];
+    // Architecture: giữ lại nếu không nhập
+    if (!Array.isArray(architecture)) architecture = architecture ? [architecture] : [];
+    if (!architecture || architecture.length === 0) architecture = currentSystem?.architecture || [];
     // Description: giữ lại nếu không nhập
     description = (description === undefined || description === null) ? (currentSystem?.description || '') : String(description);
 
@@ -595,7 +751,7 @@ systemController.updateSystem = async (req, res) => {
     // Validate level if present, use allowed values from levelOptions
     if (level !== null) {
       const levelOptions = await getLevelOptionsFromConfig();
-      const allowedLevels = (levelOptions || []).map(l => l.value);
+      const allowedLevels = (levelOptions || []).map(l => l.id);
       if (!allowedLevels.includes(level)) {
         req.flash('error', 'Invalid level value.');
         return res.redirect('/system/system');
@@ -658,6 +814,10 @@ systemController.updateSystem = async (req, res) => {
         return res.redirect('/system/system');
       }
     }
+    // Validate scopes and architecture if present
+    const validatedScopes = await validateScopes(scopes);
+    const validatedArchitecture = await validateArchitecture(architecture);
+    
     // Update the systems table
     await System.update(id, {
       system_id,
@@ -667,11 +827,17 @@ systemController.updateSystem = async (req, res) => {
       alias: aliasValue,
       description,
       fqdn: fqdnList,
+      scopes: validatedScopes,
+      architecture: validatedArchitecture,
       updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
     }, client);
+    // @ts-ignore - client parameter is supported by model methods
     await System.setContacts(id, managers, client);
+    // @ts-ignore - client parameter is supported by model methods
     await System.setIPs(id, ip_addresses, client);
+    // @ts-ignore - client parameter is supported by model methods
     await System.setDomains(id, domains, client);
+    // @ts-ignore - client parameter is supported by model methods
     await System.setTags(id, tags, client);
     // Handle file deletion if requested
     let filesToDelete = [];
@@ -742,9 +908,13 @@ systemController.updateSystem = async (req, res) => {
 systemController.addSystemForm = async (req, res) => {
   try {
     const levelOptions = await getLevelOptionsFromConfig();
+    const scopeOptions = await getScopeOptionsFromConfig();
+    const architectureOptions = await getArchitectureOptionsFromConfig();
     res.render('pages/system/system_add', {
       error: null,
       levelOptions,
+      scopeOptions,
+      architectureOptions,
       title: 'Add System',
       activeMenu: 'system'
     });
@@ -770,7 +940,9 @@ systemController.addSystem = async (req, res) => {
       ip_addresses,
       tags,
       domains,
-      description
+      description,
+      scopes,
+      architecture
     } = req.body;
 
     // Normalize/validate fields
@@ -784,6 +956,8 @@ systemController.addSystem = async (req, res) => {
     ip_addresses = !ip_addresses ? [] : Array.isArray(ip_addresses) ? ip_addresses : [ip_addresses];
     tags = !tags ? [] : Array.isArray(tags) ? tags : [tags];
     domains = !domains ? [] : Array.isArray(domains) ? domains : [domains];
+    scopes = !scopes ? [] : Array.isArray(scopes) ? scopes : [scopes];
+    architecture = !architecture ? [] : Array.isArray(architecture) ? architecture : [architecture];
 
     level = (level === undefined || level === null || level === '') ? null : level;
     department_id = (department_id === undefined || department_id === null || department_id === '') ? null : department_id;
@@ -809,7 +983,7 @@ systemController.addSystem = async (req, res) => {
     // Validate level if present, use allowed values from levelOptions
     if (level !== null) {
       const levelOptions = await getLevelOptionsFromConfig();
-      const allowedLevels = (levelOptions || []).map(l => l.value);
+      const allowedLevels = (levelOptions || []).map(l => l.id);
       if (!allowedLevels.includes(level)) {
         req.flash('error', 'Invalid level value.');
         return res.redirect('/system/system');
@@ -865,7 +1039,6 @@ systemController.addSystem = async (req, res) => {
         if (!(await Tag.exists(tid))) invalidTags.push(tid);
       }
       if (invalidTags.length > 0) {
-        fqdn: fqdnList,
         req.flash('error', 'Invalid tag IDs: ' + invalidTags.join(', '));
         return res.redirect('/system/system');
       }
@@ -883,6 +1056,10 @@ systemController.addSystem = async (req, res) => {
       }
     }
     // Create new system
+    // Validate scopes and architecture if present
+    const validatedScopes = await validateScopes(scopes);
+    const validatedArchitecture = await validateArchitecture(architecture);
+    
     const newSystem = await System.create({
       system_id,
       name,
@@ -891,13 +1068,19 @@ systemController.addSystem = async (req, res) => {
       alias,
       description,
       fqdn: fqdnList,
+      scopes: validatedScopes,
+      architecture: validatedArchitecture,
       updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
     }, client);
 
     // Set relationships (links) after creation
+    // @ts-ignore - client parameter is supported by model methods
     await System.setContacts(newSystem.id, managers, client);
+    // @ts-ignore - client parameter is supported by model methods
     await System.setIPs(newSystem.id, ip_addresses, client);
+    // @ts-ignore - client parameter is supported by model methods
     await System.setDomains(newSystem.id, domains, client);
+    // @ts-ignore - client parameter is supported by model methods
     await System.setTags(newSystem.id, tags, client);
 
     // Handle uploaded files from AJAX (hidden input: uploaded_docs)
@@ -956,14 +1139,20 @@ systemController.deleteSystem = async (req, res) => {
       return res.redirect('/system/system');
     }
     // Delete related links via model
+    // @ts-ignore - client parameter is supported by model methods
     await System.deleteTags(id, client);
+    // @ts-ignore - client parameter is supported by model methods
     await System.deleteIPs(id, client);
+    // @ts-ignore - client parameter is supported by model methods
     await System.deleteContacts(id, client);
+    // @ts-ignore - client parameter is supported by model methods
     await System.deleteDomains(id, client);
+    // @ts-ignore - client parameter is supported by model methods
     await System.deleteServers(id, client);
     // Delete file uploads related to this system from both DB and physical storage
     await FileUpload.deleteByObject('system', id);
     // Delete system
+    // @ts-ignore - client parameter is supported by model methods
     await System.delete(id, client);
     await client.query('COMMIT');
     req.flash('success', 'System deleted successfully');

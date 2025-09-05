@@ -117,9 +117,12 @@
                   </div>
                 </div>
               </div>
-              <div class="modal-footer d-flex justify-content-end">
-                <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
+              <div class="modal-footer d-flex justify-content-between">
+                <button type="button" id="clearFilterBtnIp" class="btn btn-outline-danger btn-sm">Clear All Filters</button>
+                <div>
+                  <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
+                </div>
               </div>
             </form>
           </div>
@@ -217,6 +220,14 @@
           }
           // Clear Filter button: reset tất cả filter về mặc định
           $('#clearFilterBtnIp').on('click', function() {
+            // Clear all select2 values
+            $('#filterIpTags').val(null).trigger('change');
+            $('#filterIpSystems').val(null).trigger('change');
+            $('#filterIpContacts').val(null).trigger('change');
+            $('#filterIpStatus').val(null).trigger('change');
+            // Close modal
+            $filterModal.modal('hide');
+            // Redirect to clean URL
             window.location.href = '/network/ip-address';
           });
         });
@@ -308,7 +319,7 @@
                   </tr>
                   <!-- IP Detail Modal -->
                   <div class="modal fade" id="ipDetailModal-<%= ip.id %>" tabindex="-1" aria-labelledby="ipDetailModalLabel-<%= ip.id %>" aria-hidden="true">
-                    <div class="modal-dialog">
+                    <div class="modal-dialog modal-lg">
                       <div class="modal-content">
                         <div class="modal-header">
                           <h5 class="modal-title" id="ipDetailModalLabel-<%= ip.id %>">IP Information</h5>
@@ -316,16 +327,16 @@
                         </div>
                         <div class="modal-body">
                           <dl class="row mb-0">
-                            <dt class="col-sm-4">ID</dt>
-                            <dd class="col-sm-8"><%= ip.id %></dd>
-                            <dt class="col-sm-4">IP Address</dt>
-                            <dd class="col-sm-8"><%= ip.ip_address %></dd>
-                            <dt class="col-sm-4">Description</dt>
-                            <dd class="col-sm-8"><span class="desc-text"><%- (ip.description || '').replace(/\n/g, '<br>') %></span></dd>
-                            <dt class="col-sm-4">Status</dt>
-                            <dd class="col-sm-8"><%= ip.status || '' %></dd>
-                            <dt class="col-sm-4">Tags</dt>
-                            <dd class="col-sm-8">
+                            <dt class="col-sm-3">IP ID</dt>
+                            <dd class="col-sm-9 text-monospace"><%= ip.id %></dd>
+                            <dt class="col-sm-3">IP Address</dt>
+                            <dd class="col-sm-9"><%= ip.ip_address %></dd>
+                            <dt class="col-sm-3">Description</dt>
+                            <dd class="col-sm-9"><span class="desc-text"><%- (ip.description || '').replace(/\n/g, '<br>') %></span></dd>
+                            <dt class="col-sm-3">Status</dt>
+                            <dd class="col-sm-9"><%= ip.status || '' %></dd>
+                            <dt class="col-sm-3">Tags</dt>
+                            <dd class="col-sm-9">
                               <% if (ip.tags && ip.tags.length > 0) { %>
                                 <% ip.tags.forEach(function(tag) { %>
                                   <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
@@ -334,14 +345,14 @@
                                 <span class="text-muted">No tags</span>
                               <% } %>
                             </dd>
-                            <dt class="col-sm-4">Created At</dt>
-                            <dd class="col-sm-8"><%= ip.created_at ? (ip.created_at.toLocaleString ? ip.created_at.toLocaleString() : ip.created_at) : '' %></dd>
-                            <dt class="col-sm-4">Updated At</dt>
-                            <dd class="col-sm-8"><%= ip.updated_at ? (ip.updated_at.toLocaleString ? ip.updated_at.toLocaleString() : ip.updated_at) : '' %></dd>
-                            <dt class="col-sm-4">Updated By</dt>
-                            <dd class="col-sm-8"><%= ip.updated_by || '' %></dd>
-                            <dt class="col-sm-4">Contacts</dt>
-                            <dd class="col-sm-8">
+                            <dt class="col-sm-3">Created At</dt>
+                            <dd class="col-sm-9"><%= ip.created_at ? (ip.created_at.toLocaleString ? ip.created_at.toLocaleString() : ip.created_at) : '' %></dd>
+                            <dt class="col-sm-3">Updated At</dt>
+                            <dd class="col-sm-9"><%= ip.updated_at ? (ip.updated_at.toLocaleString ? ip.updated_at.toLocaleString() : ip.updated_at) : '' %></dd>
+                            <dt class="col-sm-3">Updated By</dt>
+                            <dd class="col-sm-9"><%= ip.updated_by || '' %></dd>
+                            <dt class="col-sm-3">Contacts</dt>
+                            <dd class="col-sm-9">
                               <% if (ip.contacts && ip.contacts.length > 0) { %>
                                 <% ip.contacts.forEach(function(contact, idx) { %>
                                   <% if (contact.email) { %>
@@ -352,8 +363,8 @@
                                 <span class="text-muted">No contacts</span>
                               <% } %>
                             </dd>
-                            <dt class="col-sm-4">Systems</dt>
-                            <dd class="col-sm-8">
+                            <dt class="col-sm-3">Systems</dt>
+                            <dd class="col-sm-9">
                               <% if (ip.systems && ip.systems.length > 0) { %>
                                 <% ip.systems.forEach(function(system) { %>
                                   <div><a href="/system/system?search=<%= encodeURIComponent(system.name) %>" target="_blank"><%= system.name + (system.system_id ? ' (' + system.system_id + ')' : '') %></a></div>
@@ -362,16 +373,16 @@
                                 <span class="text-muted">No system</span>
                               <% } %>
                             </dd>
-                            <dt class="col-sm-4">Server</dt>
-                            <dd class="col-sm-8">
+                            <dt class="col-sm-3">Server</dt>
+                            <dd class="col-sm-9">
                               <% if (ip.server && ip.server.id) { %>
                                 <a href="/server/server/list?search=<%= encodeURIComponent(ip.server.name) %>" target="_blank"><%= ip.server.name %></a>
                               <% } else { %>
                                 <span class="text-muted">No server</span>
                               <% } %>
                             </dd>
-                            <dt class="col-sm-4">Device</dt>
-                            <dd class="col-sm-8">
+                            <dt class="col-sm-3">Device</dt>
+                            <dd class="col-sm-9">
                               <% if (ip.device && ip.device.id) { %>
                                 <a href="/device/device?search=<%= encodeURIComponent(ip.device.name) %>" target="_blank"><%= ip.device.name %></a>
                               <% } else { %>

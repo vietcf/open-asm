@@ -9,6 +9,7 @@ import Domain from '../../models/Domain.js';
 import SystemComponent from '../../models/SystemComponent.js';
 
 import Configuration from '../../models/Configuration.js';
+import { pool } from '../../../config/config.js';
 
 const apiSystemController = {};
 
@@ -62,6 +63,98 @@ async function validateLevel(level) {
     return `Level must be one of: ${validLevels.join(', ')}`;
   }
   return null; // Valid
+}
+
+// Helper: get scope options from DB (Configuration)
+async function getScopeOptionsFromConfig() {
+  let scopeOptions = [];
+  try {
+    const config = await Configuration.findById('system_user_scope');
+    
+    if (config && config.value) {
+      let parsed;
+      try {
+        parsed = JSON.parse(config.value);
+      } catch {
+        parsed = null;
+      }
+      
+      if (Array.isArray(parsed)) {
+        scopeOptions = parsed.map(item => typeof item === 'object' ? { id: item.value, text: item.label } : { id: String(item), text: String(item) });
+      } else if (parsed && typeof parsed === 'object') {
+        if (parsed.scopes && Array.isArray(parsed.scopes)) {
+          scopeOptions = parsed.scopes.map(item => typeof item === 'object' ? { id: item.value, text: item.label } : { id: String(item), text: String(item) });
+        } else if (parsed.options && Array.isArray(parsed.options)) {
+          scopeOptions = parsed.options.map(item => typeof item === 'object' ? { id: item.value, text: item.label } : { id: String(item), text: String(item) });
+        }
+      } else if (typeof parsed === 'string') {
+        scopeOptions = parsed.split(',').map(s => ({ id: s.trim(), text: s.trim() })).filter(x => x.id);
+      }
+    }
+    
+    return scopeOptions;
+  } catch (e) {
+    scopeOptions = [];
+    return scopeOptions;
+  }
+}
+
+// Helper: get architecture options from DB (Configuration)
+async function getArchitectureOptionsFromConfig() {
+  let architectureOptions = [];
+  try {
+    const config = await Configuration.findById('system_arch');
+    
+    if (config && config.value) {
+      let parsed;
+      try {
+        parsed = JSON.parse(config.value);
+      } catch {
+        parsed = null;
+      }
+      
+      if (Array.isArray(parsed)) {
+        architectureOptions = parsed.map(item => typeof item === 'object' ? { id: item.value, text: item.label } : { id: String(item), text: String(item) });
+      } else if (parsed && typeof parsed === 'object') {
+        if (parsed.architectures && Array.isArray(parsed.architectures)) {
+          architectureOptions = parsed.architectures.map(item => typeof item === 'object' ? { id: item.value, text: item.label } : { id: String(item), text: String(item) });
+        } else if (parsed.options && Array.isArray(parsed.options)) {
+          architectureOptions = parsed.options.map(item => typeof item === 'object' ? { id: item.value, text: item.label } : { id: String(item), text: String(item) });
+        }
+      } else if (typeof parsed === 'string') {
+        architectureOptions = parsed.split(',').map(s => ({ id: s.trim(), text: s.trim() })).filter(x => x.id);
+      }
+    }
+    
+    return architectureOptions;
+  } catch (e) {
+    architectureOptions = [];
+    return architectureOptions;
+  }
+}
+
+// Helper: validate scopes
+async function validateScopes(scopes) {
+  if (!scopes || scopes.length === 0) return null; // Allow empty
+  
+  const scopeOptions = await getScopeOptionsFromConfig();
+  const allowedScopes = (scopeOptions || []).map(s => s.id);
+  
+  // Filter only valid scopes
+  const validScopes = scopes.filter(scope => allowedScopes.includes(scope));
+  return validScopes.length > 0 ? validScopes : null;
+}
+
+// Helper: validate architecture
+async function validateArchitecture(architecture) {
+  if (!architecture || architecture.length === 0) return null; // Allow empty
+  
+  const architectureOptions = await getArchitectureOptionsFromConfig();
+  const allowedArchitectures = (architectureOptions || []).map(a => a.id);
+  
+  // Filter only valid architectures
+  const validArchitectures = architecture.filter(arch => allowedArchitectures.includes(arch));
+  return validArchitectures.length > 0 ? validArchitectures : null;
 }
 
 // List all systems (with optional search and pagination)
@@ -119,30 +212,40 @@ apiSystemController.getById = async (req, res) => {
 
 // Create a new system
 apiSystemController.create = async (req, res) => {
+  const client = await pool.connect();
   try {
-    let { system_id, name, alias, description, level, department_id, domains, managers, ip_addresses, tags, docs } = req.body || {};
+    await client.query('BEGIN');
+    
+    let { system_id, name, alias, description, level, department_id, domains, managers, ip_addresses, tags, docs, fqdn, scopes, architecture } = req.body || {};
     
     // Validate required fields first
-    if (!system_id || !name) return res.status(400).json({ error: 'system_id and name are required' });
+    if (!system_id || !name) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'system_id and name are required' });
+    }
     
     // Validate that fields are not just empty strings
     if (system_id.trim() === '' || name.trim() === '') {
+      await client.query('ROLLBACK');
       return res.status(400).json({ error: 'system_id and name cannot be empty strings' });
     }
     
     // Check for duplicate system_id
     if (await System.existsBySystemId(system_id)) {
+      await client.query('ROLLBACK');
       return res.status(409).json({ error: `System ID '${system_id}' already exists` });
     }
     
     // Check for duplicate system name
     if (await System.existsByName(name)) {
+      await client.query('ROLLBACK');
       return res.status(409).json({ error: `System name '${name}' already exists` });
     }
     
     // Validate level field
     const levelError = await validateLevel(level);
     if (levelError) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ error: levelError });
     }
     
@@ -153,13 +256,34 @@ apiSystemController.create = async (req, res) => {
     tags = parseArrayField(tags);
     docs = docs || [];
     
+    // Parse and validate fqdn, scopes, architecture
+    let fqdnList = [];
+    if (fqdn) {
+      if (typeof fqdn === 'string') {
+        fqdnList = fqdn.split(',').map(s => s.trim()).filter(Boolean);
+      } else if (Array.isArray(fqdn)) {
+        fqdnList = fqdn.map(s => String(s).trim()).filter(Boolean);
+      }
+    }
+    
+    scopes = parseArrayField(scopes);
+    architecture = parseArrayField(architecture);
+    
+    // Validate scopes and architecture
+    const validatedScopes = await validateScopes(scopes);
+    const validatedArchitecture = await validateArchitecture(architecture);
+    
     // Validate relationships after parsing
-    if (department_id && !(await Unit.exists(department_id))) return res.status(400).json({ error: 'Invalid department_id' });
+    if (department_id && !(await Unit.exists(department_id))) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Invalid department_id' });
+    }
     
     // Validate tags array
     if (tags && tags.length > 0) {
       for (const tagId of tags) {
         if (!(await Tag.exists(tagId))) {
+          await client.query('ROLLBACK');
           return res.status(400).json({ error: `Invalid tag ID: ${tagId}` });
         }
       }
@@ -169,6 +293,7 @@ apiSystemController.create = async (req, res) => {
     if (managers && managers.length > 0) {
       for (const managerId of managers) {
         if (!(await Contact.exists(managerId))) {
+          await client.query('ROLLBACK');
           return res.status(400).json({ error: `Invalid manager ID: ${managerId}` });
         }
       }
@@ -178,6 +303,7 @@ apiSystemController.create = async (req, res) => {
     if (ip_addresses && ip_addresses.length > 0) {
       for (const ipId of ip_addresses) {
         if (!(await IpAddress.exists(ipId))) {
+          await client.query('ROLLBACK');
           return res.status(400).json({ error: `Invalid IP address ID: ${ipId}` });
         }
       }
@@ -187,6 +313,7 @@ apiSystemController.create = async (req, res) => {
     if (domains && domains.length > 0) {
       for (const domainId of domains) {
         if (!(await Domain.exists(domainId))) {
+          await client.query('ROLLBACK');
           return res.status(400).json({ error: `Invalid domain ID: ${domainId}` });
         }
       }
@@ -205,28 +332,42 @@ apiSystemController.create = async (req, res) => {
       alias: formattedAlias,
       description,
       level,
-      department_id
-    });
+      department_id,
+      fqdn: fqdnList,
+      scopes: validatedScopes,
+      architecture: validatedArchitecture,
+      updated_by: req.user?.username || 'api-user' // Get from JWT token
+    }, client);
     
     // Set relationships if provided
     if (managers && managers.length > 0) {
-      await System.setContacts(system.id, managers);
+      await System.setContacts(system.id, managers, client);
     }
     if (ip_addresses && ip_addresses.length > 0) {
-      await System.setIPs(system.id, ip_addresses);
+      await System.setIPs(system.id, ip_addresses, client);
     }
     if (domains && domains.length > 0) {
-      await System.setDomains(system.id, domains);
+      await System.setDomains(system.id, domains, client);
     }
     if (tags && tags.length > 0) {
-      await System.setTags(system.id, tags);
+      await System.setTags(system.id, tags, client);
     }
+    
+    // Commit transaction
+    await client.query('COMMIT');
     
     // Return the created system with relationships
     const systemWithDetails = await System.findById(system.id);
     res.status(201).json(systemWithDetails);
   } catch (err) {
     console.error('Error creating system:', err);
+    
+    // Rollback transaction
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackErr) {
+      console.error('Error rolling back transaction:', rollbackErr);
+    }
     
     // Handle specific database constraint errors
     if (err.code === '23505') { // unique_violation (PostgreSQL error code)
@@ -241,16 +382,25 @@ apiSystemController.create = async (req, res) => {
     }
     
     res.status(500).json({ error: err.message });
+  } finally {
+    // Always release the client back to the pool
+    client.release();
   }
 };
 
 // Update a system
 apiSystemController.update = async (req, res) => {
+  const client = await pool.connect();
   try {
+    await client.query('BEGIN');
+    
     const id = req.params.id;
-    let { system_id, name, alias, description, level, department_id, domains, managers, ip_addresses, tags, docs } = req.body || {};
+    let { system_id, name, alias, description, level, department_id, domains, managers, ip_addresses, tags, docs, fqdn, scopes, architecture } = req.body || {};
     const system = await System.findById(id);
-    if (!system) return res.status(404).json({ error: 'System not found' });
+    if (!system) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'System not found' });
+    }
     
     // Check for duplicate system_id if it's being changed
     if (system_id !== undefined && system_id !== system.system_id) {
@@ -287,6 +437,7 @@ apiSystemController.update = async (req, res) => {
     // Validate and parse array fields only if they are provided
     // Validate department_id if provided
     if (department_id !== undefined && department_id && !(await Unit.exists(department_id))) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Invalid department_id' });
     }
     
@@ -296,6 +447,7 @@ apiSystemController.update = async (req, res) => {
       if (domains && domains.length > 0) {
         for (const domainId of domains) {
           if (!(await Domain.exists(domainId))) {
+            await client.query('ROLLBACK');
             return res.status(400).json({ error: `Invalid domain ID: ${domainId}` });
           }
         }
@@ -308,6 +460,7 @@ apiSystemController.update = async (req, res) => {
       if (managers && managers.length > 0) {
         for (const managerId of managers) {
           if (!(await Contact.exists(managerId))) {
+            await client.query('ROLLBACK');
             return res.status(400).json({ error: `Invalid manager ID: ${managerId}` });
           }
         }
@@ -320,6 +473,7 @@ apiSystemController.update = async (req, res) => {
       if (ip_addresses && ip_addresses.length > 0) {
         for (const ipId of ip_addresses) {
           if (!(await IpAddress.exists(ipId))) {
+            await client.query('ROLLBACK');
             return res.status(400).json({ error: `Invalid IP address ID: ${ipId}` });
           }
         }
@@ -332,9 +486,56 @@ apiSystemController.update = async (req, res) => {
       if (tags && tags.length > 0) {
         for (const tagId of tags) {
           if (!(await Tag.exists(tagId))) {
+            await client.query('ROLLBACK');
             return res.status(400).json({ error: `Invalid tag ID: ${tagId}` });
           }
         }
+      }
+    }
+    
+    // Parse and validate fqdn, scopes, architecture if provided
+    let fqdnList = system.fqdn || []; // Keep existing if not provided
+    let fqdnChanged = false;
+    if (fqdn !== undefined) {
+      const newFqdnList = [];
+      if (fqdn) {
+        if (typeof fqdn === 'string') {
+          newFqdnList.push(...fqdn.split(',').map(s => s.trim()).filter(Boolean));
+        } else if (Array.isArray(fqdn)) {
+          newFqdnList.push(...fqdn.map(s => String(s).trim()).filter(Boolean));
+        }
+      }
+      // Check if fqdn actually changed
+      const currentFqdn = Array.isArray(system.fqdn) ? system.fqdn : (system.fqdn ? [system.fqdn] : []);
+      fqdnChanged = JSON.stringify(currentFqdn.sort()) !== JSON.stringify(newFqdnList.sort());
+      if (fqdnChanged) {
+        fqdnList = newFqdnList;
+      }
+    }
+    
+    let validatedScopes = system.scopes || null; // Keep existing if not provided
+    let scopesChanged = false;
+    if (scopes !== undefined) {
+      scopes = parseArrayField(scopes);
+      const newScopes = await validateScopes(scopes);
+      // Check if scopes actually changed
+      const currentScopes = Array.isArray(system.scopes) ? system.scopes : (system.scopes ? [system.scopes] : []);
+      scopesChanged = JSON.stringify(currentScopes.sort()) !== JSON.stringify((newScopes || []).sort());
+      if (scopesChanged) {
+        validatedScopes = newScopes;
+      }
+    }
+    
+    let validatedArchitecture = system.architecture || null; // Keep existing if not provided
+    let architectureChanged = false;
+    if (architecture !== undefined) {
+      architecture = parseArrayField(architecture);
+      const newArchitecture = await validateArchitecture(architecture);
+      // Check if architecture actually changed
+      const currentArchitecture = Array.isArray(system.architecture) ? system.architecture : (system.architecture ? [system.architecture] : []);
+      architectureChanged = JSON.stringify(currentArchitecture.sort()) !== JSON.stringify((newArchitecture || []).sort());
+      if (architectureChanged) {
+        validatedArchitecture = newArchitecture;
       }
     }
     
@@ -348,35 +549,86 @@ apiSystemController.update = async (req, res) => {
       }
     }
     
-    // Update basic system fields
-    const updatedSystem = await System.update(id, {
-      system_id: system_id !== undefined ? system_id : system.system_id,
-      name: name !== undefined ? name : system.name,
-      alias: formattedAlias,
-      description: description !== undefined ? description : system.description,
-      level: level !== undefined ? level : system.level,
-      department_id: department_id !== undefined ? department_id : system.department_id
-    });
+    // Check if any basic fields actually changed
+    const basicFieldsChanged = (
+      (system_id !== undefined && system_id !== system.system_id) ||
+      (name !== undefined && name !== system.name) ||
+      (description !== undefined && description !== system.description) ||
+      (level !== undefined && level !== system.level) ||
+      (department_id !== undefined && department_id !== system.department_id) ||
+      fqdnChanged || scopesChanged || architectureChanged ||
+      (alias !== undefined && JSON.stringify(system.alias) !== JSON.stringify(formattedAlias))
+    );
+    
+    // Only update if there are actual changes
+    let updatedSystem = system;
+    if (basicFieldsChanged) {
+      updatedSystem = await System.update(id, {
+        system_id: system_id !== undefined ? system_id : system.system_id,
+        name: name !== undefined ? name : system.name,
+        alias: formattedAlias,
+        description: description !== undefined ? description : system.description,
+        level: level !== undefined ? level : system.level,
+        department_id: department_id !== undefined ? department_id : system.department_id,
+        fqdn: fqdnList,
+        scopes: validatedScopes,
+        architecture: validatedArchitecture,
+        updated_by: req.user?.username || 'api-user' // Get from JWT token
+      }, client);
+    }
+    
+    // Check if relationships changed
+    let relationshipsChanged = false;
     
     // Update relationships if provided
     if (managers !== undefined) {
-      await System.setContacts(id, managers);
+      await System.setContacts(id, managers, client);
+      relationshipsChanged = true;
     }
     if (ip_addresses !== undefined) {
-      await System.setIPs(id, ip_addresses);
+      await System.setIPs(id, ip_addresses, client);
+      relationshipsChanged = true;
     }
     if (domains !== undefined) {
-      await System.setDomains(id, domains);
+      await System.setDomains(id, domains, client);
+      relationshipsChanged = true;
     }
     if (tags !== undefined) {
-      await System.setTags(id, tags);
+      await System.setTags(id, tags, client);
+      relationshipsChanged = true;
     }
+    
+    // Update updated_at if only relationships changed
+    if (relationshipsChanged && !basicFieldsChanged) {
+      await System.update(id, {
+        system_id: system.system_id,
+        name: system.name,
+        alias: system.alias,
+        description: system.description,
+        level: system.level,
+        department_id: system.department_id,
+        fqdn: system.fqdn,
+        scopes: system.scopes,
+        architecture: system.architecture,
+        updated_by: req.user?.username || 'api-user'
+      }, client);
+    }
+    
+    // Commit transaction
+    await client.query('COMMIT');
     
     // Return updated system with relationships
     const systemWithDetails = await System.findById(id);
     res.json(systemWithDetails);
   } catch (err) {
     console.error('Error updating system:', err);
+    
+    // Rollback transaction
+    try {
+      await client.query('ROLLBACK');
+    } catch (rollbackErr) {
+      console.error('Error rolling back transaction:', rollbackErr);
+    }
     
     // Handle specific database constraint errors
     if (err.code === '23505') { // unique_violation (PostgreSQL error code)
@@ -391,6 +643,9 @@ apiSystemController.update = async (req, res) => {
     }
     
     res.status(500).json({ error: err.message });
+  } finally {
+    // Always release the client back to the pool
+    client.release();
   }
 };
 

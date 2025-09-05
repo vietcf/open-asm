@@ -3,11 +3,14 @@ import { pool } from '../../config/config.js';
 
 class System {
   // ===== CRUD METHODS =====
-  static async create({ system_id, name, level, department_id, alias, description, fqdn, updated_by }) {
-    const result = await pool.query(
-      `INSERT INTO systems (system_id, name, level, department_id, alias, description, fqdn, updated_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [system_id, name, level, department_id, alias, description, fqdn, updated_by]
+  static async create({ system_id, name, level, department_id, alias, description, fqdn, scopes, architecture, updated_by }, client) {
+    const executor = client || pool;
+    const result = await executor.query(
+      `INSERT INTO systems (system_id, name, level, department_id, alias, description, fqdn, scopes, architecture, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      [system_id, name, level, department_id, alias, description, fqdn, 
+       scopes ? JSON.stringify(scopes) : null, 
+       architecture ? JSON.stringify(architecture) : null, updated_by]
     );
     return result.rows[0];
   }
@@ -41,12 +44,14 @@ class System {
     return result.rows[0];
   }
 
-  static async update(id, { system_id, name, level, department_id, alias, description, fqdn, updated_by }, client) {
+  static async update(id, { system_id, name, level, department_id, alias, description, fqdn, scopes, architecture, updated_by }, client) {
     const executor = client || pool;
     const result = await executor.query(
-      `UPDATE systems SET system_id=$1, name=$2, level=$3, department_id=$4, alias=$5, description=$6, fqdn=$7, updated_at=CURRENT_TIMESTAMP, updated_by=$8
-       WHERE id=$9 RETURNING *`,
-      [system_id, name, level, department_id, alias, description, fqdn, updated_by, id]
+      `UPDATE systems SET system_id=$1, name=$2, level=$3, department_id=$4, alias=$5, description=$6, fqdn=$7, scopes=$8, architecture=$9, updated_at=CURRENT_TIMESTAMP, updated_by=$10
+       WHERE id=$11 RETURNING *`,
+      [system_id, name, level, department_id, alias, description, fqdn, 
+       scopes ? JSON.stringify(scopes) : null, 
+       architecture ? JSON.stringify(architecture) : null, updated_by, id]
     );
     return result.rows[0];
   }
@@ -221,11 +226,51 @@ class System {
     return await System.remove(id, client);
   }
 
+  // ===== SCOPE METHODS =====
+  static async setScopes(systemId, scopes, client) {
+    const executor = client || pool;
+    await executor.query(
+      'UPDATE systems SET scopes = $1 WHERE id = $2',
+      [scopes ? JSON.stringify(scopes) : null, systemId]
+    );
+  }
+
+  static async getScopes(systemId) {
+    const result = await pool.query('SELECT scopes FROM systems WHERE id = $1', [systemId]);
+    return result.rows[0]?.scopes || null;
+  }
+
+  static async hasScope(systemId, scope) {
+    const result = await pool.query('SELECT scopes FROM systems WHERE id = $1', [systemId]);
+    if (!result.rows[0]?.scopes) return false;
+    return result.rows[0].scopes.includes(scope);
+  }
+
+  // Architecture helper methods
+  static async setArchitecture(systemId, architecture, client) {
+    const executor = client || pool;
+    await executor.query(
+      'UPDATE systems SET architecture = $1 WHERE id = $2',
+      [architecture ? JSON.stringify(architecture) : null, systemId]
+    );
+  }
+
+  static async getArchitecture(systemId) {
+    const result = await pool.query('SELECT architecture FROM systems WHERE id = $1', [systemId]);
+    return result.rows[0]?.architecture || null;
+  }
+
+  static async hasArchitecture(systemId, architecture) {
+    const result = await pool.query('SELECT architecture FROM systems WHERE id = $1', [systemId]);
+    if (!result.rows[0]?.architecture) return false;
+    return result.rows[0].architecture.includes(architecture);
+  }
+
   // ===== FILTERED LIST & PAGINATION =====
-  static async findFilteredList({ search = '', page = 1, pageSize = 10 }) {
+  static async findFilteredList({ search = '', page = 1, pageSize = 10, filterScopes = [], filterArchitecture = [] }) {
     const offset = (page - 1) * pageSize;
     const q = `%${search}%`;
-    // filterTags and filterContacts are arrays of ids (as string)
+    // filterTags, filterContacts, filterScopes, and filterArchitecture are arrays
     const filterTags = arguments[0].filterTags || [];
     const filterContacts = arguments[0].filterContacts || [];
     let whereClauses = [
@@ -242,6 +287,20 @@ class System {
       whereClauses.push(`EXISTS (SELECT 1 FROM system_contact sc2 WHERE sc2.system_id = s.id AND sc2.contact_id = ANY($${paramIdx}))`);
       params.push(filterContacts.map(Number));
       paramIdx++;
+    }
+    if (filterScopes.length > 0) {
+      const scopeConditions = filterScopes.map(() => `s.scopes @> $${paramIdx++}`);
+      whereClauses.push(`(${scopeConditions.join(' OR ')})`);
+      filterScopes.forEach(scope => {
+        params.push(JSON.stringify([scope]));
+      });
+    }
+    if (filterArchitecture.length > 0) {
+      const architectureConditions = filterArchitecture.map(() => `s.architecture @> $${paramIdx++}`);
+      whereClauses.push(`(${architectureConditions.join(' OR ')})`);
+      filterArchitecture.forEach(architecture => {
+        params.push(JSON.stringify([architecture]));
+      });
     }
     const result = await pool.query(`
       SELECT s.*,
@@ -266,13 +325,13 @@ class System {
       LEFT JOIN system_components comp ON comp.system_id = s.id
       WHERE ${whereClauses.join(' AND ')}
       GROUP BY s.id, u.name
-      ORDER BY s.id
+      ORDER BY s.updated_at DESC
       LIMIT $${paramIdx} OFFSET $${paramIdx + 1}
     `, [...params, pageSize, offset]);
     return result.rows;
   }
 
-  static async countFiltered({ search = '' }) {
+  static async countFiltered({ search = '', filterScopes = [], filterArchitecture = [] }) {
     const q = `%${search}%`;
     const filterTags = arguments[0].filterTags || [];
     const filterContacts = arguments[0].filterContacts || [];
@@ -290,6 +349,20 @@ class System {
       whereClauses.push(`EXISTS (SELECT 1 FROM system_contact sc2 WHERE sc2.system_id = s.id AND sc2.contact_id = ANY($${paramIdx}))`);
       params.push(filterContacts.map(Number));
       paramIdx++;
+    }
+    if (filterScopes.length > 0) {
+      const scopeConditions = filterScopes.map(() => `s.scopes @> $${paramIdx++}`);
+      whereClauses.push(`(${scopeConditions.join(' OR ')})`);
+      filterScopes.forEach(scope => {
+        params.push(JSON.stringify([scope]));
+      });
+    }
+    if (filterArchitecture.length > 0) {
+      const architectureConditions = filterArchitecture.map(() => `s.architecture @> $${paramIdx++}`);
+      whereClauses.push(`(${architectureConditions.join(' OR ')})`);
+      filterArchitecture.forEach(architecture => {
+        params.push(JSON.stringify([architecture]));
+      });
     }
     const result = await pool.query(`
       SELECT COUNT(DISTINCT s.id) AS count

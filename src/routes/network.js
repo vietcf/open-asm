@@ -16,6 +16,7 @@ router.get('/subnet-address', requirePermission('subnet.read'), networkControlle
 router.post('/subnet-address', requirePermission('subnet.create'), networkController.createSubnet);
 router.put('/subnet-address/:id', requirePermission('subnet.update'), networkController.updateSubnet);
 router.delete('/subnet-address/:id', requirePermission('subnet.delete'), networkController.deleteSubnet);
+router.get('/subnet-address/export', requirePermission('subnet.read'), networkController.exportSubnetList);
 
 // ====== DOMAIN MENU ======
 router.get('/domain', requirePermission('domain.read'), networkController.listDomain);
@@ -26,6 +27,7 @@ router.delete('/domain/:id', requirePermission('domain.delete'), networkControll
 // // ====== AJAX API ======
 router.get('/api/subnet-address/:id', requirePermission('subnet.read'), networkController.detailSubnet); //Get detail of subnet
 router.get('/api/ip-addresses', networkController.apiSearchIPAddresses); // Search IP addresses
+router.get('/api/ip-addresses/detail', networkController.apiGetIPDetail); // Get detailed IP information
 router.get('/api/domain', networkController.apiDomainSearch); // Search domains
 router.get('/api/ip-addresses/unassigned', networkController.apiSearchUnassignedIPAddresses); // Search unassigned IP addresses
 

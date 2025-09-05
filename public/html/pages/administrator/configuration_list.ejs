@@ -55,31 +55,50 @@
                   </tr>
                   <!-- Show Modal -->
                   <div class="modal fade" id="configShowModal-<%= config.key %>" tabindex="-1" aria-labelledby="configShowModalLabel-<%= config.key %>" aria-hidden="true">
-                    <div class="modal-dialog">
+                    <div class="modal-dialog modal-lg">
                       <div class="modal-content">
                         <div class="modal-header">
-                          <h5 class="modal-title" id="configShowModalLabel-<%= config.key %>">Configuration Detail</h5>
+                          <h5 class="modal-title" id="configShowModalLabel-<%= config.key %>">
+                            <i class="bi bi-gear-fill me-2"></i>Configuration Detail
+                          </h5>
                           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
                           <dl class="row mb-0">
-                            <dt class="col-sm-4">Key</dt>
-                            <dd class="col-sm-8"><%= config.key %></dd>
-                            <dt class="col-sm-4">Value</dt>
-                            <dd class="col-sm-8">
+                            <!-- Key Field -->
+                            <dt class="col-sm-3 fw-bold">Key</dt>
+                            <dd class="col-sm-9">
+                              <code class="fs-6 bg-light px-2 py-1 rounded"><%= config.key %></code>
+                            </dd>
+                            
+                            <!-- Value Field -->
+                            <dt class="col-sm-3 fw-bold">Value</dt>
+                            <dd class="col-sm-9">
                               <% let parsed = null; let isJson = false;
                                  try { parsed = JSON.parse(config.value); isJson = true; } catch(e) { isJson = false; }
                               %>
                               <% if (isJson) { %>
-                                <pre class="mb-0" style="white-space: pre-wrap; word-break: break-all; background: #f8f9fa; border-radius: 4px; padding: 8px;">
+                                <pre class="mb-0 small" style="white-space: pre-wrap; word-break: break-all; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; padding: 8px; max-height: 300px; overflow-y: auto;">
 <%= JSON.stringify(parsed, null, 2) %>
                                 </pre>
                               <% } else { %>
-                                <%= config.value %>
+                                <div class="bg-light p-2 rounded border">
+                                  <span class="small"><%= config.value %></span>
+                                </div>
                               <% } %>
                             </dd>
-                            <dt class="col-sm-4">Description</dt>
-                            <dd class="col-sm-8"><%= config.description || '' %></dd>
+                            
+                            <!-- Description Field -->
+                            <dt class="col-sm-3 fw-bold">Description</dt>
+                            <dd class="col-sm-9">
+                              <% if (config.description && config.description.trim()) { %>
+                                <div class="bg-light p-2 rounded border">
+                                  <span class="small"><%= config.description %></span>
+                                </div>
+                              <% } else { %>
+                                <span class="text-muted fst-italic small">No description provided</span>
+                              <% } %>
+                            </dd>
                           </dl>
                         </div>
                         <div class="modal-footer">
@@ -91,27 +110,29 @@
                   <!-- Edit Modal -->
                   <% if (hasPermission('configuration.update')) { %>
                   <div class="modal fade" id="configEditModal-<%= config.key %>" tabindex="-1" aria-labelledby="configEditModalLabel-<%= config.key %>" aria-hidden="true">
-                    <div class="modal-dialog">
+                    <div class="modal-dialog modal-lg">
                       <div class="modal-content">
                         <form action="/administrator/configuration/<%= config.key %>" method="POST">
                           <input type="hidden" name="key" value="<%= config.key %>">
                           <div class="modal-header">
-                            <h5 class="modal-title" id="configEditModalLabel-<%= config.key %>">Edit Configuration</h5>
+                            <h5 class="modal-title" id="configEditModalLabel-<%= config.key %>">
+                              <i class="bi bi-pencil-square me-2"></i>Edit Configuration
+                            </h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                           </div>
                           <div class="modal-body">
                             <div class="mb-3">
                               <label class="form-label">Key</label>
-                              <input type="text" class="form-control form-control-sm" name="key_display" value="<%= config.key %>" readonly>
+                              <input type="text" class="form-control" name="key_display" value="<%= config.key %>" readonly>
                             </div>
                             <div class="mb-3">
                               <label class="form-label">Value <span class="text-danger">*</span></label>
-                              <textarea class="form-control form-control-sm" name="value" rows="4" required><%= config.value %></textarea>
-                              <div class="form-text">Bạn có thể nhập JSON hoặc nhiều dòng cho các cấu hình dạng danh sách.</div>
+                              <textarea class="form-control" name="value" rows="6" required><%= config.value %></textarea>
+                              <div class="form-text small">Bạn có thể nhập JSON hoặc nhiều dòng cho các cấu hình dạng danh sách.</div>
                             </div>
                             <div class="mb-3">
                               <label class="form-label">Description</label>
-                              <input type="text" class="form-control form-control-sm" name="description" value="<%= config.description || '' %>">
+                              <input type="text" class="form-control" name="description" value="<%= config.description || '' %>">
                             </div>
                           </div>
                           <div class="modal-footer">
@@ -136,26 +157,28 @@
   <!-- Add Configuration Modal -->
   <% if (hasPermission('configuration.create')) { %>
   <div class="modal fade" id="addConfigModal" tabindex="-1" aria-labelledby="addConfigModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <form action="/administrator/configuration" method="POST">
           <div class="modal-header">
-            <h5 class="modal-title" id="addConfigModalLabel">Add Configuration</h5>
+            <h5 class="modal-title" id="addConfigModalLabel">
+              <i class="bi bi-plus-circle me-2"></i>Add Configuration
+            </h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
             <div class="mb-3">
               <label class="form-label">Key <span class="text-danger">*</span></label>
-              <input type="text" name="key" class="form-control form-control-sm" required>
+              <input type="text" name="key" class="form-control" required>
             </div>
             <div class="mb-3">
               <label class="form-label">Value <span class="text-danger">*</span></label>
-              <textarea name="value" class="form-control form-control-sm" rows="4" required placeholder='Nhập giá trị, ví dụ: [{ "value": "DC", "label": "Data Center DR" }, ...]'></textarea>
-              <div class="form-text">Bạn có thể nhập JSON hoặc nhiều dòng cho các cấu hình dạng danh sách.</div>
+              <textarea name="value" class="form-control" rows="6" required placeholder='Nhập giá trị, ví dụ: [{ "value": "DC", "label": "Data Center DR" }, ...]'></textarea>
+              <div class="form-text small">Bạn có thể nhập JSON hoặc nhiều dòng cho các cấu hình dạng danh sách.</div>
             </div>
             <div class="mb-3">
               <label class="form-label">Description</label>
-              <input type="text" name="description" class="form-control form-control-sm">
+              <input type="text" name="description" class="form-control">
             </div>
           </div>
           <div class="modal-footer">

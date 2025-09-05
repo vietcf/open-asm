@@ -43,7 +43,7 @@ class IpAddress {
    * @returns {Promise<Array>} List of all IP addresses
    */
   static async findAll() {
-    const result = await pool.query('SELECT * FROM ip_addresses ORDER BY id');
+    const result = await pool.query('SELECT * FROM ip_addresses ORDER BY updated_at DESC');
     return result.rows;
   }
 
@@ -149,6 +149,7 @@ class IpAddress {
     return row;
   }
 
+
   /**
    * Update an IP address
    * @param {number} id
@@ -209,7 +210,7 @@ class IpAddress {
    */
   static async findPage(page, pageSize) {
     const offset = (page - 1) * pageSize;
-    const result = await pool.query('SELECT * FROM ip_addresses ORDER BY id LIMIT $1 OFFSET $2', [pageSize, offset]);
+    const result = await pool.query('SELECT * FROM ip_addresses ORDER BY updated_at DESC LIMIT $1 OFFSET $2', [pageSize, offset]);
     return result.rows;
   }
 
@@ -223,7 +224,7 @@ class IpAddress {
   static async findSearchPage(search, page, pageSize) {
     const offset = (page - 1) * pageSize;
     const result = await pool.query(
-      `SELECT * FROM ip_addresses WHERE ip_address::text ILIKE $1 OR description ILIKE $1 ORDER BY id LIMIT $2 OFFSET $3`,
+      `SELECT * FROM ip_addresses WHERE ip_address::text ILIKE $1 OR description ILIKE $1 ORDER BY updated_at DESC LIMIT $2 OFFSET $3`,
       [`%${search}%`, pageSize, offset]
     );
     return result.rows;
@@ -350,7 +351,7 @@ class IpAddress {
       ${joinClauses.join(' ')}
       ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''}
       GROUP BY ip.id, d.id, srv.id
-      ORDER BY ip.id
+      ORDER BY ip.updated_at DESC
       LIMIT $${idx} OFFSET $${idx + 1}`;
     params.push(pageSize, (page - 1) * pageSize);
     const result = await pool.query(sql, params);

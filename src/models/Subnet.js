@@ -5,7 +5,7 @@ import { pool } from '../../config/config.js';
 class Subnet {
   // Get all subnets
   static async findAll() {
-    const result = await pool.query('SELECT * FROM subnets ORDER BY id');
+    const result = await pool.query('SELECT * FROM subnets ORDER BY updated_at DESC');
     return result.rows;
   }
 
@@ -24,10 +24,10 @@ class Subnet {
   }
 
   // Create a new subnet (only fields in subnets table)
-  static async create({ address, description }, client = pool) {
+  static async create({ address, description, updated_by = '' }, client = pool) {
     const result = await client.query(
-      'INSERT INTO subnets (address, description) VALUES ($1, $2) RETURNING *',
-      [address, description]
+      'INSERT INTO subnets (address, description, updated_by) VALUES ($1, $2, $3) RETURNING *',
+      [address, description, updated_by]
     );
     return result.rows[0];
   }
@@ -51,10 +51,10 @@ class Subnet {
   }
 
   // Update subnet description by ID (transaction client optional)
-  static async update(id, { description }, client = pool) {
+  static async update(id, { description, updated_by = '' }, client = pool) {
     await client.query(
-      'UPDATE subnets SET description = $1 WHERE id = $2',
-      [description, id]
+      'UPDATE subnets SET description = $1, updated_by = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+      [description, updated_by, id]
     );
   }
 
@@ -75,7 +75,7 @@ class Subnet {
        LEFT JOIN tag_object tobj ON tobj.object_type = 'subnet' AND tobj.object_id = s.id
        LEFT JOIN tags t ON tobj.tag_id = t.id
        GROUP BY s.id
-       ORDER BY s.id
+       ORDER BY s.updated_at DESC
        LIMIT $1 OFFSET $2`,
       [pageSize, offset]
     );
@@ -84,53 +84,91 @@ class Subnet {
 
   // Get filtered list of subnets (with pagination, search, tags)
   static async findFilteredList({ search, tags, page = 1, pageSize = 10 }) {
-    // For now, tags filter is not implemented, but can be added similar to IP
-    if (search && /^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?$/.test(search)) {
-      const result = await pool.query(
-        `SELECT s.*, COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags
-         FROM subnets s
-         LEFT JOIN tag_object tobj ON tobj.object_type = 'subnet' AND tobj.object_id = s.id
-         LEFT JOIN tags t ON tobj.tag_id = t.id
-         WHERE s.address >>= $1
-         GROUP BY s.id
-         ORDER BY masklen(s.address) DESC
-         LIMIT $2 OFFSET $3`,
-        [search, pageSize, (page - 1) * pageSize]
-      );
-      return result.rows;
+    let params = [];
+    let whereClauses = [];
+    let idx = 1;
+    
+    // Filter by tags (all selected tags must be present)
+    if (tags && tags.length > 0) {
+      whereClauses.push(`s.id IN (SELECT object_id FROM tag_object WHERE object_type = 'subnet' AND tag_id = ANY($${idx}))`);
+      params.push(tags);
+      idx++;
     }
+    
+    // Search by subnet address or description
+    if (search && search.trim() !== '') {
+      if (/^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?$/.test(search)) {
+        // If search is a valid subnet/IP format, use network operators
+        whereClauses.push(`s.address >>= $${idx}`);
+        params.push(search);
+        idx++;
+      } else {
+        // Regular text search
+        whereClauses.push(`(s.address::text ILIKE $${idx} OR s.description ILIKE $${idx})`);
+        params.push(`%${search}%`);
+        idx++;
+      }
+    }
+    
     const offset = (page - 1) * pageSize;
+    const whereClause = whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : '';
+    
+    let orderBy = 'ORDER BY s.updated_at DESC';
+    if (search && /^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?$/.test(search) && (!tags || tags.length === 0)) {
+      orderBy = 'ORDER BY masklen(s.address) DESC';
+    }
+    
     const result = await pool.query(
       `SELECT s.*, COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags
        FROM subnets s
        LEFT JOIN tag_object tobj ON tobj.object_type = 'subnet' AND tobj.object_id = s.id
        LEFT JOIN tags t ON tobj.tag_id = t.id
-       WHERE s.address::text ILIKE $1 OR s.description ILIKE $1 OR t.name ILIKE $1
+       ${whereClause}
        GROUP BY s.id
-       ORDER BY s.id
-       LIMIT $2 OFFSET $3`,
-      [`%${search}%`, pageSize, offset]
+       ${orderBy}
+       LIMIT $${idx} OFFSET $${idx + 1}`,
+      [...params, pageSize, offset]
     );
     return result.rows;
   }
 
   // Get count for filtered subnet list (search, tags)
   static async countFiltered({ search, tags }) {
-    // For now, tags filter is not implemented, but can be added similar to IP
-    if (search && /^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?$/.test(search)) {
-      const result = await pool.query(
-        `SELECT COUNT(*) FROM subnets WHERE address >>= $1`,
-        [search]
-      );
-      return parseInt(result.rows[0].count, 10);
+    let params = [];
+    let whereClauses = [];
+    let idx = 1;
+    
+    // Filter by tags (all selected tags must be present)
+    if (tags && tags.length > 0) {
+      whereClauses.push(`s.id IN (SELECT object_id FROM tag_object WHERE object_type = 'subnet' AND tag_id = ANY($${idx}))`);
+      params.push(tags);
+      idx++;
     }
+    
+    // Search by subnet address or description
+    if (search && search.trim() !== '') {
+      if (/^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?$/.test(search)) {
+        // If search is a valid subnet/IP format, use network operators
+        whereClauses.push(`s.address >>= $${idx}`);
+        params.push(search);
+        idx++;
+      } else {
+        // Regular text search
+        whereClauses.push(`(s.address::text ILIKE $${idx} OR s.description ILIKE $${idx})`);
+        params.push(`%${search}%`);
+        idx++;
+      }
+    }
+    
+    const whereClause = whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : '';
+    
     const result = await pool.query(
       `SELECT COUNT(DISTINCT s.id) AS count
        FROM subnets s
        LEFT JOIN tag_object tobj ON tobj.object_type = 'subnet' AND tobj.object_id = s.id
        LEFT JOIN tags t ON tobj.tag_id = t.id
-       WHERE s.address::text ILIKE $1 OR s.description ILIKE $1 OR t.name ILIKE $1`,
-      [`%${search}%`]
+       ${whereClause}`,
+      params
     );
     return parseInt(result.rows[0].count, 10);
   }
