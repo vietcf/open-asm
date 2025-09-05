@@ -62,8 +62,10 @@ const router = express.Router();
  *             type: integer
  *           description: List of tag IDs
  *         fqdn:
- *           type: string
- *           description: Fully Qualified Domain Name
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: List of Fully Qualified Domain Names
  *         scopes:
  *           type: array
  *           items:
@@ -98,7 +100,7 @@ const router = express.Router();
  *         managers: [5, 7]
  *         ip_addresses: [101, 102]
  *         tags: [1, 2]
- *         fqdn: "main.company.com"
+ *         fqdn: ["main.company.com", "api.company.com"]
  *         scopes: ["public-internet", "internal"]
  *         architecture: ["web", "api"]
  *         docs: [{ id: 1, name: "manual.pdf", url: "/uploads/manual.pdf" }]
@@ -179,7 +181,9 @@ const router = express.Router();
  *                 items:
  *                   type: integer
  *               fqdn:
- *                 type: string
+ *                 type: array
+ *                 items:
+ *                   type: string
  *               scopes:
  *                 type: array
  *                 items:
@@ -266,7 +270,9 @@ const router = express.Router();
  *                 items:
  *                   type: integer
  *               fqdn:
- *                 type: string
+ *                 type: array
+ *                 items:
+ *                   type: string
  *               scopes:
  *                 type: array
  *                 items:

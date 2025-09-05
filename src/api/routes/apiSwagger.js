@@ -59,6 +59,8 @@ const apiSwaggerRouter = express.Router();
  *     description: Server management
  *   - name: IPAddress
  *     description: API for managing IP addresses
+ *   - name: Domain
+ *     description: API for managing domains
  *   - name: Auth
  *     description: Authentication management
  */
