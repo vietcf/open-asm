@@ -51,6 +51,13 @@ const router = express.Router();
  *           items:
  *             type: integer
  *           description: List of tag IDs
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *           description: Last updated timestamp
+ *         updated_by:
+ *           type: string
+ *           description: User who last updated
  *       example:
  *         id: 1
  *         system_id: 2
@@ -61,6 +68,8 @@ const router = express.Router();
  *         contacts: [5, 7]
  *         ips: [101, 102]
  *         tags: [1, 2]
+ *         updated_at: "2024-01-15T10:30:00Z"
+ *         updated_by: "admin"
  */
 
 /**
@@ -105,7 +114,34 @@ const router = express.Router();
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Component'
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               system_id:
+ *                 type: integer
+ *               name:
+ *                 type: string
+ *               app_type:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               fqdn:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               contacts:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *               ips:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: integer
  *     responses:
  *       201:
  *         description: Component created
@@ -147,7 +183,32 @@ const router = express.Router();
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Component'
+ *             type: object
+ *             properties:
+ *               system_id:
+ *                 type: integer
+ *               name:
+ *                 type: string
+ *               app_type:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               fqdn:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               contacts:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *               ips:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: integer
  *     responses:
  *       200:
  *         description: Component updated

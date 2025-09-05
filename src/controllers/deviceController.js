@@ -142,8 +142,8 @@ deviceController.editDeviceForm = async (req, res) => {
     device.management = device.management_address;
     const error = (req.flash('error') || [])[0];
     const success = (req.flash('success') || [])[0];
-  // Load location options from DB config (shared helper)
-  const locationOptions = await getLocationOptionsFromConfig();
+    // Load location options from DB config (shared helper)
+    const locationOptions = await getLocationOptionsFromConfig();
     res.render('pages/device/device_edit', {
       device,
       error,
@@ -209,20 +209,24 @@ deviceController.createDevice = async (req, res) => {
       updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
     };
     // Insert device only
+    // @ts-ignore - client parameter is supported by model methods
     const device = await Device.create(data, client);
     // Set IP addresses
     if (ip_addresses) {
       const ipList = Array.isArray(ip_addresses) ? ip_addresses : [ip_addresses];
+      // @ts-ignore - client parameter is supported by model methods
       await Device.setIpAddresses(device.id, ipList, client);
     }
     // Set tags
     if (tags) {
       const tagList = Array.isArray(tags) ? tags : [tags];
+      // @ts-ignore - client parameter is supported by model methods
       await Device.setTags(device.id, tagList, client);
     }
     // Set contacts
     if (contacts) {
       const contactList = Array.isArray(contacts) ? contacts : [contacts];
+      // @ts-ignore - client parameter is supported by model methods
       await Device.setContacts(device.id, contactList, client);
     }
     await client.query('COMMIT');
@@ -266,18 +270,22 @@ deviceController.updateDevice = async (req, res) => {
     // Set tags
     if (tags) {
       const tagList = Array.isArray(tags) ? tags : [tags];
+      // @ts-ignore - client parameter is supported by model methods
       await Device.setTags(req.params.id, tagList, client);
     } else {
+      // @ts-ignore - client parameter is supported by model methods
       await Device.setTags(req.params.id, [], client);
     }
     // Set IP addresses
     if (ip_addresses) {
       const ipList = Array.isArray(ip_addresses) ? ip_addresses : [ip_addresses];
+      // @ts-ignore - client parameter is supported by model methods
       await Device.setIpAddresses(req.params.id, ipList, client);
     }
     // Set contacts
     if (contacts) {
       const contactList = Array.isArray(contacts) ? contacts : [contacts];
+      // @ts-ignore - client parameter is supported by model methods
       await Device.setContacts(req.params.id, contactList, client);
     }
     await client.query('COMMIT');
@@ -565,7 +573,7 @@ deviceController.exportDeviceList = async (req, res) => {
     filterParams.tags = (filterParams.tags || []).map(t => Number(t)).filter(Boolean);
     if (!filterParams.tags.length) delete filterParams.tags;
     // Lấy toàn bộ danh sách (không phân trang)
-    const deviceList = await Device.findFilteredList({ ...filterParams, page: 1, pageSize: 10000 });
+    const deviceList = await Device.findFilteredList({ ...filterParams, platform_id: undefined, location: undefined, page: 1, pageSize: 10000 });
     const headers = [
       'ID', 'Name', 'Device Type', 'Manufacturer', 'Serial Number', 'Management Address',
       'IP Address(es)', 'Location', 'Tags', 'Contacts', 'Description', 'Updated By', 'Updated At'
@@ -580,7 +588,7 @@ deviceController.exportDeviceList = async (req, res) => {
       (device.ip_addresses && device.ip_addresses.length ? device.ip_addresses.map(ip => ip.ip_address || ip.address || ip).join(', ') : ''),
       device.location || '',
       (device.tags && device.tags.length ? device.tags.map(t => t.name).join(', ') : ''),
-      (device.contacts && device.contacts.length ? device.contacts.map(c => `${c.name} <${c.email}>`).join(', ') : ''),
+      (device.contacts && device.contacts.length ? device.contacts.map(c => c.email || c.name || 'Unknown').join(', ') : ''),
       device.description ? device.description.replace(/\r?\n|\r/g, ' ') : '',
       device.updated_by || '',
       device.updated_at ? new Date(device.updated_at).toLocaleString('en-GB') : ''

@@ -10,7 +10,7 @@ class Server {
   }
 
   static async findAll() {
-    const res = await pool.query('SELECT * FROM servers ORDER BY id');
+    const res = await pool.query('SELECT * FROM servers ORDER BY updated_at DESC');
     return res.rows;
   }
 
@@ -122,7 +122,7 @@ class Server {
     return result.rows;
   }
 
-  static async findFilteredList({ search, status, type, platform_id, location, tags, ip, manager, systems, services, os, page = 1, pageSize = 10 }) {
+  static async findFilteredList({ search, status, type, location, tags, ip, manager, systems, services, os, page = 1, pageSize = 10 }) {
     let params = [];
     let whereClauses = [];
     let joinClauses = [];
@@ -149,11 +149,7 @@ class Server {
       params.push(type);
       idx++;
     }
-    if (platform_id) {
-      whereClauses.push(`s.os_id = $${idx}`);
-      params.push(platform_id);
-      idx++;
-    }
+
     if (os && os.length > 0) {
       whereClauses.push(`s.os_id = ANY($${idx})`);
       params.push(os);
@@ -207,7 +203,7 @@ class Server {
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', ag.id, 'name', ag.name, 'version', ag.version)) FILTER (WHERE ag.id IS NOT NULL), '[]') AS agents
       FROM servers s ${joins} ${where} 
       GROUP BY s.id, p.name
-      ORDER BY s.id
+      ORDER BY s.updated_at DESC
       LIMIT $${idx} OFFSET $${idx + 1}`;
     params.push(pageSize, offset);
     const res = await pool.query(sql, params);
@@ -223,7 +219,7 @@ class Server {
     });
   }
 
-  static async countFiltered({ search, status, type, platform_id, location, tags, ip, manager, systems, services, os }) {
+  static async countFiltered({ search, status, type, location, tags, ip, manager, systems, services, os }) {
     let params = [];
     let whereClauses = [];
     let joinClauses = [];
@@ -250,11 +246,7 @@ class Server {
       params.push(type);
       idx++;
     }
-    if (platform_id) {
-      whereClauses.push(`s.os_id = $${idx}`);
-      params.push(platform_id);
-      idx++;
-    }
+
     if (os && os.length > 0) {
       whereClauses.push(`s.os_id = ANY($${idx})`);
       params.push(os);
@@ -397,7 +389,7 @@ class Server {
       LEFT JOIN agents ag ON ag.id = sa.agent_id
       WHERE ${whereClauses.join(' AND ')}
       GROUP BY s.id, p.name, p.description
-      ORDER BY s.id
+      ORDER BY s.updated_at DESC
     `;
 
     const result = await pool.query(sql, params);

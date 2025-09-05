@@ -660,7 +660,7 @@ serverController.exportServerList = async (req, res) => {
       server.status || '',
       server.location || '',
       server.type || '',
-      (server.managers && server.managers.length ? server.managers.map(m => m.name).join(', ') : ''),
+      (server.managers && server.managers.length ? server.managers.map(m => m.email || m.name || 'Unknown').join(', ') : ''),
       server.platform_name || '',
       (server.agents && server.agents.length ? server.agents.map(a => a.name).join(', ') : ''),
       (server.services && server.services.length ? server.services.map(s => s.name).join(', ') : ''),
