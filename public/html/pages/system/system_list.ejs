@@ -1,5 +1,5 @@
-<div class="container-fluid">
-  <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/system/system" style="max-width: 500px; margin-left: auto; margin-top: 2.5rem;">
+  <div class="container-fluid">
+    <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/system/system" style="max-width: 500px; margin-left: auto; margin-top: 2.5rem;">
     <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search by name, system ID..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
     <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
       <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
@@ -37,11 +37,22 @@
                     <label class="form-label">Contacts</label>
                     <select id="filterSystemContacts" name="contacts[]" class="form-control" multiple></select>
                   </div>
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Scope user access</label>
+                    <select id="filterSystemScopes" name="scopes[]" class="form-control" multiple></select>
+                  </div>
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Architecture</label>
+                    <select id="filterSystemArchitecture" name="architectures[]" class="form-control" multiple></select>
+                  </div>
                 </div>
               </div>
-              <div class="modal-footer d-flex justify-content-end">
-                <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
-                <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
+              <div class="modal-footer d-flex justify-content-between">
+                <button type="button" id="clearFilterBtnSystem" class="btn btn-outline-danger btn-sm">Clear All Filters</button>
+                <div>
+                  <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
+                </div>
               </div>
             </form>
           </div>
@@ -50,7 +61,11 @@
       <!-- Filter values for JS (an toàn cho EJS strict, giống IP Address List) -->
       <div id="filter-system-data"
         data-tags='<%= JSON.stringify(filterTags || []) %>'
-        data-contacts='<%= JSON.stringify(filterContacts || []) %>' style="display:none"></div>
+        data-contacts='<%= JSON.stringify(filterContacts || []) %>'
+        data-scopes='<%= JSON.stringify(filterScopes || []) %>'
+        data-architecture='<%= JSON.stringify(filterArchitecture || []) %>' style="display:none"></div>
+      
+
     </div>
   </div>
   <% // Declare pagination variables ONCE before the table, to avoid duplicate declaration errors and ReferenceError %>
@@ -92,7 +107,8 @@
                 <th>Description</th>
                 <th>Alias</th>
                 <th>Tags</th>
-                <th>Components</th>
+                <th>Scope user access</th>
+                <th>Architecture</th>
                 <th class="text-end">Actions</th>
               </tr>
             </thead>
@@ -123,22 +139,55 @@
                     </td>
                     <td>
                       <% if (system.tags && system.tags.length > 0) { %>
-                        <% system.tags.forEach(function(tag) { %>
-                          <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
-                        <% }) %>
+                        <div style="line-height: 1.4;">
+                          <% system.tags.forEach(function(tag, idx) { %>
+                            <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;">
+                              <%= tag.name %>
+                            </span>
+                            <% if ((idx + 1) % 2 === 0 && idx < system.tags.length - 1) { %>
+                              <br>
+                            <% } %>
+                          <% }) %>
+                        </div>
                       <% } else { %>
                         <span class="text-muted">No tags</span>
                       <% } %>
                     </td>
                     <td>
-                      <% if (system.components && system.components.length > 0) { %>
-                        <% system.components.forEach(function(c, idx) { %>
-                          <a href="/system/component?search=<%= encodeURIComponent(c.name) %>&pageSize=10" target="_blank" class="text-decoration-underline"><%= c.name %></a><%= idx < system.components.length - 1 ? ', ' : '' %>
-                        <% }) %>
+                      <% if (system.scopes && system.scopes.length > 0) { %>
+                        <div style="line-height: 1.4;">
+                          <% system.scopes.forEach(function(scope, idx) { %>
+                            <span class="badge bg-info text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;">
+                              <%= scope %>
+                            </span>
+                            <% if ((idx + 1) % 2 === 0 && idx < system.scopes.length - 1) { %>
+                              <br>
+                            <% } %>
+                          <% }) %>
+                        </div>
+                      <% } else { %>
+                        <span class="text-muted">No scope</span>
                       <% } %>
                     </td>
+                    <td>
+                      <% if (system.architecture && system.architecture.length > 0) { %>
+                        <div style="line-height: 1.4;">
+                          <% system.architecture.forEach(function(arch, idx) { %>
+                            <span class="badge bg-warning text-dark" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;">
+                              <%= arch %>
+                            </span>
+                            <% if ((idx + 1) % 2 === 0 && idx < system.architecture.length - 1) { %>
+                              <br>
+                            <% } %>
+                          <% }) %>
+                        </div>
+                      <% } else { %>
+                        <span class="text-muted">No architecture</span>
+                      <% } %>
+                    </td>
+
                     <td class="text-end">
-                      <button type="button" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#systemDetailModal-<%= system.id %>" onclick='showSystemDetail(<%= JSON.stringify(system) %>)'><i class="bi bi-eye"></i></button>
+                      <button type="button" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#systemDetailModal-<%= system.id %>" data-system='<%= JSON.stringify(system) %>'><i class="bi bi-eye"></i></button>
                       <% if (hasPermission('system.update')) { %>
                       <a href="/system/system/<%= system.id %>/edit" class="btn btn-warning btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
                       <% } %>
@@ -229,6 +278,26 @@
                                 <span class="text-muted">No tags</span>
                               <% } %>
                             </dd>
+                            <dt class="col-sm-3">Scope user access</dt>
+                            <dd class="col-sm-9">
+                              <% if (system.scopes && system.scopes.length > 0) { %>
+                                <% system.scopes.forEach(function(scope) { %>
+                                  <span class="badge bg-info text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= scope %></span>
+                                <% }) %>
+                              <% } else { %>
+                                <span class="text-muted">No specific scope defined</span>
+                              <% } %>
+                            </dd>
+                            <dt class="col-sm-3">Architecture</dt>
+                            <dd class="col-sm-9">
+                              <% if (system.architecture && system.architecture.length > 0) { %>
+                                <% system.architecture.forEach(function(arch) { %>
+                                  <span class="badge bg-warning text-dark" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= arch %></span>
+                                <% }) %>
+                              <% } else { %>
+                                <span class="text-muted">No specific architecture defined</span>
+                              <% } %>
+                            </dd>
                             <dt class="col-sm-3">Created At</dt>
                             <dd class="col-sm-9"><%= system.created_at ? (system.created_at.toLocaleString ? system.created_at.toLocaleString() : system.created_at) : 'No data' %></dd>
                             <dt class="col-sm-3">Updated At</dt>
@@ -251,9 +320,15 @@
                               <% system.ip_addresses.forEach(function(ipObj) { %>
                                 <li>
                                   <% if (typeof ipObj === 'object' && ipObj.ip) { %>
-                                    <a href="/network/ip-address?search=<%= encodeURIComponent(ipObj.ip) %>" target="_blank"><%= ipObj.ip %></a>
+                                    <a href="/network/ip-address?search=<%= encodeURIComponent(ipObj.ip) %>" 
+                                       target="_blank" 
+                                       class="ip-hover-link" 
+                                       data-ip="<%= ipObj.ip %>"
+                                       title="Loading IP info..."><%= ipObj.ip %></a>
                                   <% } else { %>
-                                    <%= ipObj %>
+                                    <span class="ip-hover-link" 
+                                          data-ip="<%= ipObj %>"
+                                          title="Loading IP info..."><%= ipObj %></span>
                                   <% } %>
                                 </li>
                               <% }) %>
@@ -303,23 +378,7 @@
                       </div>
                     </div>
                   </div>
-                  <!-- System Detail Modal -->
-                  <div class="modal fade" id="systemDetailModal-<%= system.id %>" tabindex="-1" aria-labelledby="systemDetailModalLabel-<%= system.id %>" aria-hidden="true">
-                    <div class="modal-dialog modal-lg">
-                      <div class="modal-content">
-                        <div class="modal-header">
-                          <h5 class="modal-title" id="systemDetailModalLabel-<%= system.id %>">System Detail</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                          <!-- ...existing modal content... -->
-                        </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+
                 <% }) %>
               <% } else { %>
                 <tr><td colspan="8" class="text-center">No data</td></tr>
@@ -344,6 +403,8 @@
                   if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
                   if (typeof filterTags !== 'undefined' && filterTags.length) filterTags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag)); });
                   if (typeof filterContacts !== 'undefined' && filterContacts.length) filterContacts.forEach(function(c) { params.push('contacts[]=' + encodeURIComponent(c)); });
+                  if (typeof filterScopes !== 'undefined' && filterScopes.length) filterScopes.forEach(function(scope) { params.push('scopes[]=' + encodeURIComponent(scope)); });
+                  if (typeof filterArchitecture !== 'undefined' && filterArchitecture.length) filterArchitecture.forEach(function(arch) { params.push('architectures[]=' + encodeURIComponent(arch)); });
                   return params.join('&');
                 }
                 const filterQuery = buildFilterQuery();
@@ -373,7 +434,54 @@
       </div>
     </div>
   </div>
+<!-- Load jQuery and Select2 first -->
+<script src="/vendor/jquery-3.6.0.min.js"></script>
+<link href="/vendor/select2.min.css" rel="stylesheet" />
+<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="/vendor/select2.min.js"></script>
+<script src="/vendor/bootstrap.min.js"></script>
+<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
+
+<style>
+  /* IP hover tooltip styling */
+  .ip-hover-link {
+    cursor: pointer;
+    border-bottom: 1px dotted #007bff;
+    text-decoration: none;
+  }
+  
+  .ip-hover-link:hover {
+    text-decoration: none;
+    border-bottom: 1px dotted #0056b3;
+  }
+  
+  /* Custom tooltip styling for better readability */
+  .ip-hover-link[title] {
+    position: relative;
+  }
+  
+  /* Ensure tooltips are visible above modals */
+  .modal .ip-hover-link[title] {
+    z-index: 1060;
+  }
+</style>
+
+
+
+<!-- Data attributes for JavaScript -->
+<div id="system-data" 
+     data-scope-options='<%= JSON.stringify(scopeOptions || []) %>'
+     data-architecture-options='<%= JSON.stringify(architectureOptions || []) %>'
+     style="display: none;"></div>
+
 <script>
+    // Khai báo data cho Select2 options - load động từ database
+    const systemDataEl = document.getElementById('system-data');
+    window.scopeOptionsData = JSON.parse(systemDataEl.dataset.scopeOptions || '[]');
+    window.architectureOptionsData = JSON.parse(systemDataEl.dataset.architectureOptions || '[]');
+    
+
+    
     function confirmDeleteSystem(form, name) {
       if (confirm('Are you sure you want to delete the system: ' + name + '?')) {
         form._deleting = true;
@@ -418,9 +526,12 @@
     $(function() {
       var $filterModal = $('#filterSystemModal');
       var $modalContent = $filterModal.find('.modal-content');
+      
       var filterValues = {
         tags: JSON.parse(document.getElementById('filter-system-data').dataset.tags || '[]'),
-        contacts: JSON.parse(document.getElementById('filter-system-data').dataset.contacts || '[]')
+        contacts: JSON.parse(document.getElementById('filter-system-data').dataset.contacts || '[]'),
+        scopes: JSON.parse(document.getElementById('filter-system-data').dataset.scopes || '[]'),
+        architecture: JSON.parse(document.getElementById('filter-system-data').dataset.architecture || '[]')
       };
       $('#filterSystemTags').select2({
         theme: 'bootstrap-5',
@@ -450,12 +561,55 @@
           processResults: data => ({ results: data })
         }
       });
+      console.log('🚀 Select2 for Contacts created');
+      // Tạo Select2 trực tiếp với data từ backend
+      $('#filterSystemScopes').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Select scope(s)',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $modalContent,
+        data: window.scopeOptionsData || [],
+        // Sử dụng format {id, text} mặc định của Select2
+      });
+      
+      // Tạo Select2 trực tiếp với data từ backend
+      $('#filterSystemArchitecture').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Select architecture(s)',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $modalContent,
+        data: window.architectureOptionsData || [],
+        // Sử dụng format {id, text} mặc định của Select2
+      });
+      
+
       restoreSelect2Value($('#filterSystemTags'), filterValues.tags, '/organize/api/tag');
       restoreSelect2Value($('#filterSystemContacts'), filterValues.contacts, '/organize/api/contact');
+      // Restore scope and architecture values
+      if (filterValues.scopes && filterValues.scopes.length > 0) {
+        $('#filterSystemScopes').val(filterValues.scopes).trigger('change');
+      }
+      if (filterValues.architecture && filterValues.architecture.length > 0) {
+        $('#filterSystemArchitecture').val(filterValues.architecture).trigger('change');
+      }
+      
+
       // Clear Filter button
       $('#clearFilterBtnSystem').on('click', function() {
+        // Clear all select2 values
+        $('#filterSystemTags').val(null).trigger('change');
+        $('#filterSystemContacts').val(null).trigger('change');
+        $('#filterSystemScopes').val(null).trigger('change');
+        $('#filterSystemArchitecture').val(null).trigger('change');
+        // Close modal
+        $filterModal.modal('hide');
+        // Redirect to clean URL
         window.location.href = '/system/system';
       });
+      
+
     });
     // AJAX load component list for system detail modal
     document.addEventListener('DOMContentLoaded', function() {
@@ -464,7 +618,7 @@
         btn.addEventListener('click', function() {
           let system = null;
           try {
-            system = JSON.parse(this.getAttribute('onclick').match(/showSystemDetail\((.*)\)/)[1]);
+            system = JSON.parse(this.getAttribute('data-system'));
           } catch (e) {}
           const systemId = system && system.id ? system.id : this.getAttribute('data-bs-target').replace('#systemDetailModal-', '');
           const container = document.getElementById('component-list-' + systemId);
@@ -499,22 +653,115 @@
                 if (c.ips && Array.isArray(c.ips) && c.ips.length > 0) {
                   html += `<div>IP: ` + c.ips.map(ipObj => {
                     if (typeof ipObj === 'object' && ipObj.ip) {
-                      return `<a href='/network/ip-address?search=${encodeURIComponent(ipObj.ip)}' target='_blank'>${ipObj.ip}</a>`;
+                      return `<a href='/network/ip-address?search=${encodeURIComponent(ipObj.ip)}' target='_blank' class='ip-hover-link' data-ip='${ipObj.ip}' title='Loading IP info...'>${ipObj.ip}</a>`;
                     } else {
-                      return `<code>${ipObj}</code>`;
+                      return `<span class='ip-hover-link' data-ip='${ipObj}' title='Loading IP info...'>${ipObj}</span>`;
                     }
                   }).join(', ') + `</div>`;
                 }
                 html += '</div>';
               });
               container.innerHTML = html;
+              
+              // Attach IP hover events to the newly loaded content
+              attachIPHoverEvents();
             })
             .catch(() => {
               container.innerHTML = '<div class="text-danger">Error loading components</div>';
             });
         });
       });
+      
+      // Attach IP hover events to existing content
+      attachIPHoverEvents();
     });
+    
+    // Function to attach IP hover events
+    function attachIPHoverEvents() {
+      document.querySelectorAll('.ip-hover-link').forEach(function(element) {
+        // Remove existing event listeners to avoid duplicates
+        element.removeEventListener('mouseenter', handleIPHover);
+        element.removeEventListener('mouseleave', handleIPLeave);
+        
+        // Add new event listeners
+        element.addEventListener('mouseenter', handleIPHover);
+        element.addEventListener('mouseleave', handleIPLeave);
+      });
+    }
+    
+    // IP hover handler
+    function handleIPHover(event) {
+      const element = event.target;
+      const ipAddress = element.getAttribute('data-ip');
+      
+      if (!ipAddress || element.getAttribute('data-loading') === 'true') {
+        return;
+      }
+      
+      // Set loading state
+      element.setAttribute('data-loading', 'true');
+      element.setAttribute('title', 'Loading IP info...');
+      
+      // Fetch IP information
+      fetch(`/network/api/ip-addresses/detail?search=${encodeURIComponent(ipAddress)}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data && data.length > 0) {
+            const ipInfo = data[0];
+            let tooltipText = `IP: ${ipInfo.ip_address || ipInfo.ip || ipAddress}`;
+            
+            if (ipInfo.description) {
+              tooltipText += `\nDescription: ${ipInfo.description}`;
+            }
+            
+            if (ipInfo.status) {
+              tooltipText += `\nStatus: ${ipInfo.status}`;
+            }
+            
+            if (ipInfo.server_name) {
+              tooltipText += `\nServer: ${ipInfo.server_name}`;
+            }
+            
+            if (ipInfo.device_name) {
+              tooltipText += `\nDevice: ${ipInfo.device_name}`;
+            }
+            
+            // Add tags information
+            if (ipInfo.tags && ipInfo.tags.length > 0) {
+              const tagNames = ipInfo.tags.map(tag => tag.name).join(', ');
+              tooltipText += `\nTags: ${tagNames}`;
+            }
+            
+            // Add contacts information
+            if (ipInfo.contacts && ipInfo.contacts.length > 0) {
+              const contactEmails = ipInfo.contacts.map(contact => contact.email || contact.name).join(', ');
+              tooltipText += `\nContacts: ${contactEmails}`;
+            }
+            
+            // Add systems information
+            if (ipInfo.systems && ipInfo.systems.length > 0) {
+              const systemNames = ipInfo.systems.map(system => system.name).join(', ');
+              tooltipText += `\nSystems: ${systemNames}`;
+            }
+            
+            element.setAttribute('title', tooltipText);
+          } else {
+            element.setAttribute('title', `IP: ${ipAddress}\nNo additional information found`);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching IP info:', error);
+          element.setAttribute('title', `IP: ${ipAddress}\nError loading information`);
+        })
+        .finally(() => {
+          element.removeAttribute('data-loading');
+        });
+    }
+    
+    // IP leave handler
+    function handleIPLeave(event) {
+      // Optional: Reset tooltip or do cleanup
+    }
 </script>
 <% if (success) { %>
   <script>
@@ -530,10 +777,3 @@
     });
   </script>
 <% } %>
-
-<script src="/vendor/jquery-3.6.0.min.js"></script>
-<link href="/vendor/select2.min.css" rel="stylesheet" />
-<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-<script src="/vendor/select2.min.js"></script>
-<script src="/vendor/bootstrap.min.js"></script>
-<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />

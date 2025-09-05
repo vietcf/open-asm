@@ -113,6 +113,7 @@ networkController.listIP = async (req, res) => {
 
 // Handle creating a new IP address (with transaction)
 networkController.createIP = async (req, res) => {
+  /** @type {import('pg').PoolClient} */
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -131,8 +132,11 @@ networkController.createIP = async (req, res) => {
     const updated_by = req.session.user?.username || '';
     // Create IP address record (pass client for transaction)
     const newIp = await IpAddress.create({ address, description, status: statusValue, updated_by }, client);
+    // @ts-ignore - client parameter is supported by model methods
     await IpAddress.setTags(newIp.id, tags, client);
+    // @ts-ignore - client parameter is supported by model methods
     await IpAddress.setContacts(newIp.id, contacts, client);
+    // @ts-ignore - client parameter is supported by model methods
     await IpAddress.setSystems(newIp.id, systems, client);
     await client.query('COMMIT');
     req.flash('success', 'IP address added successfully!');
@@ -163,9 +167,13 @@ networkController.updateIP = async (req, res) => {
     systems = systems ? (Array.isArray(systems) ? systems : [systems]) : [];
     const updated_by = req.session.user?.username || '';
     // Update IP address record (all within transaction)
+    // @ts-ignore - client parameter is supported by model methods
     await IpAddress.update(id, { description, status, updated_by }, client);
+    // @ts-ignore - client parameter is supported by model methods
     await IpAddress.setTags(id, tags, client);
+    // @ts-ignore - client parameter is supported by model methods
     await IpAddress.setContacts(id, contacts, client);
+    // @ts-ignore - client parameter is supported by model methods
     await IpAddress.setSystems(id, systems, client);
     await client.query('COMMIT');
     req.flash('success', 'IP address updated successfully!');
@@ -189,7 +197,9 @@ networkController.deleteIP = async (req, res) => {
   try {
     await client.query('BEGIN');
     const page = req.body.page || req.query.page || 1;
+    // @ts-ignore - client parameter is supported by model methods
     await IpAddress.setTags(req.params.id, [], client);
+    // @ts-ignore - client parameter is supported by model methods
     await IpAddress.delete(req.params.id, client);
     await client.query('COMMIT');
     req.flash('success', 'IP address deleted successfully!');
@@ -213,17 +223,23 @@ networkController.deleteIP = async (req, res) => {
 // Renders the subnet_list.ejs view with the list of subnets and pagination
 networkController.listSubnet = async (req, res) => {
   try {
+    // Normalize and parse query parameters
+    const normalizeArray = v => (Array.isArray(v) ? v : (v ? [v] : []));
     const search = req.query.search ? req.query.search.trim() : '';
     const page = parseInt(req.query.page, 10) || 1;
     let pageSize = parseInt(req.query.pageSize, 10);
     const pageSizeOptions = res.locals.pageSizeOptions || [10, 20, 50];
     if (!pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
+    
+    // Lấy filter từ query
+    let filterTags = req.query['tags[]'] || req.query.tags || [];
+    filterTags = normalizeArray(filterTags).filter(x => x !== '');
 
     let subnetList = [], totalCount = 0, totalPages = 1;
-    if (search) {
-      totalCount = await Subnet.countFiltered({ search });
+    if (search || filterTags.length > 0) {
+      totalCount = await Subnet.countFiltered({ search, tags: filterTags });
       totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-      subnetList = await Subnet.findFilteredList({ search, page, pageSize });
+      subnetList = await Subnet.findFilteredList({ search, tags: filterTags, page, pageSize });
     } else {
       totalCount = await Subnet.countAll();
       totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -241,6 +257,7 @@ networkController.listSubnet = async (req, res) => {
       totalPages,
       totalCount,
       search,
+      filterTags,
       success,
       error,
       // allowedPageSizes không cần truyền, đã có global
@@ -265,9 +282,12 @@ networkController.createSubnet = async (req, res) => {
       await client.query('ROLLBACK');
       return res.redirect('/network/subnet-address');
     }
+    const updated_by = req.session.user?.username || '';
     // Create subnet without tags
-    const newSubnet = await Subnet.create({ address, description }, client);
+    // @ts-ignore - client parameter is supported by model methods
+    const newSubnet = await Subnet.create({ address, description, updated_by }, client);
     // Assign tags using setTags method
+    // @ts-ignore - client parameter is supported by model methods
     await Subnet.setTags(newSubnet.id, tags, client);
     await client.query('COMMIT');
     req.flash('success', 'Subnet added successfully!');
@@ -293,7 +313,10 @@ networkController.updateSubnet = async (req, res) => {
     let { description, page, tags } = req.body;
     tags = tags ? (Array.isArray(tags) ? tags : [tags]) : [];
     description = description || '';
-    await Subnet.update(req.params.id, { description }, client);
+    const updated_by = req.session.user?.username || '';
+    // @ts-ignore - client parameter is supported by model methods
+    await Subnet.update(req.params.id, { description, updated_by }, client);
+    // @ts-ignore - client parameter is supported by model methods
     await Subnet.setTags(req.params.id, tags, client);
     await client.query('COMMIT');
     req.flash('success', 'Subnet updated successfully!');
@@ -317,6 +340,7 @@ networkController.deleteSubnet = async (req, res) => {
   try {
     await client.query('BEGIN');
     const page = req.body.page || req.query.page || 1;
+    // @ts-ignore - client parameter is supported by model methods
     await Subnet.delete(req.params.id, client);
     await client.query('COMMIT');
     req.flash('success', 'Subnet deleted successfully!');
@@ -394,7 +418,9 @@ networkController.createDomain = async (req, res) => {
       return res.redirect('/network/domain');
     }
     // Create domain, then set systems via model
+    // @ts-ignore - client parameter is supported by model methods
     const newDomain = await Domain.create({ domain, description, ip_id, record_type }, client);
+    // @ts-ignore - client parameter is supported by model methods
     await Domain.setSystems(newDomain.id, systems, client);
     await client.query('COMMIT');
     req.flash('success', 'Domain added successfully!');
@@ -425,7 +451,9 @@ networkController.updateDomain = async (req, res) => {
     systems = systems ? (Array.isArray(systems) ? systems : [systems]) : [];
     const id = req.params.id;
     // Update domain, then set systems via model
+    // @ts-ignore - client parameter is supported by model methods
     await Domain.update(id, { description, ip_id, record_type }, client);
+    // @ts-ignore - client parameter is supported by model methods
     await Domain.setSystems(id, systems, client);
     await client.query('COMMIT');
     req.flash('success', 'Domain updated successfully!');
@@ -450,6 +478,7 @@ networkController.deleteDomain = async (req, res) => {
     await client.query('BEGIN');
     const id = req.params.id;
     // Xóa domain và liên kết system qua model
+    // @ts-ignore - client parameter is supported by model methods
     await Domain.delete(id, client);
     await client.query('COMMIT');
     req.flash('success', 'Domain deleted successfully!');
@@ -534,6 +563,50 @@ networkController.apiSearchIPAddresses = async (req, res) => {
   }
 };
 
+// API: Get detailed IP information for tooltip
+networkController.apiGetIPDetail = async (req, res) => {
+  try {
+    const { search = '', ip } = req.query;
+    
+    if (!search && !ip) {
+      return res.status(400).json({ error: 'Search term or IP address is required' });
+    }
+    
+    const searchTerm = search || ip;
+    
+    // Use existing model method to get detailed IP information
+    const ipDetail = await IpAddress.findByAddressWithDetails(searchTerm);
+    
+    if (!ipDetail) {
+      return res.json([]);
+    }
+    
+    // Format response to match expected structure
+    const response = {
+      id: ipDetail.id,
+      ip_address: ipDetail.ip_address,
+      ip: ipDetail.ip_address, // Alias for compatibility
+      description: ipDetail.description,
+      status: ipDetail.status,
+      created_at: ipDetail.created_at,
+      updated_at: ipDetail.updated_at,
+      updated_by: ipDetail.updated_by,
+      server_id: ipDetail.server?.id,
+      server_name: ipDetail.server?.name,
+      device_id: ipDetail.device?.id,
+      device_name: ipDetail.device?.name,
+      tags: ipDetail.tags,
+      contacts: ipDetail.contacts,
+      systems: ipDetail.systems
+    };
+    
+    res.json([response]); // Return as array for consistency with search API
+  } catch (err) {
+    console.error('API /network/api/ip-addresses/detail error:', err);
+    res.status(500).json({ error: 'Error getting IP detail', detail: err.message });
+  }
+};
+
 // API: Domain search for select2 ajax (system add/edit)
 networkController.apiDomainSearch = async (req, res) => {
   try {
@@ -611,6 +684,59 @@ networkController.exportIpAddressList = async (req, res) => {
   } catch (err) {
     console.error('Error exporting IP address list:', err);
     res.status(500).send('Error exporting IP address list: ' + err.message);
+  }
+};
+
+// Export Subnet List as Excel (filtered)
+networkController.exportSubnetList = async (req, res) => {
+  try {
+    // Chuẩn hóa filter giống listSubnet
+    const normalizeArray = v => (Array.isArray(v) ? v : (v ? [v] : []));
+    const search = req.query.search ? req.query.search.trim() : '';
+    let filterTags = req.query['tags[]'] || req.query.tags || [];
+    filterTags = normalizeArray(filterTags).filter(x => x !== '');
+    
+    // Lấy toàn bộ danh sách (không phân trang)
+    let subnetList = [];
+    if (search || filterTags.length > 0) {
+      subnetList = await Subnet.findFilteredList({ 
+        search, 
+        tags: filterTags, 
+        page: 1, 
+        pageSize: 10000 
+      });
+    } else {
+      subnetList = await Subnet.findAll();
+    }
+    
+    // Định nghĩa các cột xuất Excel
+    const headers = [
+      'ID', 'Subnet Address', 'Description', 'Tags', 'Created At', 'Updated At', 'Updated By'
+    ];
+    const rows = subnetList.map(subnet => [
+      subnet.id,
+      subnet.address || '',
+      subnet.description ? subnet.description.replace(/\r?\n|\r/g, ' ') : '',
+      (subnet.tags && subnet.tags.length ? subnet.tags.map(t => t.name).join(', ') : ''),
+      subnet.created_at ? new Date(subnet.created_at).toLocaleString('en-GB') : '',
+      subnet.updated_at ? new Date(subnet.updated_at).toLocaleString('en-GB') : '',
+      subnet.updated_by || ''
+    ]);
+    
+    // Tạo file Excel
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Subnet List');
+    worksheet.addRow(headers);
+    rows.forEach(row => worksheet.addRow(row));
+    worksheet.columns.forEach(col => { col.width = 22; });
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="subnet_list.xlsx"');
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('Error exporting subnet list:', err);
+    res.status(500).send('Error exporting subnet list: ' + err.message);
   }
 };
 

@@ -31,7 +31,7 @@
                 </div>
                 <div class="mb-3">
                   <label for="subnetDescription" class="form-label">Description</label>
-                  <textarea class="form-control form-control-sm" id="subnetDescription" name="description" placeholder="Description" rows="2"></textarea>
+                  <textarea class="form-control" id="subnetDescription" name="description" placeholder="Description" rows="4"></textarea>
                 </div>
                 <div class="mb-3">
                   <label for="addSubnetTags" class="form-label">Tags</label>
@@ -46,7 +46,49 @@
           </div>
         </div>
       </div>
-      <!-- Remove Export button: No export feature for Subnet List -->
+      <form action="/network/subnet-address/export" method="GET" style="display:inline;">
+        <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+        <% if (typeof filterTags !== 'undefined' && filterTags.length) { filterTags.forEach(function(tag) { %>
+          <input type="hidden" name="tags[]" value="<%= tag %>">
+        <% }) } %>
+        <button type="submit" class="btn btn-warning btn-sm">
+          <i class="bi bi-download"></i> Export
+        </button>
+      </form>
+      <button type="button" class="btn btn-secondary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#filterSubnetModal">
+        <i class="bi bi-funnel"></i> Filter
+      </button>
+      <!-- Filter Modal -->
+      <div class="modal fade" id="filterSubnetModal" tabindex="-1" aria-labelledby="filterSubnetModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <form id="subnetFilterForm" method="get" action="/network/subnet-address">
+              <div class="modal-header">
+                <h5 class="modal-title" id="filterSubnetModalLabel">Filter Subnet List</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="row g-2">
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Tags</label>
+                    <select id="filterSubnetTags" name="tags[]" class="form-control" multiple></select>
+                  </div>
+                </div>
+              </div>
+              <div class="modal-footer d-flex justify-content-between">
+                <button type="button" id="clearFilterBtnSubnet" class="btn btn-outline-danger btn-sm">Clear All Filters</button>
+                <div>
+                  <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <!-- Filter values for JS (an toàn cho EJS strict) -->
+      <div id="filter-subnet-data"
+        data-tags='<%= JSON.stringify(filterTags || []) %>' style="display:none"></div>
     </div>
   </div>
   <div class="row">
@@ -128,6 +170,12 @@
                               <span class="text-muted">No tags</span>
                             <% } %>
                           </dd>
+                          <dt class="col-sm-3">Created At</dt>
+                          <dd class="col-sm-9" data-field="created_at"></dd>
+                          <dt class="col-sm-3">Updated At</dt>
+                          <dd class="col-sm-9" data-field="updated_at"></dd>
+                          <dt class="col-sm-3">Updated By</dt>
+                          <dd class="col-sm-9" data-field="updated_by"></dd>
                         </dl>
                         <div class="row mb-2 mt-3">
                           <div class="col-sm-3">
@@ -171,7 +219,7 @@
                           </div>
                           <div class="mb-3">
                             <label for="editSubnetDescription-<%= subnet.id %>" class="form-label">Description</label>
-                            <textarea class="form-control form-control-sm" id="editSubnetDescription-<%= subnet.id %>" name="description" rows="2"><%= subnet.description || '' %></textarea>
+                            <textarea class="form-control" id="editSubnetDescription-<%= subnet.id %>" name="description" rows="4"><%= subnet.description || '' %></textarea>
                           </div>
                           <div class="mb-3">
                             <label for="editSubnetTags-<%= subnet.id %>" class="form-label">Tags</label>
@@ -231,24 +279,35 @@
                   }
                 }
               %>
+              <% 
+                // Build filter query string for pagination links
+                function buildFilterQuery() {
+                  let params = [];
+                  if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+                  if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
+                  if (typeof filterTags !== 'undefined' && filterTags.length) filterTags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag)); });
+                  return params.join('&');
+                }
+                const filterQuery = buildFilterQuery();
+              %>
               <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page - 1 %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>" tabindex="-1">Previous</a>
+                <a class="page-link" href="?page=<%= page - 1 %><%= filterQuery ? '&' + filterQuery : '' %>" tabindex="-1">Previous</a>
               </li>
               <% if (startPage > 1) { %>
-                <li class="page-item"><a class="page-link" href="?page=1&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>">1</a></li>
+                <li class="page-item"><a class="page-link" href="?page=1<%= filterQuery ? '&' + filterQuery : '' %>">1</a></li>
                 <% if (startPage > 2) { %>
                   <li class="page-item disabled"><span class="page-link">...</span></li>
                 <% } %>
               <% } %>
               <% for (let i = startPage; i <= endPage; i++) { %>
-                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>"><%= i %></a></li>
+                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= filterQuery ? '&' + filterQuery : '' %>"><%= i %></a></li>
               <% } %>
               <% if (endPage < totalPages) { %>
                 <li class="page-item disabled"><span class="page-link">...</span></li>
-                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>"><%= totalPages %></a></li>
+                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= filterQuery ? '&' + filterQuery : '' %>"><%= totalPages %></a></li>
               <% } %>
               <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page + 1 %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>">Next</a>
+                <a class="page-link" href="?page=<%= page + 1 %><%= filterQuery ? '&' + filterQuery : '' %>">Next</a>
               </li>
             </ul>
           </div>
@@ -274,6 +333,19 @@ function showSubnetDetail(subnetId) {
       const descEl = document.querySelector(`#subnetDetailModal-${subnetId} dd[data-field='description']`);
       if (descEl) {
         descEl.innerHTML = (data.description || '').replace(/\n/g, '<br>');
+      }
+      // Hiển thị thông tin thời gian và người cập nhật
+      const createdEl = document.querySelector(`#subnetDetailModal-${subnetId} dd[data-field='created_at']`);
+      if (createdEl) {
+        createdEl.textContent = data.created_at ? new Date(data.created_at).toLocaleString('en-GB') : '';
+      }
+      const updatedEl = document.querySelector(`#subnetDetailModal-${subnetId} dd[data-field='updated_at']`);
+      if (updatedEl) {
+        updatedEl.textContent = data.updated_at ? new Date(data.updated_at).toLocaleString('en-GB') : '';
+      }
+      const updatedByEl = document.querySelector(`#subnetDetailModal-${subnetId} dd[data-field='updated_by']`);
+      if (updatedByEl) {
+        updatedByEl.textContent = data.updated_by || '';
       }
       // Do NOT update tags here, let EJS render them
       // Render IP list as a simple list, show only first 50 IPs, notify user, suggest export for more
@@ -397,35 +469,56 @@ function showToast(msg, type) {
   </script>
 <% } %>
 <script>
-window.addEventListener('DOMContentLoaded', function() {
-  var $filterTags = $('#filterSubnetTags');
-  if ($.fn.select2 && $filterTags.length && !$filterTags.hasClass('select2-hidden-accessible')) {
-    $filterTags.select2({
+  function restoreSelect2Value($el, values, url) {
+    if (!values || !values.length) return;
+    $.ajax({
+      url: url,
+      data: { ids: values },
+      dataType: 'json',
+      traditional: true,
+      success: function(data) {
+        data.forEach(function(item) {
+          if ($el.find('option[value="' + item.id + '"]').length === 0) {
+            var option = new Option(item.text || item.name, item.id, true, true);
+            $el.append(option);
+          }
+        });
+        $el.val(values).trigger('change');
+      }
+    });
+  }
+  $(function() {
+    var $filterModal = $('#filterSubnetModal');
+    var $modalContent = $filterModal.find('.modal-content');
+    var filterValues = {
+      tags: JSON.parse(document.getElementById('filter-subnet-data').dataset.tags || '[]')
+    };
+    $('#filterSubnetTags').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Filter by tag(s)',
+      placeholder: 'Select tag(s)',
       allowClear: true,
       width: '100%',
+      dropdownParent: $modalContent,
       ajax: {
         url: '/organize/api/tag',
         dataType: 'json',
         delay: 250,
-        data: function(params) { return { search: params.term }; },
-        processResults: function(data) { return { results: data }; },
-        cache: true
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data })
       }
     });
-    // Preselect filter tags if present
-    var tagIds = window.filterSubnetTagIds || [];
-    var tagNames = window.filterSubnetTagNames || [];
-    if (tagIds.length) {
-      tagIds.forEach(function(tid, i) {
-        var tagName = tagNames[i] || tid;
-        var tagOption = new Option(tagName, tid, true, true);
-        $filterTags.append(tagOption).trigger('change');
-      });
-    }
-  }
-});
+    // Restore selected values for multi-select filter fields
+    restoreSelect2Value($('#filterSubnetTags'), filterValues.tags, '/organize/api/tag');
+    // Clear Filter button: reset tất cả filter về mặc định
+    $('#clearFilterBtnSubnet').on('click', function() {
+      // Clear all select2 values
+      $('#filterSubnetTags').val(null).trigger('change');
+      // Close modal
+      $filterModal.modal('hide');
+      // Redirect to clean URL
+      window.location.href = '/network/subnet-address';
+    });
+  });
 </script>
 <script>
 window.addEventListener('DOMContentLoaded', function() {

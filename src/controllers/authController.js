@@ -139,8 +139,6 @@ export const logout = async (req, res) => {
     action: 'logout',
     description: 'Logout',
     status: 'success',
-    username: user ? user.username : null,
-    user_id: user ? user.id : null,
     req
   });
   req.session.destroy(() => {

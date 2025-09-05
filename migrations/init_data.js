@@ -215,6 +215,30 @@ async function seedConfiguration(pool) {
           { value: 'inactive', label: 'Inactive' }
         ],
         description: 'Trạng thái IP Address'
+      },
+      {
+        key: 'system_user_scope',
+        value: [
+          { value: 'public-internet', label: 'Public Internet' },
+          { value: 'internal', label: 'Internal' },
+          { value: 'external-vpn', label: 'External VPN' },
+          { value: 'public-restricted-ip', label: 'Public Restricted IP' }
+        ],
+        description: 'Scope của System User'
+      },
+      {
+        key: 'system_arch',
+        value: [
+          { value: 'web', label: 'Web' },
+          { value: 'api', label: 'API' },
+          { value: 'job', label: 'Job' },
+          { value: 'service', label: 'Service' },
+          { value: 'mobile', label: 'Mobile' },
+          { value: 'desktop-db', label: 'Desktop DB' },
+          { value: 'desktop-ws-service', label: 'Desktop WS Service' },
+          { value: 'win-app', label: 'Windows App' }
+        ],
+        description: 'Kiến trúc của System'
       }
     ];
     for (const conf of dynamicConfigs) {

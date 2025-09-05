@@ -178,6 +178,13 @@ class SystemComponent {
       params.push(system_id);
       idx++;
     }
+    // Filter by app_type
+    const app_type = arguments[0].app_type;
+    if (app_type) {
+      where += ` AND sc.app_type = $${idx}`;
+      params.push(app_type);
+      idx++;
+    }
     params.push(pageSize, offset);
     const sql = `
       SELECT sc.*,
@@ -235,6 +242,13 @@ class SystemComponent {
     if (system_id) {
       where += ` AND sc.system_id = $${idx}`;
       params.push(system_id);
+      idx++;
+    }
+    // Filter by app_type
+    const app_type = arguments[0].app_type;
+    if (app_type) {
+      where += ` AND sc.app_type = $${idx}`;
+      params.push(app_type);
       idx++;
     }
     const result = await pool.query(

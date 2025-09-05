@@ -38,8 +38,9 @@ class FileUpload {
     return files;
   }
 
-  static async create({ object_type, object_id, original_name, file_path, mime_type, size, uploaded_by }) {
-    const result = await pool.query(
+  static async create({ object_type, object_id, original_name, file_path, mime_type, size, uploaded_by }, client) {
+    const executor = client || pool;
+    const result = await executor.query(
       `INSERT INTO file_uploads (object_type, object_id, original_name, file_path, mime_type, size, uploaded_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
       [object_type, object_id, original_name, file_path, mime_type, size, uploaded_by]
