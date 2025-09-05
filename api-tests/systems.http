@@ -26,7 +26,7 @@ Accept: application/json
 Authorization: Bearer {{systemAuth.response.body.token}}
 
 ### 2. Get System by ID
-GET {{baseUrl}}/{{apiVersion}}/systems/2
+GET {{baseUrl}}/{{apiVersion}}/systems/20
 Accept: application/json
 Authorization: Bearer {{systemAuth.response.body.token}}
 
@@ -50,8 +50,8 @@ Accept: application/json
 Authorization: Bearer {{systemAuth.response.body.token}}
 
 {
-  "system_id": "SYS-TEST-002",
-  "name": "Test System Complete",
+  "system_id": "SYS-TEST-003",
+  "name": "Test System Complete 03",
   "alias": ["Legacy System", "Core System"],
   "description": "Complete test system with all fields",
   "level": 2,
@@ -59,7 +59,10 @@ Authorization: Bearer {{systemAuth.response.body.token}}
   "domains": [2],
   "managers": [768],
   "ip_addresses": [],
-  "tags": [5]
+  "tags": [5],
+  "fqdn": ["main.example.com", "api.example.com", "admin.example.com"],
+  "scopes": ["public-internet", "internal"],
+  "architecture": ["web", "api", "database"]
 }
 
 ### 5. Update System (Complete Update)
@@ -75,7 +78,7 @@ Authorization: Bearer {{systemAuth.response.body.token}}
   "description": "Updated complete test system",
   "level": 3,
   "department_id": 2,
-  "domains": ["updated.example.com"],
+  "domains": [1],
   "managers": [2, 3],
   "ip_addresses": [3, 4],
   "tags": [3, 4]
@@ -208,6 +211,69 @@ Authorization: Bearer {{systemAuth.response.body.token}}
 
 ### 10j. Get System After Partial Alias Update (Verify Other Fields Preserved)
 GET {{baseUrl}}/{{apiVersion}}/systems/{{createSystemComplete.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 10k. Test FQDN - Create System with FQDN Array
+# @name createSystemFQDN
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-FQDN-001",
+  "name": "Test System with FQDN",
+  "description": "System with multiple FQDNs",
+  "fqdn": ["app.example.com", "api.example.com", "admin.example.com"]
+}
+
+### 10l. Test FQDN - Update FQDN Array
+PUT {{baseUrl}}/{{apiVersion}}/systems/{{createSystemFQDN.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "fqdn": ["new.example.com", "updated.example.com"]
+}
+
+### 10m. Test FQDN - Get System to Verify FQDN Update
+GET {{baseUrl}}/{{apiVersion}}/systems/{{createSystemFQDN.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 10n. Test FQDN - Clear FQDN (Empty Array)
+PUT {{baseUrl}}/{{apiVersion}}/systems/{{createSystemFQDN.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "fqdn": []
+}
+
+### 10o. Test FQDN - Get System to Verify FQDN Cleared
+GET {{baseUrl}}/{{apiVersion}}/systems/{{createSystemFQDN.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 10p. Test FQDN - Create System with FQDN as String (Comma-separated)
+# @name createSystemFQDNString
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-FQDN-002",
+  "name": "Test System with FQDN String",
+  "description": "System with FQDN as comma-separated string",
+  "fqdn": "string1.example.com, string2.example.com, string3.example.com"
+}
+
+### 10q. Test FQDN - Get System to Verify FQDN String Parsed
+GET {{baseUrl}}/{{apiVersion}}/systems/{{createSystemFQDNString.response.body.id}}
 Accept: application/json
 Authorization: Bearer {{systemAuth.response.body.token}}
 
@@ -821,6 +887,25 @@ Accept: application/json
 Authorization: Bearer {{systemAuth.response.body.token}}
 
 # ========================================
+# 🧹 CLEANUP TEST DATA
+# ========================================
+
+### 19. Cleanup - Delete FQDN Test Systems
+DELETE {{baseUrl}}/{{apiVersion}}/systems/{{createSystemFQDN.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 20. Cleanup - Delete FQDN String Test System
+DELETE {{baseUrl}}/{{apiVersion}}/systems/{{createSystemFQDNString.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 21. Cleanup - Delete Complete Test System
+DELETE {{baseUrl}}/{{apiVersion}}/systems/{{createSystemComplete.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+# ========================================
 # 📊 ADVANCED SEARCH & FILTERING
 # ========================================
 
@@ -863,8 +948,9 @@ Authorization: Bearer {{systemAuth.response.body.token}}
 # DATA VALIDATION:
 # ⏳ Required fields: system_id, name
 # ⏳ Unique constraint: system_id
-# ⏳ Array fields: alias, domains, managers, ip_addresses, tags, docs
+# ⏳ Array fields: alias, domains, managers, ip_addresses, tags, docs, fqdn, scopes, architecture
 # ⏳ Nested objects: docs array
+# ⏳ FQDN handling: array format, string format (comma-separated)
 #
 # ERROR HANDLING:
 # ⏳ 404 - System not found

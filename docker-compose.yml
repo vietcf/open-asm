@@ -2,13 +2,13 @@
 services:
   app:
     build: .
-    image: openasm_app:2.1
+    image: openasm_app:2.2
     container_name: openasm_app
     restart: always
     expose:
       - "3000"
     env_file:
-      - .env
+      - .env.docker
     volumes:
       - ./public/uploads:/app/public/uploads
       - ./wait-for-it.sh:/app/wait-for-it.sh:ro
@@ -24,7 +24,7 @@ services:
     container_name: openasm_db
     restart: always
     env_file:
-      - .env
+      - .env.docker
     volumes:
       - ./pgdata:/var/lib/postgresql/data
     ports:
@@ -46,12 +46,12 @@ services:
     networks:
       - openasm_net
   migration:
-    image: openasm_app:2.1
+    image: openasm_app:2.2
     container_name: openasm_migration
     working_dir: /app
     volumes:
       - ./:/app
-      - ./.env:/app/.env:ro
+      - ./.env.docker:/app/.env:ro
       - ./wait-for-it.sh:/app/wait-for-it.sh:ro
     depends_on:
       - db
