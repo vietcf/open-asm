@@ -12,6 +12,7 @@ export default async (db) => {
       fqdn TEXT[],
       description TEXT,
       scopes JSONB DEFAULT NULL,
+      architecture JSONB DEFAULT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_by VARCHAR(255)
@@ -57,5 +58,10 @@ export default async (db) => {
   // Create GIN index for JSONB scopes column for efficient querying
   await db.query(`
     CREATE INDEX IF NOT EXISTS idx_systems_scopes ON systems USING GIN (scopes);
+  `);
+  
+  // Create GIN index for JSONB architecture column for efficient querying
+  await db.query(`
+    CREATE INDEX IF NOT EXISTS idx_systems_architecture ON systems USING GIN (architecture);
   `);
 };
