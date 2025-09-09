@@ -90,20 +90,18 @@
                   <div class="col-12 mb-2">
                     <label class="form-label">System</label>
                     <select id="filterComponentSystem" 
-                            name="system_id" 
-                            class="form-control">
-                      <option value="">All Systems</option>
-                    </select>
+                            name="system_id[]" 
+                            class="form-control" 
+                            multiple></select>
                   </div>
                   
                   <!-- App Type Filter -->
                   <div class="col-12 mb-2">
                     <label class="form-label">App Type</label>
                     <select id="filterComponentAppType" 
-                            name="app_type" 
-                            class="form-control">
-                      <option value="">All App Types</option>
-                    </select>
+                            name="app_type[]" 
+                            class="form-control" 
+                            multiple></select>
                   </div>
                 </div>
               </div>
@@ -194,12 +192,17 @@
                     <!-- Tags -->
                     <td>
                       <% if (component.tags && component.tags.length > 0) { %>
-                        <% component.tags.forEach(function(tag) { %>
-                          <span class="badge bg-primary text-white" 
-                                style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;">
-                            <%= tag.name %>
-                          </span>
-                        <% }) %>
+                        <div style="line-height: 1.4;">
+                          <% component.tags.forEach(function(tag, idx) { %>
+                            <span class="badge bg-primary text-white" 
+                                  style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;">
+                              <%= tag.name %>
+                            </span>
+                            <% if ((idx + 1) % 2 === 0 && idx < component.tags.length - 1) { %>
+                              <br>
+                            <% } %>
+                          <% }) %>
+                        </div>
                       <% } else { %>
                         <span class="text-muted">No tags</span>
                       <% } %>
@@ -293,17 +296,20 @@
                             <dt class="col-sm-3">Contacts</dt>
                             <dd class="col-sm-9">
                               <% if (component.contacts && component.contacts.length > 0) { %>
-                                <% let first = true; %>
-                                <% component.contacts.forEach(function(contact) { %>
-                                  <% if (contact.email) { %>
-                                    <% if (!first) { %>, <% } %>
-                                    <a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>" 
-                                       target="_blank">
-                                      <%= contact.email %>
-                                    </a>
-                                  <% } %>
-                                  <% first = false; %>
-                                <% }) %>
+                                <div style="line-height: 1.4;">
+                                  <% component.contacts.forEach(function(contact, idx) { %>
+                                    <% if (contact.email) { %>
+                                      <a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>" 
+                                         target="_blank" 
+                                         style="display: inline-block; margin: 0.1em 0.1em;">
+                                        <%= contact.email %>
+                                      </a>
+                                      <% if ((idx + 1) % 2 === 0 && idx < component.contacts.length - 1) { %>
+                                        <br>
+                                      <% } %>
+                                    <% } %>
+                                  <% }) %>
+                                </div>
                               <% } else { %>
                                 No contacts
                               <% } %>
@@ -393,12 +399,17 @@
                             <dt class="col-sm-3">Tags</dt>
                             <dd class="col-sm-9">
                               <% if (component.tags && component.tags.length > 0) { %>
-                                <% component.tags.forEach(function(tag) { %>
-                                  <span class="badge bg-primary text-white" 
-                                        style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;">
-                                    <%= tag.name %>
-                                  </span>
-                                <% }) %>
+                                <div style="line-height: 1.4;">
+                                  <% component.tags.forEach(function(tag, idx) { %>
+                                    <span class="badge bg-primary text-white" 
+                                          style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;">
+                                      <%= tag.name %>
+                                    </span>
+                                    <% if ((idx + 1) % 2 === 0 && idx < component.tags.length - 1) { %>
+                                      <br>
+                                    <% } %>
+                                  <% }) %>
+                                </div>
                               <% } else { %>
                                 No tags
                               <% } %>
@@ -619,7 +630,6 @@
 <script>
   // App Type options data for Select2
   window.appTypeOptionsData = <%- JSON.stringify(appTypeOptions || []) %>;
-  console.log('🔧 App Type Options Data:', window.appTypeOptionsData);
   
   // Restore Select2 values function
   function restoreSelect2Value($el, values, url) {
@@ -630,6 +640,7 @@
       data: { ids: values },
       dataType: 'json',
       traditional: true,
+      xhrFields: { withCredentials: true },
       success: function(data) {
         data.forEach(function(item) {
           if ($el.find('option[value="' + item.id + '"]').length === 0) {
@@ -638,6 +649,9 @@
           }
         });
         $el.val(values).trigger('change');
+      },
+      error: function(xhr, status, error) {
+        console.error('Error restoring select2 value:', error);
       }
     });
   }
@@ -651,8 +665,8 @@
     var filterValues = {
       tags: JSON.parse(document.getElementById('filter-component-data').dataset.tags || '[]'),
       contacts: JSON.parse(document.getElementById('filter-component-data').dataset.contacts || '[]'),
-      systemId: document.getElementById('filter-component-data').dataset.systemId || '',
-      appType: document.getElementById('filter-component-data').dataset.appType || ''
+      systemId: JSON.parse(document.getElementById('filter-component-data').dataset.systemId || '[]'),
+      appType: JSON.parse(document.getElementById('filter-component-data').dataset.appType || '[]')
     };
     
     // Initialize Tags Select2
@@ -690,7 +704,7 @@
     // Initialize System Select2
     $('#filterComponentSystem').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select system',
+      placeholder: 'Select system(s)',
       allowClear: true,
       width: '100%',
       dropdownParent: $modalContent,
@@ -699,37 +713,59 @@
         dataType: 'json',
         delay: 250,
         data: params => ({ search: params.term }),
-        processResults: data => ({ results: data })
+        processResults: data => ({ results: data }),
+        xhrFields: { withCredentials: true }
       }
     });
     
     // Initialize App Type Select2
-    console.log('🚀 Initializing App Type Select2 with data:', window.appTypeOptionsData);
     const appTypeData = window.appTypeOptionsData || [
       { id: 'web', text: 'Web App' },
       { id: 'mobile', text: 'Mobile App' },
       { id: 'api', text: 'API' },
-      { id: 'service', text: 'Service' }
+      { id: 'service', text: 'Service' },
+      { id: 'database', text: 'Database' },
+      { id: 'microservice', text: 'Microservice' },
+      { id: 'desktop', text: 'Desktop App' },
+      { id: 'cli', text: 'CLI Tool' }
     ];
     $('#filterComponentAppType').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select app type',
+      placeholder: 'Select app type(s)',
       allowClear: true,
       width: '100%',
       dropdownParent: $modalContent,
-      data: appTypeData
+      data: appTypeData,
+      matcher: function(params, data) {
+        // If there are no search terms, return all data
+        if ($.trim(params.term) === '') {
+          return data;
+        }
+        // Do not display the item if there is no 'text' property
+        if (typeof data.text === 'undefined') {
+          return null;
+        }
+        // Return the data if it matches the search term
+        if (data.text.toLowerCase().indexOf(params.term.toLowerCase()) > -1) {
+          return data;
+        }
+        return null;
+      }
     });
-    console.log('✅ App Type Select2 initialized with data:', appTypeData);
     
-    // Restore filter values
-    restoreSelect2Value($('#filterComponentTags'), filterValues.tags, '/organize/api/tag');
-    restoreSelect2Value($('#filterComponentContacts'), filterValues.contacts, '/organize/api/contact');
-    restoreSelect2Value($('#filterComponentSystem'), filterValues.systemId ? [filterValues.systemId] : [], '/system/api/system');
-    
-    // Restore App Type value
-    if (filterValues.appType) {
-      $('#filterComponentAppType').val(filterValues.appType).trigger('change');
-    }
+    // Restore selected values when modal is shown
+    $filterModal.on('shown.bs.modal', function() {
+      setTimeout(function() {
+        restoreSelect2Value($('#filterComponentTags'), filterValues.tags, '/organize/api/tag/ids');
+        restoreSelect2Value($('#filterComponentContacts'), filterValues.contacts, '/organize/api/contact/ids');
+        restoreSelect2Value($('#filterComponentSystem'), filterValues.systemId, '/organize/api/system/ids');
+        
+        // Restore App Type values
+        if (filterValues.appType && filterValues.appType.length > 0) {
+          $('#filterComponentAppType').val(filterValues.appType).trigger('change');
+        }
+      }, 100);
+    });
     
     // Clear All Filters button
     $('#clearFilterBtnComponent').on('click', function() {

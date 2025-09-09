@@ -205,9 +205,12 @@
                     <td><%= server.type %></td>
                     <td>
                       <% if (Array.isArray(server.tags) && server.tags.length) { %>
-                        <div class="d-flex flex-wrap">
-                          <% server.tags.forEach(function(tag) { %>
-                            <span class="badge bg-primary text-white me-1 mb-1" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
+                        <div style="line-height: 1.4;">
+                          <% server.tags.forEach(function(tag, idx) { %>
+                            <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;"><%= tag.name %></span>
+                            <% if ((idx + 1) % 2 === 0 && idx < server.tags.length - 1) { %>
+                              <br>
+                            <% } %>
                           <% }) %>
                         </div>
                       <% } else { %>
@@ -288,9 +291,12 @@
                             <dt class="col-sm-3">Agents</dt>
                             <dd class="col-sm-9">
                               <% if (Array.isArray(server.agents) && server.agents.length) { %>
-                                <div class="d-flex flex-wrap">
-                                  <% server.agents.forEach(function(a) { %>
-                                    <span class="badge bg-info text-white me-1 mb-1" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= a.name %><% if (a.version) { %> (<%= a.version %>)<% } %></span>
+                                <div style="line-height: 1.4;">
+                                  <% server.agents.forEach(function(a, idx) { %>
+                                    <span class="badge bg-info text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;"><%= a.name %><% if (a.version) { %> (<%= a.version %>)<% } %></span>
+                                    <% if ((idx + 1) % 2 === 0 && idx < server.agents.length - 1) { %>
+                                      <br>
+                                    <% } %>
                                   <% }) %>
                                 </div>
                               <% } else { %>
@@ -300,9 +306,12 @@
                             <dt class="col-sm-3">Services</dt>
                             <dd class="col-sm-9">
                               <% if (Array.isArray(server.services) && server.services.length) { %>
-                                <div class="d-flex flex-wrap">
-                                  <% server.services.forEach(function(s) { %>
-                                    <span class="badge bg-success text-white me-1 mb-1" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= s.name %></span>
+                                <div style="line-height: 1.4;">
+                                  <% server.services.forEach(function(s, idx) { %>
+                                    <span class="badge bg-success text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;"><%= s.name %></span>
+                                    <% if ((idx + 1) % 2 === 0 && idx < server.services.length - 1) { %>
+                                      <br>
+                                    <% } %>
                                   <% }) %>
                                 </div>
                               <% } else { %>
@@ -326,9 +335,12 @@
                             <dt class="col-sm-3">Tags</dt>
                             <dd class="col-sm-9">
                               <% if (Array.isArray(server.tags) && server.tags.length) { %>
-                                <div class="d-flex flex-wrap">
-                                  <% server.tags.forEach(function(tag) { %>
-                                    <span class="badge bg-primary text-white me-1 mb-1" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
+                                <div style="line-height: 1.4;">
+                                  <% server.tags.forEach(function(tag, idx) { %>
+                                    <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;"><%= tag.name %></span>
+                                    <% if ((idx + 1) % 2 === 0 && idx < server.tags.length - 1) { %>
+                                      <br>
+                                    <% } %>
                                   <% }) %>
                                 </div>
                               <% } else { %>
@@ -462,6 +474,7 @@ function restoreSelect2Value($el, values, url) {
     data: { ids: values },
     dataType: 'json',
     traditional: true,
+    xhrFields: { withCredentials: true },
     success: function(data) {
       data.forEach(function(item) {
         if ($el.find('option[value="' + item.id + '"]').length === 0) {
@@ -470,6 +483,9 @@ function restoreSelect2Value($el, values, url) {
         }
       });
       $el.val(values).trigger('change');
+    },
+    error: function(xhr, status, error) {
+      console.error('Error restoring select2 value:', error);
     }
   });
 }
@@ -568,13 +584,17 @@ $(function() {
     }
   });
 
-  // Restore selected values for multi-select filter fields
-  restoreSelect2Value($('#filterTags'), filterValues.tags, '/organize/api/tag');
-  restoreSelect2Value($('#filterIp'), filterValues.ip, '/network/api/ip-addresses');
-  restoreSelect2Value($('#filterManager'), filterValues.manager, '/organize/api/contact');
-  restoreSelect2Value($('#filterSystems'), filterValues.systems, '/system/api/system');
-  restoreSelect2Value($('#filterServices'), filterValues.services, '/server/api/service');
-  restoreSelect2Value($('#filterOs'), filterValues.os, '/device/api/platform');
+  // Restore selected values when modal is shown
+  $filterModal.on('shown.bs.modal', function() {
+    setTimeout(function() {
+      restoreSelect2Value($('#filterTags'), filterValues.tags, '/organize/api/tag/ids');
+      restoreSelect2Value($('#filterIp'), filterValues.ip, '/network/api/ip-addresses');
+      restoreSelect2Value($('#filterManager'), filterValues.manager, '/organize/api/contact/ids');
+      restoreSelect2Value($('#filterSystems'), filterValues.systems, '/organize/api/system/ids');
+      restoreSelect2Value($('#filterServices'), filterValues.services, '/server/api/service');
+      restoreSelect2Value($('#filterOs'), filterValues.os, '/device/api/platform');
+    }, 100);
+  });
 
   // Clear Filter button: reset tất cả filter về mặc định
   $('#clearFilterBtn').on('click', function() {
@@ -591,7 +611,7 @@ $(function() {
     // Close modal
     $filterModal.modal('hide');
     // Redirect to clean URL but preserve pageSize and search
-    const currentPageSize = $('select[name="pageSize"]').val() || '10';
+    const currentPageSize = $('input[name="pageSize"]').val() || '10';
     const currentSearch = $('input[name="search"]').val() || '';
     let cleanUrl = '/server/server/list';
     const params = [];
@@ -622,7 +642,6 @@ $(function() {
           var pre = this.querySelector('pre[data-services]');
           if (pre) {
             var services = JSON.parse(pre.getAttribute('data-services'));
-            console.log('[DEBUG] server.services for serverId=' + serverId + ':', services);
           }
         } catch(e) {}
       });

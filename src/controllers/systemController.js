@@ -189,12 +189,12 @@ systemController.listSystemComponent = async (req, res) => {
     const normalizeArray = v => (Array.isArray(v) ? v : (v ? [v] : []));
     let filterTags = req.query['tags[]'] || req.query.tags || [];
     let filterContacts = req.query['contacts[]'] || req.query.contacts || [];
-    let filterSystemId = req.query.system_id || '';
-    let filterAppType = req.query.app_type || '';
+    let filterSystemId = req.query['system_id[]'] || req.query.system_id || [];
+    let filterAppType = req.query['app_type[]'] || req.query.app_type || [];
     filterTags = normalizeArray(filterTags).filter(x => x !== '');
     filterContacts = normalizeArray(filterContacts).filter(x => x !== '');
-    filterSystemId = filterSystemId ? String(filterSystemId).trim() : '';
-    filterAppType = filterAppType ? String(filterAppType).trim() : '';
+    filterSystemId = normalizeArray(filterSystemId).filter(x => x !== '');
+    filterAppType = normalizeArray(filterAppType).filter(x => x !== '');
     // @ts-ignore - filterTags, filterContacts, filterSystemId, and filterAppType are supported by model methods
     const componentList = await SystemComponent.findFilteredList({ search, page, pageSize, filterTags, filterContacts, system_id: filterSystemId, app_type: filterAppType });
     // @ts-ignore - filterTags, filterContacts, filterSystemId, and filterAppType are supported by model methods
@@ -234,6 +234,7 @@ systemController.listSystemComponent = async (req, res) => {
 systemController.addSystemComponentForm = async (req, res) => {
   // Fetch App Type options from configuration table
   const appTypeOptions = await getAppTypeOptionsFromConfig();
+  console.log('Add Component Form - appTypeOptions:', appTypeOptions);
   res.render('pages/system/component_add', {
     error: null,
     appTypeOptions,
@@ -348,6 +349,8 @@ systemController.editSystemComponentForm = async (req, res) => {
     }
     // Lấy options cho app_type
     const appTypeOptions = await getAppTypeOptionsFromConfig();
+    console.log('Edit Component Form - appTypeOptions:', appTypeOptions);
+    console.log('Edit Component Form - component.app_type:', component.app_type);
     res.render('pages/system/component_edit', {
       component,
       appTypeOptions,

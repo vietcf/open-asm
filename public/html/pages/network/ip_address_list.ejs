@@ -139,12 +139,15 @@
         data-contacts='<%= JSON.stringify(filterContacts || []) %>' style="display:none"></div>
       <script>
         function restoreSelect2Value($el, values, url) {
-          if (!values || !values.length) return;
+          if (!values || !values.length) {
+            return;
+          }
           $.ajax({
             url: url,
             data: { ids: values },
             dataType: 'json',
             traditional: true,
+            xhrFields: { withCredentials: true },
             success: function(data) {
               data.forEach(function(item) {
                 if ($el.find('option[value="' + item.id + '"]').length === 0) {
@@ -153,6 +156,9 @@
                 }
               });
               $el.val(values).trigger('change');
+            },
+            error: function(xhr, status, error) {
+              console.error('Error restoring select2 value:', error, xhr.responseText);
             }
           });
         }
@@ -214,13 +220,17 @@
               processResults: data => ({ results: data })
             }
           });
-          // Restore selected values for multi-select filter fields
-          restoreSelect2Value($('#filterIpTags'), filterValues.tags, '/organize/api/tag');
-          restoreSelect2Value($('#filterIpSystems'), filterValues.systems, '/system/api/system');
-          restoreSelect2Value($('#filterIpContacts'), filterValues.contacts, '/organize/api/contact');
-          if (filterValues.status && filterValues.status.length) {
-            $('#filterIpStatus').val(filterValues.status).trigger('change');
-          }
+          // Restore selected values when modal is shown
+          $filterModal.on('shown.bs.modal', function() {
+            setTimeout(function() {
+              restoreSelect2Value($('#filterIpTags'), filterValues.tags, '/organize/api/tag/ids');
+              restoreSelect2Value($('#filterIpSystems'), filterValues.systems, '/organize/api/system/ids');
+              restoreSelect2Value($('#filterIpContacts'), filterValues.contacts, '/organize/api/contact/ids');
+              if (filterValues.status && filterValues.status.length) {
+                $('#filterIpStatus').val(filterValues.status).trigger('change');
+              }
+            }, 100);
+          });
           // Clear Filter button: reset tất cả filter về mặc định
           $('#clearFilterBtnIp').on('click', function() {
             // Clear all select2 values
@@ -296,9 +306,14 @@
                     <td><% if (ip.status) { %><span class="badge bg-secondary"><%= ip.status %></span><% } else { %><span class="text-muted">-</span><% } %></td>
                     <td>
                       <% if (ip.tags && ip.tags.length > 0) { %>
-                        <% ip.tags.forEach(function(tag) { %>
-                          <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
-                        <% }) %>
+                        <div style="line-height: 1.4;">
+                          <% ip.tags.forEach(function(tag, idx) { %>
+                            <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;"><%= tag.name %></span>
+                            <% if ((idx + 1) % 2 === 0 && idx < ip.tags.length - 1) { %>
+                              <br>
+                            <% } %>
+                          <% }) %>
+                        </div>
                       <% } else { %>
                         <span class="text-muted">No tags</span>
                       <% } %>
@@ -308,11 +323,14 @@
                     <!-- <td><%= ip.updated_by || '' %></td> -->
                     <td>
                       <% if (ip.systems && ip.systems.length > 0) { %>
-                        <div class="d-flex flex-wrap">
-                          <% ip.systems.forEach(function(system) { %>
-                            <a href="/system/system?search=<%= encodeURIComponent(system.name) %>" target="_blank" class="me-1 mb-1 text-primary" style="text-decoration:underline; font-size:0.95em; font-weight:500;">
+                        <div style="line-height: 1.4;">
+                          <% ip.systems.forEach(function(system, idx) { %>
+                            <a href="/system/system?search=<%= encodeURIComponent(system.name) %>" target="_blank" class="text-primary" style="text-decoration:underline; font-size:0.95em; font-weight:500; display: inline-block; margin: 0.1em 0.1em;">
                               <%= system.name + (system.system_id ? ' (' + system.system_id + ')' : '') %>
                             </a>
+                            <% if ((idx + 1) % 2 === 0 && idx < ip.systems.length - 1) { %>
+                              <br>
+                            <% } %>
                           <% }) %>
                         </div>
                       <% } else { %>
@@ -348,9 +366,14 @@
                             <dt class="col-sm-3">Tags</dt>
                             <dd class="col-sm-9">
                               <% if (ip.tags && ip.tags.length > 0) { %>
-                                <% ip.tags.forEach(function(tag) { %>
-                                  <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
-                                <% }) %>
+                                <div style="line-height: 1.4;">
+                                  <% ip.tags.forEach(function(tag, idx) { %>
+                                    <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;"><%= tag.name %></span>
+                                    <% if ((idx + 1) % 2 === 0 && idx < ip.tags.length - 1) { %>
+                                      <br>
+                                    <% } %>
+                                  <% }) %>
+                                </div>
                               <% } else { %>
                                 <span class="text-muted">No tags</span>
                               <% } %>

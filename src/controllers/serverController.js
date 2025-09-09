@@ -255,7 +255,6 @@ serverController.detailServer = async (req, res) => {
       ...detail,
       description: detail.description || ''
     });
-    console.log(`Server detail loaded for ID ${id}`);
   } catch (err) {
     res.status(500).json({ error: 'Error loading server detail', detail: err.message });
   }

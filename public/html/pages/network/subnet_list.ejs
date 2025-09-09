@@ -128,9 +128,14 @@
                   </td>
                   <td>
                     <% if (subnet.tags && subnet.tags.length > 0) { %>
-                      <% subnet.tags.forEach(function(tag) { %>
-                        <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
-                      <% }) %>
+                      <div style="line-height: 1.4;">
+                        <% subnet.tags.forEach(function(tag, idx) { %>
+                          <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;"><%= tag.name %></span>
+                          <% if ((idx + 1) % 2 === 0 && idx < subnet.tags.length - 1) { %>
+                            <br>
+                          <% } %>
+                        <% }) %>
+                      </div>
                     <% } else { %>
                       <span class="text-muted">No tags</span>
                     <% } %>
@@ -166,9 +171,14 @@
                           <dt class="col-sm-3">Tags</dt>
                           <dd class="col-sm-9">
                             <% if (subnet.tags && subnet.tags.length > 0) { %>
-                              <% subnet.tags.forEach(function(tag) { %>
-                                <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
-                              <% }) %>
+                              <div style="line-height: 1.4;">
+                                <% subnet.tags.forEach(function(tag, idx) { %>
+                                  <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;"><%= tag.name %></span>
+                                  <% if ((idx + 1) % 2 === 0 && idx < subnet.tags.length - 1) { %>
+                                    <br>
+                                  <% } %>
+                                <% }) %>
+                              </div>
                             <% } else { %>
                               <span class="text-muted">No tags</span>
                             <% } %>
@@ -479,6 +489,7 @@ function showToast(msg, type) {
       data: { ids: values },
       dataType: 'json',
       traditional: true,
+      xhrFields: { withCredentials: true },
       success: function(data) {
         data.forEach(function(item) {
           if ($el.find('option[value="' + item.id + '"]').length === 0) {
@@ -487,6 +498,9 @@ function showToast(msg, type) {
           }
         });
         $el.val(values).trigger('change');
+      },
+      error: function(xhr, status, error) {
+        console.error('Error restoring select2 value:', error);
       }
     });
   }
@@ -511,7 +525,7 @@ function showToast(msg, type) {
       }
     });
     // Restore selected values for multi-select filter fields
-    restoreSelect2Value($('#filterSubnetTags'), filterValues.tags, '/organize/api/tag');
+    restoreSelect2Value($('#filterSubnetTags'), filterValues.tags, '/organize/api/tag/ids');
     // Clear Filter button: reset tất cả filter về mặc định
     $('#clearFilterBtnSubnet').on('click', function() {
       // Clear all select2 values

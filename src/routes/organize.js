@@ -27,6 +27,7 @@ router.get('/api/contact', organizeController.apiContactSearch);
 router.get('/api/contact/ids', organizeController.apiContactByIds);
 router.get('/api/tag',organizeController.apiTagSearch);
 router.get('/api/tag/ids', organizeController.apiTagByIds);
+router.get('/api/system/ids', organizeController.apiSystemByIds);
 router.get('/api/unit', organizeController.apiUnitSearch);
 router.get('/api/contact/:id/qrcode', organizeController.apiContactQrVcard);
 

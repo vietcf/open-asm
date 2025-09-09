@@ -173,16 +173,27 @@ class SystemComponent {
       params.push(filterContacts.map(Number));
       idx++;
     }
-    if (system_id) {
-      where += ` AND sc.system_id = $${idx}`;
-      params.push(system_id);
+    // Filter by system_id (handle both single and array)
+    if (system_id && ((Array.isArray(system_id) && system_id.length > 0) || (!Array.isArray(system_id) && system_id))) {
+      if (Array.isArray(system_id)) {
+        where += ` AND sc.system_id = ANY($${idx})`;
+        params.push(system_id.map(Number));
+      } else {
+        where += ` AND sc.system_id = $${idx}`;
+        params.push(Number(system_id));
+      }
       idx++;
     }
-    // Filter by app_type
+    // Filter by app_type (handle both single and array)
     const app_type = arguments[0].app_type;
-    if (app_type) {
-      where += ` AND sc.app_type = $${idx}`;
-      params.push(app_type);
+    if (app_type && ((Array.isArray(app_type) && app_type.length > 0) || (!Array.isArray(app_type) && app_type))) {
+      if (Array.isArray(app_type)) {
+        where += ` AND sc.app_type = ANY($${idx})`;
+        params.push(app_type);
+      } else {
+        where += ` AND sc.app_type = $${idx}`;
+        params.push(app_type);
+      }
       idx++;
     }
     params.push(pageSize, offset);
@@ -239,16 +250,27 @@ class SystemComponent {
       params.push(filterContacts.map(Number));
       idx++;
     }
-    if (system_id) {
-      where += ` AND sc.system_id = $${idx}`;
-      params.push(system_id);
+    // Filter by system_id (handle both single and array)
+    if (system_id && ((Array.isArray(system_id) && system_id.length > 0) || (!Array.isArray(system_id) && system_id))) {
+      if (Array.isArray(system_id)) {
+        where += ` AND sc.system_id = ANY($${idx})`;
+        params.push(system_id.map(Number));
+      } else {
+        where += ` AND sc.system_id = $${idx}`;
+        params.push(Number(system_id));
+      }
       idx++;
     }
-    // Filter by app_type
+    // Filter by app_type (handle both single and array)
     const app_type = arguments[0].app_type;
-    if (app_type) {
-      where += ` AND sc.app_type = $${idx}`;
-      params.push(app_type);
+    if (app_type && ((Array.isArray(app_type) && app_type.length > 0) || (!Array.isArray(app_type) && app_type))) {
+      if (Array.isArray(app_type)) {
+        where += ` AND sc.app_type = ANY($${idx})`;
+        params.push(app_type);
+      } else {
+        where += ` AND sc.app_type = $${idx}`;
+        params.push(app_type);
+      }
       idx++;
     }
     const result = await pool.query(

@@ -27,8 +27,14 @@
                 <option value="">-- Select App Type --</option>
                 <% if (typeof appTypeOptions !== 'undefined' && Array.isArray(appTypeOptions)) { %>
                   <% appTypeOptions.forEach(function(opt) { %>
-                    <option value="<%= opt.value %>"><%= opt.label %></option>
+                    <option value="<%= opt.id || opt.value %>"><%= opt.text || opt.label %></option>
                   <% }) %>
+                <% } else { %>
+                  <option value="web">Web App</option>
+                  <option value="mobile">Mobile App</option>
+                  <option value="api">API</option>
+                  <option value="service">Service</option>
+                  <option value="database">Database</option>
                 <% } %>
               </select>
             </div>
@@ -60,6 +66,8 @@
 </div>
 <script>
 $(function() {
+  // Debug: Log appTypeOptions
+  console.log('App Type Options from backend:', <%- JSON.stringify(appTypeOptions || []) %>);
   $('#system-select').select2({
     theme: 'bootstrap-5',
     placeholder: 'Select system',

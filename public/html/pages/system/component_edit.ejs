@@ -32,8 +32,14 @@
                 <option value="">-- Select App Type --</option>
                 <% if (typeof appTypeOptions !== 'undefined' && Array.isArray(appTypeOptions)) { %>
                   <% appTypeOptions.forEach(function(opt) { %>
-                    <option value="<%= opt.value %>" <%= component.app_type === opt.value ? 'selected' : '' %>><%= opt.label %></option>
+                    <option value="<%= opt.id || opt.value %>" <%= component.app_type === (opt.id || opt.value) ? 'selected' : '' %>><%= opt.text || opt.label %></option>
                   <% }) %>
+                <% } else { %>
+                  <option value="web" <%= component.app_type === 'web' ? 'selected' : '' %>>Web App</option>
+                  <option value="mobile" <%= component.app_type === 'mobile' ? 'selected' : '' %>>Mobile App</option>
+                  <option value="api" <%= component.app_type === 'api' ? 'selected' : '' %>>API</option>
+                  <option value="service" <%= component.app_type === 'service' ? 'selected' : '' %>>Service</option>
+                  <option value="database" <%= component.app_type === 'database' ? 'selected' : '' %>>Database</option>
                 <% } %>
               </select>
             </div>
@@ -94,6 +100,9 @@
 <script src="/vendor/bootstrap.min.js"></script>
 <script>
   $(function() {
+    // Debug: Log appTypeOptions
+    console.log('Edit Component - App Type Options from backend:', <%- JSON.stringify(appTypeOptions || []) %>);
+    console.log('Edit Component - Current app_type:', '<%= component.app_type %>');
     $('#system-select').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select system',

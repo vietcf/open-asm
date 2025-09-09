@@ -1,4 +1,4 @@
-import { config } from '../../config/config.js';
+import { config, pool } from '../../config/config.js';
 import Contact from '../models/Contact.js';
 import Unit from '../models/Unit.js';
 import Tag from '../models/Tag.js';
@@ -480,6 +480,41 @@ organizeController.apiContactQrVcard = async (req, res) => {
     res.json({ image: base64, mime: 'image/png' });
   } catch (err) {
     res.status(500).json({ error: 'Unable to generate QR vCard', detail: err.message });
+  }
+};
+
+// API endpoint to get systems by IDs
+organizeController.apiSystemByIds = async (req, res) => {
+  try {
+    const { ids } = req.query;
+    
+    if (!ids) {
+      return res.json([]);
+    }
+    
+    // Handle both single value and array
+    let idsArray = Array.isArray(ids) ? ids : [ids];
+    
+    if (idsArray.length === 0) {
+      return res.json([]);
+    }
+    
+    // Convert to integers and filter out invalid values
+    const systemIds = idsArray.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+    
+    if (systemIds.length === 0) {
+      return res.json([]);
+    }
+    
+    const result = await pool.query(
+      'SELECT id, name FROM systems WHERE id = ANY($1) ORDER BY name',
+      [systemIds]
+    );
+    
+    res.json(result.rows);
+  } catch (err) {
+    console.error('API System by IDs - Error:', err);
+    res.status(500).json({ error: err.message });
   }
 };
 
