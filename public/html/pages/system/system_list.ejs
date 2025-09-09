@@ -23,6 +23,9 @@
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
             <form id="systemFilterForm" method="get" action="/system/system">
+              <!-- Preserve current pageSize and search -->
+              <input type="hidden" name="pageSize" value="<%= typeof pageSize !== 'undefined' ? pageSize : 10 %>">
+              <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
               <div class="modal-header">
                 <h5 class="modal-title" id="filterSystemModalLabel">Filter System List</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -480,6 +483,7 @@
     window.scopeOptionsData = JSON.parse(systemDataEl.dataset.scopeOptions || '[]');
     window.architectureOptionsData = JSON.parse(systemDataEl.dataset.architectureOptions || '[]');
     
+    
 
     
     function confirmDeleteSystem(form, name) {
@@ -505,20 +509,37 @@
 
     // Filter modal select2 logic
     function restoreSelect2Value($el, values, url) {
-      if (!values || !values.length) return;
+      if (!values || !values.length) {
+        return;
+      }
+      
       $.ajax({
         url: url,
         data: { ids: values },
         dataType: 'json',
         traditional: true,
+        xhrFields: {
+          withCredentials: true
+        },
         success: function(data) {
+          if (!data || !Array.isArray(data)) {
+            return;
+          }
+          
           data.forEach(function(item) {
             if ($el.find('option[value="' + item.id + '"]').length === 0) {
               var option = new Option(item.text || item.name, item.id, true, true);
               $el.append(option);
             }
           });
-          $el.val(values).trigger('change');
+          
+          // Use setTimeout to ensure options are added before setting values
+          setTimeout(function() {
+            $el.val(values).trigger('change');
+          }, 100);
+        },
+        error: function(xhr, status, error) {
+          // Silent error handling
         }
       });
     }
@@ -533,6 +554,7 @@
         scopes: JSON.parse(document.getElementById('filter-system-data').dataset.scopes || '[]'),
         architecture: JSON.parse(document.getElementById('filter-system-data').dataset.architecture || '[]')
       };
+      
       $('#filterSystemTags').select2({
         theme: 'bootstrap-5',
         placeholder: 'Select tag(s)',
@@ -561,7 +583,6 @@
           processResults: data => ({ results: data })
         }
       });
-      console.log('🚀 Select2 for Contacts created');
       // Tạo Select2 trực tiếp với data từ backend
       $('#filterSystemScopes').select2({
         theme: 'bootstrap-5',
@@ -585,14 +606,62 @@
       });
       
 
-      restoreSelect2Value($('#filterSystemTags'), filterValues.tags, '/organize/api/tag');
-      restoreSelect2Value($('#filterSystemContacts'), filterValues.contacts, '/organize/api/contact');
-      // Restore scope and architecture values
+      // Restore all filter values with proper timing
+      setTimeout(function() {
+        // Restore tags
+        if (filterValues.tags && filterValues.tags.length > 0) {
+          restoreSelect2Value($('#filterSystemTags'), filterValues.tags, '/organize/api/tag/ids');
+        }
+        
+        // Restore contacts
+        if (filterValues.contacts && filterValues.contacts.length > 0) {
+          restoreSelect2Value($('#filterSystemContacts'), filterValues.contacts, '/organize/api/contact/ids');
+        }
+      }, 500);
+      
+      
+      // Also restore when modal is shown
+      $filterModal.on('shown.bs.modal', function() {
+        setTimeout(function() {
+          // Restore tags
+          if (filterValues.tags && filterValues.tags.length > 0) {
+            restoreSelect2Value($('#filterSystemTags'), filterValues.tags, '/organize/api/tag/ids');
+          }
+          
+          // Restore contacts
+          if (filterValues.contacts && filterValues.contacts.length > 0) {
+            restoreSelect2Value($('#filterSystemContacts'), filterValues.contacts, '/organize/api/contact/ids');
+          }
+        }, 200);
+      });
+      
+      // Restore scope and architecture values - need to add options first
       if (filterValues.scopes && filterValues.scopes.length > 0) {
-        $('#filterSystemScopes').val(filterValues.scopes).trigger('change');
+        // Add options to scope select if they don't exist
+        filterValues.scopes.forEach(function(scopeValue) {
+          if ($('#filterSystemScopes').find('option[value="' + scopeValue + '"]').length === 0) {
+            const option = new Option(scopeValue, scopeValue, true, true);
+            $('#filterSystemScopes').append(option);
+          }
+        });
+        // Use setTimeout to ensure Select2 is fully initialized
+        setTimeout(function() {
+          $('#filterSystemScopes').val(filterValues.scopes).trigger('change');
+        }, 100);
       }
+      
       if (filterValues.architecture && filterValues.architecture.length > 0) {
-        $('#filterSystemArchitecture').val(filterValues.architecture).trigger('change');
+        // Add options to architecture select if they don't exist
+        filterValues.architecture.forEach(function(archValue) {
+          if ($('#filterSystemArchitecture').find('option[value="' + archValue + '"]').length === 0) {
+            const option = new Option(archValue, archValue, true, true);
+            $('#filterSystemArchitecture').append(option);
+          }
+        });
+        // Use setTimeout to ensure Select2 is fully initialized
+        setTimeout(function() {
+          $('#filterSystemArchitecture').val(filterValues.architecture).trigger('change');
+        }, 100);
       }
       
 
@@ -605,8 +674,15 @@
         $('#filterSystemArchitecture').val(null).trigger('change');
         // Close modal
         $filterModal.modal('hide');
-        // Redirect to clean URL
-        window.location.href = '/system/system';
+        // Redirect to clean URL but preserve pageSize and search
+        const currentPageSize = $('select[name="pageSize"]').val() || '10';
+        const currentSearch = $('input[name="search"]').val() || '';
+        let cleanUrl = '/system/system';
+        const params = [];
+        if (currentPageSize && currentPageSize !== '10') params.push('pageSize=' + encodeURIComponent(currentPageSize));
+        if (currentSearch) params.push('search=' + encodeURIComponent(currentSearch));
+        if (params.length > 0) cleanUrl += '?' + params.join('&');
+        window.location.href = cleanUrl;
       });
       
 

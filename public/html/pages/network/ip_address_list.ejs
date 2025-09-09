@@ -88,6 +88,9 @@
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
             <form id="ipFilterForm" method="get" action="/network/ip-address">
+              <!-- Preserve current pageSize and search -->
+              <input type="hidden" name="pageSize" value="<%= typeof pageSize !== 'undefined' ? pageSize : 10 %>">
+              <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
               <div class="modal-header">
                 <h5 class="modal-title" id="filterIpModalLabel">Filter IP Address List</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -227,8 +230,15 @@
             $('#filterIpStatus').val(null).trigger('change');
             // Close modal
             $filterModal.modal('hide');
-            // Redirect to clean URL
-            window.location.href = '/network/ip-address';
+            // Redirect to clean URL but preserve pageSize and search
+            const currentPageSize = $('select[name="pageSize"]').val() || '10';
+            const currentSearch = $('input[name="search"]').val() || '';
+            let cleanUrl = '/network/ip-address';
+            const params = [];
+            if (currentPageSize && currentPageSize !== '10') params.push('pageSize=' + encodeURIComponent(currentPageSize));
+            if (currentSearch) params.push('search=' + encodeURIComponent(currentSearch));
+            if (params.length > 0) cleanUrl += '?' + params.join('&');
+            window.location.href = cleanUrl;
           });
         });
       </script>

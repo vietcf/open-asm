@@ -137,12 +137,12 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // Smart redirect for root URL - handles both authenticated and anonymous users
 app.get(['/', '/index.html'], (req, res) => {
-    // If user is logged in, redirect to dashboard
-    if (req.session.user) {
-        return res.redirect('/dashboard');
-    }
-    // If not logged in, redirect to login
-    res.redirect('/login');
+  // If user is logged in, redirect to dashboard
+  if (req.session.user) {
+    return res.redirect('/dashboard');
+  }
+  // If not logged in, redirect to login
+  res.redirect('/login');
 });
 
 
@@ -150,6 +150,8 @@ app.get(['/', '/index.html'], (req, res) => {
 // PUBLIC ROUTES (No authentication required)
 // ===========================================
 app.use('/', authRouter); // /login, /logout, /login/2fa
+
+
 
 
 // ===========================================
@@ -194,14 +196,18 @@ app.use('/api-docs', requireLogin, apiSwaggerRouter);
 app.use('/api/v1', apiRouter);
 
 // Start the server
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT) || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on 0.0.0.0:${PORT}`);
     console.log('🔒 App is using reverse proxy (Nginx)');
 });
 
 // Start scheduled cleanup job for system logs
-import * as cleanupLogsJob from './utils/cleanupLogs.js';
-if (typeof cleanupLogsJob.start === 'function') {
-  cleanupLogsJob.start();
+try {
+  const cleanupLogsJob = await import('./utils/cleanupLogs.js');
+  if (cleanupLogsJob.default && typeof cleanupLogsJob.default.start === 'function') {
+    cleanupLogsJob.default.start();
+  }
+} catch (err) {
+  console.log('Cleanup logs job not available:', err.message);
 }

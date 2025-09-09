@@ -186,6 +186,9 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <form method="get" action="/firewall/rule">
+          <!-- Preserve current pageSize and search -->
+          <input type="hidden" name="pageSize" value="<%= typeof pageSize !== 'undefined' ? pageSize : 10 %>">
+          <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
           <div class="modal-body">
             <div class="mb-3">
               <label for="filterRuleFirewallName" class="form-label">Firewall Name</label>
@@ -1115,7 +1118,15 @@ $(function() {
   });
   // Button to clear all filters
   $('#clearAllFilterBtn').on('click', function() {
-    window.location.href = '/firewall/rule';
+    // Redirect to clean URL but preserve pageSize and search
+    const currentPageSize = $('select[name="pageSize"]').val() || '10';
+    const currentSearch = $('input[name="search"]').val() || '';
+    let cleanUrl = '/firewall/rule';
+    const params = [];
+    if (currentPageSize && currentPageSize !== '10') params.push('pageSize=' + encodeURIComponent(currentPageSize));
+    if (currentSearch) params.push('search=' + encodeURIComponent(currentSearch));
+    if (params.length > 0) cleanUrl += '?' + params.join('&');
+    window.location.href = cleanUrl;
   });
   // Select all rules functionality
   $('#selectAllRules').on('change', function() {

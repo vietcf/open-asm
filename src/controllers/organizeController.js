@@ -249,6 +249,43 @@ organizeController.apiContactSearch = async (req, res) => {
   }
 };
 
+// API for getting contacts by IDs (for filter restore)
+organizeController.apiContactByIds = async (req, res) => {
+  try {
+    const { ids } = req.query;
+    
+    if (!ids) {
+      return res.json([]);
+    }
+    
+    // Handle both array and single value
+    let idsArray = Array.isArray(ids) ? ids : [ids];
+    
+    if (idsArray.length === 0) {
+      return res.json([]);
+    }
+    
+    const contactIds = idsArray.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+    
+    if (contactIds.length === 0) {
+      return res.json([]);
+    }
+    
+    const contacts = await Contact.findByIds(contactIds);
+    
+    const data = contacts.map(contact => ({ 
+      id: contact.id, 
+      text: contact.name + (contact.email ? ` (${contact.email})` : ''),
+      name: contact.name,
+      email: contact.email
+    }));
+    res.json(data);
+  } catch (err) {
+    console.error('API /organize/api/contact by IDs error:', err);
+    res.status(500).json({ error: 'Error loading contacts by IDs', detail: err.message });
+  }
+};
+
 // API for select2 ajax unit (organize) search
 organizeController.apiUnitSearch = async (req, res) => {
   try {
@@ -368,6 +405,42 @@ organizeController.apiTagSearch = async (req, res) => {
     res.json(tags.map(tag => ({ id: tag.id, text: tag.name })));
   } catch (err) {
     res.status(500).json({ error: 'Error loading tags' });
+  }
+};
+
+// API for getting tags by IDs (for filter restore)
+organizeController.apiTagByIds = async (req, res) => {
+  try {
+    const { ids } = req.query;
+    
+    if (!ids) {
+      return res.json([]);
+    }
+    
+    // Handle both array and single value
+    let idsArray = Array.isArray(ids) ? ids : [ids];
+    
+    if (idsArray.length === 0) {
+      return res.json([]);
+    }
+    
+    const tagIds = idsArray.map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+    
+    if (tagIds.length === 0) {
+      return res.json([]);
+    }
+    
+    const tags = await Tag.findByIds(tagIds);
+    
+    const data = tags.map(tag => ({ 
+      id: tag.id, 
+      text: tag.name,
+      name: tag.name
+    }));
+    res.json(data);
+  } catch (err) {
+    console.error('API /organize/api/tag by IDs error:', err);
+    res.status(500).json({ error: 'Error loading tags by IDs', detail: err.message });
   }
 };
 

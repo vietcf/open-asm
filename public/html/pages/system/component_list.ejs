@@ -51,6 +51,9 @@
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
             <form id="componentFilterForm" method="get" action="/system/component">
+              <!-- Preserve current pageSize and search -->
+              <input type="hidden" name="pageSize" value="<%= typeof pageSize !== 'undefined' ? pageSize : 10 %>">
+              <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
               <!-- Modal Header -->
               <div class="modal-header">
                 <h5 class="modal-title" id="filterComponentModalLabel">
@@ -739,8 +742,15 @@
       // Close modal
       $filterModal.modal('hide');
       
-      // Redirect to clean URL
-      window.location.href = '/system/component';
+      // Redirect to clean URL but preserve pageSize and search
+      const currentPageSize = $('select[name="pageSize"]').val() || '10';
+      const currentSearch = $('input[name="search"]').val() || '';
+      let cleanUrl = '/system/component';
+      const params = [];
+      if (currentPageSize && currentPageSize !== '10') params.push('pageSize=' + encodeURIComponent(currentPageSize));
+      if (currentSearch) params.push('search=' + encodeURIComponent(currentSearch));
+      if (params.length > 0) cleanUrl += '?' + params.join('&');
+      window.location.href = cleanUrl;
     });
     
     // Attach IP hover events to existing content
