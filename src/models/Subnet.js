@@ -23,6 +23,12 @@ class Subnet {
     return result.rows[0];
   }
 
+  // Check if a subnet exists by id
+  static async exists(id) {
+    const result = await pool.query('SELECT 1 FROM subnets WHERE id = $1', [id]);
+    return result.rowCount > 0;
+  }
+
   // Create a new subnet (only fields in subnets table)
   static async create({ address, description, updated_by = '' }, client = pool) {
     const result = await client.query(

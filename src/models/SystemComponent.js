@@ -286,6 +286,12 @@ class SystemComponent {
     return parseInt(result.rows[0].count, 10);
   }
 
+  // Check if a system component exists by id
+  static async exists(id) {
+    const result = await pool.query('SELECT 1 FROM system_components WHERE id = $1', [id]);
+    return result.rowCount > 0;
+  }
+
   // Lấy 1 component kèm đầy đủ tags, contacts, ip_addresses
   static async findByIdWithRelations(id) {
     const sql = `

@@ -33,5 +33,6 @@ router.get('/api/platform', deviceController.apiPlatformSearch);
 router.get('/api/device-type', deviceController.apiDeviceTypeSearch);
 router.get('/api/device', deviceController.apiDeviceSearch);
 router.get('/api/manufacturers', deviceController.apiManufacturers);
+router.get('/api/device-roles', deviceController.apiDeviceRoles);
 
 export default router;

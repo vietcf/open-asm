@@ -55,12 +55,27 @@ async function addUpdatedFieldsToSubnets() {
   }
 }
 
+// Thêm cột device_role vào bảng devices
+async function addDeviceRoleToDevices() {
+  try {
+    await pool.query(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS device_role VARCHAR(255) DEFAULT NULL;`);
+    console.log('Added device_role column to devices table!');
+    
+    // Tạo index cho device_role để tối ưu filtering
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_devices_device_role ON devices (device_role);`);
+    console.log('Created index on device_role column!');
+  } catch (err) {
+    console.error('Add device_role column to devices failed:', err);
+  }
+}
+
 (async () => {
   try {
     await addFqdnToSystems();
     await addScopesToSystems();
     await addArchitectureToSystems();
     await addUpdatedFieldsToSubnets();
+    await addDeviceRoleToDevices();
   } catch (err) {
     console.error('Error running alter statements:', err);
   } finally {

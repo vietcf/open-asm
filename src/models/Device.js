@@ -3,17 +3,17 @@ import { pool } from '../../config/config.js';
 
 
 class Device {
-  // Create a new device (with manufacturer)
-  static async create({ name, manufacturer, platform_id, device_type_id, location, serial_number, management_address, description }) {
+  // Create a new device (with manufacturer and device_role)
+  static async create({ name, manufacturer, device_role, platform_id, device_type_id, location, serial_number, management_address, description }) {
     const result = await pool.query(
-      'INSERT INTO devices (name, manufacturer, platform_id, device_type_id, location, serial_number, management_address, description) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *',
-      [name, manufacturer, platform_id, device_type_id, location, serial_number, management_address, description]
+      'INSERT INTO devices (name, manufacturer, device_role, platform_id, device_type_id, location, serial_number, management_address, description) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
+      [name, manufacturer, device_role, platform_id, device_type_id, location, serial_number, management_address, description]
     );
     return result.rows[0];
   }
 
   static async findAll() {
-    const result = await pool.query('SELECT * FROM devices ORDER BY id');
+    const result = await pool.query('SELECT * FROM devices ORDER BY updated_at DESC, id DESC');
     return result.rows;
   }
 
@@ -22,10 +22,10 @@ class Device {
     return result.rows[0];
   }
 
-  static async update(id, { name, manufacturer, platform_id, device_type_id, location, serial_number, management_address, description, updated_by }, client = null) {
+  static async update(id, { name, manufacturer, device_role, platform_id, device_type_id, location, serial_number, management_address, description, updated_by }, client = null) {
     const query =
-      'UPDATE devices SET name = $1, manufacturer = $2, platform_id = $3, device_type_id = $4, location = $5, serial_number = $6, management_address = $7, description = $8, updated_by = $9, updated_at = CURRENT_TIMESTAMP WHERE id = $10 RETURNING *';
-    const params = [name, manufacturer, platform_id, device_type_id, location, serial_number, management_address, description, updated_by, id];
+      'UPDATE devices SET name = $1, manufacturer = $2, device_role = $3, platform_id = $4, device_type_id = $5, location = $6, serial_number = $7, management_address = $8, description = $9, updated_by = $10, updated_at = CURRENT_TIMESTAMP WHERE id = $11 RETURNING *';
+    const params = [name, manufacturer, device_role, platform_id, device_type_id, location, serial_number, management_address, description, updated_by, id];
     const exec = client ? client.query.bind(client) : pool.query.bind(pool);
     const result = await exec(query, params);
     return result.rows[0];
@@ -45,7 +45,7 @@ class Device {
        FROM devices d
        LEFT JOIN device_types dt ON d.device_type_id = dt.id
        LEFT JOIN platforms p ON d.platform_id = p.id
-       ORDER BY d.id LIMIT $1 OFFSET $2`,
+       ORDER BY d.updated_at DESC, d.id DESC LIMIT $1 OFFSET $2`,
       [pageSize, offset]
     );
     const deviceList = result.rows;
@@ -115,7 +115,7 @@ class Device {
     return result.rows.map(row => row.contact_id);
   }
 
-  static async findFilteredList({ search, device_type_id, tags, platform_id, location, page = 1, pageSize = 10 }) {
+  static async findFilteredList({ search, device_type_id, tags, platform_id, location, manufacturer, device_role, page = 1, pageSize = 10 }) {
     let params = [];
     let whereClauses = [];
     let joinClauses = [];
@@ -138,6 +138,16 @@ class Device {
       params.push(`%${location}%`);
       idx++;
     }
+    if (manufacturer) {
+      whereClauses.push(`d.manufacturer ILIKE $${idx}`);
+      params.push(`%${manufacturer}%`);
+      idx++;
+    }
+    if (device_role) {
+      whereClauses.push(`d.device_role ILIKE $${idx}`);
+      params.push(`%${device_role}%`);
+      idx++;
+    }
     if (tags && tags.length > 0) {
       whereClauses.push(`d.id IN (SELECT object_id FROM tag_object WHERE object_type = 'device' AND tag_id = ANY($${idx}))`);
       params.push(tags);
@@ -147,6 +157,7 @@ class Device {
       whereClauses.push('(' + [
         `d.name ILIKE $${idx}`,
         `d.manufacturer ILIKE $${idx}`,
+        `d.device_role ILIKE $${idx}`,
         `COALESCE(p.name, '') ILIKE $${idx}`,
         `COALESCE(ip.ip_address, '') ILIKE $${idx}`,
         `COALESCE(d.management_address, '') ILIKE $${idx}`,
@@ -172,14 +183,14 @@ class Device {
       ${joinClauses.join(' ')}
       ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''}
       GROUP BY d.id, dt.name, p.name
-      ORDER BY d.id
+      ORDER BY d.updated_at DESC, d.id DESC
       LIMIT $${idx} OFFSET $${idx + 1}`;
     params.push(pageSize, (page - 1) * pageSize);
     const result = await pool.query(sql, params);
     return result.rows;
   }
 
-  static async countFiltered({ search, device_type_id, tags, platform_id, location }) {
+  static async countFiltered({ search, device_type_id, tags, platform_id, location, manufacturer, device_role }) {
     let params = [];
     let whereClauses = [];
     let joinClauses = [];
@@ -202,6 +213,16 @@ class Device {
       params.push(`%${location}%`);
       idx++;
     }
+    if (manufacturer) {
+      whereClauses.push(`d.manufacturer ILIKE $${idx}`);
+      params.push(`%${manufacturer}%`);
+      idx++;
+    }
+    if (device_role) {
+      whereClauses.push(`d.device_role ILIKE $${idx}`);
+      params.push(`%${device_role}%`);
+      idx++;
+    }
     if (tags && tags.length > 0) {
       whereClauses.push(`d.id IN (SELECT object_id FROM tag_object WHERE object_type = 'device' AND tag_id = ANY($${idx}))`);
       params.push(tags);
@@ -211,6 +232,7 @@ class Device {
       whereClauses.push('(' + [
         `d.name ILIKE $${idx}`,
         `d.manufacturer ILIKE $${idx}`,
+        `d.device_role ILIKE $${idx}`,
         `COALESCE(p.name, '') ILIKE $${idx}`,
         `COALESCE(ip.ip_address, '') ILIKE $${idx}`,
         `COALESCE(d.management_address, '') ILIKE $${idx}`,
@@ -276,6 +298,12 @@ class Device {
     return result.rows[0] || null;
   }
 
+  // Check if a device exists by id
+  static async exists(id) {
+    const result = await pool.query('SELECT 1 FROM devices WHERE id = $1', [id]);
+    return result.rowCount > 0;
+  }
+
   /**
    * Find devices by specific criteria (name, ip_address)
    * @param {Object} criteria - Search criteria
@@ -320,7 +348,7 @@ class Device {
       LEFT JOIN contacts c ON c.id = dc.contact_id
       WHERE ${whereClauses.join(' AND ')}
       GROUP BY d.id, dt.name, p.name
-      ORDER BY d.id
+      ORDER BY d.updated_at DESC, d.id DESC
     `;
 
     const result = await pool.query(sql, params);

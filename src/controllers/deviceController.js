@@ -57,13 +57,15 @@ const deviceController = {};
 // List all devices with search, filter, and pagination
 deviceController.listDevice = async (req, res) => {
   try {
-    // Chuẩn hóa các tham số filter (device_type_id, tags, platform_id, location, search)
+    // Chuẩn hóa các tham số filter (device_type_id, tags, platform_id, location, manufacturer, device_role, search)
     const filterParams = {
       search: req.query.search ? req.query.search.trim() : '',
       device_type_id: req.query.device_type_id ? Number(req.query.device_type_id) : undefined,
       tags: req.query['tags[]'] || req.query.tags || [],
       platform_id: req.query.platform_id ? Number(req.query.platform_id) : undefined,
-      location: req.query.location ? req.query.location.trim() : undefined
+      location: req.query.location ? req.query.location.trim() : undefined,
+      manufacturer: req.query.manufacturer ? req.query.manufacturer.trim() : undefined,
+      device_role: req.query.device_role ? req.query.device_role.trim() : undefined
     };
     // Chuẩn hóa tags về mảng số
     if (typeof filterParams.tags === 'string') filterParams.tags = [filterParams.tags];
@@ -93,6 +95,8 @@ deviceController.listDevice = async (req, res) => {
       tags: tagsForView,
       platform_id: req.query.platform_id,
       location: req.query.location,
+      manufacturer: req.query.manufacturer || '',
+      device_role: req.query.device_role || '',
       page,
       pageSize,
       totalPages,
@@ -168,6 +172,7 @@ deviceController.createDevice = async (req, res) => {
     const {
       name,
       manufacturer,
+      device_role,
       platform_id,
       location,
       serial,
@@ -200,6 +205,7 @@ deviceController.createDevice = async (req, res) => {
     const data = {
       name: name.trim(),
       manufacturer: safeStr(manufacturer),
+      device_role: safeStr(device_role),
       platform_id: safe(platform_id),
       location: safeStr(location),
       serial: safeStr(serial),
@@ -249,7 +255,7 @@ deviceController.updateDevice = async (req, res) => {
     // Normalize all fields
     const safe = v => (typeof v === 'undefined' || v === '') ? null : v;
     const safeStr = v => (typeof v === 'undefined' || v === '') ? null : (typeof v === 'string' ? v.trim() : v);
-    const { name, manufacturer, platform_id, device_type_id, description, tags, ip_addresses, location, serial, management, contacts } = req.body;
+    const { name, manufacturer, device_role, platform_id, device_type_id, description, tags, ip_addresses, location, serial, management, contacts } = req.body;
     if (!name || !name.trim()) {
       req.flash('error', 'Device name is required!');
       client.release();
@@ -259,6 +265,7 @@ deviceController.updateDevice = async (req, res) => {
     await Device.update(req.params.id, {
       name: name.trim(),
       manufacturer: safeStr(manufacturer),
+      device_role: safeStr(device_role),
       platform_id: safe(platform_id),
       device_type_id: safe(device_type_id),
       description: safeStr(description),
@@ -563,11 +570,13 @@ deviceController.deleteDeviceType = async (req, res) => {
 // Export device list as CSV or Excel (filtered)
 deviceController.exportDeviceList = async (req, res) => {
   try {
-    // Chuẩn hóa các tham số filter (device_type_id, tags, search)
+    // Chuẩn hóa các tham số filter (device_type_id, tags, manufacturer, device_role, search)
     const filterParams = {
       search: req.query.search ? req.query.search.trim() : '',
       device_type_id: req.query.device_type_id ? Number(req.query.device_type_id) : undefined,
       tags: req.query['tags[]'] || req.query.tags || [],
+      manufacturer: req.query.manufacturer ? req.query.manufacturer.trim() : undefined,
+      device_role: req.query.device_role ? req.query.device_role.trim() : undefined,
     };
     if (typeof filterParams.tags === 'string') filterParams.tags = [filterParams.tags];
     filterParams.tags = (filterParams.tags || []).map(t => Number(t)).filter(Boolean);
@@ -645,6 +654,44 @@ deviceController.apiManufacturers = async (req, res) => {
   } catch (err) {
     console.error('Error fetching manufacturers:', err);
     res.status(500).json({ error: 'Error fetching manufacturers: ' + err.message });
+  }
+};
+
+// API endpoint to get device roles from devices table for autocomplete
+deviceController.apiDeviceRoles = async (req, res) => {
+  try {
+    const { search } = req.query;
+    const client = await pool.connect();
+    
+    try {
+      let query = `
+        SELECT DISTINCT device_role 
+        FROM devices 
+        WHERE device_role IS NOT NULL 
+        AND device_role != ''
+      `;
+      const params = [];
+      
+      if (search && search.trim()) {
+        query += ` AND device_role ILIKE $1`;
+        params.push(`%${search.trim()}%`);
+      }
+      
+      query += ` ORDER BY device_role ASC LIMIT 20`;
+      
+      const result = await client.query(query, params);
+      const deviceRoles = result.rows.map(row => ({
+        id: row.device_role,
+        text: row.device_role
+      }));
+      
+      res.json(deviceRoles);
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('Error fetching device roles:', err);
+    res.status(500).json({ error: 'Error fetching device roles: ' + err.message });
   }
 };
 

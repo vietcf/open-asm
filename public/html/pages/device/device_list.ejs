@@ -1,6 +1,6 @@
 <div class="container-fluid">
   <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/device/device" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
-    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search Device Name, Type, OS..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search Device Name, Type, OS, Role..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
     <select class="form-select form-select-sm me-2" name="page_size" onchange="this.form.submit()" style="width:90px;max-width:90px;">
       <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
         <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
@@ -19,6 +19,8 @@
         <form id="deviceExportForm" action="/device/device/export" method="GET" style="display:inline; margin-right: 8px;">
           <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
           <input type="hidden" name="device_type_id" value="<%= typeof device_type_id !== 'undefined' ? device_type_id : '' %>">
+          <input type="hidden" name="manufacturer" value="<%= typeof manufacturer !== 'undefined' ? manufacturer : '' %>">
+          <input type="hidden" name="device_role" value="<%= typeof device_role !== 'undefined' ? device_role : '' %>">
           <% if (tags && tags.length) { tags.forEach(function(tag) { %>
             <input type="hidden" name="tags[]" value="<%= tag %>">
           <% }) } %>
@@ -47,6 +49,14 @@
                 <div class="mb-3">
                   <label for="filterDeviceTags" class="form-label">Tags</label>
                   <select id="filterDeviceTags" name="tags[]" class="form-control" multiple data-selected='<%- JSON.stringify(typeof tags !== 'undefined' ? tags : []) %>'></select>
+                </div>
+                <div class="mb-3">
+                  <label for="filterDeviceManufacturer" class="form-label">Manufacturer</label>
+                  <select id="filterDeviceManufacturer" name="manufacturer" class="form-control" data-selected="<%= typeof manufacturer !== 'undefined' ? manufacturer : '' %>"></select>
+                </div>
+                <div class="mb-3">
+                  <label for="filterDeviceRole" class="form-label">Device Role</label>
+                  <select id="filterDeviceRole" name="device_role" class="form-control" data-selected="<%= typeof device_role !== 'undefined' ? device_role : '' %>"></select>
                 </div>
               </form>
             </div>
@@ -93,6 +103,72 @@
               cache: true
             }
           });
+          $('#filterDeviceManufacturer').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select or type manufacturer',
+            allowClear: true,
+            width: '100%',
+            tags: true,
+            dropdownParent: $('#deviceFilterModal'),
+            ajax: {
+              url: '/device/api/manufacturers',
+              dataType: 'json',
+              delay: 250,
+              data: params => ({ search: params.term }),
+              processResults: function(data, params) {
+                const results = data || [];
+                if (params.term && !results.some(item => item.text.toLowerCase() === params.term.toLowerCase())) {
+                  results.unshift({
+                    id: params.term,
+                    text: params.term,
+                    custom: true
+                  });
+                }
+                return { results: results };
+              },
+              cache: true
+            },
+            createTag: function(params) {
+              return {
+                id: params.term,
+                text: params.term,
+                custom: true
+              };
+            }
+          });
+          $('#filterDeviceRole').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select or type device role',
+            allowClear: true,
+            width: '100%',
+            tags: true,
+            dropdownParent: $('#deviceFilterModal'),
+            ajax: {
+              url: '/device/api/device-roles',
+              dataType: 'json',
+              delay: 250,
+              data: params => ({ search: params.term }),
+              processResults: function(data, params) {
+                const results = data || [];
+                if (params.term && !results.some(item => item.text.toLowerCase() === params.term.toLowerCase())) {
+                  results.unshift({
+                    id: params.term,
+                    text: params.term,
+                    custom: true
+                  });
+                }
+                return { results: results };
+              },
+              cache: true
+            },
+            createTag: function(params) {
+              return {
+                id: params.term,
+                text: params.term,
+                custom: true
+              };
+            }
+          });
 
           // Set selected value for Device Type
           var selectedDeviceType = $('#filterDeviceType').attr('data-selected');
@@ -136,6 +212,18 @@
               }
             } catch(e) {}
           }
+          // Set selected value for Manufacturer
+          var selectedManufacturer = $('#filterDeviceManufacturer').attr('data-selected');
+          if (selectedManufacturer) {
+            var option = new Option(selectedManufacturer, selectedManufacturer, true, true);
+            $('#filterDeviceManufacturer').append(option).trigger('change');
+          }
+          // Set selected value for Device Role
+          var selectedDeviceRole = $('#filterDeviceRole').attr('data-selected');
+          if (selectedDeviceRole) {
+            var option = new Option(selectedDeviceRole, selectedDeviceRole, true, true);
+            $('#filterDeviceRole').append(option).trigger('change');
+          }
         });
         function applyDeviceFilter() {
           const params = new URLSearchParams();
@@ -147,12 +235,20 @@
           if (tagIds && tagIds.length) {
             tagIds.forEach(tid => params.append('tags[]', tid));
           }
+          // Manufacturer
+          const manufacturer = $('#filterDeviceManufacturer').val();
+          if (manufacturer) params.append('manufacturer', manufacturer);
+          // Device Role
+          const deviceRole = $('#filterDeviceRole').val();
+          if (deviceRole) params.append('device_role', deviceRole);
           window.location.href = '/device/device?' + params.toString();
         }
         $('#clearDeviceFilterBtn').on('click', function() {
           // Clear all select2 values
           $('#filterDeviceType').val(null).trigger('change');
           $('#filterDeviceTags').val(null).trigger('change');
+          $('#filterDeviceManufacturer').val(null).trigger('change');
+          $('#filterDeviceRole').val(null).trigger('change');
           // Close modal
           $('#deviceFilterModal').modal('hide');
           // Redirect to clean URL
@@ -369,6 +465,8 @@
                 <dd class="col-sm-9"><%= device.device_type_name || '-' %></dd>
                 <dt class="col-sm-3">Manufacturer</dt>
                 <dd class="col-sm-9"><%= device.manufacturer || '-' %></dd>
+                <dt class="col-sm-3">Device Role</dt>
+                <dd class="col-sm-9"><%= device.device_role || '-' %></dd>
                 <dt class="col-sm-3">Platform (OS)</dt>
                 <dd class="col-sm-9"><%= device.platform_name || device.platform || '-' %></dd>
                 <dt class="col-sm-3">Serial Number</dt>

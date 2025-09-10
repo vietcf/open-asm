@@ -60,6 +60,10 @@
               <select id="manufacturer-select" name="manufacturer" class="form-control" data-allow-custom="true"></select>
             </div>
             <div class="mb-3">
+              <label class="form-label">Device Role</label>
+              <select id="device-role-select" name="device_role" class="form-control" data-allow-custom="true"></select>
+            </div>
+            <div class="mb-3">
               <label class="form-label">Description</label>
               <textarea class="form-control form-control-sm" name="description" placeholder="Description" rows="3"></textarea>
             </div>
@@ -177,6 +181,40 @@
       tags: true, // Allow custom values
       ajax: {
         url: '/device/api/manufacturers',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: function(data, params) {
+          // Add custom option if user typed something not in results
+          const results = data || [];
+          if (params.term && !results.some(item => item.text.toLowerCase() === params.term.toLowerCase())) {
+            results.unshift({
+              id: params.term,
+              text: params.term,
+              custom: true
+            });
+          }
+          return { results: results };
+        },
+        cache: true
+      },
+      createTag: function(params) {
+        // Allow creating new tags
+        return {
+          id: params.term,
+          text: params.term,
+          custom: true
+        };
+      }
+    });
+    $('#device-role-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select or type device role',
+      allowClear: true,
+      width: '100%',
+      tags: true, // Allow custom values
+      ajax: {
+        url: '/device/api/device-roles',
         dataType: 'json',
         delay: 250,
         data: params => ({ search: params.term }),

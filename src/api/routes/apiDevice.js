@@ -28,6 +28,16 @@
  *           type: string
  *         description: Filter by location
  *       - in: query
+ *         name: manufacturer
+ *         schema:
+ *           type: string
+ *         description: Filter by manufacturer
+ *       - in: query
+ *         name: device_role
+ *         schema:
+ *           type: string
+ *         description: Filter by device role
+ *       - in: query
  *         name: tags
  *         schema:
  *           type: array
@@ -108,6 +118,9 @@
  *               manufacturer:
  *                 type: string
  *                 description: Manufacturer (optional)
+ *               device_role:
+ *                 type: string
+ *                 description: Device role (optional)
  *               description:
  *                 type: string
  *                 description: Description (optional)
@@ -260,6 +273,9 @@
  *               manufacturer:
  *                 type: string
  *                 description: Manufacturer (optional)
+ *               device_role:
+ *                 type: string
+ *                 description: Device role (optional)
  *               description:
  *                 type: string
  *                 description: Description (optional)
@@ -328,6 +344,8 @@
  *           type: string
  *         manufacturer:
  *           type: string
+ *         device_role:
+ *           type: string
  *         description:
  *           type: string
  *         ip_addresses:
@@ -370,6 +388,12 @@ const apiDeviceRouter = express.Router();
 apiDeviceRouter.get('/', apiDeviceController.listDevices);
 // Find devices
 apiDeviceRouter.get('/find', apiDeviceController.findDevices);
+// Get manufacturers for autocomplete
+apiDeviceRouter.get('/manufacturers', apiDeviceController.getManufacturers);
+// Get device roles for autocomplete
+apiDeviceRouter.get('/device-roles', apiDeviceController.getDeviceRoles);
+// Get location options
+apiDeviceRouter.get('/location-options', apiDeviceController.getLocationOptions);
 // Get device by ID
 apiDeviceRouter.get('/:id', apiDeviceController.getDevice);
 // Create device

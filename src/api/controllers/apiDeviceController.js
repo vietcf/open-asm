@@ -6,6 +6,7 @@ import IpAddress from '../../models/IpAddress.js';
 import Platform from '../../models/Platform.js';
 import DeviceType from '../../models/DeviceType.js';
 import Configuration from '../../models/Configuration.js';
+import { pool } from '../../../config/config.js';
 
 
 // Helper: Load device location options from DB config
@@ -47,7 +48,7 @@ const apiDeviceController = {};
 // List all devices (with filter and pagination)
 apiDeviceController.listDevices = async (req, res) => {
   try {
-    const { search, device_type_id, platform_id, location, tags, page = 1, pageSize = 20 } = req.query;
+    const { search, device_type_id, platform_id, location, manufacturer, device_role, tags, page = 1, pageSize = 20 } = req.query;
     // Normalize array parameters
     let filterTags = tags;
     if (typeof filterTags === 'string') filterTags = [filterTags];
@@ -57,6 +58,8 @@ apiDeviceController.listDevices = async (req, res) => {
       device_type_id: device_type_id ? Number(device_type_id) : undefined,
       platform_id: platform_id ? Number(platform_id) : undefined,
       location,
+      manufacturer,
+      device_role,
       tags: filterTags,
       page: parseInt(page, 10) || 1,
       pageSize: Math.max(1, Math.min(parseInt(pageSize, 10) || 20, 100))
@@ -121,7 +124,7 @@ apiDeviceController.getDevice = async (req, res) => {
 apiDeviceController.createDevice = async (req, res) => {
   try {
     let {
-      name, device_type_id, ip_addresses, platform_id, location, serial, management, manufacturer, description, tags, contacts
+      name, device_type_id, ip_addresses, platform_id, location, serial, management, manufacturer, device_role, description, tags, contacts
     } = req.body || {};
     
     // Required fields validation
@@ -147,7 +150,7 @@ apiDeviceController.createDevice = async (req, res) => {
     }
     
     // Validate device_type_id exists
-    if (DeviceType && DeviceType.exists && !(await DeviceType.exists(device_type_id))) {
+    if (!(await DeviceType.exists(device_type_id))) {
       return res.status(400).json({ error: 'Invalid device_type_id' });
     }
     
@@ -193,6 +196,7 @@ apiDeviceController.createDevice = async (req, res) => {
     const device = await Device.create({
       name,
       manufacturer,
+      device_role,
       platform_id,
       device_type_id,
       location,
@@ -228,7 +232,7 @@ apiDeviceController.updateDevice = async (req, res) => {
 
     // Allowed fields for update
     const allowedFields = [
-      'name', 'manufacturer', 'platform_id', 'device_type_id', 'location',
+      'name', 'manufacturer', 'device_role', 'platform_id', 'device_type_id', 'location',
       'serial', 'management', 'description', 'tags', 'contacts', 'ip_addresses'
     ];
     const has = key => Object.prototype.hasOwnProperty.call(req.body, key);
@@ -244,6 +248,7 @@ apiDeviceController.updateDevice = async (req, res) => {
     const updateFields = {
       name: has('name') ? (typeof body.name === 'string' ? body.name.trim().toLowerCase() : body.name) : current.name,
       manufacturer: has('manufacturer') ? body.manufacturer : current.manufacturer,
+      device_role: has('device_role') ? body.device_role : current.device_role,
       platform_id: has('platform_id') ? body.platform_id : current.platform_id,
       device_type_id: has('device_type_id') ? body.device_type_id : current.device_type_id,
       location: has('location') ? body.location : current.location,
@@ -271,7 +276,7 @@ apiDeviceController.updateDevice = async (req, res) => {
     }
 
     // Validate device_type_id
-    if (has('device_type_id') && DeviceType && DeviceType.exists && !(await DeviceType.exists(updateFields.device_type_id))) {
+    if (has('device_type_id') && !(await DeviceType.exists(updateFields.device_type_id))) {
       return res.status(400).json({ error: 'Invalid device_type_id' });
     }
     // Validate platform_id
@@ -351,5 +356,84 @@ apiDeviceController.deleteDevice = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// API endpoint to get manufacturers from devices table for autocomplete
+apiDeviceController.getManufacturers = async (req, res) => {
+  try {
+    const { search } = req.query;
+    const client = await pool.connect();
+    
+    try {
+      let query = `
+        SELECT DISTINCT manufacturer 
+        FROM devices 
+        WHERE manufacturer IS NOT NULL 
+        AND manufacturer != ''
+      `;
+      const params = [];
+      
+      if (search && search.trim()) {
+        query += ` AND manufacturer ILIKE $1`;
+        params.push(`%${search.trim()}%`);
+      }
+      
+      query += ` ORDER BY manufacturer ASC LIMIT 20`;
+      
+      const result = await client.query(query, params);
+      const manufacturers = result.rows.map(row => ({
+        id: row.manufacturer,
+        text: row.manufacturer
+      }));
+      
+      res.json(manufacturers);
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('Error fetching manufacturers:', err);
+    res.status(500).json({ error: 'Error fetching manufacturers: ' + err.message });
+  }
+};
+
+// API endpoint to get device roles from devices table for autocomplete
+apiDeviceController.getDeviceRoles = async (req, res) => {
+  try {
+    const { search } = req.query;
+    const client = await pool.connect();
+    
+    try {
+      let query = `
+        SELECT DISTINCT device_role 
+        FROM devices 
+        WHERE device_role IS NOT NULL 
+        AND device_role != ''
+      `;
+      const params = [];
+      
+      if (search && search.trim()) {
+        query += ` AND device_role ILIKE $1`;
+        params.push(`%${search.trim()}%`);
+      }
+      
+      query += ` ORDER BY device_role ASC LIMIT 20`;
+      
+      const result = await client.query(query, params);
+      const deviceRoles = result.rows.map(row => ({
+        id: row.device_role,
+        text: row.device_role
+      }));
+      
+      res.json(deviceRoles);
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('Error fetching device roles:', err);
+    res.status(500).json({ error: 'Error fetching device roles: ' + err.message });
+  }
+};
+
+// API endpoint to get device location options
+apiDeviceController.getLocationOptions = getLocationOptions;
 
 export default apiDeviceController;
