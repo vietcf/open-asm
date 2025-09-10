@@ -593,7 +593,6 @@ firewallController.exportRuleList = async (req, res) => {
 
 // Batch update work_order for selected rules
 firewallController.batchUpdateWorkOrder = async (req, res) => {
-  //console.log("xxxx");
   try {
     
     const { ids, work_order } = req.body;
@@ -607,7 +606,6 @@ firewallController.batchUpdateWorkOrder = async (req, res) => {
     const updatedCount = await RuleFirewall.updateManyWorkOrder(ids, work_order.trim(), updated_by);
     if (updatedCount > 0) {
 
-      //console.log('Batch update WO for IDs:', ids, 'Work Order:', work_order, 'Updated By:', updated_by);
       return res.json({ success: true, message: 'Work Order updated successfully!' });
     } else {
       return res.status(400).json({ error: 'No rules were updated. Please check your selection.' });

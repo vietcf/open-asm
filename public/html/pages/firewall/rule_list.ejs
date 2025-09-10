@@ -720,7 +720,6 @@
 </style>
 <script>
 // --- GLOBAL DEBUG: Confirm script loaded and catch JS errors ---
-console.log('[Firewall Rule List] Script loaded');
 window.onerror = function(msg, url, line, col, error) {
   console.error('[Global JS Error]', msg, url, line, col, error);
 };
@@ -750,7 +749,6 @@ $(function() {
       delay: 250,
       data: function(params) { return { search: params.term }; },
       processResults: function(data) {
-        console.log('[Select2 OU] AJAX response:', data);
         return { results: data };
       },
       cache: true
@@ -769,7 +767,6 @@ $(function() {
       delay: 250,
       data: function(params) { return { search: params.term }; },
       processResults: function(data) {
-        console.log('[Select2 Tags] AJAX response:', data);
         return { results: data };
       },
       cache: true
@@ -788,7 +785,6 @@ $(function() {
       delay: 250,
       data: function(params) { return { search: params.term }; },
       processResults: function(data) {
-        console.log('[Select2 Contacts] AJAX response:', data);
         return { results: data };
       },
       cache: true
@@ -816,23 +812,19 @@ $(function() {
 
   // Init select2 when modal opens, so dropdownParent is always correct
   $('#addRuleModal').on('shown.bs.modal', function() {
-    console.log('==> [AddRuleModal] Modal opened');
     // --- DEBUG: Confirm jQuery and select2 loaded ---
     if (typeof $ === 'undefined') {
       console.error('jQuery ($) is NOT loaded!');
     } else {
-      console.log('jQuery ($) is loaded:', $);
     }
     if (typeof $.fn.select2 === 'undefined') {
       console.error('select2 is NOT loaded!');
     } else {
-      console.log('select2 is loaded:', $.fn.select2);
     }
     var $modalContent = $('#addRuleModal .modal-content');
     if ($('#ruleOuId').hasClass('select2-hidden-accessible')) $('#ruleOuId').select2('destroy');
     if ($('#ruleTags').hasClass('select2-hidden-accessible')) $('#ruleTags').select2('destroy');
     if ($('#ruleContacts').hasClass('select2-hidden-accessible')) $('#ruleContacts').select2('destroy');
-    console.log('==> [AddRuleModal] Initializing select2 for OU, Tags, Contacts');
     $('#ruleOuId').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select OU (Unit)',
@@ -845,11 +837,9 @@ $(function() {
         dataType: 'json',
         delay: 250,
         data: function(params) {
-          console.log('[AddRule Select2 OU] AJAX data params:', params);
           return { search: params.term };
         },
         processResults: function(data) {
-          console.log('[AddRule Select2 OU] AJAX response:', data);
           return { results: data };
         },
         error: function(jqXHR, textStatus, errorThrown) {
@@ -870,11 +860,9 @@ $(function() {
         dataType: 'json',
         delay: 250,
         data: function(params) {
-          console.log('[AddRule Select2 Tags] AJAX data params:', params);
           return { search: params.term };
         },
         processResults: function(data) {
-          console.log('[AddRule Select2 Tags] AJAX response:', data);
           // Accept both [{id, name}] and [{id, text}] formats
           if (Array.isArray(data)) {
             return { results: data.map(tag => {
@@ -910,11 +898,9 @@ $(function() {
         dataType: 'json',
         delay: 250,
         data: function(params) {
-          console.log('[AddRule Select2 Contacts] AJAX data params:', params);
           return { search: params.term };
         },
         processResults: function(data) {
-          console.log('[AddRule Select2 Contacts] AJAX response:', data);
           // Accept both [{id, name}] and [{id, text}] formats
           if (Array.isArray(data)) {
             return { results: data.map(c => {
@@ -930,10 +916,8 @@ $(function() {
         cache: true
       }
     });
-    console.log('[AddRuleModal] select2 initialized for OU, Tags, Contacts');
     // Tự động trigger tìm kiếm rỗng cho OU, Tags, Contacts khi mở modal
     setTimeout(function() {
-      console.log('==> [AddRuleModal] Trigger select2 open/close for AJAX');
       $('#ruleOuId').select2('open');
       $('#ruleOuId').select2('close');
       $('#ruleTags').select2('open');

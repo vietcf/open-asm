@@ -100,9 +100,6 @@
 <script src="/vendor/bootstrap.min.js"></script>
 <script>
   $(function() {
-    // Debug: Log appTypeOptions
-    console.log('Edit Component - App Type Options from backend:', <%- JSON.stringify(appTypeOptions || []) %>);
-    console.log('Edit Component - Current app_type:', '<%= component.app_type %>');
     $('#system-select').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select system',

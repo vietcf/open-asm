@@ -50,7 +50,6 @@ export const postLogin = async (req, res) => {
       req.session.isLoggedIn = true; // Logined username and password successfully
       req.session.user = buildSessionUser(user); // Only store user info, not permissions
 
-      // console.log('User logged in:', req.session.user);
 
       // Set default 2FA state
       req.session.is2faVerified = true; //Mac dinh da duoc verify 2FA
@@ -132,7 +131,6 @@ export const post2fa = async (req, res) => {
 };
 
 export const logout = async (req, res) => {
-  console.log('Logging out user...');
   // Lấy thông tin user trước khi xóa session
   const user = req.session && req.session.user ? req.session.user : null;
   await writeLog({

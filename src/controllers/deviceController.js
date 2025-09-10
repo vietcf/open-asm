@@ -610,4 +610,42 @@ deviceController.exportDeviceList = async (req, res) => {
 };
 
 
+// API endpoint to get manufacturers from devices table for autocomplete
+deviceController.apiManufacturers = async (req, res) => {
+  try {
+    const { search } = req.query;
+    const client = await pool.connect();
+    
+    try {
+      let query = `
+        SELECT DISTINCT manufacturer 
+        FROM devices 
+        WHERE manufacturer IS NOT NULL 
+        AND manufacturer != ''
+      `;
+      const params = [];
+      
+      if (search && search.trim()) {
+        query += ` AND manufacturer ILIKE $1`;
+        params.push(`%${search.trim()}%`);
+      }
+      
+      query += ` ORDER BY manufacturer ASC LIMIT 20`;
+      
+      const result = await client.query(query, params);
+      const manufacturers = result.rows.map(row => ({
+        id: row.manufacturer,
+        text: row.manufacturer
+      }));
+      
+      res.json(manufacturers);
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('Error fetching manufacturers:', err);
+    res.status(500).json({ error: 'Error fetching manufacturers: ' + err.message });
+  }
+};
+
 export default deviceController;

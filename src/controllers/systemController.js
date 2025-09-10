@@ -234,7 +234,6 @@ systemController.listSystemComponent = async (req, res) => {
 systemController.addSystemComponentForm = async (req, res) => {
   // Fetch App Type options from configuration table
   const appTypeOptions = await getAppTypeOptionsFromConfig();
-  console.log('Add Component Form - appTypeOptions:', appTypeOptions);
   res.render('pages/system/component_add', {
     error: null,
     appTypeOptions,
@@ -349,8 +348,6 @@ systemController.editSystemComponentForm = async (req, res) => {
     }
     // Lấy options cho app_type
     const appTypeOptions = await getAppTypeOptionsFromConfig();
-    console.log('Edit Component Form - appTypeOptions:', appTypeOptions);
-    console.log('Edit Component Form - component.app_type:', component.app_type);
     res.render('pages/system/component_edit', {
       component,
       appTypeOptions,

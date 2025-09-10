@@ -19,8 +19,6 @@ export default function requirePermission(...permissions) {
     });
     
     if (!hasAnyPermission) {
-      console.log(`Permission denied. Required one of: ${permissionsToCheck.join(', ')}`);
-      console.log('User permissions:', req.permissions);
       return res.status(403).send('Forbidden');
     }
     
@@ -36,8 +34,6 @@ export function requireAllPermissions(...permissions) {
     });
     
     if (!hasAllPermissions) {
-      console.log(`Permission denied. Required ALL of: ${permissions.join(', ')}`);
-      console.log('User permissions:', req.permissions);
       return res.status(403).send('Forbidden');
     }
     

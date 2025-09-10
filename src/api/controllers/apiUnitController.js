@@ -4,7 +4,6 @@ import Unit from '../../models/Unit.js';
 const apiUnitController = {};
 
 apiUnitController.listUnits = async (req, res) => {
-  console.log('Listing units with pagination and search');
   try {
     // Pagination and search support
     const page = parseInt(req.query.page, 10) || 1;

@@ -57,7 +57,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Manufacturer</label>
-              <input type="text" class="form-control form-control-sm" name="manufacturer" placeholder="Manufacturer">
+              <select id="manufacturer-select" name="manufacturer" class="form-control" data-allow-custom="true"></select>
             </div>
             <div class="mb-3">
               <label class="form-label">Description</label>
@@ -167,6 +167,40 @@
         data: params => ({ search: params.term }),
         processResults: data => ({ results: data }),
         cache: true
+      }
+    });
+    $('#manufacturer-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select or type manufacturer',
+      allowClear: true,
+      width: '100%',
+      tags: true, // Allow custom values
+      ajax: {
+        url: '/device/api/manufacturers',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: function(data, params) {
+          // Add custom option if user typed something not in results
+          const results = data || [];
+          if (params.term && !results.some(item => item.text.toLowerCase() === params.term.toLowerCase())) {
+            results.unshift({
+              id: params.term,
+              text: params.term,
+              custom: true
+            });
+          }
+          return { results: results };
+        },
+        cache: true
+      },
+      createTag: function(params) {
+        // Allow creating new tags
+        return {
+          id: params.term,
+          text: params.term,
+          custom: true
+        };
       }
     });
     // Thay đổi nút Add IP: mở tab mới tới trang quản lý IP và tự động bật popup Add IP

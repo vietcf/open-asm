@@ -475,7 +475,6 @@ privAccountController.updateRole = async (req, res) => {
     if (!Array.isArray(permissions)) permissions = [permissions]; // Ensure always array
     const updated_by = req.session.user?.username || '';
     await PrivRole.update(id, { name, description, system_id, updated_by });
-    console.log('Updating permissions for role ID:', id, 'with permissions:', permissions);
     await PrivRole.setPermissions(id, permissions.map(Number));
     
     // Clear permissions cache for all roles since permissions changed
@@ -638,8 +637,6 @@ privAccountController.deletePermission = async (req, res) => {
 // Export privileged permissions to Excel (with filter/search support)
 privAccountController.exportPermissions = async (req, res) => {
   try {
-    // Debug: kiểm tra query param truyền lên
-    // console.log('Export query:', req.query); 
     const search = req.query.search ? req.query.search.trim() : '';
     const system_id = req.query.system_id ? req.query.system_id.trim() : '';
     let where = [];
@@ -788,7 +785,6 @@ privAccountController.apiRoleSearch = async (req, res) => {
 privAccountController.apiRoleBySystem = async (req, res) => {
   try {
     let system_ids = req.body.system_ids || [];
-    console.log(system_ids);
     if (!Array.isArray(system_ids)) system_ids = [];
     system_ids = system_ids.filter(x => x !== undefined && x !== null && x !== '');
     if (!system_ids.length) return res.json([]);

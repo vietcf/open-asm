@@ -545,7 +545,6 @@ administratorController.createConfiguration = async (req, res) => {
     }
 
     const user = req.session.user ? req.session.user.username : null;
-    console.log('Creating configuration:', { key, value, description });
     await Configuration.create({ key, value, description, updatedBy: user });
     req.flash('success', 'Configuration added successfully!');
     res.redirect('/administrator/configuration');
