@@ -444,7 +444,7 @@ input[type="file"].form-control, input[type="file"].form-control-sm {
   word-wrap: break-word;
   word-break: break-word;
   white-space: normal;
-  vertical-align: top;
+  vertical-align: middle;
   line-height: 1.4;
   font-size: 1rem;
 }
@@ -453,6 +453,7 @@ input[type="file"].form-control, input[type="file"].form-control-sm {
   padding: 0.75rem 0.5rem;
   max-width: 0;
   overflow-wrap: break-word;
+  min-height: 3rem;
 }
 
 .table.table-hover td {
@@ -501,10 +502,10 @@ input[type="file"].form-control, input[type="file"].form-control-sm {
 
 /* ========== Table Column Layout ========== */
 
-/* Column 1: STT - very compact */
+/* Column 1: No. - very compact */
 .table th:nth-child(1), .table td:nth-child(1) {
   width: 3%; max-width: 40px; min-width: 35px;
-  padding: 0.25rem 0.1rem; text-align: center;
+  padding: 0.25rem 0.1rem 0.25rem 0.1rem; text-align: center;
 }
 
 /* Column 2: System Code - compact */
@@ -553,7 +554,7 @@ input[type="file"].form-control, input[type="file"].form-control-sm {
 .table th:nth-child(9), .table td:nth-child(9) {
   width: 6%; max-width: 80px; min-width: 60px;
   padding: 0.25rem 0.5rem 0.25rem 0.1rem;
-  text-align: center; margin-right: 0.5rem;
+  text-align: left; margin-right: 0.5rem;
 }
 
 /* ========== Responsive Table Layout ========== */
@@ -572,12 +573,34 @@ input[type="file"].form-control, input[type="file"].form-control-sm {
   .table th:nth-child(6), .table td:nth-child(6) { width: 15%; } /* Tags */
 }
 
+/* Hide more columns on medium screens */
+@media (max-width: 992px) {
+  .table th:nth-child(5), .table td:nth-child(5), /* Alias */
+  .table th:nth-child(6), .table td:nth-child(6) { /* Tags */
+    display: none;
+  }
+  
+  /* Redistribute space to remaining columns */
+  .table th:nth-child(3), .table td:nth-child(3) { width: 45%; } /* Name */
+  .table th:nth-child(4), .table td:nth-child(4) { width: 25%; } /* Description */
+}
+
+/* Hide even more columns on small screens */
+@media (max-width: 768px) {
+  .table th:nth-child(4), .table td:nth-child(4) { /* Description */
+    display: none;
+  }
+  
+  /* Redistribute space to remaining columns */
+  .table th:nth-child(3), .table td:nth-child(3) { width: 60%; } /* Name */
+}
+
 /* ========== Device List Specific Layout ========== */
 
 /* Device List - different column structure */
 .device-list-table th:nth-child(1), .device-list-table td:nth-child(1) {
   width: 4%; max-width: 50px; min-width: 40px; /* No. */
-  padding: 0.25rem 0.1rem; text-align: center;
+  padding: 0.25rem 0.1rem 0.25rem 0.1rem; text-align: center;
 }
 
 .device-list-table th:nth-child(2), .device-list-table td:nth-child(2) {
@@ -618,7 +641,7 @@ input[type="file"].form-control, input[type="file"].form-control-sm {
 .device-list-table th:nth-child(9), .device-list-table td:nth-child(9) {
   width: 8%; max-width: 100px; min-width: 80px; /* Actions - wider */
   padding: 0.25rem 0.5rem 0.25rem 0.1rem;
-  text-align: center; margin-right: 1rem;
+  text-align: left; margin-right: 1rem;
 }
 
 /* ========== Server List Specific Layout ========== */
@@ -626,7 +649,7 @@ input[type="file"].form-control, input[type="file"].form-control-sm {
 /* Server List - different column structure */
 .server-list-table th:nth-child(1), .server-list-table td:nth-child(1) {
   width: 4%; max-width: 50px; min-width: 40px; /* No. */
-  padding: 0.25rem 0.1rem; text-align: center;
+  padding: 0.25rem 0.1rem 0.25rem 0.1rem; text-align: center;
 }
 
 .server-list-table th:nth-child(2), .server-list-table td:nth-child(2) {
@@ -662,6 +685,6 @@ input[type="file"].form-control, input[type="file"].form-control-sm {
 .server-list-table th:nth-child(8), .server-list-table td:nth-child(8) {
   width: 6%; max-width: 80px; min-width: 60px; /* Actions */
   padding: 0.25rem 0.5rem 0.25rem 0.1rem;
-  text-align: center; margin-right: 0.5rem;
+  text-align: left; margin-right: 0.5rem;
 }
 
