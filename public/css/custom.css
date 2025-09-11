@@ -437,3 +437,231 @@ input[type="file"].form-control, input[type="file"].form-control-sm {
 
 /* ========== End Multi-Selection Select2 Styling ========== */
 
+/* ========== Table Styles ========== */
+
+/* Base table styling */
+.table td, .table th {
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  vertical-align: top;
+  line-height: 1.4;
+  font-size: 1rem;
+}
+
+.table td {
+  padding: 0.75rem 0.5rem;
+  max-width: 0;
+  overflow-wrap: break-word;
+}
+
+.table.table-hover td {
+  border-bottom: 1px solid #dee2e6;
+}
+
+.table .text-end {
+  white-space: nowrap;
+  width: 1%;
+}
+
+/* Badge styling */
+.table .badge {
+  display: inline-block;
+  margin: 0.05em 0.05em;
+  padding: 0.2em 0.4em;
+  font-size: 0.8em;
+  line-height: 1.2;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Text wrapping for descriptions */
+.table td span[title] {
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  display: inline-block;
+  max-width: 100%;
+}
+
+/* Responsive table adjustments */
+@media (max-width: 768px) {
+  .table th {
+    padding: 0.5rem 0.25rem;
+    font-size: 0.9rem;
+  }
+  
+  .table td {
+    padding: 0.5rem 0.25rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* ========== Table Column Layout ========== */
+
+/* Column 1: STT - very compact */
+.table th:nth-child(1), .table td:nth-child(1) {
+  width: 3%; max-width: 40px; min-width: 35px;
+  padding: 0.25rem 0.1rem; text-align: center;
+}
+
+/* Column 2: System Code - compact */
+.table th:nth-child(2), .table td:nth-child(2) {
+  width: 5%; max-width: 70px; min-width: 60px;
+  padding: 0.25rem 0.1rem;
+}
+
+/* Column 3: Name - main content, more space */
+.table th:nth-child(3), .table td:nth-child(3) {
+  width: 25%; min-width: 150px;
+  padding: 0.25rem 0.3rem;
+}
+
+/* Column 4: Description - compact */
+.table th:nth-child(4), .table td:nth-child(4) {
+  width: 12%; max-width: 120px; min-width: 100px;
+  padding: 0.25rem 0.1rem;
+}
+
+/* Column 5: Alias - compact */
+.table th:nth-child(5), .table td:nth-child(5) {
+  width: 10%; max-width: 100px; min-width: 80px;
+  padding: 0.25rem 0.1rem;
+}
+
+/* Column 6: Tags - compact */
+.table th:nth-child(6), .table td:nth-child(6) {
+  width: 10%; max-width: 100px; min-width: 80px;
+  padding: 0.25rem 0.1rem;
+}
+
+/* Column 7: Scope user access - compact */
+.table th:nth-child(7), .table td:nth-child(7) {
+  width: 8%; max-width: 90px; min-width: 70px;
+  padding: 0.25rem 0.1rem;
+}
+
+/* Column 8: Architecture - compact */
+.table th:nth-child(8), .table td:nth-child(8) {
+  width: 7%; max-width: 80px; min-width: 60px;
+  padding: 0.25rem 0.1rem;
+}
+
+/* Column 9: Actions - fixed width with margin */
+.table th:nth-child(9), .table td:nth-child(9) {
+  width: 6%; max-width: 80px; min-width: 60px;
+  padding: 0.25rem 0.5rem 0.25rem 0.1rem;
+  text-align: center; margin-right: 0.5rem;
+}
+
+/* ========== Responsive Table Layout ========== */
+
+/* Hide less important columns on smaller screens */
+@media (max-width: 1200px) {
+  .table th:nth-child(7), .table td:nth-child(7), /* Scope user access */
+  .table th:nth-child(8), .table td:nth-child(8) { /* Architecture */
+    display: none;
+  }
+  
+  /* Redistribute space to remaining columns */
+  .table th:nth-child(3), .table td:nth-child(3) { width: 35%; } /* Name */
+  .table th:nth-child(4), .table td:nth-child(4) { width: 18%; } /* Description */
+  .table th:nth-child(5), .table td:nth-child(5) { width: 15%; } /* Alias */
+  .table th:nth-child(6), .table td:nth-child(6) { width: 15%; } /* Tags */
+}
+
+/* ========== Device List Specific Layout ========== */
+
+/* Device List - different column structure */
+.device-list-table th:nth-child(1), .device-list-table td:nth-child(1) {
+  width: 4%; max-width: 50px; min-width: 40px; /* No. */
+  padding: 0.25rem 0.1rem; text-align: center;
+}
+
+.device-list-table th:nth-child(2), .device-list-table td:nth-child(2) {
+  width: 15%; max-width: 150px; min-width: 120px; /* Device Name - fit value */
+  padding: 0.25rem 0.1rem;
+}
+
+.device-list-table th:nth-child(3), .device-list-table td:nth-child(3) {
+  width: 8%; max-width: 80px; min-width: 70px; /* Device Type */
+  padding: 0.25rem 0.1rem;
+}
+
+.device-list-table th:nth-child(4), .device-list-table td:nth-child(4) {
+  width: 8%; max-width: 80px; min-width: 70px; /* Manufacturer */
+  padding: 0.25rem 0.1rem;
+}
+
+.device-list-table th:nth-child(5), .device-list-table td:nth-child(5) {
+  width: 8%; max-width: 80px; min-width: 70px; /* Platform */
+  padding: 0.25rem 0.1rem;
+}
+
+.device-list-table th:nth-child(6), .device-list-table td:nth-child(6) {
+  width: 12%; max-width: 120px; min-width: 100px; /* IP Address - fit value */
+  padding: 0.25rem 0.1rem;
+}
+
+.device-list-table th:nth-child(7), .device-list-table td:nth-child(7) {
+  width: 25%; max-width: 250px; min-width: 200px; /* Description - smaller */
+  padding: 0.25rem 0.1rem;
+}
+
+.device-list-table th:nth-child(8), .device-list-table td:nth-child(8) {
+  width: 10%; max-width: 100px; min-width: 80px; /* Tags - fit value */
+  padding: 0.25rem 0.1rem;
+}
+
+.device-list-table th:nth-child(9), .device-list-table td:nth-child(9) {
+  width: 8%; max-width: 100px; min-width: 80px; /* Actions - wider */
+  padding: 0.25rem 0.5rem 0.25rem 0.1rem;
+  text-align: center; margin-right: 1rem;
+}
+
+/* ========== Server List Specific Layout ========== */
+
+/* Server List - different column structure */
+.server-list-table th:nth-child(1), .server-list-table td:nth-child(1) {
+  width: 4%; max-width: 50px; min-width: 40px; /* No. */
+  padding: 0.25rem 0.1rem; text-align: center;
+}
+
+.server-list-table th:nth-child(2), .server-list-table td:nth-child(2) {
+  width: 15%; max-width: 150px; min-width: 120px; /* Server Name - fit value */
+  padding: 0.25rem 0.1rem;
+}
+
+.server-list-table th:nth-child(3), .server-list-table td:nth-child(3) {
+  width: 30%; max-width: 300px; min-width: 250px; /* Description - wider */
+  padding: 0.25rem 0.1rem;
+}
+
+.server-list-table th:nth-child(4), .server-list-table td:nth-child(4) {
+  width: 12%; max-width: 120px; min-width: 100px; /* IP Address - fit value */
+  padding: 0.25rem 0.1rem;
+}
+
+.server-list-table th:nth-child(5), .server-list-table td:nth-child(5) {
+  width: 10%; max-width: 100px; min-width: 80px; /* Systems - fit value */
+  padding: 0.25rem 0.1rem;
+}
+
+.server-list-table th:nth-child(6), .server-list-table td:nth-child(6) {
+  width: 8%; max-width: 80px; min-width: 70px; /* Type - fit value */
+  padding: 0.25rem 0.1rem;
+}
+
+.server-list-table th:nth-child(7), .server-list-table td:nth-child(7) {
+  width: 10%; max-width: 100px; min-width: 80px; /* Tags - fit value */
+  padding: 0.25rem 0.1rem;
+}
+
+.server-list-table th:nth-child(8), .server-list-table td:nth-child(8) {
+  width: 6%; max-width: 80px; min-width: 60px; /* Actions */
+  padding: 0.25rem 0.5rem 0.25rem 0.1rem;
+  text-align: center; margin-right: 0.5rem;
+}
+
