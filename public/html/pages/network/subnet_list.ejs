@@ -451,6 +451,128 @@ window.addEventListener('DOMContentLoaded', function() {
       showSubnetDetail(subnetId);
     });
   });
+
+  // Real-time validation for subnet address on blur
+  $('#subnetAddress').on('blur', function() {
+    const subnetInput = $(this).val().trim();
+    const $input = $(this);
+    const $feedback = $input.siblings('.invalid-feedback');
+    
+    // Remove existing feedback
+    $feedback.remove();
+    $input.removeClass('is-invalid is-valid');
+    
+    if (!subnetInput) {
+      $input.addClass('is-invalid');
+      $input.after('<div class="invalid-feedback">Please enter a subnet address.</div>');
+      return;
+    }
+    
+    // Validate subnet format (e.g., 192.168.1.0/24)
+    const subnetRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}\/[0-9]{1,2}$/;
+    if (!subnetRegex.test(subnetInput)) {
+      $input.addClass('is-invalid');
+      $input.after('<div class="invalid-feedback">Invalid subnet format. Please enter valid subnet address, e.g. 192.168.1.0/24</div>');
+      return;
+    }
+    
+    // Split subnet address and CIDR
+    const [ipPart, cidrPart] = subnetInput.split('/');
+    const cidr = parseInt(cidrPart, 10);
+    
+    // Validate CIDR range (0-32)
+    if (cidr < 0 || cidr > 32) {
+      $input.addClass('is-invalid');
+      $input.after('<div class="invalid-feedback">Invalid CIDR. CIDR must be between 0 and 32.</div>');
+      return;
+    }
+    
+    // Validate IP address parts
+    const ipParts = ipPart.split('.');
+    for (const part of ipParts) {
+      const num = parseInt(part, 10);
+      if (num < 0 || num > 255) {
+        $input.addClass('is-invalid');
+        $input.after('<div class="invalid-feedback">Invalid IP address. Each octet must be between 0 and 255.</div>');
+        return;
+      }
+    }
+    
+    // Check if subnet already exists in database
+    checkSubnetExists(subnetInput, $input);
+  });
+
+  // Function to check if subnet already exists
+  function checkSubnetExists(subnetAddress, $input) {
+    $.ajax({
+      url: '/network/api/subnet-addresses',
+      method: 'GET',
+      data: { search: subnetAddress },
+      dataType: 'json'
+    }).done(function(response) {
+      // If response has items, subnet exists
+      if (response && Array.isArray(response) && response.length > 0) {
+        $input.addClass('is-invalid');
+        $input.after('<div class="invalid-feedback">Subnet address already exists.</div>');
+      } else {
+        $input.addClass('is-valid');
+      }
+    }).fail(function() {
+      console.error('Error checking subnet existence');
+      // If API fails, just mark as valid (server will handle validation)
+      $input.addClass('is-valid');
+    });
+  }
+
+  // Also validate on form submit as backup
+  $('#addSubnetForm').on('submit', function(e) {
+    const subnetInput = $('#subnetAddress').val().trim();
+    if (!subnetInput) {
+      e.preventDefault();
+      $('#subnetAddress').addClass('is-invalid');
+      $('#subnetAddress').siblings('.invalid-feedback').remove();
+      $('#subnetAddress').after('<div class="invalid-feedback">Please enter a subnet address.</div>');
+      return false;
+    }
+    
+    // Validate subnet format
+    const subnetRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}\/[0-9]{1,2}$/;
+    if (!subnetRegex.test(subnetInput)) {
+      e.preventDefault();
+      $('#subnetAddress').addClass('is-invalid');
+      $('#subnetAddress').siblings('.invalid-feedback').remove();
+      $('#subnetAddress').after('<div class="invalid-feedback">Invalid subnet format. Please enter valid subnet address, e.g. 192.168.1.0/24</div>');
+      return false;
+    }
+    
+    // Split subnet address and CIDR
+    const [ipPart, cidrPart] = subnetInput.split('/');
+    const cidr = parseInt(cidrPart, 10);
+    
+    // Validate CIDR range
+    if (cidr < 0 || cidr > 32) {
+      e.preventDefault();
+      $('#subnetAddress').addClass('is-invalid');
+      $('#subnetAddress').siblings('.invalid-feedback').remove();
+      $('#subnetAddress').after('<div class="invalid-feedback">Invalid CIDR. CIDR must be between 0 and 32.</div>');
+      return false;
+    }
+    
+    // Validate IP address parts
+    const ipParts = ipPart.split('.');
+    for (const part of ipParts) {
+      const num = parseInt(part, 10);
+      if (num < 0 || num > 255) {
+        e.preventDefault();
+        $('#subnetAddress').addClass('is-invalid');
+        $('#subnetAddress').siblings('.invalid-feedback').remove();
+        $('#subnetAddress').after('<div class="invalid-feedback">Invalid IP address. Each octet must be between 0 and 255.</div>');
+        return false;
+      }
+    }
+    
+    return true;
+  });
 });
 </script>
 <script>

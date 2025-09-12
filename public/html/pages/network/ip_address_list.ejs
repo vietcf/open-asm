@@ -13,6 +13,14 @@
       <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addIpModal" <% if (!hasPermission('ip_address.create')) { %>style="display:none"<% } %>>
         <i class="bi bi-plus"></i> Add IP
       </button>
+      <% if (hasPermission('ip_address.create')) { %>
+        <button type="button" class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#importIpModal">
+          <i class="bi bi-upload"></i> Import IP
+        </button>
+        <a href="/network/ip-address/template" class="btn btn-outline-info btn-sm me-2" download>
+          <i class="bi bi-download"></i> Download Template
+        </a>
+      <% } %>
       <!-- Add IP Modal -->
       <div class="modal fade" id="addIpModal" tabindex="-1" aria-labelledby="addIpModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -25,8 +33,9 @@
               <form id="addIpForm" action="/network/ip-address" method="POST">
                 <input type="hidden" name="page" value="<%= page %>">
                 <div class="mb-3">
-                  <label for="ipAddress" class="form-label">IP Address <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control form-control-sm" id="ipAddress" name="address" placeholder="IP Address" required>
+                  <label for="ipAddress" class="form-label">IP Address(es) <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control form-control-sm" id="ipAddress" name="address" placeholder="IP Address or multiple IPs separated by comma (e.g., 192.168.1.1, 192.168.1.2)" required>
+                  <div class="form-text text-muted">You can enter multiple IP addresses separated by commas</div>
                 </div>
                 <div class="mb-3">
                   <label for="ipDescription" class="form-label">Description</label>
@@ -58,6 +67,53 @@
                   <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Import IP Modal -->
+      <div class="modal fade" id="importIpModal" tabindex="-1" aria-labelledby="importIpModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="importIpModalLabel">Import IP Addresses</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label for="importFile" class="form-label">Select File <span class="text-danger">*</span></label>
+                <input type="file" class="form-control" id="importFile" accept=".csv,.xlsx,.xls" required>
+                <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls)</div>
+              </div>
+              <div class="mb-3">
+                <div class="alert alert-info">
+                  <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
+                  <ul class="mb-0">
+                    <li>Download the template file first</li>
+                    <li>Fill in your IP addresses following the template format</li>
+                    <li>Required columns: IP Address, Description, Status</li>
+                    <li>Optional columns: Tags, Contacts, System</li>
+                    <li>File will be validated before import</li>
+                  </ul>
+                </div>
+              </div>
+              <div id="importProgress" class="mb-3" style="display: none;">
+                <div class="progress">
+                  <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                </div>
+                <div class="text-center mt-2">
+                  <span id="importStatus">Processing...</span>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-primary" id="validateImportBtn" disabled>
+                <i class="bi bi-check-circle"></i> Validate File
+              </button>
+              <button type="button" class="btn btn-success" id="importBtn" disabled style="display: none;">
+                <i class="bi bi-upload"></i> Import IPs
+              </button>
             </div>
           </div>
         </div>
@@ -616,6 +672,363 @@
         cache: true
       }
     });
+  });
+
+  // Real-time validation for multiple IP addresses on blur
+  $('#ipAddress').on('blur', function() {
+    const ipInput = $(this).val().trim();
+    const $input = $(this);
+    const $feedback = $input.siblings('.invalid-feedback');
+    
+    // Remove existing feedback
+    $feedback.remove();
+    $input.removeClass('is-invalid is-valid');
+    
+    if (!ipInput) {
+      $input.addClass('is-invalid');
+      $input.after('<div class="invalid-feedback">Please enter at least one IP address.</div>');
+      return;
+    }
+    
+    // Split by comma and validate each IP
+    const ipAddresses = ipInput.split(',').map(ip => ip.trim()).filter(ip => ip.length > 0);
+    const ipRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}$/;
+    
+    for (const ip of ipAddresses) {
+      if (!ipRegex.test(ip)) {
+        $input.addClass('is-invalid');
+        $input.after(`<div class="invalid-feedback">Invalid IP address format: ${ip}. Please enter valid IPv4 addresses, e.g. 192.168.1.100</div>`);
+        return;
+      }
+      
+      // Check for valid IP range (0-255)
+      const parts = ip.split('.');
+      for (const part of parts) {
+        const num = parseInt(part, 10);
+        if (num < 0 || num > 255) {
+          $input.addClass('is-invalid');
+          $input.after(`<div class="invalid-feedback">Invalid IP address: ${ip}. Each octet must be between 0 and 255.</div>`);
+          return;
+        }
+      }
+    }
+    
+    // Check if IPs already exist in database
+    checkIPsExist(ipAddresses, $input);
+  });
+
+  // Function to check if IPs already exist
+  function checkIPsExist(ipAddresses, $input) {
+    const promises = ipAddresses.map(ip => {
+      return $.ajax({
+        url: '/network/api/ip-addresses/detail',
+        method: 'GET',
+        data: { search: ip },
+        dataType: 'json'
+      });
+    });
+
+    Promise.all(promises).then(responses => {
+      const existingIPs = [];
+      
+      responses.forEach((response, index) => {
+        // API returns array, if array has items then IP exists
+        if (response && Array.isArray(response) && response.length > 0) {
+          existingIPs.push(ipAddresses[index]);
+        }
+      });
+
+      if (existingIPs.length > 0) {
+        $input.addClass('is-invalid');
+        const existingList = existingIPs.join(', ');
+        const errorMessage = existingIPs.length === 1 
+          ? `IP address ${existingList} already exists.`
+          : `IP addresses ${existingList} already exist.`;
+        $input.after(`<div class="invalid-feedback">${errorMessage}</div>`);
+      } else {
+        $input.addClass('is-valid');
+      }
+    }).catch(error => {
+      console.error('Error checking IP existence:', error);
+      // If API fails, just mark as valid (server will handle validation)
+      $input.addClass('is-valid');
+    });
+  }
+
+  // Also validate on form submit as backup
+  $('#addIpForm').on('submit', function(e) {
+    const ipInput = $('#ipAddress').val().trim();
+    if (!ipInput) {
+      e.preventDefault();
+      $('#ipAddress').addClass('is-invalid');
+      $('#ipAddress').siblings('.invalid-feedback').remove();
+      $('#ipAddress').after('<div class="invalid-feedback">Please enter at least one IP address.</div>');
+      return false;
+    }
+    
+    // Split by comma and validate each IP
+    const ipAddresses = ipInput.split(',').map(ip => ip.trim()).filter(ip => ip.length > 0);
+    const ipRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}$/;
+    
+    for (const ip of ipAddresses) {
+      if (!ipRegex.test(ip)) {
+        e.preventDefault();
+        $('#ipAddress').addClass('is-invalid');
+        $('#ipAddress').siblings('.invalid-feedback').remove();
+        $('#ipAddress').after(`<div class="invalid-feedback">Invalid IP address format: ${ip}. Please enter valid IPv4 addresses, e.g. 192.168.1.100</div>`);
+        return false;
+      }
+      
+      // Check for valid IP range (0-255)
+      const parts = ip.split('.');
+      for (const part of parts) {
+        const num = parseInt(part, 10);
+        if (num < 0 || num > 255) {
+          e.preventDefault();
+          $('#ipAddress').addClass('is-invalid');
+          $('#ipAddress').siblings('.invalid-feedback').remove();
+          $('#ipAddress').after(`<div class="invalid-feedback">Invalid IP address: ${ip}. Each octet must be between 0 and 255.</div>`);
+          return false;
+        }
+      }
+    }
+    
+    return true;
+  });
+
+  // Import IP functionality
+  let selectedFile = null;
+  
+  // Debug: Check if elements exist
+  console.log('Import file input exists:', $('#importFile').length);
+  console.log('Validate button exists:', $('#validateImportBtn').length);
+  
+  // Handle file selection
+  $(document).on('change', '#importFile', function() {
+    console.log('File input changed');
+    const file = this.files[0];
+    console.log('Selected file:', file);
+    if (file) {
+      selectedFile = file;
+      $('#validateImportBtn').prop('disabled', false);
+      $('#importBtn').prop('disabled', true).hide();
+      console.log('Validate button enabled');
+    } else {
+      selectedFile = null;
+      $('#validateImportBtn').prop('disabled', true);
+      $('#importBtn').prop('disabled', true).hide();
+      console.log('Validate button disabled');
+    }
+  });
+  
+  // Handle validate button click
+  $(document).on('click', '#validateImportBtn', function() {
+    console.log('Validate button clicked');
+    if (!selectedFile) {
+      alert('Please select a file first');
+      return;
+    }
+    console.log('Selected file:', selectedFile.name);
+    
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    
+    // Show progress
+    $('#importProgress').show();
+    $('#importStatus').text('Validating file...');
+    $('.progress-bar').css('width', '30%');
+    
+    $.ajax({
+      url: '/network/ip-address/validate-import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      xhr: function() {
+        const xhr = new window.XMLHttpRequest();
+        xhr.responseType = 'blob'; // Set responseType here instead
+        xhr.upload.addEventListener("progress", function(evt) {
+          if (evt.lengthComputable) {
+            const percentComplete = evt.loaded / evt.total * 100;
+            $('.progress-bar').css('width', percentComplete + '%');
+          }
+        }, false);
+        return xhr;
+      },
+      success: function(data, status, xhr) {
+        $('.progress-bar').css('width', '100%');
+        $('#importStatus').text('Validation complete! Downloading results...');
+        
+        // Handle file download response
+        const contentType = xhr.getResponseHeader('Content-Type');
+        
+        if (contentType && (contentType.includes('spreadsheetml') || contentType.includes('zip'))) {
+          // Data is already a blob when responseType is 'blob'
+          const url = window.URL.createObjectURL(data);
+          const a = document.createElement('a');
+          a.href = url;
+          
+          // Get filename from Content-Disposition header
+          const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+          let filename = 'ip_validation_results.xlsx'; // default
+          if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+            if (filenameMatch) {
+              filename = filenameMatch[1];
+            }
+          }
+          
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        } else {
+          // Handle JSON error response
+          try {
+            const response = JSON.parse(data);
+            alert('Error: ' + (response.error || 'Unknown error'));
+          } catch (e) {
+            alert('Error: Invalid response format - Content-Type: ' + contentType);
+          }
+        }
+        
+        // Enable import button
+        $('#importBtn').prop('disabled', false).show();
+        $('#validateImportBtn').prop('disabled', true);
+        $('#importStatus').text('File validated successfully! You can now import.');
+        
+        setTimeout(() => {
+          $('#importProgress').hide();
+        }, 2000);
+      },
+      error: function(xhr, status, error) {
+        $('#importProgress').hide();
+        let errorMessage = 'Validation failed';
+        if (xhr.responseJSON && xhr.responseJSON.error) {
+          errorMessage = xhr.responseJSON.error;
+        }
+        alert(errorMessage);
+      }
+    });
+  });
+  
+  // Handle import button click
+  $(document).on('click', '#importBtn', function() {
+    if (!selectedFile) {
+      alert('Please select a file first');
+      return;
+    }
+    
+    if (!confirm('Are you sure you want to import these IP addresses?')) {
+      return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    
+    // Show progress
+    $('#importProgress').show();
+    $('#importStatus').text('Importing IP addresses...');
+    $('.progress-bar').css('width', '30%');
+    
+    $.ajax({
+      url: '/network/ip-address/import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      xhr: function() {
+        const xhr = new window.XMLHttpRequest();
+        xhr.responseType = 'blob'; // Set responseType for binary data
+        xhr.upload.addEventListener("progress", function(evt) {
+          if (evt.lengthComputable) {
+            const percentComplete = evt.loaded / evt.total * 100;
+            $('.progress-bar').css('width', percentComplete + '%');
+          }
+        }, false);
+        return xhr;
+      },
+      success: function(data, status, xhr) {
+        $('.progress-bar').css('width', '100%');
+        $('#importStatus').text('Import complete! Downloading results...');
+        
+        // Handle file download response (same as validate)
+        const contentType = xhr.getResponseHeader('Content-Type');
+        
+        if (contentType && contentType.includes('spreadsheetml')) {
+          // Data is already a blob when responseType is 'blob'
+          const url = window.URL.createObjectURL(data);
+          const a = document.createElement('a');
+          a.href = url;
+          
+          // Get filename from Content-Disposition header
+          const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+          let filename = 'ip_import_results.xlsx'; // default
+          if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+            if (filenameMatch) {
+              filename = filenameMatch[1];
+            }
+          }
+          
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        } else {
+          // Handle JSON error response
+          try {
+            const response = JSON.parse(data);
+            alert('Error: ' + (response.error || 'Unknown error'));
+          } catch (e) {
+            alert('Error: Invalid response format - Content-Type: ' + contentType);
+          }
+        }
+        
+        // Reset form and close modal
+        $('#importFile').val('');
+        selectedFile = null;
+        $('#validateImportBtn').prop('disabled', true);
+        $('#importBtn').prop('disabled', true).hide();
+        $('#importProgress').hide();
+        
+        // Close modal and reload page
+        $('#importIpModal').modal('hide');
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      },
+      error: function(xhr, status, error) {
+        $('#importProgress').hide();
+        let errorMessage = 'Import failed';
+        if (xhr.responseJSON && xhr.responseJSON.error) {
+          errorMessage = xhr.responseJSON.error;
+        }
+        alert(errorMessage);
+      }
+    });
+  });
+  
+  // Reset form when modal is closed
+  $(document).on('hidden.bs.modal', '#importIpModal', function() {
+    $('#importFile').val('');
+    selectedFile = null;
+    $('#validateImportBtn').prop('disabled', true);
+    $('#importBtn').prop('disabled', true).hide();
+    $('#importProgress').hide();
+  });
+  
+  // Check file when modal is shown
+  $(document).on('shown.bs.modal', '#importIpModal', function() {
+    console.log('Import modal shown');
+    const file = $('#importFile')[0].files[0];
+    if (file) {
+      selectedFile = file;
+      $('#validateImportBtn').prop('disabled', false);
+      console.log('File already selected, enabling validate button');
+    }
   });
 </script>
 <script>

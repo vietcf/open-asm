@@ -3,7 +3,19 @@ import IpAddress from '../models/IpAddress.js';
 import Subnet from '../models/Subnet.js';
 import Domain from '../models/Domain.js';
 import Configuration from '../models/Configuration.js';
+import Tag from '../models/Tag.js';
+import Contact from '../models/Contact.js';
+import System from '../models/System.js';
 import { pool } from '../../config/config.js';
+import fs from 'fs';
+import ExcelJS from 'exceljs';
+import XLSX from 'xlsx';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import archiver from 'archiver';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 // import ipAddressOptions from '../../config/ipAddressOptions.js';
 // import subnetOptions from '../../config/subnetOptions.js';
 // Helper: Load recordTypeOptions from DB (Configuration)
@@ -19,7 +31,6 @@ async function getRecordTypeOptionsFromConfig() {
   }
   return recordTypeOptions;
 }
-import ExcelJS from 'exceljs';
 
 
 // Helper: Load ipStatusOptions from DB (Configuration)
@@ -122,30 +133,53 @@ networkController.createIP = async (req, res) => {
     tags = tags ? (Array.isArray(tags) ? tags : [tags]) : [];
     contacts = contacts ? (Array.isArray(contacts) ? contacts : [contacts]) : [];
     systems = systems ? (Array.isArray(systems) ? systems : [systems]) : [];
-    // Validate IP address format
-    if (!address || !/^[0-9]{1,3}(\.[0-9]{1,3}){3}$/.test(address)) {
-      req.flash('error', 'Invalid IP address format. Please enter a valid IPv4 address, e.g. 192.168.1.100');
+    
+    // Parse multiple IP addresses separated by comma
+    const ipAddresses = address ? address.split(',').map(ip => ip.trim()).filter(ip => ip.length > 0) : [];
+    
+    // Validate IP address format for each IP
+    const ipRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}$/;
+    for (const ip of ipAddresses) {
+      if (!ipRegex.test(ip)) {
+        req.flash('error', `Invalid IP address format: ${ip}. Please enter valid IPv4 addresses, e.g. 192.168.1.100`);
+        await client.query('ROLLBACK');
+        return res.redirect('/network/ip-address');
+      }
+    }
+    
+    if (ipAddresses.length === 0) {
+      req.flash('error', 'Please enter at least one valid IP address.');
       await client.query('ROLLBACK');
       return res.redirect('/network/ip-address');
     }
+    
     const statusValue = status && status.trim() ? status : 'reserved';
     const updated_by = req.session.user?.username || '';
-    // Create IP address record (pass client for transaction)
-    const newIp = await IpAddress.create({ address, description, status: statusValue, updated_by }, client);
-    // @ts-ignore - client parameter is supported by model methods
-    await IpAddress.setTags(newIp.id, tags, client);
-    // @ts-ignore - client parameter is supported by model methods
-    await IpAddress.setContacts(newIp.id, contacts, client);
-    // @ts-ignore - client parameter is supported by model methods
-    await IpAddress.setSystems(newIp.id, systems, client);
+    
+    // Create IP address records for each IP
+    const createdIPs = [];
+    for (const ip of ipAddresses) {
+      const newIp = await IpAddress.create({ address: ip, description, status: statusValue, updated_by }, client);
+      // @ts-ignore - client parameter is supported by model methods
+      await IpAddress.setTags(newIp.id, tags, client);
+      // @ts-ignore - client parameter is supported by model methods
+      await IpAddress.setContacts(newIp.id, contacts, client);
+      // @ts-ignore - client parameter is supported by model methods
+      await IpAddress.setSystems(newIp.id, systems, client);
+      createdIPs.push(newIp);
+    }
+    
     await client.query('COMMIT');
-    req.flash('success', 'IP address added successfully!');
+    const successMessage = createdIPs.length === 1 
+      ? 'IP address added successfully!' 
+      : `${createdIPs.length} IP addresses added successfully!`;
+    req.flash('success', successMessage);
     return res.redirect('/network/ip-address');
   } catch (err) {
     await client.query('ROLLBACK');
     let errorMessage = err.message || 'Add failed.';
     if (errorMessage.includes('duplicate key value') && errorMessage.includes('unique constraint')) {
-      errorMessage = 'IP address already exists.';
+      errorMessage = 'One or more IP addresses already exist.';
     }
     req.flash('error', errorMessage);
     return res.redirect('/network/ip-address');
@@ -632,6 +666,551 @@ networkController.apiSearchUnassignedIPAddresses = async (req, res) => {
   }
 };
 
+// API: Search subnets for existence check
+networkController.apiSearchSubnets = async (req, res) => {
+  try {
+    const search = req.query.search || '';
+    const limit = parseInt(req.query.limit) || 20;
+    
+    if (!search) {
+      return res.json([]);
+    }
+    
+    // Search for exact subnet match
+    const subnets = await Subnet.findFilteredList({ 
+      search, 
+      tags: [], // Empty tags array for search
+      page: 1, 
+      pageSize: limit 
+    });
+    
+    // Filter for exact match
+    const exactMatches = subnets.filter(subnet => 
+      subnet.address && subnet.address.toLowerCase() === search.toLowerCase()
+    );
+    
+    res.json(exactMatches.map(subnet => ({ 
+      id: subnet.id, 
+      address: subnet.address,
+      description: subnet.description 
+    })));
+  } catch (err) {
+    console.error('API /network/api/subnet-addresses error:', err);
+    res.status(500).json({ error: 'Error searching subnets', detail: err.message });
+  }
+};
+
+// API: Validate IP addresses import file
+networkController.validateImportIPs = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const filePath = req.file.path;
+    const fileExtension = req.file.originalname.split('.').pop().toLowerCase();
+    
+    let rows = [];
+    
+    // Parse file based on extension
+    if (fileExtension === 'csv') {
+      const results = [];
+      
+      // Simple CSV parsing without csv-parser dependency
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      const lines = fileContent.split('\n');
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      for (let i = 1; i < lines.length; i++) {
+        if (lines[i].trim()) {
+          const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+          const rowData = {};
+          headers.forEach((header, index) => {
+            rowData[header] = values[index] || '';
+          });
+          results.push(rowData);
+        }
+      }
+      
+      rows = results;
+    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(filePath);
+      
+      const worksheet = workbook.worksheets[0];
+      const headers = [];
+      
+      // Get headers from first row
+      worksheet.getRow(1).eachCell((cell, colNumber) => {
+        headers[colNumber] = cell.value;
+      });
+      
+      
+      // Get data rows
+      for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
+        const row = worksheet.getRow(rowNumber);
+        const rowData = {};
+        
+        row.eachCell((cell, colNumber) => {
+          const header = headers[colNumber];
+          if (header) {
+            rowData[header] = cell.value;
+          }
+        });
+        
+        if (Object.keys(rowData).length > 0) {
+          rows.push(rowData);
+        }
+      }
+    } else {
+      return res.status(400).json({ error: 'Unsupported file format' });
+    }
+    
+      console.log('Total rows parsed:', rows.length);
+
+    // Validate each row
+    const validationResults = [];
+    const ipRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}$/;
+    const validStatuses = ['active', 'reserved', 'inactive'];
+    
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNumber = i + 2; // +2 because Excel starts from 1 and we skip header
+      const result = {
+        row: rowNumber,
+        ip_address: row['IPAddress (Require, one per row)'] || '',
+        description: row['Description'] || '',
+        status: row['Status'] || 'reserved',
+        tags: row['Tag (comma-separated if multiple)'] || row['Tags'] || '',
+        contacts: row['Contact (Email or Email prefix, comma-separated if multiple)'] || row['Contact (Email, comma-separated if multiple)'] || row['Contacts'] || '',
+        system: row['System Name (comma-separated if multiple)'] || row['System'] || '',
+        validation_status: 'Pass',
+        validation_reason: ''
+      };
+      
+      // Validate IP address
+      if (!result.ip_address) {
+        result.validation_status = 'Fail';
+        result.validation_reason = 'IP Address is required';
+      } else if (!ipRegex.test(result.ip_address)) {
+        result.validation_status = 'Fail';
+        result.validation_reason = 'Invalid IP address format';
+      } else {
+        // Check IP range
+        const parts = result.ip_address.split('.');
+        for (const part of parts) {
+          const num = parseInt(part, 10);
+          if (num < 0 || num > 255) {
+            result.validation_status = 'Fail';
+            result.validation_reason = 'IP address octet must be between 0 and 255';
+            break;
+          }
+        }
+      }
+      
+      // Validate status
+      if (result.validation_status === 'Pass' && result.status && !validStatuses.includes(result.status.toLowerCase())) {
+        result.validation_status = 'Fail';
+        result.validation_reason = 'Invalid status. Must be: active, reserved, or inactive';
+      }
+      
+      // Check if IP already exists (only if validation passed so far)
+      if (result.validation_status === 'Pass') {
+        try {
+          const existingIP = await IpAddress.findByAddressWithDetails(result.ip_address);
+          if (existingIP) {
+            result.validation_status = 'Fail';
+            result.validation_reason = 'IP address already exists';
+          }
+        } catch (err) {
+          // If error checking existence, continue with validation
+        }
+      }
+      
+      // Validate Tags (if provided)
+      if (result.validation_status === 'Pass' && result.tags) {
+        const tagNames = result.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+        for (const tagName of tagNames) {
+          try {
+            const tags = await Tag.findByNameExact(tagName);
+            if (!tags || tags.length === 0) {
+              result.validation_status = 'Fail';
+              result.validation_reason = `Tag "${tagName}" does not exist in system`;
+              break;
+            }
+          } catch (err) {
+            // If error checking tag, continue with validation
+          }
+        }
+      }
+      
+      // Validate Contacts (if provided)
+      if (result.validation_status === 'Pass' && result.contacts) {
+        const contactEmails = result.contacts.split(',').map(email => email.trim()).filter(email => email.length > 0);
+        for (const email of contactEmails) {
+          try {
+            const contacts = await Contact.findByEmailSearch(email);
+            if (!contacts || contacts.length === 0) {
+              result.validation_status = 'Fail';
+              result.validation_reason = `Contact "${email}" does not exist in system`;
+              break;
+            }
+          } catch (err) {
+            // If error checking contact, continue with validation
+          }
+        }
+      }
+      
+      // Validate Systems (if provided)
+      if (result.validation_status === 'Pass' && result.system) {
+        const systemNames = result.system.split(',').map(name => name.trim()).filter(name => name.length > 0);
+        for (const systemName of systemNames) {
+          try {
+            const systems = await System.findByNameExact(systemName);
+            if (!systems || systems.length === 0) {
+              result.validation_status = 'Fail';
+              result.validation_reason = `System "${systemName}" does not exist in system`;
+              break;
+            }
+          } catch (err) {
+            // If error checking system, continue with validation
+          }
+        }
+      }
+      
+      validationResults.push(result);
+    }
+    
+    // Create validation results Excel file and zip it
+    try {
+      console.log('Creating validation results Excel file and zip...');
+      
+      // Tạo file Excel với kết quả validation
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Validation Results');
+      
+      // Định nghĩa headers - đầy đủ các trường từ file ban đầu + 2 trường validation
+      const headers = [
+        'IPAddress (Require, one per row)', 
+        'Description', 
+        'Status', 
+        'Tag (comma-separated if multiple)', 
+        'Contact (Email or Email prefix, comma-separated if multiple)', 
+        'System Name (comma-separated if multiple)',
+        'Validation Status', 
+        'Validation Reason'
+      ];
+      
+      // Add headers
+      worksheet.addRow(headers);
+      
+      // Add validation results - đảm bảo đúng thứ tự với headers
+      validationResults.forEach(result => {
+        const row = [
+          result.ip_address,                                                    // IPAddress (Require, one per row)
+          result.description || '',                                            // Description
+          result.status || 'reserved',                                         // Status
+          result.tags || '',                                                   // Tag (comma-separated if multiple)
+          result.contacts || '',                                               // Contact (Email, comma-separated if multiple)
+          result.system || '',                                                 // System Name (comma-separated if multiple)
+          result.validation_status || 'Pass',                                  // Validation Status
+          result.validation_reason || ''                                       // Validation Reason
+        ];
+        worksheet.addRow(row);
+      });
+      
+      // Set column widths
+      worksheet.columns.forEach(col => { col.width = 22; });
+      
+      // Tạo thư mục temp nếu chưa có
+      const tempDir = path.join(__dirname, '../../uploads/temp');
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      
+      // Tạo file Excel tạm với tên theo định dạng timestamp_filename_validated.xlsx
+      const originalFileName = req.file.originalname.replace(/\.[^/.]+$/, ""); // Remove extension
+      const timestamp = Date.now();
+      const excelFileName = `${timestamp}_${originalFileName}_validation.xlsx`;
+      const excelFilePath = path.join(tempDir, excelFileName);
+      await workbook.xlsx.writeFile(excelFilePath);
+      
+      // Send Excel file directly
+      
+      // Set headers for Excel download
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${excelFileName}"`);
+      res.setHeader('Content-Length', fs.statSync(excelFilePath).size);
+      
+      // Send Excel file
+      const excelBuffer = fs.readFileSync(excelFilePath);
+      res.send(excelBuffer);
+      
+      // Clean up files after sending
+      setTimeout(() => {
+        try {
+          fs.unlinkSync(excelFilePath);
+        } catch (cleanupErr) {
+        }
+      }, 1000);
+      
+      
+  } catch (err) {
+    console.error('Error creating validation Excel file:', err);
+    res.status(500).send('Error creating validation Excel file: ' + err.message);
+  }
+    
+    // Clean up uploaded file
+    fs.unlinkSync(filePath);
+    
+  } catch (err) {
+    console.error('Error validating import file:', err);
+    res.status(500).json({ error: 'Error validating import file', detail: err.message });
+  }
+};
+
+// API: Import IP addresses from validated file
+networkController.importIPs = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const filePath = req.file.path;
+    const fileExtension = req.file.originalname.split('.').pop().toLowerCase();
+    
+    let rows = [];
+    
+    // Parse file (same logic as validation)
+    if (fileExtension === 'csv') {
+      const results = [];
+      
+      // Simple CSV parsing without csv-parser dependency
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      const lines = fileContent.split('\n');
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      for (let i = 1; i < lines.length; i++) {
+        if (lines[i].trim()) {
+          const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+          const rowData = {};
+          headers.forEach((header, index) => {
+            rowData[header] = values[index] || '';
+          });
+          results.push(rowData);
+        }
+      }
+      
+      rows = results;
+    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(filePath);
+      
+      const worksheet = workbook.worksheets[0];
+      const headers = [];
+      
+      worksheet.getRow(1).eachCell((cell, colNumber) => {
+        headers[colNumber] = cell.value;
+      });
+      
+      for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
+        const row = worksheet.getRow(rowNumber);
+        const rowData = {};
+        
+        row.eachCell((cell, colNumber) => {
+          const header = headers[colNumber];
+          if (header) {
+            rowData[header] = cell.value;
+          }
+        });
+        
+        if (Object.keys(rowData).length > 0) {
+          rows.push(rowData);
+        }
+      }
+    }
+    
+    const importResults = [];
+    const updated_by = req.session.user?.username || '';
+    
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNumber = i + 2;
+      const result = {
+        row: rowNumber,
+        ip_address: row['IPAddress (Require, one per row)'] || '',
+        description: row['Description'] || '',
+        status: row['Status'] || 'reserved',
+        tags: row['Tag (comma-separated if multiple)'] || row['Tags'] || '',
+        contacts: row['Contact (Email or Email prefix, comma-separated if multiple)'] || row['Contact (Email, comma-separated if multiple)'] || row['Contacts'] || '',
+        system: row['System Name (comma-separated if multiple)'] || row['System'] || '',
+        import_status: 'Success',
+        import_reason: ''
+      };
+      
+      try {
+        // Create IP address
+        const newIp = await IpAddress.create({ 
+          address: result.ip_address, 
+          description: result.description, 
+          status: result.status, 
+          updated_by 
+        }, client);
+        
+        // Set tags if provided
+        if (result.tags) {
+          const tagNames = result.tags.split(',').map(t => t.trim()).filter(t => t);
+          const tagIds = [];
+          for (const tagName of tagNames) {
+            const tags = await Tag.findByNameExact(tagName);
+            if (tags && tags.length > 0) {
+              tagIds.push(tags[0].id);
+            }
+          }
+          if (tagIds.length > 0) {
+            await IpAddress.setTags(newIp.id, tagIds, client);
+          }
+        }
+        
+        // Set contacts if provided
+        if (result.contacts) {
+          const contactEmails = result.contacts.split(',').map(c => c.trim()).filter(c => c);
+          const contactIds = [];
+          for (const email of contactEmails) {
+            const contacts = await Contact.findByEmailSearch(email);
+            if (contacts && contacts.length > 0) {
+              contactIds.push(contacts[0].id);
+            }
+          }
+          if (contactIds.length > 0) {
+            await IpAddress.setContacts(newIp.id, contactIds, client);
+          }
+        }
+        
+        // Set systems if provided
+        if (result.system) {
+          const systemNames = result.system.split(',').map(s => s.trim()).filter(s => s);
+          const systemIds = [];
+          for (const systemName of systemNames) {
+            const systems = await System.findByNameExact(systemName);
+            if (systems && systems.length > 0) {
+              systemIds.push(systems[0].id);
+            }
+          }
+          if (systemIds.length > 0) {
+            await IpAddress.setSystems(newIp.id, systemIds, client);
+          }
+        }
+        
+        result.import_reason = 'Successfully created IP address';
+        
+      } catch (err) {
+        result.import_status = 'Failed';
+        result.import_reason = err.message || 'Unknown error';
+      }
+      
+      importResults.push(result);
+    }
+    
+    await client.query('COMMIT');
+    
+    // Create import results Excel file (same as validation)
+    try {
+      console.log('Creating import results Excel file...');
+      
+      // Tạo file Excel với kết quả import
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('Import Results');
+      
+      // Định nghĩa headers - đầy đủ các trường từ file ban đầu + 2 trường import
+      const headers = [
+        'IPAddress (Require, one per row)', 
+        'Description', 
+        'Status', 
+        'Tag (comma-separated if multiple)', 
+        'Contact (Email or Email prefix, comma-separated if multiple)', 
+        'System Name (comma-separated if multiple)',
+        'Import Status', 
+        'Import Reason'
+      ];
+      
+      // Add headers
+      worksheet.addRow(headers);
+      
+      // Add import results - đảm bảo đúng thứ tự với headers
+      importResults.forEach(result => {
+        const row = [
+          result.ip_address,                                                    // IPAddress (Require, one per row)
+          result.description || '',                                            // Description
+          result.status || 'reserved',                                         // Status
+          result.tags || '',                                                   // Tag (comma-separated if multiple)
+          result.contacts || '',                                               // Contact (Email or Email prefix, comma-separated if multiple)
+          result.system || '',                                                 // System Name (comma-separated if multiple)
+          result.import_status || 'Success',                                   // Import Status
+          result.import_reason || ''                                           // Import Reason
+        ];
+        worksheet.addRow(row);
+      });
+      
+      // Set column widths
+      worksheet.columns.forEach(col => { col.width = 22; });
+      
+      // Tạo thư mục temp nếu chưa có
+      const tempDir = path.join(__dirname, '../../uploads/temp');
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      
+      // Tạo file Excel tạm với tên theo định dạng timestamp_filename_imported.xlsx
+      const originalFileName = req.file.originalname.replace(/\.[^/.]+$/, ""); // Remove extension
+      const timestamp = Date.now();
+      const excelFileName = `${timestamp}_${originalFileName}_imported.xlsx`;
+      const excelFilePath = path.join(tempDir, excelFileName);
+      await workbook.xlsx.writeFile(excelFilePath);
+      
+      console.log('Excel file created:', excelFilePath);
+      
+      // Send Excel file directly
+      console.log('Sending Excel file directly...');
+      
+      // Set headers for Excel download
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', `attachment; filename="${excelFileName}"`);
+      res.setHeader('Content-Length', fs.statSync(excelFilePath).size);
+      
+      // Send Excel file
+      const excelBuffer = fs.readFileSync(excelFilePath);
+      res.send(excelBuffer);
+      
+      // Clean up files after sending
+      setTimeout(() => {
+        try {
+          fs.unlinkSync(excelFilePath);
+        } catch (cleanupErr) {
+        }
+      }, 1000);
+      
+      
+  } catch (err) {
+    console.error('Error creating import Excel file:', err);
+    res.status(500).send('Error creating import Excel file: ' + err.message);
+  }
+    
+    // Clean up uploaded file
+    fs.unlinkSync(filePath);
+    
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error importing IPs:', err);
+    res.status(500).json({ error: 'Error importing IPs', detail: err.message });
+  } finally {
+    client.release();
+  }
+};
+
 // Export IP Address List as Excel (filtered)
 networkController.exportIpAddressList = async (req, res) => {
   try {
@@ -737,6 +1316,115 @@ networkController.exportSubnetList = async (req, res) => {
   } catch (err) {
     console.error('Error exporting subnet list:', err);
     res.status(500).send('Error exporting subnet list: ' + err.message);
+  }
+};
+
+// API: Download IP address import template
+networkController.downloadTemplate = async (req, res) => {
+  try {
+    // Create Excel workbook for template
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('IP Address Template');
+    
+    // Add headers
+    worksheet.addRow([
+      'IPAddress (Require, one per row)',
+      'Description',
+      'Tag (comma-separated if multiple)',
+      'Contact (Email or Email prefix, comma-separated if multiple)',
+      'System Name (comma-separated if multiple)'
+    ]);
+    
+    // Add sample data
+    worksheet.addRow([
+      '192.168.192.101',
+      'MGMT: MGMT Network + Firewall',
+      'REST-Test-Tag,PCI-CDE',
+      'toannn1.ho,longhv.ho',
+      'Test System Minimal,Quản lý công việc'
+    ]);
+    
+    worksheet.addRow([
+      '192.168.1.103',
+      'MGMT: MGMT Network',
+      'REST-Test-Tag',
+      'toannn1.ho',
+      ''
+    ]);
+    
+    // Set column widths
+    worksheet.columns = [
+      { width: 30 },  // IPAddress
+      { width: 25 },  // Description
+      { width: 25 },  // Tag
+      { width: 30 },  // Contact
+      { width: 25 }   // System Name
+    ];
+    
+    // Write to temporary file first (like in test)
+    const uploadsDir = path.join(__dirname, '../../uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+    const tempPath = path.join(uploadsDir, 'temp_template.xlsx');
+    await workbook.xlsx.writeFile(tempPath);
+    console.log('Template file written to:', tempPath);
+    
+    // Check if file exists and get size
+    if (fs.existsSync(tempPath)) {
+      const stats = fs.statSync(tempPath);
+      console.log('Template file size:', stats.size, 'bytes');
+      
+      // Use res.download() for proper file download handling
+      res.download(tempPath, 'ipaddress_list_template.xlsx', (err) => {
+        if (err) {
+          console.error('Error downloading template file:', err);
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'Error downloading template file' });
+          }
+        } else {
+          console.log('Template file downloaded successfully');
+        }
+      });
+    } else {
+      throw new Error('Template Excel file was not created');
+    }
+    
+  } catch (err) {
+    console.error('Error creating template file:', err);
+    res.status(500).json({ error: 'Error creating template file', detail: err.message });
+  }
+};
+
+// Download validation results file
+networkController.downloadValidationFile = async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const filePath = path.join(__dirname, '../../uploads', filename);
+    
+    console.log('Downloading file:', filePath);
+    
+    if (fs.existsSync(filePath)) {
+      res.download(filePath, (err) => {
+        if (err) {
+          console.error('Error downloading file:', err);
+        } else {
+          console.log('File downloaded successfully');
+          // Clean up after download
+          setTimeout(() => {
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+              console.log('File cleaned up:', filePath);
+            }
+          }, 2000);
+        }
+      });
+    } else {
+      res.status(404).json({ error: 'File not found' });
+    }
+  } catch (err) {
+    console.error('Error downloading file:', err);
+    res.status(500).json({ error: 'Error downloading file', detail: err.message });
   }
 };
 

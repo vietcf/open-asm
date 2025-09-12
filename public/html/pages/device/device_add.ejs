@@ -244,7 +244,7 @@
     // Thay đổi nút Add IP: mở tab mới tới trang quản lý IP và tự động bật popup Add IP
     $('#add-ip-btn').off('click').on('click', function(e) {
       e.preventDefault();
-      window.open('http://localhost:3000/network/ip-address?add=1', '_blank');
+      window.open('/network/ip-address?add=1', '_blank');
     });
     // Auto-fill device name if empty when platform and IP are selected, and convert to lowercase
     function autoFillDeviceName() {
