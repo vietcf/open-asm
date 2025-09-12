@@ -56,6 +56,7 @@ router.post('/domain', requirePermission('domain.create'), networkController.cre
 router.put('/domain/:id', requirePermission('domain.update'), networkController.updateDomain);
 router.delete('/domain/:id', requirePermission('domain.delete'), networkController.deleteDomain);
 
+
 // // ====== AJAX API ======
 router.get('/api/subnet-address/:id', requirePermission('subnet.read'), networkController.detailSubnet); //Get detail of subnet
 router.get('/api/subnet-addresses', networkController.apiSearchSubnets); // Search subnets for existence check

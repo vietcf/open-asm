@@ -14,6 +14,12 @@
         <button type="button" class="btn btn-primary btn-sm me-2" onclick="window.location.href='/server/server/add'">
           <i class="bi bi-plus"></i> Add Server
         </button>
+        <a href="/server/server/template" class="btn btn-info btn-sm me-2" download>
+          <i class="bi bi-download"></i> Download Template
+        </a>
+        <button type="button" class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#importServerModal">
+          <i class="bi bi-upload"></i> Import Server
+        </button>
       <% } %>
       <form id="serverExportForm" action="/server/server/export" method="GET" style="display:inline; margin-right: 8px;">
         <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
@@ -647,4 +653,310 @@ $(function() {
       });
     });
   });
+</script>
+
+<!-- Import Server Modal -->
+<div class="modal fade" id="importServerModal" tabindex="-1" aria-labelledby="importServerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="importServerModalLabel">Import Server</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i>
+          <strong>Instructions:</strong>
+          <ol class="mb-0 mt-2">
+            <li>Download the template file using the "Download Template" button above</li>
+            <li>Fill in your server data following the template format</li>
+            <li>Upload the file to validate before importing</li>
+            <li>Only import if all validations pass</li>
+          </ol>
+        </div>
+        
+        <form id="importServerForm" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label for="serverFile" class="form-label">Select File to Import</label>
+            <input type="file" class="form-control" id="serverFile" name="file" accept=".csv,.xlsx,.xls" required>
+            <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
+          </div>
+        </form>
+
+        <div id="importProgress" class="mb-3" style="display: none;">
+          <div class="progress">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+          </div>
+          <div class="text-center mt-2">
+            <span id="importStatus">Processing...</span>
+          </div>
+        </div>
+
+        <div id="importResults" style="display: none;">
+          <div class="alert" id="importAlert">
+            <div id="importMessage"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-warning" id="validateServerBtn" disabled>
+          <i class="bi bi-check-circle"></i> Validate File
+        </button>
+        <button type="button" class="btn btn-success" id="importServerBtn" disabled>
+          <i class="bi bi-upload"></i> Import Server
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+$(document).ready(function() {
+  const $importModal = $('#importServerModal');
+  const $fileInput = $('#serverFile');
+  const $validateBtn = $('#validateServerBtn');
+  const $importBtn = $('#importServerBtn');
+  const $progress = $('#importProgress');
+  const $results = $('#importResults');
+  const $alert = $('#importAlert');
+  const $message = $('#importMessage');
+
+  // Reset modal when shown
+  $importModal.on('shown.bs.modal', function() {
+    resetImportForm();
+  });
+
+  // Reset modal when hidden
+  $importModal.on('hidden.bs.modal', function() {
+    resetImportForm();
+  });
+
+  function resetImportForm() {
+    $fileInput.val('');
+    $validateBtn.prop('disabled', true);
+    $importBtn.prop('disabled', true);
+    $progress.hide();
+    $results.hide();
+    $alert.removeClass('alert-success alert-danger alert-warning');
+  }
+
+  // Enable validate button when file is selected
+  $fileInput.on('change', function() {
+    if (this.files && this.files.length > 0) {
+      $validateBtn.prop('disabled', false);
+    } else {
+      $validateBtn.prop('disabled', true);
+    }
+    $importBtn.prop('disabled', true);
+    $results.hide();
+  });
+
+  // Validate file
+  $validateBtn.on('click', function() {
+    if (!$fileInput[0].files || !$fileInput[0].files.length) {
+      alert('Please select a file first');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', $fileInput[0].files[0]);
+
+    $progress.show();
+    $results.hide();
+    $validateBtn.prop('disabled', true);
+
+    $.ajax({
+      url: '/server/server/validate-import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      xhr: function() {
+        const xhr = new window.XMLHttpRequest();
+        xhr.responseType = 'blob';
+        return xhr;
+      },
+      success: function(data, status, xhr) {
+        $progress.hide();
+        $validateBtn.prop('disabled', false);
+
+        // Check if response is Excel file
+        const contentType = xhr.getResponseHeader('Content-Type');
+        if (contentType && contentType.includes('spreadsheetml')) {
+          // Download validation results
+          const blob = new Blob([data], { type: contentType });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          
+          // Extract filename from Content-Disposition header
+          const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+          let filename = 'server_validation_results.xlsx';
+          if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+            if (filenameMatch) {
+              filename = filenameMatch[1];
+            }
+          }
+          
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+
+          // Check validation summary
+          const validationSummary = xhr.getResponseHeader('X-Validation-Summary');
+          if (validationSummary) {
+            try {
+              const summary = JSON.parse(validationSummary);
+              if (summary.allPassed) {
+                $alert.removeClass('alert-danger alert-warning').addClass('alert-success');
+                $message.html(`
+                  <i class="bi bi-check-circle"></i>
+                  <strong>Validation Successful!</strong><br>
+                  All ${summary.totalCount} records passed validation. You can now proceed with import.
+                `);
+                $importBtn.prop('disabled', false);
+              } else {
+                $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+                $message.html(`
+                  <i class="bi bi-exclamation-triangle"></i>
+                  <strong>Validation Failed!</strong><br>
+                  ${summary.failCount} out of ${summary.totalCount} records failed validation. 
+                  Please check the downloaded validation results and fix the issues before importing.
+                `);
+                $importBtn.prop('disabled', true);
+              }
+              $results.show();
+            } catch (e) {
+              console.error('Error parsing validation summary:', e);
+            }
+          }
+        } else {
+          // Handle JSON error response
+          const reader = new FileReader();
+          reader.onload = function() {
+            try {
+              const errorData = JSON.parse(reader.result);
+              $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+              $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> ${errorData.error || 'Unknown error occurred'}`);
+              $results.show();
+            } catch (e) {
+              $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+              $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> Invalid response format`);
+              $results.show();
+            }
+          };
+          reader.readAsText(data);
+        }
+      },
+      error: function(xhr, status, error) {
+        $progress.hide();
+        $validateBtn.prop('disabled', false);
+        $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+        $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> ${error || 'Request failed'}`);
+        $results.show();
+      }
+    });
+  });
+
+  // Import servers
+  $importBtn.on('click', function() {
+    if (!$fileInput[0].files || !$fileInput[0].files.length) {
+      alert('Please select a file first');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to import the servers? This action cannot be undone.')) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', $fileInput[0].files[0]);
+
+    $progress.show();
+    $results.hide();
+    $importBtn.prop('disabled', true);
+
+    $.ajax({
+      url: '/server/server/import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      xhr: function() {
+        const xhr = new window.XMLHttpRequest();
+        xhr.responseType = 'blob';
+        return xhr;
+      },
+      success: function(data, status, xhr) {
+        $progress.hide();
+        $importBtn.prop('disabled', false);
+
+        // Check if response is Excel file
+        const contentType = xhr.getResponseHeader('Content-Type');
+        if (contentType && contentType.includes('spreadsheetml')) {
+          // Download import results
+          const blob = new Blob([data], { type: contentType });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          
+          // Extract filename from Content-Disposition header
+          const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+          let filename = 'server_import_results.xlsx';
+          if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+            if (filenameMatch) {
+              filename = filenameMatch[1];
+            }
+          }
+          
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+
+          $alert.removeClass('alert-danger alert-warning').addClass('alert-success');
+          $message.html(`
+            <i class="bi bi-check-circle"></i>
+            <strong>Import Completed!</strong><br>
+            Server import has been completed. Please check the downloaded results file for details.
+            <br><br>
+            <button type="button" class="btn btn-sm btn-primary" onclick="location.reload()">
+              <i class="bi bi-arrow-clockwise"></i> Refresh Page
+            </button>
+          `);
+          $results.show();
+        } else {
+          // Handle JSON error response
+          const reader = new FileReader();
+          reader.onload = function() {
+            try {
+              const errorData = JSON.parse(reader.result);
+              $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+              $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> ${errorData.error || 'Unknown error occurred'}`);
+              $results.show();
+            } catch (e) {
+              $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+              $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> Invalid response format`);
+              $results.show();
+            }
+          };
+          reader.readAsText(data);
+        }
+      },
+      error: function(xhr, status, error) {
+        $progress.hide();
+        $importBtn.prop('disabled', false);
+        $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+        $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> ${error || 'Request failed'}`);
+        $results.show();
+      }
+    });
+  });
+});
 </script>

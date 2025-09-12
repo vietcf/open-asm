@@ -1,6 +1,34 @@
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
 import serverController from '../controllers/serverController.js';
 import requirePermission from '../middlewares/requirePermission.middleware.js';
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/import/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname);
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  fileFilter: function (req, file, cb) {
+    const allowedTypes = ['.csv', '.xlsx', '.xls'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (allowedTypes.includes(ext)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only CSV and Excel files are allowed'));
+    }
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
+  }
+});
 
 
 const router = express.Router();
@@ -18,6 +46,11 @@ router.get('/server/:id/edit', requirePermission('server.update'), serverControl
 router.post('/server/:id/edit', requirePermission('server.update'), serverController.updateServer);
 // Delete server
 router.delete('/server/:id', requirePermission('server.delete'), serverController.deleteServer);
+// Server import/export
+router.get('/server/template', requirePermission('server.create'), serverController.downloadServerTemplate);
+router.post('/server/validate-import', requirePermission('server.create'), upload.single('file'), serverController.validateImportServers);
+router.post('/server/import', requirePermission('server.create'), upload.single('file'), serverController.importServers);
+router.get('/download/server-validation/:filename', requirePermission('server.read'), serverController.downloadServerValidationFile);
 
 // ====== SERVICE MENU ======
 // List services
