@@ -664,17 +664,6 @@ $(function() {
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body">
-        <div class="alert alert-info">
-          <i class="bi bi-info-circle"></i>
-          <strong>Instructions:</strong>
-          <ol class="mb-0 mt-2">
-            <li>Download the template file using the "Download Template" button above</li>
-            <li>Fill in your server data following the template format</li>
-            <li>Upload the file to validate before importing</li>
-            <li>Only import if all validations pass</li>
-          </ol>
-        </div>
-        
         <form id="importServerForm" enctype="multipart/form-data">
           <div class="mb-3">
             <label for="serverFile" class="form-label">Select File to Import</label>
@@ -699,13 +688,25 @@ $(function() {
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-        <button type="button" class="btn btn-warning" id="validateServerBtn" disabled>
-          <i class="bi bi-check-circle"></i> Validate File
-        </button>
-        <button type="button" class="btn btn-success" id="importServerBtn" disabled>
-          <i class="bi bi-upload"></i> Import Server
-        </button>
+        <div class="alert alert-info mb-3 w-100">
+          <i class="bi bi-info-circle"></i>
+          <strong>Instructions:</strong>
+          <ol class="mb-0 mt-2">
+            <li>Download the template file using the "Download Template" button above</li>
+            <li>Fill in your server data following the template format</li>
+            <li>Upload the file to validate before importing</li>
+            <li>Only import if all validations pass</li>
+          </ol>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-warning" id="validateServerBtn" disabled>
+            <i class="bi bi-check-circle"></i> Validate File
+          </button>
+          <button type="button" class="btn btn-success" id="importServerBtn" disabled style="display: none;">
+            <i class="bi bi-upload"></i> Import Server
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -721,6 +722,7 @@ $(document).ready(function() {
   const $results = $('#importResults');
   const $alert = $('#importAlert');
   const $message = $('#importMessage');
+  let selectedFile = null;
 
   // Reset modal when shown
   $importModal.on('shown.bs.modal', function() {
@@ -734,8 +736,9 @@ $(document).ready(function() {
 
   function resetImportForm() {
     $fileInput.val('');
+    selectedFile = null;
     $validateBtn.prop('disabled', true);
-    $importBtn.prop('disabled', true);
+    $importBtn.prop('disabled', true).hide();
     $progress.hide();
     $results.hide();
     $alert.removeClass('alert-success alert-danger alert-warning');
@@ -743,24 +746,28 @@ $(document).ready(function() {
 
   // Enable validate button when file is selected
   $fileInput.on('change', function() {
-    if (this.files && this.files.length > 0) {
+    const file = this.files[0];
+    if (file) {
+      selectedFile = file;
       $validateBtn.prop('disabled', false);
+      $importBtn.prop('disabled', true).hide();
     } else {
+      selectedFile = null;
       $validateBtn.prop('disabled', true);
+      $importBtn.prop('disabled', true).hide();
     }
-    $importBtn.prop('disabled', true);
     $results.hide();
   });
 
   // Validate file
   $validateBtn.on('click', function() {
-    if (!$fileInput[0].files || !$fileInput[0].files.length) {
+    if (!selectedFile) {
       alert('Please select a file first');
       return;
     }
 
     const formData = new FormData();
-    formData.append('file', $fileInput[0].files[0]);
+    formData.append('file', selectedFile);
 
     $progress.show();
     $results.hide();
@@ -812,27 +819,46 @@ $(document).ready(function() {
             try {
               const summary = JSON.parse(validationSummary);
               if (summary.allPassed) {
-                $alert.removeClass('alert-danger alert-warning').addClass('alert-success');
+                $importBtn.prop('disabled', false).show();
+                $validateBtn.prop('disabled', true);
                 $message.html(`
                   <i class="bi bi-check-circle"></i>
                   <strong>Validation Successful!</strong><br>
                   All ${summary.totalCount} records passed validation. You can now proceed with import.
                 `);
-                $importBtn.prop('disabled', false);
               } else {
-                $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+                $importBtn.prop('disabled', true).hide();
+                $validateBtn.prop('disabled', false);
                 $message.html(`
                   <i class="bi bi-exclamation-triangle"></i>
                   <strong>Validation Failed!</strong><br>
                   ${summary.failCount} out of ${summary.totalCount} records failed validation. 
                   Please check the downloaded validation results and fix the issues before importing.
                 `);
-                $importBtn.prop('disabled', true);
               }
               $results.show();
             } catch (e) {
               console.error('Error parsing validation summary:', e);
+              // Fallback if header parsing fails
+              $importBtn.prop('disabled', false).show();
+              $validateBtn.prop('disabled', true);
+              $message.html(`
+                <i class="bi bi-info-circle"></i>
+                <strong>File validated!</strong><br>
+                Please check the downloaded file - only import if all validations are PASS.
+              `);
+              $results.show();
             }
+          } else {
+            // Fallback if no validation summary header
+            $importBtn.prop('disabled', false).show();
+            $validateBtn.prop('disabled', true);
+            $message.html(`
+              <i class="bi bi-info-circle"></i>
+              <strong>File validated!</strong><br>
+              Please check the downloaded file - only import if all validations are PASS.
+            `);
+            $results.show();
           }
         } else {
           // Handle JSON error response
@@ -855,6 +881,7 @@ $(document).ready(function() {
       error: function(xhr, status, error) {
         $progress.hide();
         $validateBtn.prop('disabled', false);
+        $importBtn.prop('disabled', true).hide();
         $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
         $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> ${error || 'Request failed'}`);
         $results.show();
@@ -864,7 +891,7 @@ $(document).ready(function() {
 
   // Import servers
   $importBtn.on('click', function() {
-    if (!$fileInput[0].files || !$fileInput[0].files.length) {
+    if (!selectedFile) {
       alert('Please select a file first');
       return;
     }
@@ -874,7 +901,7 @@ $(document).ready(function() {
     }
 
     const formData = new FormData();
-    formData.append('file', $fileInput[0].files[0]);
+    formData.append('file', selectedFile);
 
     $progress.show();
     $results.hide();
@@ -931,6 +958,11 @@ $(document).ready(function() {
             </button>
           `);
           $results.show();
+          
+          // Reset form after successful import
+          setTimeout(() => {
+            resetImportForm();
+          }, 2000);
         } else {
           // Handle JSON error response
           const reader = new FileReader();
@@ -952,6 +984,7 @@ $(document).ready(function() {
       error: function(xhr, status, error) {
         $progress.hide();
         $importBtn.prop('disabled', false);
+        $validateBtn.prop('disabled', false);
         $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
         $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> ${error || 'Request failed'}`);
         $results.show();
