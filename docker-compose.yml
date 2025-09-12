@@ -2,7 +2,7 @@
 services:
   app:
     build: .
-    image: openasm_app:2.10
+    image: openasm_app:3.1
     container_name: openasm_app
     restart: always
     expose:
@@ -46,7 +46,7 @@ services:
     networks:
       - openasm_net
   migration:
-    image: openasm_app:2.10
+    image: openasm_app:3.1
     container_name: openasm_migration
     working_dir: /app
     volumes:

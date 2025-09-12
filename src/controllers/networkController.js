@@ -766,7 +766,6 @@ networkController.validateImportIPs = async (req, res) => {
       return res.status(400).json({ error: 'Unsupported file format' });
     }
     
-      console.log('Total rows parsed:', rows.length);
 
     // Validate each row
     const validationResults = [];
@@ -881,9 +880,8 @@ networkController.validateImportIPs = async (req, res) => {
       validationResults.push(result);
     }
     
-    // Create validation results Excel file and zip it
+    // Create validation results Excel file
     try {
-      console.log('Creating validation results Excel file and zip...');
       
       // Tạo file Excel với kết quả validation
       const workbook = new ExcelJS.Workbook();
@@ -941,6 +939,19 @@ networkController.validateImportIPs = async (req, res) => {
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename="${excelFileName}"`);
       res.setHeader('Content-Length', fs.statSync(excelFilePath).size);
+      
+      // Check if all validations passed
+      const allPassed = validationResults.every(result => result.validation_status === 'Pass');
+      const passCount = validationResults.filter(result => result.validation_status === 'Pass').length;
+      const failCount = validationResults.filter(result => result.validation_status === 'Fail').length;
+      
+      // Add validation summary to headers
+      res.setHeader('X-Validation-Summary', JSON.stringify({
+        total: validationResults.length,
+        passed: passCount,
+        failed: failCount,
+        allPassed: allPassed
+      }));
       
       // Send Excel file
       const excelBuffer = fs.readFileSync(excelFilePath);
@@ -1119,7 +1130,6 @@ networkController.importIPs = async (req, res) => {
     
     // Create import results Excel file (same as validation)
     try {
-      console.log('Creating import results Excel file...');
       
       // Tạo file Excel với kết quả import
       const workbook = new ExcelJS.Workbook();
@@ -1171,10 +1181,8 @@ networkController.importIPs = async (req, res) => {
       const excelFilePath = path.join(tempDir, excelFileName);
       await workbook.xlsx.writeFile(excelFilePath);
       
-      console.log('Excel file created:', excelFilePath);
       
       // Send Excel file directly
-      console.log('Sending Excel file directly...');
       
       // Set headers for Excel download
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1330,6 +1338,7 @@ networkController.downloadTemplate = async (req, res) => {
     worksheet.addRow([
       'IPAddress (Require, one per row)',
       'Description',
+      'Status',
       'Tag (comma-separated if multiple)',
       'Contact (Email or Email prefix, comma-separated if multiple)',
       'System Name (comma-separated if multiple)'
@@ -1339,6 +1348,7 @@ networkController.downloadTemplate = async (req, res) => {
     worksheet.addRow([
       '192.168.192.101',
       'MGMT: MGMT Network + Firewall',
+      'active',
       'REST-Test-Tag,PCI-CDE',
       'toannn1.ho,longhv.ho',
       'Test System Minimal,Quản lý công việc'
@@ -1347,6 +1357,7 @@ networkController.downloadTemplate = async (req, res) => {
     worksheet.addRow([
       '192.168.1.103',
       'MGMT: MGMT Network',
+      'reserved',
       'REST-Test-Tag',
       'toannn1.ho',
       ''
@@ -1356,6 +1367,7 @@ networkController.downloadTemplate = async (req, res) => {
     worksheet.columns = [
       { width: 30 },  // IPAddress
       { width: 25 },  // Description
+      { width: 15 },  // Status
       { width: 25 },  // Tag
       { width: 30 },  // Contact
       { width: 25 }   // System Name
@@ -1368,12 +1380,9 @@ networkController.downloadTemplate = async (req, res) => {
     }
     const tempPath = path.join(uploadsDir, 'temp_template.xlsx');
     await workbook.xlsx.writeFile(tempPath);
-    console.log('Template file written to:', tempPath);
-    
     // Check if file exists and get size
     if (fs.existsSync(tempPath)) {
       const stats = fs.statSync(tempPath);
-      console.log('Template file size:', stats.size, 'bytes');
       
       // Use res.download() for proper file download handling
       res.download(tempPath, 'ipaddress_list_template.xlsx', (err) => {
@@ -1383,7 +1392,6 @@ networkController.downloadTemplate = async (req, res) => {
             res.status(500).json({ error: 'Error downloading template file' });
           }
         } else {
-          console.log('Template file downloaded successfully');
         }
       });
     } else {
