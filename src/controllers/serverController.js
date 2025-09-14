@@ -823,10 +823,12 @@ serverController.validateImportServers = async (req, res) => {
 
     // Parse file based on extension
     const ext = path.extname(originalFileName).toLowerCase();
+    let headers = [];
+    
     if (ext === '.csv') {
       const csvContent = fs.readFileSync(filePath, 'utf8');
       const lines = csvContent.split('\n').filter(line => line.trim());
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
       
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
@@ -846,7 +848,7 @@ serverController.validateImportServers = async (req, res) => {
         return res.status(400).json({ error: 'File must contain at least a header row and one data row' });
       }
       
-      const headers = jsonData[0];
+      headers = jsonData[0];
       for (let i = 1; i < jsonData.length; i++) {
         const row = {};
         headers.forEach((header, index) => {
@@ -856,6 +858,51 @@ serverController.validateImportServers = async (req, res) => {
       }
     } else {
       return res.status(400).json({ error: 'Unsupported file format' });
+    }
+
+    // Validate file format - check required columns
+    const requiredColumns = [
+      'Name (Optional - auto-generated if empty)',
+      'IPAddress (Require, comma-separated if multiple)',
+      'OS',
+      'Status',
+      'Location',
+      'Manager (comma-separated if multiple)',
+      'System (comma-separated if multiple)',
+      'Agent (comma-separated if multiple)',
+      'Service (comma-separated if multiple)',
+      'Tag (comma-separated if multiple)',
+      'Description'
+    ];
+
+    // Check for missing columns
+    const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+    if (missingColumns.length > 0) {
+      return res.status(400).json({ 
+        error: 'File format validation failed',
+        details: {
+          missingColumns: missingColumns,
+          message: `Missing required columns: ${missingColumns.join(', ')}`
+        }
+      });
+    }
+
+    // Check for extra columns
+    const extraColumns = headers.filter(col => !requiredColumns.includes(col));
+    if (extraColumns.length > 0) {
+      return res.status(400).json({ 
+        error: 'File format validation failed',
+        details: {
+          extraColumns: extraColumns,
+          message: `Extra columns found: ${extraColumns.join(', ')}. Please use the correct template.`
+        }
+      });
+    }
+
+    // Check column order (optional - can be flexible)
+    const columnOrderMismatch = requiredColumns.some((col, index) => headers[index] !== col);
+    if (columnOrderMismatch) {
+      console.warn('Column order mismatch detected, but continuing with validation...');
     }
 
     // Get valid options from database
@@ -1016,6 +1063,43 @@ serverController.validateImportServers = async (req, res) => {
         }
       }
 
+      // Check if server already exists (by name or IP)
+      if (result.validation_status === 'PASS') {
+        let serverExists = false;
+        let existingServerInfo = '';
+
+        // Check by server name if provided
+        if (result.name && result.name.trim() !== '') {
+          const existingByName = await Server.findByName(result.name.trim());
+          if (existingByName) {
+            serverExists = true;
+            existingServerInfo = `Server with name "${result.name}" already exists (ID: ${existingByName.id})`;
+          }
+        }
+
+        // Check by IP addresses if server name check passed
+        if (!serverExists && result.ip_addresses) {
+          const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
+          for (const ip of ipList) {
+            // First check if IP exists and its status
+            const ipRecord = await IpAddress.findByAddress(ip);
+            if (ipRecord) {
+              // If IP exists and is assigned, always fail
+              if (ipRecord.status === 'assigned') {
+                serverExists = true;
+                existingServerInfo = `IP "${ip}" is already assigned - server/device already exists`;
+                break;
+              }
+            }
+          }
+        }
+
+        if (serverExists) {
+          result.validation_status = 'FAIL';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + existingServerInfo;
+        }
+      }
+
       validationResults.push(result);
     }
 
@@ -1068,10 +1152,10 @@ serverController.validateImportServers = async (req, res) => {
 
       // Color code validation status
       if (result.validation_status === 'FAIL') {
-        row.getCell('Validation Status').font = { color: { argb: 'FFFF0000' } };
-        row.getCell('Validation Reason').font = { color: { argb: 'FFFF0000' } };
+        row.getCell(12).font = { color: { argb: 'FFFF0000' } }; // Validation Status column
+        row.getCell(13).font = { color: { argb: 'FFFF0000' } }; // Validation Reason column
       } else {
-        row.getCell('Validation Status').font = { color: { argb: 'FF008000' } };
+        row.getCell(12).font = { color: { argb: 'FF008000' } }; // Validation Status column
       }
     });
 
@@ -1101,13 +1185,22 @@ serverController.validateImportServers = async (req, res) => {
     const timestamp = Date.now();
     const excelFileName = `${timestamp}_${originalFileName}_validation.xlsx`;
     const excelFilePath = path.join(tempDir, excelFileName);
-    await workbook.xlsx.writeFile(excelFilePath);
-
+    await workbook.xlsx.writeFile(excelFilePath);    // Calculate validation summary
+    const allPassed = validationResults.every(result => result.validation_status === 'PASS');
+    const passCount = validationResults.filter(result => result.validation_status === 'PASS').length;
+    const failCount = validationResults.filter(result => result.validation_status === 'FAIL').length;
+    
     // Send Excel file directly
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${excelFileName}"`);
     res.setHeader('Content-Length', fs.statSync(excelFilePath).size);
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('X-Validation-Summary', JSON.stringify({
+      allPassed,
+      passCount,
+      failCount,
+      totalCount: validationResults.length
+    }));
 
     const fileBuffer = fs.readFileSync(excelFilePath);
     res.send(fileBuffer);
@@ -1121,18 +1214,6 @@ serverController.validateImportServers = async (req, res) => {
         fs.unlinkSync(excelFilePath);
       }
     }, 1000);
-
-    // Calculate validation summary
-    const allPassed = validationResults.every(result => result.validation_status === 'PASS');
-    const passCount = validationResults.filter(result => result.validation_status === 'PASS').length;
-    const failCount = validationResults.filter(result => result.validation_status === 'FAIL').length;
-    
-    res.setHeader('X-Validation-Summary', JSON.stringify({
-      allPassed,
-      passCount,
-      failCount,
-      totalCount: validationResults.length
-    }));
 
   } catch (err) {
     console.error('Error validating server import file:', err);
@@ -1156,10 +1237,12 @@ serverController.importServers = async (req, res) => {
 
     // Parse file (same logic as validation)
     const ext = path.extname(originalFileName).toLowerCase();
+    let headers = [];
+    
     if (ext === '.csv') {
       const csvContent = fs.readFileSync(filePath, 'utf8');
       const lines = csvContent.split('\n').filter(line => line.trim());
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
       
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
@@ -1179,7 +1262,7 @@ serverController.importServers = async (req, res) => {
         return res.status(400).json({ error: 'File must contain at least a header row and one data row' });
       }
       
-      const headers = jsonData[0];
+      headers = jsonData[0];
       for (let i = 1; i < jsonData.length; i++) {
         const row = {};
         headers.forEach((header, index) => {
@@ -1189,6 +1272,45 @@ serverController.importServers = async (req, res) => {
       }
     } else {
       return res.status(400).json({ error: 'Unsupported file format' });
+    }
+
+    // Validate file format - check required columns
+    const requiredColumns = [
+      'Name (Optional - auto-generated if empty)',
+      'IPAddress (Require, comma-separated if multiple)',
+      'OS',
+      'Status',
+      'Location',
+      'Manager (comma-separated if multiple)',
+      'System (comma-separated if multiple)',
+      'Agent (comma-separated if multiple)',
+      'Service (comma-separated if multiple)',
+      'Tag (comma-separated if multiple)',
+      'Description'
+    ];
+
+    // Check for missing columns
+    const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+    if (missingColumns.length > 0) {
+      return res.status(400).json({ 
+        error: 'File format validation failed',
+        details: {
+          missingColumns: missingColumns,
+          message: `Missing required columns: ${missingColumns.join(', ')}`
+        }
+      });
+    }
+
+    // Check for extra columns
+    const extraColumns = headers.filter(col => !requiredColumns.includes(col));
+    if (extraColumns.length > 0) {
+      return res.status(400).json({ 
+        error: 'File format validation failed',
+        details: {
+          extraColumns: extraColumns,
+          message: `Extra columns found: ${extraColumns.join(', ')}. Please use the correct template.`
+        }
+      });
     }
 
     await client.query('BEGIN');
@@ -1254,12 +1376,9 @@ serverController.importServers = async (req, res) => {
             
             // Get platform name and replace spaces with dashes
             let platformName = '';
-            if (result.os) {
-              // Get platform name from OS ID
-              const platform = await Platform.findById(result.os);
-              if (platform) {
-                platformName = platform.name.replace(/\s+/g, '-').toLowerCase();
-              }
+            if (result.os && result.os.trim() !== '') {
+              // Use OS string directly
+              platformName = result.os.trim().replace(/\s+/g, '-').toLowerCase();
             }
             
             // Generate server name: server_<platform>_<first-ip>
@@ -1270,10 +1389,19 @@ serverController.importServers = async (req, res) => {
             }
           }
           
+          // Convert OS string to ID
+          let osId = null;
+          if (result.os && result.os.trim() !== '') {
+            const platforms = await Platform.findByNameExact(result.os.trim());
+            if (platforms && platforms.length > 0) {
+              osId = platforms[0].id;
+            }
+          }
+
           // Create server
           const serverId = await Server.create({
             name: serverName,
-            os: result.os || null,
+            os: osId,
             status: result.status || null,
             location: result.location || null,
             type: null,
@@ -1286,45 +1414,135 @@ serverController.importServers = async (req, res) => {
         if (result.ip_addresses) {
           const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
           const ipIds = [];
+          
+          // Create detailed description for IP
+          const ipDescription = [
+            `Note: This IP address was automatically created from server import feature`,
+            `Server: ${serverName}`,
+            `OS: ${result.os || 'N/A'}`,
+            `Status: ${result.status || 'N/A'}`,
+            `Location: ${result.location || 'N/A'}`,
+            `Manager: ${result.manager || 'N/A'}`,
+            `System: ${result.system || 'N/A'}`,
+            `Agent: ${result.agent || 'N/A'}`,
+            `Service: ${result.service || 'N/A'}`,
+            `Tag: ${result.tag || 'N/A'}`,
+            `Description: ${result.description || 'N/A'}`
+          ].join('\n');
+          
           for (const ip of ipList) {
-            const ipRecord = await IpAddress.findByAddress(ip);
-            if (ipRecord) {
-              ipIds.push(ipRecord.id);
+            let ipRecord = await IpAddress.findByAddress(ip);
+            
+            if (!ipRecord) {
+              // Create new IP address if not exists
+              ipRecord = await IpAddress.create({
+                address: ip,
+                description: ipDescription,
+                status: 'assigned',
+                updated_by: username
+              }, client);
             }
+            
+            ipIds.push(ipRecord.id);
           }
+          
           if (ipIds.length > 0) {
             await Server.setIpAddresses(serverId, ipIds, client);
+            
+            // Set contacts for IP addresses (if managers exist)
+            if (result.manager) {
+              const managerList = result.manager.split(',').map(m => m.trim()).filter(m => m);
+              const managerIds = [];
+              for (const managerEmail of managerList) {
+                const existingContacts = await Contact.findByEmailSearch(managerEmail);
+                if (existingContacts && existingContacts.length > 0) {
+                  managerIds.push(existingContacts[0].id);
+                }
+              }
+              
+              // Set contacts for each IP
+              for (const ipId of ipIds) {
+                if (managerIds.length > 0) {
+                  await IpAddress.setContacts(ipId, managerIds, client);
+                }
+              }
+            }
           }
         }
 
         // Set managers
         if (result.manager) {
           const managerList = result.manager.split(',').map(m => m.trim()).filter(m => m);
-          await Server.setManagers(serverId, managerList, client);
+          const managerIds = [];
+          for (const managerEmail of managerList) {
+            const existingContacts = await Contact.findByEmailSearch(managerEmail);
+            if (existingContacts && existingContacts.length > 0) {
+              managerIds.push(existingContacts[0].id);
+            }
+          }
+          if (managerIds.length > 0) {
+            await Server.setManagers(serverId, managerIds, client);
+          }
         }
 
         // Set systems
         if (result.system) {
           const systemList = result.system.split(',').map(s => s.trim()).filter(s => s);
-          await Server.setSystems(serverId, systemList, client);
+          const systemIds = [];
+          for (const systemName of systemList) {
+            const existingSystems = await System.findByNameExact(systemName);
+            if (existingSystems && existingSystems.length > 0) {
+              systemIds.push(existingSystems[0].id);
+            }
+          }
+          if (systemIds.length > 0) {
+            await Server.setSystems(serverId, systemIds, client);
+          }
         }
 
         // Set agents
         if (result.agent) {
           const agentList = result.agent.split(',').map(a => a.trim()).filter(a => a);
-          await Server.setAgents(serverId, agentList, client);
+          const agentIds = [];
+          for (const agentName of agentList) {
+            const existingAgents = await Agent.findByNameExact(agentName);
+            if (existingAgents && existingAgents.length > 0) {
+              agentIds.push(existingAgents[0].id);
+            }
+          }
+          if (agentIds.length > 0) {
+            await Server.setAgents(serverId, agentIds, client);
+          }
         }
 
         // Set services
         if (result.service) {
           const serviceList = result.service.split(',').map(s => s.trim()).filter(s => s);
-          await Server.setServices(serverId, serviceList, client);
+          const serviceIds = [];
+          for (const serviceName of serviceList) {
+            const existingServices = await Service.findByNameExact(serviceName);
+            if (existingServices && existingServices.length > 0) {
+              serviceIds.push(existingServices[0].id);
+            }
+          }
+          if (serviceIds.length > 0) {
+            await Server.setServices(serverId, serviceIds, client);
+          }
         }
 
         // Set tags
         if (result.tag) {
           const tagList = result.tag.split(',').map(t => t.trim()).filter(t => t);
-          await Server.setTags(serverId, tagList, client);
+          const tagIds = [];
+          for (const tagName of tagList) {
+            const existingTags = await Tag.findByNameExact(tagName);
+            if (existingTags && existingTags.length > 0) {
+              tagIds.push(existingTags[0].id);
+            }
+          }
+          if (tagIds.length > 0) {
+            await Server.setTags(serverId, tagIds, client);
+          }
         }
         } // End of else block for server creation
 
@@ -1387,10 +1605,10 @@ serverController.importServers = async (req, res) => {
 
       // Color code import status
       if (result.import_status === 'FAILED') {
-        row.getCell('Import Status').font = { color: { argb: 'FFFF0000' } };
-        row.getCell('Import Reason').font = { color: { argb: 'FFFF0000' } };
+        row.getCell(12).font = { color: { argb: 'FFFF0000' } }; // Import Status column
+        row.getCell(13).font = { color: { argb: 'FFFF0000' } }; // Import Reason column
       } else {
-        row.getCell('Import Status').font = { color: { argb: 'FF008000' } };
+        row.getCell(12).font = { color: { argb: 'FF008000' } }; // Import Status column
       }
     });
 

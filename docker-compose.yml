@@ -49,10 +49,6 @@ services:
     image: openasm_app:3.1
     container_name: openasm_migration
     working_dir: /app
-    volumes:
-      - ./:/app
-      - ./.env.docker:/app/.env:ro
-      - ./wait-for-it.sh:/app/wait-for-it.sh:ro
     depends_on:
       - db
     environment:

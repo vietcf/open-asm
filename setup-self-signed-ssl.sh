@@ -14,8 +14,8 @@ chmod 600 ./ssl/nginx-selfsigned.key
 chmod 644 ./ssl/nginx-selfsigned.crt
 
 echo "✅ Self-signed certificate created successfully!"
-echo "📁 Certificate: /etc/ssl/certs/nginx-selfsigned.crt"
-echo "🔑 Private key: /etc/ssl/private/nginx-selfsigned.key"
+echo "📁 Certificate: ./ssl/nginx-selfsigned.crt"
+echo "🔑 Private key: ./ssl/nginx-selfsigned.key"
 echo ""
 echo "⚠️  Note: This is a self-signed certificate."
 echo "   Browsers will show security warnings."

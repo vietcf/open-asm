@@ -77,38 +77,48 @@ class Server {
   static async setManagers(serverId, managerList, client) {
     await client.query('DELETE FROM server_contact WHERE server_id = $1', [serverId]);
     for (const contactId of managerList) {
-      await client.query('INSERT INTO server_contact (server_id, contact_id) VALUES ($1, $2)', [serverId, contactId]);
+      if (contactId && !isNaN(Number(contactId)) && Number(contactId) > 0) {
+        await client.query('INSERT INTO server_contact (server_id, contact_id) VALUES ($1, $2)', [serverId, contactId]);
+      }
     }
   }
 
   static async setSystems(serverId, systemList, client) {
     await client.query('DELETE FROM server_system WHERE server_id = $1', [serverId]);
     for (const systemId of systemList) {
-      await client.query('INSERT INTO server_system (server_id, system_id) VALUES ($1, $2)', [serverId, systemId]);
+      if (systemId && !isNaN(Number(systemId)) && Number(systemId) > 0) {
+        await client.query('INSERT INTO server_system (server_id, system_id) VALUES ($1, $2)', [serverId, systemId]);
+      }
     }
   }
 
   static async setAgents(serverId, agentList, client) {
     await client.query('DELETE FROM server_agents WHERE server_id = $1', [serverId]);
     for (const agentId of agentList) {
-      await client.query('INSERT INTO server_agents (server_id, agent_id) VALUES ($1, $2)', [serverId, agentId]);
+      if (agentId && !isNaN(Number(agentId)) && Number(agentId) > 0) {
+        await client.query('INSERT INTO server_agents (server_id, agent_id) VALUES ($1, $2)', [serverId, agentId]);
+      }
     }
   }
 
   static async setServices(serverId, serviceList, client) {
     await client.query('DELETE FROM server_services WHERE server_id = $1', [serverId]);
     for (const serviceId of serviceList) {
-      await client.query('INSERT INTO server_services (server_id, service_id) VALUES ($1, $2)', [serverId, serviceId]);
+      if (serviceId && !isNaN(Number(serviceId)) && Number(serviceId) > 0) {
+        await client.query('INSERT INTO server_services (server_id, service_id) VALUES ($1, $2)', [serverId, serviceId]);
+      }
     }
   }
 
   static async setTags(serverId, tagList, client) {
     await client.query('DELETE FROM tag_object WHERE object_type = $1 AND object_id = $2', ['server', serverId]);
     for (const tagId of tagList) {
-      await client.query(
-        "INSERT INTO tag_object (tag_id, object_type, object_id) VALUES ($1, 'server', $2) ON CONFLICT DO NOTHING",
-        [tagId, serverId]
-      );
+      if (tagId && !isNaN(Number(tagId)) && Number(tagId) > 0) {
+        await client.query(
+          "INSERT INTO tag_object (tag_id, object_type, object_id) VALUES ($1, 'server', $2) ON CONFLICT DO NOTHING",
+          [tagId, serverId]
+        );
+      }
     }
   }
 
@@ -493,6 +503,16 @@ class Server {
 
   static async findByName(name) {
     const res = await pool.query('SELECT id, name FROM servers WHERE LOWER(name) = LOWER($1)', [name]);
+    return res.rows[0] || null;
+  }
+
+  static async findByIPAddress(ipAddress) {
+    const res = await pool.query(`
+      SELECT DISTINCT s.id, s.name 
+      FROM servers s 
+      INNER JOIN ip_addresses ip ON ip.server_id = s.id 
+      WHERE ip.ip_address = $1
+    `, [ipAddress]);
     return res.rows[0] || null;
   }
 

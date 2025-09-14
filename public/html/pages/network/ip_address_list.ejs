@@ -1010,11 +1010,7 @@
         }
         
         // Reset form and close modal
-        $('#importFile').val('');
-        selectedFile = null;
-        $('#validateImportBtn').prop('disabled', true);
-        $('#importBtn').prop('disabled', true).hide();
-        $('#importProgress').hide();
+        resetImportIpForm();
         
         // Close modal and reload page
         $('#importIpModal').modal('hide');
@@ -1033,25 +1029,33 @@
     });
   });
   
+  // Reset form when modal is shown
+  $(document).on('show.bs.modal', '#importIpModal', function() {
+    resetImportIpForm();
+  });
+  
+  // Also reset when modal is shown
+  $(document).on('shown.bs.modal', '#importIpModal', function() {
+    resetImportIpForm();
+  });
+  
   // Reset form when modal is closed
   $(document).on('hidden.bs.modal', '#importIpModal', function() {
+    resetImportIpForm();
+  });
+  
+  function resetImportIpForm() {
+    // Clear file input completely
     $('#importFile').val('');
+    $('#importFile')[0].value = '';
     selectedFile = null;
     $('#validateImportBtn').prop('disabled', true);
     $('#importBtn').prop('disabled', true).hide();
     $('#importProgress').hide();
-  });
-  
-  // Check file when modal is shown
-  $(document).on('shown.bs.modal', '#importIpModal', function() {
-    console.log('Import modal shown');
-    const file = $('#importFile')[0].files[0];
-    if (file) {
-      selectedFile = file;
-      $('#validateImportBtn').prop('disabled', false);
-      console.log('File already selected, enabling validate button');
-    }
-  });
+    
+    // Reset form completely
+    $('#importIpModal form')[0].reset();
+  }
 </script>
 <script>
   // Tự động bật modal Add IP nếu có ?add=1 trên URL

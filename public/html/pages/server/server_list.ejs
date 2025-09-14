@@ -725,6 +725,11 @@ $(document).ready(function() {
   let selectedFile = null;
 
   // Reset modal when shown
+  $importModal.on('show.bs.modal', function() {
+    resetImportForm();
+  });
+  
+  // Also reset when modal is shown
   $importModal.on('shown.bs.modal', function() {
     resetImportForm();
   });
@@ -735,13 +740,18 @@ $(document).ready(function() {
   });
 
   function resetImportForm() {
+    // Clear file input completely
     $fileInput.val('');
+    $fileInput[0].value = '';
     selectedFile = null;
     $validateBtn.prop('disabled', true);
     $importBtn.prop('disabled', true).hide();
     $progress.hide();
     $results.hide();
     $alert.removeClass('alert-success alert-danger alert-warning');
+    
+    // Reset form completely
+    $('#importServerForm')[0].reset();
   }
 
   // Enable validate button when file is selected
