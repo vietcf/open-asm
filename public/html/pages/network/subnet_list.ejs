@@ -44,6 +44,26 @@
                   <textarea class="form-control" id="subnetDescription" name="description" placeholder="Description" rows="4"></textarea>
                 </div>
                 <div class="mb-3">
+                  <label for="subnetZone" class="form-label">Zone</label>
+                  <select class="form-control" id="subnetZone" name="zone" data-allow-custom="true">
+                    <% if (typeof uniqueZones !== 'undefined' && uniqueZones.length > 0) { %>
+                      <% uniqueZones.forEach(function(zone) { %>
+                        <option value="<%= zone %>"><%= zone %></option>
+                      <% }); %>
+                    <% } %>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label for="subnetEnvironment" class="form-label">Environment</label>
+                  <select class="form-control" id="subnetEnvironment" name="environment" data-allow-custom="true">
+                    <% if (typeof uniqueEnvironments !== 'undefined' && uniqueEnvironments.length > 0) { %>
+                      <% uniqueEnvironments.forEach(function(environment) { %>
+                        <option value="<%= environment %>"><%= environment %></option>
+                      <% }); %>
+                    <% } %>
+                  </select>
+                </div>
+                <div class="mb-3">
                   <label for="addSubnetTags" class="form-label">Tags</label>
                   <select id="addSubnetTags" name="tags[]" class="form-control" multiple></select>
                 </div>
@@ -86,6 +106,28 @@
                     <label class="form-label">Tags</label>
                     <select id="filterSubnetTags" name="tags[]" class="form-control" multiple></select>
                   </div>
+                  <div class="col-6 mb-2">
+                    <label class="form-label">Zone</label>
+                    <select class="form-control" id="filterSubnetZone" name="zone">
+                      <option value="">All Zones</option>
+                      <% if (typeof uniqueZones !== 'undefined' && uniqueZones.length > 0) { %>
+                        <% uniqueZones.forEach(function(zone) { %>
+                          <option value="<%= zone %>" <%= typeof filterZone !== 'undefined' && filterZone === zone ? 'selected' : '' %>><%= zone %></option>
+                        <% }); %>
+                      <% } %>
+                    </select>
+                  </div>
+                  <div class="col-6 mb-2">
+                    <label class="form-label">Environment</label>
+                    <select class="form-control" id="filterSubnetEnvironment" name="environment">
+                      <option value="">All Environments</option>
+                      <% if (typeof uniqueEnvironments !== 'undefined' && uniqueEnvironments.length > 0) { %>
+                        <% uniqueEnvironments.forEach(function(environment) { %>
+                          <option value="<%= environment %>" <%= typeof filterEnvironment !== 'undefined' && filterEnvironment === environment ? 'selected' : '' %>><%= environment %></option>
+                        <% }); %>
+                      <% } %>
+                    </select>
+                  </div>
                 </div>
               </div>
               <div class="modal-footer d-flex justify-content-between">
@@ -126,6 +168,7 @@
                       <li>Download the template first to see the required format</li>
                       <li>Subnet Address is required and must be in CIDR format (e.g., 192.168.1.0/24)</li>
                       <li>Description is optional</li>
+                      <li>Zone and Environment are optional</li>
                       <li>Tags are optional and can be comma-separated if multiple</li>
                       <li>Validate the file first before importing</li>
                     </ul>
@@ -164,6 +207,8 @@
                 <th>No.</th>
                 <th>Subnet Address</th>
                 <th>Description</th>
+                <th>Zone</th>
+                <th>Environment</th>
                 <th>Tags</th>
                 <th class="text-end">Actions</th>
               </tr>
@@ -179,6 +224,20 @@
                       <span title="<%= subnet.description.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
                         <%= subnet.description.length > 60 ? subnet.description.substring(0, 60) + '…' : subnet.description %>
                       </span>
+                    <% } else { %>
+                      <span class="text-muted">-</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (subnet.zone && subnet.zone.trim()) { %>
+                      <span class="badge bg-info text-white"><%= subnet.zone %></span>
+                    <% } else { %>
+                      <span class="text-muted">-</span>
+                    <% } %>
+                  </td>
+                  <td>
+                    <% if (subnet.environment && subnet.environment.trim()) { %>
+                      <span class="badge bg-success text-white"><%= subnet.environment %></span>
                     <% } else { %>
                       <span class="text-muted">-</span>
                     <% } %>
@@ -290,6 +349,22 @@
                           <div class="mb-3">
                             <label for="editSubnetDescription-<%= subnet.id %>" class="form-label">Description</label>
                             <textarea class="form-control" id="editSubnetDescription-<%= subnet.id %>" name="description" rows="4"><%= subnet.description || '' %></textarea>
+                          </div>
+                          <div class="mb-3">
+                            <label for="editSubnetZone-<%= subnet.id %>" class="form-label">Zone</label>
+                            <select class="form-control" id="editSubnetZone-<%= subnet.id %>" name="zone" data-allow-custom="true">
+                              <% if (subnet.zone) { %>
+                                <option value="<%= subnet.zone %>" selected><%= subnet.zone %></option>
+                              <% } %>
+                            </select>
+                          </div>
+                          <div class="mb-3">
+                            <label for="editSubnetEnvironment-<%= subnet.id %>" class="form-label">Environment</label>
+                            <select class="form-control" id="editSubnetEnvironment-<%= subnet.id %>" name="environment" data-allow-custom="true">
+                              <% if (subnet.environment) { %>
+                                <option value="<%= subnet.environment %>" selected><%= subnet.environment %></option>
+                              <% } %>
+                            </select>
                           </div>
                           <div class="mb-3">
                             <label for="editSubnetTags-<%= subnet.id %>" class="form-label">Tags</label>
@@ -709,6 +784,9 @@ function showToast(msg, type) {
     $('#clearFilterBtnSubnet').on('click', function() {
       // Clear all select2 values
       $('#filterSubnetTags').val(null).trigger('change');
+      // Clear Zone and Environment filters
+      $('#filterSubnetZone').val('');
+      $('#filterSubnetEnvironment').val('');
       // Close modal
       $filterModal.modal('hide');
       // Redirect to clean URL but preserve pageSize and search
@@ -1047,5 +1125,93 @@ $(document).ready(function() {
       }
     });
   });
+
+  // Initialize Select2 for Zone and Environment (like Manufacturer)
+  $('#subnetZone').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select or type zone',
+    allowClear: true,
+    width: '100%',
+    multiple: false,
+    tags: true, // Allow custom values
+    createTag: function(params) {
+      var term = $.trim(params.term);
+      if (term === '') {
+        return null;
+      }
+      return {
+        id: term,
+        text: term,
+        newTag: true
+      };
+    }
+  });
+
+  $('#subnetEnvironment').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select or type environment',
+    allowClear: true,
+    width: '100%',
+    multiple: false,
+    tags: true, // Allow custom values
+    createTag: function(params) {
+      var term = $.trim(params.term);
+      if (term === '') {
+        return null;
+      }
+      return {
+        id: term,
+        text: term,
+        newTag: true
+      };
+    }
+  });
+
+  // Initialize for edit forms (dynamic)
+  $(document).on('shown.bs.modal', 'div[id^="subnetEditModal-"]', function() {
+    const subnetId = $(this).attr('id').replace('subnetEditModal-', '');
+    const zoneSelectId = '#editSubnetZone-' + subnetId;
+    const envSelectId = '#editSubnetEnvironment-' + subnetId;
+    
+    // Destroy existing Select2 if any
+    if ($(zoneSelectId).hasClass('select2-hidden-accessible')) {
+      $(zoneSelectId).select2('destroy');
+    }
+    if ($(envSelectId).hasClass('select2-hidden-accessible')) {
+      $(envSelectId).select2('destroy');
+    }
+    
+    // Initialize Select2
+    setTimeout(function() {
+      $(zoneSelectId).select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Select or type zone',
+        allowClear: true,
+        width: '100%',
+        multiple: false,
+        tags: true,
+        createTag: function(params) {
+          var term = $.trim(params.term);
+          if (term === '') return null;
+          return { id: term, text: term, newTag: true };
+        }
+      });
+
+      $(envSelectId).select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Select or type environment',
+        allowClear: true,
+        width: '100%',
+        multiple: false,
+        tags: true,
+        createTag: function(params) {
+          var term = $.trim(params.term);
+          if (term === '') return null;
+          return { id: term, text: term, newTag: true };
+        }
+      });
+    }, 100);
+  });
+
 });
 </script>

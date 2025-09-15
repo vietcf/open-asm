@@ -199,6 +199,33 @@ networkController.updateIP = async (req, res) => {
     tags = tags ? (Array.isArray(tags) ? tags : [tags]) : [];
     contacts = contacts ? (Array.isArray(contacts) ? contacts : [contacts]) : [];
     systems = systems ? (Array.isArray(systems) ? systems : [systems]) : [];
+    
+    // Validate contact IDs if provided
+    if (contacts && contacts.length > 0) {
+      const invalidContacts = [];
+      for (const cid of contacts) {
+        if (!(await Contact.exists(cid))) invalidContacts.push(cid);
+      }
+      if (invalidContacts.length > 0) {
+        req.flash('error', 'Invalid contact IDs: ' + invalidContacts.join(', '));
+        await client.query('ROLLBACK');
+        return res.redirect(`/network/ip-address?page=${page || 1}`);
+      }
+    }
+    
+    // Validate system IDs if provided
+    if (systems && systems.length > 0) {
+      const invalidSystems = [];
+      for (const sid of systems) {
+        if (!(await System.exists(sid))) invalidSystems.push(sid);
+      }
+      if (invalidSystems.length > 0) {
+        req.flash('error', 'Invalid system IDs: ' + invalidSystems.join(', '));
+        await client.query('ROLLBACK');
+        return res.redirect(`/network/ip-address?page=${page || 1}`);
+      }
+    }
+    
     const updated_by = req.session.user?.username || '';
     // Update IP address record (all within transaction)
     // @ts-ignore - client parameter is supported by model methods
@@ -268,12 +295,14 @@ networkController.listSubnet = async (req, res) => {
     // Lấy filter từ query
     let filterTags = req.query['tags[]'] || req.query.tags || [];
     filterTags = normalizeArray(filterTags).filter(x => x !== '');
+    const filterZone = req.query.zone ? req.query.zone.trim() : '';
+    const filterEnvironment = req.query.environment ? req.query.environment.trim() : '';
 
     let subnetList = [], totalCount = 0, totalPages = 1;
-    if (search || filterTags.length > 0) {
-      totalCount = await Subnet.countFiltered({ search, tags: filterTags });
+    if (search || filterTags.length > 0 || filterZone || filterEnvironment) {
+      totalCount = await Subnet.countFiltered({ search, tags: filterTags, zone: filterZone, environment: filterEnvironment });
       totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-      subnetList = await Subnet.findFilteredList({ search, tags: filterTags, page, pageSize });
+      subnetList = await Subnet.findFilteredList({ search, tags: filterTags, zone: filterZone, environment: filterEnvironment, page, pageSize });
     } else {
       totalCount = await Subnet.countAll();
       totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
@@ -281,6 +310,11 @@ networkController.listSubnet = async (req, res) => {
     }
     // Xây dựng cây subnet để hiển thị dạng cha-con
     const subnetTree = Subnet.buildSubnetTree(subnetList);
+    
+    // Lấy danh sách unique zones và environments cho filter
+    const uniqueZones = await Subnet.getUniqueZones();
+    const uniqueEnvironments = await Subnet.getUniqueEnvironments();
+    
     const success = req.flash('success')[0];
     const error = req.flash('error')[0];
     res.render('pages/network/subnet_list', {
@@ -292,6 +326,10 @@ networkController.listSubnet = async (req, res) => {
       totalCount,
       search,
       filterTags,
+      filterZone,
+      filterEnvironment,
+      uniqueZones,
+      uniqueEnvironments,
       success,
       error,
       // allowedPageSizes không cần truyền, đã có global
@@ -309,7 +347,7 @@ networkController.createSubnet = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    let { address, description, page, tags } = req.body;
+    let { address, description, zone, environment, page, tags } = req.body;
     tags = tags ? (Array.isArray(tags) ? tags : [tags]) : [];
     if (!address || !/\d{1,3}(\.\d{1,3}){3}\/\d{1,2}$/.test(address)) {
       req.flash('error', 'Invalid subnet address format. Please enter a valid subnet, e.g. 192.168.1.0/24');
@@ -319,7 +357,7 @@ networkController.createSubnet = async (req, res) => {
     const updated_by = req.session.user?.username || '';
     // Create subnet without tags
     // @ts-ignore - client parameter is supported by model methods
-    const newSubnet = await Subnet.create({ address, description, updated_by }, client);
+    const newSubnet = await Subnet.create({ address, description, zone, environment, updated_by }, client);
     // Assign tags using setTags method
     // @ts-ignore - client parameter is supported by model methods
     await Subnet.setTags(newSubnet.id, tags, client);
@@ -344,12 +382,14 @@ networkController.updateSubnet = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    let { description, page, tags } = req.body;
+    let { description, zone, environment, page, tags } = req.body;
     tags = tags ? (Array.isArray(tags) ? tags : [tags]) : [];
     description = description || '';
+    zone = zone || '';
+    environment = environment || '';
     const updated_by = req.session.user?.username || '';
     // @ts-ignore - client parameter is supported by model methods
-    await Subnet.update(req.params.id, { description, updated_by }, client);
+    await Subnet.update(req.params.id, { description, zone, environment, updated_by }, client);
     // @ts-ignore - client parameter is supported by model methods
     await Subnet.setTags(req.params.id, tags, client);
     await client.query('COMMIT');
@@ -1493,6 +1533,8 @@ networkController.downloadSubnetTemplate = async (req, res) => {
     worksheet.addRow([
       'Subnet Address (Require)',
       'Description',
+      'Zone',
+      'Environment',
       'Tag (comma-separated if multiple)'
     ]);
     
@@ -1500,12 +1542,16 @@ networkController.downloadSubnetTemplate = async (req, res) => {
     worksheet.addRow([
       '192.168.1.0/24',
       'Office Network',
+      'Production',
+      'Internal',
       'Network,Office'
     ]);
     
     worksheet.addRow([
       '10.0.0.0/8',
       'Private Network',
+      'Development',
+      'External',
       'Network,Private'
     ]);
     
@@ -1513,7 +1559,9 @@ networkController.downloadSubnetTemplate = async (req, res) => {
     worksheet.columns = [
       { width: 25 },  // Subnet Address
       { width: 30 },  // Description
-      { width: 25 }   // Tag
+      { width: 20 },  // Zone
+      { width: 20 },  // Environment
+      { width: 30 }   // Tags
     ];
     
     // Create temp directory if not exists
@@ -1637,6 +1685,8 @@ networkController.validateImportSubnets = async (req, res) => {
         row: rowNumber,
         subnet_address: row['Subnet Address (Require)'] || '',
         description: row['Description'] || '',
+        zone: row['Zone'] || '',
+        environment: row['Environment'] || '',
         tags: row['Tag (comma-separated if multiple)'] || '',
         validation_status: 'Pass',
         validation_reason: ''
@@ -1699,6 +1749,8 @@ networkController.validateImportSubnets = async (req, res) => {
     worksheet.addRow([
       'Subnet Address (Require)',
       'Description',
+      'Zone',
+      'Environment',
       'Tag (comma-separated if multiple)',
       'Validation Status',
       'Validation Reason'
@@ -1714,9 +1766,11 @@ networkController.validateImportSubnets = async (req, res) => {
 
     // Add data rows
     validationResults.forEach(result => {
-      const row = worksheet.addRow([
+      const row =       worksheet.addRow([
         result.subnet_address,
         result.description,
+        result.zone,
+        result.environment,
         result.tags,
         result.validation_status,
         result.validation_reason
@@ -1724,10 +1778,10 @@ networkController.validateImportSubnets = async (req, res) => {
 
       // Color code validation status
       if (result.validation_status === 'Fail') {
-        row.getCell(4).font = { color: { argb: 'FFFF0000' } }; // Validation Status column
-        row.getCell(5).font = { color: { argb: 'FFFF0000' } }; // Validation Reason column
+        row.getCell(6).font = { color: { argb: 'FFFF0000' } }; // Validation Status column
+        row.getCell(7).font = { color: { argb: 'FFFF0000' } }; // Validation Reason column
       } else {
-        row.getCell(4).font = { color: { argb: 'FF008000' } }; // Validation Status column
+        row.getCell(6).font = { color: { argb: 'FF008000' } }; // Validation Status column
       }
     });
 
@@ -1735,9 +1789,11 @@ networkController.validateImportSubnets = async (req, res) => {
     worksheet.columns = [
       { width: 25 },  // Subnet Address
       { width: 30 },  // Description
-      { width: 25 },  // Tag
+      { width: 20 },  // Zone
+      { width: 20 },  // Environment
+      { width: 30 },  // Tags
       { width: 20 },  // Validation Status
-      { width: 50 }   // Validation Reason
+      { width: 40 }   // Validation Reason
     ];
 
     // Create temp directory if not exists
@@ -1847,7 +1903,9 @@ networkController.importSubnets = async (req, res) => {
       // Validate headers order and required fields
       const expectedHeaders = [
         'Subnet Address (Require)',
-        'Description', 
+        'Description',
+        'Zone',
+        'Environment', 
         'Tag (comma-separated if multiple)'
       ];
       
@@ -1884,7 +1942,9 @@ networkController.importSubnets = async (req, res) => {
         const headers = Object.keys(rows[0]);
         const expectedHeaders = [
           'Subnet Address (Require)',
-          'Description', 
+          'Description',
+          'Zone',
+          'Environment', 
           'Tag (comma-separated if multiple)'
         ];
         
@@ -1919,6 +1979,8 @@ networkController.importSubnets = async (req, res) => {
         row_number: i + 1,
         subnet_address: sanitizeString(row['Subnet Address (Require)'] || ''),
         description: sanitizeString(row['Description'] || ''),
+        zone: sanitizeString(row['Zone'] || ''),
+        environment: sanitizeString(row['Environment'] || ''),
         tags: sanitizeString(row['Tag (comma-separated if multiple)'] || ''),
         import_status: 'SUCCESS',
         import_reason: ''
@@ -1938,6 +2000,8 @@ networkController.importSubnets = async (req, res) => {
         const newSubnet = await Subnet.create({
           address: result.subnet_address,
           description: result.description || null,
+          zone: result.zone || null,
+          environment: result.environment || null,
           updated_by: username
         }, client);
 
@@ -1978,6 +2042,8 @@ networkController.importSubnets = async (req, res) => {
     worksheet.addRow([
       'Subnet Address (Require)',
       'Description',
+      'Zone',
+      'Environment',
       'Tag (comma-separated if multiple)',
       'Import Status',
       'Import Reason'
@@ -1996,17 +2062,19 @@ networkController.importSubnets = async (req, res) => {
       const row = worksheet.addRow([
         result.subnet_address,
         result.description,
-        result.tag,
+        result.zone,
+        result.environment,
+        result.tags,
         result.import_status,
         result.import_reason
       ]);
 
       // Color code import status
       if (result.import_status === 'FAILED') {
-        row.getCell(4).font = { color: { argb: 'FFFF0000' } }; // Import Status column
-        row.getCell(5).font = { color: { argb: 'FFFF0000' } }; // Import Reason column
+        row.getCell(6).font = { color: { argb: 'FFFF0000' } }; // Import Status column
+        row.getCell(7).font = { color: { argb: 'FFFF0000' } }; // Import Reason column
       } else {
-        row.getCell(4).font = { color: { argb: 'FF008000' } }; // Import Status column
+        row.getCell(6).font = { color: { argb: 'FF008000' } }; // Import Status column
       }
     });
 
@@ -2014,9 +2082,11 @@ networkController.importSubnets = async (req, res) => {
     worksheet.columns = [
       { width: 25 },  // Subnet Address
       { width: 30 },  // Description
-      { width: 25 },  // Tag
+      { width: 20 },  // Zone
+      { width: 20 },  // Environment
+      { width: 30 },  // Tags
       { width: 20 },  // Import Status
-      { width: 50 }   // Import Reason
+      { width: 40 }   // Import Reason
     ];
 
     // Create temp directory if not exists

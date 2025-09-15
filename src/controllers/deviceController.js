@@ -1304,12 +1304,36 @@ deviceController.importDevices = async (req, res) => {
           if (result.ip_addresses) {
             const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
             const ipIds = [];
+            
+            // Create detailed description for IP
+            const ipDescription = [
+              `Note: This IP address was automatically created from device import feature`,
+              `Device: ${deviceName}`,
+              `Device Type: ${result.device_type || 'N/A'}`,
+              `Location: ${result.location || 'N/A'}`,
+              `Serial: ${result.serial || 'N/A'}`,
+              `Management: ${result.management || 'N/A'}`,
+              `Manufacturer: ${result.manufacturer || 'N/A'}`,
+              `Device Role: ${result.device_role || 'N/A'}`,
+              `Description: ${result.description || 'N/A'}`
+            ].join('\n');
+            
             for (const ip of ipList) {
-              const ipRecord = await IpAddress.findByAddress(ip);
-              if (ipRecord) {
-                ipIds.push(ipRecord.id);
+              let ipRecord = await IpAddress.findByAddress(ip);
+              
+              if (!ipRecord) {
+                // Create new IP address if not exists
+                ipRecord = await IpAddress.create({
+                  address: ip,
+                  description: ipDescription,
+                  status: 'assigned',
+                  updated_by: username
+                }, client);
               }
+              
+              ipIds.push(ipRecord.id);
             }
+            
             if (ipIds.length > 0) {
               // @ts-ignore - client parameter is supported by model methods
               await Device.setIpAddresses(deviceId, ipIds, client);

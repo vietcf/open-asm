@@ -656,8 +656,8 @@
   }
 </style>
   
-<script>
-  window.ipList = [];
+<script type="text/javascript">
+  window.ipList = <%- JSON.stringify(ipList || []) %>;
 </script>
 
 <script>
@@ -833,35 +833,27 @@
   let selectedFile = null;
   
   // Debug: Check if elements exist
-  console.log('Import file input exists:', $('#importFile').length);
-  console.log('Validate button exists:', $('#validateImportBtn').length);
   
   // Handle file selection
   $(document).on('change', '#importFile', function() {
-    console.log('File input changed');
     const file = this.files[0];
-    console.log('Selected file:', file);
     if (file) {
       selectedFile = file;
       $('#validateImportBtn').prop('disabled', false);
       $('#importBtn').prop('disabled', true).hide();
-      console.log('Validate button enabled');
     } else {
       selectedFile = null;
       $('#validateImportBtn').prop('disabled', true);
       $('#importBtn').prop('disabled', true).hide();
-      console.log('Validate button disabled');
     }
   });
   
   // Handle validate button click
   $(document).on('click', '#validateImportBtn', function() {
-    console.log('Validate button clicked');
     if (!selectedFile) {
       alert('Please select a file first');
       return;
     }
-    console.log('Selected file:', selectedFile.name);
     
     const formData = new FormData();
     formData.append('file', selectedFile);
@@ -1162,6 +1154,39 @@ function showToast(msg, type) {
             }
           });
         }
+        // Initialize Select2 for all fields first
+        if ($.fn.select2 && $tags.length && !$tags.hasClass('select2-hidden-accessible')) {
+          $tags.select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select tag(s)',
+            allowClear: true,
+            width: '100%',
+            ajax: {
+              url: '/organize/api/tag',
+              dataType: 'json',
+              delay: 250,
+              data: params => ({ search: params.term }),
+              processResults: data => ({ results: data }),
+              cache: true
+            }
+          });
+        }
+        if ($.fn.select2 && $contacts.length && !$contacts.hasClass('select2-hidden-accessible')) {
+          $contacts.select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select contacts',
+            allowClear: true,
+            width: '100%',
+            ajax: {
+              url: '/organize/api/contact',
+              dataType: 'json',
+              delay: 250,
+              data: params => ({ search: params.term }),
+              processResults: data => ({ results: data }),
+              cache: true
+            }
+          });
+        }
         if ($.fn.select2 && $systems.length && !$systems.hasClass('select2-hidden-accessible')) {
           $systems.select2({
             theme: 'bootstrap-5',
@@ -1178,48 +1203,97 @@ function showToast(msg, type) {
             }
           });
         }
-        // On modal show, only update the selected values (no destroy/init)
+        
+        // On modal show, load the selected values
         $('#ipEditModal-' + ip.id).off('shown.bs.modal').on('shown.bs.modal', function() {
-          // Tags
-          var tags = $tags.attr('data-selected') ? JSON.parse($tags.attr('data-selected')) : [];
-          $tags.val(null).trigger('change');
+          // Clear any previous validation states
+          $tags.removeClass('is-invalid is-valid');
+          $contacts.removeClass('is-invalid is-valid');
+          $systems.removeClass('is-invalid is-valid');
+          $tags.siblings('.invalid-feedback').remove();
+          $contacts.siblings('.invalid-feedback').remove();
+          $systems.siblings('.invalid-feedback').remove();
+          
+          // Tags - Load existing values
+          var tagsDataAttr = $tags.attr('data-selected');
+          var tags = tagsDataAttr ? JSON.parse(tagsDataAttr) : [];
           $tags.empty();
           if (Array.isArray(tags) && tags.length) {
             tags.forEach(function(tag) {
-              if ($tags.find('option[value="' + tag.id + '"]').length === 0) {
-                var option = new Option(tag.name, tag.id, true, true);
-                $tags.append(option);
-              }
+              var option = new Option(tag.name, tag.id, true, true);
+              $tags.append(option);
             });
-            $tags.trigger('change');
           }
-          // Contacts
+          $tags.trigger('change');
+          
+          // Contacts - Load existing values
           var contacts = $contacts.attr('data-selected') ? JSON.parse($contacts.attr('data-selected')) : [];
-          $contacts.val(null).trigger('change');
           $contacts.empty();
           if (Array.isArray(contacts) && contacts.length) {
             contacts.forEach(function(contact) {
               var text = contact.name + (contact.email ? ' (' + contact.email + ')' : '');
-              if ($contacts.find('option[value="' + contact.id + '"]').length === 0) {
-                var option = new Option(text, contact.id, true, true);
-                $contacts.append(option);
-              }
+              var option = new Option(text, contact.id, true, true);
+              $contacts.append(option);
             });
-            $contacts.trigger('change');
           }
-          // Systems
+          $contacts.trigger('change');
+          
+          // Systems - Load existing values
           var systems = $systems.attr('data-selected') ? JSON.parse($systems.attr('data-selected')) : [];
-          $systems.val(null).trigger('change');
           $systems.empty();
           if (Array.isArray(systems) && systems.length) {
             systems.forEach(function(system) {
               var text = system.name + (system.system_id ? ' (' + system.system_id + ')' : '');
-              if ($systems.find('option[value="' + system.id + '"]').length === 0) {
-                var option = new Option(text, system.id, true, true);
-                $systems.append(option);
-              }
+              var option = new Option(text, system.id, true, true);
+              $systems.append(option);
             });
-            $systems.trigger('change');
+          }
+          $systems.trigger('change');
+        });
+        
+        // Add form validation for edit IP modal
+        $('#ipEditModal-' + ip.id + ' form').on('submit', function(e) {
+          var isValid = true;
+          
+          // Clear previous validation states
+          $tags.removeClass('is-invalid is-valid');
+          $contacts.removeClass('is-invalid is-valid');
+          $systems.removeClass('is-invalid is-valid');
+          $tags.siblings('.invalid-feedback').remove();
+          $contacts.siblings('.invalid-feedback').remove();
+          $systems.siblings('.invalid-feedback').remove();
+          
+          // Validate contacts (optional field, but if provided, should be valid)
+          var selectedContacts = $contacts.val();
+          if (selectedContacts && selectedContacts.length > 0) {
+            // Check if any contact IDs are invalid (not numbers)
+            for (var i = 0; i < selectedContacts.length; i++) {
+              if (isNaN(selectedContacts[i]) || selectedContacts[i] <= 0) {
+                $contacts.addClass('is-invalid');
+                $contacts.after('<div class="invalid-feedback">Please select valid contacts.</div>');
+                isValid = false;
+                break;
+              }
+            }
+          }
+          
+          // Validate systems (optional field, but if provided, should be valid)
+          var selectedSystems = $systems.val();
+          if (selectedSystems && selectedSystems.length > 0) {
+            // Check if any system IDs are invalid (not numbers)
+            for (var i = 0; i < selectedSystems.length; i++) {
+              if (isNaN(selectedSystems[i]) || selectedSystems[i] <= 0) {
+                $systems.addClass('is-invalid');
+                $systems.after('<div class="invalid-feedback">Please select valid systems.</div>');
+                isValid = false;
+                break;
+              }
+            }
+          }
+          
+          if (!isValid) {
+            e.preventDefault();
+            return false;
           }
         });
       });

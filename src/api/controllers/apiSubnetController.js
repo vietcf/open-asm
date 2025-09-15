@@ -65,9 +65,11 @@ apiSubnetController.getSubnet = async (req, res) => {
 
 apiSubnetController.createSubnet = async (req, res) => {
   try {
-    let { address, description, tags } = req.body;
+    let { address, description, zone, environment, tags } = req.body;
     address = typeof address === 'string' ? address.trim() : '';
     description = typeof description === 'string' ? description.trim() : '';
+    zone = typeof zone === 'string' ? zone.trim() : '';
+    environment = typeof environment === 'string' ? environment.trim() : '';
     if (!address) {
       return res.status(400).json({ error: 'Subnet address is required' });
     }
@@ -86,7 +88,7 @@ apiSubnetController.createSubnet = async (req, res) => {
     } else {
       tags = [];
     }
-    const subnet = await Subnet.create({ address, description });
+    const subnet = await Subnet.create({ address, description, zone, environment });
     await Subnet.setTags(subnet.id, tags);
     // Return subnet with tags
     const created = await Subnet.findById(subnet.id);
@@ -101,7 +103,7 @@ apiSubnetController.updateSubnet = async (req, res) => {
   const client = await pool.connect();
   try {
     const id = req.params.id;
-    let { address, description, tags } = req.body;
+    let { address, description, zone, environment, tags } = req.body;
     // Fetch current subnet
     const currentSubnet = await Subnet.findById(id);
     if (!currentSubnet) {
@@ -116,6 +118,18 @@ apiSubnetController.updateSubnet = async (req, res) => {
     if (typeof description === 'string') {
       description = description.trim();
       updateFields.description = description;
+    }
+
+    // If zone is provided, update
+    if (typeof zone === 'string') {
+      zone = zone.trim();
+      updateFields.zone = zone;
+    }
+
+    // If environment is provided, update
+    if (typeof environment === 'string') {
+      environment = environment.trim();
+      updateFields.environment = environment;
     }
 
     // If tags are provided, validate and update

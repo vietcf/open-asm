@@ -30,10 +30,10 @@ class Subnet {
   }
 
   // Create a new subnet (only fields in subnets table)
-  static async create({ address, description, updated_by = '' }, client) {
+  static async create({ address, description, zone, environment, updated_by = '' }, client) {
     const result = await client.query(
-      'INSERT INTO subnets (address, description, updated_by) VALUES ($1, $2, $3) RETURNING *',
-      [address, description, updated_by]
+      'INSERT INTO subnets (address, description, zone, environment, updated_by) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [address, description, zone, environment, updated_by]
     );
     return result.rows[0];
   }
@@ -57,10 +57,10 @@ class Subnet {
   }
 
   // Update subnet description by ID (transaction client optional)
-  static async update(id, { description, updated_by = '' }, client = pool) {
+  static async update(id, { description, zone, environment, updated_by = '' }, client = pool) {
     await client.query(
-      'UPDATE subnets SET description = $1, updated_by = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
-      [description, updated_by, id]
+      'UPDATE subnets SET description = $1, zone = $2, environment = $3, updated_by = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5',
+      [description, zone, environment, updated_by, id]
     );
   }
 
@@ -88,8 +88,8 @@ class Subnet {
     return result.rows;
   }
 
-  // Get filtered list of subnets (with pagination, search, tags)
-  static async findFilteredList({ search, tags, page = 1, pageSize = 10 }) {
+  // Get filtered list of subnets (with pagination, search, tags, zone, environment)
+  static async findFilteredList({ search, tags, zone, environment, page = 1, pageSize = 10 }) {
     let params = [];
     let whereClauses = [];
     let idx = 1;
@@ -98,6 +98,20 @@ class Subnet {
     if (tags && tags.length > 0) {
       whereClauses.push(`s.id IN (SELECT object_id FROM tag_object WHERE object_type = 'subnet' AND tag_id = ANY($${idx}))`);
       params.push(tags);
+      idx++;
+    }
+    
+    // Filter by zone
+    if (zone && zone.trim() !== '') {
+      whereClauses.push(`s.zone ILIKE $${idx}`);
+      params.push(`%${zone}%`);
+      idx++;
+    }
+    
+    // Filter by environment
+    if (environment && environment.trim() !== '') {
+      whereClauses.push(`s.environment ILIKE $${idx}`);
+      params.push(`%${environment}%`);
       idx++;
     }
     
@@ -110,7 +124,7 @@ class Subnet {
         idx++;
       } else {
         // Regular text search
-        whereClauses.push(`(s.address::text ILIKE $${idx} OR s.description ILIKE $${idx})`);
+        whereClauses.push(`(s.address::text ILIKE $${idx} OR s.description ILIKE $${idx} OR s.zone ILIKE $${idx} OR s.environment ILIKE $${idx})`);
         params.push(`%${search}%`);
         idx++;
       }
@@ -138,8 +152,8 @@ class Subnet {
     return result.rows;
   }
 
-  // Get count for filtered subnet list (search, tags)
-  static async countFiltered({ search, tags }) {
+  // Get count for filtered subnet list (search, tags, zone, environment)
+  static async countFiltered({ search, tags, zone, environment }) {
     let params = [];
     let whereClauses = [];
     let idx = 1;
@@ -148,6 +162,20 @@ class Subnet {
     if (tags && tags.length > 0) {
       whereClauses.push(`s.id IN (SELECT object_id FROM tag_object WHERE object_type = 'subnet' AND tag_id = ANY($${idx}))`);
       params.push(tags);
+      idx++;
+    }
+    
+    // Filter by zone
+    if (zone && zone.trim() !== '') {
+      whereClauses.push(`s.zone ILIKE $${idx}`);
+      params.push(`%${zone}%`);
+      idx++;
+    }
+    
+    // Filter by environment
+    if (environment && environment.trim() !== '') {
+      whereClauses.push(`s.environment ILIKE $${idx}`);
+      params.push(`%${environment}%`);
       idx++;
     }
     
@@ -160,7 +188,7 @@ class Subnet {
         idx++;
       } else {
         // Regular text search
-        whereClauses.push(`(s.address::text ILIKE $${idx} OR s.description ILIKE $${idx})`);
+        whereClauses.push(`(s.address::text ILIKE $${idx} OR s.description ILIKE $${idx} OR s.zone ILIKE $${idx} OR s.environment ILIKE $${idx})`);
         params.push(`%${search}%`);
         idx++;
       }
@@ -233,6 +261,22 @@ class Subnet {
     }
     // Return only root subnets (those without parent)
     return sorted.filter(s => !s._hasParent);
+  }
+
+  // Get all unique zones
+  static async getUniqueZones() {
+    const result = await pool.query(
+      'SELECT DISTINCT zone FROM subnets WHERE zone IS NOT NULL AND zone != \'\' ORDER BY zone'
+    );
+    return result.rows.map(row => row.zone);
+  }
+
+  // Get all unique environments
+  static async getUniqueEnvironments() {
+    const result = await pool.query(
+      'SELECT DISTINCT environment FROM subnets WHERE environment IS NOT NULL AND environment != \'\' ORDER BY environment'
+    );
+    return result.rows.map(row => row.environment);
   }
 
   // Helper: check if subnetA contains subnetB (IPv4 only, simple logic)

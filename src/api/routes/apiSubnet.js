@@ -109,6 +109,12 @@ apiSubnetRouter.get('/:id', apiSubnetController.getSubnet);
  *               description:
  *                 type: string
  *                 description: Description (optional)
+ *               zone:
+ *                 type: string
+ *                 description: Zone (optional, e.g. DMZ, SERVER FARM, USER, BACKBOND, CLOUD)
+ *               environment:
+ *                 type: string
+ *                 description: Environment (optional, e.g. TEST, DEV, UAT, PROD)
  *               tags:
  *                 type: array
  *                 items:
@@ -153,6 +159,12 @@ apiSubnetRouter.post('/', apiSubnetController.createSubnet);
  *               description:
  *                 type: string
  *                 description: Description (optional)
+ *               zone:
+ *                 type: string
+ *                 description: Zone (optional, e.g. DMZ, SERVER FARM, USER, BACKBOND, CLOUD)
+ *               environment:
+ *                 type: string
+ *                 description: Environment (optional, e.g. TEST, DEV, UAT, PROD)
  *               tags:
  *                 type: array
  *                 items:
@@ -207,6 +219,10 @@ apiSubnetRouter.delete('/:id', apiSubnetController.deleteSubnet);
  *         address:
  *           type: string
  *         description:
+ *           type: string
+ *         zone:
+ *           type: string
+ *         environment:
  *           type: string
  *         tags:
  *           type: array

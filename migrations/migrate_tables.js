@@ -69,6 +69,26 @@ async function addDeviceRoleToDevices() {
   }
 }
 
+// Thêm cột zone và environment vào bảng subnets
+async function addZoneEnvironmentToSubnets() {
+  try {
+    await pool.query(`ALTER TABLE subnets ADD COLUMN IF NOT EXISTS zone VARCHAR(255) DEFAULT NULL;`);
+    console.log('Added zone column to subnets table!');
+    
+    await pool.query(`ALTER TABLE subnets ADD COLUMN IF NOT EXISTS environment VARCHAR(255) DEFAULT NULL;`);
+    console.log('Added environment column to subnets table!');
+    
+    // Tạo index cho zone và environment để tối ưu filtering
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_subnets_zone ON subnets (zone);`);
+    console.log('Created index on zone column!');
+    
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_subnets_environment ON subnets (environment);`);
+    console.log('Created index on environment column!');
+  } catch (err) {
+    console.error('Add zone and environment columns to subnets failed:', err);
+  }
+}
+
 (async () => {
   try {
     await addFqdnToSystems();
@@ -76,6 +96,7 @@ async function addDeviceRoleToDevices() {
     await addArchitectureToSystems();
     await addUpdatedFieldsToSubnets();
     await addDeviceRoleToDevices();
+    await addZoneEnvironmentToSubnets();
   } catch (err) {
     console.error('Error running alter statements:', err);
   } finally {
