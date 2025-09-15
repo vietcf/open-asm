@@ -211,3 +211,20 @@ try {
 } catch (err) {
   console.log('Cleanup logs job not available:', err.message);
 }
+
+// Start scheduled cleanup job for temp files
+try {
+  const { runCleanup } = await import('./utils/cleanupTempFiles.js');
+  
+  // Run cleanup immediately on startup
+  runCleanup();
+  
+  // Run cleanup every 6 hours
+  setInterval(() => {
+    runCleanup();
+  }, 6 * 60 * 60 * 1000); // 6 hours
+  
+  console.log('✅ Temp files cleanup job started (every 6 hours)');
+} catch (err) {
+  console.log('Temp files cleanup job not available:', err.message);
+}

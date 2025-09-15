@@ -14,6 +14,12 @@
         <button type="button" class="btn btn-primary btn-sm me-2" onclick="window.location.href='/device/device/add'">
           <i class="bi bi-plus"></i> Add Device
         </button>
+        <a href="/device/device/template" class="btn btn-info btn-sm me-2" download>
+          <i class="bi bi-download"></i> Download Template
+        </a>
+        <button type="button" class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#importDeviceModal">
+          <i class="bi bi-upload"></i> Import Device
+        </button>
       <% } %>
       <% if (hasPermission('device.read')) { %>
         <form id="deviceExportForm" action="/device/device/export" method="GET" style="display:inline; margin-right: 8px;">
@@ -552,9 +558,311 @@
   <% } %>
 </div>
 
+<!-- Import Device Modal -->
+<div class="modal fade" id="importDeviceModal" tabindex="-1" aria-labelledby="importDeviceModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="importDeviceModalLabel">Import Devices</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="importDeviceForm" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label for="deviceFile" class="form-label">Select File to Import</label>
+            <input type="file" class="form-control" id="deviceFile" name="file" accept=".csv,.xlsx,.xls" required>
+            <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
+          </div>
+        </form>
+        
+        <!-- Progress Bar -->
+        <div id="importProgress" class="progress mb-3" style="display: none;">
+          <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%">
+            Processing...
+          </div>
+        </div>
+        
+        <!-- Results -->
+        <div id="importResults" style="display: none;">
+          <div id="importAlert" class="alert" role="alert">
+            <div id="importMessage"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="alert alert-info mb-3 w-100">
+          <i class="bi bi-info-circle"></i>
+          <strong>Instructions:</strong>
+          <ol class="mb-0 mt-2">
+            <li>Download the template file using the "Download Template" button above</li>
+            <li>Fill in your device data following the template format</li>
+            <li>Upload the file to validate before importing</li>
+            <li>Only import if all validations pass</li>
+          </ol>
+        </div>
+        <div class="d-flex gap-2">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-warning" id="validateDeviceBtn" disabled>
+            <i class="bi bi-check-circle"></i> Validate File
+          </button>
+          <button type="button" class="btn btn-success" id="importDeviceBtn" disabled style="display: none;">
+            <i class="bi bi-upload"></i> Import Device
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="/vendor/jquery-3.6.0.min.js"></script>
 <link href="/vendor/select2.min.css" rel="stylesheet" />
 <link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 <script src="/vendor/select2.min.js"></script>
 <script src="/vendor/bootstrap.min.js"></script>
 <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
+
+<script>
+$(document).ready(function() {
+  const $importModal = $('#importDeviceModal');
+  const $fileInput = $('#deviceFile');
+  const $validateBtn = $('#validateDeviceBtn');
+  const $importBtn = $('#importDeviceBtn');
+  const $progress = $('#importProgress');
+  const $results = $('#importResults');
+  const $alert = $('#importAlert');
+  const $message = $('#importMessage');
+  let selectedFile = null;
+
+  // Reset modal when shown
+  $importModal.on('show.bs.modal', function() {
+    resetImportForm();
+  });
+  
+  // Also reset when modal is shown
+  $importModal.on('shown.bs.modal', function() {
+    resetImportForm();
+  });
+
+  // Reset modal when hidden
+  $importModal.on('hidden.bs.modal', function() {
+    resetImportForm();
+  });
+
+  function resetImportForm() {
+    // Clear file input completely
+    $fileInput.val('');
+    $fileInput[0].value = '';
+    selectedFile = null;
+    $validateBtn.prop('disabled', true);
+    $importBtn.prop('disabled', true).hide();
+    $progress.hide();
+    $results.hide();
+    $alert.removeClass('alert-success alert-danger alert-warning');
+    
+    // Reset form completely
+    $('#importDeviceForm')[0].reset();
+  }
+
+  // Enable validate button when file is selected
+  $fileInput.on('change', function() {
+    if (this.files && this.files.length > 0) {
+      selectedFile = this.files[0];
+      $validateBtn.prop('disabled', false);
+      $importBtn.prop('disabled', true).hide();
+      $results.hide();
+    } else {
+      selectedFile = null;
+      $validateBtn.prop('disabled', true);
+      $importBtn.prop('disabled', true).hide();
+    }
+  });
+
+  // Validate file
+  $validateBtn.on('click', function() {
+    if (!selectedFile) {
+      alert('Please select a file first');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    $progress.show();
+    $results.hide();
+    $validateBtn.prop('disabled', true);
+
+    $.ajax({
+      url: '/device/device/validate-import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      xhr: function() {
+        const xhr = new window.XMLHttpRequest();
+        xhr.responseType = 'blob';
+        return xhr;
+      },
+      success: function(data, status, xhr) {
+        $progress.hide();
+        $validateBtn.prop('disabled', false);
+        
+        // Get filename from Content-Disposition header
+        const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+        let filename = 'validation_results.xlsx';
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+          if (filenameMatch) {
+            filename = filenameMatch[1];
+          }
+        }
+        
+        // Create download link
+        const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        // Check validation summary
+        const validationSummary = xhr.getResponseHeader('X-Validation-Summary');
+        if (validationSummary) {
+          try {
+            const summary = JSON.parse(validationSummary);
+            if (summary.allPassed) {
+              $alert.removeClass('alert-danger alert-warning').addClass('alert-success');
+              $message.html(`
+                <i class="bi bi-check-circle"></i>
+                <strong>Validation Successful!</strong><br>
+                All ${summary.totalCount} records passed validation. You can now proceed with import.
+              `);
+              $importBtn.prop('disabled', false).show();
+            } else {
+              $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+              $message.html(`
+                <i class="bi bi-exclamation-triangle"></i>
+                <strong>Validation Failed!</strong><br>
+                ${summary.passCount} passed, ${summary.failCount} failed out of ${summary.totalCount} records.<br>
+                Please check the downloaded validation file and fix the errors before importing.
+              `);
+              $importBtn.prop('disabled', true).hide();
+            }
+          } catch (e) {
+            $alert.removeClass('alert-success alert-warning').addClass('alert-warning');
+            $message.html(`
+              <i class="bi bi-info-circle"></i>
+              <strong>Validation Completed!</strong><br>
+              Please check the downloaded validation file for results.
+            `);
+            $importBtn.prop('disabled', true).hide();
+          }
+        } else {
+          $alert.removeClass('alert-success alert-danger').addClass('alert-warning');
+          $message.html(`
+            <i class="bi bi-info-circle"></i>
+            <strong>Validation Completed!</strong><br>
+            Please check the downloaded validation file for results.
+          `);
+          $importBtn.prop('disabled', true).hide();
+        }
+        
+        $results.show();
+      },
+      error: function(xhr, status, error) {
+        $progress.hide();
+        $validateBtn.prop('disabled', false);
+        $importBtn.prop('disabled', true).hide();
+        $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+        $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> ${error || 'Request failed'}`);
+        $results.show();
+      }
+    });
+  });
+
+  // Import devices
+  $importBtn.on('click', function() {
+    if (!selectedFile) {
+      alert('Please select a file first');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to import the devices? This action cannot be undone.')) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    $progress.show();
+    $results.hide();
+    $importBtn.prop('disabled', true);
+    $validateBtn.prop('disabled', true);
+
+    $.ajax({
+      url: '/device/device/import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      xhr: function() {
+        const xhr = new window.XMLHttpRequest();
+        xhr.responseType = 'blob';
+        return xhr;
+      },
+      success: function(data, status, xhr) {
+        $progress.hide();
+        
+        // Get filename from Content-Disposition header
+        const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+        let filename = 'import_results.xlsx';
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+          if (filenameMatch) {
+            filename = filenameMatch[1];
+          }
+        }
+        
+        // Create download link
+        const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        $alert.removeClass('alert-danger alert-warning').addClass('alert-success');
+        $message.html(`
+          <i class="bi bi-check-circle"></i>
+          <strong>Import Completed!</strong><br>
+          Device import has been completed. Please check the downloaded results file for details.
+          <br><br>
+          <button type="button" class="btn btn-sm btn-primary" onclick="location.reload()">
+            <i class="bi bi-arrow-clockwise"></i> Refresh Page
+          </button>
+        `);
+        $results.show();
+        
+        // Auto-close modal and refresh after 2 seconds
+        setTimeout(() => {
+          $importModal.modal('hide');
+          location.reload();
+        }, 2000);
+      },
+      error: function(xhr, status, error) {
+        $progress.hide();
+        $importBtn.prop('disabled', false);
+        $validateBtn.prop('disabled', false);
+        $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+        $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> ${error || 'Request failed'}`);
+        $results.show();
+      }
+    });
+  });
+});
+</script>

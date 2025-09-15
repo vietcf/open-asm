@@ -808,72 +808,79 @@ networkController.validateImportIPs = async (req, res) => {
       }
       
       // Validate status
-      if (result.validation_status === 'Pass' && result.status && !validStatuses.includes(result.status.toLowerCase())) {
+      if (result.status && !validStatuses.includes(result.status.toLowerCase())) {
         result.validation_status = 'Fail';
-        result.validation_reason = 'Invalid status. Must be: active, reserved, or inactive';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + 'Invalid status. Must be: active, reserved, or inactive';
       }
       
-      // Check if IP already exists (only if validation passed so far)
-      if (result.validation_status === 'Pass') {
-        try {
-          const existingIP = await IpAddress.findByAddressWithDetails(result.ip_address);
-          if (existingIP) {
-            result.validation_status = 'Fail';
-            result.validation_reason = 'IP address already exists';
-          }
-        } catch (err) {
-          // If error checking existence, continue with validation
+      // Check if IP already exists
+      try {
+        const existingIP = await IpAddress.findByAddressWithDetails(result.ip_address);
+        if (existingIP) {
+          result.validation_status = 'Fail';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + 'IP address already exists';
         }
+      } catch (err) {
+        // If error checking existence, continue with validation
       }
       
       // Validate Tags (if provided)
-      if (result.validation_status === 'Pass' && result.tags) {
+      if (result.tags) {
         const tagNames = result.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+        const invalidTags = [];
         for (const tagName of tagNames) {
           try {
             const tags = await Tag.findByNameExact(tagName);
             if (!tags || tags.length === 0) {
-              result.validation_status = 'Fail';
-              result.validation_reason = `Tag "${tagName}" does not exist in system`;
-              break;
+              invalidTags.push(tagName);
             }
           } catch (err) {
             // If error checking tag, continue with validation
           }
         }
+        if (invalidTags.length > 0) {
+          result.validation_status = 'Fail';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Tag(s) not found: ${invalidTags.join(', ')}`;
+        }
       }
       
       // Validate Contacts (if provided)
-      if (result.validation_status === 'Pass' && result.contacts) {
+      if (result.contacts) {
         const contactEmails = result.contacts.split(',').map(email => email.trim()).filter(email => email.length > 0);
+        const invalidContacts = [];
         for (const email of contactEmails) {
           try {
             const contacts = await Contact.findByEmailSearch(email);
             if (!contacts || contacts.length === 0) {
-              result.validation_status = 'Fail';
-              result.validation_reason = `Contact "${email}" does not exist in system`;
-              break;
+              invalidContacts.push(email);
             }
           } catch (err) {
             // If error checking contact, continue with validation
           }
         }
+        if (invalidContacts.length > 0) {
+          result.validation_status = 'Fail';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Contact(s) not found: ${invalidContacts.join(', ')}`;
+        }
       }
       
       // Validate Systems (if provided)
-      if (result.validation_status === 'Pass' && result.system) {
+      if (result.system) {
         const systemNames = result.system.split(',').map(name => name.trim()).filter(name => name.length > 0);
+        const invalidSystems = [];
         for (const systemName of systemNames) {
           try {
             const systems = await System.findByNameExact(systemName);
             if (!systems || systems.length === 0) {
-              result.validation_status = 'Fail';
-              result.validation_reason = `System "${systemName}" does not exist in system`;
-              break;
+              invalidSystems.push(systemName);
             }
           } catch (err) {
             // If error checking system, continue with validation
           }
+        }
+        if (invalidSystems.length > 0) {
+          result.validation_status = 'Fail';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `System(s) not found: ${invalidSystems.join(', ')}`;
         }
       }
       
@@ -921,7 +928,8 @@ networkController.validateImportIPs = async (req, res) => {
       worksheet.columns.forEach(col => { col.width = 22; });
       
       // Tạo thư mục temp nếu chưa có
-      const tempDir = path.join(__dirname, '../../uploads/temp');
+      const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+      const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
       if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir, { recursive: true });
       }
@@ -960,10 +968,14 @@ networkController.validateImportIPs = async (req, res) => {
       // Clean up files after sending
       setTimeout(() => {
         try {
-          fs.unlinkSync(excelFilePath);
+          if (fs.existsSync(excelFilePath)) {
+            fs.unlinkSync(excelFilePath);
+            console.log('Validation file cleaned up:', excelFilePath);
+          }
         } catch (cleanupErr) {
+          console.error('Error cleaning up validation file:', cleanupErr);
         }
-      }, 1000);
+      }, 10000); // 10 seconds delay
       
       
   } catch (err) {
@@ -1082,6 +1094,7 @@ networkController.importIPs = async (req, res) => {
             }
           }
           if (tagIds.length > 0) {
+            // @ts-ignore - client parameter is supported by model methods
             await IpAddress.setTags(newIp.id, tagIds, client);
           }
         }
@@ -1097,6 +1110,7 @@ networkController.importIPs = async (req, res) => {
             }
           }
           if (contactIds.length > 0) {
+            // @ts-ignore - client parameter is supported by model methods
             await IpAddress.setContacts(newIp.id, contactIds, client);
           }
         }
@@ -1112,6 +1126,7 @@ networkController.importIPs = async (req, res) => {
             }
           }
           if (systemIds.length > 0) {
+            // @ts-ignore - client parameter is supported by model methods
             await IpAddress.setSystems(newIp.id, systemIds, client);
           }
         }
@@ -1169,7 +1184,8 @@ networkController.importIPs = async (req, res) => {
       worksheet.columns.forEach(col => { col.width = 22; });
       
       // Tạo thư mục temp nếu chưa có
-      const tempDir = path.join(__dirname, '../../uploads/temp');
+      const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+      const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
       if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir, { recursive: true });
       }
@@ -1196,10 +1212,14 @@ networkController.importIPs = async (req, res) => {
       // Clean up files after sending
       setTimeout(() => {
         try {
-          fs.unlinkSync(excelFilePath);
+          if (fs.existsSync(excelFilePath)) {
+            fs.unlinkSync(excelFilePath);
+            console.log('Validation file cleaned up:', excelFilePath);
+          }
         } catch (cleanupErr) {
+          console.error('Error cleaning up validation file:', cleanupErr);
         }
-      }, 1000);
+      }, 10000); // 10 seconds delay
       
       
   } catch (err) {
@@ -1374,11 +1394,12 @@ networkController.downloadTemplate = async (req, res) => {
     ];
     
     // Write to temporary file first (like in test)
-    const uploadsDir = path.join(__dirname, '../../uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
     }
-    const tempPath = path.join(uploadsDir, 'temp_template.xlsx');
+    const tempPath = path.join(tempDir, 'temp_template.xlsx');
     await workbook.xlsx.writeFile(tempPath);
     // Check if file exists and get size
     if (fs.existsSync(tempPath)) {
@@ -1391,8 +1412,19 @@ networkController.downloadTemplate = async (req, res) => {
           if (!res.headersSent) {
             res.status(500).json({ error: 'Error downloading template file' });
           }
-        } else {
         }
+        
+        // Clean up template file after download
+        setTimeout(() => {
+          try {
+            if (fs.existsSync(tempPath)) {
+              fs.unlinkSync(tempPath);
+              console.log('Template file cleaned up:', tempPath);
+            }
+          } catch (cleanupErr) {
+            console.error('Error cleaning up template file:', cleanupErr);
+          }
+        }, 5000); // 5 seconds delay
       });
     } else {
       throw new Error('Template Excel file was not created');
@@ -1408,7 +1440,8 @@ networkController.downloadTemplate = async (req, res) => {
 networkController.downloadValidationFile = async (req, res) => {
   try {
     const filename = req.params.filename;
-    const filePath = path.join(__dirname, '../../uploads', filename);
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const filePath = path.join(process.cwd(), uploadsDir, 'temp', filename);
     
     console.log('Downloading file:', filePath);
     
@@ -1418,14 +1451,19 @@ networkController.downloadValidationFile = async (req, res) => {
           console.error('Error downloading file:', err);
         } else {
           console.log('File downloaded successfully');
-          // Clean up after download
-          setTimeout(() => {
+        }
+        
+        // Clean up after download
+        setTimeout(() => {
+          try {
             if (fs.existsSync(filePath)) {
               fs.unlinkSync(filePath);
-              console.log('File cleaned up:', filePath);
+              console.log('Downloaded validation file cleaned up:', filePath);
             }
-          }, 2000);
-        }
+          } catch (cleanupErr) {
+            console.error('Error cleaning up downloaded file:', cleanupErr);
+          }
+        }, 5000); // 5 seconds delay
       });
     } else {
       res.status(404).json({ error: 'File not found' });
@@ -1433,6 +1471,772 @@ networkController.downloadValidationFile = async (req, res) => {
   } catch (err) {
     console.error('Error downloading file:', err);
     res.status(500).json({ error: 'Error downloading file', detail: err.message });
+  }
+};
+
+// ====== SUBNET IMPORT METHODS ======
+
+// Helper function to sanitize string data for Excel
+const sanitizeString = (str) => {
+  if (!str) return '';
+  return String(str).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+};
+
+// Download subnet template
+networkController.downloadSubnetTemplate = async (req, res) => {
+  try {
+    // Create Excel workbook
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Subnet Template');
+    
+    // Add headers
+    worksheet.addRow([
+      'Subnet Address (Require)',
+      'Description',
+      'Tag (comma-separated if multiple)'
+    ]);
+    
+    // Add sample data
+    worksheet.addRow([
+      '192.168.1.0/24',
+      'Office Network',
+      'Network,Office'
+    ]);
+    
+    worksheet.addRow([
+      '10.0.0.0/8',
+      'Private Network',
+      'Network,Private'
+    ]);
+    
+    // Set column widths
+    worksheet.columns = [
+      { width: 25 },  // Subnet Address
+      { width: 30 },  // Description
+      { width: 25 }   // Tag
+    ];
+    
+    // Create temp directory if not exists
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    
+    const tempFilePath = path.join(tempDir, 'temp_subnet_template.xlsx');
+    await workbook.xlsx.writeFile(tempFilePath);
+    
+    res.download(tempFilePath, 'subnet_template.xlsx', (err) => {
+      if (err) {
+        console.error('Error downloading template:', err);
+      }
+      // Clean up temp file after download
+      setTimeout(() => {
+        try {
+          if (fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+          }
+        } catch (cleanupErr) {
+          console.error('Error cleaning up template file:', cleanupErr);
+        }
+      }, 5000);
+    });
+  } catch (err) {
+    console.error('Error generating subnet template:', err);
+    res.status(500).json({ error: 'Error generating template', detail: err.message });
+  }
+};
+
+// Validate subnet import
+networkController.validateImportSubnets = async (req, res) => {
+  try {
+    console.log('=== SUBNET VALIDATION START ===');
+    console.log('Request method:', req.method);
+    console.log('Request URL:', req.url);
+    console.log('Request headers:', req.headers);
+    console.log('Session user:', req.session?.user);
+    console.log('File uploaded:', req.file);
+    
+    if (!req.file) {
+      console.log('ERROR: No file uploaded');
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    console.log('File uploaded:', req.file.originalname);
+    const filePath = req.file.path;
+    const fileExtension = req.file.originalname.split('.').pop().toLowerCase();
+    console.log('File extension:', fileExtension);
+    
+    let rows = [];
+    
+    // Parse file based on extension
+    if (fileExtension === 'csv') {
+      const results = [];
+      
+      // Simple CSV parsing without csv-parser dependency
+      const fileContent = fs.readFileSync(filePath, 'utf8');
+      const lines = fileContent.split('\n');
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      for (let i = 1; i < lines.length; i++) {
+        if (lines[i].trim()) {
+          const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+          const rowData = {};
+          headers.forEach((header, index) => {
+            rowData[header] = values[index] || '';
+          });
+          results.push(rowData);
+        }
+      }
+      
+      rows = results;
+    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(filePath);
+      
+      const worksheet = workbook.worksheets[0];
+      const headers = [];
+      
+      // Get headers from first row
+      worksheet.getRow(1).eachCell((cell, colNumber) => {
+        headers[colNumber] = cell.value;
+      });
+      
+      
+      // Get data rows
+      for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
+        const row = worksheet.getRow(rowNumber);
+        const rowData = {};
+        
+        row.eachCell((cell, colNumber) => {
+          const header = headers[colNumber];
+          if (header) {
+            rowData[header] = cell.value;
+          }
+        });
+        
+        if (Object.keys(rowData).length > 0) {
+          rows.push(rowData);
+        }
+      }
+    } else {
+      return res.status(400).json({ error: 'Unsupported file format' });
+    }
+    
+
+    // Validate each row
+    console.log('Starting validation for', rows.length, 'rows');
+    const validationResults = [];
+    const subnetRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}\/[0-9]{1,2}$/;
+    
+    for (let i = 0; i < rows.length; i++) {
+      console.log('Validating row', i + 1, ':', rows[i]);
+      const row = rows[i];
+      const rowNumber = i + 2; // +2 because Excel starts from 1 and we skip header
+      const result = {
+        row: rowNumber,
+        subnet_address: row['Subnet Address (Require)'] || '',
+        description: row['Description'] || '',
+        tags: row['Tag (comma-separated if multiple)'] || '',
+        validation_status: 'Pass',
+        validation_reason: ''
+      };
+      
+      // Validate subnet address
+      if (!result.subnet_address) {
+        result.validation_status = 'Fail';
+        result.validation_reason = 'Subnet Address is required';
+      } else if (!subnetRegex.test(result.subnet_address)) {
+        result.validation_status = 'Fail';
+        result.validation_reason = 'Invalid subnet format. Must be in format: 192.168.1.0/24';
+      }
+      
+      // Check if subnet already exists
+      try {
+        console.log('Checking if subnet exists:', result.subnet_address);
+        const existingSubnet = await Subnet.findByAddress(result.subnet_address);
+        console.log('Existing subnet found:', existingSubnet);
+        if (existingSubnet) {
+          result.validation_status = 'Fail';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + 'Subnet address already exists';
+        }
+      } catch (err) {
+        console.log('Error checking subnet existence:', err.message);
+        // If error checking existence, continue with validation
+      }
+      
+      // Validate Tags (if provided)
+      if (result.tags) {
+        const tagNames = result.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0);
+        const invalidTags = [];
+        for (const tagName of tagNames) {
+          try {
+            const tags = await Tag.findByNameExact(tagName);
+            if (!tags || tags.length === 0) {
+              invalidTags.push(tagName);
+            }
+          } catch (err) {
+            // If error checking tag, continue with validation
+          }
+        }
+        if (invalidTags.length > 0) {
+          // Tag không hợp lệ sẽ làm fail validation
+          result.validation_status = 'Fail';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Tag(s) not found: ${invalidTags.join(', ')}`;
+        }
+      }
+      
+      console.log('Final validation result for row', i + 1, ':', result);
+      validationResults.push(result);
+    }
+    
+    // Create validation results Excel file
+    console.log('Creating Excel file with', validationResults.length, 'results');
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Validation Results');
+    
+    // Add headers
+    worksheet.addRow([
+      'Subnet Address (Require)',
+      'Description',
+      'Tag (comma-separated if multiple)',
+      'Validation Status',
+      'Validation Reason'
+    ]);
+
+    // Style headers
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+
+    // Add data rows
+    validationResults.forEach(result => {
+      const row = worksheet.addRow([
+        result.subnet_address,
+        result.description,
+        result.tags,
+        result.validation_status,
+        result.validation_reason
+      ]);
+
+      // Color code validation status
+      if (result.validation_status === 'Fail') {
+        row.getCell(4).font = { color: { argb: 'FFFF0000' } }; // Validation Status column
+        row.getCell(5).font = { color: { argb: 'FFFF0000' } }; // Validation Reason column
+      } else {
+        row.getCell(4).font = { color: { argb: 'FF008000' } }; // Validation Status column
+      }
+    });
+
+    // Set column widths
+    worksheet.columns = [
+      { width: 25 },  // Subnet Address
+      { width: 30 },  // Description
+      { width: 25 },  // Tag
+      { width: 20 },  // Validation Status
+      { width: 50 }   // Validation Reason
+    ];
+
+    // Create temp directory if not exists
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const timestamp = Date.now();
+    const validationFileName = `${timestamp}_${req.file.originalname}_validation.xlsx`;
+    const validationFilePath = path.join(tempDir, validationFileName);
+    console.log('Writing Excel file to:', validationFilePath);
+
+    await workbook.xlsx.writeFile(validationFilePath);
+    console.log('Excel file written successfully');
+
+    // Count validation results
+    const allPassed = validationResults.every(result => result.validation_status === 'Pass');
+    const passCount = validationResults.filter(result => result.validation_status === 'Pass').length;
+    const failCount = validationResults.length - passCount;
+    
+    console.log('Validation summary:');
+    console.log('- Total rows:', validationResults.length);
+    console.log('- Passed:', passCount);
+    console.log('- Failed:', failCount);
+    console.log('- All passed:', allPassed);
+
+    // Clean up uploaded file
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (cleanupErr) {
+      console.error('Error cleaning up uploaded file:', cleanupErr);
+    }
+
+    // Clean up validation file after 10 seconds
+    setTimeout(() => {
+      try {
+        if (fs.existsSync(validationFilePath)) {
+          fs.unlinkSync(validationFilePath);
+        }
+      } catch (cleanupErr) {
+        console.error('Error cleaning up validation file:', cleanupErr);
+      }
+    }, 10000);
+
+    // Set header for frontend to know if import button should be enabled
+    console.log('Setting response headers and sending response');
+    res.set('X-Validation-Summary', JSON.stringify({
+      total: validationResults.length,
+      passed: passCount,
+      failed: failCount,
+      allPassed: allPassed
+    }));
+
+    const responseData = {
+      success: true,
+      message: `Validation completed. ${passCount} passed, ${failCount} failed.`,
+      validation_summary: {
+        total: validationResults.length,
+        passed: passCount,
+        failed: failCount,
+        all_passed: allPassed
+      },
+      validation_file: validationFileName
+    };
+    
+    console.log('Sending response:', responseData);
+    res.json(responseData);
+    console.log('=== SUBNET VALIDATION COMPLETED ===');
+
+  } catch (err) {
+    console.error('=== SUBNET VALIDATION ERROR ===');
+    console.error('Error validating subnet import file:', err);
+    console.error('Error stack:', err.stack);
+    res.status(500).json({ error: 'Error validating file', detail: err.message });
+  }
+};
+
+// Import subnets
+networkController.importSubnets = async (req, res) => {
+  try {
+    console.log('=== SUBNET IMPORT START ===');
+    console.log('Request method:', req.method);
+    console.log('Request URL:', req.url);
+    console.log('Session user:', req.session?.user);
+    console.log('File uploaded:', req.file);
+    
+    if (!req.file) {
+      console.log('ERROR: No file uploaded');
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const filePath = req.file.path;
+    const originalFileName = req.file.originalname;
+    let rows = [];
+
+    // Parse file based on extension
+    const ext = path.extname(originalFileName).toLowerCase();
+    if (ext === '.csv') {
+      const csvContent = fs.readFileSync(filePath, 'utf8');
+      const lines = csvContent.split('\n').filter(line => line.trim());
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      // Validate headers order and required fields
+      const expectedHeaders = [
+        'Subnet Address (Require)',
+        'Description', 
+        'Tag (comma-separated if multiple)'
+      ];
+      
+      if (headers.length !== expectedHeaders.length) {
+        return res.status(400).json({ 
+          error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}` 
+        });
+      }
+      
+      for (let i = 0; i < expectedHeaders.length; i++) {
+        if (headers[i] !== expectedHeaders[i]) {
+          return res.status(400).json({ 
+            error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"` 
+          });
+        }
+      }
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index] || '';
+        });
+        rows.push(row);
+      }
+    } else if (ext === '.xlsx' || ext === '.xls') {
+      const workbook = XLSX.readFile(filePath);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      rows = XLSX.utils.sheet_to_json(worksheet);
+      
+      // Validate headers for Excel files
+      if (rows.length > 0) {
+        const headers = Object.keys(rows[0]);
+        const expectedHeaders = [
+          'Subnet Address (Require)',
+          'Description', 
+          'Tag (comma-separated if multiple)'
+        ];
+        
+        if (headers.length !== expectedHeaders.length) {
+          return res.status(400).json({ 
+            error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}` 
+          });
+        }
+        
+        for (let i = 0; i < expectedHeaders.length; i++) {
+          if (headers[i] !== expectedHeaders[i]) {
+            return res.status(400).json({ 
+              error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"` 
+            });
+          }
+        }
+      }
+    } else {
+      return res.status(400).json({ error: 'Unsupported file format. Only CSV and Excel files are allowed.' });
+    }
+
+    // Start transaction
+    const client = await pool.connect();
+    await client.query('BEGIN');
+
+    const importResults = [];
+    const username = req.session && req.session.user && req.session.user.username ? req.session.user.username : 'admin';
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const result = {
+        row_number: i + 1,
+        subnet_address: sanitizeString(row['Subnet Address (Require)'] || ''),
+        description: sanitizeString(row['Description'] || ''),
+        tags: sanitizeString(row['Tag (comma-separated if multiple)'] || ''),
+        import_status: 'SUCCESS',
+        import_reason: ''
+      };
+
+      try {
+        // Double-check subnet doesn't exist (safety check)
+        const existingSubnet = await Subnet.findByAddress(result.subnet_address);
+        if (existingSubnet) {
+          result.import_status = 'FAILED';
+          result.import_reason = 'Subnet address already exists';
+          importResults.push(result);
+          continue;
+        }
+
+        // Create subnet
+        const newSubnet = await Subnet.create({
+          address: result.subnet_address,
+          description: result.description || null,
+          updated_by: username
+        }, client);
+
+        // Set tags if provided
+        if (result.tags) {
+          const tagList = result.tags.split(',').map(t => t.trim()).filter(t => t);
+          const tagIds = [];
+          for (const tagName of tagList) {
+            const existingTags = await Tag.findByNameExact(tagName);
+            if (existingTags && existingTags.length > 0) {
+              tagIds.push(existingTags[0].id);
+            }
+          }
+          if (tagIds.length > 0) {
+            await Subnet.setTags(newSubnet.id, tagIds, client);
+          }
+        }
+
+        importResults.push(result);
+
+      } catch (err) {
+        console.error(`Error importing subnet row ${i + 1}:`, err);
+        result.import_status = 'FAILED';
+        result.import_reason = err.message;
+        importResults.push(result);
+      }
+    }
+
+    // Commit transaction
+    await client.query('COMMIT');
+    client.release();
+
+    // Create import results Excel file (same as validation)
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Import Results');
+    
+    // Add headers
+    worksheet.addRow([
+      'Subnet Address (Require)',
+      'Description',
+      'Tag (comma-separated if multiple)',
+      'Import Status',
+      'Import Reason'
+    ]);
+
+    // Style headers
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+
+    // Add data rows
+    importResults.forEach(result => {
+      const row = worksheet.addRow([
+        result.subnet_address,
+        result.description,
+        result.tag,
+        result.import_status,
+        result.import_reason
+      ]);
+
+      // Color code import status
+      if (result.import_status === 'FAILED') {
+        row.getCell(4).font = { color: { argb: 'FFFF0000' } }; // Import Status column
+        row.getCell(5).font = { color: { argb: 'FFFF0000' } }; // Import Reason column
+      } else {
+        row.getCell(4).font = { color: { argb: 'FF008000' } }; // Import Status column
+      }
+    });
+
+    // Set column widths
+    worksheet.columns = [
+      { width: 25 },  // Subnet Address
+      { width: 30 },  // Description
+      { width: 25 },  // Tag
+      { width: 20 },  // Import Status
+      { width: 50 }   // Import Reason
+    ];
+
+    // Create temp directory if not exists
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const timestamp = Date.now();
+    const importFileName = `${timestamp}_${originalFileName}_imported.xlsx`;
+    const importFilePath = path.join(tempDir, importFileName);
+
+    await workbook.xlsx.writeFile(importFilePath);
+
+    // Count import results
+    const successCount = importResults.filter(result => result.import_status === 'SUCCESS').length;
+    const failCount = importResults.length - successCount;
+
+    // Clean up uploaded file
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (cleanupErr) {
+      console.error('Error cleaning up uploaded file:', cleanupErr);
+    }
+
+    // Clean up import file after 10 seconds
+    setTimeout(() => {
+      try {
+        if (fs.existsSync(importFilePath)) {
+          fs.unlinkSync(importFilePath);
+        }
+      } catch (cleanupErr) {
+        console.error('Error cleaning up import file:', cleanupErr);
+      }
+    }, 10000);
+
+    res.json({
+      success: true,
+      message: `Import completed. ${successCount} imported successfully, ${failCount} failed.`,
+      import_summary: {
+        total: importResults.length,
+        success: successCount,
+        failed: failCount
+      },
+      import_file: importFileName
+    });
+
+  } catch (err) {
+    console.error('=== SUBNET IMPORT ERROR ===');
+    console.error('Error importing subnets:', err);
+    console.error('Error stack:', err.stack);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Error importing subnets', detail: err.message });
+    }
+  }
+};
+
+// Download subnet validation file
+networkController.downloadSubnetValidationFile = async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
+    const filePath = path.join(tempDir, filename);
+
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+
+    res.download(filePath, filename, (err) => {
+      if (err) {
+        console.error('Error downloading validation file:', err);
+      }
+      // Clean up file after download
+      setTimeout(() => {
+        try {
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        } catch (cleanupErr) {
+          console.error('Error cleaning up validation file:', cleanupErr);
+        }
+      }, 5000);
+    });
+  } catch (err) {
+    console.error('Error downloading file:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Error downloading file', detail: err.message });
+    }
+  }
+};
+
+// Batch delete IP addresses
+networkController.batchDeleteIpAddresses = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { ipIds } = req.body;
+    
+    // Validate input
+    if (!ipIds || !Array.isArray(ipIds) || ipIds.length === 0) {
+      return res.status(400).json({ 
+        error: 'No IP addresses selected for deletion',
+        detail: 'Please select at least one IP address to delete'
+      });
+    }
+    
+    if (ipIds.length > 100) {
+      return res.status(400).json({ 
+        error: 'Too many IP addresses selected',
+        detail: 'Cannot delete more than 100 IP addresses at once. Please select fewer IPs.'
+      });
+    }
+    
+    // Validate all IDs are numbers
+    const validIds = ipIds.filter(id => !isNaN(parseInt(id)) && parseInt(id) > 0);
+    if (validIds.length !== ipIds.length) {
+      const invalidIds = ipIds.filter(id => isNaN(parseInt(id)) || parseInt(id) <= 0);
+      return res.status(400).json({ 
+        error: 'Invalid IP address IDs provided',
+        detail: `Invalid IDs: ${invalidIds.join(', ')}`
+      });
+    }
+    
+    await client.query('BEGIN');
+    
+    const results = {
+      success: [],
+      failed: [],
+      total: ipIds.length
+    };
+    
+    // Process each IP address
+    for (const ipId of validIds) {
+      try {
+        // Check if IP exists
+        const ipExists = await IpAddress.exists(ipId);
+        if (!ipExists) {
+          results.failed.push({
+            id: ipId,
+            reason: 'IP address not found'
+          });
+          continue;
+        }
+        
+        // Get IP details for logging
+        const ipDetails = await IpAddress.findById(ipId);
+        
+        // Remove tags first
+        // @ts-ignore - client parameter is supported by model methods
+        await IpAddress.setTags(ipId, [], client);
+        
+        // Delete the IP address
+        // @ts-ignore - client parameter is supported by model methods
+        await IpAddress.delete(ipId, client);
+        
+        results.success.push({
+          id: ipId,
+          ip_address: ipDetails?.ip_address || 'Unknown'
+        });
+        
+      } catch (err) {
+        let reason = 'Delete failed';
+        
+        if (err.message.includes('foreign key constraint') || err.message.includes('assigned to server')) {
+          reason = 'IP address is in use by servers/devices. Please delete the associated servers/devices first';
+          console.log(`IP ${ipId} cannot be deleted: ${err.message}`);
+        } else if (err.message.includes('permission')) {
+          reason = 'Permission denied';
+          console.error(`Permission error deleting IP ${ipId}:`, err);
+        } else {
+          reason = err.message;
+          console.error(`Unexpected error deleting IP ${ipId}:`, err);
+        }
+        
+        results.failed.push({
+          id: ipId,
+          reason: reason
+        });
+      }
+    }
+    
+    // If all failed, rollback
+    if (results.success.length === 0) {
+      await client.query('ROLLBACK');
+      const failedReasons = results.failed.map(f => f.reason).join(', ');
+      return res.status(400).json({
+        error: 'No IP addresses were deleted',
+        detail: `All deletions failed. Reasons: ${failedReasons}`,
+        results: results
+      });
+    }
+    
+    // If some failed, still commit successful deletions
+    await client.query('COMMIT');
+    
+    // Return results
+    let message = `${results.success.length} IP address(es) deleted successfully`;
+    if (results.failed.length > 0) {
+      const failedReasons = results.failed.map(f => f.reason).join(', ');
+      message += `. ${results.failed.length} failed: ${failedReasons}`;
+    }
+    
+    res.json({
+      success: true,
+      message: message,
+      results: results
+    });
+    
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Batch delete IP addresses error:', err);
+    res.status(500).json({ 
+      error: 'Batch delete failed', 
+      detail: err.message 
+    });
+  } finally {
+    client.release();
   }
 };
 

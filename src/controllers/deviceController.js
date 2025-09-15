@@ -2,8 +2,18 @@ import Platform from '../models/Platform.js';
 import DeviceType from '../models/DeviceType.js';
 import Device from '../models/Device.js';
 import Configuration from '../models/Configuration.js';
+import Tag from '../models/Tag.js';
+import Contact from '../models/Contact.js';
+import IpAddress from '../models/IpAddress.js';
 import { pool } from '../../config/config.js';
 import ExcelJS from 'exceljs';
+import XLSX from 'xlsx';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 
 // Helper: Load device location options from DB config
@@ -692,6 +702,799 @@ deviceController.apiDeviceRoles = async (req, res) => {
   } catch (err) {
     console.error('Error fetching device roles:', err);
     res.status(500).json({ error: 'Error fetching device roles: ' + err.message });
+  }
+};
+
+// ====== DEVICE IMPORT FUNCTIONS ======
+
+// Helper function to sanitize string data for Excel
+function sanitizeString(str) {
+  if (!str || typeof str !== 'string') return '';
+  
+  // Remove or replace problematic characters that can cause Excel corruption
+  return str
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove control characters
+    .replace(/[\uFEFF]/g, '') // Remove BOM
+    .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove zero-width characters
+    .trim();
+}
+
+// Download device template
+deviceController.downloadDeviceTemplate = async (req, res) => {
+  try {
+    // Create Excel workbook
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Device Template');
+    
+    // Add headers
+    worksheet.addRow([
+      'Name (Optional - auto-generated if empty)',
+      'IPAddress (Require, comma-separated if multiple)',
+      'Device Type (Require)',
+      'Platform (OS)',
+      'Location',
+      'Serial',
+      'Management (comma-separated if multiple)',
+      'Manufacturer',
+      'Device Role',
+      'Description',
+      'Tag (comma-separated if multiple)',
+      'Contact (comma-separated if multiple)'
+    ]);
+    
+    // Add sample data
+    worksheet.addRow([
+      'Test Device 1',
+      '192.168.1.100,192.168.1.101',
+      'Router',
+      'Linux',
+      'DC',
+      'SN123456',
+      '192.168.1.1,192.168.1.2',
+      'Cisco',
+      'Core Router',
+      'Test device description',
+      'Tag1,Tag2',
+      'admin@company.com,manager@company.com'
+    ]);
+    
+    // Add sample with auto-generated name
+    worksheet.addRow([
+      '', // Empty name - will be auto-generated
+      '192.168.2.3',
+      'Switch',
+      'Windows',
+      'DR',
+      'SN789012',
+      '192.168.2.1',
+      'HP',
+      'Access Switch',
+      'Auto-generated name example',
+      'Tag1',
+      'admin@company.com'
+    ]);
+    
+    // Set column widths
+    worksheet.columns = [
+      { width: 30 },  // Name
+      { width: 40 },  // IPAddress
+      { width: 20 },  // Device Type
+      { width: 20 },  // Platform
+      { width: 15 },  // Location
+      { width: 15 },  // Serial
+      { width: 20 },  // Management
+      { width: 20 },  // Manufacturer
+      { width: 20 },  // Device Role
+      { width: 30 },  // Description
+      { width: 25 },  // Tag
+      { width: 30 }   // Contact
+    ];
+    
+    // Create temp directory if not exists
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    const tempPath = path.join(tempDir, 'temp_device_template.xlsx');
+    await workbook.xlsx.writeFile(tempPath);
+    
+    // Check if file exists and get size
+    if (fs.existsSync(tempPath)) {
+      const stats = fs.statSync(tempPath);
+      
+      // Use res.download() for proper file download handling
+      res.download(tempPath, 'device_list_template.xlsx', (err) => {
+        if (err) {
+          console.error('Error downloading template file:', err);
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'Error downloading template file' });
+          }
+        }
+        
+        // Clean up template file after download
+        setTimeout(() => {
+          try {
+            if (fs.existsSync(tempPath)) {
+              fs.unlinkSync(tempPath);
+              console.log('Template file cleaned up:', tempPath);
+            }
+          } catch (cleanupErr) {
+            console.error('Error cleaning up template file:', cleanupErr);
+          }
+        }, 5000); // 5 seconds delay
+      });
+    } else {
+      throw new Error('Template Excel file was not created');
+    }
+    
+  } catch (err) {
+    console.error('Error creating device template:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Error creating template: ' + err.message });
+    }
+  }
+};
+
+// Validate device import file
+deviceController.validateImportDevices = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const filePath = req.file.path;
+    const originalFileName = req.file.originalname;
+    let rows = [];
+
+    // Parse file based on extension
+    const ext = path.extname(originalFileName).toLowerCase();
+    if (ext === '.csv') {
+      const csvContent = fs.readFileSync(filePath, 'utf8');
+      const lines = csvContent.split('\n').filter(line => line.trim());
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index] || '';
+        });
+        rows.push(row);
+      }
+    } else if (ext === '.xlsx' || ext === '.xls') {
+      const workbook = XLSX.readFile(filePath);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      
+      if (jsonData.length < 2) {
+        return res.status(400).json({ error: 'File must contain at least a header row and one data row' });
+      }
+      
+      const headers = jsonData[0];
+      for (let i = 1; i < jsonData.length; i++) {
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header] = jsonData[i][index] || '';
+        });
+        rows.push(row);
+      }
+    } else {
+      return res.status(400).json({ error: 'Unsupported file format' });
+    }
+
+    // Get valid options from database
+    const validLocations = await getLocationOptionsFromConfig();
+    const validLocationValues = validLocations.map(loc => loc.value || loc.label || loc);
+
+    // Validate each row
+    const validationResults = [];
+    const ipRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}$/;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const result = {
+        row_number: i + 1,
+        name: sanitizeString(row['Name (Optional - auto-generated if empty)'] || ''),
+        ip_addresses: sanitizeString(row['IPAddress (Require, comma-separated if multiple)'] || ''),
+        device_type: sanitizeString(row['Device Type (Require)'] || ''),
+        platform: sanitizeString(row['Platform (OS)'] || ''),
+        location: sanitizeString(row['Location'] || ''),
+        serial: sanitizeString(row['Serial'] || ''),
+        management: sanitizeString(row['Management'] || ''),
+        manufacturer: sanitizeString(row['Manufacturer'] || ''),
+        device_role: sanitizeString(row['Device Role'] || ''),
+        description: sanitizeString(row['Description'] || ''),
+        tag: sanitizeString(row['Tag (comma-separated if multiple)'] || ''),
+        contact: sanitizeString(row['Contact (comma-separated if multiple)'] || ''),
+        validation_status: 'PASS',
+        validation_reason: ''
+      };
+
+      // Device name is not required - will be auto-generated if empty
+
+      // Validate required fields
+      if (!result.ip_addresses) {
+        result.validation_status = 'FAIL';
+        result.validation_reason = 'IP addresses are required';
+      } else {
+        // Validate IP addresses format
+        const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
+        for (const ip of ipList) {
+          if (!ipRegex.test(ip)) {
+            result.validation_status = 'FAIL';
+            result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Invalid IP format: ${ip}`;
+          }
+        }
+      }
+
+      if (!result.device_type) {
+        result.validation_status = 'FAIL';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + 'Device type is required';
+      } else {
+        // Validate Device Type exists
+        const existingDeviceTypes = await DeviceType.findByNameExact(result.device_type);
+        if (!existingDeviceTypes || existingDeviceTypes.length === 0) {
+          result.validation_status = 'FAIL';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Device type not found: ${result.device_type}`;
+        }
+      }
+
+      // Validate Platform (if provided)
+      if (result.platform) {
+        const existingPlatforms = await Platform.findByNameExact(result.platform);
+        if (!existingPlatforms || existingPlatforms.length === 0) {
+          result.validation_status = 'FAIL';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Platform not found: ${result.platform}`;
+        }
+      }
+
+      // Validate location
+      if (result.location && !validLocationValues.includes(result.location)) {
+        result.validation_status = 'FAIL';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Invalid location: ${result.location}. Valid values: ${validLocationValues.join(', ')}`;
+      }
+
+      // Check if device already exists (by name OR by assigned IP)
+      let deviceExists = false;
+      let deviceExistsReason = '';
+
+      // Check by device name
+      if (result.name) {
+        const existingDevice = await Device.findByName(result.name);
+        if (existingDevice) {
+          deviceExists = true;
+          deviceExistsReason = 'Device name already exists';
+        }
+      }
+
+      // Check by assigned IP addresses
+      if (result.ip_addresses) {
+        const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
+        const assignedIPs = [];
+        for (const ip of ipList) {
+          const existingIP = await IpAddress.findByAddressWithDetails(ip);
+          if (existingIP && existingIP.status === 'assigned') {
+            assignedIPs.push(ip);
+          }
+        }
+        if (assignedIPs.length > 0) {
+          deviceExists = true;
+          if (deviceExistsReason) {
+            deviceExistsReason += `; IP(s) already assigned to devices: ${assignedIPs.join(', ')}`;
+          } else {
+            deviceExistsReason = `IP(s) already assigned to devices: ${assignedIPs.join(', ')}`;
+          }
+        }
+      }
+
+      // If device exists, mark as FAIL
+      if (deviceExists) {
+        result.validation_status = 'FAIL';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + deviceExistsReason;
+      }
+
+      // Validate Tags
+      if (result.tag) {
+        const tagList = result.tag.split(',').map(t => t.trim()).filter(t => t);
+        const invalidTags = [];
+        for (const tagName of tagList) {
+          const existingTags = await Tag.findByNameExact(tagName);
+          if (!existingTags || existingTags.length === 0) {
+            invalidTags.push(tagName);
+          }
+        }
+        if (invalidTags.length > 0) {
+          result.validation_status = 'FAIL';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Tag(s) not found: ${invalidTags.join(', ')}`;
+        }
+      }
+
+      // Validate Contacts
+      if (result.contact) {
+        const contactList = result.contact.split(',').map(c => c.trim()).filter(c => c);
+        const invalidContacts = [];
+        for (const contactEmail of contactList) {
+          const existingContacts = await Contact.findByEmailSearch(contactEmail);
+          if (!existingContacts || existingContacts.length === 0) {
+            invalidContacts.push(contactEmail);
+          }
+        }
+        if (invalidContacts.length > 0) {
+          result.validation_status = 'FAIL';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Contact(s) not found: ${invalidContacts.join(', ')}`;
+        }
+      }
+
+      validationResults.push(result);
+    }
+
+    // Create validation results Excel file
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Validation Results');
+    
+    // Add headers
+    worksheet.addRow([
+      'Name (Optional - auto-generated if empty)',
+      'IPAddress (Require, comma-separated if multiple)',
+      'Device Type (Require)',
+      'Platform (OS)',
+      'Location',
+      'Serial',
+      'Management (comma-separated if multiple)',
+      'Manufacturer',
+      'Device Role',
+      'Description',
+      'Tag (comma-separated if multiple)',
+      'Contact (comma-separated if multiple)',
+      'Validation Status',
+      'Validation Reason'
+    ]);
+
+    // Style headers
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+
+    // Add data rows
+    validationResults.forEach(result => {
+      const row = worksheet.addRow([
+        result.name,
+        result.ip_addresses,
+        result.device_type,
+        result.platform,
+        result.location,
+        result.serial,
+        result.management,
+        result.manufacturer,
+        result.device_role,
+        result.description,
+        result.tag,
+        result.contact,
+        result.validation_status,
+        result.validation_reason
+      ]);
+
+      // Color code validation status
+      if (result.validation_status === 'FAIL') {
+        row.getCell(13).font = { color: { argb: 'FFFF0000' } }; // Validation Status column
+        row.getCell(14).font = { color: { argb: 'FFFF0000' } }; // Validation Reason column
+      } else {
+        row.getCell(13).font = { color: { argb: 'FF008000' } }; // Validation Status column
+      }
+    });
+
+    // Set column widths
+    worksheet.columns = [
+      { width: 30 },  // Name
+      { width: 40 },  // IPAddress
+      { width: 20 },  // Device Type
+      { width: 20 },  // Platform
+      { width: 15 },  // Location
+      { width: 15 },  // Serial
+      { width: 20 },  // Management
+      { width: 20 },  // Manufacturer
+      { width: 20 },  // Device Role
+      { width: 30 },  // Description
+      { width: 25 },  // Tag
+      { width: 30 },  // Contact
+      { width: 20 },  // Validation Status
+      { width: 50 }   // Validation Reason
+    ];
+
+    // Create temp directory if not exists
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const timestamp = Date.now();
+    const excelFileName = `${timestamp}_${originalFileName}_validation.xlsx`;
+    const excelFilePath = path.join(tempDir, excelFileName);
+    await workbook.xlsx.writeFile(excelFilePath);
+
+    // Send Excel file directly
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${excelFileName}"`);
+    res.setHeader('Content-Length', fs.statSync(excelFilePath).size);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+
+    const fileBuffer = fs.readFileSync(excelFilePath);
+    res.send(fileBuffer);
+
+    // Clean up uploaded file
+    fs.unlinkSync(filePath);
+    
+    // Clean up temp Excel file after a delay
+    setTimeout(() => {
+      try {
+        if (fs.existsSync(excelFilePath)) {
+          fs.unlinkSync(excelFilePath);
+          console.log('Validation file cleaned up:', excelFilePath);
+        }
+      } catch (cleanupErr) {
+        console.error('Error cleaning up validation file:', cleanupErr);
+      }
+    }, 10000); // 10 seconds delay
+
+    // Calculate validation summary
+    const allPassed = validationResults.every(result => result.validation_status === 'PASS');
+    const passCount = validationResults.filter(result => result.validation_status === 'PASS').length;
+    const failCount = validationResults.filter(result => result.validation_status === 'FAIL').length;
+    
+    res.setHeader('X-Validation-Summary', JSON.stringify({
+      allPassed,
+      passCount,
+      failCount,
+      totalCount: validationResults.length
+    }));
+
+  } catch (err) {
+    console.error('Error validating device import file:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Error validating import file: ' + err.message });
+    }
+  }
+};
+
+// Import devices
+deviceController.importDevices = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const filePath = req.file.path;
+    const originalFileName = req.file.originalname;
+    let rows = [];
+
+    // Parse file (same logic as validation)
+    const ext = path.extname(originalFileName).toLowerCase();
+    if (ext === '.csv') {
+      const csvContent = fs.readFileSync(filePath, 'utf8');
+      const lines = csvContent.split('\n').filter(line => line.trim());
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index] || '';
+        });
+        rows.push(row);
+      }
+    } else if (ext === '.xlsx' || ext === '.xls') {
+      const workbook = XLSX.readFile(filePath);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      
+      if (jsonData.length < 2) {
+        return res.status(400).json({ error: 'File must contain at least a header row and one data row' });
+      }
+      
+      const headers = jsonData[0];
+      for (let i = 1; i < jsonData.length; i++) {
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header] = jsonData[i][index] || '';
+        });
+        rows.push(row);
+      }
+    } else {
+      return res.status(400).json({ error: 'Unsupported file format' });
+    }
+
+    await client.query('BEGIN');
+
+    const importResults = [];
+    const username = req.session && req.session.user && req.session.user.username ? req.session.user.username : 'admin';
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const result = {
+        row_number: i + 1,
+        name: sanitizeString(row['Name (Optional - auto-generated if empty)'] || ''),
+        ip_addresses: sanitizeString(row['IPAddress (Require, comma-separated if multiple)'] || ''),
+        device_type: sanitizeString(row['Device Type (Require)'] || ''),
+        platform: sanitizeString(row['Platform (OS)'] || ''),
+        location: sanitizeString(row['Location'] || ''),
+        serial: sanitizeString(row['Serial'] || ''),
+        management: sanitizeString(row['Management'] || ''),
+        manufacturer: sanitizeString(row['Manufacturer'] || ''),
+        device_role: sanitizeString(row['Device Role'] || ''),
+        description: sanitizeString(row['Description'] || ''),
+        tag: sanitizeString(row['Tag (comma-separated if multiple)'] || ''),
+        contact: sanitizeString(row['Contact (comma-separated if multiple)'] || ''),
+        import_status: 'SUCCESS',
+        import_reason: ''
+      };
+
+      try {
+        // Double-check device doesn't exist (safety check)
+        let deviceExists = false;
+        
+        // Check by device name
+        if (result.name) {
+          const existingDevice = await Device.findByName(result.name);
+          if (existingDevice) {
+            deviceExists = true;
+            result.import_reason = 'Device name already exists';
+          }
+        }
+        
+        // Check by assigned IP addresses
+        if (!deviceExists && result.ip_addresses) {
+          const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
+          for (const ip of ipList) {
+            const existingIP = await IpAddress.findByAddressWithDetails(ip);
+            if (existingIP && existingIP.status === 'assigned') {
+              deviceExists = true;
+              result.import_reason = `IP ${ip} is already assigned to a device`;
+              break;
+            }
+          }
+        }
+        
+        if (deviceExists) {
+          result.import_status = 'FAILED';
+          result.import_reason = result.import_reason || 'Device already exists';
+        } else {
+          // Generate device name if not provided
+          let deviceName = result.name;
+          if (!deviceName || deviceName.trim() === '') {
+            // Get first IP address
+            const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
+            const firstIP = ipList[0] || 'unknown';
+            
+            // Get device type and convert to lowercase
+            let deviceTypeName = '';
+            if (result.device_type) {
+              deviceTypeName = result.device_type.toLowerCase().replace(/\s+/g, '-');
+            }
+            
+            // Generate device name: <device-type>_<first-ip>
+            if (deviceTypeName) {
+              deviceName = `${deviceTypeName}_${firstIP}`;
+            } else {
+              deviceName = `device_${firstIP}`;
+            }
+          }
+          
+          // Create device
+          const deviceId = await Device.create({
+            name: deviceName,
+            device_type_id: null, // Will be set by device type name
+            platform_id: null, // Will be set by platform name
+            location: result.location || null,
+            serial_number: result.serial || null,
+            management_address: result.management || null,
+            manufacturer: result.manufacturer || null,
+            device_role: result.device_role || null,
+            description: result.description || null
+          });
+
+          // Set IP addresses
+          if (result.ip_addresses) {
+            const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
+            const ipIds = [];
+            for (const ip of ipList) {
+              const ipRecord = await IpAddress.findByAddress(ip);
+              if (ipRecord) {
+                ipIds.push(ipRecord.id);
+              }
+            }
+            if (ipIds.length > 0) {
+              // @ts-ignore - client parameter is supported by model methods
+              await Device.setIpAddresses(deviceId, ipIds, client);
+            }
+          }
+
+          // Set tags
+          if (result.tag) {
+            const tagList = result.tag.split(',').map(t => t.trim()).filter(t => t);
+            // @ts-ignore - client parameter is supported by model methods
+            await Device.setTags(deviceId, tagList, client);
+          }
+
+          // Set contacts
+          if (result.contact) {
+            const contactList = result.contact.split(',').map(c => c.trim()).filter(c => c);
+            // @ts-ignore - client parameter is supported by model methods
+            await Device.setContacts(deviceId, contactList, client);
+          }
+        } // End of else block for device creation
+
+      } catch (err) {
+        result.import_status = 'FAILED';
+        result.import_reason = err.message;
+      }
+
+      importResults.push(result);
+    }
+
+    await client.query('COMMIT');
+
+    // Create import results Excel file (same as validation)
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Import Results');
+    
+    // Add headers
+    worksheet.addRow([
+      'Name (Optional - auto-generated if empty)',
+      'IPAddress (Require, comma-separated if multiple)',
+      'Device Type (Require)',
+      'Platform (OS)',
+      'Location',
+      'Serial',
+      'Management (comma-separated if multiple)',
+      'Manufacturer',
+      'Device Role',
+      'Description',
+      'Tag (comma-separated if multiple)',
+      'Contact (comma-separated if multiple)',
+      'Import Status',
+      'Import Reason'
+    ]);
+
+    // Style headers
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+
+    // Add data rows
+    importResults.forEach(result => {
+      const row = worksheet.addRow([
+        result.name,
+        result.ip_addresses,
+        result.device_type,
+        result.platform,
+        result.location,
+        result.serial,
+        result.management,
+        result.manufacturer,
+        result.device_role,
+        result.description,
+        result.tag,
+        result.contact,
+        result.import_status,
+        result.import_reason
+      ]);
+
+      // Color code import status
+      if (result.import_status === 'FAILED') {
+        row.getCell(13).font = { color: { argb: 'FFFF0000' } }; // Import Status column
+        row.getCell(14).font = { color: { argb: 'FFFF0000' } }; // Import Reason column
+      } else {
+        row.getCell(13).font = { color: { argb: 'FF008000' } }; // Import Status column
+      }
+    });
+
+    // Set column widths
+    worksheet.columns = [
+      { width: 30 },  // Name
+      { width: 40 },  // IPAddress
+      { width: 20 },  // Device Type
+      { width: 20 },  // Platform
+      { width: 15 },  // Location
+      { width: 15 },  // Serial
+      { width: 20 },  // Management
+      { width: 20 },  // Manufacturer
+      { width: 20 },  // Device Role
+      { width: 30 },  // Description
+      { width: 25 },  // Tag
+      { width: 30 },  // Contact
+      { width: 20 },  // Import Status
+      { width: 50 }   // Import Reason
+    ];
+
+    // Create temp directory if not exists
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const timestamp = Date.now();
+    const excelFileName = `${timestamp}_${originalFileName}_imported.xlsx`;
+    const excelFilePath = path.join(tempDir, excelFileName);
+    await workbook.xlsx.writeFile(excelFilePath);
+
+    // Send Excel file directly
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${excelFileName}"`);
+    res.setHeader('Content-Length', fs.statSync(excelFilePath).size);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+
+    const fileBuffer = fs.readFileSync(excelFilePath);
+    res.send(fileBuffer);
+
+    // Clean up uploaded file
+    fs.unlinkSync(filePath);
+    
+    // Clean up temp Excel file after a delay
+    setTimeout(() => {
+      try {
+        if (fs.existsSync(excelFilePath)) {
+          fs.unlinkSync(excelFilePath);
+          console.log('Validation file cleaned up:', excelFilePath);
+        }
+      } catch (cleanupErr) {
+        console.error('Error cleaning up validation file:', cleanupErr);
+      }
+    }, 10000); // 10 seconds delay
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error importing devices:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Error importing devices: ' + err.message });
+    }
+  } finally {
+    client.release();
+  }
+};
+
+// Download device validation file
+deviceController.downloadDeviceValidationFile = async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const filePath = path.join(process.cwd(), uploadsDir, 'temp', filename);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    
+    res.download(filePath, filename, (err) => {
+      if (err) {
+        console.error('Error downloading validation file:', err);
+      }
+      
+      // Clean up file after download
+      setTimeout(() => {
+        try {
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+            console.log('Downloaded validation file cleaned up:', filePath);
+          }
+        } catch (cleanupErr) {
+          console.error('Error cleaning up downloaded file:', cleanupErr);
+        }
+      }, 5000); // 5 seconds delay
+    });
+  } catch (err) {
+    console.error('Error downloading device validation file:', err);
+    res.status(500).json({ error: 'Error downloading file: ' + err.message });
   }
 };
 

@@ -723,6 +723,7 @@ serverController.downloadServerTemplate = async (req, res) => {
       'OS',
       'Status',
       'Location',
+      'Type',
       'Manager (comma-separated if multiple)',
       'System (comma-separated if multiple)',
       'Agent (comma-separated if multiple)',
@@ -738,6 +739,7 @@ serverController.downloadServerTemplate = async (req, res) => {
       'Linux',
       'ONLINE',
       'DC',
+      'Physical',
       'admin@company.com,manager@company.com',
       'System1,System2',
       'Agent1,Agent2',
@@ -753,6 +755,7 @@ serverController.downloadServerTemplate = async (req, res) => {
       'Windows',
       'OFFLINE',
       'DR',
+      'Virtual',
       'admin@company.com',
       'System1',
       'Agent1',
@@ -768,6 +771,7 @@ serverController.downloadServerTemplate = async (req, res) => {
       { width: 15 },  // OS
       { width: 15 },  // Status
       { width: 15 },  // Location
+      { width: 15 },  // Type
       { width: 30 },  // Manager
       { width: 25 },  // System
       { width: 25 },  // Agent
@@ -777,11 +781,12 @@ serverController.downloadServerTemplate = async (req, res) => {
     ];
     
     // Create temp directory if not exists
-    const uploadsDir = path.join(__dirname, '../../uploads');
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
     }
-    const tempPath = path.join(uploadsDir, 'temp_server_template.xlsx');
+    const tempPath = path.join(tempDir, 'temp_server_template.xlsx');
     await workbook.xlsx.writeFile(tempPath);
     
     // Check if file exists and get size
@@ -795,8 +800,19 @@ serverController.downloadServerTemplate = async (req, res) => {
           if (!res.headersSent) {
             res.status(500).json({ error: 'Error downloading template file' });
           }
-        } else {
         }
+        
+        // Clean up template file after download
+        setTimeout(() => {
+          try {
+            if (fs.existsSync(tempPath)) {
+              fs.unlinkSync(tempPath);
+              console.log('Template file cleaned up:', tempPath);
+            }
+          } catch (cleanupErr) {
+            console.error('Error cleaning up template file:', cleanupErr);
+          }
+        }, 5000); // 5 seconds delay
       });
     } else {
       throw new Error('Template Excel file was not created');
@@ -867,6 +883,7 @@ serverController.validateImportServers = async (req, res) => {
       'OS',
       'Status',
       'Location',
+      'Type',
       'Manager (comma-separated if multiple)',
       'System (comma-separated if multiple)',
       'Agent (comma-separated if multiple)',
@@ -928,6 +945,7 @@ serverController.validateImportServers = async (req, res) => {
         os: sanitizeString(row['OS'] || ''),
         status: sanitizeString(row['Status'] || ''),
         location: sanitizeString(row['Location'] || ''),
+        type: sanitizeString(row['Type'] || ''),
         manager: sanitizeString(row['Manager (comma-separated if multiple)'] || ''),
         system: sanitizeString(row['System (comma-separated if multiple)'] || ''),
         agent: sanitizeString(row['Agent (comma-separated if multiple)'] || ''),
@@ -960,6 +978,15 @@ serverController.validateImportServers = async (req, res) => {
         result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Invalid status: ${result.status}. Valid values: ${validStatusValues.join(', ')}`;
       }
 
+      // Validate OS/Platform (if provided)
+      if (result.os) {
+        const existingPlatforms = await Platform.findByNameExact(result.os);
+        if (!existingPlatforms || existingPlatforms.length === 0) {
+          result.validation_status = 'FAIL';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `OS/Platform not found: ${result.os}`;
+        }
+      }
+
       // Validate location
       if (result.location && !validLocationValues.includes(result.location)) {
         result.validation_status = 'FAIL';
@@ -980,14 +1007,21 @@ serverController.validateImportServers = async (req, res) => {
       }
 
       // Check by assigned IP addresses
-      if (!serverExists && result.ip_addresses) {
+      if (result.ip_addresses) {
         const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
+        const assignedIPs = [];
         for (const ip of ipList) {
           const existingIP = await IpAddress.findByAddressWithDetails(ip);
           if (existingIP && existingIP.status === 'assigned') {
-            serverExists = true;
-            serverExistsReason = `IP ${ip} is already assigned to a server`;
-            break;
+            assignedIPs.push(ip);
+          }
+        }
+        if (assignedIPs.length > 0) {
+          serverExists = true;
+          if (serverExistsReason) {
+            serverExistsReason += `; IP(s) already assigned to servers: ${assignedIPs.join(', ')}`;
+          } else {
+            serverExistsReason = `IP(s) already assigned to servers: ${assignedIPs.join(', ')}`;
           }
         }
       }
@@ -999,67 +1033,82 @@ serverController.validateImportServers = async (req, res) => {
       }
 
       // Validate Tags
-      if (result.tag && result.validation_status === 'PASS') {
+      if (result.tag) {
         const tagList = result.tag.split(',').map(t => t.trim()).filter(t => t);
+        const invalidTags = [];
         for (const tagName of tagList) {
           const existingTags = await Tag.findByNameExact(tagName);
           if (!existingTags || existingTags.length === 0) {
-            result.validation_status = 'FAIL';
-            result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Tag not found: ${tagName}`;
-            break;
+            invalidTags.push(tagName);
           }
+        }
+        if (invalidTags.length > 0) {
+          result.validation_status = 'FAIL';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Tag(s) not found: ${invalidTags.join(', ')}`;
         }
       }
 
       // Validate Contacts/Managers
-      if (result.manager && result.validation_status === 'PASS') {
+      if (result.manager) {
         const managerList = result.manager.split(',').map(m => m.trim()).filter(m => m);
+        const invalidManagers = [];
         for (const managerEmail of managerList) {
-          const existingContact = await Contact.findByEmailSearch(managerEmail);
-          if (!existingContact) {
-            result.validation_status = 'FAIL';
-            result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Manager not found: ${managerEmail}`;
-            break;
+          const existingContacts = await Contact.findByEmailSearch(managerEmail);
+          if (!existingContacts || existingContacts.length === 0) {
+            invalidManagers.push(managerEmail);
           }
+        }
+        if (invalidManagers.length > 0) {
+          result.validation_status = 'FAIL';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Manager(s) not found: ${invalidManagers.join(', ')}`;
         }
       }
 
       // Validate Systems
-      if (result.system && result.validation_status === 'PASS') {
+      if (result.system) {
         const systemList = result.system.split(',').map(s => s.trim()).filter(s => s);
+        const invalidSystems = [];
         for (const systemName of systemList) {
           const existingSystems = await System.findByNameExact(systemName);
           if (!existingSystems || existingSystems.length === 0) {
-            result.validation_status = 'FAIL';
-            result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `System not found: ${systemName}`;
-            break;
+            invalidSystems.push(systemName);
           }
+        }
+        if (invalidSystems.length > 0) {
+          result.validation_status = 'FAIL';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `System(s) not found: ${invalidSystems.join(', ')}`;
         }
       }
 
       // Validate Agents
-      if (result.agent && result.validation_status === 'PASS') {
+      if (result.agent) {
         const agentList = result.agent.split(',').map(a => a.trim()).filter(a => a);
+        const invalidAgents = [];
         for (const agentName of agentList) {
           const existingAgents = await Agent.findByNameExact(agentName);
           if (!existingAgents || existingAgents.length === 0) {
-            result.validation_status = 'FAIL';
-            result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Agent not found: ${agentName}`;
-            break;
+            invalidAgents.push(agentName);
           }
+        }
+        if (invalidAgents.length > 0) {
+          result.validation_status = 'FAIL';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Agent(s) not found: ${invalidAgents.join(', ')}`;
         }
       }
 
       // Validate Services
-      if (result.service && result.validation_status === 'PASS') {
+      if (result.service) {
         const serviceList = result.service.split(',').map(s => s.trim()).filter(s => s);
+        const invalidServices = [];
         for (const serviceName of serviceList) {
           const existingServices = await Service.findByNameExact(serviceName);
           if (!existingServices || existingServices.length === 0) {
-            result.validation_status = 'FAIL';
-            result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Service not found: ${serviceName}`;
-            break;
+            invalidServices.push(serviceName);
           }
+        }
+        if (invalidServices.length > 0) {
+          result.validation_status = 'FAIL';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Service(s) not found: ${invalidServices.join(', ')}`;
         }
       }
 
@@ -1177,7 +1226,8 @@ serverController.validateImportServers = async (req, res) => {
     ];
 
     // Create temp directory if not exists
-    const tempDir = path.join(__dirname, '../../uploads/temp');
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
@@ -1210,10 +1260,15 @@ serverController.validateImportServers = async (req, res) => {
     
     // Clean up temp Excel file after a delay
     setTimeout(() => {
-      if (fs.existsSync(excelFilePath)) {
-        fs.unlinkSync(excelFilePath);
+      try {
+        if (fs.existsSync(excelFilePath)) {
+          fs.unlinkSync(excelFilePath);
+          console.log('Validation file cleaned up:', excelFilePath);
+        }
+      } catch (cleanupErr) {
+        console.error('Error cleaning up validation file:', cleanupErr);
       }
-    }, 1000);
+    }, 10000); // 10 seconds delay
 
   } catch (err) {
     console.error('Error validating server import file:', err);
@@ -1281,6 +1336,7 @@ serverController.importServers = async (req, res) => {
       'OS',
       'Status',
       'Location',
+      'Type',
       'Manager (comma-separated if multiple)',
       'System (comma-separated if multiple)',
       'Agent (comma-separated if multiple)',
@@ -1327,6 +1383,7 @@ serverController.importServers = async (req, res) => {
         os: sanitizeString(row['OS'] || ''),
         status: sanitizeString(row['Status'] || ''),
         location: sanitizeString(row['Location'] || ''),
+        type: sanitizeString(row['Type'] || ''),
         manager: sanitizeString(row['Manager (comma-separated if multiple)'] || ''),
         system: sanitizeString(row['System (comma-separated if multiple)'] || ''),
         agent: sanitizeString(row['Agent (comma-separated if multiple)'] || ''),
@@ -1404,7 +1461,7 @@ serverController.importServers = async (req, res) => {
             os: osId,
             status: result.status || null,
             location: result.location || null,
-            type: null,
+            type: result.type || null,
             description: result.description || null,
             username,
             client
@@ -1463,6 +1520,7 @@ serverController.importServers = async (req, res) => {
               // Set contacts for each IP
               for (const ipId of ipIds) {
                 if (managerIds.length > 0) {
+                  // @ts-ignore - client parameter is supported by model methods
                   await IpAddress.setContacts(ipId, managerIds, client);
                 }
               }
@@ -1630,7 +1688,8 @@ serverController.importServers = async (req, res) => {
     ];
 
     // Create temp directory if not exists
-    const tempDir = path.join(__dirname, '../../uploads/temp');
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
@@ -1654,10 +1713,15 @@ serverController.importServers = async (req, res) => {
     
     // Clean up temp Excel file after a delay
     setTimeout(() => {
-      if (fs.existsSync(excelFilePath)) {
-        fs.unlinkSync(excelFilePath);
+      try {
+        if (fs.existsSync(excelFilePath)) {
+          fs.unlinkSync(excelFilePath);
+          console.log('Validation file cleaned up:', excelFilePath);
+        }
+      } catch (cleanupErr) {
+        console.error('Error cleaning up validation file:', cleanupErr);
       }
-    }, 1000);
+    }, 10000); // 10 seconds delay
 
   } catch (err) {
     await client.query('ROLLBACK');
@@ -1674,13 +1738,30 @@ serverController.importServers = async (req, res) => {
 serverController.downloadServerValidationFile = async (req, res) => {
   try {
     const filename = req.params.filename;
-    const filePath = path.join(__dirname, '../../uploads/temp', filename);
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const filePath = path.join(process.cwd(), uploadsDir, 'temp', filename);
     
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'File not found' });
     }
     
-    res.download(filePath, filename);
+    res.download(filePath, filename, (err) => {
+      if (err) {
+        console.error('Error downloading validation file:', err);
+      }
+      
+      // Clean up file after download
+      setTimeout(() => {
+        try {
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+            console.log('Downloaded validation file cleaned up:', filePath);
+          }
+        } catch (cleanupErr) {
+          console.error('Error cleaning up downloaded file:', cleanupErr);
+        }
+      }, 5000); // 5 seconds delay
+    });
   } catch (err) {
     console.error('Error downloading server validation file:', err);
     res.status(500).json({ error: 'Error downloading file: ' + err.message });

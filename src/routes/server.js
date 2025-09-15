@@ -1,13 +1,17 @@
 import express from 'express';
 import multer from 'multer';
 import path from 'path';
+import fs from 'fs';
 import serverController from '../controllers/serverController.js';
 import requirePermission from '../middlewares/requirePermission.middleware.js';
 
 // Configure multer for file uploads
+const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/import/');
+    const dest = path.join(process.cwd(), uploadsDir, 'import');
+    fs.mkdirSync(dest, { recursive: true });
+    cb(null, dest);
   },
   filename: function (req, file, cb) {
     cb(null, Date.now() + '-' + file.originalname);

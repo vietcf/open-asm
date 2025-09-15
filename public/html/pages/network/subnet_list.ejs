@@ -15,6 +15,16 @@
           <i class="bi bi-plus"></i> Add Subnet
         </button>
       <% } %>
+      <% if (hasPermission('subnet.create')) { %>
+        <a href="/network/subnet-address/template" class="btn btn-info btn-sm me-2" download>
+          <i class="bi bi-download"></i> Download Template
+        </a>
+      <% } %>
+      <% if (hasPermission('subnet.create')) { %>
+        <button type="button" class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#importSubnetModal">
+          <i class="bi bi-upload"></i> Import Subnet
+        </button>
+      <% } %>
       <!-- Add Subnet Modal -->
       <div class="modal fade" id="addSubnetModal" tabindex="-1" aria-labelledby="addSubnetModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -92,6 +102,53 @@
       <!-- Filter values for JS (an toàn cho EJS strict) -->
       <div id="filter-subnet-data"
         data-tags='<%= JSON.stringify(filterTags || []) %>' style="display:none"></div>
+      
+      <!-- Import Subnet Modal -->
+      <div class="modal fade" id="importSubnetModal" tabindex="-1" aria-labelledby="importSubnetModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title" id="importSubnetModalLabel">Import Subnets</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <form id="importSubnetForm" enctype="multipart/form-data">
+                <div class="mb-3">
+                  <label for="subnetImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
+                  <input type="file" class="form-control" id="subnetImportFile" name="file" accept=".csv,.xlsx,.xls" required>
+                  <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
+                </div>
+                
+                <div class="mb-3">
+                  <div class="alert alert-info">
+                    <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
+                    <ul class="mb-0">
+                      <li>Download the template first to see the required format</li>
+                      <li>Subnet Address is required and must be in CIDR format (e.g., 192.168.1.0/24)</li>
+                      <li>Description is optional</li>
+                      <li>Tags are optional and can be comma-separated if multiple</li>
+                      <li>Validate the file first before importing</li>
+                    </ul>
+                  </div>
+                </div>
+                
+                <!-- Progress bar -->
+                <div id="subnetImportProgress" class="progress mb-3" style="display: none;">
+                  <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                </div>
+                
+                <!-- Results display -->
+                <div id="subnetImportResults" class="alert" style="display: none;"></div>
+              </form>
+            </div>
+            <div class="modal-footer d-flex gap-2">
+              <button type="button" class="btn btn-primary btn-sm" id="validateSubnetBtn">Validate File</button>
+              <button type="button" class="btn btn-success btn-sm" id="importSubnetBtn" style="display: none;">Import Subnets</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
   <div class="row">
@@ -750,3 +807,245 @@ window.addEventListener('DOMContentLoaded', function() {
 <script src="/vendor/select2.min.js"></script>
 <script src="/vendor/bootstrap.min.js"></script>
 <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
+
+<script>
+$(document).ready(function() {
+  // Subnet Import functionality
+  let validationFile = null;
+  
+  // Reset form when modal is shown/hidden
+  $('#importSubnetModal').on('show.bs.modal', function() {
+    resetImportForm();
+  });
+  
+  $('#importSubnetModal').on('hidden.bs.modal', function() {
+    resetImportForm();
+  });
+  
+  function resetImportForm() {
+    $('#importSubnetForm')[0].reset();
+    $('#subnetImportProgress').hide();
+    $('#subnetImportResults').hide();
+    $('#validateSubnetBtn').show();
+    $('#importSubnetBtn').hide();
+    validationFile = null;
+  }
+  
+  // Validate subnets - Copy exactly from IP address validation
+  let selectedFile = null;
+  
+  // Handle file selection
+  $(document).on('change', '#subnetImportFile', function() {
+    const file = this.files[0];
+    if (file) {
+      selectedFile = file;
+      $('#validateSubnetBtn').prop('disabled', false);
+      $('#importSubnetBtn').prop('disabled', true).hide();
+    } else {
+      selectedFile = null;
+      $('#validateSubnetBtn').prop('disabled', true);
+      $('#importSubnetBtn').prop('disabled', true).hide();
+    }
+  });
+  
+  // Handle validate button click
+  $(document).on('click', '#validateSubnetBtn', function() {
+    if (!selectedFile) {
+      alert('Please select a file first');
+      return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    
+    // Show progress
+    $('#subnetImportProgress').show();
+    $('#subnetImportResults').text('Validating file...');
+    $('.progress-bar').css('width', '30%');
+    
+    $.ajax({
+      url: '/network/subnet-address/validate-import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      xhr: function() {
+        const xhr = new window.XMLHttpRequest();
+        // Don't set responseType to 'blob' for JSON responses
+        return xhr;
+      },
+      success: function(data, status, xhr) {
+        console.log('=== SUBNET VALIDATION SUCCESS ===');
+        console.log('Data:', data);
+        console.log('Status:', status);
+        console.log('XHR:', xhr);
+        console.log('Response headers:', xhr.getAllResponseHeaders());
+        console.log('Content-Type:', xhr.getResponseHeader('Content-Type'));
+        console.log('X-Validation-Summary:', xhr.getResponseHeader('X-Validation-Summary'));
+        
+        $('.progress-bar').css('width', '100%');
+        $('#subnetImportResults').text('Validation complete! Downloading results...');
+        
+        // Handle JSON response
+        if (data && data.success) {
+          // Success - download validation file
+          const validationFile = data.validation_file;
+          if (validationFile) {
+            // Create download link for validation file
+            const downloadUrl = `/network/download/subnet-validation/${validationFile}`;
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = validationFile;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          }
+        } else {
+          // Handle error response
+          alert('Error: ' + (data.error || 'Unknown error'));
+        }
+        
+        // Check validation results from header
+        const validationSummary = xhr.getResponseHeader('X-Validation-Summary');
+        if (validationSummary) {
+          try {
+            const summary = JSON.parse(validationSummary);
+            if (summary.allPassed) {
+              $('#importSubnetBtn').prop('disabled', false).show();
+              $('#validateSubnetBtn').prop('disabled', true);
+              $('#subnetImportResults').text(`Validation complete! All ${summary.total} records passed. You can now import.`);
+            } else {
+              $('#importSubnetBtn').prop('disabled', true).hide();
+              $('#validateSubnetBtn').prop('disabled', false);
+              $('#subnetImportResults').text(`Validation complete! ${summary.passed}/${summary.total} passed, ${summary.failed} failed. Please fix errors before importing.`);
+            }
+          } catch (e) {
+            // Fallback if header parsing fails
+            $('#importSubnetBtn').prop('disabled', false).show();
+            $('#validateSubnetBtn').prop('disabled', true);
+            $('#subnetImportResults').text('File validated! Please check the downloaded file - only import if all validations are PASS.');
+          }
+        } else {
+          // Fallback if no validation summary header
+          $('#importSubnetBtn').prop('disabled', false).show();
+          $('#validateSubnetBtn').prop('disabled', true);
+          $('#subnetImportResults').text('File validated! Please check the downloaded file - only import if all validations are PASS.');
+        }
+        
+        setTimeout(() => {
+          $('#subnetImportProgress').hide();
+        }, 2000);
+      },
+      error: function(xhr, status, error) {
+        console.log('=== SUBNET VALIDATION ERROR ===');
+        console.log('XHR:', xhr);
+        console.log('Status:', status);
+        console.log('Error:', error);
+        console.log('Response status:', xhr.status);
+        console.log('Response text:', xhr.responseText);
+        console.log('Response JSON:', xhr.responseJSON);
+        console.log('Response headers:', xhr.getAllResponseHeaders());
+        
+        $('#subnetImportProgress').hide();
+        let errorMessage = 'Validation failed';
+        if (xhr.responseJSON && xhr.responseJSON.error) {
+          errorMessage = xhr.responseJSON.error;
+        }
+        alert(errorMessage);
+      }
+    });
+  });
+  
+  // Import subnets
+  $('#importSubnetBtn').on('click', function() {
+    const fileInput = $('#subnetImportFile')[0];
+    if (!fileInput.files[0]) {
+      alert('Please select a file first');
+      return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    
+    // Show progress
+    $('#subnetImportProgress').show();
+    $('#subnetImportProgress .progress-bar').css('width', '50%').text('Importing...');
+    $('#importSubnetBtn').prop('disabled', true);
+    
+    $.ajax({
+      url: '/network/subnet-address/import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      xhr: function() {
+        const xhr = new window.XMLHttpRequest();
+        // Don't set responseType to 'blob' for JSON responses
+        return xhr;
+      },
+      success: function(data, status, xhr) {
+        console.log('=== SUBNET IMPORT SUCCESS ===');
+        console.log('Data:', data);
+        console.log('Status:', status);
+        console.log('XHR:', xhr);
+        
+        $('#subnetImportProgress .progress-bar').css('width', '100%').text('Import Complete');
+        
+        // Handle JSON response
+        if (data && data.success) {
+          // Success - download import file
+          const importFile = data.import_file;
+          if (importFile) {
+            // Create download link for import file
+            const downloadUrl = `/network/download/subnet-validation/${importFile}`;
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = importFile;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          }
+        } else {
+          // Handle error response
+          alert('Error: ' + (data.error || 'Unknown error'));
+        }
+        
+        // Show results
+        const resultsDiv = $('#subnetImportResults');
+        resultsDiv.removeClass('alert-danger').addClass('alert-success')
+          .html(`<strong>Import Completed!</strong><br>
+                 <small>Page will refresh to show updated data.</small>`);
+        resultsDiv.show();
+        
+        // Hide import button
+        $('#importSubnetBtn').hide();
+        
+        // Refresh page after 2 seconds
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      },
+      error: function(xhr, status, error) {
+        console.log('=== SUBNET IMPORT ERROR ===');
+        console.log('XHR:', xhr);
+        console.log('Status:', status);
+        console.log('Error:', error);
+        console.log('Response status:', xhr.status);
+        console.log('Response text:', xhr.responseText);
+        console.log('Response JSON:', xhr.responseJSON);
+        
+        $('#subnetImportProgress .progress-bar').css('width', '100%').text('Import Failed');
+        $('#subnetImportResults').removeClass('alert-success').addClass('alert-danger')
+          .html('<strong>Import Error!</strong><br>' + (xhr.responseJSON?.error || 'Unknown error occurred'))
+          .show();
+      },
+      complete: function() {
+        $('#importSubnetBtn').prop('disabled', false);
+        setTimeout(() => {
+          $('#subnetImportProgress').hide();
+        }, 2000);
+      }
+    });
+  });
+});
+</script>

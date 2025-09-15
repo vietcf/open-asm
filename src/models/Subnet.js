@@ -30,7 +30,7 @@ class Subnet {
   }
 
   // Create a new subnet (only fields in subnets table)
-  static async create({ address, description, updated_by = '' }, client = pool) {
+  static async create({ address, description, updated_by = '' }, client) {
     const result = await client.query(
       'INSERT INTO subnets (address, description, updated_by) VALUES ($1, $2, $3) RETURNING *',
       [address, description, updated_by]
