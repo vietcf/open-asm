@@ -1,0 +1,327 @@
+# ========================================
+# 🌐 SUBNETS API TESTS (MINIMAL)
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+# Environment: development (change in VS Code status bar)
+# ========================================
+
+### 0. Login to get JWT Token (Run this first!)
+# @name subnetAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+# ========================================
+# 📋 BASIC SUBNET CRUD OPERATIONS
+# ========================================
+
+### 1. Get All Subnets
+GET {{baseUrl}}/{{apiVersion}}/subnets
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+### 2. Get Subnet by ID
+GET {{baseUrl}}/{{apiVersion}}/subnets/1
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+### 3. Create New Subnet (Complete)
+# @name createSubnet
+POST {{baseUrl}}/{{apiVersion}}/subnets
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+{
+  "address": "192.168.97.0/24",
+  "description": "Test subnet for API testing",
+  "zone": "TEST_ZONE",
+  "environment": "TEST",
+  "tags": []
+}
+
+### 4. Create New Subnet (Minimal)
+# @name createMinimalSubnet
+POST {{baseUrl}}/{{apiVersion}}/subnets
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+{
+  "address": "10.1.0.0/8"
+}
+
+### 5. Update Subnet (Complete Update)
+PUT {{baseUrl}}/{{apiVersion}}/subnets/{{createSubnet.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+{
+  "description": "Updated test subnet description",
+  "zone": "UPDATED_ZONE1",
+  "tags": []
+}
+
+### 6. Update Subnet (Description Only)
+PUT {{baseUrl}}/{{apiVersion}}/subnets/{{createSubnet.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+{
+  "description": "Updated description only"
+}
+
+### 7. Update Subnet (Zone Only)
+PUT {{baseUrl}}/{{apiVersion}}/subnets/{{createSubnet.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+{
+  "zone": "DMZ"
+}
+
+### 8. Update Subnet (Environment Only)
+PUT {{baseUrl}}/{{apiVersion}}/subnets/{{createSubnet.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+{
+  "environment": "PROD"
+}
+
+### 9. Update Subnet (Clear Zone)
+PUT {{baseUrl}}/{{apiVersion}}/subnets/{{createSubnet.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+{
+  "zone": ""
+}
+
+### 10. Update Subnet (Clear Environment)
+PUT {{baseUrl}}/{{apiVersion}}/subnets/{{createSubnet.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+{
+  "environment": ""
+}
+
+### 11. Delete Subnet
+DELETE {{baseUrl}}/{{apiVersion}}/subnets/{{createSubnet.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+### 12. Delete Minimal Subnet
+DELETE {{baseUrl}}/{{apiVersion}}/subnets/{{createMinimalSubnet.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+# ========================================
+# 🔍 SEARCH & FILTER OPERATIONS
+# ========================================
+
+### 13. Search Subnets by Address
+GET {{baseUrl}}/{{apiVersion}}/subnets?search=192.168
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+### 14. Search Subnets by Description
+GET {{baseUrl}}/{{apiVersion}}/subnets?search=test
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+### 15. Get Subnets with Pagination
+GET {{baseUrl}}/{{apiVersion}}/subnets?page=1&pageSize=5
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+### 16. Search Subnet by Exact Address
+GET {{baseUrl}}/{{apiVersion}}/subnets?search=192.168.1.0/24
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+### 17. Search Subnet by Partial Address
+GET {{baseUrl}}/{{apiVersion}}/subnets?search=10.1.100
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+### 18. Search Subnet by Exact Description
+GET {{baseUrl}}/{{apiVersion}}/subnets?search=Office Network
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+### 19. Search Subnet by Zone
+GET {{baseUrl}}/{{apiVersion}}/subnets?search=SERVER FARM
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+### 20. Search Subnet by Environment
+GET {{baseUrl}}/{{apiVersion}}/subnets?search=PROD
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+### 21. Search Non-existent Subnet
+GET {{baseUrl}}/{{apiVersion}}/subnets?search=non-existent-subnet
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+# ========================================
+# 🔍 FIND EXACT SUBNET OPERATIONS
+# ========================================
+
+### 22. Find Subnet by Exact Address
+GET {{baseUrl}}/{{apiVersion}}/subnets/find?address=192.168.1.0/24
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+### 23. Find Non-existent Subnet (404)
+GET {{baseUrl}}/{{apiVersion}}/subnets/find?address=999.999.999.0/24
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+### 24. Find Subnet without Address Parameter (400)
+GET {{baseUrl}}/{{apiVersion}}/subnets/find
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+# ========================================
+# 🌍 ZONES & ENVIRONMENTS OPERATIONS
+# ========================================
+
+### 25. Get All Zones
+GET {{baseUrl}}/{{apiVersion}}/subnets/zones
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+### 26. Get All Environments
+GET {{baseUrl}}/{{apiVersion}}/subnets/environments
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+# ========================================
+# ❌ ERROR HANDLING TESTS
+# ========================================
+
+### 27. Get Non-existent Subnet (404)
+GET {{baseUrl}}/{{apiVersion}}/subnets/99999
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+### 28. Create Subnet with Missing Address (400)
+POST {{baseUrl}}/{{apiVersion}}/subnets
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+{
+  "description": "Missing address test"
+}
+
+### 29. Delete Non-existent Subnet (404)
+DELETE {{baseUrl}}/{{apiVersion}}/subnets/99999
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+# ========================================
+# 🧪 ADVANCED SUBNET TESTS
+# ========================================
+
+### 30. Create Subnet with Zone and Environment
+POST {{baseUrl}}/{{apiVersion}}/subnets
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+{
+  "address": "198.51.100.0/24",
+  "description": "Test subnet with zone and environment",
+  "zone": "TEST_ZONE",
+  "environment": "TEST"
+}
+
+# ========================================
+# 🔄 COMPREHENSIVE WORKFLOW TEST
+# ========================================
+
+### 40. Create Test Subnet for Workflow
+# @name workflowSubnet
+POST {{baseUrl}}/{{apiVersion}}/subnets
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+{
+  "address": "203.0.113.0/24",
+  "description": "Workflow test subnet",
+  "zone": "WORKFLOW_ZONE",
+  "environment": "WORKFLOW_ENV"
+}
+
+### 41. Verify Created Subnet
+GET {{baseUrl}}/{{apiVersion}}/subnets/{{workflowSubnet.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+### 42. Update Subnet in Workflow
+PUT {{baseUrl}}/{{apiVersion}}/subnets/{{workflowSubnet.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+{
+  "description": "Updated workflow test",
+  "zone": "UPDATED_WORKFLOW_ZONE",
+  "environment": "UPDATED_WORKFLOW_ENV"
+}
+
+### 43. Verify Updated Subnet
+GET {{baseUrl}}/{{apiVersion}}/subnets/{{workflowSubnet.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+### 44. Cleanup - Delete Workflow Subnet
+DELETE {{baseUrl}}/{{apiVersion}}/subnets/{{workflowSubnet.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+# ========================================
+# ✅ BASIC SUBNETS API TEST CHECKLIST
+# ========================================
+# 
+# BASIC CRUD OPERATIONS:
+# ⏳ GET /api/v1/subnets (get all subnets with pagination)
+# ⏳ GET /api/v1/subnets/:id (get subnet by ID)
+# ⏳ POST /api/v1/subnets (create new subnet)
+# ⏳ PUT /api/v1/subnets/:id (update subnet - selective fields)
+# ⏳ DELETE /api/v1/subnets/:id (delete subnet)
+#
+# SEARCH & FILTER:
+# ⏳ GET /api/v1/subnets?search=term (search by address/description)
+# ⏳ GET /api/v1/subnets?page=1&pageSize=20 (pagination)
+#
+# FIND EXACT:
+# ⏳ GET /api/v1/subnets/find?address=exact (find by exact address)
+#
+# ZONES & ENVIRONMENTS:
+# ⏳ GET /api/v1/subnets/zones (get distinct zones)
+# ⏳ GET /api/v1/subnets/environments (get distinct environments)
+#
+# ERROR HANDLING:
+# ⏳ 400 - Missing address parameter
+# ⏳ 404 - Subnet not found
+# ⏳ 500 - Internal server error
+#
+# TOTAL TEST CASES: 33 (Simplified)
+# ========================================

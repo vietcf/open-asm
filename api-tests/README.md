@@ -45,6 +45,7 @@ api-tests/
 ├── devices.http           # 📱 Device management APIs
 ├── ip-addresses.http      # 🌐 IP Address management APIs
 ├── networks.http          # 🌐 Network management APIs
+├── subnets.http           # 🌐 Subnet management APIs (CRUD + Zones/Environments)
 ├── contacts.http          # 👥 Contact management APIs
 ├── tags.http              # 🏷️ Tag management APIs
 ├── platforms.http         # � Platform (OS) management APIs
@@ -74,11 +75,12 @@ npm start
 2. **Tags** - Test quản lý tags (cơ bản nhất)
 3. **Platforms** - Test quản lý platforms/OS
 4. **Contacts** - Test quản lý contacts
-5. **IP Addresses** - Test quản lý IP addresses
-6. **Devices** - Test quản lý devices
-7. **Servers** - Test quản lý servers (phức tạp nhất)
-8. **Systems** - Test quản lý systems
-9. **Services** - Test quản lý services
+5. **Subnets** - Test quản lý subnets (zones/environments)
+6. **IP Addresses** - Test quản lý IP addresses
+7. **Devices** - Test quản lý devices
+8. **Servers** - Test quản lý servers (phức tạp nhất)
+9. **Systems** - Test quản lý systems
+10. **Services** - Test quản lý services
 
 ## ✨ Tính năng:
 

@@ -61,6 +61,97 @@ apiSubnetRouter.get('/', apiSubnetController.listSubnets);
 
 /**
  * @swagger
+ * /api/v1/subnets/find:
+ *   get:
+ *     summary: Find subnet by exact address
+ *     tags: [Subnet]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: address
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Exact subnet address (e.g. 192.168.1.0/24)
+ *     responses:
+ *       200:
+ *         description: Subnet object
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Subnet'
+ *       400:
+ *         description: Missing address parameter
+ *       404:
+ *         description: Subnet not found
+ */
+apiSubnetRouter.get('/find', apiSubnetController.findSubnet);
+
+/**
+ * @swagger
+ * /api/v1/subnets/zones:
+ *   get:
+ *     summary: Get distinct zones from subnets
+ *     tags: [Subnet]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search zones by name
+ *     responses:
+ *       200:
+ *         description: List of distinct zones
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   text:
+ *                     type: string
+ */
+apiSubnetRouter.get('/zones', apiSubnetController.getZones);
+
+/**
+ * @swagger
+ * /api/v1/subnets/environments:
+ *   get:
+ *     summary: Get distinct environments from subnets
+ *     tags: [Subnet]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search environments by name
+ *     responses:
+ *       200:
+ *         description: List of distinct environments
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   text:
+ *                     type: string
+ */
+apiSubnetRouter.get('/environments', apiSubnetController.getEnvironments);
+
+/**
+ * @swagger
  * /api/v1/subnets/{id}:
  *   get:
  *     summary: Get a single subnet by ID

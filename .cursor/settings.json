@@ -1,0 +1,8 @@
+{
+  "window.menuBarVisibility": "classic",
+  "window.titleBarStyle": "custom",
+  "workbench.editor.showTabs": true,
+  "workbench.activityBar.visible": true,
+  "workbench.statusBar.visible": true,
+  "workbench.sideBar.location": "left"
+}
