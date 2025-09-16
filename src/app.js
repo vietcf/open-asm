@@ -228,3 +228,14 @@ try {
 } catch (err) {
   console.log('Temp files cleanup job not available:', err.message);
 }
+
+// Start scheduled backup job for database
+try {
+  const backupJob = await import('./utils/backupJob.js');
+  if (backupJob.default && typeof backupJob.default.start === 'function') {
+    backupJob.default.start();
+    console.log('✅ Database backup job started');
+  }
+} catch (err) {
+  console.log('Database backup job not available:', err.message);
+}

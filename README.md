@@ -6,7 +6,9 @@ A comprehensive network and system management platform built with Node.js, Expre
 
 ### Core Functionality
 - **Device Management**: Monitor and manage network devices, servers, and systems
-- **Network Management**: Configure and monitor network infrastructure
+- **Network Management**: Configure and monitor network infrastructure with Zone and Environment support
+- **IP Address Management**: Track and manage IP addresses with subnet information
+- **Subnet Management**: Configure network subnets with Zone and Environment classification
 - **Firewall Management**: Create and manage firewall rules and policies
 - **User Authentication**: Secure login with session management
 - **Two-Factor Authentication (2FA)**: Enhanced security with TOTP support
@@ -14,6 +16,7 @@ A comprehensive network and system management platform built with Node.js, Expre
 - **File Upload Management**: Handle file uploads with AWS S3 integration
 - **System Monitoring**: Real-time system status and logging
 - **API Documentation**: Swagger/OpenAPI integration
+- **Automated Database Backup**: Scheduled PostgreSQL backups with configurable retention
 
 ### Security Features
 - **Password Management**: Secure password hashing with bcrypt
@@ -31,10 +34,17 @@ A comprehensive network and system management platform built with Node.js, Expre
 
 ## 📋 Prerequisites
 
+### For Docker Compose (Recommended)
+- **Docker** >= 20.0.0
+- **Docker Compose** >= 2.0.0
+
+### For Local Development
 - **Node.js** >= 16.0.0
 - **PostgreSQL** >= 12.0
 - **PM2** (for production deployment)
 - **Nginx** (recommended for reverse proxy)
+- **pg_dump** (for database backups)
+- **gzip** (for backup compression)
 
 ## 🛠️ Installation
 
@@ -44,6 +54,28 @@ git clone <repository-url>
 cd open-asm
 ```
 
+### Option A: Docker Compose (Recommended)
+
+2. **Set up environment variables**
+```bash
+cp .env.sample .env
+# Edit .env file if needed (default values work for Docker)
+```
+
+3. **Generate SSL certificates**
+```bash
+./setup-self-signed-ssl.sh
+```
+
+4. **Start the application**
+```bash
+docker-compose up -d
+```
+
+That's it! The application will be available at `https://<your-host>:443`
+
+### Option B: Local Development
+
 2. **Install dependencies**
 ```bash
 npm install
@@ -51,25 +83,37 @@ npm install
 **Note**: Make sure you run `npm install` (not `node install`) to install the project dependencies.
 
 3. **Set up environment variables**
-Create a `.env` file in the root directory:
+Copy the sample environment file and update the values:
+```bash
+cp .env.sample .env
+```
+
+Then edit the `.env` file with your actual values:
 ```env
 # Database Configuration
-PGUSER=asmuser
-PGHOST=localhost
-PGDATABASE=asm
-PGPASSWORD=asmuser
-PGPORT=5432
+POSTGRES_HOST=127.0.0.1
+POSTGRES_DB=openasm
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your-database-password
+POSTGRES_PORT=5432
+POSTGRES_SSL=false
 
 # Application Configuration
 NODE_ENV=development
 PORT=3000
-SESSION_SECRET=your_session_secret
+SESSION_SECRET=your-super-secret-session-key-change-this
 
-# AWS S3 Configuration (optional)
-AWS_ACCESS_KEY_ID=your_aws_access_key
-AWS_SECRET_ACCESS_KEY=your_aws_secret_key
-AWS_REGION=your_aws_region
-S3_BUCKET_NAME=your_s3_bucket
+# Security Configuration
+JWT_SECRET=your-jwt-secret-key-change-this
+JWT_EXPIRES_IN=8h
+
+# File Upload Configuration
+FILE_UPLOAD_DRIVER=local
+UPLOADS_DIR=public/uploads
+
+# Backup Configuration
+BACKUP_FREQUENCY=daily
+BACKUP_RETENTION=7
 ```
 
 4. **Database Setup**
@@ -78,41 +122,64 @@ First, create the PostgreSQL database and user:
 
 ```sql
 -- 1. Create Database
-CREATE DATABASE asm;
+CREATE DATABASE openasm;
 
--- 2. Create User
-CREATE USER asmuser WITH PASSWORD 'asmuser';
+-- 2. Create User (if not exists)
+-- Note: 'postgres' user usually exists by default
+-- If you want to create a custom user:
+-- CREATE USER postgres WITH PASSWORD 'your-database-password';
 
 -- 3. Grant database privileges
-GRANT ALL PRIVILEGES ON DATABASE asm TO asmuser;
+GRANT ALL PRIVILEGES ON DATABASE openasm TO postgres;
 
 -- 4. Connect to the database
-\c asm
+\c openasm
 
 -- 5. Grant schema privileges
-GRANT ALL ON SCHEMA public TO asmuser;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO asmuser;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO asmuser;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO asmuser;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO asmuser;
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO postgres;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO postgres;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres;
 ```
 
 Then initialize the application tables and data:
 
 ```bash
-# Initialize database tables
+# Initialize database tables (run once for new installation)
 node migrations/init_all_tables.js
 
-# Run migrations
-node migrations/migrate.js
+# Run migrations (only when database schema changes)
+node migrations/migrate_tables.js
 
-# Seed sample data (optional)
+# Seed sample data (optional - for testing/demo)
 node migrations/sample/seed.js
 ```
 
 ## 🚦 Running the Application
 
-### Development Mode
+### Docker Compose (Recommended)
+The easiest way to run the application:
+
+```bash
+# 1. Generate SSL certificates (one-time setup)
+./setup-self-signed-ssl.sh
+
+# 2. Start all services
+docker-compose up -d
+
+# 3. Check status
+docker-compose ps
+
+# 4. View logs
+docker-compose logs -f
+```
+
+The application will be available at:
+- **HTTP**: `http://<your-host>:80`
+- **HTTPS**: `https://<your-host>:443`
+
+### Development Mode (Local)
 ```bash
 # Using nodemon for auto-restart
 npm run dev
@@ -121,7 +188,7 @@ npm run dev
 node src/app.js
 ```
 
-### Production Mode
+### Production Mode (Local)
 ```bash
 # Using PM2 process manager
 pm2 start ecosystem.config.json
@@ -130,7 +197,7 @@ pm2 start ecosystem.config.json
 ./pm2.sh
 ```
 
-The application will be available at `http://localhost:3000`
+The application will be available at `http://<your-host>:3000` (development only)
 
 ## ⚙️ Dynamic Parameter Configuration (System Configuration UI)
 
@@ -179,12 +246,17 @@ open-asm/
 │   ├── middlewares/        # Custom middleware functions
 │   ├── models/             # Database models
 │   ├── routes/             # Express route definitions
-│   └── utils/              # Utility functions
+│   ├── types/              # TypeScript type definitions
+│   └── utils/              # Utility functions (including backup job)
 ├── config/                 # Configuration files
 ├── migrations/             # Database migrations and seeds
 ├── public/                 # Static assets (CSS, JS, images)
 ├── logs/                   # Application logs
-└── ecosystem.config.json   # PM2 configuration
+├── backups/                # Database backup files
+├── uploads/                # File uploads directory
+├── .env.sample             # Environment variables template
+├── ecosystem.config.json   # PM2 configuration
+└── docker-compose.yml      # Docker configuration
 ```
 
 ## 🔧 Configuration
@@ -227,36 +299,65 @@ Configure system firewall rules using the provided script:
 
 The application includes Swagger/OpenAPI documentation for API endpoints. Access it at:
 ```
-http://localhost:3000/api-docs
+https://<your-host>:443/api-docs
 ```
 
 ## 🗄️ Database
 
-### Migrations
-Run database migrations to set up the schema:
+### Initial Setup
+For new installations, run these commands once:
 ```bash
-node migrations/migrate.js
-```
+# Create all database tables
+node migrations/init_all_tables.js
 
-### Seeding
-Populate the database with sample data:
-```bash
+# Seed sample data (optional)
 node migrations/sample/seed.js
 ```
 
+### Schema Updates
+When database schema changes (after code updates), run:
+```bash
+# Apply schema changes
+node migrations/migrate_tables.js
+```
+
+**Note**: Only run migrations when you've updated the code and there are database schema changes.
+
 ### Available Tables
-- Users and Authentication
-- Devices and Systems
-- Networks and Subnets
-- Servers and Services
-- Firewall Rules
-- Permissions and Roles
-- System Logs
-- File Uploads
+- **Users and Authentication**: User accounts, roles, and permissions
+- **Devices and Systems**: Network devices, servers, and system components
+- **Networks and Subnets**: Network infrastructure with Zone and Environment support
+- **IP Addresses**: IP address tracking with subnet relationships
+- **Servers and Services**: Server management and service configurations
+- **Firewall Rules**: Network security rules and policies
+- **Permissions and Roles**: Access control and authorization
+- **System Logs**: Application and system event logging
+- **File Uploads**: File management and storage
+- **Configuration**: Dynamic system parameter configuration
+- **Contacts**: Contact information management
+- **Tags**: Resource tagging system
 
 ## 🚀 Deployment
 
-### Using PM2
+### Docker Compose (Recommended)
+```bash
+# Start all services
+docker-compose up -d
+
+# Monitor services
+docker-compose ps
+
+# View logs
+docker-compose logs -f
+
+# Stop services
+docker-compose down
+
+# Restart services
+docker-compose restart
+```
+
+### Using PM2 (Local)
 ```bash
 # Start application
 pm2 start ecosystem.config.json
@@ -266,12 +367,6 @@ pm2 monit
 
 # View logs
 pm2 logs open-asm
-```
-
-### Using Docker (if applicable)
-```bash
-# Build and run with Docker
-docker-compose up -d
 ```
 
 ### Nginx Configuration
@@ -285,6 +380,72 @@ The application uses a comprehensive logging system:
 - **Output logs**: `logs/out.log`
 
 Logs are automatically rotated and cleaned up using scheduled jobs.
+
+## 💾 Database Backup
+
+The application includes an automated database backup system that creates compressed PostgreSQL dumps on a scheduled basis.
+
+### Backup Configuration
+
+Add these variables to your `.env` file to configure the backup job:
+
+```env
+# Backup Configuration
+# Backup frequency: daily, weekly, monthly
+BACKUP_FREQUENCY=daily
+
+# Number of backups to keep (default: 7)
+BACKUP_RETENTION=7
+
+# Backup directory (default: backups folder in app root)
+# BACKUP_DIR=/path/to/backup/directory
+```
+
+### Configuration Options
+
+#### BACKUP_FREQUENCY
+- **daily**: Backup every day at 2:00 AM
+- **weekly**: Backup every Sunday at 2:00 AM  
+- **monthly**: Backup on the 1st day of each month at 2:00 AM
+- **default**: daily
+
+#### BACKUP_RETENTION
+- Number of backup files to keep
+- Old backups will be automatically deleted
+- **default**: 7
+
+#### BACKUP_DIR
+- Directory to store backup files
+- If not specified, uses `backups/` folder in app root
+- Directory will be created automatically if it doesn't exist
+
+### Backup Files
+
+- **Format**: `backup_YYYY-MM-DDTHH-mm-ss-sssZ.sql.gz`
+- **Compression**: Compressed with gzip for smaller file size
+- **Content**: Contains complete database dump
+
+### Example Configuration
+
+```env
+BACKUP_FREQUENCY=weekly
+BACKUP_RETENTION=30
+BACKUP_DIR=/var/backups/open-asm
+```
+
+This will:
+- Create backup every Sunday at 2:00 AM
+- Keep 30 backup files
+- Store backups in `/var/backups/open-asm/`
+
+### Manual Backup
+
+You can also create manual backups using `pg_dump`:
+
+```bash
+# Create manual backup
+pg_dump -h localhost -U postgres -d openasm | gzip > backup_manual_$(date +%Y%m%d_%H%M%S).sql.gz
+```
 
 ## 🔍 Monitoring
 
