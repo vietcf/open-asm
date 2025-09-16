@@ -70,3 +70,6 @@ docker-images
 
 #ssl directory
 ssl
+
+#backup directory
+backups/

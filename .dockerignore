@@ -11,3 +11,4 @@ pgdata
 docker-images
 docker-compose.yml
 ssl
+backups
