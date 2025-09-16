@@ -452,6 +452,10 @@
                             <dd class="col-sm-9"><span class="desc-text"><%- (ip.description || '').replace(/\n/g, '<br>') %></span></dd>
                             <dt class="col-sm-3">Status</dt>
                             <dd class="col-sm-9"><%= ip.status || '' %></dd>
+                            <dt class="col-sm-3">Zone</dt>
+                            <dd class="col-sm-9" data-field="zone"><%= ip.subnet && ip.subnet.zone ? ip.subnet.zone : 'N/A' %></dd>
+                            <dt class="col-sm-3">Environment</dt>
+                            <dd class="col-sm-9" data-field="environment"><%= ip.subnet && ip.subnet.environment ? ip.subnet.environment : 'N/A' %></dd>
                             <dt class="col-sm-3">Tags</dt>
                             <dd class="col-sm-9">
                               <% if (ip.tags && ip.tags.length > 0) { %>

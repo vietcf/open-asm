@@ -655,6 +655,9 @@ networkController.apiGetIPDetail = async (req, res) => {
       return res.json([]);
     }
     
+    // Get subnet information for this IP
+    const subnetInfo = await IpAddress.getSubnetInfo(ipDetail.ip_address);
+    
     // Format response to match expected structure
     const response = {
       id: ipDetail.id,
@@ -671,7 +674,16 @@ networkController.apiGetIPDetail = async (req, res) => {
       device_name: ipDetail.device?.name,
       tags: ipDetail.tags,
       contacts: ipDetail.contacts,
-      systems: ipDetail.systems
+      systems: ipDetail.systems,
+      // Add subnet information
+      subnet: subnetInfo ? {
+        id: subnetInfo.id,
+        address: subnetInfo.address,
+        description: subnetInfo.description,
+        zone: subnetInfo.zone,
+        environment: subnetInfo.environment,
+        prefix_length: subnetInfo.prefix_length
+      } : null
     };
     
     res.json([response]); // Return as array for consistency with search API
@@ -720,6 +732,8 @@ networkController.apiSearchSubnets = async (req, res) => {
     const subnets = await Subnet.findFilteredList({ 
       search, 
       tags: [], // Empty tags array for search
+      zone: undefined,
+      environment: undefined,
       page: 1, 
       pageSize: limit 
     });
@@ -1349,6 +1363,8 @@ networkController.exportSubnetList = async (req, res) => {
       subnetList = await Subnet.findFilteredList({ 
         search, 
         tags: filterTags, 
+        zone: undefined,
+        environment: undefined,
         page: 1, 
         pageSize: 10000 
       });
@@ -2307,6 +2323,30 @@ networkController.batchDeleteIpAddresses = async (req, res) => {
     });
   } finally {
     client.release();
+  }
+};
+
+// API endpoint to get zones from subnets table for autocomplete
+networkController.apiZones = async (req, res) => {
+  try {
+    const { search } = req.query;
+    const zones = await Subnet.getDistinctZones(search);
+    res.json(zones);
+  } catch (err) {
+    console.error('Error fetching zones:', err);
+    res.status(500).json({ error: 'Error fetching zones: ' + err.message });
+  }
+};
+
+// API endpoint to get environments from subnets table for autocomplete
+networkController.apiEnvironments = async (req, res) => {
+  try {
+    const { search } = req.query;
+    const environments = await Subnet.getDistinctEnvironments(search);
+    res.json(environments);
+  } catch (err) {
+    console.error('Error fetching environments:', err);
+    res.status(500).json({ error: 'Error fetching environments: ' + err.message });
   }
 };
 

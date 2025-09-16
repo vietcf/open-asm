@@ -45,23 +45,11 @@
                 </div>
                 <div class="mb-3">
                   <label for="subnetZone" class="form-label">Zone</label>
-                  <select class="form-control" id="subnetZone" name="zone" data-allow-custom="true">
-                    <% if (typeof uniqueZones !== 'undefined' && uniqueZones.length > 0) { %>
-                      <% uniqueZones.forEach(function(zone) { %>
-                        <option value="<%= zone %>"><%= zone %></option>
-                      <% }); %>
-                    <% } %>
-                  </select>
+                  <select class="form-control" id="subnetZone" name="zone" data-allow-custom="true"></select>
                 </div>
                 <div class="mb-3">
                   <label for="subnetEnvironment" class="form-label">Environment</label>
-                  <select class="form-control" id="subnetEnvironment" name="environment" data-allow-custom="true">
-                    <% if (typeof uniqueEnvironments !== 'undefined' && uniqueEnvironments.length > 0) { %>
-                      <% uniqueEnvironments.forEach(function(environment) { %>
-                        <option value="<%= environment %>"><%= environment %></option>
-                      <% }); %>
-                    <% } %>
-                  </select>
+                  <select class="form-control" id="subnetEnvironment" name="environment" data-allow-custom="true"></select>
                 </div>
                 <div class="mb-3">
                   <label for="addSubnetTags" class="form-label">Tags</label>
@@ -106,26 +94,16 @@
                     <label class="form-label">Tags</label>
                     <select id="filterSubnetTags" name="tags[]" class="form-control" multiple></select>
                   </div>
-                  <div class="col-6 mb-2">
+                  <div class="col-12 mb-2">
                     <label class="form-label">Zone</label>
                     <select class="form-control" id="filterSubnetZone" name="zone">
                       <option value="">All Zones</option>
-                      <% if (typeof uniqueZones !== 'undefined' && uniqueZones.length > 0) { %>
-                        <% uniqueZones.forEach(function(zone) { %>
-                          <option value="<%= zone %>" <%= typeof filterZone !== 'undefined' && filterZone === zone ? 'selected' : '' %>><%= zone %></option>
-                        <% }); %>
-                      <% } %>
                     </select>
                   </div>
-                  <div class="col-6 mb-2">
+                  <div class="col-12 mb-2">
                     <label class="form-label">Environment</label>
                     <select class="form-control" id="filterSubnetEnvironment" name="environment">
                       <option value="">All Environments</option>
-                      <% if (typeof uniqueEnvironments !== 'undefined' && uniqueEnvironments.length > 0) { %>
-                        <% uniqueEnvironments.forEach(function(environment) { %>
-                          <option value="<%= environment %>" <%= typeof filterEnvironment !== 'undefined' && filterEnvironment === environment ? 'selected' : '' %>><%= environment %></option>
-                        <% }); %>
-                      <% } %>
                     </select>
                   </div>
                 </div>
@@ -284,6 +262,10 @@
                           <dd class="col-sm-9" data-field="address"></dd>
                           <dt class="col-sm-3">Description</dt>
                           <dd class="col-sm-9" data-field="description"></dd>
+                          <dt class="col-sm-3">Zone</dt>
+                          <dd class="col-sm-9" data-field="zone"></dd>
+                          <dt class="col-sm-3">Environment</dt>
+                          <dd class="col-sm-9" data-field="environment"></dd>
                           <dt class="col-sm-3">Tags</dt>
                           <dd class="col-sm-9">
                             <% if (subnet.tags && subnet.tags.length > 0) { %>
@@ -478,6 +460,15 @@ function showSubnetDetail(subnetId) {
       const descEl = document.querySelector(`#subnetDetailModal-${subnetId} dd[data-field='description']`);
       if (descEl) {
         descEl.innerHTML = (data.description || '').replace(/\n/g, '<br>');
+      }
+      // Hiển thị Zone và Environment
+      const zoneEl = document.querySelector(`#subnetDetailModal-${subnetId} dd[data-field='zone']`);
+      if (zoneEl) {
+        zoneEl.textContent = data.zone || 'N/A';
+      }
+      const envEl = document.querySelector(`#subnetDetailModal-${subnetId} dd[data-field='environment']`);
+      if (envEl) {
+        envEl.textContent = data.environment || 'N/A';
       }
       // Hiển thị thông tin thời gian và người cập nhật
       const createdEl = document.querySelector(`#subnetDetailModal-${subnetId} dd[data-field='created_at']`);
@@ -778,15 +769,69 @@ function showToast(msg, type) {
         processResults: data => ({ results: data })
       }
     });
+
+    // Initialize Zone and Environment filters with AJAX
+    $('#filterSubnetZone').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select or type zone',
+      allowClear: true,
+      width: '100%',
+      dropdownParent: $modalContent,
+      tags: true,
+      ajax: {
+        url: '/network/api/zones',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: function(data, params) {
+          const results = data || [];
+          return { results: results };
+        },
+        cache: true
+      },
+      createTag: function(params) {
+        return {
+          id: params.term,
+          text: params.term,
+          custom: true
+        };
+      }
+    });
+
+    $('#filterSubnetEnvironment').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select or type environment',
+      allowClear: true,
+      width: '100%',
+      dropdownParent: $modalContent,
+      tags: true,
+      ajax: {
+        url: '/network/api/environments',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: function(data, params) {
+          const results = data || [];
+          return { results: results };
+        },
+        cache: true
+      },
+      createTag: function(params) {
+        return {
+          id: params.term,
+          text: params.term,
+          custom: true
+        };
+      }
+    });
     // Restore selected values for multi-select filter fields
     restoreSelect2Value($('#filterSubnetTags'), filterValues.tags, '/organize/api/tag/ids');
     // Clear Filter button: reset tất cả filter về mặc định
     $('#clearFilterBtnSubnet').on('click', function() {
       // Clear all select2 values
       $('#filterSubnetTags').val(null).trigger('change');
-      // Clear Zone and Environment filters
-      $('#filterSubnetZone').val('');
-      $('#filterSubnetEnvironment').val('');
+      $('#filterSubnetZone').val(null).trigger('change');
+      $('#filterSubnetEnvironment').val(null).trigger('change');
       // Close modal
       $filterModal.modal('hide');
       // Redirect to clean URL but preserve pageSize and search
@@ -1126,43 +1171,63 @@ $(document).ready(function() {
     });
   });
 
+
   // Initialize Select2 for Zone and Environment (like Manufacturer)
   $('#subnetZone').select2({
     theme: 'bootstrap-5',
     placeholder: 'Select or type zone',
     allowClear: true,
     width: '100%',
-    multiple: false,
-    tags: true, // Allow custom values
+    dropdownParent: $('#addSubnetModal'),
+    tags: true,
+    ajax: {
+      url: '/network/api/zones',
+      dataType: 'json',
+      delay: 250,
+      data: params => {
+        return { search: params.term };
+      },
+      processResults: function(data, params) {
+        const results = data || [];
+        return { results: results };
+      },
+      cache: true
+    },
     createTag: function(params) {
-      var term = $.trim(params.term);
-      if (term === '') {
-        return null;
-      }
       return {
-        id: term,
-        text: term,
-        newTag: true
+        id: params.term,
+        text: params.term,
+        custom: true
       };
     }
   });
+  
 
   $('#subnetEnvironment').select2({
     theme: 'bootstrap-5',
     placeholder: 'Select or type environment',
     allowClear: true,
     width: '100%',
-    multiple: false,
-    tags: true, // Allow custom values
+    dropdownParent: $('#addSubnetModal'),
+    tags: true,
+    ajax: {
+      url: '/network/api/environments',
+      dataType: 'json',
+      delay: 250,
+      data: params => {
+        return { search: params.term };
+      },
+      processResults: function(data, params) {
+        const results = data || [];
+        return { results: results };
+      },
+      cache: true
+    },
     createTag: function(params) {
-      var term = $.trim(params.term);
-      if (term === '') {
-        return null;
-      }
       return {
-        id: term,
-        text: term,
-        newTag: true
+        id: params.term,
+        text: params.term,
+        custom: true
       };
     }
   });
@@ -1173,44 +1238,62 @@ $(document).ready(function() {
     const zoneSelectId = '#editSubnetZone-' + subnetId;
     const envSelectId = '#editSubnetEnvironment-' + subnetId;
     
-    // Destroy existing Select2 if any
-    if ($(zoneSelectId).hasClass('select2-hidden-accessible')) {
-      $(zoneSelectId).select2('destroy');
-    }
-    if ($(envSelectId).hasClass('select2-hidden-accessible')) {
-      $(envSelectId).select2('destroy');
-    }
-    
-    // Initialize Select2
-    setTimeout(function() {
+    // Only initialize if not already initialized
+    if (!$(zoneSelectId).hasClass('select2-hidden-accessible')) {
       $(zoneSelectId).select2({
         theme: 'bootstrap-5',
         placeholder: 'Select or type zone',
         allowClear: true,
         width: '100%',
-        multiple: false,
         tags: true,
+        ajax: {
+          url: '/network/api/zones',
+          dataType: 'json',
+          delay: 250,
+          data: params => ({ search: params.term }),
+          processResults: function(data, params) {
+            const results = data || [];
+            return { results: results };
+          },
+          cache: true
+        },
         createTag: function(params) {
-          var term = $.trim(params.term);
-          if (term === '') return null;
-          return { id: term, text: term, newTag: true };
+          return {
+            id: params.term,
+            text: params.term,
+            custom: true
+          };
         }
       });
-
+    }
+    
+    if (!$(envSelectId).hasClass('select2-hidden-accessible')) {
       $(envSelectId).select2({
         theme: 'bootstrap-5',
         placeholder: 'Select or type environment',
         allowClear: true,
         width: '100%',
-        multiple: false,
         tags: true,
+        ajax: {
+          url: '/network/api/environments',
+          dataType: 'json',
+          delay: 250,
+          data: params => ({ search: params.term }),
+          processResults: function(data, params) {
+            const results = data || [];
+            return { results: results };
+          },
+          cache: true
+        },
         createTag: function(params) {
-          var term = $.trim(params.term);
-          if (term === '') return null;
-          return { id: term, text: term, newTag: true };
+          return {
+            id: params.term,
+            text: params.term,
+            custom: true
+          };
         }
       });
-    }, 100);
+    }
   });
 
 });

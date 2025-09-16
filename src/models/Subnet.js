@@ -263,20 +263,16 @@ class Subnet {
     return sorted.filter(s => !s._hasParent);
   }
 
-  // Get all unique zones
+  // Get all unique zones (for filter dropdown)
   static async getUniqueZones() {
-    const result = await pool.query(
-      'SELECT DISTINCT zone FROM subnets WHERE zone IS NOT NULL AND zone != \'\' ORDER BY zone'
-    );
-    return result.rows.map(row => row.zone);
+    const zones = await Subnet.getDistinctZones();
+    return zones.map(zone => zone.text);
   }
 
-  // Get all unique environments
+  // Get all unique environments (for filter dropdown)
   static async getUniqueEnvironments() {
-    const result = await pool.query(
-      'SELECT DISTINCT environment FROM subnets WHERE environment IS NOT NULL AND environment != \'\' ORDER BY environment'
-    );
-    return result.rows.map(row => row.environment);
+    const environments = await Subnet.getDistinctEnvironments();
+    return environments.map(env => env.text);
   }
 
   // Helper: check if subnetA contains subnetB (IPv4 only, simple logic)
@@ -293,6 +289,64 @@ class Subnet {
     const maskLenA = parseInt(maskA, 10);
     const maskAInt = maskLenA === 0 ? 0 : ~((1 << (32 - maskLenA)) - 1) >>> 0;
     return (intA & maskAInt) === (intB & maskAInt);
+  }
+
+  // Get distinct zones from subnets table for autocomplete
+  static async getDistinctZones(search = '') {
+    const client = await pool.connect();
+    try {
+      let query = `
+        SELECT DISTINCT zone 
+        FROM subnets 
+        WHERE zone IS NOT NULL 
+        AND zone != ''
+      `;
+      const params = [];
+      
+      if (search && search.trim()) {
+        query += ` AND zone ILIKE $1`;
+        params.push(`%${search.trim()}%`);
+      }
+      
+      query += ` ORDER BY zone ASC LIMIT 20`;
+      
+      const result = await client.query(query, params);
+      return result.rows.map(row => ({
+        id: row.zone,
+        text: row.zone
+      }));
+    } finally {
+      client.release();
+    }
+  }
+
+  // Get distinct environments from subnets table for autocomplete
+  static async getDistinctEnvironments(search = '') {
+    const client = await pool.connect();
+    try {
+      let query = `
+        SELECT DISTINCT environment 
+        FROM subnets 
+        WHERE environment IS NOT NULL 
+        AND environment != ''
+      `;
+      const params = [];
+      
+      if (search && search.trim()) {
+        query += ` AND environment ILIKE $1`;
+        params.push(`%${search.trim()}%`);
+      }
+      
+      query += ` ORDER BY environment ASC LIMIT 20`;
+      
+      const result = await client.query(query, params);
+      return result.rows.map(row => ({
+        id: row.environment,
+        text: row.environment
+      }));
+    } finally {
+      client.release();
+    }
   }
 }
 

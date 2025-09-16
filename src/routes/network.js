@@ -73,5 +73,7 @@ router.get('/api/ip-addresses', networkController.apiSearchIPAddresses); // Sear
 router.get('/api/ip-addresses/detail', networkController.apiGetIPDetail); // Get detailed IP information
 router.get('/api/domain', networkController.apiDomainSearch); // Search domains
 router.get('/api/ip-addresses/unassigned', networkController.apiSearchUnassignedIPAddresses); // Search unassigned IP addresses
+router.get('/api/zones', networkController.apiZones); // Get zones for autocomplete
+router.get('/api/environments', networkController.apiEnvironments); // Get environments for autocomplete
 
 export default router;

@@ -320,14 +320,29 @@
                           <h6>IP Addresses</h6>
                           <ul>
                             <% if (system.ip_addresses && system.ip_addresses.length > 0) { %>
-                              <% system.ip_addresses.forEach(function(ipObj) { %>
+                              <% 
+                                // Sort IP addresses by environment
+                                const sortedIPs = system.ip_addresses.sort((a, b) => {
+                                  const envA = (typeof a === 'object' && a.subnet_environment) ? a.subnet_environment : '';
+                                  const envB = (typeof b === 'object' && b.subnet_environment) ? b.subnet_environment : '';
+                                  return envA.localeCompare(envB);
+                                });
+                              %>
+                              <% sortedIPs.forEach(function(ipObj) { %>
                                 <li>
                                   <% if (typeof ipObj === 'object' && ipObj.ip) { %>
                                     <a href="/network/ip-address?search=<%= encodeURIComponent(ipObj.ip) %>" 
                                        target="_blank" 
                                        class="ip-hover-link" 
                                        data-ip="<%= ipObj.ip %>"
-                                       title="Loading IP info..."><%= ipObj.ip %></a>
+                                       title="Loading IP info...">
+                                      <%= ipObj.ip %>
+                                      <% if (ipObj.subnet_environment || ipObj.subnet_zone) { %>
+                                        <span class="badge bg-secondary ms-1">
+                                          [<%= ipObj.subnet_environment || 'N/A' %> - <%= ipObj.subnet_zone || 'N/A' %>]
+                                        </span>
+                                      <% } %>
+                                    </a>
                                   <% } else { %>
                                     <span class="ip-hover-link" 
                                           data-ip="<%= ipObj %>"

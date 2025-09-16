@@ -355,8 +355,10 @@ class IpAddress {
       LIMIT $${idx} OFFSET $${idx + 1}`;
     params.push(pageSize, (page - 1) * pageSize);
     const result = await pool.query(sql, params);
-    // Map device/server info into each IP object
-    return result.rows.map(row => {
+    
+    // Get subnet information for each IP
+    const ipsWithSubnet = await Promise.all(result.rows.map(async (row) => {
+      // Map device/server info into each IP object
       if (row.device_id) {
         row.device = { id: row.device_id, name: row.device_name };
       }
@@ -367,8 +369,24 @@ class IpAddress {
       delete row.device_name;
       delete row.server_id;
       delete row.server_name;
+      
+      // Get subnet information for this IP
+      const subnetInfo = await IpAddress.getSubnetInfo(row.ip_address);
+      if (subnetInfo) {
+        row.subnet = {
+          id: subnetInfo.id,
+          address: subnetInfo.address,
+          description: subnetInfo.description,
+          zone: subnetInfo.zone,
+          environment: subnetInfo.environment,
+          prefix_length: subnetInfo.prefix_length
+        };
+      }
+      
       return row;
-    });
+    }));
+    
+    return ipsWithSubnet;
   }
 
   // Count for filtered IP list
@@ -518,6 +536,32 @@ class IpAddress {
       server: row.server_id ? { id: row.server_id, name: row.server_name } : null,
       device: row.device_id ? { id: row.device_id, name: row.device_name } : null
     };
+  }
+
+  /**
+   * Get subnet information for an IP address
+   * Returns the most specific subnet (longest prefix) that contains this IP
+   * @param {string} ipAddress - IP address to find subnet for
+   * @returns {Promise<Object|null>} Returns subnet info with zone and environment or null if not found
+   */
+  static async getSubnetInfo(ipAddress) {
+    const result = await pool.query(`
+      SELECT 
+        s.id,
+        s.address,
+        s.description,
+        s.zone,
+        s.environment,
+        masklen(s.address) as prefix_length
+      FROM subnets s
+      WHERE s.address >>= $1::inet
+      ORDER BY masklen(s.address) DESC
+      LIMIT 1
+    `, [ipAddress]);
+    
+    if (result.rows.length === 0) return null;
+    
+    return result.rows[0];
   }
 }
 
