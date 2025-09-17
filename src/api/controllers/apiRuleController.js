@@ -76,16 +76,24 @@ async function getFirewallNameOptionsFromConfig() {
       let parsed;
       try { parsed = JSON.parse(config.value); } catch { parsed = null; }
       if (Array.isArray(parsed)) {
-        options = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+        options = parsed.map(item => {
+          if (typeof item === 'object') {
+            // Handle both { key, label } and { value, label } formats
+            if (item.key !== undefined) {
+              return { value: item.key, label: item.label };
+            } else if (item.value !== undefined) {
+              return { value: item.value, label: item.label };
+            } else {
+              return { value: String(item), label: String(item) };
+            }
+          } else {
+            return { value: String(item), label: String(item) };
+          }
+        });
       }
     }
   } catch (e) { options = []; }
-  if (!Array.isArray(options) || options.length === 0) {
-    options = [
-      { value: 'FW1', label: 'Firewall 1' },
-      { value: 'FW2', label: 'Firewall 2' }
-    ];
-  }
+  // No fallback data - return empty array if no data from database
   return options;
 }
 

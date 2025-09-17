@@ -6,6 +6,20 @@ import Unit from '../models/Unit.js';
 import Contact from '../models/Contact.js';
 import Tag from '../models/Tag.js';
 import ExcelJS from 'exceljs';
+import XLSX from 'xlsx';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Helper function to sanitize string input
+function sanitizeString(str) {
+  if (typeof str !== 'string') return '';
+  return str.trim().replace(/[<>]/g, '');
+}
+
 // Helper: load firewall options from DB config
 async function getActionsOptionsFromConfig() {
   let options = [];
@@ -78,22 +92,24 @@ async function getFirewallNameOptionsFromConfig() {
       let parsed;
       try { parsed = JSON.parse(config.value); } catch { parsed = null; }
       if (Array.isArray(parsed)) {
-        options = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+        options = parsed.map(item => {
+          if (typeof item === 'object') {
+            // Handle both { key, label } and { value, label } formats
+            if (item.key !== undefined) {
+              return { value: item.key, label: item.label };
+            } else if (item.value !== undefined) {
+              return { value: item.value, label: item.label };
+            } else {
+              return { value: String(item), label: String(item) };
+            }
+          } else {
+            return { value: String(item), label: String(item) };
+          }
+        });
       }
     }
   } catch (e) { options = []; }
-  if (!Array.isArray(options) || options.length === 0) {
-    options = [
-      { value: 'USER', label: 'USER' },
-      { value: 'SERVER', label: 'SERVER' },
-      { value: 'INTERNET-IN', label: 'INTERNET-IN' },
-      { value: 'INTERNET-OUT', label: 'INTERNET-OUT' },
-      { value: 'BACKBOND', label: 'BACKBOND' },
-      { value: 'DMZ', label: 'DMZ' },
-      { value: 'PARTNER', label: 'PARTNER' },
-      { value: 'DIGI', label: 'DIGI' }
-    ];
-  }
+  // No fallback data - return empty array if no data from database
   return options;
 }
 
@@ -515,7 +531,7 @@ firewallController.exportRuleList = async (req, res) => {
     if (audit_batch === '') audit_batch = undefined;
 
     // Get all filtered rules (no pagination)
-    const { rules: ruleList } = await RuleFirewall.findAll({
+    const ruleList = await RuleFirewall.findFilteredList({
       search, page: 1, pageSize: 10000, ou_id, contacts, tags, violation_type, status, firewall_name, audit_batch
     });
 
@@ -615,6 +631,725 @@ firewallController.batchUpdateWorkOrder = async (req, res) => {
     //console.error('Batch update WO error:', err);
     // Notify user of failure
     return res.status(500).json({ error: 'Failed to update Work Order. Please try again.' });
+  }
+};
+
+// Download firewall rule template
+firewallController.downloadRuleTemplate = async (req, res) => {
+  try {
+    // Create Excel workbook
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Firewall Rule Template');
+    
+    // Add headers with descriptions
+    worksheet.addRow([
+      'Firewall Name (Required)',
+      'Rule Name (Required)',
+      'Source Zone',
+      'Source (Required)',
+      'Source Detail',
+      'Destination Zone',
+      'Destination (Required)',
+      'Destination Detail',
+      'Services',
+      'Application',
+      'URL',
+      'Action (Required)',
+      'OU ID',
+      'Status',
+      'Violation Type',
+      'Violation Detail',
+      'Solution Proposal',
+      'Solution Confirm',
+      'Description',
+      'Audit Batch (Required for duplicate checking)',
+      'Work Order',
+      'Contacts (comma-separated IDs)',
+      'Tags (comma-separated IDs)'
+    ]);
+    
+    // Add sample data
+    worksheet.addRow([
+      'FW-001',
+      'Rule-001',
+      'DMZ',
+      '192.168.1.0/24',
+      '',
+      'LAN',
+      '10.0.0.0/8',
+      '',
+      'HTTP',
+      'Web Browser',
+      '',
+      'ALLOW',
+      '1',
+      'Active',
+      '',
+      '',
+      '',
+      '',
+      'Allow DMZ to LAN HTTP traffic',
+      'Batch-2024-001',
+      'WO-001',
+      '',
+      ''
+    ]);
+    
+    // Add another sample
+    worksheet.addRow([
+      'FW-002',
+      'Rule-002',
+      'LAN',
+      '10.0.0.0/8',
+      '',
+      'DMZ',
+      '192.168.1.0/24',
+      '',
+      'HTTPS',
+      'Web Browser',
+      '',
+      'ALLOW',
+      '1',
+      'Active',
+      '',
+      '',
+      '',
+      '',
+      'Allow LAN to DMZ HTTPS traffic',
+      'Batch-2024-002',
+      'WO-002',
+      '',
+      ''
+    ]);
+    
+    // Add sample with violation
+    worksheet.addRow([
+      'FW-003',
+      'Rule-003',
+      'Internet',
+      '0.0.0.0/0',
+      '',
+      'DMZ',
+      '192.168.1.100',
+      '',
+      'SSH',
+      'SSH Client',
+      '',
+      'DENY',
+      '1',
+      'Active',
+      'Policy Violation',
+      'Direct SSH access from Internet',
+      'Block direct SSH access',
+      'Block direct SSH access',
+      'Block SSH from Internet',
+      'Batch-2024-001',
+      'WO-003',
+      '',
+      ''
+    ]);
+    
+    // Set column widths
+    worksheet.columns = [
+      { width: 18 },  // Firewall Name
+      { width: 25 },  // Rule Name
+      { width: 15 },  // Source Zone
+      { width: 18 },  // Source
+      { width: 18 },  // Source Detail
+      { width: 15 },  // Destination Zone
+      { width: 18 },  // Destination
+      { width: 18 },  // Destination Detail
+      { width: 15 },  // Services
+      { width: 15 },  // Application
+      { width: 15 },  // URL
+      { width: 10 },  // Action
+      { width: 10 },  // OU ID
+      { width: 10 },  // Status
+      { width: 15 },  // Violation Type
+      { width: 25 },  // Violation Detail
+      { width: 20 },  // Solution Proposal
+      { width: 20 },  // Solution Confirm
+      { width: 30 },  // Description
+      { width: 18 },  // Audit Batch
+      { width: 15 },  // Work Order
+      { width: 25 },  // Contacts
+      { width: 25 }   // Tags
+    ];
+    
+    // Style the header row
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+    
+    // Create temp directory if not exists
+    const uploadsDir = process.env.UPLOADS_DIR || 'uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    const tempPath = path.join(tempDir, 'temp_firewall_rule_template.xlsx');
+    await workbook.xlsx.writeFile(tempPath);
+    
+    // Check if file exists and get size
+    if (fs.existsSync(tempPath)) {
+      const stats = fs.statSync(tempPath);
+      
+      // Use res.download() for proper file download handling
+      res.download(tempPath, 'firewall_rule_template.xlsx', (err) => {
+        if (err) {
+          console.error('Error downloading template file:', err);
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'Error downloading template file' });
+          }
+        }
+        
+        // Clean up template file after download
+        setTimeout(() => {
+          try {
+            if (fs.existsSync(tempPath)) {
+              fs.unlinkSync(tempPath);
+              console.log('Template file cleaned up:', tempPath);
+            }
+          } catch (cleanupErr) {
+            console.error('Error cleaning up template file:', cleanupErr);
+          }
+        }, 5000); // 5 seconds delay
+      });
+    } else {
+      res.status(500).json({ error: 'Template file could not be created' });
+    }
+  } catch (err) {
+    console.error('Error creating template:', err);
+    res.status(500).json({ error: 'Error creating template: ' + err.message });
+  }
+};
+
+// Validate firewall rule import file
+firewallController.validateImportRules = async (req, res) => {
+  try {
+    if (!req.file)
+      return res.status(400).json({ error: 'No file uploaded' });
+
+    const filePath = req.file.path;
+    const originalFileName = req.file.originalname;
+    let rows = [];
+
+    // Parse file based on extension
+    const ext = path.extname(originalFileName).toLowerCase();
+    let headers = [];
+    
+    if (ext === '.csv') {
+      const csvContent = fs.readFileSync(filePath, 'utf8');
+      const lines = csvContent.split('\n').filter(line => line.trim());
+      headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index] || '';
+        });
+        rows.push(row);
+      }
+    } else if (ext === '.xlsx' || ext === '.xls') {
+      const workbook = XLSX.readFile(filePath);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      
+      if (jsonData.length < 2) {
+        return res.status(400).json({ error: 'File must contain at least a header row and one data row' });
+      }
+      
+      headers = jsonData[0];
+      for (let i = 1; i < jsonData.length; i++) {
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header] = jsonData[i][index] || '';
+        });
+        rows.push(row);
+      }
+    } else {
+      return res.status(400).json({ error: 'Unsupported file format' });
+    }
+
+    // Validate file format - check required columns
+    const requiredColumns = ['firewall_name', 'rulename', 'src', 'dst', 'action'];
+    const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+    
+    if (missingColumns.length > 0) {
+      return res.status(400).json({ 
+        error: `Missing required columns: ${missingColumns.join(', ')}` 
+      });
+    }
+
+    // Get configuration options for validation
+    const [actionsOptions, statusOptions, violationTypeOptions, firewallNameOptions] = await Promise.all([
+      getActionsOptionsFromConfig(),
+      getStatusOptionsFromConfig(),
+      getViolationTypeOptionsFromConfig(),
+      getFirewallNameOptionsFromConfig()
+    ]);
+
+    // Ensure all options are arrays
+    const safeActionsOptions = Array.isArray(actionsOptions) ? actionsOptions : [];
+    const safeStatusOptions = Array.isArray(statusOptions) ? statusOptions : [];
+    const safeViolationTypeOptions = Array.isArray(violationTypeOptions) ? violationTypeOptions : [];
+    const safeFirewallNameOptions = Array.isArray(firewallNameOptions) ? firewallNameOptions : [];
+
+    const allowedActions = safeActionsOptions.map(a => a.value);
+    const allowedStatus = safeStatusOptions.map(s => s.value);
+    const allowedViolationTypes = safeViolationTypeOptions.map(v => v.value);
+    const allowedFirewallNames = safeFirewallNameOptions.map(f => f.value);
+
+    // Validate each row
+    const validationResults = [];
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const result = {
+        row_number: i + 2, // +2 because we start from row 2 (after header)
+        firewall_name: row.firewall_name || '',
+        rulename: row.rulename || '',
+        src: row.src || '',
+        dst: row.dst || '',
+        action: row.action || '',
+        status: row.status || '',
+        violation_type: row.violation_type || '',
+        validation_status: 'Pass',
+        validation_reason: ''
+      };
+
+      // Validate required fields
+      if (!result.firewall_name) {
+        result.validation_status = 'Fail';
+        result.validation_reason = 'Firewall name is required';
+      } else if (allowedFirewallNames.length > 0 && !allowedFirewallNames.includes(result.firewall_name)) {
+        result.validation_status = 'Fail';
+        result.validation_reason = `Invalid firewall name: ${result.firewall_name}. Valid values: ${allowedFirewallNames.join(', ')}`;
+      }
+
+      if (!result.rulename) {
+        result.validation_status = 'Fail';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + 'Rule name is required';
+      }
+
+      if (!result.src) {
+        result.validation_status = 'Fail';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + 'Source is required';
+      }
+
+      if (!result.dst) {
+        result.validation_status = 'Fail';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + 'Destination is required';
+      }
+
+      if (!result.action) {
+        result.validation_status = 'Fail';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + 'Action is required';
+      } else if (allowedActions.length > 0 && !allowedActions.includes(result.action)) {
+        result.validation_status = 'Fail';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Invalid action: ${result.action}. Valid values: ${allowedActions.join(', ')}`;
+      }
+
+      if (result.status && allowedStatus.length > 0 && !allowedStatus.includes(result.status)) {
+        result.validation_status = 'Fail';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Invalid status: ${result.status}. Valid values: ${allowedStatus.join(', ')}`;
+      }
+
+      if (result.violation_type && allowedViolationTypes.length > 0 && !allowedViolationTypes.includes(result.violation_type)) {
+        result.validation_status = 'Fail';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Invalid violation type: ${result.violation_type}. Valid values: ${allowedViolationTypes.join(', ')}`;
+      }
+
+      validationResults.push(result);
+    }
+
+    // Create Excel file with validation results
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Validation Results');
+    
+    worksheet.columns = [
+      { header: 'Row Number', key: 'row_number', width: 12 },
+      { header: 'Firewall Name', key: 'firewall_name', width: 18 },
+      { header: 'Rule Name', key: 'rulename', width: 25 },
+      { header: 'Source', key: 'src', width: 18 },
+      { header: 'Destination', key: 'dst', width: 18 },
+      { header: 'Action', key: 'action', width: 10 },
+      { header: 'Status', key: 'status', width: 10 },
+      { header: 'Violation Type', key: 'violation_type', width: 15 },
+      { header: 'Validation Status', key: 'validation_status', width: 18 },
+      { header: 'Validation Reason', key: 'validation_reason', width: 50 }
+    ];
+
+    validationResults.forEach(result => {
+      worksheet.addRow(result);
+    });
+
+    // Style the header row
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+
+    // Style validation status column
+    validationResults.forEach((result, index) => {
+      const row = worksheet.getRow(index + 2);
+      if (result.validation_status === 'Fail') {
+        row.getCell('validation_status').fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFCCCC' }
+        };
+      } else {
+        row.getCell('validation_status').fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFCCFFCC' }
+        };
+      }
+    });
+
+    // Save Excel file
+    const excelFileName = `firewall_rule_validation_${Date.now()}.xlsx`;
+    const excelFilePath = path.join(__dirname, '../../uploads', excelFileName);
+    await workbook.xlsx.writeFile(excelFilePath);
+
+    // Count validation results
+    const passCount = validationResults.filter(r => r.validation_status === 'Pass').length;
+    const failCount = validationResults.filter(r => r.validation_status === 'Fail').length;
+
+    res.json({
+      success: true,
+      message: `Validation completed. ${passCount} rows passed, ${failCount} rows failed.`,
+      total_rows: validationResults.length,
+      passed_rows: passCount,
+      failed_rows: failCount,
+      validation_file: excelFileName,
+      results: validationResults
+    });
+
+    // Clean up uploaded file
+    fs.unlinkSync(filePath);
+    
+    // Clean up temp Excel file after a delay
+    setTimeout(() => {
+      try {
+        if (fs.existsSync(excelFilePath)) {
+          fs.unlinkSync(excelFilePath);
+          console.log('Validation file cleaned up:', excelFilePath);
+        }
+      } catch (cleanupErr) {
+        console.error('Error cleaning up validation file:', cleanupErr);
+      }
+    }, 10000); // 10 seconds delay
+
+  } catch (err) {
+    console.error('Error validating firewall rule import file:', err);
+    console.error('Error stack:', err.stack);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Error validating import file: ' + (err.message || 'Unknown error') });
+    }
+  }
+};
+
+// Import firewall rules
+firewallController.importRules = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const filePath = req.file.path;
+    const originalFileName = req.file.originalname;
+    let rows = [];
+
+    // Parse file (same logic as validation)
+    const ext = path.extname(originalFileName).toLowerCase();
+    let headers = [];
+    
+    if (ext === '.csv') {
+      const csvContent = fs.readFileSync(filePath, 'utf8');
+      const lines = csvContent.split('\n').filter(line => line.trim());
+      headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index] || '';
+        });
+        rows.push(row);
+      }
+    } else if (ext === '.xlsx' || ext === '.xls') {
+      const workbook = XLSX.readFile(filePath);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      
+      if (jsonData.length < 2) {
+        return res.status(400).json({ error: 'File must contain at least a header row and one data row' });
+      }
+      
+      headers = jsonData[0];
+      for (let i = 1; i < jsonData.length; i++) {
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header] = jsonData[i][index] || '';
+        });
+        rows.push(row);
+      }
+    } else {
+      return res.status(400).json({ error: 'Unsupported file format' });
+    }
+
+    // Validate file format - check required columns
+    const requiredColumns = ['firewall_name', 'rulename', 'src', 'dst', 'action'];
+    const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+    
+    if (missingColumns.length > 0) {
+      return res.status(400).json({ 
+        error: 'File format validation failed',
+        details: {
+          missingColumns: missingColumns,
+          message: `Missing required columns: ${missingColumns.join(', ')}`
+        }
+      });
+    }
+
+    // Check for extra columns
+    const allowedColumns = [
+      'firewall_name', 'rulename', 'src_zone', 'src', 'src_detail', 
+      'dst_zone', 'dst', 'dst_detail', 'services', 'application', 
+      'url', 'action', 'ou_id', 'status', 'violation_type', 
+      'violation_detail', 'solution_proposal', 'solution_confirm', 
+      'description', 'audit_batch', 'work_order', 'contacts', 'tags'
+    ];
+    const extraColumns = headers.filter(col => !allowedColumns.includes(col));
+    if (extraColumns.length > 0) {
+      return res.status(400).json({ 
+        error: 'File format validation failed',
+        details: {
+          extraColumns: extraColumns,
+          message: `Extra columns found: ${extraColumns.join(', ')}. Please use the correct template.`
+        }
+      });
+    }
+
+    await client.query('BEGIN');
+
+    const importResults = [];
+    const username = req.session && req.session.user && req.session.user.username ? req.session.user.username : 'admin';
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const result = {
+        row_number: i + 2,
+        firewall_name: sanitizeString(row.firewall_name || ''),
+        rulename: sanitizeString(row.rulename || ''),
+        src_zone: sanitizeString(row.src_zone || ''),
+        src: sanitizeString(row.src || ''),
+        src_detail: sanitizeString(row.src_detail || ''),
+        dst_zone: sanitizeString(row.dst_zone || ''),
+        dst: sanitizeString(row.dst || ''),
+        dst_detail: sanitizeString(row.dst_detail || ''),
+        services: sanitizeString(row.services || ''),
+        application: sanitizeString(row.application || ''),
+        url: sanitizeString(row.url || ''),
+        action: sanitizeString(row.action || ''),
+        ou_id: sanitizeString(row.ou_id || ''),
+        status: sanitizeString(row.status || ''),
+        violation_type: sanitizeString(row.violation_type || ''),
+        violation_detail: sanitizeString(row.violation_detail || ''),
+        solution_proposal: sanitizeString(row.solution_proposal || ''),
+        solution_confirm: sanitizeString(row.solution_confirm || ''),
+        description: sanitizeString(row.description || ''),
+        audit_batch: sanitizeString(row.audit_batch || ''),
+        work_order: sanitizeString(row.work_order || ''),
+        contacts: sanitizeString(row.contacts || ''),
+        tags: sanitizeString(row.tags || ''),
+        import_status: 'SUCCESS',
+        import_reason: ''
+      };
+
+      try {
+        // Validate required fields
+        if (!result.firewall_name || !result.rulename || !result.src || !result.dst || !result.action) {
+          throw new Error('Missing required fields: firewall_name, rulename, src, dst, action');
+        }
+
+        // Check if rule already exists in the same audit batch
+        const auditBatch = result.audit_batch || 'default';
+        const existingRule = await RuleFirewall.findByFirewallRuleNameAndAuditBatch(result.firewall_name, result.rulename, auditBatch, client);
+        if (existingRule) {
+          result.import_status = 'FAILED';
+          result.import_reason = `Rule already exists in audit batch ${auditBatch}: ${result.firewall_name} - ${result.rulename}`;
+        } else {
+          // Prepare rule data
+          const ruleData = {
+            firewall_name: result.firewall_name,
+            rulename: result.rulename,
+            src_zone: result.src_zone || null,
+            src: result.src,
+            src_detail: result.src_detail || null,
+            dst_zone: result.dst_zone || null,
+            dst: result.dst,
+            dst_detail: result.dst_detail || null,
+            services: result.services || null,
+            application: result.application || null,
+            url: result.url || null,
+            action: result.action,
+            ou_id: result.ou_id ? parseInt(result.ou_id, 10) : null,
+            status: result.status || null,
+            violation_type: result.violation_type || null,
+            violation_detail: result.violation_detail || null,
+            solution_proposal: result.solution_proposal || null,
+            solution_confirm: result.solution_confirm || null,
+            description: result.description || null,
+            audit_batch: auditBatch, // Use the audit batch we determined above
+            work_order: result.work_order || null,
+            updated_by: username
+          };
+
+          // Create rule
+          const ruleId = await RuleFirewall.create(ruleData, client);
+
+          // Handle contacts if provided
+          if (result.contacts) {
+            const contactIds = result.contacts.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
+            if (contactIds.length > 0) {
+              await RuleFirewall.setContacts(ruleId, contactIds, client);
+            }
+          }
+
+          // Handle tags if provided
+          if (result.tags) {
+            const tagIds = result.tags.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
+            if (tagIds.length > 0) {
+              await RuleFirewall.setTags(ruleId, tagIds, client);
+            }
+          }
+        }
+
+      } catch (err) {
+        result.import_status = 'FAILED';
+        result.import_reason = err.message;
+        errorCount++;
+      }
+
+      importResults.push(result);
+    }
+
+    await client.query('COMMIT');
+
+    // Count import results
+    const successCount = importResults.filter(r => r.import_status === 'SUCCESS').length;
+    const errorCount = importResults.filter(r => r.import_status === 'FAILED').length;
+
+    // Create Excel file with import results
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Import Results');
+    
+    worksheet.columns = [
+      { header: 'Row Number', key: 'row_number', width: 12 },
+      { header: 'Firewall Name', key: 'firewall_name', width: 18 },
+      { header: 'Rule Name', key: 'rulename', width: 25 },
+      { header: 'Source', key: 'src', width: 18 },
+      { header: 'Destination', key: 'dst', width: 18 },
+      { header: 'Action', key: 'action', width: 10 },
+      { header: 'Import Status', key: 'import_status', width: 15 },
+      { header: 'Import Reason', key: 'import_reason', width: 50 }
+    ];
+
+    importResults.forEach(result => {
+      worksheet.addRow(result);
+    });
+
+    // Style the header row
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+
+    // Style import status column
+    importResults.forEach((result, index) => {
+      const row = worksheet.getRow(index + 2);
+      if (result.import_status === 'FAILED') {
+        row.getCell('import_status').fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFFFCCCC' }
+        };
+      } else {
+        row.getCell('import_status').fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FFCCFFCC' }
+        };
+      }
+    });
+
+    // Save Excel file
+    const excelFileName = `firewall_rule_import_${Date.now()}.xlsx`;
+    const excelFilePath = path.join(__dirname, '../../uploads', excelFileName);
+    await workbook.xlsx.writeFile(excelFilePath);
+
+    // Send Excel file directly
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${excelFileName}"`);
+    res.setHeader('Content-Length', fs.statSync(excelFilePath).size);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+
+    const fileBuffer = fs.readFileSync(excelFilePath);
+    res.send(fileBuffer);
+
+    // Clean up uploaded file
+    fs.unlinkSync(filePath);
+    
+    // Clean up temp Excel file after a delay
+    setTimeout(() => {
+      try {
+        if (fs.existsSync(excelFilePath)) {
+          fs.unlinkSync(excelFilePath);
+          console.log('Import file cleaned up:', excelFilePath);
+        }
+      } catch (cleanupErr) {
+        console.error('Error cleaning up import file:', cleanupErr);
+      }
+    }, 10000); // 10 seconds delay
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error importing firewall rules:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Error importing firewall rules: ' + err.message });
+    }
+  } finally {
+    client.release();
+  }
+};
+
+// Download firewall rule validation file
+firewallController.downloadRuleValidationFile = async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const filePath = path.join(__dirname, '../../uploads', filename);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    
+    res.download(filePath, filename);
+  } catch (err) {
+    console.error('Error downloading validation file:', err);
+    res.status(500).json({ error: 'Error downloading file: ' + err.message });
   }
 };
 

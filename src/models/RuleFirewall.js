@@ -43,32 +43,6 @@ class RuleFirewall {
     return ruleId;
   }
 
-  static async findAll(page = 1, pageSize = 10) {
-    const offset = (page - 1) * pageSize;
-    const sql = `SELECT rf.*, u.name AS ou_name, rf.work_order
-       FROM rulefirewall rf
-       LEFT JOIN units u ON rf.ou_id = u.id
-       ORDER BY rf.id ASC LIMIT $1 OFFSET $2`;
-    const ruleResult = await pool.query(sql, [pageSize, offset]);
-    const rules = ruleResult.rows;
-    // Fetch contacts and tags for each rule
-    for (const rule of rules) {
-      // Contacts
-      const contactRows = await pool.query(
-        `SELECT c.id, c.name, c.email FROM rulefirewall_contact rc JOIN contacts c ON rc.contact_id = c.id WHERE rc.rule_id = $1 ORDER BY c.name`,
-        [rule.id]
-      );
-      rule.contacts = contactRows.rows;
-      // Tags
-      const tagRows = await pool.query(
-        `SELECT t.id, t.name FROM tag_object tobj JOIN tags t ON tobj.tag_id = t.id WHERE tobj.object_id = $1 AND tobj.object_type = 'rulefirewall' ORDER BY t.name`,
-        [rule.id]
-      );
-      rule.tagNames = tagRows.rows.map(t => t.name);
-      rule.tags = tagRows.rows;
-    }
-    return rules;
-  }
 
   static async findById(id) {
     const result = await pool.query(
@@ -521,6 +495,28 @@ class RuleFirewall {
       totalCount,
       totalPages
     };
+  }
+
+  // Find rule by firewall name, rule name and audit batch combination
+  static async findByFirewallRuleNameAndAuditBatch(firewallName, ruleName, auditBatch, client = null) {
+    const shouldRelease = !client;
+    if (!client) {
+      client = await pool.connect();
+    }
+
+    try {
+      const query = `
+        SELECT * FROM rulefirewall 
+        WHERE firewall_name = $1 AND rulename = $2 AND audit_batch = $3
+        LIMIT 1
+      `;
+      const result = await client.query(query, [firewallName, ruleName, auditBatch]);
+      return result.rows[0] || null;
+    } finally {
+      if (shouldRelease) {
+        client.release();
+      }
+    }
   }
 
   // ===== LEGACY ALIAS METHODS =====
