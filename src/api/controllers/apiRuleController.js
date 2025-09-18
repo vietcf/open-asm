@@ -150,20 +150,27 @@ apiRuleController.createRule = async (req, res) => {
       services, application, url, action, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description, work_order
     ].map(v => typeof v === 'string' ? v.trim() : v);
-    // Normalize audit_batch
+    // Normalize and validate audit_batch
     if (typeof audit_batch === 'string') audit_batch = audit_batch.trim();
     let auditBatchStr = '';
     if (audit_batch && audit_batch.length > 0) {
-      const batches = audit_batch.split(',').map(v => v.trim()).filter(v => v.length > 0);
-      const valid = batches.every(batch => /^\d{4}-0[12]$/.test(batch));
-      if (!valid) {
-        return res.status(400).json({ error: 'Each audit batch must be in the format yyyy-01 or yyyy-02 (e.g. 2023-01,2024-02)' });
+      auditBatchStr = audit_batch;
+      // Validate audit batch format (YYYY-MM)
+      const auditBatchPattern = /^\d{4}-\d{2}$/;
+      if (!auditBatchPattern.test(auditBatchStr)) {
+        return res.status(400).json({ error: 'Audit Batch must be in format YYYY-MM (e.g., 2024-01)' });
       }
-      auditBatchStr = batches.join(',');
+      // Additional validation for valid month (01-12)
+      const parts = auditBatchStr.split('-');
+      const year = parseInt(parts[0]);
+      const month = parseInt(parts[1]);
+      if (month < 1 || month > 12) {
+        return res.status(400).json({ error: 'Audit Batch month must be between 01 and 12' });
+      }
     }
     // Validate required fields
-    if (!rulename || !src || !dst || !action || !firewall_name) {
-      return res.status(400).json({ error: 'Missing required fields: rulename, src, dst, action, firewall_name' });
+    if (!rulename || !src || !dst || !action || !firewall_name || !auditBatchStr) {
+      return res.status(400).json({ error: 'Missing required fields: rulename, src, dst, action, firewall_name, audit_batch' });
     }
     // Validate enums
     const allowedActions = (await getActionsOptionsFromConfig()).map(a => a.value);
@@ -273,15 +280,22 @@ apiRuleController.updateRule = async (req, res) => {
     let description = ('description' in req.body) ? (typeof req.body.description === 'string' ? req.body.description.trim() : current.description) : current.description;
     let work_order = ('work_order' in req.body) ? (typeof req.body.work_order === 'string' ? req.body.work_order.trim() : current.work_order) : current.work_order;
     let audit_batch = ('audit_batch' in req.body) ? req.body.audit_batch : current.audit_batch;
-    // Normalize audit_batch
+    // Normalize and validate audit_batch
     let auditBatchStr = '';
     if (typeof audit_batch === 'string' && audit_batch.length > 0) {
-      const batches = audit_batch.split(',').map(v => v.trim()).filter(v => v.length > 0);
-      const valid = batches.every(batch => /^\d{4}-0[12]$/.test(batch));
-      if (!valid) {
-        return res.status(400).json({ error: 'Each audit batch must be in the format yyyy-01 or yyyy-02 (e.g. 2023-01,2024-02)' });
+      auditBatchStr = audit_batch.trim();
+      // Validate audit batch format (YYYY-MM)
+      const auditBatchPattern = /^\d{4}-\d{2}$/;
+      if (!auditBatchPattern.test(auditBatchStr)) {
+        return res.status(400).json({ error: 'Audit Batch must be in format YYYY-MM (e.g., 2024-01)' });
       }
-      auditBatchStr = batches.join(',');
+      // Additional validation for valid month (01-12)
+      const parts = auditBatchStr.split('-');
+      const year = parseInt(parts[0]);
+      const month = parseInt(parts[1]);
+      if (month < 1 || month > 12) {
+        return res.status(400).json({ error: 'Audit Batch month must be between 01 and 12' });
+      }
     } else {
       auditBatchStr = current.audit_batch;
     }

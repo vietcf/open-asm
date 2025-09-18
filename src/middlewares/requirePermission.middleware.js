@@ -18,7 +18,14 @@ export default function requirePermission(...permissions) {
       return res.locals.hasPermission(permission);
     });
     
+    console.log('Permission check:', {
+      requiredPermissions: permissionsToCheck,
+      hasAnyPermission: hasAnyPermission,
+      userPermissions: res.locals.user ? res.locals.user.permissions : 'No user'
+    });
+    
     if (!hasAnyPermission) {
+      console.log('Permission denied for:', permissionsToCheck);
       return res.status(403).send('Forbidden');
     }
     

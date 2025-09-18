@@ -47,12 +47,19 @@ const router = express.Router();
 // List firewall rules
 router.get('/rule', requirePermission('rule.read'), firewallController.ruleList);
 // Download firewall rule template
-router.get('/rule/template', requirePermission('rule.create'), firewallController.downloadRuleTemplate);
+router.get('/rule/template', requirePermission('rule.read'), firewallController.downloadRuleTemplate);
 // Export firewall rule list as Excel (filtered)
 router.get('/rule/export', requirePermission('rule.read'), firewallController.exportRuleList);
 // Add firewall rule
 router.post('/rule', requirePermission('rule.create'), firewallController.addRule);
-// Edit firewall rule
+
+// ====== FIREWALL RULE IMPORT/EXPORT ======
+// Validate firewall rule import
+router.post('/rule/validate-import', requirePermission('rule.create'), upload.single('file'), firewallController.validateImportRules);
+// Import firewall rules
+router.post('/rule/import', requirePermission('rule.create'), upload.single('file'), firewallController.importRules);
+
+// Edit firewall rule (MUST be after specific routes to avoid conflicts)
 router.post('/rule/:id', requirePermission('rule.update'), firewallController.editRule);
 router.put('/rule/:id', requirePermission('rule.update'), firewallController.editRule);
 // Delete firewall rule
@@ -61,12 +68,6 @@ router.delete('/rule/:id', requirePermission('rule.delete'), firewallController.
 // ====== FIREWALL BATCH MENU ======
 // Batch update work order
 router.post('/api/batch-update-wo', requirePermission('rule.update'), firewallController.batchUpdateWorkOrder);
-
-// ====== FIREWALL RULE IMPORT/EXPORT ======
-// Validate firewall rule import
-router.post('/rule/validate-import', requirePermission('rule.create'), upload.single('file'), firewallController.validateImportRules);
-// Import firewall rules
-router.post('/rule/import', requirePermission('rule.create'), upload.single('file'), firewallController.importRules);
 // Download firewall rule validation file
 router.get('/download/rule-validation/:filename', requirePermission('rule.read'), firewallController.downloadRuleValidationFile);
 
