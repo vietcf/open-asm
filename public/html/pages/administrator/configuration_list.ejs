@@ -14,8 +14,8 @@
         <div class="card-header">
           <h3 class="card-title mb-0">System Configuration</h3>
         </div>
-        <div class="card-body table-responsive p-0">
-          <table class="table table-hover text-nowrap">
+        <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
+          <table class="table table-hover">
             <thead>
               <tr>
                 <th>No.</th>
@@ -269,4 +269,6 @@ editForms.forEach(function(form) {
       showToast('<%= error %>', 'danger');
     });
   </script>
+
+<!-- Responsive Tables CSS -->
 <% } %>

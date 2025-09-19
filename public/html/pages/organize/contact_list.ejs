@@ -9,17 +9,20 @@
     <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
   </form>
   <div class="row mb-3">
-    <div class="col-12 d-flex justify-content-end align-items-center position-relative">
+    <div class="col-12 position-relative">
+      <div class="button-container d-flex justify-content-end align-items-center">
       <% if (hasPermission('contact.create')) { %>
-        <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addContactModal">
+        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addContactModal">
           <i class="bi bi-plus"></i> Add Contact
         </button>
-        <a href="/organize/contact/template" class="btn btn-info btn-sm me-2" download>
+        <a href="/organize/contact/template" class="btn btn-info btn-sm" download>
           <i class="bi bi-download"></i> Download Template
         </a>
-        <button type="button" class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#importContactModal">
+        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importContactModal">
           <i class="bi bi-upload"></i> Import Contact
         </button>
+      </div>
+    </div>
         <!-- Add Contact Modal -->
         <div class="modal fade" id="addContactModal" tabindex="-1" aria-labelledby="addContactModalLabel" aria-hidden="true">
           <div class="modal-dialog">
@@ -146,17 +149,17 @@
         <div class="card-header">
           <h3 class="card-title mb-0">Contact List</h3>
         </div>
-        <div class="card-body table-responsive p-0">
-          <table class="table table-hover text-nowrap">
+        <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
+          <table class="table table-hover" style="table-layout: fixed; min-width: 800px;">
             <thead>
               <tr>
-                <th>No.</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Org Unit</th>
-                <th>Position</th>
-                <th class="text-end">Actions</th>
+                <th style="width:50px;">No.</th>
+                <th style="width:150px;">Name</th>
+                <th style="width:200px;">Email</th>
+                <th style="width:120px;">Phone</th>
+                <th style="width:150px;">Org Unit</th>
+                <th style="width:120px;">Position</th>
+                <th class="text-end" style="width:120px;">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -545,3 +548,5 @@ $(document).ready(function() {
   });
 });
 </script>
+
+<!-- Responsive Tables CSS -->

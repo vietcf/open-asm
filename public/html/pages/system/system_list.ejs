@@ -1,23 +1,53 @@
+<!-- Content Header -->
+<div class="content-header">
   <div class="container-fluid">
-    <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/system/system" style="max-width: 500px; margin-left: auto; margin-top: 2.5rem;">
-    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search by name, system ID..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-    <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
-      <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
-        <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
-      <% }) %>
-    </select>
-    <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
-  </form>
-  <div class="row mb-3">
-    <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
-      <% if (hasPermission && hasPermission('system.create')) { %>
-        <a href="/system/system/add" class="btn btn-primary btn-sm me-2">
-          <i class="bi bi-plus"></i> Add System
-        </a>
-      <% } %>
-      <button type="button" class="btn btn-secondary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#filterSystemModal">
-        <i class="bi bi-funnel"></i> Filter
-      </button>
+    <div class="row mb-2">
+      <div class="col-sm-6">
+        <h1 class="m-0">System List</h1>
+      </div>
+      <div class="col-sm-6">
+        <ol class="breadcrumb float-sm-right">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">System List</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main content -->
+<section class="content">
+  <div class="container-fluid">
+    <!-- Search and Page Size -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <form class="input-group justify-content-end align-items-center" role="search" method="get" action="/system/system" style="max-width: 500px; margin-left: auto;">
+          <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search by name, system ID..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+          <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
+            <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
+              <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
+            <% }) %>
+          </select>
+          <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="button-container">
+          <% if (hasPermission && hasPermission('system.create')) { %>
+            <a href="/system/system/add" class="btn btn-primary btn-sm">
+              <i class="bi bi-plus"></i> Add System
+            </a>
+          <% } %>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterSystemModal">
+            <i class="bi bi-funnel"></i> Filter
+          </button>
+        </div>
+      </div>
+    </div>
       <!-- Filter Modal -->
       <div class="modal fade" id="filterSystemModal" tabindex="-1" aria-labelledby="filterSystemModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -61,16 +91,13 @@
           </div>
         </div>
       </div>
-      <!-- Filter values for JS (an toàn cho EJS strict, giống IP Address List) -->
-      <div id="filter-system-data"
-        data-tags='<%= JSON.stringify(filterTags || []) %>'
-        data-contacts='<%= JSON.stringify(filterContacts || []) %>'
-        data-scopes='<%= JSON.stringify(filterScopes || []) %>'
-        data-architecture='<%= JSON.stringify(filterArchitecture || []) %>' style="display:none"></div>
-      
+  <!-- Filter values for JS (an toàn cho EJS strict, giống IP Address List) -->
+  <div id="filter-system-data"
+    data-tags='<%= JSON.stringify(filterTags || []) %>'
+    data-contacts='<%= JSON.stringify(filterContacts || []) %>'
+    data-scopes='<%= JSON.stringify(filterScopes || []) %>'
+    data-architecture='<%= JSON.stringify(filterArchitecture || []) %>' style="display:none"></div>
 
-    </div>
-  </div>
   <% // Declare pagination variables ONCE before the table, to avoid duplicate declaration errors and ReferenceError %>
   <% 
     let sysStartItem = (page - 1) * pageSize + 1;
@@ -94,14 +121,16 @@
       }
     }
   %>
+
+  <!-- System List Table -->
   <div class="row">
     <div class="col-12">
       <div class="card">
         <div class="card-header">
           <h3 class="card-title mb-0">System List</h3>
         </div>
-        <div class="card-body table-responsive p-0">
-          <table class="table table-hover">
+        <div class="card-body table-responsive p-0" style="overflow-x: auto;">
+          <table class="table table-hover" id="systemTable">
             <thead>
               <tr>
                 <th>No.</th>
@@ -404,8 +433,102 @@
             </tbody>
           </table>
         </div>
+        
+        <!-- Mobile Cards Layout -->
+        <div class="mobile-cards d-none" id="systemMobileCards">
+          <% if (systemList && systemList.length > 0) { %>
+            <% systemList.forEach(function(system, idx) { %>
+              <div class="mobile-card">
+                <div class="mobile-card-header">
+                  <h6 class="mb-0"><%= system.name %></h6>
+                  <small class="text-muted">#<%= (page - 1) * pageSize + idx + 1 %></small>
+                </div>
+                <div class="mobile-card-body">
+                  <div class="mobile-card-row">
+                    <span class="mobile-card-label">System Code:</span>
+                    <span class="mobile-card-value"><%= system.system_id %></span>
+                  </div>
+                  <% if (system.description && system.description.trim()) { %>
+                    <div class="mobile-card-row">
+                      <span class="mobile-card-label">Description:</span>
+                      <span class="mobile-card-value"><%= system.description.length > 50 ? system.description.substring(0, 50) + '…' : system.description %></span>
+                    </div>
+                  <% } %>
+                  <% if (system.alias && (Array.isArray(system.alias) ? system.alias.length > 0 : system.alias)) { %>
+                    <div class="mobile-card-row">
+                      <span class="mobile-card-label">Alias:</span>
+                      <span class="mobile-card-value"><%= Array.isArray(system.alias) ? system.alias.join(', ') : system.alias %></span>
+                    </div>
+                  <% } %>
+                  <% if (system.tags && system.tags.length > 0) { %>
+                    <div class="mobile-card-row">
+                      <span class="mobile-card-label">Tags:</span>
+                      <span class="mobile-card-value">
+                        <% system.tags.slice(0, 2).forEach(function(tag) { %>
+                          <span class="badge bg-primary text-white me-1" style="font-size:0.8rem;"><%= tag.name %></span>
+                        <% }) %>
+                        <% if (system.tags.length > 2) { %>
+                          <span class="text-muted">+<%= system.tags.length - 2 %> more</span>
+                        <% } %>
+                      </span>
+                    </div>
+                  <% } %>
+                  <% if (system.scopes && system.scopes.length > 0) { %>
+                    <div class="mobile-card-row">
+                      <span class="mobile-card-label">Scope:</span>
+                      <span class="mobile-card-value">
+                        <% system.scopes.slice(0, 1).forEach(function(scope) { %>
+                          <span class="badge bg-info text-white me-1" style="font-size:0.8rem;"><%= scope %></span>
+                        <% }) %>
+                        <% if (system.scopes.length > 1) { %>
+                          <span class="text-muted">+<%= system.scopes.length - 1 %> more</span>
+                        <% } %>
+                      </span>
+                    </div>
+                  <% } %>
+                  <% if (system.architecture && system.architecture.length > 0) { %>
+                    <div class="mobile-card-row">
+                      <span class="mobile-card-label">Architecture:</span>
+                      <span class="mobile-card-value">
+                        <% system.architecture.slice(0, 1).forEach(function(arch) { %>
+                          <span class="badge bg-warning text-dark me-1" style="font-size:0.8rem;"><%= arch %></span>
+                        <% }) %>
+                        <% if (system.architecture.length > 1) { %>
+                          <span class="text-muted">+<%= system.architecture.length - 1 %> more</span>
+                        <% } %>
+                      </span>
+                    </div>
+                  <% } %>
+                </div>
+                <div class="mobile-card-actions">
+                  <button type="button" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#systemDetailModal-<%= system.id %>" data-system='<%= JSON.stringify(system) %>'>
+                    <i class="bi bi-eye"></i>
+                  </button>
+                  <% if (hasPermission('system.update')) { %>
+                    <a href="/system/system/<%= system.id %>/edit" class="btn btn-warning btn-sm" title="Edit">
+                      <i class="bi bi-pencil"></i>
+                    </a>
+                  <% } %>
+                  <% if (hasPermission('system.delete')) { %>
+                    <form action="/system/system/<%= system.id %>/delete" method="POST" style="display:inline" onsubmit="return confirmDeleteSystem(this, '<%= system.name %>')">
+                      <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </form>
+                  <% } %>
+                </div>
+              </div>
+            <% }) %>
+          <% } else { %>
+            <div class="mobile-card">
+              <div class="mobile-card-body text-center">
+                <span class="text-muted">No data</span>
+              </div>
+            </div>
+          <% } %>
+        </div>
         <div class="card-footer clearfix">
-          <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
+          <div class="d-flex justify-content-between align-items-center px-3 py-2">
             <div>
               <% 
                 // Only declare these variables ONCE at the top of the file or before the table, not here again
@@ -853,6 +976,35 @@
     function handleIPLeave(event) {
       // Optional: Reset tooltip or do cleanup
     }
+    
+    // Responsive layout handler
+    function handleResponsiveLayout() {
+      const width = window.innerWidth;
+      const table = document.getElementById('systemTable');
+      const mobileCards = document.getElementById('systemMobileCards');
+      
+      if (width <= 576) {
+        // Show mobile cards, hide table
+        if (table) table.closest('.table-responsive').style.display = 'none';
+        if (mobileCards) mobileCards.style.display = 'block';
+      } else {
+        // Show table, hide mobile cards
+        if (table) table.closest('.table-responsive').style.display = 'block';
+        if (mobileCards) mobileCards.style.display = 'none';
+      }
+    }
+    
+    // Initialize responsive layout
+    $(document).ready(function() {
+      handleResponsiveLayout();
+      
+      // Handle window resize
+      let resizeTimeout;
+      $(window).on('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(handleResponsiveLayout, 100);
+      });
+    });
 </script>
 <% if (success) { %>
   <script>
@@ -867,4 +1019,8 @@
       showToast('<%= error %>', 'danger');
     });
   </script>
+  </div>
+</section>
+
+
 <% } %>

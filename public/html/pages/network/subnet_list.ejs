@@ -1,3 +1,352 @@
+<style>
+/* Complete rewrite of mobile responsive styles */
+
+/* Global modal fixes */
+.modal {
+  z-index: 9999 !important;
+}
+
+.modal-backdrop {
+  z-index: 9998 !important;
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+.modal.show {
+  display: block !important;
+}
+
+/* Default: hide mobile cards, show table */
+.mobile-cards {
+  display: none !important;
+}
+
+.table {
+  display: table !important;
+}
+
+#subnetTable {
+  display: table !important;
+}
+
+/* Ensure proper display on larger screens */
+@media (min-width: 577px) {
+  .mobile-cards {
+    display: none !important;
+  }
+  
+  #subnetTable {
+    display: table !important;
+  }
+  
+  .table {
+    display: table !important;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Container and layout */
+  .container-fluid {
+    width: 100% !important;
+    padding: 0 10px !important;
+  }
+  
+  /* Card styling */
+  .card {
+    width: 100% !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+  }
+  
+  .card-body {
+    padding: 10px !important;
+  }
+  
+  /* Table responsive */
+  .table-responsive {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border: none !important;
+  }
+  
+  .table {
+    width: 100% !important;
+    min-width: 1000px !important;
+    margin-bottom: 0 !important;
+  }
+  
+  /* Table cells */
+  .table th,
+  .table td {
+    padding: 8px 4px !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
+  }
+  
+  .table th {
+    font-weight: 600 !important;
+  }
+  
+  /* Button container */
+  .button-container {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 5px !important;
+    margin-bottom: 10px !important;
+  }
+  
+  .button-container .btn {
+    font-size: 11px !important;
+    padding: 4px 8px !important;
+    margin: 0 !important;
+  }
+  
+  /* Pagination responsive for medium screens */
+  .card-footer {
+    padding: 10px !important;
+  }
+  
+  .card-footer .d-flex {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+  
+  .card-footer > div:first-child {
+    text-align: center !important;
+    font-size: 12px !important;
+    margin-bottom: 5px !important;
+  }
+  
+  .pagination {
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+    margin: 0 !important;
+  }
+  
+  .pagination .page-item {
+    margin: 1px !important;
+  }
+  
+  .pagination .page-link {
+    font-size: 11px !important;
+    padding: 4px 6px !important;
+    min-width: 28px !important;
+    text-align: center !important;
+  }
+  
+  .pagination-info {
+    font-size: 12px !important;
+    text-align: center !important;
+  }
+  
+  /* Modal fixes for mobile */
+  .modal {
+    z-index: 9999 !important;
+  }
+  
+  .modal-backdrop {
+    z-index: 9998 !important;
+    background-color: rgba(0, 0, 0, 0.5) !important;
+  }
+  
+  .modal.show {
+    display: block !important;
+  }
+  
+  .modal-dialog {
+    margin: 10px !important;
+    max-width: calc(100% - 20px) !important;
+  }
+  
+  .modal-content {
+    border-radius: 8px !important;
+  }
+  
+  .modal-header {
+    padding: 10px 15px !important;
+  }
+  
+  .modal-body {
+    padding: 15px !important;
+  }
+  
+  .modal-footer {
+    padding: 10px 15px !important;
+  }
+}
+
+/* Very small screens - card layout */
+@media (max-width: 576px) {
+  .container-fluid {
+    padding: 0 5px !important;
+  }
+  
+  .card-body {
+    padding: 5px !important;
+  }
+  
+  /* Hide table, show cards */
+  .table-responsive {
+    overflow: visible !important;
+  }
+  
+  .table {
+    display: none !important;
+  }
+  
+  /* Show mobile cards */
+  .mobile-cards {
+    display: block !important;
+  }
+  
+  /* Force hide table on very small screens */
+  #subnetTable {
+    display: none !important;
+  }
+  
+  .mobile-card {
+    background: #fff !important;
+    border-radius: 5px !important;
+    margin-bottom: 10px !important;
+    padding: 10px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+  }
+  
+  .mobile-card-header {
+    font-weight: 600 !important;
+    margin-bottom: 8px !important;
+    padding-bottom: 5px !important;
+  }
+  
+  .mobile-card-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-bottom: 5px !important;
+    font-size: 12px !important;
+  }
+  
+  .mobile-card-label {
+    font-weight: 500 !important;
+    min-width: 80px !important;
+  }
+  
+  .mobile-card-value {
+    flex: 1 !important;
+    text-align: right !important;
+    word-break: break-word !important;
+  }
+  
+  .mobile-card-actions {
+    margin-top: 10px !important;
+    padding-top: 8px !important;
+    text-align: center !important;
+  }
+  
+  .mobile-card-actions .btn {
+    font-size: 10px !important;
+    padding: 3px 6px !important;
+    margin: 0 2px !important;
+  }
+  
+  /* Pagination responsive */
+  .card-footer {
+    padding: 10px 5px !important;
+  }
+  
+  .card-footer .d-flex {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 10px !important;
+  }
+  
+  .card-footer > div:first-child {
+    text-align: center !important;
+    font-size: 12px !important;
+  }
+  
+  .pagination {
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+  }
+  
+  .pagination .page-item {
+    margin: 1px !important;
+  }
+  
+  .pagination .page-link {
+    font-size: 11px !important;
+    padding: 4px 6px !important;
+    min-width: 30px !important;
+    text-align: center !important;
+  }
+  
+  .pagination-info {
+    font-size: 11px !important;
+    text-align: center !important;
+    margin-bottom: 5px !important;
+  }
+  
+  /* Modal fixes for very small screens */
+  .modal {
+    z-index: 9999 !important;
+  }
+  
+  .modal-backdrop {
+    z-index: 9998 !important;
+    background-color: rgba(0, 0, 0, 0.5) !important;
+  }
+  
+  .modal.show {
+    display: block !important;
+  }
+  
+  .modal-dialog {
+    margin: 5px !important;
+    max-width: calc(100% - 10px) !important;
+  }
+  
+  .modal-content {
+    border-radius: 6px !important;
+  }
+  
+  .modal-header {
+    padding: 8px 12px !important;
+  }
+  
+  .modal-header .modal-title {
+    font-size: 14px !important;
+  }
+  
+  .modal-body {
+    padding: 12px !important;
+  }
+  
+  .modal-footer {
+    padding: 8px 12px !important;
+  }
+  
+  .modal-footer .btn {
+    font-size: 12px !important;
+    padding: 6px 12px !important;
+  }
+  
+  /* Form elements in modal */
+  .modal .form-control,
+  .modal .form-select {
+    font-size: 14px !important;
+    padding: 8px 12px !important;
+  }
+  
+  .modal .form-label {
+    font-size: 13px !important;
+    margin-bottom: 4px !important;
+  }
+}
+</style>
 <div class="container-fluid">
   <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/network/subnet-address" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
     <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search Subnet or Description..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
@@ -9,19 +358,20 @@
     <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
   </form>
   <div class="row mb-3">
-    <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
+    <div class="col-12" style="margin-top: 16px;">
+      <div class="button-container d-flex justify-content-end align-items-center">
       <% if (hasPermission('subnet.create')) { %>
-        <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addSubnetModal">
+        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSubnetModal">
           <i class="bi bi-plus"></i> Add Subnet
         </button>
       <% } %>
       <% if (hasPermission('subnet.create')) { %>
-        <a href="/network/subnet-address/template" class="btn btn-info btn-sm me-2" download>
+        <a href="/network/subnet-address/template" class="btn btn-info btn-sm" download>
           <i class="bi bi-download"></i> Download Template
         </a>
       <% } %>
       <% if (hasPermission('subnet.create')) { %>
-        <button type="button" class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#importSubnetModal">
+        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importSubnetModal">
           <i class="bi bi-upload"></i> Import Subnet
         </button>
       <% } %>
@@ -73,9 +423,11 @@
           <i class="bi bi-download"></i> Export
         </button>
       </form>
-      <button type="button" class="btn btn-secondary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#filterSubnetModal">
+      <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterSubnetModal">
         <i class="bi bi-funnel"></i> Filter
       </button>
+      </div>
+    </div>
       <!-- Filter Modal -->
       <div class="modal fade" id="filterSubnetModal" tabindex="-1" aria-labelledby="filterSubnetModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -178,8 +530,8 @@
         <div class="card-header">
           <h3 class="card-title mb-0">Subnet List</h3>
         </div>
-        <div class="card-body table-responsive p-0">
-          <table class="table table-hover text-nowrap">
+        <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
+          <table class="table table-hover" id="subnetTable">
             <thead>
               <tr>
                 <th>No.</th>
@@ -293,7 +645,7 @@
                             <label class="form-label fw-bold mb-1" style="font-size:1rem;">Subnet Usage</label>
                           </div>
                           <div class="col-sm-9">
-                            <span class="subnet-usage-badge badge" style="font-size:1rem; background-color: #e0e7ef; color: #1a233a; font-weight: 500;"></span>
+                            <span class="subnet-usage-badge badge" style="font-size:1rem; font-weight: 500;"></span>
                           </div>
                         </div>
                         <div class="row mb-2">
@@ -375,10 +727,98 @@
               <% } %>
             </tbody>
           </table>
+          
+          <!-- Mobile Cards (hidden by default, shown on small screens) -->
+          <div class="mobile-cards" style="display: none;">
+            <% if (subnetList && subnetList.length > 0) { %>
+              <% subnetList.forEach(function(subnet, idx) { %>
+                <div class="mobile-card">
+                  <div class="mobile-card-header">
+                    Subnet #<%= (page - 1) * pageSize + idx + 1 %>
+                  </div>
+                  
+                  <div class="mobile-card-row">
+                    <span class="mobile-card-label">Subnet Address:</span>
+                    <span class="mobile-card-value"><%= subnet.address %></span>
+                  </div>
+                  
+                  <div class="mobile-card-row">
+                    <span class="mobile-card-label">Description:</span>
+                    <span class="mobile-card-value">
+                      <% if (subnet.description && subnet.description.trim()) { %>
+                        <%= subnet.description.length > 30 ? subnet.description.substring(0, 30) + '...' : subnet.description %>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </span>
+                  </div>
+                  
+                  <div class="mobile-card-row">
+                    <span class="mobile-card-label">Zone:</span>
+                    <span class="mobile-card-value">
+                      <% if (subnet.zone) { %>
+                        <span class="badge bg-info"><%= subnet.zone %></span>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </span>
+                  </div>
+                  
+                  <div class="mobile-card-row">
+                    <span class="mobile-card-label">Status:</span>
+                    <span class="mobile-card-value">
+                      <% if (subnet.status) { %>
+                        <span class="badge bg-secondary"><%= subnet.status %></span>
+                      <% } else { %>
+                        <span class="text-muted">-</span>
+                      <% } %>
+                    </span>
+                  </div>
+                  
+                  <div class="mobile-card-row">
+                    <span class="mobile-card-label">Tags:</span>
+                    <span class="mobile-card-value">
+                      <% if (subnet.tags && subnet.tags.length > 0) { %>
+                        <% subnet.tags.slice(0, 2).forEach(function(tag) { %>
+                          <span class="badge bg-primary text-white" style="font-size: 10px; margin: 1px;"><%= tag.name %></span>
+                        <% }) %>
+                        <% if (subnet.tags.length > 2) { %>
+                          <span class="text-muted">+<%= subnet.tags.length - 2 %> more</span>
+                        <% } %>
+                      <% } else { %>
+                        <span class="text-muted">No tags</span>
+                      <% } %>
+                    </span>
+                  </div>
+                  
+                  <div class="mobile-card-actions">
+                    <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#subnetDetailModal-<%= subnet.id %>">
+                      <i class="bi bi-eye"></i> View
+                    </a>
+                    <button type="button" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#subnetEditModal-<%= subnet.id %>" <% if (!hasPermission('subnet.update')) { %>style="display:none"<% } %>>
+                      <i class="bi bi-pencil"></i> Edit
+                    </button>
+                    <form action="/network/subnet-address/<%= subnet.id %>?_method=DELETE" method="POST" style="display:inline">
+                      <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure?')" <% if (!hasPermission('subnet.delete')) { %>style="display:none"<% } %>>
+                        <i class="bi bi-trash"></i> Delete
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              <% }) %>
+            <% } else { %>
+              <div class="mobile-card">
+                <div class="mobile-card-header">No Subnets Found</div>
+                <div class="mobile-card-row">
+                  <span class="mobile-card-value text-muted">No subnets match your search criteria.</span>
+                </div>
+              </div>
+            <% } %>
+          </div>
         </div>
         <div class="card-footer clearfix">
           <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
-            <div>
+            <div class="pagination-info">
               <% 
                 let startItem = (page - 1) * pageSize + 1;
                 let endItem = startItem + (subnetList ? subnetList.length : 0) - 1;
@@ -389,7 +829,7 @@
               %>
               <span>Showing <%= startItem %> - <%= endItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> subnets</span>
             </div>
-            <ul class="pagination pagination-sm m-0 float-end">
+            <ul class="pagination pagination-sm m-0">
               <% 
                 let startPage = 1;
                 let endPage = totalPages;
@@ -497,7 +937,7 @@ function showSubnetDetail(subnetId) {
         html += '<div style="overflow-x:auto; width:100%;"><div class="d-flex flex-wrap gap-0">';
         for (let i = 0; i < showList.length; i++) {
           const ip = showList[i];
-          html += `<div style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:95px; margin-bottom:2px; background:#f8fafc; border-radius:5px; box-shadow:0 1px 2px rgba(0,0,0,0.01); padding:0.22em 0.35em;">
+          html += `<div style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:95px; margin-bottom:2px; border-radius:5px; box-shadow:0 1px 2px rgba(0,0,0,0.01); padding:0.22em 0.35em;">
             <a href="/network/ip-address?search=${encodeURIComponent(ip.ip_address)}" target="_blank" class="badge bg-primary text-decoration-none" title="${ip.description ? ip.description.replace(/"/g, '&quot;') : ''}" style="font-size:0.95rem; display:inline-block; min-width:75px; max-width:100%; padding:0.32em 0.7em; white-space:nowrap; text-overflow:ellipsis;">
               ${ip.ip_address}
             </a>
@@ -998,13 +1438,6 @@ $(document).ready(function() {
         return xhr;
       },
       success: function(data, status, xhr) {
-        console.log('=== SUBNET VALIDATION SUCCESS ===');
-        console.log('Data:', data);
-        console.log('Status:', status);
-        console.log('XHR:', xhr);
-        console.log('Response headers:', xhr.getAllResponseHeaders());
-        console.log('Content-Type:', xhr.getResponseHeader('Content-Type'));
-        console.log('X-Validation-Summary:', xhr.getResponseHeader('X-Validation-Summary'));
         
         $('.progress-bar').css('width', '100%');
         $('#subnetImportResults').text('Validation complete! Downloading results...');
@@ -1060,14 +1493,6 @@ $(document).ready(function() {
         }, 2000);
       },
       error: function(xhr, status, error) {
-        console.log('=== SUBNET VALIDATION ERROR ===');
-        console.log('XHR:', xhr);
-        console.log('Status:', status);
-        console.log('Error:', error);
-        console.log('Response status:', xhr.status);
-        console.log('Response text:', xhr.responseText);
-        console.log('Response JSON:', xhr.responseJSON);
-        console.log('Response headers:', xhr.getAllResponseHeaders());
         
         $('#subnetImportProgress').hide();
         let errorMessage = 'Validation failed';
@@ -1107,10 +1532,6 @@ $(document).ready(function() {
         return xhr;
       },
       success: function(data, status, xhr) {
-        console.log('=== SUBNET IMPORT SUCCESS ===');
-        console.log('Data:', data);
-        console.log('Status:', status);
-        console.log('XHR:', xhr);
         
         $('#subnetImportProgress .progress-bar').css('width', '100%').text('Import Complete');
         
@@ -1149,13 +1570,6 @@ $(document).ready(function() {
         }, 2000);
       },
       error: function(xhr, status, error) {
-        console.log('=== SUBNET IMPORT ERROR ===');
-        console.log('XHR:', xhr);
-        console.log('Status:', status);
-        console.log('Error:', error);
-        console.log('Response status:', xhr.status);
-        console.log('Response text:', xhr.responseText);
-        console.log('Response JSON:', xhr.responseJSON);
         
         $('#subnetImportProgress .progress-bar').css('width', '100%').text('Import Failed');
         $('#subnetImportResults').removeClass('alert-success').addClass('alert-danger')
@@ -1295,6 +1709,34 @@ $(document).ready(function() {
       });
     }
   });
+  
+  // Responsive layout handler
+  function handleResponsiveLayout() {
+    const isSmallScreen = window.innerWidth <= 576;
+    const table = $('#subnetTable');
+    const mobileCards = $('.mobile-cards');
+    
+    if (isSmallScreen) {
+      table.hide();
+      mobileCards.show();
+    } else {
+      table.show();
+      mobileCards.hide();
+    }
+  }
+  
+  // Initial call when document is ready
+  $(document).ready(function() {
+    handleResponsiveLayout();
+  });
+  
+  // Handle window resize
+  $(window).on('resize', function() {
+    clearTimeout(window.resizeTimeout);
+    window.resizeTimeout = setTimeout(handleResponsiveLayout, 100);
+  });
 
 });
 </script>
+
+<!-- Responsive Tables CSS -->

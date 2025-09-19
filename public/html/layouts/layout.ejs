@@ -16,13 +16,460 @@
   <link rel="stylesheet" href="<%= cssPath %>adminlte.css" />
   <link rel="stylesheet" href="<%= cssPath %>custom.css" />
 
-  <!-- JS Scripts moved to head for early loading -->
-  <script src="/js/jquery-3.6.0.min.js"></script>
-  <script src="/js/select2.min.js"></script>
-  <script src="/js/bootstrap.bundle.min.js"></script>
-  <script src="/js/apexcharts.min.js"></script>
-  <script src="<%= jsPath %>adminlte.min.js" crossorigin="anonymous"></script>
-  <script src="<%= jsPath %>custom.js" crossorigin="anonymous"></script>
+  <!-- CSS to fix mobile layout issues -->
+  <style>
+    /* Override any conflicting styles */
+    * { box-sizing: border-box !important; }
+    body { margin: 0 !important; padding: 0 !important; }
+    .app-wrapper > * { position: relative !important; }
+    
+    /* Fix sidebar overlay issues */
+    .sidebar-show .content-wrapper,
+    .sidebar-show .main-content,
+    .sidebar-show .content,
+    .sidebar-show .card,
+    .sidebar-show .table,
+    .sidebar-show .table-responsive {
+      opacity: 1 !important;
+      visibility: visible !important;
+      z-index: 1 !important;
+    }
+    
+    /* Ensure content is always visible when sidebar is shown */
+    .sidebar-show .content-wrapper {
+      transform: none !important;
+      filter: none !important;
+      backdrop-filter: none !important;
+    }
+    
+    /* Fix any AdminLTE sidebar overlay effects */
+    .sidebar-show .content-wrapper,
+    .sidebar-show .main-content,
+    .sidebar-show .content {
+      background: #fff !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      position: relative !important;
+      z-index: 1 !important;
+    }
+    
+    /* Prevent any blur or overlay effects on tables */
+    .sidebar-show .table,
+    .sidebar-show .table-responsive,
+    .sidebar-show .card,
+    .sidebar-show .card-body {
+      opacity: 1 !important;
+      visibility: visible !important;
+      filter: none !important;
+      backdrop-filter: none !important;
+      transform: none !important;
+    }
+    
+    /* Fix for any AdminLTE sidebar states */
+    .sidebar-open .content-wrapper,
+    .sidebar-open .main-content,
+    .sidebar-open .content,
+    .sidebar-open .card,
+    .sidebar-open .table,
+    .sidebar-open .table-responsive {
+      opacity: 1 !important;
+      visibility: visible !important;
+      filter: none !important;
+      backdrop-filter: none !important;
+      transform: none !important;
+    }
+    
+    /* Fix for any overlay or backdrop effects */
+    .sidebar-overlay .content-wrapper,
+    .sidebar-overlay .main-content,
+    .sidebar-overlay .content {
+      opacity: 1 !important;
+      visibility: visible !important;
+      background: #fff !important;
+    }
+    
+    /* Sidebar bao lấy toàn bộ menu - luôn full height */
+    .sidebar {
+      min-height: 100vh !important;
+      height: 100vh !important;
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      bottom: 0 !important;
+      z-index: 1000 !important;
+      overflow: hidden !important;
+    }
+    
+    .sidebar-wrapper {
+      min-height: 100vh !important;
+      height: 100vh !important;
+      display: flex !important;
+      flex-direction: column !important;
+      overflow: hidden !important;
+    }
+    
+    .sidebar-wrapper nav {
+      flex: 1 !important;
+      overflow-y: auto !important;
+      overflow-x: hidden !important;
+      min-height: 0 !important;
+    }
+    
+    /* Đảm bảo sidebar giữ màu gốc đậm hơn */
+    .app-sidebar {
+      background-color: #343a40 !important;
+      background-image: none !important;
+    }
+    
+    .app-sidebar.bg-body-secondary {
+      background-color: #343a40 !important;
+      background-image: none !important;
+    }
+    
+    /* Sidebar với màu đậm hơn */
+    .sidebar {
+      background-color: #343a40 !important;
+    }
+    
+    .sidebar-wrapper {
+      background-color: #343a40 !important;
+    }
+    
+    .sidebar-wrapper nav {
+      background-color: #343a40 !important;
+    }
+    
+    /* Đảm bảo body và html có chiều cao đầy đủ */
+    html, body {
+      height: 100% !important;
+      min-height: 100vh !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    
+    body {
+      background-color: #f8f9fa !important;
+    }
+    
+    /* Đảm bảo app-wrapper có chiều cao đầy đủ */
+    .app-wrapper {
+      min-height: 100vh !important;
+      height: 100vh !important;
+      position: relative !important;
+    }
+    
+    /* Đảm bảo tất cả menu items được bao bởi sidebar */
+    .sidebar .nav {
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    
+    .sidebar .nav-item {
+      width: 100% !important;
+      margin: 0 !important;
+    }
+    
+    .sidebar .nav-link {
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 8px 15px !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+    
+    .sidebar .nav-link p {
+      margin: 0 !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+    
+    /* Desktop sidebar positioning */
+    @media (min-width: 769px) {
+      .sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        height: 100vh !important;
+        min-height: 100vh !important;
+        z-index: 1000 !important;
+        transform: none !important;
+      }
+      
+      .content-wrapper {
+        margin-left: 0 !important;
+        width: 100% !important;
+      }
+    }
+    
+    /* Mobile sidebar - overlay mode */
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        height: 100vh !important;
+        min-height: 100vh !important;
+        bottom: 0 !important;
+        z-index: 1050 !important;
+        transition: transform 0.3s ease-in-out !important;
+        transform: translateX(-100%) !important;
+        width: 250px !important;
+        box-shadow: 2px 0 10px rgba(0,0,0,0.1) !important;
+        overflow: hidden !important;
+        background-color: #343a40 !important;
+      }
+      
+      .sidebar.sidebar-open {
+        transform: translateX(0) !important;
+      }
+      
+      .sidebar-wrapper {
+        height: 100vh !important;
+        min-height: 100vh !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        background-color: #343a40 !important;
+      }
+      
+      .sidebar-wrapper nav {
+        flex: 1 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        background-color: #343a40 !important;
+        min-height: 0 !important;
+      }
+      
+      /* Đảm bảo menu items được bao bởi sidebar trên mobile */
+      .sidebar .nav-link {
+        width: 100% !important;
+        padding: 10px 15px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+      }
+      
+      .sidebar .nav-link p {
+        margin: 0 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+      }
+      
+      /* Content always takes full width */
+      .content-wrapper {
+        margin-left: 0 !important;
+        width: 100% !important;
+        position: relative !important;
+        z-index: 1 !important;
+      }
+      
+      /* Add backdrop when sidebar is open */
+      .sidebar-backdrop {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        background: rgba(0,0,0,0.5) !important;
+        z-index: 1040 !important;
+        display: none !important;
+      }
+      
+      .sidebar-open + .sidebar-backdrop {
+        display: block !important;
+      }
+    }
+    
+    /* Mobile debug - force visibility on small screens */
+    @media (max-width: 768px) {
+      .content-wrapper { 
+        min-height: 100vh !important; 
+        position: relative !important; 
+        z-index: 1 !important;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        padding-top: 60px !important; /* Add space for fixed header */
+      }
+      
+      /* Fix search bar visibility on small screens */
+      .search-container,
+      .search-bar,
+      .form-control,
+      .input-group {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 200px !important;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: relative !important;
+        z-index: 10 !important;
+      }
+      
+      /* Ensure search input is not cut off */
+      .form-control[type="search"],
+      .form-control[placeholder*="Search"],
+      input[placeholder*="Search"] {
+        width: 100% !important;
+        min-width: 150px !important;
+        font-size: 14px !important;
+        padding: 8px 12px !important;
+        border: 1px solid #ced4da !important;
+        border-radius: 4px !important;
+        background: #fff !important;
+        color: #495057 !important;
+      }
+    }
+    
+    /* Extra small screens - ensure search is always visible */
+    @media (max-width: 576px) {
+      .content-wrapper {
+        padding-top: 70px !important; /* More space for header */
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+      }
+      
+      /* Force search bar to be visible and accessible */
+      .search-container,
+      .search-bar,
+      .form-control,
+      .input-group,
+      .d-flex {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 100% !important;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 5px !important;
+        margin-bottom: 10px !important;
+      }
+      
+      /* Search input specific fixes */
+      .form-control[type="search"],
+      .form-control[placeholder*="Search"],
+      input[placeholder*="Search"] {
+        width: 100% !important;
+        min-width: 100% !important;
+        max-width: 100% !important;
+        font-size: 16px !important; /* Prevent zoom on iOS */
+        padding: 10px 12px !important;
+        margin-bottom: 5px !important;
+        border: 2px solid #ced4da !important;
+        border-radius: 6px !important;
+        background: #fff !important;
+        color: #495057 !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+      }
+      
+      /* Search button */
+      .btn[type="submit"],
+      .btn .bi-search,
+      button[type="submit"] {
+        width: 100% !important;
+        padding: 10px !important;
+        font-size: 16px !important;
+        border-radius: 6px !important;
+        margin-top: 5px !important;
+      }
+      
+      /* Pagination controls */
+      .pagination-info,
+      .page-size-selector {
+        width: 100% !important;
+        text-align: center !important;
+        margin: 10px 0 !important;
+        font-size: 14px !important;
+      }
+      
+      /* Ensure user profile stays on the right on mobile */
+      .navbar-nav.ms-auto {
+        margin-left: auto !important;
+        margin-right: 0 !important;
+        justify-content: flex-end !important;
+      }
+      
+      #userDropdown {
+        margin-left: auto !important;
+        margin-right: 0 !important;
+      }
+    }
+      
+      /* Force all table elements to display */
+      .table { 
+        display: table !important; 
+        width: 100% !important;
+        min-width: 1000px !important;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+      }
+      .table thead { display: table-header-group !important; }
+      .table tbody { display: table-row-group !important; }
+      .table tr { display: table-row !important; }
+      .table th { display: table-cell !important; }
+      .table td { display: table-cell !important; }
+      
+      /* Force all containers to display */
+      .card-body,
+      .card,
+      .col-12,
+      .container-fluid,
+      .row {
+        display: block !important;
+        width: 100% !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+      }
+      
+      .table-responsive {
+        display: block !important;
+        overflow-x: auto !important;
+        overflow-y: auto !important;
+        width: 100% !important;
+      }
+    }
+    
+    /* Global button container styles for consistent spacing */
+    .button-container {
+      display: flex !important;
+      justify-content: flex-end !important;
+      align-items: center !important;
+      flex-direction: row !important;
+      width: 100% !important;
+      gap: 0.5rem !important;
+    }
+    
+    /* Ensure user profile is always on the right */
+    .navbar-nav.ms-auto {
+      margin-left: auto !important;
+      margin-right: 0 !important;
+    }
+    
+    .navbar-nav.ms-auto .nav-item {
+      margin-left: auto !important;
+    }
+    
+    #userDropdown {
+      margin-left: auto !important;
+    }
+    
+    /* Consistent button spacing */
+    .button-container .btn {
+      margin-right: 0 !important;
+      margin-left: 0 !important;
+    }
+    
+    .button-container .btn:not(:last-child) {
+      margin-right: 0.5rem !important;
+    }
+  </style>
+  
 </head>
 <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
   <!--begin::Required Scripts: jQuery loaded first for all pages-->
@@ -44,7 +491,7 @@
         </ul>
         <!--end::Start Navbar Links-->
         <!--begin::End Navbar Links-->
-        <ul class="navbar-nav ms-auto menu-stack d-none d-md-flex">
+        <ul class="navbar-nav ms-auto menu-stack">
           <!-- <li class="nav-item">
             <form class="d-flex w-100" role="search" method="get" action="/search">
               <input class="form-control form-control-sm me-2" type="search" name="q" placeholder="Search..." aria-label="Search">
@@ -67,10 +514,6 @@
               <li><a class="dropdown-item" href="/logout"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
             </ul>
           </li>
-          <!-- Remove right menu button on mobile -->
-          <li class="nav-item d-md-none">
-            <style>.navbar-nav .nav-item.menu-toggle-mobile{display:none!important}@media (max-width: 767.98px){.navbar-nav .nav-item.menu-toggle-mobile{display:none!important}}</style>
-          </li>
         </ul>
         <!--end::End Navbar Links-->
       </div>
@@ -81,30 +524,6 @@
     <!--begin::Content Wrapper-->
     <div class="content-wrapper">
       <%- body %>
-      <!-- Responsive: menu, search, user info at the bottom on mobile -->
-      <div class="navbar-mobile-bottom d-block d-md-none w-100 px-2 py-2 bg-white shadow" style="position:fixed;left:0;right:0;bottom:0;z-index:1051;">
-        <div class="d-flex flex-column align-items-stretch gap-2">
-          <a class="nav-link align-self-center" data-lte-toggle="sidebar" href="#" role="button">
-            <i class="bi bi-list fs-3"></i>
-          </a>
-          <div class="dropdown w-100">
-            <a class="nav-link d-flex align-items-center justify-content-center" href="#" id="userDropdownMobile" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              <img src="<%= typeof userAvatar !== 'undefined' ? userAvatar : (imgPath + 'avatar.png') %>" alt="User Avatar" class="rounded-circle me-2" style="width:32px;height:32px;object-fit:cover;">
-              <span class="d-inline"><%= typeof user !== 'undefined' && user && user.username ? user.username : 'User' %></span>
-              <i class="bi bi-caret-down ms-1"></i>
-            </a>
-            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdownMobile">
-              <li class="text-center p-2">
-                <img src="<%= typeof userAvatar !== 'undefined' ? userAvatar : (imgPath + 'avatar.png') %>" alt="User Avatar" class="rounded-circle mb-2" style="width:56px;height:56px;object-fit:cover;">
-                <div class="fw-bold"><%= typeof user !== 'undefined' && user && user.username ? user.username : 'User' %></div>
-              </li>
-              <li><hr class="dropdown-divider"></li>
-              <li><a class="dropdown-item" href="/change-password"><i class="bi bi-key me-2"></i>Change Password</a></li>
-              <li><a class="dropdown-item" href="/logout"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
-            </ul>
-          </div>
-        </div>
-      </div>
     </div>
     <!--end::Content Wrapper-->
     <!--begin::Mobile Navbar Actions-->
@@ -113,9 +532,72 @@
   </div>
   <!--end::App Wrapper-->
   <!--begin::Required Scripts-->
+  <script src="/js/jquery-3.6.0.min.js"></script>
+  <script src="/js/select2.min.js"></script>
+  <script src="/js/bootstrap.bundle.min.js"></script>
+  <script src="/js/apexcharts.min.js"></script>
+  <script src="<%= jsPath %>adminlte.min.js" crossorigin="anonymous"></script>
+  <script src="<%= jsPath %>custom.js" crossorigin="anonymous"></script>
+  
+  <!-- Auto-hide sidebar after menu item click -->
+  <script>
+    $(document).ready(function() {
+      // Create backdrop element
+      if ($('.sidebar-backdrop').length === 0) {
+        $('body').append('<div class="sidebar-backdrop"></div>');
+      }
+      
+      // Auto-hide sidebar on mobile after menu item click
+      $('.sidebar .nav-link').on('click', function() {
+        // Check if we're on mobile/tablet
+        if (window.innerWidth <= 768) {
+          // Small delay to allow navigation to start
+          setTimeout(function() {
+            hideSidebar();
+          }, 100);
+        }
+      });
+      
+      // Hide sidebar when clicking backdrop
+      $('.sidebar-backdrop').on('click', function() {
+        hideSidebar();
+      });
+      
+      // Also hide sidebar when clicking outside on mobile
+      $(document).on('click', function(e) {
+        if (window.innerWidth <= 768) {
+          // Check if click is outside sidebar
+          if (!$(e.target).closest('.sidebar').length && 
+              !$(e.target).closest('[data-lte-toggle="sidebar"]').length &&
+              !$(e.target).closest('.sidebar-backdrop').length) {
+            hideSidebar();
+          }
+        }
+      });
+      
+      // Function to hide sidebar
+      function hideSidebar() {
+        if (typeof AdminLTE !== 'undefined' && AdminLTE.sidebar) {
+          AdminLTE.sidebar.toggle();
+        } else {
+          $('body').removeClass('sidebar-open');
+          $('.sidebar').removeClass('sidebar-open');
+        }
+        $('.sidebar-backdrop').hide();
+      }
+      
+      // Show backdrop when sidebar opens
+      $('[data-lte-toggle="sidebar"]').on('click', function() {
+        if (window.innerWidth <= 768) {
+          setTimeout(function() {
+            if ($('.sidebar').hasClass('sidebar-open')) {
+              $('.sidebar-backdrop').show();
+            }
+          }, 50);
+        }
+      });
+    });
+  </script>
   <!--end::Required Scripts-->
-  <!-- Đảm bảo các script custom luôn đặt SAU khi đã load jQuery -->
-  <!-- Remove fallback loader for jQuery, as jQuery is now always loaded first -->
-  <!-- Scripts moved to head -->
 </body>
 </html>

@@ -1,3 +1,129 @@
+<style>
+/* Firefox-specific mobile fix */
+@-moz-document url-prefix() {
+  @media (max-width: 768px) {
+    /* Force Firefox to display everything */
+    body, html {
+      overflow-x: visible !important;
+      overflow-y: visible !important;
+    }
+    
+    .container-fluid,
+    .row,
+    .col-12,
+    .card,
+    .card-body,
+    .table-responsive {
+      display: block !important;
+      width: 100% !important;
+      min-height: auto !important;
+      max-height: none !important;
+      overflow: visible !important;
+      position: static !important;
+      z-index: auto !important;
+    }
+    
+    .table {
+      display: table !important;
+      width: 100% !important;
+      min-width: 1000px !important;
+      table-layout: fixed !important;
+      border-collapse: collapse !important;
+      position: static !important;
+      z-index: auto !important;
+    }
+    
+    .table thead,
+    .table tbody,
+    .table tr,
+    .table th,
+    .table td {
+      display: table-header-group !important;
+      display: table-row-group !important;
+      display: table-row !important;
+      display: table-cell !important;
+      position: static !important;
+      z-index: auto !important;
+    }
+    
+    .table-responsive {
+      overflow-x: auto !important;
+      overflow-y: visible !important;
+      max-height: none !important;
+    }
+  }
+}
+
+/* Universal mobile fix - works on all browsers */
+@media (max-width: 768px) {
+  /* DEBUG: Add colored borders */
+  .container-fluid { border: 5px solid red !important; background: rgba(255,0,0,0.1) !important; }
+  .row { border: 5px solid orange !important; background: rgba(255,165,0,0.1) !important; }
+  .col-12 { border: 5px solid yellow !important; background: rgba(255,255,0,0.1) !important; }
+  .card { border: 5px solid green !important; background: rgba(0,255,0,0.1) !important; }
+  .card-body { border: 5px solid blue !important; background: rgba(0,0,255,0.1) !important; }
+  .table-responsive { border: 5px solid purple !important; background: rgba(128,0,128,0.1) !important; }
+  .table { border: 5px solid pink !important; background: rgba(255,192,203,0.1) !important; }
+  
+  /* Force display all elements */
+  .container-fluid,
+  .row,
+  .col-12,
+  .card,
+  .card-body,
+  .table-responsive {
+    display: block !important;
+    width: 100% !important;
+    min-height: 200px !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  .table {
+    display: table !important;
+    width: 100% !important;
+    min-width: 1000px !important;
+    table-layout: fixed !important;
+    border-collapse: collapse !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  .table thead,
+  .table tbody,
+  .table tr,
+  .table th,
+  .table td {
+    display: table-header-group !important;
+    display: table-row-group !important;
+    display: table-row !important;
+    display: table-cell !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  
+  .table-responsive {
+    overflow-x: scroll !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: thin !important;
+    max-height: 70vh !important;
+  }
+}
+</style>
+<!-- TEST: Multiple test elements -->
+<div style="background: blue; color: white; padding: 20px; font-size: 24px; text-align: center; position: fixed; top: 0; left: 0; right: 0; z-index: 9999;">
+  TEST: Device List Page Loaded Successfully!
+</div>
+
+<div style="background: orange; color: black; padding: 10px; margin: 100px 0 20px 0; font-size: 18px; text-align: center;">
+  TEST 2: This should be visible below the blue banner
+</div>
+
+<div style="background: purple; color: white; padding: 10px; margin: 20px 0; font-size: 16px; text-align: center;">
+  TEST 3: This should be visible below the orange banner
+</div>
+
 <div class="container-fluid">
   <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/device/device" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
     <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search Device Name, Type, OS, Role..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
@@ -9,15 +135,16 @@
     <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
   </form>
   <div class="row mb-3">
-    <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
+    <div class="col-12" style="margin-top: 16px;">
+      <div class="button-container d-flex justify-content-end align-items-center">
       <% if (hasPermission('device.create')) { %>
-        <button type="button" class="btn btn-primary btn-sm me-2" onclick="window.location.href='/device/device/add'">
+        <button type="button" class="btn btn-primary btn-sm" onclick="window.location.href='/device/device/add'">
           <i class="bi bi-plus"></i> Add Device
         </button>
-        <a href="/device/device/template" class="btn btn-info btn-sm me-2" download>
+        <a href="/device/device/template" class="btn btn-info btn-sm" download>
           <i class="bi bi-download"></i> Download Template
         </a>
-        <button type="button" class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#importDeviceModal">
+        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importDeviceModal">
           <i class="bi bi-upload"></i> Import Device
         </button>
       <% } %>
@@ -34,10 +161,12 @@
             <i class="bi bi-download"></i> Export
           </button>
         </form>
-        <button type="button" class="btn btn-secondary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#deviceFilterModal">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#deviceFilterModal">
           <i class="bi bi-funnel"></i> Filter
         </button>
       <% } %>
+      </div>
+    </div>
       <!-- Filter Modal -->
       <div class="modal fade" id="deviceFilterModal" tabindex="-1" aria-labelledby="deviceFilterModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -269,7 +398,7 @@
         <div class="card-header d-flex justify-content-between align-items-center">
           <h5 class="mb-0">Device List</h5>
         </div>
-        <div class="card-body table-responsive p-0">
+        <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
           <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
             <div class="alert alert-danger" style="position: absolute; top: 12px; right: 32px; min-width:200px; max-width:400px; text-align:center; z-index: 1000;">
               <%= errorMessage %>
@@ -292,19 +421,19 @@
               }, 3000);
             </script>
           <% } %>
-          <table class="table table-hover device-list-table">
+          <table class="table table-hover" style="table-layout: fixed; min-width: 1000px;">
             <thead>
               <tr>
-                <th>No.</th>
-                <th>Name</th>
-                <th>Device Type</th>
-                <th>Manufacturer</th>
-                <th>Platform (OS)</th>
-                <th>IP Address(es)</th>
-            <th>Description</th>
-                <th>Tags</th>
+                <th style="width:50px;">No.</th>
+                <th style="width:150px;">Name</th>
+                <th style="width:120px;">Device Type</th>
+                <th style="width:120px;">Manufacturer</th>
+                <th style="width:150px;">Platform (OS)</th>
+                <th style="width:150px;">IP Address(es)</th>
+                <th style="width:200px;">Description</th>
+                <th style="width:120px;">Tags</th>
                 <!-- <th>Contacts</th> -->
-                <th class="text-end">Actions</th>
+                <th class="text-end" style="width:120px;">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -866,3 +995,5 @@ $(document).ready(function() {
   });
 });
 </script>
+
+<!-- Responsive Tables CSS -->

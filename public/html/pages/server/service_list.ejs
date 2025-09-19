@@ -9,12 +9,14 @@
     <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
   </form>
   <div class="row mb-3">
-    <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
+    <div class="col-12" style="margin-top: 16px;">
+      <div class="button-container d-flex justify-content-end align-items-center">
       <% if (hasPermission('service.create')) { %>
         <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addServiceModal">
           <i class="bi bi-plus"></i> Add Service
         </button>
       <% } %>
+      </div>
     </div>
   </div>
   <div class="row">
@@ -23,14 +25,14 @@
         <div class="card-header d-flex justify-content-between align-items-center">
           <h5 class="mb-0">Service List</h5>
         </div>
-        <div class="card-body table-responsive p-0">
-          <table class="table table-hover text-nowrap">
+        <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
+          <table class="table table-hover" style="table-layout: fixed; min-width: 1000px;">
             <thead>
               <tr>
-                <th>No.</th>
-                <th>Service Name</th>
-                <th>Description</th>
-                <th class="text-end">Actions</th>
+                <th style="width:50px;">No.</th>
+                <th style="width:200px;">Service Name</th>
+                <th style="width:300px;">Description</th>
+                <th class="text-end" style="width:120px;">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -260,3 +262,5 @@ document.querySelectorAll('.editServiceForm').forEach(function(form) {
   });
 });
 </script>
+
+<!-- Responsive Tables CSS -->

@@ -814,7 +814,7 @@ firewallController.downloadRuleTemplate = async (req, res) => {
     const tempPath = path.join(tempDir, 'temp_firewall_rule_template.xlsx');
     
     try {
-      await workbook.xlsx.writeFile(tempPath);
+    await workbook.xlsx.writeFile(tempPath);
     } catch (writeError) {
       console.error('Error writing Excel file:', writeError);
       return res.status(500).json({ error: 'Error creating template file: ' + writeError.message });
@@ -833,17 +833,17 @@ firewallController.downloadRuleTemplate = async (req, res) => {
       // Send file directly as buffer
       const fileBuffer = fs.readFileSync(tempPath);
       res.send(fileBuffer);
-      
-      // Clean up template file after download
-      setTimeout(() => {
-        try {
-          if (fs.existsSync(tempPath)) {
-            fs.unlinkSync(tempPath);
+        
+        // Clean up template file after download
+        setTimeout(() => {
+          try {
+            if (fs.existsSync(tempPath)) {
+              fs.unlinkSync(tempPath);
+            }
+          } catch (cleanupErr) {
+            console.error('Error cleaning up template file:', cleanupErr);
           }
-        } catch (cleanupErr) {
-          console.error('Error cleaning up template file:', cleanupErr);
-        }
-      }, 5000); // 5 seconds delay
+        }, 5000); // 5 seconds delay
     } else {
       res.status(500).json({ error: 'Template file could not be created' });
     }
@@ -871,20 +871,20 @@ firewallController.validateImportRules = async (req, res) => {
     let headers = [];
     
     try {
-      if (ext === '.csv') {
-        const csvContent = fs.readFileSync(filePath, 'utf8');
-        const lines = csvContent.split('\n').filter(line => line.trim());
-        headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-        
-        for (let i = 1; i < lines.length; i++) {
-          const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
-          const row = {};
-          headers.forEach((header, index) => {
-            row[header] = values[index] || '';
-          });
-          rows.push(row);
-        }
-      } else if (ext === '.xlsx' || ext === '.xls') {
+    if (ext === '.csv') {
+      const csvContent = fs.readFileSync(filePath, 'utf8');
+      const lines = csvContent.split('\n').filter(line => line.trim());
+      headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index] || '';
+        });
+        rows.push(row);
+      }
+    } else if (ext === '.xlsx' || ext === '.xls') {
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.readFile(filePath);
         
@@ -926,7 +926,7 @@ firewallController.validateImportRules = async (req, res) => {
           return res.status(400).json({ error: 'File must contain at least one data row. Please download the template and add your data.' });
         }
         
-      } else {
+    } else {
         return res.status(400).json({ error: 'Unsupported file format. Please use Excel (.xlsx) or CSV files. Download the template for the correct format.' });
       }
     } catch (parseError) {
@@ -1060,11 +1060,11 @@ firewallController.validateImportRules = async (req, res) => {
     let actionsOptions, statusOptions, violationTypeOptions, firewallNameOptions;
     try {
       [actionsOptions, statusOptions, violationTypeOptions, firewallNameOptions] = await Promise.all([
-        getActionsOptionsFromConfig(),
-        getStatusOptionsFromConfig(),
-        getViolationTypeOptionsFromConfig(),
-        getFirewallNameOptionsFromConfig()
-      ]);
+      getActionsOptionsFromConfig(),
+      getStatusOptionsFromConfig(),
+      getViolationTypeOptionsFromConfig(),
+      getFirewallNameOptionsFromConfig()
+    ]);
       console.log('Configuration options loaded:', {
         actions: actionsOptions?.length || 0,
         status: statusOptions?.length || 0,
@@ -1093,7 +1093,7 @@ firewallController.validateImportRules = async (req, res) => {
     // Validate each row
     const validationResults = [];
     try {
-      for (let i = 0; i < rows.length; i++) {
+    for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       const result = {
         row_number: i + 2, // +2 because we start from row 2 (after header)
@@ -1120,7 +1120,7 @@ firewallController.validateImportRules = async (req, res) => {
         const auditBatchPattern = /^\d{4}-\d{2}$/;
         if (!auditBatchPattern.test(result.audit_batch)) {
           result.validation_status = 'FAIL';
-          result.validation_reason = 'Invalid Audit Batch format';
+          result.validation_reason = `Invalid Audit Batch: ${result.audit_batch}`;
         } else {
           // Additional validation for valid month (01-12)
           const parts = result.audit_batch.split('-');
@@ -1128,7 +1128,7 @@ firewallController.validateImportRules = async (req, res) => {
           const month = parseInt(parts[1]);
           if (month < 1 || month > 12) {
             result.validation_status = 'FAIL';
-            result.validation_reason = 'Invalid Audit Batch month';
+            result.validation_reason = `Invalid Audit Batch: ${result.audit_batch}`;
           }
         }
       }
@@ -1163,9 +1163,9 @@ firewallController.validateImportRules = async (req, res) => {
         if (allowedFirewallNames.length > 0 && result.firewall_name && !allowedFirewallNames.includes(result.firewall_name)) {
           if (result.validation_status === 'PASS') {
             result.validation_status = 'FAIL';
-            result.validation_reason = `Invalid firewall name: ${result.firewall_name}`;
+            result.validation_reason = `Invalid Firewall Name: ${result.firewall_name}`;
           } else {
-            result.validation_reason += `; Invalid firewall name: ${result.firewall_name}`;
+            result.validation_reason += `; Invalid Firewall Name: ${result.firewall_name}`;
           }
         }
 
@@ -1173,9 +1173,9 @@ firewallController.validateImportRules = async (req, res) => {
         if (allowedActions.length > 0 && result.action && !allowedActions.includes(result.action)) {
           if (result.validation_status === 'PASS') {
             result.validation_status = 'FAIL';
-            result.validation_reason = `Invalid action: ${result.action}`;
+            result.validation_reason = `Invalid Action: ${result.action}`;
           } else {
-            result.validation_reason += `; Invalid action: ${result.action}`;
+            result.validation_reason += `; Invalid Action: ${result.action}`;
           }
         }
 
@@ -1186,9 +1186,9 @@ firewallController.validateImportRules = async (req, res) => {
             if (!unit) {
               if (result.validation_status === 'PASS') {
                 result.validation_status = 'FAIL';
-                result.validation_reason = `OU not found: ${result.ou_name}`;
+                result.validation_reason = `Invalid OU Name: ${result.ou_name}`;
               } else {
-                result.validation_reason += `; OU not found: ${result.ou_name}`;
+                result.validation_reason += `; Invalid OU Name: ${result.ou_name}`;
               }
             } else {
             }
@@ -1218,9 +1218,9 @@ firewallController.validateImportRules = async (req, res) => {
             if (contactErrors.length > 0) {
               if (result.validation_status === 'PASS') {
                 result.validation_status = 'FAIL';
-                result.validation_reason = contactErrors.join('; ');
+                result.validation_reason = contactErrors.map(error => error.replace('Contact not found:', 'Invalid Contact:')).join('; ');
               } else {
-                result.validation_reason += `; ${contactErrors.join('; ')}`;
+                result.validation_reason += `; ${contactErrors.map(error => error.replace('Contact not found:', 'Invalid Contact:')).join('; ')}`;
               }
             }
           } catch (err) {
@@ -1232,23 +1232,23 @@ firewallController.validateImportRules = async (req, res) => {
               result.validation_reason += `; Error validating contacts: ${err.message}`;
             }
           }
-        }
+      }
 
       if (result.status && allowedStatus.length > 0 && !allowedStatus.includes(result.status)) {
         if (result.validation_status === 'PASS') {
           result.validation_status = 'FAIL';
-          result.validation_reason = `Invalid status: ${result.status}`;
+          result.validation_reason = `Invalid Status: ${result.status}`;
         } else {
-          result.validation_reason += `; Invalid status: ${result.status}`;
+          result.validation_reason += `; Invalid Status: ${result.status}`;
         }
       }
 
       if (result.violation_type && allowedViolationTypes.length > 0 && !allowedViolationTypes.includes(result.violation_type)) {
         if (result.validation_status === 'PASS') {
           result.validation_status = 'FAIL';
-          result.validation_reason = `Invalid violation type: ${result.violation_type}`;
+          result.validation_reason = `Invalid Violation Type: ${result.violation_type}`;
         } else {
-          result.validation_reason += `; Invalid violation type: ${result.violation_type}`;
+          result.validation_reason += `; Invalid Violation Type: ${result.violation_type}`;
         }
       }
 
@@ -1267,7 +1267,7 @@ firewallController.validateImportRules = async (req, res) => {
     const failedRows = validationResults.filter(r => r.validation_status === 'FAIL').length;
     const allPassed = failedRows === 0;
     
-    
+
     // Create Excel file with validation results
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Validation Results');
@@ -1307,7 +1307,7 @@ firewallController.validateImportRules = async (req, res) => {
         result.validation_reason
       ]);
     });
-    
+
     // Style the header row
     worksheet.getRow(1).font = { bold: true };
     

@@ -5,18 +5,14 @@
         <div class="card-header">
           <h5 class="card-title mb-0">Recent System Logs</h5>
         </div>
-        <div class="card-body table-responsive p-0">
-          <table class="table table-hover text-nowrap">
+        <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
+          <table class="table table-hover">
             <thead>
               <tr>
                 <th>Time</th>
                 <th>User</th>
-                <th>User ID</th>
-                <th>IP</th>
                 <th>Action</th>
                 <th>Status</th>
-                <th>Object Type</th>
-                <th>Object ID</th>
                 <th>Description</th>
                 <th class="text-end">Actions</th>
               </tr>
@@ -27,12 +23,8 @@
                   <tr>
                     <td><%= log.created_at ? log.created_at.toLocaleString ? log.created_at.toLocaleString() : log.created_at : '' %></td>
                     <td><%= log.username || '' %></td>
-                    <td><%= log.user_id || '' %></td>
-                    <td><%= log.ip_address || '' %></td>
                     <td><%= log.action || '' %></td>
                     <td><%= log.status || '' %></td>
-                    <td><%= log.object_type || '' %></td>
-                    <td><%= log.object_id || '' %></td>
                     <td><%= log.description || log.detail || '' %></td>
                     <td class="text-end">
                       <button type="button" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#logDetailModal-<%= log.id %>"><i class="bi bi-eye"></i></button>
@@ -68,7 +60,7 @@
                   </div>
                 <% }) %>
               <% } else { %>
-                <tr><td colspan="10" class="text-center">No logs found</td></tr>
+                <tr><td colspan="6" class="text-center">No logs found</td></tr>
               <% } %>
             </tbody>
           </table>
@@ -137,4 +129,6 @@
       showToast('<%= error %>', 'danger');
     });
   </script>
+
+<!-- Responsive Tables CSS -->
 <% } %>

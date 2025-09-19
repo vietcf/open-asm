@@ -1,3 +1,52 @@
+<style>
+/* Firefox mobile fix for Server List */
+@-moz-document url-prefix() {
+  @media (max-width: 768px) {
+    .table-responsive {
+      display: block !important;
+      overflow-x: scroll !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch !important;
+    }
+    
+    .table {
+      display: table !important;
+      min-width: 1000px !important;
+      width: 100% !important;
+    }
+    
+    .card-body,
+    .card,
+    .col-12,
+    .container-fluid,
+    .row {
+      display: block !important;
+      width: 100% !important;
+      min-height: 200px !important;
+    }
+    
+    /* Button container - separate from col-12 to avoid conflicts */
+    .button-container {
+      display: flex !important;
+      justify-content: flex-end !important;
+      align-items: center !important;
+      flex-direction: row !important;
+      width: 100% !important;
+      gap: 0.5rem !important;
+    }
+    
+    /* Consistent button spacing */
+    .button-container .btn {
+      margin-right: 0 !important;
+      margin-left: 0 !important;
+    }
+    
+    .button-container .btn:not(:last-child) {
+      margin-right: 0.5rem !important;
+    }
+  }
+}
+</style>
 <div class="container-fluid">
   <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/server/server/list" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
     <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search Server Name, IP or OS..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
@@ -9,15 +58,16 @@
     <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
   </form>
   <div class="row mb-3">
-    <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
+    <div class="col-12" style="margin-top: 16px;">
+      <div class="button-container d-flex justify-content-end align-items-center">
       <% if (hasPermission('server.create')) { %>
-        <button type="button" class="btn btn-primary btn-sm me-2" onclick="window.location.href='/server/server/add'">
+        <button type="button" class="btn btn-primary btn-sm" onclick="window.location.href='/server/server/add'">
           <i class="bi bi-plus"></i> Add Server
         </button>
-        <a href="/server/server/template" class="btn btn-info btn-sm me-2" download>
+        <a href="/server/server/template" class="btn btn-info btn-sm" download>
           <i class="bi bi-download"></i> Download Template
         </a>
-        <button type="button" class="btn btn-success btn-sm me-2" data-bs-toggle="modal" data-bs-target="#importServerModal">
+        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importServerModal">
           <i class="bi bi-upload"></i> Import Server
         </button>
       <% } %>
@@ -48,9 +98,11 @@
           <i class="bi bi-download"></i> Export
         </button>
       </form>
-      <button type="button" class="btn btn-secondary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#filterModal">
+      <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterModal">
         <i class="bi bi-funnel"></i> Filter
       </button>
+      </div>
+    </div>
       <!-- Filter Modal -->
       <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
@@ -137,7 +189,7 @@
         <div class="card-header d-flex justify-content-between align-items-center">
           <h5 class="mb-0">Server List</h5>
         </div>
-        <div class="card-body table-responsive p-0">
+        <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
           <% if (typeof error !== 'undefined' && error) { %>
             <div class="alert alert-danger" style="position: absolute; top: 12px; right: 32px; min-width:200px; max-width:400px; text-align:center; z-index: 1000;">
               <%= error %>
@@ -160,17 +212,17 @@
               }, 3000);
             </script>
           <% } %>
-          <table class="table table-hover server-list-table">
+          <table class="table table-hover" style="table-layout: fixed; min-width: 1000px;">
             <thead>
               <tr>
-                <th>No.</th>
-                <th>Server Name</th>
-                <th>Description</th>
-                <th>IP Address</th>
-                <th>Systems</th>
-                <th>Type</th>
-                <th>Tags</th>
-                <th class="text-end">Actions</th>
+                <th style="width:50px;">No.</th>
+                <th style="width:150px;">Server Name</th>
+                <th style="width:200px;">Description</th>
+                <th style="width:120px;">IP Address</th>
+                <th style="width:120px;">Systems</th>
+                <th style="width:100px;">Type</th>
+                <th style="width:120px;">Tags</th>
+                <th class="text-end" style="width:120px;">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -1003,3 +1055,5 @@ $(document).ready(function() {
   });
 });
 </script>
+
+<!-- Responsive Tables CSS -->

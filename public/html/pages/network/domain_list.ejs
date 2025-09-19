@@ -1,3 +1,103 @@
+<style>
+/* Mobile responsive styles for Domain List */
+@media (max-width: 768px) {
+  .table-responsive {
+    display: block !important;
+    overflow-x: scroll !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .table {
+    display: table !important;
+    min-width: 800px !important;
+    width: 100% !important;
+  }
+  
+  .card-body,
+  .card,
+  .col-12,
+  .container-fluid,
+  .row {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  .col-12 {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    padding: 0 15px !important;
+  }
+  
+  /* Only apply mobile styles to table container, not button row */
+  .col-12:not(.d-flex) {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    padding: 0 15px !important;
+  }
+  
+  /* Force button row to stay on the right - HIGH SPECIFICITY */
+  .row.mb-3 .col-12.button-row {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    text-align: right !important;
+  }
+  
+  /* Additional override for any conflicting styles */
+  .button-row.d-flex {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    flex-direction: row !important;
+  }
+  
+  /* Button container - separate from col-12 to avoid conflicts */
+  .button-container {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    gap: 0.5rem !important;
+  }
+  
+  /* Consistent button spacing */
+  .button-container .btn {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+  }
+  
+  .button-container .btn:not(:last-child) {
+    margin-right: 0.5rem !important;
+  }
+  
+  .card {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  .table th,
+  .table td {
+    padding: 0.25rem !important;
+    font-size: 0.75rem !important;
+    white-space: nowrap !important;
+  }
+  
+  .btn-sm {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.75rem !important;
+  }
+}
+</style>
 <div class="container-fluid">
   <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/network/domain" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
     <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search Domain..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
@@ -9,12 +109,29 @@
     <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
   </form>
   <div class="row mb-3">
-    <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
+    <div class="col-12" style="margin-top: 16px;">
+      <div class="button-container d-flex justify-content-end align-items-center">
       <% if (hasPermission('domain.create')) { %>
-        <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addDomainModal">
+        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addDomainModal">
           <i class="bi bi-plus"></i> Add Domain
         </button>
+        <a href="/network/domain/template" class="btn btn-info btn-sm" download>
+          <i class="bi bi-download"></i> Download Template
+        </a>
+        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importDomainModal">
+          <i class="bi bi-upload"></i> Import Domain
+        </button>
       <% } %>
+      <% if (hasPermission('domain.read')) { %>
+        <form id="domainExportForm" action="/network/domain/export" method="GET" style="display:inline; margin-right: 8px;">
+          <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+          <button type="submit" class="btn btn-warning btn-sm">
+            <i class="bi bi-download"></i> Export
+          </button>
+        </form>
+      <% } %>
+      </div>
+    </div>
       <!-- Add Domain Modal -->
       <div class="modal fade" id="addDomainModal" tabindex="-1" aria-labelledby="addDomainModalLabel" aria-hidden="true">
         <div class="modal-dialog">
@@ -66,8 +183,8 @@
         <div class="card-header">
           <h3 class="card-title mb-0">Domain List</h3>
         </div>
-        <div class="card-body table-responsive p-0">
-          <table class="table table-hover text-nowrap">
+        <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
+          <table class="table table-hover">
             <thead>
               <tr>
                 <th>No.</th>
@@ -439,4 +556,6 @@ $(function() {
       showToast('<%= error %>', 'danger');
     });
   </script>
+
+<!-- Responsive Tables CSS -->
 <% } %>

@@ -1,5 +1,123 @@
 <!-- eslint-disable -->
 <!-- @ts-nocheck -->
+<style>
+/* Mobile responsive styles for Firewall Rules List */
+@media (max-width: 768px) {
+  .table-responsive {
+    display: block !important;
+    overflow-x: scroll !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .table {
+    display: table !important;
+    min-width: 1200px !important;
+    width: 100% !important;
+  }
+  
+  .card-body,
+  .card,
+  .col-12,
+  .container-fluid,
+  .row {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  .col-12 {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    padding: 0 15px !important;
+  }
+  
+  /* Only apply mobile styles to table container, not button row */
+  .col-12:not(.d-flex) {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    padding: 0 15px !important;
+  }
+  
+  /* Force button row to stay on the right - HIGH SPECIFICITY */
+  .row.mb-3 .col-12.button-row {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    text-align: right !important;
+  }
+  
+  /* Additional override for any conflicting styles */
+  .button-row.d-flex {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    flex-direction: row !important;
+  }
+  
+  /* Button container - separate from col-12 to avoid conflicts */
+  .button-container {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    gap: 0.5rem !important;
+  }
+  
+  /* Consistent button spacing */
+  .button-container .btn {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+  }
+  
+  .button-container .btn:not(:last-child) {
+    margin-right: 0.5rem !important;
+  }
+  
+  .card {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  .table th,
+  .table td {
+    padding: 0.25rem !important;
+    font-size: 0.75rem !important;
+    white-space: nowrap !important;
+  }
+  
+  .btn-sm {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.75rem !important;
+  }
+  
+  /* View toggle buttons */
+  .btn-group {
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .btn-group .btn {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+  }
+  
+  /* Override inline styles for mobile */
+  .card-body[style*="max-height"] {
+    max-height: none !important;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+  }
+}
+</style>
+
 <div class="container-fluid">
   <div id="wo-alert-container"></div>
 
@@ -16,9 +134,9 @@
 
   <!-- View Toggle and Action Buttons -->
   <div class="row mb-3">
-    <div class="col-12 d-flex justify-content-between align-items-center" style="margin-top: 16px;">
+    <div class="col-12 button-row" style="margin-top: 16px;">
       <!-- View Toggle Buttons -->
-      <div class="btn-group" role="group" aria-label="View Mode">
+      <div class="btn-group mb-2" role="group" aria-label="View Mode">
         <input type="radio" class="btn-check" name="viewMode" id="groupedView" value="grouped" checked>
         <label class="btn btn-outline-primary btn-sm" for="groupedView">
           <i class="bi bi-collection"></i> Grouped View
@@ -28,9 +146,9 @@
           <i class="bi bi-list-ul"></i> Detailed View
         </label>
       </div>
-
+      
       <!-- Action Buttons -->
-      <div class="d-flex align-items-center gap-2">
+      <div class="button-container d-flex justify-content-end align-items-center">
         <% if (hasPermission('rule.create')) { %>
           <button id="add-rule-btn" type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addRuleModal">
             <i class="bi bi-plus"></i> Add Rule
@@ -68,6 +186,7 @@
         </button>
       </div>
     </div>
+    </div>
   </div>
 
   <!-- Warning Alert -->
@@ -80,7 +199,7 @@
     <div class="card-header">
       <h3 class="card-title mb-0">Firewall Rules List</h3>
     </div>
-    <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto;">
+    <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
       <% if (typeof error !== 'undefined' && error) { %>
         <div id="toast-error" class="toast-error alert alert-danger" style="position:absolute; left:0; right:0; top:0; margin:auto; z-index:9999; min-width:200px; max-width:400px; text-align:center;">
           <%= error %>
@@ -94,36 +213,36 @@
         <script>setTimeout(function(){var el=document.getElementById('toast-success');if(el)el.style.display='none';},6000);</script>
       <% } %>
       
-      <table class="table table-hover text-nowrap" id="rulesTable">
+      <table class="table table-hover" id="rulesTable" style="table-layout: fixed; min-width: 1200px;">
         <thead>
           <tr id="detailedHeader">
             <th style="width:32px;"><input type="checkbox" id="selectAllRules"></th>
-            <th>No.</th>
-            <th style="min-width: 80px;">Audit Batch</th>
-            <th>Firewall Name</th>
-            <th>Rule Name</th>
-            <th>Source</th>
-            <th>Destination</th>
-            <th>Service</th>
-            <th>Status</th>
+            <th style="width:50px;">No.</th>
+            <th style="width:100px;">Audit Batch</th>
+            <th style="width:120px;">Firewall Name</th>
+            <th style="width:150px;">Rule Name</th>
+            <th style="width:120px;">Source</th>
+            <th style="width:120px;">Destination</th>
+            <th style="width:100px;">Service</th>
+            <th style="width:80px;">Status</th>
             <th class="d-none">Work Order</th>
             <th class="d-none">OU (Unit)</th>
-            <th class="d-none d-lg-table-cell">Contacts</th>
-            <th>Violation Type</th>
-            <th>Tags</th>
-            <th class="text-end">Actions</th>
+            <th class="d-none d-lg-table-cell" style="width:120px;">Contacts</th>
+            <th style="width:120px;">Violation Type</th>
+            <th style="width:100px;">Tags</th>
+            <th class="text-end" style="width:120px;">Actions</th>
           </tr>
           <tr id="groupedHeader" style="display: none;">
             <th style="width:32px;"><input type="checkbox" id="selectAllGroups"></th>
-            <th>No.</th>
-            <th style="min-width: 80px;">Audit Batch</th>
-            <th>Firewall Name</th>
-            <th>Rule Name</th>
-            <th>Source</th>
-            <th>Destination</th>
-            <th>Service</th>
-            <th>Last Update</th>
-            <th class="text-end">Actions</th>
+            <th style="width:50px;">No.</th>
+            <th style="width:100px;">Audit Batch</th>
+            <th style="width:120px;">Firewall Name</th>
+            <th style="width:150px;">Rule Name</th>
+            <th style="width:120px;">Source</th>
+            <th style="width:120px;">Destination</th>
+            <th style="width:100px;">Service</th>
+            <th style="width:120px;">Last Update</th>
+            <th class="text-end" style="width:120px;">Actions</th>
           </tr>
         </thead>
         <tbody id="rulesTableBody">
@@ -712,24 +831,81 @@
           </div>
           <div class="modal-body">
             <dl class="row mb-0">
+              <dt class="col-sm-4">Audit Batch</dt>
+              <dd class="col-sm-8"><%= rule.audit_batch || '' %></dd>
               <dt class="col-sm-4">Firewall Name</dt>
               <dd class="col-sm-8"><%= rule.firewall_name || '' %></dd>
               <dt class="col-sm-4">Rule Name</dt>
               <dd class="col-sm-8"><%= rule.rulename %></dd>
+              
+              <!-- Source Section -->
+              <dt class="col-sm-4">Source Zone</dt>
+              <dd class="col-sm-8"><%= rule.src_zone || '' %></dd>
               <dt class="col-sm-4">Source</dt>
               <dd class="col-sm-8"><%= rule.src %></dd>
+              <dt class="col-sm-4">Source Detail</dt>
+              <dd class="col-sm-8"><%= rule.src_detail || '' %></dd>
+              
+              <!-- Destination Section -->
+              <dt class="col-sm-4">Destination Zone</dt>
+              <dd class="col-sm-8"><%= rule.dst_zone || '' %></dd>
               <dt class="col-sm-4">Destination</dt>
               <dd class="col-sm-8"><%= rule.dst %></dd>
-              <dt class="col-sm-4">Service</dt>
+              <dt class="col-sm-4">Destination Detail</dt>
+              <dd class="col-sm-8"><%= rule.dst_detail || '' %></dd>
+              
+              <!-- Service Section -->
+              <dt class="col-sm-4">Services</dt>
               <dd class="col-sm-8"><%= rule.services || '' %></dd>
+              <dt class="col-sm-4">Application</dt>
+              <dd class="col-sm-8"><%= rule.application || '' %></dd>
+              <dt class="col-sm-4">URL</dt>
+              <dd class="col-sm-8"><%= rule.url || '' %></dd>
+              
               <dt class="col-sm-4">Action</dt>
               <dd class="col-sm-8"><%= rule.action %></dd>
-              <dt class="col-sm-4">Status</dt>
-              <dd class="col-sm-8"><%= rule.status || '' %></dd>
+              
+              <!-- Violation Section -->
+              <dt class="col-sm-4">Violation Type</dt>
+              <dd class="col-sm-8"><%= rule.violation_type || '' %></dd>
+              <dt class="col-sm-4">Violation Detail</dt>
+              <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.violation_detail || '').replace(/\r?\n/g, '<br>') %></dd>
+              
+              <!-- OU and Contacts -->
+              <dt class="col-sm-4">OU (Organizational Unit)</dt>
+              <dd class="col-sm-8"><%= rule.ou_name || '' %></dd>
+              <dt class="col-sm-4">Contacts</dt>
+              <dd class="col-sm-8">
+                <% if (rule.contacts && rule.contacts.length > 0) { %>
+                  <% 
+                    var contactLinks = [];
+                    rule.contacts.forEach(function(contact) {
+                      if (contact.email) {
+                        var emailPrefix = contact.email.split('@')[0];
+                        contactLinks.push('<a href="/organize/contact?search=' + encodeURIComponent(emailPrefix) + '&pageSize=10" class="text-decoration-none">' + emailPrefix + '</a>');
+                      }
+                    });
+                  %>
+                  <%- contactLinks.join(', ') %>
+                <% } else { %>
+                  <span class="text-muted">No contacts</span>
+                <% } %>
+              </dd>
+              
+              <!-- Solution Section -->
+              <dt class="col-sm-4">Solution Proposal</dt>
+              <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.solution_proposal || '').replace(/\r?\n/g, '<br>') %></dd>
+              <dt class="col-sm-4">Solution Confirm</dt>
+              <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.solution_confirm || '').replace(/\r?\n/g, '<br>') %></dd>
+              
               <dt class="col-sm-4">Work Order</dt>
               <dd class="col-sm-8"><%= rule.work_order || '' %></dd>
+              <dt class="col-sm-4">Status</dt>
+              <dd class="col-sm-8"><%= rule.status || '' %></dd>
               <dt class="col-sm-4">Description</dt>
               <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.description || '').replace(/\r?\n/g, '<br>') %></dd>
+              
+              <!-- Timestamps -->
               <dt class="col-sm-4">Created At</dt>
               <dd class="col-sm-8"><%= rule.created_at ? (rule.created_at.toLocaleString ? rule.created_at.toLocaleString() : rule.created_at) : '' %></dd>
               <dt class="col-sm-4">Updated At</dt>
@@ -757,6 +933,68 @@
   margin-top: 0.25rem;
   font-size: 0.875em;
   color: #dc3545;
+}
+
+/* Responsive table styles */
+.table-responsive {
+  border: none;
+}
+
+.table {
+  margin-bottom: 0;
+}
+
+.table th,
+.table td {
+  padding: 0.5rem;
+  vertical-align: middle;
+  word-wrap: break-word;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.table th {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.table td {
+  border-bottom: 1px solid #dee2e6;
+  font-size: 0.875rem;
+}
+
+/* Ensure Actions column buttons don't wrap */
+.table td:last-child {
+  white-space: nowrap;
+}
+
+/* Responsive breakpoints */
+@media (max-width: 768px) {
+  .table th,
+  .table td {
+    padding: 0.25rem;
+    font-size: 0.75rem;
+  }
+  
+  .btn-group-sm .btn {
+    padding: 0.125rem 0.25rem;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .table th,
+  .table td {
+    padding: 0.125rem;
+    font-size: 0.7rem;
+  }
+  
+  .btn-group-sm .btn {
+    padding: 0.1rem 0.2rem;
+    font-size: 0.7rem;
+  }
 }
 
 /* Grouped View Styles */
@@ -993,6 +1231,26 @@
   .d-flex.align-items-center {
     justify-content: center;
     flex-wrap: wrap;
+  }
+  
+  /* Button container - separate from col-12 to avoid conflicts */
+  .button-container {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    gap: 0.5rem !important;
+  }
+  
+  /* Consistent button spacing */
+  .button-container .btn {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+  }
+  
+  .button-container .btn:not(:last-child) {
+    margin-right: 0.5rem !important;
   }
 
   .gap-2 {
@@ -2189,6 +2447,7 @@ $(function() {
     $progress.hide();
     $results.hide();
   });
+
 });
 </script>
 
@@ -2199,3 +2458,4 @@ $(function() {
 <!-- Select2 CSS and JS -->
 <link href="/css/select2.min.css" rel="stylesheet" />
 <script src="/js/select2.min.js"></script>
+<!-- Responsive Tables CSS -->

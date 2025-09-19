@@ -1,0 +1,1245 @@
+Java.perform(function main() {
+
+    // test0();
+    getRequest();
+    getRespone();
+    // bypassRootEKYC();
+    // getSmartOTP();
+    // validateRootHook2409();
+    // builder2409();
+    // invokeSuspend2409();
+
+    console.log("Into test.js");
+    bypassSSL();
+    // validateRootHookProd();
+    // invokeSuspendProd();
+    // builderProd();
+    // avoidExit();
+    // uat2510Main();
+    // // uat2810Component();
+    // a();
+    // b();
+    // c();
+    // d();
+    // bypassRootEKYC();
+    getURL();
+});
+
+
+
+function sendReq(data,url){
+
+
+}
+function c() {
+    var Process = Java.use("android.os.Process");
+
+    Process.killProcess.implementation = function (pid) {
+        console.warn("[!] Process.killProcess() called with PID: " + pid);
+
+        // Prevent process from being killed
+        if (pid == Process.myPid()) {
+            console.warn("[*] Preventing self-kill...");
+            return; // Skip execution
+        }
+
+        // Allow killing other processes
+        // this.killProcess(pid);
+    };
+    var libc = Module.findExportByName("libc.so", "kill");
+    Interceptor.attach(libc, {
+        onEnter: function (args) {
+            console.warn("[!] kill() called with PID: " + args[0].toInt32() + ", Signal: " + args[1].toInt32());
+            if (args[0].toInt32() == Process.myPid()) {
+                console.warn("[*] Preventing self-kill...");
+                args[1].replace(0); // Change SIGKILL to harmless signal
+            }
+        }
+    });
+    var libc = Module.findExportByName("libc.so", "abort");
+
+    if (libc) {
+        Interceptor.attach(libc, {
+            onEnter: function (args) {
+                console.warn("[!] abort() called! Preventing termination...");
+                this.context.x0 = 0; // Modify register to prevent abort()
+            },
+            onLeave: function (retval) {
+                console.log("[*] Bypassed abort()");
+            }
+        });
+    } else {
+        console.error("[-] Unable to find abort() in libc.so");
+    }
+    var exitFunc = Module.findExportByName("libc.so", "exit");
+    Interceptor.attach(exitFunc, {
+        onEnter: function (args) {
+            console.warn("[!] exit() called with code: " + args[0].toInt32());
+            args[0].replace(0); // Prevent app from exiting
+        }
+    });
+
+}
+
+function d() {
+    let MainApplication = Java.use("com.VCB.main.MainApplication");
+    MainApplication["$init"].implementation = function () {
+        console.log('$init is called');
+        let ret = this.$new();
+        console.log('$init ret value is ' + ret);
+        console.log("Java Backtrace:");
+        for (var i = 0; i < stackTraceElements.length; i++) {
+            var element = stackTraceElements[i];
+            console.log("  at " + element.getClassName() + "." + element.getMethodName() + " (" + element.getFileName() + ":" + element.getLineNumber() + ")");
+        }
+        return this.$init(message);
+        // return ret;
+    };
+}
+
+function b() {
+    let removeRow = Java.use("o.removeRow");
+    removeRow["getContext"].implementation = function (removerow, createerrorvariable) {
+        var forgotPasswordActivitySet = removerow.ForgotPasswordActivity.value;
+
+        // console.log('ForgotPasswordActivity:', forgotPasswordActivitySet);
+        // console.log('Type of ForgotPasswordActivity:', typeof forgotPasswordActivitySet);
+
+        // If you want to avoid the exception, simply prevent its throwing.
+        if (forgotPasswordActivitySet.contains(createerrorvariable)) {
+            if (createerrorvariable.confirmReadOTT.getDataDecrypt) {
+                removerow.ForgotPasswordActivity.remove(createerrorvariable);
+            } else {
+                // Modify logic to prevent the exception from being thrown
+                // For example, you can just return or continue with different logic
+                console.log('Override check bypassed!');
+                return; // Skip the exception throwing part
+            }
+        }
+
+        // Call the original method or modify logic further
+        this.getContext(removerow, createerrorvariable);
+    };
+}
+
+function a() {
+    var RuntimeException = Java.use("java.lang.RuntimeException");
+
+    RuntimeException.$init.overload('java.lang.String').implementation = function (message) {
+        console.log("Caught RuntimeException with message: " + message);
+        var Exception = Java.use('java.lang.Exception');
+        var exception = Exception.$new("Backtrace Capture");
+        var stackTraceElements = exception.getStackTrace();
+
+        // Iterate through the stack trace and print class and method names
+        console.log("Java Backtrace:");
+        for (var i = 0; i < stackTraceElements.length; i++) {
+            var element = stackTraceElements[i];
+            console.log("  at " + element.getClassName() + "." + element.getMethodName() + " (" + element.getFileName() + ":" + element.getLineNumber() + ")");
+        }
+        return this.$init(message);
+    };
+}
+
+function uat2810Component() {
+    let MainApplication = Java.use("com.VCB.main.ProtectedMainApplication$ProtectedMainApplication$ProtectedAppComponentFactory");
+    var methods = MainApplication.class.getDeclaredMethods();
+
+    methods.forEach(function (method) {
+        var methodName = method.getName();
+        var methodOverloads = MainApplication[methodName].overloads;
+
+        methodOverloads.forEach(function (overload) {
+            overload.implementation = function () {
+                // Log the method name, argument types, and arguments
+                console.log("com.VCB.main.ProtectedMainApplication$ProtectedMainApplication$ProtectedAppComponentFactory");
+                console.log("Called method: " + methodName);
+                console.log("Overload argument types: " + overload.argumentTypes.map(type => type.className).join(", "));
+
+                for (var i = 0; i < arguments.length; i++) {
+                    console.log("arg" + i + ": " + arguments[i]);
+                }
+
+                // Call the original method and capture the result
+                var result = overload.apply(this, arguments);
+
+                // Log and return the result
+                console.log("Result: " + result);
+                return result;
+            };
+        });
+    });
+}
+
+function uat2510Main() {
+    let MainApplication = Java.use("com.VCB.main.ProtectedMainApplication$ProtectedMainApplication");
+
+    // Loop through all the methods of the class
+    var methods = MainApplication.class.getDeclaredMethods();
+
+    methods.forEach(function (method) {
+        var methodName = method.getName();
+        var methodOverloads = MainApplication[methodName].overloads;
+
+        methodOverloads.forEach(function (overload) {
+            overload.implementation = function () {
+                // Log the method name, argument types, and arguments
+                console.log("com.VCB.main.ProtectedMainApplication");
+                console.log("Called method: " + methodName);
+                console.log("Overload argument types: " + overload.argumentTypes.map(type => type.className).join(", "));
+
+                for (var i = 0; i < arguments.length; i++) {
+                    console.log("arg" + i + ": " + arguments[i]);
+                }
+
+                // Call the original method and capture the result
+                var result = overload.apply(this, arguments);
+
+                // Log and return the result
+                console.log("Result: " + result);
+                return result;
+            };
+        });
+    });
+}
+//part of bypass enviroment check
+function validateRootHook2409() {
+    let onSupportContentChanged = Java.use("o.onSupportContentChanged");
+    onSupportContentChanged["FPTAISDK"].overload('o.onSupportContentChanged').implementation = function (onsupportcontentchanged) {
+        // console.log('FPTAISDK is called' + ', ' + 'onsupportcontentchanged: ' + onsupportcontentchanged);
+        onsupportcontentchanged.getRotatedViewportSize.value = false;
+        // console.log("getRotatedViewportSize value: " + onsupportcontentchanged.getRotatedViewportSize.value);
+        onsupportcontentchanged.getViewPortScaleType.value = false;
+        // console.log("getViewPortScaleType value: " + onsupportcontentchanged.getViewPortScaleType.value);
+        onsupportcontentchanged.PreviewStreamStateObserver1.value = false;
+        // console.log('PreviewStreamStateObserver1 value: ' + onsupportcontentchanged.PreviewStreamStateObserver1.value);
+        // console.log('MediaDescriptionCompat value: ' + onsupportcontentchanged.MediaDescriptionCompat.value);
+        let ret = this.FPTAISDK(onsupportcontentchanged);
+        console.log('FPTAISDK ret value is ' + ret);
+        return ret;
+    };
+}
+//part of bypass enviroment check
+
+function invokeSuspend2409() {
+    let RemoteActionCompatParcelizer = Java.use("com.VCB.ui.activities.splash.SplashViewModel$RemoteActionCompatParcelizer");
+    RemoteActionCompatParcelizer["invokeSuspend"].implementation = function (obj) {
+        console.log('invokeSuspend is called' + ', ' + 'obj: ' + obj);
+        let ret = this.invokeSuspend(obj);
+        console.log('invokeSuspend ret value is ' + ret);
+        return null;
+    };
+}
+//part of bypass enviroment check
+function builder2409() {
+    let BaseActivity = Java.use("com.vnpay.ekyc.bases.BaseActivity");
+    BaseActivity["builder"].overload('com.vnpay.ekyc.bases.BaseActivity', 'java.lang.Boolean').implementation = function (baseActivity, bool) {
+        console.log('builder is called' + ', ' + 'baseActivity: ' + baseActivity + ', ' + 'bool: ' + bool);
+        var modifiedBool = Java.use('java.lang.Boolean').valueOf(false);
+        bool = modifiedBool;
+        let ret = this.builder(baseActivity, modifiedBool);
+        console.log('builder ret value is ' + ret);
+        return ret;
+    };
+}
+
+function validateRootHookProd() {
+    let onSupportContentChanged = Java.use("o.onSupportActionModeStarted");
+    onSupportContentChanged["d"].overload('o.onSupportActionModeStarted').implementation = function (onsupportcontentchanged) {
+        console.log('FPTAISDK is called' + ', ' + 'onsupportcontentchanged: ' + onsupportcontentchanged);
+        onsupportcontentchanged.RoundRectDrawableWithShadowRoundRectHelper.value = false;
+        // console.log("getRotatedViewportSize value: " + onsupportcontentchanged.getRotatedViewportSize.value);
+        onsupportcontentchanged.colPut.value = false;
+        // console.log("getViewPortScaleType value: " + onsupportcontentchanged.getViewPortScaleType.value);
+        onsupportcontentchanged.entrySet.value = false;
+        // console.log('PreviewStreamStateObserver1 value: ' + onsupportcontentchanged.PreviewStreamStateObserver1.value);
+        // console.log('MediaDescriptionCompat value: ' + onsupportcontentchanged.MediaDescriptionCompat.value);
+        let ret = this.d(onsupportcontentchanged);
+        // console.log('FPTAISDK ret value is ' + ret);
+        return ret;
+    };
+}
+//part of bypass enviroment check
+
+function invokeSuspendProd() {
+    let AnonymousClass2 = Java.use("com.VCB.ui.activities.splash.SplashViewModel$values");
+    AnonymousClass2["invokeSuspend"].implementation = function (a) {
+        return null;
+    };
+}
+//part of bypass enviroment check
+function builderProd() {
+    let onSupportActionModeStarted = Java.use("o.onSupportActionModeStarted");
+    onSupportActionModeStarted["setActionBarUpIndicator"].implementation = function () {
+        return false;
+    };
+}
+
+function avoidExit() {
+    var SystemClass = Java.use('java.lang.System');
+    SystemClass.exit.overload("int").implementation = function (status) {
+        console.log("System.exit(" + status + ") called.");
+        var Exception = Java.use('java.lang.Exception');
+        var exception = Exception.$new("Backtrace Capture");
+        var stackTraceElements = exception.getStackTrace();
+
+        // Iterate through the stack trace and print class and method names
+        console.log("Java Backtrace:");
+        for (var i = 0; i < stackTraceElements.length; i++) {
+            var element = stackTraceElements[i];
+            console.log("  at " + element.getClassName() + "." + element.getMethodName() + " (" + element.getFileName() + ":" + element.getLineNumber() + ")");
+        }
+    };
+}
+
+function getOKB() {
+    let k = Java.use("o.k");
+    k["b"].implementation = function (context, str) {
+        console.log('b is called' + ', ' + 'context: ' + context + ', ' + 'str: ' + str);
+        // str = "BtvfEfYt+2PnfEL17uqGGiIC0lfDcSI9YSThhWMXSoCPph53wz0e7vgzEZ0j85BE5GJrLHBfzc7gaRoj5Ibj3iryocHi/9lyg4r2Z1BgeCBpuBDWgt9ozlXqufp5h1lm/7sOJLASYdjNisoJiU86mFePNInp1TchsfZMqPVPE/9ub4FEZhJ4DtgDZAxUZV3UQ3zgkf19OSppLYeU771AKmJop6fQ6XnTHQgq/cvY5xzESEvaOkg/V99/1rcuXcIbYtz48R3N7E0IZbuWwKC6+DaeFMTDF7zJL2bkinxn5cUOnBmvSn5U4yA7apgZirklJmoPQwVSB8WZs4texPlYZAaKb17rKFj9p9yZw3T4PlpDvvxIIMztCnIar3Ews85vZBRg3Xka5PUq7hbvKA9Q6MbBDemY0gto/agh6qdVaNkSDiQRnPb+6Q+/EyuCYDwK7qYmN9tP/b/Yjkv9WRm5UEWF3OHv5VwizYipo8AZhwYatfvsi7xvXXDuElmesmAoAebNjMhIokfdAKEfpkGvjpiSgxnogFDvgVlPmOp4tm5+/Aa7qqNMIiqAj2NDUOVckFigWjXL7oAT4LweYPwHvv2ZhbmsIAXgr1tuQLOsVxMuDG0JcV/WZ/5QYPrDJFoaxUSUbAspy7WYv2ZDdhXccBBfZgM6DPiHUrW+gvqxJ/xNDwM9OP3X5SZwSlP3yOMN/EWjJ8aa7y0Wrje5UEOjduWvPfIDNWmPl6y2zPottEDVFRCvmysOVOSM7DWMOd1fje6AVbYuqijp3AZtp2S5MnGSZIhbaXMlKhGc1uPAHD10A9sBT0+5wOmra733wtjJJrt2pcKyAVQopzMmyypMfYmQeCCbH6hpd8XnUbOVvTx0CfMMOS/BXvwxkk5lc5hGIk5ex++gHhdlv1xPBPArNK42KSUGZ/OybQ0YGduD2PfHnxd9aEYi+GTrxCqqxNKAMGzQxy0uhF5fQLnMNPJF3SqZkcpkX8tCosnHk4xwQospzb5ikaWu9JjTGvusmziIf1oYnYJxCIFatDeCgv6DExvAG3oJhnovN1Dnz1cMkkfHfsU7Mx63Lb+iclMuVYnwHgGvwm34tKJNV/WPHu/uJtass/eA4E10alpB+MtokzY6hNRzNu+NIGsqKWumRHq5e41CrPIj0lXEai/va+9oPzzHZr+U/QaQepyALMlqBLxPexCuEf4NACBKGsmOewplyaHq4zBn2niY3vRIeeqwHD6XunMBE09pJ71g6H2mhgYoGQYKxH9inYliiGs5lRxpklIWISTmw+Nc+sQHoJCiSEDo52HYCQ5YQAfTgc5weJs5tcMP5isF+H4VoukKMxUPyu+PBQmQhnB/pqQ+aXTt8w4UjMx7jHbSXxnWAHMEn837g3+hoQPbiYUs2cOzTS0q5ZSSfpTM37OQWnz43lWDaEbSvO55cUZWSQL3Spr5oE1nEXPhtzVpCflXwtayH+QiQB5sUiXd1DClxl0uG/i3v5AB5uJDHgZg7LwcptPc6qIIMEwAGPaa8fp/yMnsMbL6BdkngO+IUtyB4Zv9zgG+f4fH8UDIKABhwAzlgoq/6JylyKcM53wLlfPX7ioJqDfx";
+        var strClass = Java.use("java.lang.String");
+        let ret = this.b(context, str);
+        console.log('b ret value is ' + ret);
+        return ret;
+    };
+}
+
+function test0() {
+    let EKYCDetectOnboardingActivity = Java.use("com.vnpay.ekyc.ui.activity.onboarding.EKYCDetectOnboardingActivity");
+    EKYCDetectOnboardingActivity["values"].overload('o.getAudioBitRate').implementation = function (getaudiobitrate) {
+        console.log('values is called' + ', ' + 'getaudiobitrate: ' + getaudiobitrate);
+        var Exception = Java.use('java.lang.Exception');
+        var exception = Exception.$new("Backtrace Capture");
+        var stackTraceElements = exception.getStackTrace();
+
+        // Iterate through the stack trace and print class and method names
+        console.log("Java Backtrace:");
+        for (var i = 0; i < stackTraceElements.length; i++) {
+            var element = stackTraceElements[i];
+            console.log("  at " + element.getClassName() + "." + element.getMethodName() + " (" + element.getFileName() + ":" + element.getLineNumber() + ")");
+        }
+        let ret = this.values(getaudiobitrate);
+        console.log('values ret value is ' + ret);
+        return ret;
+    };
+}
+
+function getRequestNoRespone() {
+    let SecurityLib = Java.use("o.k");
+    SecurityLib["d"].implementation = function (ct, str, str2) {
+        //console.log('d is called' + ', ' + 'str: ' + str + ', ' + 'str2: ' + str2);
+        str2 = str2.replace("NOT_SAFE", "IS_SAFE");
+        console.log("Request: " + str2);
+        console.log("Key: " + str);
+        // var strClass = Java.use("java.lang.String");
+        // let ret = this.d(strClass.$new(str), str2);
+        //console.log('d ret value is ' + ret);
+        // return ret;
+    };
+}
+
+function getURL(){
+    var RealInterceptorChain = Java.use("okhttp3.internal.http.RealInterceptorChain");
+
+    RealInterceptorChain.proceed.overload("okhttp3.Request").implementation = function (request) {
+        console.log("-> URL: " + request.url().toString());
+         var response = this.proceed(request);
+        return response;
+    };
+}
+function setURL(url){
+    var RealInterceptorChain = Java.use("okhttp3.internal.http.RealInterceptorChain");
+    var HttpUrl = Java.use("okhttp3.HttpUrl");
+    RealInterceptorChain.proceed.overload('okhttp3.Request').implementation = function (req) {
+        var oldUrl = req.url().toString();
+        console.log("[*] Intercepted URL: " + oldUrl);
+
+            var newUrl = HttpUrl.parse(url);
+            var newReqBuilder = req.newBuilder();
+            newReqBuilder.url(newUrl);
+            var newReq = newReqBuilder.build();
+            console.log("[+] Modified URL to: " + newUrl);
+            return this.proceed(newReq);
+    };
+}
+function getRequest() {
+    let SecurityLib = Java.use("o.k");
+    SecurityLib["d"].implementation = function (ct, str, str2) {
+        //console.log('d is called' + ', ' + 'str: ' + str + ', ' + 'str2: ' + str2);
+        str2 = str2.replace("NOT_SAFE", "IS_SAFE");
+        //str2 = str2.replace("5.6.6","5.6.1");
+        console.log("Request: " + str2);
+        //console.log("Key: " + str);
+
+        var strClass = Java.use("java.lang.String");
+        let ret = this.d(ct, strClass.$new(str), strClass.$new(str2));
+        //console.log('d ret value is ' + ret);
+        // var Exception = Java.use('java.lang.Exception');
+        // var exception = Exception.$new("Backtrace Capture");
+        // var stackTraceElements = exception.getStackTrace();
+
+        // // Iterate through the stack trace and print class and method names
+        // console.log("Java Backtrace:");
+        // for (var i = 0; i < stackTraceElements.length; i++) {
+        //     var element = stackTraceElements[i];
+        //     console.log("  at " + element.getClassName() + "." + element.getMethodName() + " (" + element.getFileName() + ":" + element.getLineNumber() + ")");
+        // }
+        return ret;
+    };
+}
+
+function getAFunction() {
+    console.log("Call encrypt function: ");
+    var key;
+    var data;
+    recv(function (received) {
+        key = received.key;
+        data = received.mydata;
+    }).wait(2);
+    console.log("Received key: " + key);
+    console.log("Received data: " + data);
+    let SecurityLib = Java.use("o.k");
+    var targetMethod = SecurityLib.$new();
+    var strClass = Java.use("java.lang.String");
+    var context = Java.use('android.app.ActivityThread').currentApplication().getApplicationContext();
+    var ret = targetMethod.d(context, strClass.$new(key), strClass.$new(data));
+    console.log("Return encrypt function: " + ret);
+    send(ret);
+    recv(function (received) {
+        data = received.respone
+    }).wait(10);
+    var res = targetMethod.e(context, strClass.$new(key), strClass.$new(data));
+    console.log("Respone decrypt: " + res)
+}
+
+function setRequest() {
+    let SecurityLib = Java.use("o.k");
+    SecurityLib["d"].implementation = function (ct, str, str2) {
+        //console.log('d is called' + ', ' + 'str: ' + str + ', ' + 'str2: ' + str2);
+        //console.log("Request: " + str);
+        recv(function (received) {
+            str2 = received.mydata;
+        }).wait(2);
+        //str2 = '{"user":"0300000249","password":"1111zzzz","loginType":"0","ver":"5.6.1","getOTTStatus":"1","mid":"6","lang":"vi","DT":"ANDROID","E":"###8c4d1da9c79b8f03###00000000-1a5c-56d2-ffff-ffffef05ac4a","PM":"SM-A805N","OV":"28","PS":"IS_SAFE","ATS":"24:01:18:01:55:14"}';
+        console.log("Input: " + str2);
+        var strClass = Java.use("java.lang.String");
+        // var strSend = str;
+        // send(strSend);
+        // var strRec = "";
+        //         while (true) {
+        //     recv(function (received) {
+        //         strRec = strClass.$new(received.my_data);
+        //     }).wait();
+        //     if (received.check == "send")
+        //     break;
+        // }
+        var context = Java.use('android.app.ActivityThread').currentApplication().getApplicationContext();
+        let ret = this.d(ct, str, strClass.$new(str2));
+        //console.log('d ret value is ' + ret);
+        return ret;
+    };
+}
+
+function setRequestInFrida(data) {
+    let SecurityLib = Java.use("o.k");
+    SecurityLib["d"].implementation = function (ct, str, str2) {
+        //console.log('d is called' + ', ' + 'str: ' + str + ', ' + 'str2: ' + str2);
+        //console.log("Request: " + str);
+        str2 = data;
+        //str2 = '{"user":"0300000249","password":"1111zzzz","loginType":"0","ver":"5.6.1","getOTTStatus":"1","mid":"6","lang":"vi","DT":"ANDROID","E":"###8c4d1da9c79b8f03###00000000-1a5c-56d2-ffff-ffffef05ac4a","PM":"SM-A805N","OV":"28","PS":"IS_SAFE","ATS":"24:01:18:01:55:14"}';
+        console.log("Input: " + str2);
+        var strClass = Java.use("java.lang.String");
+        // var strSend = str;
+        // send(strSend);
+        // var strRec = "";
+        //         while (true) {
+        //     recv(function (received) {
+        //         strRec = strClass.$new(received.my_data);
+        //     }).wait();
+        //     if (received.check == "send")
+        //     break;
+        // }
+        var context = Java.use('android.app.ActivityThread').currentApplication().getApplicationContext();
+        let ret = this.d(ct, str, strClass.$new(str2));
+        //console.log('d ret value is ' + ret);
+        return ret;
+    };
+}
+
+function replaceRequestInFrida(a,b) {
+    let SecurityLib = Java.use("o.k");
+    SecurityLib["d"].implementation = function (ct, str, str2) {
+        //console.log('d is called' + ', ' + 'str: ' + str + ', ' + 'str2: ' + str2);
+        str2 = str2.replace("NOT_SAFE", "IS_SAFE");
+        str2 = str2.replace(a,b);
+        //str2 = str2.replace("5.6.6","5.6.1");
+        console.log("Request: " + str2);
+        //console.log("Key: " + str);
+
+        var strClass = Java.use("java.lang.String");
+        let ret = this.d(ct, strClass.$new(str), strClass.$new(str2));
+        //console.log('d ret value is ' + ret);
+        return ret;
+    };
+}
+function setRespone() {
+    console.log("Begin set respone");
+    let SecurityLib = Java.use("o.k");
+    SecurityLib["e"].implementation = function (str) {
+        recv(function (received) {
+            str1 = received.mydata1;
+        }).wait(2);
+        console.log("Input: " + str1)
+        let ret = this.e(str);
+        //console.log('d ret value is ' + ret);
+        console.log("Respone: " + Utf8ArrayToStr(ret));
+        return ret;
+    };
+}
+
+function getRespone() {
+    let k = Java.use("o.k");
+    k["e"].implementation = function (context, str, str2) {
+        //console.log('e is called' + ', ' + 'context: ' + context + ', ' + 'str: ' + str + ', ' + 'str2: ' + str2);
+        var ret = this.e(context, str, str2);
+        ret = ret.replace('\"code\":\"5046\"', '\"code\":\"0\"');
+        //ret = ret.replace('\"requireFacePay\":1', '"requireFacePay":0');
+        // ret = ret.replace('\"code\":\"9997\"','"code":"00"')
+        // ret = ret.replace('\"requireFacePay\":1', '\"requireFacePay\":0');
+        // ret = ret.replace('\"requireFacePay\":1', '\"requireFacePay\":0');
+        var strClass = Java.use("java.lang.String");
+        console.log('Respone: ' + strClass.$new(ret));
+        //console.log("Key: " + str);
+        return strClass.$new(ret);
+    };
+}
+
+function bypassRootEKYC() {
+    let EKYCHomeViewModel = Java.use("com.vnpay.ekyc.viewmodels.EKYCHomeViewModel");
+    var MutableLiveData = Java.use("androidx.lifecycle.MutableLiveData");
+        EKYCHomeViewModel.isDeviceRoot.implementation = function () {
+            console.log("🔒 Hooked isDeviceRoot()");
+            var liveData = MutableLiveData.$new();
+            liveData.setValue(Java.use("java.lang.Boolean").FALSE.value);
+            return liveData;
+        };
+}
+
+function getSmartOTP() {
+    let C0156l = Java.use("o.l");
+    C0156l["e"].implementation = function (context, str, str2, str3, str4, str5, str6, str7, str8) {
+        //console.log('e is called' + ', ' + 'context: ' + context + ', ' + 'str: ' + str + ', ' + 'str2: ' + str2 + ', ' + 'str3: ' + str3 + ', ' + 'str4: ' + str4 + ', ' + 'str5: ' + str5 + ', ' + 'str6: ' + str6 + ', ' + 'str7: ' + str7 + ', ' + 'str8: ' + str8);
+        var strClass = Java.use("java.lang.String");
+        let ret = this.e(context, str, str2, str3, str4, str5, str6, strClass.$new("0"), str8);
+        console.log('e ret value is ' + ret);
+        var strClass = Java.use("java.lang.String");
+        //ret = strClass.$new('{"Result":"00","Message":"SUCCESS"}');
+        //console.log('New ret: '+ret)
+        return ret;
+    };
+}
+
+function setRootEKYC() {
+    let EKYCHomeViewModel = Java.use("com.vnpay.ekyc.viewmodels.EKYCHomeViewModel");
+    EKYCHomeViewModel["setDeviceRoot"].implementation = function (mutableLiveData) {
+        console.log('setDeviceRoot is called' + ', ' + 'mutableLiveData: ' + mutableLiveData);
+        let ret = this.setDeviceRoot(mutableLiveData);
+        console.log('setDeviceRoot ret value is ' + ret);
+        return ret;
+    };
+}
+
+function bypassRootEKYCClassSet() {
+    let MutableLiveData = Java.use("androidx.lifecycle.MutableLiveData");
+    MutableLiveData["setValue"].implementation = function (t) {
+        console.log('setValue is called' + ', ' + 't: ' + t);
+        if (t == "true") {
+            var setval = this.setValue(Java.use("java.lang.Boolean").$new(false));
+            console.log("Set change to false");
+        } else var setval = this.setValue(t);
+        return setval;
+        //return ret;
+    };
+};
+
+function bypassRootEKYCClassPost() {
+    let MutableLiveData = Java.use("androidx.lifecycle.MutableLiveData");
+    MutableLiveData["postValue"].implementation = function (t) {
+        console.log('postValue is called' + ', ' + 't: ' + t);
+        if (t == "true") {
+            var posval = this.postValue(Java.use("java.lang.Boolean").$new(false));
+            console.log("Post change to false");
+        } else var posval = this.postValue(t);
+        return posval;
+    };
+};
+
+
+function StrToUTF8Array(str) {
+    var utf8 = [];
+    for (var i = 0; i < str.length; i++) {
+        var charcode = str.charCodeAt(i);
+        if (charcode < 0x80) utf8.push(charcode);
+        else if (charcode < 0x800) {
+            utf8.push(0xc0 | (charcode >> 6),
+                0x80 | (charcode & 0x3f));
+        } else if (charcode < 0xd800 || charcode >= 0xe000) {
+            utf8.push(0xe0 | (charcode >> 12),
+                0x80 | ((charcode >> 6) & 0x3f),
+                0x80 | (charcode & 0x3f));
+        }
+        // surrogate pair
+        else {
+            i++;
+            charcode = ((charcode & 0x3ff) << 10) | (str.charCodeAt(i) & 0x3ff)
+            utf8.push(0xf0 | (charcode >> 18),
+                0x80 | ((charcode >> 12) & 0x3f),
+                0x80 | ((charcode >> 6) & 0x3f),
+                0x80 | (charcode & 0x3f));
+        }
+    }
+    return utf8;
+}
+
+function Utf8ArrayToStr(array) {
+    var out, i, len, c;
+    var char2, char3;
+
+    out = "";
+    len = array.length;
+    i = 0;
+    while (i < len) {
+        c = array[i++];
+        switch (c >> 4) {
+            case 0:
+            case 1:
+            case 2:
+            case 3:
+            case 4:
+            case 5:
+            case 6:
+            case 7:
+                // 0xxxxxxx
+                out += String.fromCharCode(c);
+                break;
+            case 12:
+            case 13:
+                // 110x xxxx   10xx xxxx
+                char2 = array[i++];
+                out += String.fromCharCode(((c & 0x1F) << 6) | (char2 & 0x3F));
+                break;
+            case 14:
+                // 1110 xxxx  10xx xxxx  10xx xxxx
+                char2 = array[i++];
+                char3 = array[i++];
+                out += String.fromCharCode(((c & 0x0F) << 12) |
+                    ((char2 & 0x3F) << 6) |
+                    ((char3 & 0x3F) << 0));
+                break;
+        }
+    }
+
+    return out;
+}
+
+function unRoot() {
+    let l = Java.use("o.l");
+    l["e"].implementation = function (context, str, str2, str3, str4, str5, str6, str7, str8) {
+        //console.log('e is called' + ', ' + 'context: ' + context + ', ' + 'str: ' + str + ', ' + 'str2: ' + str2 + ', ' + 'str3: ' + str3 + ', ' + 'str4: ' + str4 + ', ' + 'str5: ' + str5 + ', ' + 'str6: ' + str6 + ', ' + 'str7: ' + str7 + ', ' + 'str8: ' + str8);
+        //let ret = this.e(context, str, str2, str3, str4, str5, str6, str7, str8);
+        //console.log('e ret value is ' + ret);
+        var ret = '{"Result":"00","Message":"SUCCESS","Data":"","SaveData":"6A448936F1AE0D5CE578AF8F61ECC818A619328780F3E45DB6F5A19ED533FE500C40846579CEC1E946B51C27A9D2874CD93E07BB19FB1F1C105E449E0267FC2EBAFAF36DCC1C214E3F16C939F6722EA9AFD38FFB64EBD8F6EAFAA62631456738CA1F36639340B93EC0B39B5F61249BE4F8AE9E0C082BAD460DC7366726B5CEB3E265CDC5B92AE0C6DC5D36389F7AB34493D1873F70658D2B0ED218F7F5C2B62FEF3379A87B77A42AE45AAB0B15E12257D49335F79E622A38A15EAF00F80F63986B606672280EDDDF98E2A64B3848B8793841FBC5D"}';
+        //var ret = "eyJSZXN1bHQiOiIwMCIsIk1lc3NhZ2UiOiJTVUNDRVNTIiwiRGF0YSI6IiIsIlNhdmVEYXRhIjoiNkE0NDg5MzZGMUFFMEQ1Q0U1NzhBRjhGNjFFQ0M4MThBNjE5MzI4NzgwRjNFNDVEQjZGNUExOUVENTMzRkU1MDBDNDA4NDY1NzlDRUMxRTk0NkI1MUMyN0E5RDI4NzRDRDkzRTA3QkIxOUZCMUYxQzEwNUU0NDlFMDI2N0ZDMkVCQUZBRjM2RENDMUMyMTRFM0YxNkM5MzlGNjcyMkVBOUFGRDM4RkZCNjRFQkQ4RjZFQUZBQTYyNjMxNDU2NzM4Q0ExRjM2NjM5MzQwQjkzRUMwQjM5QjVGNjEyNDlCRTRGOEFFOUUwQzA4MkJBRDQ2MERDNzM2NjcyNkI1Q0VCM0UyNjVDREM1QjkyQUUwQzZEQzVEMzYzODlGN0FCMzQ0OTNEMTg3M0Y3MDY1OEQyQjBFRDIxOEY3RjVDMkI2MkZFRjMzNzlBODdCNzdBNDJBRTQ1QUFCMEIxNUUxMjI1N0Q0OTMzNUY3OUU2MjJBMzhBMTVFQUYwMEY4MEY2Mzk4NkI2MDY2NzIyODBFRERERjk4RTJBNjRCMzg0OEI4NzkzODQxRkJDNUQifQ==";
+        console.log("Hook check root function " + ret);
+        var strClass = Java.use("java.lang.String");
+        return strClass.$new(ret);
+    };
+
+}
+
+function unRoot0() {
+    let l = Java.use("o.l");
+    l["i"].implementation = function () {
+        console.log('i is called');
+        //let ret = this.i();
+        //.log('i ret value is ' + ret);
+        return Java.use("java.lang.Boolean").$new(false);
+    };
+
+}
+
+
+
+function exporeSth() {
+    Interceptor.attach(Module.findExportByName("libc.so", "open"), {
+        onEnter: function (args) {
+            var str = args[0].readUtf8String(); {
+                if (str = "/data/app/com.VCB/lib/x86/libSecurityLib-jni.so") {
+                    var module = Process.findModuleByName("libSecurityLib-jni.so");
+                    if (module != null) {
+                        attachSth();
+
+                    }
+                }
+            }
+        }
+    })
+}
+
+function exporeSecurityLib() {
+    var arr = Process.enumerateModules();
+    for (var i = 0; i < arr.length; i++) {
+        if (arr[i].path.indexOf('libSecurityLib-jni') != -1) {
+            console.log(JSON.stringify(arr[i]));
+            var ex = arr[i].enumerateExports();
+            for (var j = 0; j < ex.length; j++) {
+                console.log("\t" + JSON.stringify(ex[j]));
+            }
+        }
+    }
+}
+
+function explorerOpenedLibs() {
+    Interceptor.attach(Module.findExportByName("libc.so", "snprintf"), {
+        onEnter: function (args) {
+            var str = args[0].readUtf8String();
+            if (str.includes(".so")) {
+                var split = str.split("/");
+                var libName = split[split.length - 1];
+                var module = Process.findModuleByName(libName);
+                if (module != null) {
+                    console.log("Module found: " + JSON.stringify(module));
+                    var ex = module.enumerateExports();
+                    for (var i = 0; i < ex.length; i++) {
+                        console.log("\t" + JSON.stringify(ex[i]));
+                    }
+                }
+            }
+        }
+    })
+}
+
+function bypassSSL() {
+    var X509TrustManager = Java.use('javax.net.ssl.X509TrustManager');
+    var SSLContext = Java.use('javax.net.ssl.SSLContext'); // TrustManager (Android < 7) //
+    ////////////////////////////////
+    var TrustManager = Java.registerClass({
+        // Implement a custom TrustManager
+        name: 'dev.asd.test.TrustManager',
+        implements: [X509TrustManager],
+        methods: {
+            checkClientTrusted: function (chain, authType) {},
+            checkServerTrusted: function (chain, authType) {},
+            getAcceptedIssuers: function () {
+                return [];
+            }
+        }
+    });
+    // Prepare the TrustManager array to pass to SSLContext.init()
+    var TrustManagers = [TrustManager.$new()];
+    // Get a handle on the init() on the SSLContext class
+    var SSLContext_init = SSLContext.init.overload(
+        '[Ljavax.net.ssl.KeyManager;', '[Ljavax.net.ssl.TrustManager;', 'java.security.SecureRandom');
+    try {
+        // Override the init method, specifying the custom TrustManager
+        SSLContext_init.implementation = function (keyManager, trustManager, secureRandom) {
+            SSLContext_init.call(this, keyManager, TrustManagers, secureRandom);
+        };
+    } catch (err) { //
+    }
+    // OkHTTPv3 (quadruple bypass) //
+    /////////////////////////////////
+    try {
+        // Bypass OkHTTPv3 {1}
+        var okhttp3_Activity_1 = Java.use('okhttp3.CertificatePinner');
+        okhttp3_Activity_1.check.overload('java.lang.String', 'java.util.List').implementation = function (a, b) {
+            return;
+        };
+    } catch (err) { //
+    }
+    try {
+        // Bypass OkHTTPv3 {2}
+        // This method of CertificatePinner.check is deprecated but could be found in some old Android apps
+        var okhttp3_Activity_2 = Java.use('okhttp3.CertificatePinner');
+        okhttp3_Activity_2.check.overload('java.lang.String', 'java.security.cert.Certificate').implementation = function (a, b) {
+            return;
+        };
+    } catch (err) { //
+    }
+    try {
+        // Bypass OkHTTPv3 {3}
+        var okhttp3_Activity_3 = Java.use('okhttp3.CertificatePinner');
+        okhttp3_Activity_3.check.overload('java.lang.String', '[Ljava.security.cert.Certificate;').implementation = function (a, b) {
+            return;
+        };
+    } catch (err) { //
+    }
+    try {
+        // Bypass OkHTTPv3 {4}
+        var okhttp3_Activity_4 = Java.use('okhttp3.CertificatePinner');
+        //okhttp3_Activity_4['check$okhttp'].implementation = function(a, b) {
+        okhttp3_Activity_4.check$okhttp.overload('java.lang.String', 'kotlin.jvm.functions.Function0').implementation = function (a, b) {
+            return;
+        };
+    } catch (err) { //
+    }
+    // Trustkit (triple bypass) //
+    //////////////////////////////
+    try {
+        // Bypass Trustkit {1}
+        var trustkit_Activity_1 = Java.use('com.datatheorem.android.trustkit.pinning.OkHostnameVerifier');
+        trustkit_Activity_1.verify.overload('java.lang.String', 'javax.net.ssl.SSLSession').implementation = function (a, b) {
+            return true;
+        };
+    } catch (err) { //
+    }
+    try {
+        // Bypass Trustkit {2}
+        var trustkit_Activity_2 = Java.use('com.datatheorem.android.trustkit.pinning.OkHostnameVerifier');
+        trustkit_Activity_2.verify.overload('java.lang.String', 'java.security.cert.X509Certificate').implementation = function (a, b) {
+            return true;
+        };
+    } catch (err) { //
+    }
+    try {
+        // Bypass Trustkit {3}
+        var trustkit_PinningTrustManager = Java.use('com.datatheorem.android.trustkit.pinning.PinningTrustManager');
+        trustkit_PinningTrustManager.checkServerTrusted.overload('[Ljava.security.cert.X509Certificate;', 'java.lang.String').implementation = function (chain, authType) { //return;
+        };
+    } catch (err) { //
+    }
+    // TrustManagerImpl (Android > 7) //
+    ////////////////////////////////////
+    try {
+        // Bypass TrustManagerImpl (Android > 7) {1}
+        var array_list = Java.use("java.util.ArrayList");
+        var TrustManagerImpl_Activity_1 = Java.use('com.android.org.conscrypt.TrustManagerImpl');
+        TrustManagerImpl_Activity_1.checkTrustedRecursive.implementation = function (certs, ocspData, tlsSctData, host, clientAuth, untrustedChain, trustAnchorChain, used) {
+            return array_list.$new();
+        };
+    } catch (err) { //
+    }
+    try {
+        // Bypass TrustManagerImpl (Android > 7) {2} (probably no more necessary)
+        var TrustManagerImpl_Activity_2 = Java.use('com.android.org.conscrypt.TrustManagerImpl');
+        TrustManagerImpl_Activity_2.verifyChain.implementation = function (untrustedChain, trustAnchorChain, host, clientAuth, ocspData, tlsSctData) {
+            return untrustedChain;
+        };
+    } catch (err) { //
+    } // Appcelerator Titanium PinningTrustManager //
+    ///////////////////////////////////////////////
+    try {
+        var appcelerator_PinningTrustManager = Java.use('appcelerator.https.PinningTrustManager');
+        appcelerator_PinningTrustManager.checkServerTrusted.implementation = function (chain, authType) {
+            return;
+        };
+    } catch (err) { //
+    }
+    // Fabric PinningTrustManager //
+    ////////////////////////////////
+    try {
+        var fabric_PinningTrustManager = Java.use('io.fabric.sdk.android.services.network.PinningTrustManager');
+        fabric_PinningTrustManager.checkServerTrusted.implementation = function (chain, authType) {
+            return;
+        };
+    } catch (err) { //
+    }
+    // OpenSSLSocketImpl Conscrypt (double bypass) //
+    /////////////////////////////////////////////////
+    try {
+        var OpenSSLSocketImpl = Java.use('com.android.org.conscrypt.OpenSSLSocketImpl');
+        OpenSSLSocketImpl.verifyCertificateChain.implementation = function (certRefs, JavaObject, authMethod) {};
+    } catch (err) { //
+    }
+    try {
+        var OpenSSLSocketImpl = Java.use('com.android.org.conscrypt.OpenSSLSocketImpl');
+        OpenSSLSocketImpl.verifyCertificateChain.implementation = function (certChain, authMethod) {};
+    } catch (err) { //
+    }
+    // OpenSSLEngineSocketImpl Conscrypt //
+    ///////////////////////////////////////
+    try {
+        var OpenSSLEngineSocketImpl_Activity = Java.use('com.android.org.conscrypt.OpenSSLEngineSocketImpl');
+        OpenSSLEngineSocketImpl_Activity.verifyCertificateChain.overload('[Ljava.lang.Long;', 'java.lang.String').implementation = function (a, b) {};
+    } catch (err) { //
+    }
+    // OpenSSLSocketImpl Apache Harmony //
+    //////////////////////////////////////
+    try {
+        var OpenSSLSocketImpl_Harmony = Java.use('org.apache.harmony.xnet.provider.jsse.OpenSSLSocketImpl');
+        OpenSSLSocketImpl_Harmony.verifyCertificateChain.implementation = function (asn1DerEncodedCertificateChain, authMethod) {};
+    } catch (err) { //
+    }
+    // PhoneGap sslCertificateChecker //
+    ////////////////////////////////////
+    try {
+        var phonegap_Activity = Java.use('nl.xservices.plugins.sslCertificateChecker');
+        phonegap_Activity.execute.overload('java.lang.String', 'org.json.JSONArray', 'org.apache.cordova.CallbackContext').implementation = function (a, b, c) {
+            return true;
+        };
+    } catch (err) { //
+    }
+    // IBM MobileFirst pinTrustedCertificatePublicKey (double bypass) //
+    ////////////////////////////////////////////////////////////////////
+    try {
+        // Bypass IBM MobileFirst {1}
+        var WLClient_Activity_1 = Java.use('com.worklight.wlclient.api.WLClient');
+        WLClient_Activity_1.getInstance().pinTrustedCertificatePublicKey.overload('java.lang.String').implementation = function (cert) {
+            return;
+        };
+    } catch (err) { //
+    }
+    try {
+        // Bypass IBM MobileFirst {2}
+        var WLClient_Activity_2 = Java.use('com.worklight.wlclient.api.WLClient');
+        WLClient_Activity_2.getInstance().pinTrustedCertificatePublicKey.overload('[Ljava.lang.String;').implementation = function (cert) {
+            return;
+        };
+    } catch (err) { //
+    }
+    // IBM WorkLight (ancestor of MobileFirst) HostNameVerifierWithCertificatePinning (quadruple bypass) //
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////
+    try {
+        // Bypass IBM WorkLight {1}
+        var worklight_Activity_1 = Java.use('com.worklight.wlclient.certificatepinning.HostNameVerifierWithCertificatePinning');
+        worklight_Activity_1.verify.overload('java.lang.String', 'javax.net.ssl.SSLSocket').implementation = function (a, b) {
+            return;
+        };
+    } catch (err) { //
+    }
+    try {
+        // Bypass IBM WorkLight {2}
+        var worklight_Activity_2 = Java.use('com.worklight.wlclient.certificatepinning.HostNameVerifierWithCertificatePinning');
+        worklight_Activity_2.verify.overload('java.lang.String', 'java.security.cert.X509Certificate').implementation = function (a, b) {
+            return;
+        };
+    } catch (err) { //
+    }
+    try {
+        // Bypass IBM WorkLight {3}
+        var worklight_Activity_3 = Java.use('com.worklight.wlclient.certificatepinning.HostNameVerifierWithCertificatePinning');
+        worklight_Activity_3.verify.overload('java.lang.String', '[Ljava.lang.String;', '[Ljava.lang.String;').implementation = function (a, b) {
+            return;
+        };
+    } catch (err) { //
+    }
+    try {
+        // Bypass IBM WorkLight {4}
+        var worklight_Activity_4 = Java.use('com.worklight.wlclient.certificatepinning.HostNameVerifierWithCertificatePinning');
+        worklight_Activity_4.verify.overload('java.lang.String', 'javax.net.ssl.SSLSession').implementation = function (a, b) {
+            return true;
+        };
+    } catch (err) { //
+    }
+    // Conscrypt CertPinManager //
+    //////////////////////////////
+    try {
+        var conscrypt_CertPinManager_Activity = Java.use('com.android.org.conscrypt.CertPinManager');
+        conscrypt_CertPinManager_Activity.checkChainPinning.overload('java.lang.String', 'java.util.List').implementation = function (a, b) { //return;
+            return true;
+        };
+    } catch (err) { //
+    }
+    // Conscrypt CertPinManager (Legacy) //
+    ///////////////////////////////////////
+    try {
+        var legacy_conscrypt_CertPinManager_Activity = Java.use('com.android.org.conscrypt.CertPinManager');
+        legacy_conscrypt_CertPinManager_Activity.isChainValid.overload('java.lang.String', 'java.util.List').implementation = function (a, b) {
+            return true;
+        };
+    } catch (err) { //
+    }
+    // CWAC-Netsecurity (unofficial back-port pinner for Android<4.2) CertPinManager //
+    ///////////////////////////////////////////////////////////////////////////////////
+    try {
+        var cwac_CertPinManager_Activity = Java.use('com.commonsware.cwac.netsecurity.conscrypt.CertPinManager');
+        cwac_CertPinManager_Activity.isChainValid.overload('java.lang.String', 'java.util.List').implementation = function (a, b) {
+            return true;
+        };
+    } catch (err) { //
+    }
+    // Worklight Androidgap WLCertificatePinningPlugin //
+    /////////////////////////////////////////////////////
+    try {
+        var androidgap_WLCertificatePinningPlugin_Activity = Java.use('com.worklight.androidgap.plugin.WLCertificatePinningPlugin');
+        androidgap_WLCertificatePinningPlugin_Activity.execute.overload('java.lang.String', 'org.json.JSONArray', 'org.apache.cordova.CallbackContext').implementation = function (a, b, c) {
+            return true;
+        };
+    } catch (err) { //
+    }
+    // Netty FingerprintTrustManagerFactory //
+    //////////////////////////////////////////
+    try {
+        var netty_FingerprintTrustManagerFactory = Java.use('io.netty.handler.ssl.util.FingerprintTrustManagerFactory');
+        //NOTE: sometimes this below implementation could be useful 
+        //var netty_FingerprintTrustManagerFactory = Java.use('org.jboss.netty.handler.ssl.util.FingerprintTrustManagerFactory');
+        netty_FingerprintTrustManagerFactory.checkTrusted.implementation = function (type, chain) {};
+    } catch (err) { //
+    }
+    // Squareup CertificatePinner [OkHTTP<v3] (double bypass) //
+    ////////////////////////////////////////////////////////////
+    try {
+        // Bypass Squareup CertificatePinner  {1}
+        var Squareup_CertificatePinner_Activity_1 = Java.use('com.squareup.okhttp.CertificatePinner');
+        Squareup_CertificatePinner_Activity_1.check.overload('java.lang.String', 'java.security.cert.Certificate').implementation = function (a, b) {
+            return;
+        };
+    } catch (err) { //
+    }
+    try {
+        // Bypass Squareup CertificatePinner {2}
+        var Squareup_CertificatePinner_Activity_2 = Java.use('com.squareup.okhttp.CertificatePinner');
+        Squareup_CertificatePinner_Activity_2.check.overload('java.lang.String', 'java.util.List').implementation = function (a, b) {
+            return;
+        };
+    } catch (err) { //
+    }
+    // Squareup OkHostnameVerifier [OkHTTP v3] (double bypass) //
+    /////////////////////////////////////////////////////////////
+    try {
+        // Bypass Squareup OkHostnameVerifier {1}
+        var Squareup_OkHostnameVerifier_Activity_1 = Java.use('com.squareup.okhttp.internal.tls.OkHostnameVerifier');
+        Squareup_OkHostnameVerifier_Activity_1.verify.overload('java.lang.String', 'java.security.cert.X509Certificate').implementation = function (a, b) {
+            return true;
+        };
+    } catch (err) { //
+    }
+    try {
+        // Bypass Squareup OkHostnameVerifier {2}
+        var Squareup_OkHostnameVerifier_Activity_2 = Java.use('com.squareup.okhttp.internal.tls.OkHostnameVerifier');
+        Squareup_OkHostnameVerifier_Activity_2.verify.overload('java.lang.String', 'javax.net.ssl.SSLSession').implementation = function (a, b) {
+            return true;
+        };
+    } catch (err) { //
+    }
+    // Android WebViewClient (quadruple bypass) //
+    //////////////////////////////////////////////
+    try {
+        // Bypass WebViewClient {1} (deprecated from Android 6)
+        var AndroidWebViewClient_Activity_1 = Java.use('android.webkit.WebViewClient');
+        AndroidWebViewClient_Activity_1.onReceivedSslError.overload('android.webkit.WebView', 'android.webkit.SslErrorHandler', 'android.net.http.SslError').implementation = function (obj1, obj2, obj3) {};
+    } catch (err) { //
+    }
+    try {
+        // Bypass WebViewClient {2}
+        var AndroidWebViewClient_Activity_2 = Java.use('android.webkit.WebViewClient');
+        AndroidWebViewClient_Activity_2.onReceivedSslError.overload('android.webkit.WebView', 'android.webkit.WebResourceRequest', 'android.webkit.WebResourceError').implementation = function (obj1, obj2, obj3) {};
+    } catch (err) { //
+    }
+    try {
+        // Bypass WebViewClient {3}
+        var AndroidWebViewClient_Activity_3 = Java.use('android.webkit.WebViewClient');
+        AndroidWebViewClient_Activity_3.onReceivedError.overload('android.webkit.WebView', 'int', 'java.lang.String', 'java.lang.String').implementation = function (obj1, obj2, obj3, obj4) {};
+    } catch (err) { //
+    }
+    try {
+        // Bypass WebViewClient {4}
+        var AndroidWebViewClient_Activity_4 = Java.use('android.webkit.WebViewClient');
+        AndroidWebViewClient_Activity_4.onReceivedError.overload('android.webkit.WebView', 'android.webkit.WebResourceRequest', 'android.webkit.WebResourceError').implementation = function (obj1, obj2, obj3) {};
+    } catch (err) { //
+    }
+    // Apache Cordova WebViewClient //
+    //////////////////////////////////
+    try {
+        var CordovaWebViewClient_Activity = Java.use('org.apache.cordova.CordovaWebViewClient');
+        CordovaWebViewClient_Activity.onReceivedSslError.overload('android.webkit.WebView', 'android.webkit.SslErrorHandler', 'android.net.http.SslError').implementation = function (obj1, obj2, obj3) {
+            obj3.proceed();
+        };
+    } catch (err) { //
+    }
+    // Boye AbstractVerifier //
+    ///////////////////////////
+    try {
+        var boye_AbstractVerifier = Java.use('ch.boye.httpclientandroidlib.conn.ssl.AbstractVerifier');
+        boye_AbstractVerifier.verify.implementation = function (host, ssl) {};
+    } catch (err) { //
+    }
+    // Apache AbstractVerifier //
+    /////////////////////////////
+    try {
+        var apache_AbstractVerifier = Java.use('org.apache.http.conn.ssl.AbstractVerifier');
+        apache_AbstractVerifier.verify.implementation = function (a, b, c, d) {
+            return;
+        };
+    } catch (err) { //
+    }
+    // Chromium Cronet //
+    /////////////////////    
+    try {
+        var CronetEngineBuilderImpl_Activity = Java.use("org.chromium.net.impl.CronetEngineBuilderImpl");
+        // Setting argument to TRUE (default is TRUE) to disable Public Key pinning for local trust anchors
+        CronetEngine_Activity.enablePublicKeyPinningBypassForLocalTrustAnchors.overload('boolean').implementation = function (a) {
+            var cronet_obj_1 = CronetEngine_Activity.enablePublicKeyPinningBypassForLocalTrustAnchors.call(this, true);
+            return cronet_obj_1;
+        };
+        // Bypassing Chromium Cronet pinner
+        CronetEngine_Activity.addPublicKeyPins.overload('java.lang.String', 'java.util.Set', 'boolean', 'java.util.Date').implementation = function (hostName, pinsSha256, includeSubdomains, expirationDate) {
+            var cronet_obj_2 = CronetEngine_Activity.addPublicKeyPins.call(this, hostName, pinsSha256, includeSubdomains, expirationDate);
+            return cronet_obj_2;
+        };
+    } catch (err) { //
+    } // Flutter Pinning packages http_certificate_pinning and ssl_pinning_plugin (double bypass) //
+    //////////////////////////////////////////////////////////////////////////////////////////////
+    try {
+        // Bypass HttpCertificatePinning.check {1}
+        var HttpCertificatePinning_Activity = Java.use('diefferson.http_certificate_pinning.HttpCertificatePinning');
+        HttpCertificatePinning_Activity.checkConnexion.overload("java.lang.String", "java.util.List", "java.util.Map", "int", "java.lang.String").implementation = function (a, b, c, d, e) {
+            return true;
+        };
+    } catch (err) { //
+    }
+    try {
+        // Bypass SslPinningPlugin.check {2}
+        var SslPinningPlugin_Activity = Java.use('com.macif.plugin.sslpinningplugin.SslPinningPlugin');
+        SslPinningPlugin_Activity.checkConnexion.overload("java.lang.String", "java.util.List", "java.util.Map", "int", "java.lang.String").implementation = function (a, b, c, d, e) {
+            return true;
+        };
+    } catch (err) { //
+    }
+    // Dynamic SSLPeerUnverifiedException Patcher                                //
+    // An useful technique to bypass SSLPeerUnverifiedException failures raising //
+    // when the Android app uses some uncommon SSL Pinning methods or an heavily //
+    // code obfuscation. Inspired by an idea of: https://github.com/httptoolkit  //
+    ///////////////////////////////////////////////////////////////////////////////
+    function rudimentaryFix(typeName) {
+        // This is a improvable rudimentary fix, if not works you can patch it manually
+        if (typeName === undefined) {
+            return;
+        } else if (typeName === 'boolean') {
+            return true;
+        } else {
+            return null;
+        }
+    }
+    try {
+        var UnverifiedCertError = Java.use('javax.net.ssl.SSLPeerUnverifiedException');
+        UnverifiedCertError.$init.implementation = function (str) {
+            try {
+                var stackTrace = Java.use('java.lang.Thread').currentThread().getStackTrace();
+                var exceptionStackIndex = stackTrace.findIndex(stack =>
+                    stack.getClassName() === "javax.net.ssl.SSLPeerUnverifiedException"
+                );
+                // Retrieve the method raising the SSLPeerUnverifiedException
+                var callingFunctionStack = stackTrace[exceptionStackIndex + 1];
+                var className = callingFunctionStack.getClassName();
+                var methodName = callingFunctionStack.getMethodName();
+                var callingClass = Java.use(className);
+                var callingMethod = callingClass[methodName]; // Skip it when already patched by Frida
+                if (callingMethod.implementation) {
+                    return;
+                }
+                // Trying to patch the uncommon SSL Pinning method via implementation
+                var returnTypeName = callingMethod.returnType.type;
+                callingMethod.implementation = function () {
+                    rudimentaryFix(returnTypeName);
+                };
+            } catch (e) {
+                // Dynamic patching via implementation does not works, then trying via function overloading
+                //
+                if (String(e).includes(".overload")) {
+                    var splittedList = String(e).split(".overload");
+                    for (let i = 2; i < splittedList.length; i++) {
+                        var extractedOverload = splittedList[i].trim().split("(")[1].slice(0, -1).replaceAll("'", "");
+                        // Check if extractedOverload has multiple arguments
+                        if (extractedOverload.includes(",")) {
+                            // Go here if overloaded method has multiple arguments (NOTE: max 6 args are covered here)
+                            var argList = extractedOverload.split(", ");
+                            if (argList.length == 2) {
+                                callingMethod.overload(argList[0], argList[1]).implementation = function (a, b) {
+                                    rudimentaryFix(returnTypeName);
+                                }
+                            } else if (argNum == 3) {
+                                callingMethod.overload(argList[0], argList[1], argList[2]).implementation = function (a, b, c) {
+                                    rudimentaryFix(returnTypeName);
+                                }
+                            } else if (argNum == 4) {
+                                callingMethod.overload(argList[0], argList[1], argList[2], argList[3]).implementation = function (a, b, c, d) {
+                                    rudimentaryFix(returnTypeName);
+                                }
+                            } else if (argNum == 5) {
+                                callingMethod.overload(argList[0], argList[1], argList[2], argList[3], argList[4]).implementation = function (a, b, c, d, e) {
+                                    rudimentaryFix(returnTypeName);
+                                }
+                            } else if (argNum == 6) {
+                                callingMethod.overload(argList[0], argList[1], argList[2], argList[3], argList[4], argList[5]).implementation = function (a, b, c, d, e, f) {
+                                    rudimentaryFix(returnTypeName);
+                                }
+                            }
+                            // Go here if overloaded method has a single argument
+                        } else {
+                            callingMethod.overload(extractedOverload).implementation = function (a) {
+                                rudimentaryFix(returnTypeName);
+                            }
+                        }
+                    }
+                } else {}
+            }
+            //
+            return this.$init(str);
+        };
+    } catch (err) {
+        //
+        //
+    }
+};
+
+
+function raceSend(count, url, data, headers) {
+    Java.perform(function () {
+        var OkHttpClient = Java.use("okhttp3.OkHttpClient");
+        var RequestBuilder = Java.use("okhttp3.Request$Builder");
+        var MediaType = Java.use("okhttp3.MediaType");
+        var RequestBody = Java.use("okhttp3.RequestBody");
+        var Callback = Java.use("okhttp3.Callback");
+
+        var JSON = MediaType.parse("text/plain"); // phải giống app thật
+        var client = OkHttpClient.$new();
+
+        console.log("[*] Preparing " + count + " requests to: " + url);
+
+        // Callback xử lý response
+        var callbackImpl = Java.registerClass({
+            name: 'com.race.CallbackImpl',
+            implements: [Callback],
+            methods: {
+                onFailure: function (call, e) {
+                    console.log("[Error] " + e.toString());
+                },
+                onResponse: function (call, response) {
+                    try {
+                        console.log("[Response] " + response.body().string());
+                    } catch (err) {
+                        console.log("[Error parsing body]: " + err);
+                    }
+                }
+            }
+        });
+        var callback = callbackImpl.$new();
+
+        for (var i = 0; i < count; i++) {
+            var body = RequestBody.create(JSON, data);
+
+            // Build request với headers đầy đủ
+            var builder = RequestBuilder.$new().url(url).post(body);
+
+            // Thêm các headers hook được từ app
+            for (var key in headers) {
+                builder.addHeader(key, headers[key]);
+            }
+
+            var request = builder.build();
+            client.newCall(request).enqueue(callback);
+        }
+
+        console.log("[*] All requests fired concurrently!");
+    });
+}
+
+rpc.exports = {
+    callgetrequestnorespone: getRequestNoRespone,
+    callgetrespone: getRespone,
+    callsetrequest: setRequest,
+    callgetrequest: getRequest,
+    callsetrespone: setRespone,
+    callafunction: getAFunction
+};
