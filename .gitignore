@@ -35,6 +35,7 @@ build/Release
 
 # Dependency directories
 dist/
+public/dist/
 
 # dotenv environment variables file
 .env

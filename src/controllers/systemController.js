@@ -202,7 +202,8 @@ systemController.listSystemComponent = async (req, res) => {
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
-    const [success, error] = [req.flash('success')[0], req.flash('error')[0]];
+    const successMessage = req.flash('success')[0];
+    const errorMessage = req.flash('error')[0];
     // Get app type options for filter
     const appTypeOptions = await getAppTypeOptionsFromConfig();
     
@@ -220,8 +221,8 @@ systemController.listSystemComponent = async (req, res) => {
       filterSystemId,
       filterAppType,
       appTypeOptions,
-      success,
-      error,
+      successMessage,
+      errorMessage,
       title: 'System Component',
       activeMenu: 'system-component',
     });
@@ -573,7 +574,8 @@ systemController.listSystem = async (req, res) => {
     });
 
     // Flash messages
-    const [success, error] = [req.flash('success')[0], req.flash('error')[0]];
+    const successMessage = req.flash('success')[0];
+    const errorMessage = req.flash('error')[0];
 
     // Get scope and architecture options for filter modal
     const scopeOptions = await getScopeOptionsFromConfig();
@@ -588,8 +590,8 @@ systemController.listSystem = async (req, res) => {
       totalCount,
       startItem,
       endItem,
-      success,
-      error,
+      successMessage,
+      errorMessage,
       // Ensure filterTags, filterContacts, filterScopes, and filterArchitecture are always defined for EJS
       filterTags,
       filterContacts,

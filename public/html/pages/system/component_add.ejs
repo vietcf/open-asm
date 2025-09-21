@@ -1,8 +1,23 @@
-<div class="container-fluid">
-<link href="/vendor/select2.min.css" rel="stylesheet" />
-<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-  <div class="row justify-content-center">
-    <div class="col-lg-7 col-md-9">
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item"><a href="/system/component">Component List</a></li>
+          <li class="breadcrumb-item active">Add Component</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main content -->
+<section class="app-content">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 col-md-10 col-sm-12">
       <div class="card mt-4">
         <div class="card-header d-flex justify-content-between align-items-center">
           <h5 class="mb-0">Add System Component</h5>
@@ -19,11 +34,11 @@
             </div>
             <div class="mb-3">
               <label class="form-label">System <span class="text-danger">*</span></label>
-              <select id="system-select" name="system_id" class="form-control" required></select>
+              <select id="system-select" name="system_id" class="form-select" required></select>
             </div>
             <div class="mb-3">
               <label class="form-label">App Type</label>
-              <select name="app_type" class="form-select form-select-sm">
+              <select name="app_type" class="form-select">
                 <option value="">-- Select App Type --</option>
                 <% if (typeof appTypeOptions !== 'undefined' && Array.isArray(appTypeOptions)) { %>
                   <% appTypeOptions.forEach(function(opt) { %>
@@ -44,15 +59,15 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Contacts</label>
-              <select id="contact-select" name="contacts[]" class="form-control" multiple></select>
+              <select id="contact-select" name="contacts[]" class="form-select" multiple data-placeholder="Select contacts"></select>
             </div>
             <div class="mb-3">
               <label class="form-label">IP Addresses</label>
-              <select id="ip-select" name="ips[]" class="form-control" multiple></select>
+              <select id="ip-select" name="ips[]" class="form-select" multiple data-placeholder="Select IP addresses"></select>
             </div>
             <div class="mb-3">
               <label class="form-label">Tags</label>
-              <select id="tag-select" name="tags[]" class="form-control" multiple></select>
+              <select id="tag-select" name="tags[]" class="form-select" multiple data-placeholder="Select tags"></select>
             </div>
           </div>
           <div class="card-footer text-end">
@@ -63,9 +78,18 @@
       </div>
     </div>
   </div>
-</div>
+</section>
+
+<script src="/vendor/jquery-3.6.0.min.js"></script>
+<link href="/css/select2.min.css" rel="stylesheet" />
+<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="/vendor/select2.min.js"></script>
+<script src="/vendor/bootstrap.min.js"></script>
+<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
+
 <script>
 $(function() {
+  // System select2 AJAX - Bootstrap 5 theme
   $('#system-select').select2({
     theme: 'bootstrap-5',
     placeholder: 'Select system',
@@ -80,9 +104,11 @@ $(function() {
       cache: true
     }
   });
+  
+  // Contact select2 AJAX - Bootstrap 5 theme
   $('#contact-select').select2({
     theme: 'bootstrap-5',
-    placeholder: 'Select contacts',
+    placeholder: $('#contact-select').data('placeholder'),
     allowClear: true,
     width: '100%',
     ajax: {
@@ -94,9 +120,11 @@ $(function() {
       cache: true
     }
   });
+  
+  // IP Address select2 AJAX - Bootstrap 5 theme
   $('#ip-select').select2({
     theme: 'bootstrap-5',
-    placeholder: 'Select IP addresses',
+    placeholder: $('#ip-select').data('placeholder'),
     allowClear: true,
     width: '100%',
     ajax: {
@@ -108,27 +136,15 @@ $(function() {
       cache: true
     }
   });
+  
+  // Tag select2 AJAX - Bootstrap 5 theme
   $('#tag-select').select2({
     theme: 'bootstrap-5',
-    placeholder: 'Select tag(s)',
+    placeholder: $('#tag-select').data('placeholder'),
     allowClear: true,
     width: '100%',
     ajax: {
       url: '/organize/api/tag',
-      dataType: 'json',
-      delay: 250,
-      data: params => ({ search: params.term }),
-      processResults: data => ({ results: data }),
-      cache: true
-    }
-  });
-  $('#domain-select').select2({
-    theme: 'bootstrap-5',
-    placeholder: 'Select domain(s)',
-    allowClear: true,
-    width: '100%',
-    ajax: {
-      url: '/network/api/domain',
       dataType: 'json',
       delay: 250,
       data: params => ({ search: params.term }),

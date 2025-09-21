@@ -1,381 +1,23 @@
-<style>
-/* Complete rewrite of mobile responsive styles */
+<!-- Load jQuery first -->
+<script src="/vendor/jquery-3.6.0.min.js"></script>
 
-/* Global modal fixes */
-.modal {
-  z-index: 9999 !important;
-}
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">Subnet List</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
 
-.modal-backdrop {
-  z-index: 9998 !important;
-  background-color: rgba(0, 0, 0, 0.5) !important;
-}
-
-.modal.show {
-  display: block !important;
-}
-
-/* Default: hide mobile cards, show table */
-.mobile-cards {
-  display: none !important;
-}
-
-.table {
-  display: table !important;
-}
-
-#subnetTable {
-  display: table !important;
-}
-
-/* Ensure proper display on larger screens */
-@media (min-width: 577px) {
-  .mobile-cards {
-    display: none !important;
-  }
-  
-  #subnetTable {
-    display: table !important;
-  }
-  
-  .table {
-    display: table !important;
-  }
-}
-
-@media (max-width: 768px) {
-  /* Container and layout */
-  .container-fluid {
-    width: 100% !important;
-    padding: 0 10px !important;
-  }
-  
-  /* Card styling */
-  .card {
-    width: 100% !important;
-    margin: 0 !important;
-    border: none !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
-  }
-  
-  .card-body {
-    padding: 10px !important;
-  }
-  
-  /* Table responsive */
-  .table-responsive {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-    border: none !important;
-  }
-  
-  .table {
-    width: 100% !important;
-    min-width: 1000px !important;
-    margin-bottom: 0 !important;
-  }
-  
-  /* Table cells */
-  .table th,
-  .table td {
-    padding: 8px 4px !important;
-    font-size: 12px !important;
-    white-space: nowrap !important;
-  }
-  
-  .table th {
-    font-weight: 600 !important;
-  }
-  
-  /* Button container */
-  .button-container {
-    display: flex !important;
-    justify-content: flex-end !important;
-    align-items: center !important;
-    flex-wrap: wrap !important;
-    gap: 5px !important;
-    margin-bottom: 10px !important;
-  }
-  
-  .button-container .btn {
-    font-size: 11px !important;
-    padding: 4px 8px !important;
-    margin: 0 !important;
-  }
-  
-  /* Pagination responsive for medium screens */
-  .card-footer {
-    padding: 10px !important;
-  }
-  
-  .card-footer .d-flex {
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 8px !important;
-  }
-  
-  .card-footer > div:first-child {
-    text-align: center !important;
-    font-size: 12px !important;
-    margin-bottom: 5px !important;
-  }
-  
-  .pagination {
-    justify-content: center !important;
-    flex-wrap: wrap !important;
-    margin: 0 !important;
-  }
-  
-  .pagination .page-item {
-    margin: 1px !important;
-  }
-  
-  .pagination .page-link {
-    font-size: 11px !important;
-    padding: 4px 6px !important;
-    min-width: 28px !important;
-    text-align: center !important;
-  }
-  
-  .pagination-info {
-    font-size: 12px !important;
-    text-align: center !important;
-  }
-  
-  /* Modal fixes for mobile */
-  .modal {
-    z-index: 9999 !important;
-  }
-  
-  .modal-backdrop {
-    z-index: 9998 !important;
-    background-color: rgba(0, 0, 0, 0.5) !important;
-  }
-  
-  .modal.show {
-    display: block !important;
-  }
-  
-  .modal-dialog {
-    margin: 10px !important;
-    max-width: calc(100% - 20px) !important;
-  }
-  
-  .modal-content {
-    border-radius: 8px !important;
-  }
-  
-  .modal-header {
-    padding: 10px 15px !important;
-  }
-  
-  .modal-body {
-    padding: 15px !important;
-  }
-  
-  .modal-footer {
-    padding: 10px 15px !important;
-  }
-}
-
-/* Very small screens - card layout */
-@media (max-width: 576px) {
-  .container-fluid {
-    padding: 0 5px !important;
-  }
-  
-  .card-body {
-    padding: 5px !important;
-  }
-  
-  /* Hide table, show cards */
-  .table-responsive {
-    overflow: visible !important;
-  }
-  
-  .table {
-    display: none !important;
-  }
-  
-  /* Show mobile cards */
-  .mobile-cards {
-    display: block !important;
-  }
-  
-  /* Force hide table on very small screens */
-  #subnetTable {
-    display: none !important;
-  }
-  
-  .mobile-card {
-    background: #fff !important;
-    border-radius: 5px !important;
-    margin-bottom: 10px !important;
-    padding: 10px !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
-  }
-  
-  .mobile-card-header {
-    font-weight: 600 !important;
-    margin-bottom: 8px !important;
-    padding-bottom: 5px !important;
-  }
-  
-  .mobile-card-row {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    margin-bottom: 5px !important;
-    font-size: 12px !important;
-  }
-  
-  .mobile-card-label {
-    font-weight: 500 !important;
-    min-width: 80px !important;
-  }
-  
-  .mobile-card-value {
-    flex: 1 !important;
-    text-align: right !important;
-    word-break: break-word !important;
-  }
-  
-  .mobile-card-actions {
-    margin-top: 10px !important;
-    padding-top: 8px !important;
-    text-align: center !important;
-  }
-  
-  .mobile-card-actions .btn {
-    font-size: 10px !important;
-    padding: 3px 6px !important;
-    margin: 0 2px !important;
-  }
-  
-  /* Pagination responsive */
-  .card-footer {
-    padding: 10px 5px !important;
-  }
-  
-  .card-footer .d-flex {
-    flex-direction: column !important;
-    align-items: center !important;
-    gap: 10px !important;
-  }
-  
-  .card-footer > div:first-child {
-    text-align: center !important;
-    font-size: 12px !important;
-  }
-  
-  .pagination {
-    justify-content: center !important;
-    flex-wrap: wrap !important;
-  }
-  
-  .pagination .page-item {
-    margin: 1px !important;
-  }
-  
-  .pagination .page-link {
-    font-size: 11px !important;
-    padding: 4px 6px !important;
-    min-width: 30px !important;
-    text-align: center !important;
-  }
-  
-  .pagination-info {
-    font-size: 11px !important;
-    text-align: center !important;
-    margin-bottom: 5px !important;
-  }
-  
-  /* Modal fixes for very small screens */
-  .modal {
-    z-index: 9999 !important;
-  }
-  
-  .modal-backdrop {
-    z-index: 9998 !important;
-    background-color: rgba(0, 0, 0, 0.5) !important;
-  }
-  
-  .modal.show {
-    display: block !important;
-  }
-  
-  .modal-dialog {
-    margin: 5px !important;
-    max-width: calc(100% - 10px) !important;
-  }
-  
-  .modal-content {
-    border-radius: 6px !important;
-  }
-  
-  .modal-header {
-    padding: 8px 12px !important;
-  }
-  
-  .modal-header .modal-title {
-    font-size: 14px !important;
-  }
-  
-  .modal-body {
-    padding: 12px !important;
-  }
-  
-  .modal-footer {
-    padding: 8px 12px !important;
-  }
-  
-  .modal-footer .btn {
-    font-size: 12px !important;
-    padding: 6px 12px !important;
-  }
-  
-  /* Form elements in modal */
-  .modal .form-control,
-  .modal .form-select {
-    font-size: 14px !important;
-    padding: 8px 12px !important;
-  }
-  
-  .modal .form-label {
-    font-size: 13px !important;
-    margin-bottom: 4px !important;
-  }
-}
-</style>
-<div class="container-fluid">
-  <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/network/subnet-address" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
-    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search Subnet or Description..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-    <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
-      <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
-        <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
-      <% }) %>
-    </select>
-    <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
-  </form>
-  <div class="row mb-3">
-    <div class="col-12" style="margin-top: 16px;">
-      <div class="button-container d-flex justify-content-end align-items-center">
-      <% if (hasPermission('subnet.create')) { %>
-        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addSubnetModal">
-          <i class="bi bi-plus"></i> Add Subnet
-        </button>
-      <% } %>
-      <% if (hasPermission('subnet.create')) { %>
-        <a href="/network/subnet-address/template" class="btn btn-info btn-sm" download>
-          <i class="bi bi-download"></i> Download Template
-        </a>
-      <% } %>
-      <% if (hasPermission('subnet.create')) { %>
-        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importSubnetModal">
-          <i class="bi bi-upload"></i> Import Subnet
-        </button>
-      <% } %>
-      <!-- Add Subnet Modal -->
+<!-- Main content -->
+<div class="app-content">
+  <div class="container-fluid">
       <div class="modal fade" id="addSubnetModal" tabindex="-1" aria-labelledby="addSubnetModalLabel" aria-hidden="true">
         <div class="modal-dialog">
           <div class="modal-content">
@@ -600,7 +242,7 @@
                 </tr>
                 <!-- Subnet Detail Modal -->
                 <div class="modal fade" id="subnetDetailModal-<%= subnet.id %>" tabindex="-1" aria-labelledby="subnetDetailModalLabel-<%= subnet.id %>" aria-hidden="true">
-                  <div class="modal-dialog modal-lg">
+                  <div class="modal-dialog modal-lg modal-dialog-centered">
                     <div class="modal-content">
                       <div class="modal-header">
                         <h5 class="modal-title" id="subnetDetailModalLabel-<%= subnet.id %>">Subnet Information</h5>
@@ -1339,33 +981,7 @@ window.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
-<style>
-  /* Remove all background, border, and badge for IP links in subnet detail modal */
-  .ip-link-no-bg {
-    background: none !important;
-    border: none !important;
-    box-shadow: none !important;
-    color: inherit !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    border-radius: 0 !important;
-    display: inline;
-    text-decoration: underline;
-    font-weight: normal;
-    font-size: inherit;
-    text-transform: lowercase;
-  }
-  /* Ensure select2 dropdown is above Bootstrap modal */
-  .select2-container--open {
-    z-index: 2055 !important;
-  }
-  .select2-dropdown {
-    z-index: 2055 !important;
-  }
-</style>
-
-<script src="/vendor/jquery-3.6.0.min.js"></script>
-<link href="/vendor/select2.min.css" rel="stylesheet" />
+<link href="/css/select2.min.css" rel="stylesheet" />
 <link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 <script src="/vendor/select2.min.js"></script>
 <script src="/vendor/bootstrap.min.js"></script>
@@ -1740,3 +1356,5 @@ $(document).ready(function() {
 </script>
 
 <!-- Responsive Tables CSS -->
+  </div>
+</div>

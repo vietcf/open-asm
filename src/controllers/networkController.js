@@ -99,6 +99,34 @@ networkController.listIP = async (req, res) => {
   // Load ipStatusOptions from DB (Configuration) via helper
   const ipStatusOptions = await getIpStatusOptionsFromConfig();
 
+    // --- Fetch display names for selected filters (for select2 persistence) ---
+    let selectedTags = [];
+    if (Array.isArray(filterTags) && filterTags.length > 0) {
+      const tagList = await Tag.findByIds(filterTags);
+      selectedTags = filterTags.map(tid => {
+        const found = tagList.find(t => t.id == tid);
+        return found ? { id: found.id, name: found.name } : null;
+      }).filter(Boolean);
+    }
+    
+    let selectedSystems = [];
+    if (Array.isArray(filterSystems) && filterSystems.length > 0) {
+      const systemList = await System.findByIds(filterSystems);
+      selectedSystems = filterSystems.map(sid => {
+        const found = systemList.find(s => s.id == sid);
+        return found ? { id: found.id, name: found.name } : null;
+      }).filter(Boolean);
+    }
+    
+    let selectedContacts = [];
+    if (Array.isArray(filterContacts) && filterContacts.length > 0) {
+      const contactList = await Contact.findByIds(filterContacts);
+      selectedContacts = filterContacts.map(cid => {
+        const found = contactList.find(c => c.id == cid);
+        return found ? { id: found.id, name: found.name } : null;
+      }).filter(Boolean);
+    }
+
     res.render('pages/network/ip_address_list', {
       ipList,
       page,
@@ -106,10 +134,10 @@ networkController.listIP = async (req, res) => {
       totalPages,
       totalCount,
       search,
-      filterTags,
+      filterTags: selectedTags,
       filterStatus,
-      filterSystems,
-      filterContacts,
+      filterSystems: selectedSystems,
+      filterContacts: selectedContacts,
       successMessage,
       errorMessage,
       ipStatusOptions,
@@ -153,7 +181,7 @@ networkController.createIP = async (req, res) => {
       return res.redirect('/network/ip-address');
     }
     
-    const statusValue = status && status.trim() ? status : 'reserved';
+    const statusValue = status && status.trim() ? status : 'active';
     const updated_by = req.session.user?.username || '';
     
     // Create IP address records for each IP
@@ -174,7 +202,7 @@ networkController.createIP = async (req, res) => {
       ? 'IP address added successfully!' 
       : `${createdIPs.length} IP addresses added successfully!`;
     req.flash('success', successMessage);
-    return res.redirect('/network/ip-address');
+    return res.redirect(`/network/ip-address?page=${page || 1}`);
   } catch (err) {
     await client.query('ROLLBACK');
     let errorMessage = err.message || 'Add failed.';
@@ -182,7 +210,7 @@ networkController.createIP = async (req, res) => {
       errorMessage = 'One or more IP addresses already exist.';
     }
     req.flash('error', errorMessage);
-    return res.redirect('/network/ip-address');
+    return res.redirect(`/network/ip-address?page=${page || 1}`);
   } finally {
     client.release();
   }
@@ -672,9 +700,9 @@ networkController.apiGetIPDetail = async (req, res) => {
       server_name: ipDetail.server?.name,
       device_id: ipDetail.device?.id,
       device_name: ipDetail.device?.name,
-      tags: ipDetail.tags,
-      contacts: ipDetail.contacts,
-      systems: ipDetail.systems,
+      tags: ipDetail.tags ? ipDetail.tags.map(tag => tag.name || tag) : [],
+      contacts: ipDetail.contacts ? ipDetail.contacts.map(contact => contact.name || contact) : [],
+      systems: ipDetail.systems ? ipDetail.systems.map(system => system.name || system) : [],
       // Add subnet information
       subnet: subnetInfo ? {
         id: subnetInfo.id,
@@ -774,6 +802,7 @@ networkController.validateImportIPs = async (req, res) => {
       const fileContent = fs.readFileSync(filePath, 'utf8');
       const lines = fileContent.split('\n');
       const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
       
       for (let i = 1; i < lines.length; i++) {
         if (lines[i].trim()) {
@@ -1061,14 +1090,15 @@ networkController.importIPs = async (req, res) => {
     
     let rows = [];
     
-    // Parse file (same logic as validation)
-    if (fileExtension === 'csv') {
-      const results = [];
-      
-      // Simple CSV parsing without csv-parser dependency
-      const fileContent = fs.readFileSync(filePath, 'utf8');
-      const lines = fileContent.split('\n');
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      // Parse file (same logic as validation)
+      if (fileExtension === 'csv') {
+        const results = [];
+        
+        // Simple CSV parsing without csv-parser dependency
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        const lines = fileContent.split('\n');
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        
       
       for (let i = 1; i < lines.length; i++) {
         if (lines[i].trim()) {
@@ -1253,8 +1283,6 @@ networkController.importIPs = async (req, res) => {
       
       
       // Send Excel file directly
-      
-      // Set headers for Excel download
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename="${excelFileName}"`);
       res.setHeader('Content-Length', fs.statSync(excelFilePath).size);
@@ -1416,7 +1444,7 @@ networkController.downloadTemplate = async (req, res) => {
       'Description',
       'Status',
       'Tag (comma-separated if multiple)',
-      'Contact (Email or Email prefix, comma-separated if multiple)',
+      'Contact (Email, comma-separated if multiple)',
       'System Name (comma-separated if multiple)'
     ]);
     

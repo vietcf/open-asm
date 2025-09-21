@@ -2,6 +2,14 @@
 
 echo "🔐 Creating self-signed SSL certificate for default server..."
 
+# Remove existing ssl directory if owned by root and create new one
+if [ -d "./ssl" ] && [ "$(stat -c %U ./ssl)" = "root" ]; then
+    echo "⚠️  Removing existing ssl directory owned by root..."
+    sudo rm -rf ./ssl
+fi
+
+# Create ssl directory if it doesn't exist
+mkdir -p ./ssl
 
 # Create self-signed certificate in ./ssl directory
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \

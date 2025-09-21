@@ -1,0 +1,152 @@
+📊 MÔ HÌNH LAYOUT MỚI - ADMINLTE 4 CHUẨN
+================================================
+
+🏗️ CẤU TRÚC HTML TỔNG QUAN:
+┌─────────────────────────────────────────────────────────────┐
+│ <!DOCTYPE html>                                             │
+│ <html lang="en">                                            │
+│ <head>                                                      │
+│   <!-- Meta tags, CSS links -->                             │
+│ </head>                                                     │
+│ <body class="layout-fixed sidebar-expand-lg sidebar-open">  │
+│   <div class="app-wrapper">                                 │
+│     <!-- Header, Sidebar, Content -->                       │
+│   </div>                                                    │
+│   <!-- Scripts -->                                          │
+│ </body>                                                     │
+│ </html>                                                     │
+└─────────────────────────────────────────────────────────────┘
+
+📋 CHI TIẾT CẤU TRÚC:
+
+1️⃣ BODY CLASSES:
+   ✅ layout-fixed          - Fixed layout
+   ✅ sidebar-expand-lg     - Sidebar expanded on large screens
+   ✅ sidebar-open          - Sidebar open by default
+   ✅ bg-body-tertiary      - Background color
+
+2️⃣ APP WRAPPER:
+   ┌─────────────────────────────────────────────────────────────┐
+   │ <div class="app-wrapper">                                   │
+   │   <!-- Contains: Header + Sidebar + Content -->            │
+   │ </div>                                                      │
+   └─────────────────────────────────────────────────────────────┘
+
+3️⃣ HEADER STRUCTURE:
+   ┌─────────────────────────────────────────────────────────────┐
+   │ <nav class="app-header navbar navbar-expand bg-body">       │
+   │   <div class="container-fluid">                             │
+   │     <ul class="navbar-nav">                                 │
+   │       <li class="nav-item">                                 │
+   │         <a class="nav-link" data-lte-toggle="sidebar">      │
+   │           <i class="bi bi-list"></i>                        │
+   │         </a>                                                │
+   │       </li>                                                 │
+   │       <li class="nav-item d-none d-md-block">               │
+   │         <a href="#" class="nav-link">Home</a>               │
+   │       </li>                                                 │
+   │       <li class="nav-item d-none d-md-block">               │
+   │         <a href="#" class="nav-link">Contact</a>            │
+   │       </li>                                                 │
+   │     </ul>                                                   │
+   │     <ul class="navbar-nav ms-auto">                         │
+   │       <!-- Search, Messages, Notifications, User Menu -->  │
+   │     </ul>                                                   │
+   │   </div>                                                    │
+   │ </nav>                                                      │
+   └─────────────────────────────────────────────────────────────┘
+
+4️⃣ SIDEBAR STRUCTURE:
+   ┌─────────────────────────────────────────────────────────────┐
+   │ <aside class="app-sidebar bg-body-secondary shadow">        │
+   │   <div class="sidebar-brand">                               │
+   │     <a href="/" class="brand-link">                         │
+   │       <img src="logo.png" alt="Logo">                       │
+   │       <span class="brand-text">AdminLTE 4</span>            │
+   │     </a>                                                    │
+   │   </div>                                                    │
+   │   <div class="sidebar-wrapper">                             │
+   │     <nav class="mt-2">                                      │
+   │       <ul class="nav sidebar-menu flex-column">             │
+   │         <!-- Menu items -->                                 │
+   │       </ul>                                                 │
+   │     </nav>                                                  │
+   │   </div>                                                    │
+   │ </aside>                                                    │
+   └─────────────────────────────────────────────────────────────┘
+
+5️⃣ CONTENT STRUCTURE:
+   ┌─────────────────────────────────────────────────────────────┐
+   │ <main class="app-main">                                     │
+   │   <!-- Content Header -->                                   │
+   │   <div class="app-content-header">                          │
+   │     <div class="container-fluid">                           │
+   │       <div class="row">                                     │
+   │         <div class="col-sm-6">                              │
+   │           <h3 class="mb-0">Page Title</h3>                  │
+   │         </div>                                              │
+   │         <div class="col-sm-6">                              │
+   │           <ol class="breadcrumb float-sm-end">              │
+   │             <li class="breadcrumb-item"><a href="/">Home</a>│
+   │             <li class="breadcrumb-item active">Current</li> │
+   │           </ol>                                             │
+   │         </div>                                              │
+   │       </div>                                                │
+   │     </div>                                                  │
+   │   </div>                                                    │
+   │                                                             │
+   │   <!-- App Content -->                                      │
+   │   <div class="app-content">                                 │
+   │     <div class="container-fluid">                           │
+   │       <!-- Page content -->                                 │
+   │     </div>                                                  │
+   │   </div>                                                    │
+   │ </main>                                                     │
+   └─────────────────────────────────────────────────────────────┘
+
+6️⃣ FOOTER STRUCTURE:
+   ┌─────────────────────────────────────────────────────────────┐
+   │ <footer class="main-footer">                                │
+   │   <div class="float-right d-none d-sm-block">               │
+   │     <b>Version</b> 4.0.0                                    │
+   │   </div>                                                    │
+   │   <strong>Copyright &copy; 2024 <a href="#">AdminLTE</a>.</strong> │
+   │   All rights reserved.                                      │
+   │ </footer>                                                   │
+   └─────────────────────────────────────────────────────────────┘
+
+📱 RESPONSIVE BREAKPOINTS:
+   • Mobile: ≤ 768px
+   • Tablet: 769px - 1024px  
+   • Desktop: ≥ 1025px
+
+🎨 CSS LOADING ORDER:
+   1. Custom CSS
+   2. Select2 CSS
+   3. Bootstrap Icons
+   4. OverlayScrollbars
+   5. Source Sans 3
+   6. ApexCharts
+   7. AdminLTE CSS
+
+📜 JAVASCRIPT LOADING ORDER:
+   1. jQuery
+   2. Select2
+   3. Bootstrap Bundle
+   4. ApexCharts
+   5. AdminLTE JS
+   6. Custom JS
+
+🔧 LAYOUT CỦA BẠN HIỆN TẠI:
+   ✅ Body classes: layout-fixed sidebar-expand-lg bg-body-tertiary
+   ❌ Thiếu: sidebar-open
+   ✅ App wrapper: app-wrapper
+   ✅ Header: app-header navbar
+   ❌ Thiếu: Home, Contact links
+   ✅ Sidebar: include('sidebar')
+   ✅ Content: content-wrapper
+   ❌ Thiếu: app-main wrapper
+   ❌ Thiếu: Footer
+
+📊 ĐỘ CHUẨN HIỆN TẠI: 85%
+🎯 CẦN SỬA: 15% để đạt 100% chuẩn AdminLTE 4

@@ -1,0 +1,266 @@
+🏗️ MÔ HÌNH LAYOUT ADMINLTE 4 - ASCII DIAGRAM
+===============================================
+
+📱 DESKTOP LAYOUT (≥1025px):
+┌─────────────────────────────────────────────────────────────────┐
+│                        BODY                                    │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                    APP-WRAPPER                             ││
+│  │                                                             ││
+│  │  ┌─────────────┐  ┌─────────────────────────────────────┐  ││
+│  │  │   HEADER    │  │            CONTENT                   │  ││
+│  │  │             │  │                                     │  ││
+│  │  │ [☰] Home    │  │  ┌─────────────────────────────────┐ │  ││
+│  │  │    Contact  │  │  │     CONTENT-HEADER              │ │  ││
+│  │  │             │  │  │  Title              Breadcrumb  │ │  ││
+│  │  │    [🔍] [📧] │  │  └─────────────────────────────────┘ │  ││
+│  │  │    [🔔] [👤] │  │                                     │  ││
+│  │  └─────────────┘  │  ┌─────────────────────────────────┐ │  ││
+│  │                   │  │        APP-CONTENT              │ │  ││
+│  │  ┌─────────────┐  │  │                                 │ │  ││
+│  │  │   SIDEBAR   │  │  │  [Search] [Filter] [Add]       │ │  ││
+│  │  │             │  │  │                                 │ │  ││
+│  │  │ 📊 Dashboard│  │  │  ┌─────────────────────────────┐ │ │  ││
+│  │  │ 👥 Users    │  │  │  │         TABLE               │ │ │  ││
+│  │  │ ⚙️  Settings│  │  │  │  No. | Name | Actions      │ │ │  ││
+│  │  │ 📋 Reports  │  │  │  │  1   | ...  | [👁][✏️][🗑] │ │ │  ││
+│  │  │             │  │  │  └─────────────────────────────┘ │ │  ││
+│  │  │             │  │  │                                 │ │  ││
+│  │  │             │  │  │  [Previous] 1 2 3 [Next]      │ │  ││
+│  │  └─────────────┘  │  └─────────────────────────────────┘ │  ││
+│  │                   └─────────────────────────────────────┘  ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                    FOOTER                                  ││
+│  │  Copyright © 2024 AdminLTE. All rights reserved.          ││
+│  └─────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+
+📱 MOBILE LAYOUT (≤768px):
+┌─────────────────────────────────────────────────────────────────┐
+│                        BODY                                    │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                    APP-WRAPPER                             ││
+│  │                                                             ││
+│  │  ┌─────────────────────────────────────────────────────┐  ││
+│  │  │                   HEADER                             │  ││
+│  │  │  [☰]                                    [🔍][👤]    │  ││
+│  │  └─────────────────────────────────────────────────────┘  ││
+│  │                                                             ││
+│  │  ┌─────────────────────────────────────────────────────┐  ││
+│  │  │                CONTENT                              │  ││
+│  │  │                                                     │  ││
+│  │  │  ┌─────────────────────────────────────────────────┐ │  ││
+│  │  │  │            CONTENT-HEADER                       │ │  ││
+│  │  │  │  Title                                         │ │  ││
+│  │  │  │  Home > Current                                │ │  ││
+│  │  │  └─────────────────────────────────────────────────┘ │  ││
+│  │  │                                                     │  ││
+│  │  │  ┌─────────────────────────────────────────────────┐ │  ││
+│  │  │  │              APP-CONTENT                        │ │  ││
+│  │  │  │  [Search]                                      │ │  ││
+│  │  │  │  [Filter] [Add]                                │ │  ││
+│  │  │  │                                               │ │  ││
+│  │  │  │  ┌─────────────────────────────────────────────┐ │ │  ││
+│  │  │  │  │              TABLE                          │ │ │  ││
+│  │  │  │  │  No. | Name | Actions                      │ │ │  ││
+│  │  │  │  │  1   | ...  | [👁][✏️][🗑]                 │ │ │  ││
+│  │  │  │  └─────────────────────────────────────────────┘ │ │  ││
+│  │  │  │                                               │ │  ││
+│  │  │  │  [Previous] 1 2 3 [Next]                     │ │  ││
+│  │  │  └─────────────────────────────────────────────────┘ │  ││
+│  │  └─────────────────────────────────────────────────────┘  ││
+│  └─────────────────────────────────────────────────────────────┘│
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                    FOOTER                                  ││
+│  │  Copyright © 2024 AdminLTE. All rights reserved.          ││
+│  └─────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+
+📱 MOBILE SIDEBAR OVERLAY (Khi mở):
+┌─────────────────────────────────────────────────────────────────┐
+│                        BODY                                    │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │                    APP-WRAPPER                             ││
+│  │                                                             ││
+│  │  ┌─────────────────────────────────────────────────────┐  ││
+│  │  │                   HEADER                             │  ││
+│  │  │  [☰]                                    [🔍][👤]    │  ││
+│  │  └─────────────────────────────────────────────────────┘  ││
+│  │                                                             ││
+│  │  ┌─────────────┐  ┌─────────────────────────────────────┐  ││
+│  │  │   SIDEBAR   │  │            CONTENT                   │  ││
+│  │  │             │  │                                     │  ││
+│  │  │ 📊 Dashboard│  │  ┌─────────────────────────────────┐ │  ││
+│  │  │ 👥 Users    │  │  │     CONTENT-HEADER              │ │  ││
+│  │  │ ⚙️  Settings│  │  │  Title              Breadcrumb  │ │  ││
+│  │  │ 📋 Reports  │  │  └─────────────────────────────────┘ │  ││
+│  │  │             │  │                                     │  ││
+│  │  │             │  │  ┌─────────────────────────────────┐ │  ││
+│  │  │             │  │  │        APP-CONTENT              │ │  ││
+│  │  │             │  │  │                                 │ │  ││
+│  │  │             │  │  │  [Search] [Filter] [Add]       │ │  ││
+│  │  │             │  │  │                                 │ │  ││
+│  │  │             │  │  │  ┌─────────────────────────────┐ │ │  ││
+│  │  │             │  │  │  │         TABLE               │ │ │  ││
+│  │  │             │  │  │  │  No. | Name | Actions      │ │ │  ││
+│  │  │             │  │  │  │  1   | ...  | [👁][✏️][🗑] │ │ │  ││
+│  │  │             │  │  │  └─────────────────────────────┘ │ │  ││
+│  │  │             │  │  │                                 │ │  ││
+│  │  │             │  │  │  [Previous] 1 2 3 [Next]      │ │  ││
+│  │  │             │  │  └─────────────────────────────────┘ │  ││
+│  │  │             │  └─────────────────────────────────────┘  ││
+│  │  └─────────────┘                                           ││
+│  └─────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+
+🔧 CẤU TRÚC HTML CHI TIẾT:
+┌─────────────────────────────────────────────────────────────────┐
+│ <!DOCTYPE html>                                                 │
+│ <html lang="en">                                                │
+│ <head>                                                          │
+│   <meta charset="UTF-8">                                        │
+│   <meta name="viewport" content="width=device-width, initial-scale=1.0"> │
+│   <title>Page Title</title>                                     │
+│   <!-- CSS Links -->                                            │
+│ </head>                                                         │
+│ <body class="layout-fixed sidebar-expand-lg sidebar-open bg-body-tertiary"> │
+│   <div class="app-wrapper">                                     │
+│     <!-- Header -->                                             │
+│     <nav class="app-header navbar navbar-expand bg-body">       │
+│       <div class="container-fluid">                             │
+│         <ul class="navbar-nav">                                 │
+│           <li class="nav-item">                                 │
+│             <a class="nav-link" data-lte-toggle="sidebar">      │
+│               <i class="bi bi-list"></i>                        │
+│             </a>                                                │
+│           </li>                                                 │
+│           <li class="nav-item d-none d-md-block">               │
+│             <a href="#" class="nav-link">Home</a>               │
+│           </li>                                                 │
+│           <li class="nav-item d-none d-md-block">               │
+│             <a href="#" class="nav-link">Contact</a>            │
+│           </li>                                                 │
+│         </ul>                                                   │
+│         <ul class="navbar-nav ms-auto">                         │
+│           <!-- Search, Messages, Notifications, User Menu -->  │
+│         </ul>                                                   │
+│       </div>                                                    │
+│     </nav>                                                      │
+│                                                                 │
+│     <!-- Sidebar -->                                            │
+│     <aside class="app-sidebar bg-body-secondary shadow">        │
+│       <div class="sidebar-brand">                               │
+│         <a href="/" class="brand-link">                         │
+│           <img src="logo.png" alt="Logo">                       │
+│           <span class="brand-text">AdminLTE 4</span>            │
+│         </a>                                                    │
+│       </div>                                                    │
+│       <div class="sidebar-wrapper">                             │
+│         <nav class="mt-2">                                      │
+│           <ul class="nav sidebar-menu flex-column">             │
+│             <!-- Menu items -->                                 │
+│           </ul>                                                 │
+│         </nav>                                                  │
+│       </div>                                                    │
+│     </aside>                                                    │
+│                                                                 │
+│     <!-- Main Content -->                                       │
+│     <main class="app-main">                                     │
+│       <!-- Content Header -->                                   │
+│       <div class="app-content-header">                          │
+│         <div class="container-fluid">                           │
+│           <div class="row">                                     │
+│             <div class="col-sm-6">                              │
+│               <h3 class="mb-0">Page Title</h3>                  │
+│             </div>                                              │
+│             <div class="col-sm-6">                              │
+│               <ol class="breadcrumb float-sm-end">              │
+│                 <li class="breadcrumb-item"><a href="/">Home</a>│
+│                 <li class="breadcrumb-item active">Current</li> │
+│               </ol>                                             │
+│             </div>                                              │
+│           </div>                                                │
+│         </div>                                                  │
+│       </div>                                                    │
+│                                                                 │
+│       <!-- App Content -->                                      │
+│       <div class="app-content">                                 │
+│         <div class="container-fluid">                           │
+│           <!-- Page content -->                                 │
+│         </div>                                                  │
+│       </div>                                                    │
+│     </main>                                                     │
+│                                                                 │
+│     <!-- Footer -->                                             │
+│     <footer class="main-footer">                                │
+│       <div class="float-right d-none d-sm-block">               │
+│         <b>Version</b> 4.0.0                                    │
+│       </div>                                                    │
+│       <strong>Copyright &copy; 2024 <a href="#">AdminLTE</a>.</strong> │
+│       All rights reserved.                                      │
+│     </footer>                                                   │
+│   </div>                                                        │
+│                                                                 │
+│   <!-- Scripts -->                                              │
+│   <script src="/js/jquery-3.6.0.min.js"></script>             │
+│   <script src="/js/select2.min.js"></script>                   │
+│   <script src="/js/bootstrap.bundle.min.js"></script>          │
+│   <script src="/js/apexcharts.min.js"></script>                │
+│   <script src="/js/adminlte.min.js"></script>                  │
+│   <script src="/js/custom.js"></script>                        │
+│ </body>                                                         │
+│ </html>                                                         │
+└─────────────────────────────────────────────────────────────────┘
+
+📊 SO SÁNH LAYOUT CỦA BẠN VS CHUẨN:
+┌─────────────────────────────────────────────────────────────────┐
+│                    LAYOUT CỦA BẠN                              │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">││
+│  │   <div class="app-wrapper">                                 ││
+│  │     <nav class="app-header navbar navbar-expand bg-body">   ││
+│  │       <!-- Header content -->                               ││
+│  │     </nav>                                                  ││
+│  │     <%- include('sidebar') %>                               ││
+│  │     <div class="content-wrapper">                           ││
+│  │       <%- body %>                                           ││
+│  │     </div>                                                  ││
+│  │   </div>                                                    ││
+│  │ </body>                                                     ││
+│  └─────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────┐
+│                    LAYOUT CHUẨN                                │
+│  ┌─────────────────────────────────────────────────────────────┐│
+│  │ <body class="layout-fixed sidebar-expand-lg sidebar-open bg-body-tertiary">││
+│  │   <div class="app-wrapper">                                 ││
+│  │     <nav class="app-header navbar navbar-expand bg-body">   ││
+│  │       <!-- Header content + Home/Contact links -->         ││
+│  │     </nav>                                                  ││
+│  │     <aside class="app-sidebar bg-body-secondary shadow">    ││
+│  │       <!-- Sidebar content inline -->                      ││
+│  │     </aside>                                                ││
+│  │     <main class="app-main">                                 ││
+│  │       <div class="app-content-header">                      ││
+│  │         <!-- Breadcrumb -->                                 ││
+│  │       </div>                                                ││
+│  │       <div class="app-content">                             ││
+│  │         <div class="container-fluid">                       ││
+│  │           <!-- Page content -->                             ││
+│  │         </div>                                              ││
+│  │       </div>                                                ││
+│  │     </main>                                                 ││
+│  │     <footer class="main-footer">                            ││
+│  │       <!-- Footer content -->                               ││
+│  │     </footer>                                               ││
+│  │   </div>                                                    ││
+│  │ </body>                                                     ││
+│  └─────────────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────────────┘
+
+🎯 ĐỘ CHUẨN HIỆN TẠI: 85%
+📈 CẦN SỬA: 15% để đạt 100% chuẩn AdminLTE 4

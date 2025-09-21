@@ -1,155 +1,152 @@
-<div class="container-fluid">
-  <!-- Search Form -->
-  <form class="input-group mb-3 justify-content-end align-items-center" 
-        role="search" 
-        method="get" 
-        action="/system/component" 
-        style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
-    <input class="form-control rounded-start me-2" 
-           type="search" 
-           name="search" 
-           placeholder="Search Component..." 
-           aria-label="Search" 
-           value="<%= typeof search !== 'undefined' ? search : '' %>">
-    <select class="form-select form-select-sm me-2" 
-            name="pageSize" 
-            onchange="this.form.submit()" 
-            style="width:90px;max-width:90px;">
-      <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
-        <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>>
-          <%= size %> / page
-        </option>
-      <% }) %>
-    </select>
-    <button class="btn btn-outline-secondary rounded-end" type="submit">
-      <i class="bi bi-search"></i>
-    </button>
-  </form>
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">Component List</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
 
-  <!-- Action Buttons Row -->
-  <div class="row mb-3">
-    <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
-      <!-- Add Component Button -->
-      <a href="/system/component/add" class="btn btn-primary btn-sm me-2">
-        <i class="bi bi-plus"></i> Add Component
-      </a>
-      
-      <!-- Filter Button -->
-      <button type="button" 
-              class="btn btn-secondary btn-sm ms-2" 
-              data-bs-toggle="modal" 
-              data-bs-target="#filterComponentModal">
-        <i class="bi bi-funnel"></i> Filter
-      </button>
+<!-- Main content -->
+<section class="app-content">
+  <div class="container-fluid">
+    <!-- Search and Page Size Row -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end align-items-center gap-2">
+          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/system/component">
+            <div class="input-group input-group-sm" style="width: 250px;">
+              <input class="form-control form-control-sm" type="search" name="search" placeholder="Search by name, system..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+              <button class="btn btn-outline-secondary btn-sm" type="submit"><i class="bi bi-search"></i></button>
+            </div>
+            <div class="d-flex align-items-center gap-1">
+              <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+              <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
+                <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
+                  <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
+                <% }) %>
+              </select>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
 
+    <!-- Filter and Add Buttons Row -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end gap-2">
+          <% if (hasPermission && hasPermission('component.create')) { %>
+            <a href="/system/component/add" class="btn btn-primary btn-sm">
+              <i class="bi bi-plus"></i> Add Component
+            </a>
+          <% } %>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterComponentModal">
+            <i class="bi bi-funnel"></i> Filter
+          </button>
+        </div>
+      </div>
+    </div>
       <!-- Filter Modal -->
-      <div class="modal fade" 
-           id="filterComponentModal" 
-           tabindex="-1" 
-           aria-labelledby="filterComponentModalLabel" 
-           aria-hidden="true">
+      <div class="modal fade" id="filterComponentModal" tabindex="-1" aria-labelledby="filterComponentModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
             <form id="componentFilterForm" method="get" action="/system/component">
               <!-- Preserve current pageSize and search -->
               <input type="hidden" name="pageSize" value="<%= typeof pageSize !== 'undefined' ? pageSize : 10 %>">
               <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-              <!-- Modal Header -->
               <div class="modal-header">
-                <h5 class="modal-title" id="filterComponentModalLabel">
-                  Filter Component List
-                </h5>
-                <button type="button" 
-                        class="btn-close" 
-                        data-bs-dismiss="modal" 
-                        aria-label="Close"></button>
+                <h5 class="modal-title" id="filterComponentModalLabel">Filter Component List</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
               </div>
-              
-              <!-- Modal Body -->
               <div class="modal-body">
                 <div class="row g-2">
-                  <!-- Tags Filter -->
                   <div class="col-12 mb-2">
                     <label class="form-label">Tags</label>
-                    <select id="filterComponentTags" 
-                            name="tags[]" 
-                            class="form-control" 
-                            multiple></select>
+                    <select id="filterComponentTags" name="tags[]" class="form-control" multiple></select>
                   </div>
-                  
-                  <!-- Contacts Filter -->
                   <div class="col-12 mb-2">
                     <label class="form-label">Contacts</label>
-                    <select id="filterComponentContacts" 
-                            name="contacts[]" 
-                            class="form-control" 
-                            multiple></select>
+                    <select id="filterComponentContacts" name="contacts[]" class="form-control" multiple></select>
                   </div>
-                  
-                  <!-- System Filter -->
                   <div class="col-12 mb-2">
                     <label class="form-label">System</label>
-                    <select id="filterComponentSystem" 
-                            name="system_id[]" 
-                            class="form-control" 
-                            multiple></select>
+                    <select id="filterComponentSystem" name="system_id[]" class="form-control" multiple></select>
                   </div>
-                  
-                  <!-- App Type Filter -->
                   <div class="col-12 mb-2">
                     <label class="form-label">App Type</label>
-                    <select id="filterComponentAppType" 
-                            name="app_type[]" 
-                            class="form-control" 
-                            multiple></select>
+                    <select id="filterComponentAppType" name="app_type[]" class="form-control" multiple></select>
                   </div>
                 </div>
               </div>
-              
-              <!-- Modal Footer -->
               <div class="modal-footer d-flex justify-content-between">
-                <button type="button" 
-                        id="clearFilterBtnComponent" 
-                        class="btn btn-outline-danger btn-sm">
-                  Clear All Filters
-                </button>
+                <button type="button" id="clearFilterBtnComponent" class="btn btn-outline-danger btn-sm">Clear All Filters</button>
                 <div>
-                  <button type="submit" class="btn btn-primary btn-sm">
-                    Apply Filter
-                  </button>
-                  <button type="button" 
-                          class="btn btn-outline-secondary btn-sm ms-2" 
-                          data-bs-dismiss="modal">
-                    Close
-                  </button>
+                  <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
+                  <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
                 </div>
               </div>
             </form>
           </div>
         </div>
       </div>
+  <!-- Filter values for JS (an toàn cho EJS strict, giống IP Address List) -->
+  <div id="filter-component-data"
+    data-tags='<%= JSON.stringify(filterTags || []) %>'
+    data-contacts='<%= JSON.stringify(filterContacts || []) %>'
+    data-system-id='<%= JSON.stringify(filterSystemId || '') %>'
+    data-app-type='<%= JSON.stringify(filterAppType || '') %>' style="display:none"></div>
 
-      <!-- Filter Values for JavaScript -->
-      <div id="filter-component-data"
-           data-tags='<%= JSON.stringify(filterTags || []) %>'
-           data-contacts='<%= JSON.stringify(filterContacts || []) %>'
-           data-system-id='<%= JSON.stringify(filterSystemId || '') %>'
-           data-app-type='<%= JSON.stringify(filterAppType || '') %>' 
-           style="display:none"></div>
+  <!-- Flash Messages -->
+  <!-- Debug: successMessage = <%= typeof successMessage !== 'undefined' ? successMessage : 'undefined' %> -->
+  <!-- Debug: errorMessage = <%= typeof errorMessage !== 'undefined' ? errorMessage : 'undefined' %> -->
+  <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+    <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
+      <i class="bi bi-check-circle me-2"></i><%= successMessage %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
-  </div>
+    <script>
+      // Auto-hide success message after 5 seconds
+      setTimeout(function() {
+        const alert = document.getElementById('successAlert');
+        if (alert) {
+          const bsAlert = new bootstrap.Alert(alert);
+          bsAlert.close();
+        }
+      }, 5000);
+    </script>
+  <% } %>
+  
+  <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
+      <i class="bi bi-exclamation-triangle me-2"></i><%= errorMessage %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <script>
+      // Auto-hide error message after 8 seconds (longer for errors)
+      setTimeout(function() {
+        const alert = document.getElementById('errorAlert');
+        if (alert) {
+          const bsAlert = new bootstrap.Alert(alert);
+          bsAlert.close();
+        }
+      }, 8000);
+    </script>
+  <% } %>
 
-  <!-- Main Content Row -->
+  <!-- Component List Table -->
   <div class="row">
     <div class="col-12">
       <div class="card">
-        <!-- Card Header -->
         <div class="card-header">
           <h3 class="card-title mb-0">Component List</h3>
         </div>
-        
-        <!-- Card Body -->
-        <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
+        <div class="card-body table-responsive p-0" style="overflow-x: auto;">
           <table class="table table-hover">
             <!-- Table Header -->
             <thead>
@@ -220,14 +217,7 @@
                     <!-- Actions -->
                     <td class="text-end">
                       <!-- Show Button -->
-                      <button type="button" 
-                              class="btn btn-info btn-sm" 
-                              title="Show" 
-                              data-bs-toggle="modal" 
-                              data-bs-target="#componentDetailModal-<%= component.id %>" 
-                              onclick='showComponentDetail(<%= JSON.stringify(component) %>)'>
-                        <i class="bi bi-eye"></i>
-                      </button>
+                      <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showComponentDetail('<%= component.id %>')" data-component='<%= JSON.stringify(component) %>'><i class="bi bi-eye"></i></button>
                       
                       <!-- Edit Button -->
                       <a href="/system/component/<%= component.id %>/edit" 
@@ -247,217 +237,6 @@
                     </td>
                   </tr>
 
-                  <!-- Component Detail Modal -->
-                  <div class="modal fade" 
-                       id="componentDetailModal-<%= component.id %>" 
-                       tabindex="-1" 
-                       aria-labelledby="componentDetailModalLabel-<%= component.id %>" 
-                       aria-hidden="true">
-                    <div class="modal-dialog modal-lg">
-                      <div class="modal-content">
-                        <!-- Modal Header -->
-                        <div class="modal-header">
-                          <h5 class="modal-title" 
-                              id="componentDetailModalLabel-<%= component.id %>">
-                            Component Detail
-                          </h5>
-                          <button type="button" 
-                                  class="btn-close" 
-                                  data-bs-dismiss="modal" 
-                                  aria-label="Close"></button>
-                        </div>
-                        
-                        <!-- Modal Body -->
-                        <div class="modal-body">
-                          <dl class="row mb-0">
-                            <!-- ID -->
-                            <dt class="col-sm-3">ID (DB)</dt>
-                            <dd class="col-sm-9"><%= component.id %></dd>
-                            
-                            <!-- Component Name -->
-                            <dt class="col-sm-3">Component Name</dt>
-                            <dd class="col-sm-9"><%= component.name %></dd>
-                            
-                            <!-- System -->
-                            <dt class="col-sm-3">System</dt>
-                            <dd class="col-sm-9">
-                              <% if (component.system_name) { %>
-                                <a href="/system/system?search=<%= encodeURIComponent(component.system_name) %>" 
-                                   target="_blank">
-                                  <%= component.system_name %>
-                                  <i class="bi bi-search ms-1" title="Search system"></i>
-                                </a>
-                              <% } else { %>
-                                <span class="text-muted">-</span>
-                              <% } %>
-                            </dd>
-                            
-                            <!-- Contacts -->
-                            <dt class="col-sm-3">Contacts</dt>
-                            <dd class="col-sm-9">
-                              <% if (component.contacts && component.contacts.length > 0) { %>
-                                <div style="line-height: 1.4;">
-                                  <% component.contacts.forEach(function(contact, idx) { %>
-                                    <% if (contact.email) { %>
-                                      <a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>" 
-                                         target="_blank" 
-                                         style="display: inline-block; margin: 0.1em 0.1em;">
-                                        <%= contact.email %>
-                                      </a>
-                                      <% if ((idx + 1) % 2 === 0 && idx < component.contacts.length - 1) { %>
-                                        <br>
-                                      <% } %>
-                                    <% } %>
-                                  <% }) %>
-                                </div>
-                              <% } else { %>
-                                No contacts
-                              <% } %>
-                            </dd>
-                            
-                            <!-- IP Addresses -->
-                            <dt class="col-sm-3">IP Addresses</dt>
-                            <dd class="col-sm-9">
-                              <% if (component.ips && component.ips.length > 0) { %>
-                                <ul class="mb-0 ps-3">
-                                  <% component.ips.forEach(function(ipObj) { %>
-                                    <li>
-                                      <% if (typeof ipObj === 'object' && ipObj.ip) { %>
-                                        <a href="/network/ip-address?search=<%= encodeURIComponent(ipObj.ip) %>" 
-                                           target="_blank"
-                                           class="ip-hover-link" 
-                                           data-ip="<%= ipObj.ip %>"
-                                           title="Loading IP info...">
-                                          <%= ipObj.ip %>
-                                        </a>
-                                        <% if (ipObj.server_name) { %>
-                                          (<a href="/server/server/list?search=<%= encodeURIComponent(ipObj.ip) %>" 
-                                              target="_blank">
-                                            <%= ipObj.server_name %>
-                                          </a>)
-                                        <% } %>
-                                      <% } else { %>
-                                        <span class="ip-hover-link" 
-                                              data-ip="<%= ipObj %>"
-                                              title="Loading IP info..."><%= ipObj %></span>
-                                      <% } %>
-                                    </li>
-                                  <% }) %>
-                                </ul>
-                              <% } else { %>
-                                No IPs
-                              <% } %>
-                            </dd>
-                            
-                            <!-- App Type -->
-                            <dt class="col-sm-3">App Type</dt>
-                            <dd class="col-sm-9">
-                              <% if (component.app_type) { %>
-                                <%= component.app_type %>
-                              <% } else { %>
-                                No data
-                              <% } %>
-                            </dd>
-                            
-                            <!-- FQDN -->
-                            <dt class="col-sm-3">FQDN</dt>
-                            <dd class="col-sm-9">
-                              <% if (component.fqdn && Array.isArray(component.fqdn) && component.fqdn.length > 0) { %>
-                                <ul class="mb-0 ps-3">
-                                  <% component.fqdn.forEach(function(f) { %>
-                                    <li>
-                                      <% if (/^https?:\/\//.test(f)) { %>
-                                        <a href="<%= f %>" 
-                                           target="_blank" 
-                                           rel="noopener noreferrer">
-                                          <%= f %>
-                                        </a>
-                                      <% } else { %>
-                                        <code><%= f %></code>
-                                      <% } %>
-                                    </li>
-                                  <% }) %>
-                                </ul>
-                              <% } else if (typeof component.fqdn === 'string' && component.fqdn.trim()) { %>
-                                <%= component.fqdn %>
-                              <% } else { %>
-                                No data
-                              <% } %>
-                            </dd>
-                            
-                            <!-- Description -->
-                            <dt class="col-sm-3">Description</dt>
-                            <dd class="col-sm-9">
-                              <% if (component.description && component.description.trim()) { %>
-                                <%= component.description %>
-                              <% } else { %>
-                                No description
-                              <% } %>
-                            </dd>
-                            
-                            <!-- Tags -->
-                            <dt class="col-sm-3">Tags</dt>
-                            <dd class="col-sm-9">
-                              <% if (component.tags && component.tags.length > 0) { %>
-                                <div style="line-height: 1.4;">
-                                  <% component.tags.forEach(function(tag, idx) { %>
-                                    <span class="badge bg-primary text-white" 
-                                          style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;">
-                                      <%= tag.name %>
-                                    </span>
-                                    <% if ((idx + 1) % 2 === 0 && idx < component.tags.length - 1) { %>
-                                      <br>
-                                    <% } %>
-                                  <% }) %>
-                                </div>
-                              <% } else { %>
-                                No tags
-                              <% } %>
-                            </dd>
-                            
-                            <!-- Created At -->
-                            <dt class="col-sm-3">Created At</dt>
-                            <dd class="col-sm-9">
-                              <% if (component.created_at) { %>
-                                <%= component.created_at.toLocaleString ? component.created_at.toLocaleString() : component.created_at %>
-                              <% } else { %>
-                                No data
-                              <% } %>
-                            </dd>
-                            
-                            <!-- Updated At -->
-                            <dt class="col-sm-3">Updated At</dt>
-                            <dd class="col-sm-9">
-                              <% if (component.updated_at) { %>
-                                <%= component.updated_at.toLocaleString ? component.updated_at.toLocaleString() : component.updated_at %>
-                              <% } else { %>
-                                No data
-                              <% } %>
-                            </dd>
-                            
-                            <!-- Updated By -->
-                            <dt class="col-sm-3">Updated By</dt>
-                            <dd class="col-sm-9">
-                              <% if (component.updated_by) { %>
-                                <%= component.updated_by %>
-                              <% } else { %>
-                                No data
-                              <% } %>
-                            </dd>
-                          </dl>
-                        </div>
-                        
-                        <!-- Modal Footer -->
-                        <div class="modal-footer">
-                          <button type="button" 
-                                  class="btn btn-secondary btn-sm" 
-                                  data-bs-dismiss="modal">
-                            Close
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
                 <% }) %>
               <% } else { %>
                 <tr>
@@ -592,41 +371,31 @@
       </div>
     </div>
   </div>
+</section>
+
+<!-- Component Detail Modal -->
+<div class="modal fade" id="componentDetailModal" tabindex="-1" aria-labelledby="componentDetailModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="componentDetailModalLabel">Component Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="componentDetailContent">
+        <!-- Content will be loaded here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- Vendor Scripts -->
-<script src="/vendor/jquery-3.6.0.min.js"></script>
-<link href="/vendor/select2.min.css" rel="stylesheet" />
-<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-<script src="/vendor/select2.min.js"></script>
-<script src="/vendor/bootstrap.min.js"></script>
-<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
-
-<style>
-  /* IP hover tooltip styling */
-  .ip-hover-link {
-    cursor: pointer;
-    border-bottom: 1px dotted #007bff;
-    text-decoration: none;
-  }
-  
-  .ip-hover-link:hover {
-    text-decoration: none;
-    border-bottom: 1px dotted #0056b3;
-  }
-  
-  /* Custom tooltip styling for better readability */
-  .ip-hover-link[title] {
-    position: relative;
-  }
-  
-  /* Ensure tooltips are visible above modals */
-  .modal .ip-hover-link[title] {
-    z-index: 1060;
-  }
-</style>
-
 <!-- Custom Scripts -->
+<link href="/css/select2.min.css" rel="stylesheet" />
+<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="/vendor/jquery-3.6.0.min.js"></script>
+<script src="/vendor/select2.min.js"></script>
 <script>
   // App Type options data for Select2
   window.appTypeOptionsData = <%- JSON.stringify(appTypeOptions || []) %>;
@@ -878,6 +647,189 @@
   // IP leave handler
   function handleIPLeave(event) {
     // Optional: Reset tooltip or do cleanup
+  }
+
+  // Component Detail Modal Function
+  function showComponentDetail(componentId) {
+    console.log('showComponentDetail called with ID:', componentId);
+    
+    // Find the button that was clicked to get the component data
+    let targetButton = null;
+    const buttons = document.querySelectorAll('button[data-component]');
+    for (let button of buttons) {
+      try {
+        const data = JSON.parse(button.getAttribute('data-component'));
+        if (data && data.id == componentId) {
+          targetButton = button;
+          break;
+        }
+      } catch (e) {
+        console.error('Error parsing component data:', e);
+      }
+    }
+    
+    if (!targetButton) {
+      console.error('Button not found for component ID:', componentId);
+      alert('Button not found for component ID: ' + componentId);
+      return;
+    }
+    
+    const componentData = targetButton.getAttribute('data-component');
+    const component = JSON.parse(componentData);
+    
+    console.log('Component data:', component);
+    
+    // Check if Bootstrap is available
+    if (typeof bootstrap === 'undefined') {
+      console.error('Bootstrap is not loaded');
+      alert('Bootstrap is not loaded');
+      return;
+    }
+    
+    const modalElement = document.getElementById('componentDetailModal');
+    if (!modalElement) {
+      console.error('Modal element not found');
+      alert('Modal element not found');
+      return;
+    }
+    
+    const modal = new bootstrap.Modal(modalElement, {
+      backdrop: true,
+      keyboard: true,
+      focus: true
+    });
+    const content = document.getElementById('componentDetailContent');
+    
+    // Build HTML content - Simple field: value layout
+    let html = '<div class="card">';
+    html += '<div class="card-body">';
+    
+    // Component Name
+    html += '<div class="mb-2">';
+    html += '<strong>Component Name:</strong> ' + String(component.name || 'N/A').trim();
+    html += '</div>';
+    
+    // ID
+    html += '<div class="mb-2">';
+    html += '<strong>ID:</strong> ' + String(component.id || 'N/A').trim();
+    html += '</div>';
+    
+    // System
+    html += '<div class="mb-2">';
+    if (component.system_name) {
+      html += '<strong>System:</strong> <a href="/system/system?search=' + encodeURIComponent(component.system_name) + '" target="_blank">' + String(component.system_name).trim() + '</a>';
+    } else {
+      html += '<strong>System:</strong> <span class="text-muted">No system</span>';
+    }
+    html += '</div>';
+    
+    // Description
+    if (component.description && component.description.trim()) {
+      html += '<div class="mb-2">';
+      html += '<strong>Description:</strong> ' + String(component.description).trim();
+      html += '</div>';
+    }
+    
+    // App Type
+    html += '<div class="mb-2">';
+    if (component.app_type) {
+      html += '<strong>App Type:</strong> <span class="badge bg-secondary">' + String(component.app_type).trim() + '</span>';
+    } else {
+      html += '<strong>App Type:</strong> <span class="text-muted">No app type</span>';
+    }
+    html += '</div>';
+    
+    // Contacts
+    if (component.contacts && component.contacts.length > 0) {
+      html += '<div class="mb-2">';
+      html += '<strong>Contacts:</strong><br>';
+      component.contacts.forEach(function(contact, index) {
+        if (contact.email) {
+          html += '<a href="/organize/contact?search=' + encodeURIComponent(contact.email) + '" target="_blank">' + String(contact.email).trim() + '</a>';
+        } else {
+          html += '<span class="text-muted">No email</span>';
+        }
+        if (index < component.contacts.length - 1) html += '<br>';
+      });
+      html += '</div>';
+    }
+    
+    // IP Addresses
+    if (component.ips && component.ips.length > 0) {
+      html += '<div class="mb-2">';
+      html += '<strong>IP Addresses:</strong><br>';
+      component.ips.forEach(function(ipObj, index) {
+        if (typeof ipObj === 'object' && ipObj.ip) {
+          html += '<a href="/network/ip-address?search=' + encodeURIComponent(ipObj.ip) + '" target="_blank" class="ip-hover-link" data-ip="' + ipObj.ip + '" title="Loading IP info...">' + String(ipObj.ip).trim() + '</a>';
+          if (ipObj.server_name) {
+            html += ' (<a href="/server/server/list?search=' + encodeURIComponent(ipObj.ip) + '" target="_blank">' + String(ipObj.server_name).trim() + '</a>)';
+          }
+        } else {
+          html += '<span class="ip-hover-link" data-ip="' + ipObj + '" title="Loading IP info...">' + String(ipObj).trim() + '</span>';
+        }
+        if (index < component.ips.length - 1) html += '<br>';
+      });
+      html += '</div>';
+    }
+    
+    // FQDN
+    if (component.fqdn && ((Array.isArray(component.fqdn) && component.fqdn.length > 0) || (typeof component.fqdn === 'string' && component.fqdn.trim()))) {
+      html += '<div class="mb-2">';
+      html += '<strong>FQDN:</strong><br>';
+      if (Array.isArray(component.fqdn)) {
+        component.fqdn.forEach(function(f, index) {
+          if (/^https?:\/\//.test(f)) {
+            html += '<a href="' + f + '" target="_blank" rel="noopener noreferrer">' + String(f).trim() + '</a>';
+          } else {
+            html += '<code>' + String(f).trim() + '</code>';
+          }
+          if (index < component.fqdn.length - 1) html += '<br>';
+        });
+      } else {
+        html += String(component.fqdn).trim();
+      }
+      html += '</div>';
+    }
+    
+    // Tags
+    if (component.tags && component.tags.length > 0) {
+      html += '<div class="mb-2">';
+      html += '<strong>Tags:</strong><br>';
+      component.tags.forEach(function(tag) {
+        html += '<span class="badge bg-primary me-1 mb-1">' + String(tag.name || tag).trim() + '</span>';
+      });
+      html += '</div>';
+    }
+    
+    // Created
+    html += '<div class="mb-2">';
+    const created = component.created_at ? (component.created_at.toLocaleString ? component.created_at.toLocaleString() : component.created_at) : 'N/A';
+    html += '<strong>Created:</strong> ' + String(created).trim();
+    html += '</div>';
+    
+    // Updated
+    html += '<div class="mb-2">';
+    const updated = component.updated_at ? (component.updated_at.toLocaleString ? component.updated_at.toLocaleString() : component.updated_at) : 'N/A';
+    html += '<strong>Updated:</strong> ' + String(updated).trim();
+    html += '</div>';
+    
+    // Updated By
+    if (component.updated_by) {
+      html += '<div class="mb-2">';
+      html += '<strong>Updated By:</strong> ' + String(component.updated_by).trim();
+      html += '</div>';
+    }
+    
+    html += '</div>'; // card-body
+    html += '</div>'; // card
+    
+    content.innerHTML = html;
+    
+    // Attach IP hover events to new content
+    attachIPHoverEvents();
+    
+    // Show modal with proper event handling
+    modal.show();
   }
 </script>
 
