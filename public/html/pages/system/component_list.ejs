@@ -700,27 +700,26 @@
     });
     const content = document.getElementById('componentDetailContent');
     
-    // Build HTML content - Simple field: value layout
+    // Build HTML content - Exact same style as System Detail
     let html = '<div class="card">';
     html += '<div class="card-body">';
     
     // Component Name
     html += '<div class="mb-2">';
-    html += '<strong>Component Name:</strong> ' + String(component.name || 'N/A').trim();
+    const componentName = (component.name || 'N/A');
+    html += '<strong>Component Name:</strong> ' + String(componentName).trim();
     html += '</div>';
     
     // ID
     html += '<div class="mb-2">';
-    html += '<strong>ID:</strong> ' + String(component.id || 'N/A').trim();
+    const componentIdValue = (component.id || 'N/A');
+    html += '<strong>ID:</strong> ' + String(componentIdValue).trim();
     html += '</div>';
     
     // System
     html += '<div class="mb-2">';
-    if (component.system_name) {
-      html += '<strong>System:</strong> <a href="/system/system?search=' + encodeURIComponent(component.system_name) + '" target="_blank">' + String(component.system_name).trim() + '</a>';
-    } else {
-      html += '<strong>System:</strong> <span class="text-muted">No system</span>';
-    }
+    const system = (component.system_name || 'N/A');
+    html += '<strong>System:</strong> ' + String(system).trim();
     html += '</div>';
     
     // Description
@@ -732,62 +731,33 @@
     
     // App Type
     html += '<div class="mb-2">';
-    if (component.app_type) {
-      html += '<strong>App Type:</strong> <span class="badge bg-secondary">' + String(component.app_type).trim() + '</span>';
-    } else {
-      html += '<strong>App Type:</strong> <span class="text-muted">No app type</span>';
-    }
+    const appType = (component.app_type || 'N/A');
+    html += '<strong>App Type:</strong> ' + String(appType).trim();
     html += '</div>';
     
-    // Contacts
-    if (component.contacts && component.contacts.length > 0) {
-      html += '<div class="mb-2">';
-      html += '<strong>Contacts:</strong><br>';
-      component.contacts.forEach(function(contact, index) {
-        if (contact.email) {
-          html += '<a href="/organize/contact?search=' + encodeURIComponent(contact.email) + '" target="_blank">' + String(contact.email).trim() + '</a>';
-        } else {
-          html += '<span class="text-muted">No email</span>';
-        }
-        if (index < component.contacts.length - 1) html += '<br>';
-      });
-      html += '</div>';
-    }
-    
-    // IP Addresses
-    if (component.ips && component.ips.length > 0) {
-      html += '<div class="mb-2">';
-      html += '<strong>IP Addresses:</strong><br>';
-      component.ips.forEach(function(ipObj, index) {
-        if (typeof ipObj === 'object' && ipObj.ip) {
-          html += '<a href="/network/ip-address?search=' + encodeURIComponent(ipObj.ip) + '" target="_blank" class="ip-hover-link" data-ip="' + ipObj.ip + '" title="Loading IP info...">' + String(ipObj.ip).trim() + '</a>';
-          if (ipObj.server_name) {
-            html += ' (<a href="/server/server/list?search=' + encodeURIComponent(ipObj.ip) + '" target="_blank">' + String(ipObj.server_name).trim() + '</a>)';
-          }
-        } else {
-          html += '<span class="ip-hover-link" data-ip="' + ipObj + '" title="Loading IP info...">' + String(ipObj).trim() + '</span>';
-        }
-        if (index < component.ips.length - 1) html += '<br>';
-      });
-      html += '</div>';
-    }
-    
     // FQDN
-    if (component.fqdn && ((Array.isArray(component.fqdn) && component.fqdn.length > 0) || (typeof component.fqdn === 'string' && component.fqdn.trim()))) {
+    if (component.fqdn && (Array.isArray(component.fqdn) ? component.fqdn.length > 0 : component.fqdn)) {
       html += '<div class="mb-2">';
-      html += '<strong>FQDN:</strong><br>';
-      if (Array.isArray(component.fqdn)) {
-        component.fqdn.forEach(function(f, index) {
-          if (/^https?:\/\//.test(f)) {
-            html += '<a href="' + f + '" target="_blank" rel="noopener noreferrer">' + String(f).trim() + '</a>';
+      html += '<strong>FQDN:</strong>';
+      const fqdnList = Array.isArray(component.fqdn) ? component.fqdn : [component.fqdn];
+      html += '<ul class="mb-0 mt-1">';
+      fqdnList.forEach(function(fqdn) {
+        const fqdnStr = String(fqdn).trim();
+        // Check if FQDN contains brackets - extract domain and comment separately
+        if (fqdnStr.includes('[') && fqdnStr.includes(']')) {
+          const bracketMatch = fqdnStr.match(/^(.+?)\s*\[(.+?)\]$/);
+          if (bracketMatch) {
+            const domain = bracketMatch[1].trim();
+            const comment = bracketMatch[2].trim();
+            html += '<li><a href="http://' + domain + '" target="_blank" class="text-decoration-none">' + domain + '</a> <span class="badge bg-secondary ms-1">' + comment + '</span></li>';
           } else {
-            html += '<code>' + String(f).trim() + '</code>';
+            html += '<li><span class="text-muted">' + fqdnStr + '</span></li>';
           }
-          if (index < component.fqdn.length - 1) html += '<br>';
-        });
-      } else {
-        html += String(component.fqdn).trim();
-      }
+        } else {
+          html += '<li><a href="http://' + fqdnStr + '" target="_blank" class="text-decoration-none">' + fqdnStr + '</a></li>';
+        }
+      });
+      html += '</ul>';
       html += '</div>';
     }
     
@@ -796,20 +766,72 @@
       html += '<div class="mb-2">';
       html += '<strong>Tags:</strong><br>';
       component.tags.forEach(function(tag) {
-        html += '<span class="badge bg-primary me-1 mb-1">' + String(tag.name || tag).trim() + '</span>';
+        const tagValue = (typeof tag === 'string' ? tag : tag.name);
+        html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
+      });
+      html += '</div>';
+    }
+    
+    // IP Addresses
+    if (component.ips && component.ips.length > 0) {
+      html += '<div class="mb-2">';
+      html += '<strong>IP Addresses:</strong>';
+      component.ips.forEach(function(ipObj) {
+        const ipAddress = ipObj.ip || ipObj.ip_address || ipObj;
+        const zone = ipObj.subnet_zone || '';
+        const environment = ipObj.subnet_environment || '';
+        const serverName = ipObj.server_name || '';
+        
+        html += '<div class="mt-1 d-flex align-items-center flex-wrap">';
+        html += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary me-2 ip-hover-link" data-ip="' + ipAddress + '" title="Loading IP info...">' + String(ipAddress).trim() + '</a>';
+        
+        // Add server/device name if available
+        if (serverName) {
+          html += '<span class="badge bg-light text-dark border me-2" style="border-radius: 3px;">[' + serverName + ']</span>';
+        }
+        
+        // Add zone and environment info if available
+        if (zone || environment) {
+          const zoneEnvText = (zone && environment) ? zone + '-' + environment : (zone || environment);
+          html += '<span class="badge bg-light text-dark border me-2" style="border-radius: 3px;">[' + zoneEnvText + ']</span>';
+        }
+        
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    
+    // Contacts
+    if (component.contacts && component.contacts.length > 0) {
+      html += '<div class="mb-2">';
+      html += '<strong>Contacts:</strong><br>';
+      component.contacts.forEach(function(contactObj) {
+        const contactName = contactObj.name || contactObj;
+        const contactEmail = contactObj.email || '';
+        let displayText = contactName;
+        let searchTerm = contactName;
+        
+        if (contactEmail) {
+          // Extract username part before @
+          const emailUsername = contactEmail.split('@')[0];
+          displayText = `${contactName} (${emailUsername})`;
+          searchTerm = contactEmail; // Still use full email for search
+        }
+        
+        html += '<a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary me-2">' + String(displayText).trim() + '</a>';
       });
       html += '</div>';
     }
     
     // Created
     html += '<div class="mb-2">';
-    const created = component.created_at ? (component.created_at.toLocaleString ? component.created_at.toLocaleString() : component.created_at) : 'N/A';
+    const created = (component.created_at || component.createdAt || 'N/A');
     html += '<strong>Created:</strong> ' + String(created).trim();
     html += '</div>';
     
     // Updated
     html += '<div class="mb-2">';
-    const updated = component.updated_at ? (component.updated_at.toLocaleString ? component.updated_at.toLocaleString() : component.updated_at) : 'N/A';
+    const updated = (component.updated_at || component.updatedAt || 'N/A');
     html += '<strong>Updated:</strong> ' + String(updated).trim();
     html += '</div>';
     
@@ -825,11 +847,88 @@
     
     content.innerHTML = html;
     
-    // Attach IP hover events to new content
-    attachIPHoverEvents();
+    // Setup IP hover functionality
+    setupComponentIPHover();
     
     // Show modal with proper event handling
     modal.show();
+  }
+
+  // Setup IP hover functionality for component detail
+  function setupComponentIPHover() {
+    const ipLinks = document.querySelectorAll('.ip-hover-link');
+    ipLinks.forEach(link => {
+      link.removeEventListener('mouseenter', handleComponentIPHover); // Prevent duplicate listeners
+      link.addEventListener('mouseenter', handleComponentIPHover);
+    });
+  }
+
+  function handleComponentIPHover(event) {
+    const element = event.target;
+    const ipAddress = element.getAttribute('data-ip');
+
+    if (!ipAddress || element.getAttribute('data-loading') === 'true') {
+      return;
+    }
+
+    element.setAttribute('data-loading', 'true');
+    element.setAttribute('title', 'Loading IP info...');
+
+    fetch(`/network/api/ip-addresses/detail?search=${encodeURIComponent(ipAddress)}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data && data.length > 0) {
+          const ipInfo = data[0];
+          let tooltipText = `IP: ${ipInfo.ip_address || ipInfo.ip || ipAddress}`;
+
+          if (ipInfo.description) {
+            tooltipText += `\nDescription: ${ipInfo.description}`;
+          }
+          if (ipInfo.status) {
+            tooltipText += `\nStatus: ${ipInfo.status}`;
+          }
+          if (ipInfo.server_name) {
+            tooltipText += `\nServer: ${ipInfo.server_name}`;
+          }
+          if (ipInfo.device_name) {
+            tooltipText += `\nDevice: ${ipInfo.device_name}`;
+          }
+          if (ipInfo.tags && ipInfo.tags.length > 0) {
+            const tagNames = ipInfo.tags.map(tag => typeof tag === 'string' ? tag : tag.name).join(', ');
+            tooltipText += `\nTags: ${tagNames}`;
+          }
+          if (ipInfo.contacts && ipInfo.contacts.length > 0) {
+            const contactEmails = ipInfo.contacts.map(contact => {
+              if (typeof contact === 'string') {
+                if (contact.includes('@')) {
+                  return contact.split('@')[0];
+                }
+                return contact;
+              }
+              if (contact.email) {
+                const emailUsername = contact.email.split('@')[0];
+                return contact.name ? `${contact.name} (${emailUsername})` : emailUsername;
+              }
+              return contact.name || contact;
+            }).join(', ');
+            tooltipText += `\nContacts: ${contactEmails}`;
+          }
+          if (ipInfo.systems && ipInfo.systems.length > 0) {
+            const systemNames = ipInfo.systems.map(system => typeof system === 'string' ? system : system.name).join(', ');
+            tooltipText += `\nSystems: ${systemNames}`;
+          }
+          element.setAttribute('title', tooltipText);
+        } else {
+          element.setAttribute('title', `IP: ${ipAddress}\nNo additional information found`);
+        }
+      })
+      .catch(error => {
+        console.error('Error loading IP info:', error);
+        element.setAttribute('title', `IP: ${ipAddress}\nError loading information`);
+      })
+      .finally(() => {
+        element.removeAttribute('data-loading');
+      });
   }
 </script>
 

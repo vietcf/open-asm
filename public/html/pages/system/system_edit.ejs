@@ -285,8 +285,29 @@
         }
       });
     }
+    
+    // Load selected IP addresses for edit (nếu có)
+    <% if (typeof ipAddresses !== 'undefined' && ipAddresses && ipAddresses.length > 0) { %>
+      <% ipAddresses.forEach(function(ip) { %>
+        var ipOption = new Option('<%= ip.ip_address || ip.ip %>', '<%= ip.id %>', true, true);
+        $('#ip-select').append(ipOption).trigger('change');
+      <% }); %>
+    <% } %>
+    // Load selected managers (contacts) for edit (nếu có)
+    <% if (typeof selectedManagerObjects !== 'undefined' && selectedManagerObjects && selectedManagerObjects.length > 0) { %>
+      <% selectedManagerObjects.forEach(function(contact) { %>
+        var managerOption = new Option('<%= contact.name %> (<%= contact.email %>)', '<%= contact.id %>', true, true);
+        $('#manager-select').append(managerOption).trigger('change');
+      <% }); %>
+    <% } %>
+    
     // Load selected domains for edit (nếu có)
-    // Đã truyền domain name/id từ backend nên không cần AJAX này nữa
+    <% if (typeof selectedDomains !== 'undefined' && selectedDomains && selectedDomains.length > 0) { %>
+      <% selectedDomains.forEach(function(domain) { %>
+        var domainOption = new Option('<%= domain.name %>', '<%= domain.id %>', true, true);
+        $('#domain-select').append(domainOption).trigger('change');
+      <% }); %>
+    <% } %>
     // Add Manager button click (chỉ chạy nếu tồn tại nút add-manager-btn)
     var addBtn = document.getElementById('add-manager-btn');
     if (addBtn) {

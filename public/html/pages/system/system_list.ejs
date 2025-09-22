@@ -587,6 +587,32 @@
           html += '</div>';
         }
         
+        // FQDN
+        if (system.fqdn && (Array.isArray(system.fqdn) ? system.fqdn.length > 0 : system.fqdn)) {
+          html += '<div class="mb-2">';
+          html += '<strong>FQDN:</strong>';
+          const fqdnList = Array.isArray(system.fqdn) ? system.fqdn : [system.fqdn];
+          html += '<ul class="mb-0 mt-1">';
+          fqdnList.forEach(function(fqdn) {
+            const fqdnStr = String(fqdn).trim();
+            // Check if FQDN contains brackets - extract domain and comment separately
+            if (fqdnStr.includes('[') && fqdnStr.includes(']')) {
+              const bracketMatch = fqdnStr.match(/^(.+?)\s*\[(.+?)\]$/);
+              if (bracketMatch) {
+                const domain = bracketMatch[1].trim();
+                const comment = bracketMatch[2].trim();
+                html += '<li><a href="http://' + domain + '" target="_blank" class="text-decoration-none">' + domain + '</a> <span class="badge bg-secondary ms-1">' + comment + '</span></li>';
+              } else {
+                html += '<li><span class="text-muted">' + fqdnStr + '</span></li>';
+              }
+            } else {
+              html += '<li><a href="http://' + fqdnStr + '" target="_blank" class="text-decoration-none">' + fqdnStr + '</a></li>';
+            }
+          });
+          html += '</ul>';
+          html += '</div>';
+        }
+        
         // Tags
         if (system.tags && system.tags.length > 0) {
           html += '<div class="mb-2">';
@@ -618,6 +644,68 @@
           html += '</div>';
         }
         
+        // IP Addresses
+        if (system.ip_addresses && system.ip_addresses.length > 0) {
+          html += '<div class="mb-2">';
+          html += '<strong>IP Addresses:</strong>';
+          system.ip_addresses.forEach(function(ipObj) {
+            const ipAddress = ipObj.ip || ipObj.ip_address || ipObj;
+            const zone = ipObj.subnet_zone || '';
+            const environment = ipObj.subnet_environment || '';
+            const serverName = ipObj.server_name || '';
+            
+            html += '<div class="mt-1 d-flex align-items-center flex-wrap">';
+            html += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary me-2 ip-hover-link" data-ip="' + ipAddress + '" title="Loading IP info...">' + String(ipAddress).trim() + '</a>';
+            
+            // Add server/device name if available
+            if (serverName) {
+              html += '<span class="badge bg-light text-dark border me-2" style="border-radius: 3px;">[' + serverName + ']</span>';
+            }
+            
+            // Add zone and environment info if available
+            if (zone || environment) {
+              const zoneEnvText = (zone && environment) ? zone + '-' + environment : (zone || environment);
+              html += '<span class="badge bg-light text-dark border me-2" style="border-radius: 3px;">[' + zoneEnvText + ']</span>';
+            }
+            
+            html += '</div>';
+          });
+          html += '</div>';
+        }
+        
+        // Domains
+        if (system.domains && system.domains.length > 0) {
+          html += '<div class="mb-2">';
+          html += '<strong>Domains:</strong><br>';
+          system.domains.forEach(function(domainObj) {
+            const domain = domainObj.domain || domainObj;
+            html += '<a href="/network/domain?search=' + encodeURIComponent(domain) + '" target="_blank" class="badge bg-secondary me-1 mb-1 text-decoration-none" title="Click to view domain details">' + String(domain).trim() + '</a>';
+          });
+          html += '</div>';
+        }
+        
+        // Contacts
+        if (system.contacts && system.contacts.length > 0) {
+          html += '<div class="mb-2">';
+          html += '<strong>Contacts:</strong><br>';
+          system.contacts.forEach(function(contactObj) {
+            const contactName = contactObj.name || contactObj;
+            const contactEmail = contactObj.email || '';
+            let displayText = contactName;
+            let searchTerm = contactName;
+            
+            if (contactEmail) {
+              // Extract username part before @
+              const emailUsername = contactEmail.split('@')[0];
+              displayText = `${contactName} (${emailUsername})`;
+              searchTerm = contactEmail; // Still use full email for search
+            }
+            
+            html += '<a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary me-2">' + String(displayText).trim() + '</a>';
+          });
+          html += '</div>';
+        }
+        
         // Created
         html += '<div class="mb-2">';
         const created = (system.created_at || system.createdAt || 'N/A');
@@ -630,14 +718,32 @@
         html += '<strong>Updated:</strong> ' + String(updated).trim();
         html += '</div>';
         
+        // Updated By
+        if (system.updated_by) {
+          html += '<div class="mb-2">';
+          html += '<strong>Updated By:</strong> ' + String(system.updated_by).trim();
+          html += '</div>';
+        }
+        
         html += '</div>'; // card-body
         html += '</div>'; // card
+        
+        // Components - will be loaded via AJAX (moved to bottom)
+        html += '<div class="mb-2 mt-3" id="components-section-' + systemId + '">';
+        html += '<strong>Components:</strong> <span class="text-muted">Loading...</span>';
+        html += '</div>';
         
         
         content.innerHTML = html;
         
         // Show modal with proper event handling
         modal.show();
+        
+        // Load components data via AJAX
+        loadSystemComponents(systemId);
+        
+        // Add IP hover functionality
+        setupIPHover();
         
         // Handle modal events
         modalElement.addEventListener('shown.bs.modal', function() {
@@ -654,6 +760,255 @@
         console.error('Error showing system detail:', error);
         alert('Error loading system details: ' + error.message);
       }
+    }
+
+    // Function to setup IP hover functionality
+    function setupIPHover() {
+      // Add event listeners to all IP hover links
+      const ipLinks = document.querySelectorAll('.ip-hover-link');
+      ipLinks.forEach(link => {
+        link.addEventListener('mouseenter', handleIPHover);
+      });
+    }
+
+    // IP hover handler
+    function handleIPHover(event) {
+      const element = event.target;
+      const ipAddress = element.getAttribute('data-ip');
+      
+      if (!ipAddress || element.getAttribute('data-loading') === 'true') {
+        return;
+      }
+      
+      // Set loading state
+      element.setAttribute('data-loading', 'true');
+      element.setAttribute('title', 'Loading IP info...');
+      
+      // Fetch IP information
+      fetch(`/network/api/ip-addresses/detail?search=${encodeURIComponent(ipAddress)}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data && data.length > 0) {
+            const ipInfo = data[0];
+            let tooltipText = `IP: ${ipInfo.ip_address || ipInfo.ip || ipAddress}`;
+            
+            if (ipInfo.description) {
+              tooltipText += `\nDescription: ${ipInfo.description}`;
+            }
+            
+            if (ipInfo.status) {
+              tooltipText += `\nStatus: ${ipInfo.status}`;
+            }
+            
+            if (ipInfo.server_name) {
+              tooltipText += `\nServer: ${ipInfo.server_name}`;
+            }
+            
+            if (ipInfo.device_name) {
+              tooltipText += `\nDevice: ${ipInfo.device_name}`;
+            }
+            
+            // Add tags information
+            if (ipInfo.tags && ipInfo.tags.length > 0) {
+              const tagNames = ipInfo.tags.map(tag => typeof tag === 'string' ? tag : tag.name).join(', ');
+              tooltipText += `\nTags: ${tagNames}`;
+            }
+            
+            // Add contacts information
+            if (ipInfo.contacts && ipInfo.contacts.length > 0) {
+              const contactEmails = ipInfo.contacts.map(contact => {
+                if (typeof contact === 'string') {
+                  // If it's a string, check if it's an email or name
+                  if (contact.includes('@')) {
+                    return contact.split('@')[0]; // Extract username part
+                  }
+                  return contact;
+                }
+                // If it's an object, handle email and name like in System Detail
+                if (contact.email) {
+                  const emailUsername = contact.email.split('@')[0];
+                  return contact.name ? `${contact.name} (${emailUsername})` : emailUsername;
+                }
+                return contact.name || contact;
+              }).join(', ');
+              tooltipText += `\nContacts: ${contactEmails}`;
+            }
+            
+            // Add systems information
+            if (ipInfo.systems && ipInfo.systems.length > 0) {
+              const systemNames = ipInfo.systems.map(system => typeof system === 'string' ? system : system.name).join(', ');
+              tooltipText += `\nSystems: ${systemNames}`;
+            }
+            
+            element.setAttribute('title', tooltipText);
+          } else {
+            element.setAttribute('title', `IP: ${ipAddress}\nNo additional information found`);
+          }
+        })
+        .catch(error => {
+          console.error('Error loading IP info:', error);
+          element.setAttribute('title', `IP: ${ipAddress}\nError loading information`);
+        })
+        .finally(() => {
+          element.removeAttribute('data-loading');
+        });
+    }
+
+    // Function to load system components via AJAX
+    function loadSystemComponents(systemId) {
+      const componentsSection = document.getElementById('components-section-' + systemId);
+      if (!componentsSection) return;
+      
+      fetch(`/system/api/system/${systemId}/components`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.components && data.components.length > 0) {
+            let componentsHtml = '<div class="components-section">';
+            componentsHtml += '<h6 class="mb-3 text-primary"><i class="bi bi-gear-fill me-2"></i>Components (' + data.components.length + ')</h6>';
+            
+            data.components.forEach(function(component, index) {
+              // Add separator line between components (except for the first one)
+              if (index > 0) {
+                componentsHtml += '<hr class="my-3">';
+              }
+              
+              componentsHtml += '<div class="component-card border rounded p-3 mb-2 bg-light">';
+              
+              // Component Header with Name and App Type
+              componentsHtml += '<div class="d-flex justify-content-between align-items-start mb-2">';
+              componentsHtml += '<h6 class="mb-0 text-dark fw-bold">' + String(component.name || 'N/A').trim() + '</h6>';
+              if (component.app_type) {
+                componentsHtml += '<span class="badge bg-primary">' + String(component.app_type).trim() + '</span>';
+              }
+              componentsHtml += '</div>';
+              
+              // Component Details in smaller font
+              componentsHtml += '<div class="component-details small text-muted">';
+              
+              // Component ID
+              if (component.id) {
+                componentsHtml += '<div class="mb-1">';
+                componentsHtml += '<span class="fw-semibold">ID:</span> ' + String(component.id).trim();
+                componentsHtml += '</div>';
+              }
+              
+              // Description
+              if (component.description && component.description.trim()) {
+                componentsHtml += '<div class="mb-2">';
+                componentsHtml += '<span class="fw-semibold">Description:</span> ' + String(component.description).trim();
+                componentsHtml += '</div>';
+              }
+              
+              // FQDN
+              if (component.fqdn && (Array.isArray(component.fqdn) ? component.fqdn.length > 0 : component.fqdn)) {
+                componentsHtml += '<div class="mb-2">';
+                componentsHtml += '<span class="fw-semibold">FQDN:</span>';
+                const fqdnList = Array.isArray(component.fqdn) ? component.fqdn : [component.fqdn];
+                componentsHtml += '<div class="mt-1">';
+                fqdnList.forEach(function(fqdn) {
+                  const fqdnStr = String(fqdn).trim();
+                  // Check if FQDN contains brackets - extract domain and comment separately
+                  if (fqdnStr.includes('[') && fqdnStr.includes(']')) {
+                    const bracketMatch = fqdnStr.match(/^(.+?)\s*\[(.+?)\]$/);
+                    if (bracketMatch) {
+                      const domain = bracketMatch[1].trim();
+                      const comment = bracketMatch[2].trim();
+                      componentsHtml += '<div class="mb-1"><a href="http://' + domain + '" target="_blank" class="text-decoration-none text-primary">' + domain + '</a> <span class="badge bg-secondary ms-1">' + comment + '</span></div>';
+                    } else {
+                      componentsHtml += '<div class="mb-1 text-muted">' + fqdnStr + '</div>';
+                    }
+                  } else {
+                    componentsHtml += '<div class="mb-1"><a href="http://' + fqdnStr + '" target="_blank" class="text-decoration-none text-primary">' + fqdnStr + '</a></div>';
+                  }
+                });
+                componentsHtml += '</div>';
+                componentsHtml += '</div>';
+              }
+              
+              // IP Addresses
+              if (component.ips && component.ips.length > 0) {
+                componentsHtml += '<div class="mb-2">';
+                componentsHtml += '<span class="fw-semibold">IP Addresses:</span>';
+                componentsHtml += '<div class="mt-1">';
+                component.ips.forEach(function(ipObj, index) {
+                  const ipAddress = ipObj.ip_address || ipObj.ip || ipObj;
+                  componentsHtml += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary ip-hover-link" data-ip="' + ipAddress + '" title="Loading IP info...">' + String(ipAddress).trim() + '</a>';
+                  
+                  // Add comma separator if not the last item
+                  if (index < component.ips.length - 1) {
+                    componentsHtml += ', ';
+                  }
+                });
+                componentsHtml += '</div>';
+                componentsHtml += '</div>';
+              }
+              
+              // Contacts
+              if (component.contacts && component.contacts.length > 0) {
+                componentsHtml += '<div class="mb-2">';
+                componentsHtml += '<span class="fw-semibold">Contacts:</span>';
+                componentsHtml += '<div class="mt-1">';
+                component.contacts.forEach(function(contactObj) {
+                  const contactName = contactObj.name || contactObj;
+                  const contactEmail = contactObj.email || '';
+                  let displayText = contactName;
+                  let searchTerm = contactName;
+                  
+                  if (contactEmail) {
+                    // Extract username part before @
+                    const emailUsername = contactEmail.split('@')[0];
+                    displayText = `${contactName} (${emailUsername})`;
+                    searchTerm = contactEmail; // Still use full email for search
+                  }
+                  
+                  componentsHtml += '<a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary me-2">' + String(displayText).trim() + '</a>';
+                });
+                componentsHtml += '</div>';
+                componentsHtml += '</div>';
+              }
+              
+              // Tags
+              if (component.tags && component.tags.length > 0) {
+                componentsHtml += '<div class="mb-2">';
+                componentsHtml += '<span class="fw-semibold">Tags:</span>';
+                componentsHtml += '<div class="mt-1">';
+                component.tags.forEach(function(tag) {
+                  const tagValue = (typeof tag === 'string' ? tag : tag.name);
+                  componentsHtml += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
+                });
+                componentsHtml += '</div>';
+                componentsHtml += '</div>';
+              }
+              
+              // Created/Updated dates
+              if (component.created_at || component.updated_at) {
+                componentsHtml += '<div class="d-flex justify-content-between text-muted">';
+                if (component.created_at) {
+                  componentsHtml += '<small><span class="fw-semibold">Created:</span> ' + String(component.created_at).trim() + '</small>';
+                }
+                if (component.updated_at) {
+                  componentsHtml += '<small><span class="fw-semibold">Updated:</span> ' + String(component.updated_at).trim() + '</small>';
+                }
+                componentsHtml += '</div>';
+              }
+              
+              componentsHtml += '</div>'; // End component-details
+              componentsHtml += '</div>'; // End component-card
+            });
+            
+            componentsHtml += '</div>'; // End components-section
+            componentsSection.innerHTML = componentsHtml;
+            
+            // Setup IP hover for components
+            setupIPHover();
+          } else {
+            componentsSection.innerHTML = '<div class="text-center text-muted py-3"><i class="bi bi-gear me-2"></i>No components found</div>';
+          }
+        })
+        .catch(error => {
+          console.error('Error loading components:', error);
+          componentsSection.innerHTML = '<strong>Components:</strong> <span class="text-danger">Error loading components</span>';
+        });
     }
 
     function showToast(msg, type) {
