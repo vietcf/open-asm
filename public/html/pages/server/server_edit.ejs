@@ -1,142 +1,161 @@
-<div class="container-fluid">
-  <div class="row justify-content-center">
-    <div class="col-lg-7 col-md-9">
+<!-- Modal Buttons Custom CSS -->
+<link rel="stylesheet" href="/css/modal-buttons.css">
+
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item"><a href="/server/server/list">Server List</a></li>
+          <li class="breadcrumb-item active">Edit Server</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main content -->
+<section class="app-content">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 col-md-10 col-sm-12">
       <div class="card mt-4">
         <div class="card-header d-flex justify-content-between align-items-center">
           <h5 class="mb-0">Edit Server</h5>
         </div>
-        <form action="/server/server/<%= server.id %>/edit" method="POST" id="editServerForm">
+        <form id="editServerForm" action="/server/server/<%= server.id %>/edit" method="POST" enctype="multipart/form-data">
           <div class="card-body">
             <div class="mb-3">
               <label class="form-label">Server Name <span class="text-danger">*</span></label>
-              <input type="text" name="name" class="form-control form-control-sm" value="<%= server.name %>" placeholder="Enter server name" required id="serverNameInput">
+              <input type="text" name="name" class="form-control form-control-sm" value="<%= server.name %>" required>
             </div>
             <div class="mb-3">
-              <label class="form-label">IP Address(es) <span class="text-danger">*</span></label>
-              <select id="ip-select" name="ip_addresses[]" class="form-control" multiple required></select>
-              <div class="invalid-feedback" id="ipErrorMsg" style="display:none">At least one IP address is required.</div>
+              <label class="form-label">Description</label>
+              <textarea name="description" class="form-control form-control-sm" rows="3" placeholder="Server description"><%= server.description || '' %></textarea>
             </div>
             <div class="mb-3">
-              <label class="form-label">Platform (OS)</label>
-              <select id="platform-select" name="os" class="form-select form-select-sm">
-                <!-- Option will be populated by JS for selected value -->
+              <label class="form-label">IP Address(es)</label>
+              <div class="d-flex align-items-center gap-2">
+                <select id="ip-select" name="ip_addresses[]" class="form-control flex-grow-1" multiple></select>
+                <button type="button" class="btn btn-outline-success btn-sm" id="add-ip-btn" title="Add new IP"><i class="bi bi-plus-circle"></i> Add IP</button>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Type</label>
+              <select name="type" class="form-select" data-placeholder="Select type">
+                <option value="">-- Select type --</option>
+                <% (typesOptions || []).forEach(function(tp) { %>
+                  <option value="<%= tp.value %>" <%= server.type == tp.value ? 'selected' : '' %>><%= tp.label %></option>
+                <% }) %>
               </select>
             </div>
             <div class="mb-3">
               <label class="form-label">Status</label>
-              <select name="status" class="form-select form-select-sm">
+              <select name="status" class="form-select" data-placeholder="Select status">
                 <option value="">-- Select Status --</option>
                 <% (statusOptions || []).forEach(function(st) { %>
-                  <option value="<%= st.value %>" <%= server.status === st.value ? 'selected' : '' %>><%= st.label %></option>
+                  <option value="<%= st.value %>" <%= server.status == st.value ? 'selected' : '' %>><%= st.label %></option>
                 <% }) %>
               </select>
             </div>
             <div class="mb-3">
               <label class="form-label">Location</label>
-              <select name="location" class="form-select form-select-sm">
+              <select name="location" class="form-select" data-placeholder="Select location">
                 <option value="">-- Select location --</option>
                 <% (locations || []).forEach(function(loc) { %>
-                  <option value="<%= loc.value %>" <%= server.location === loc.value ? 'selected' : '' %>><%= loc.label %></option>
+                  <option value="<%= loc.value %>" <%= server.location == loc.value ? 'selected' : '' %>><%= loc.label %></option>
                 <% }) %>
               </select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Type</label>
-              <select name="type" class="form-select form-select-sm">
-                <option value="">-- Select type --</option>
-                <% (typesOptions || []).forEach(function(tp) { %>
-                  <option value="<%= tp.value %>" <%= server.type === tp.value ? 'selected' : '' %>><%= tp.label %></option>
-                <% }) %>
-              </select>
+              <label class="form-label">Platform (OS)</label>
+              <select id="platform-select" name="os" class="form-select" data-placeholder="Select platform"></select>
             </div>
             <div class="mb-3">
               <label class="form-label">Managers</label>
-              <select id="manager-select" name="managers[]" class="form-control" multiple>
-                <% if (selectedContacts && selectedContacts.length) { %>
-                  <% selectedContacts.forEach(function(contact) { %>
-                    <option value="<%= contact.id %>" selected><%= contact.text %></option>
-                  <% }) %>
-                <% } %>
-              </select>
+              <select id="manager-select" name="managers[]" class="form-select" multiple data-placeholder="Select managers"></select>
             </div>
             <div class="mb-3">
               <label class="form-label">Systems</label>
-              <select id="system-select" name="systems[]" class="form-control" multiple>
-                <% if (selectedSystems && selectedSystems.length) { %>
-                  <% selectedSystems.forEach(function(system) { %>
-                    <option value="<%= system.id %>" selected><%= system.text %></option>
-                  <% }) %>
-                <% } %>
-              </select>
+              <select id="system-select" name="systems[]" class="form-select" multiple data-placeholder="Select systems"></select>
             </div>
             <div class="mb-3">
               <label class="form-label">Agents</label>
-              <select id="agent-select" name="agents[]" class="form-control" multiple>
-                <% if (selectedAgents && selectedAgents.length) { %>
-                  <% selectedAgents.forEach(function(agent) { %>
-                    <option value="<%= agent.id %>" selected><%= agent.text %></option>
-                  <% }) %>
-                <% } %>
-              </select>
+              <select id="agent-select" name="agents[]" class="form-select" multiple data-placeholder="Select agents"></select>
             </div>
             <div class="mb-3">
               <label class="form-label">Services</label>
-              <select id="service-select" name="services[]" class="form-control" multiple>
-                <% if (selectedServices && selectedServices.length) { %>
-                  <% selectedServices.forEach(function(service) { %>
-                    <option value="<%= service.id %>" selected><%= service.text %></option>
-                  <% }) %>
-                <% } %>
-              </select>
+              <select id="service-select" name="services[]" class="form-select" multiple data-placeholder="Select services"></select>
             </div>
             <div class="mb-3">
               <label class="form-label">Tags</label>
-              <select id="tag-select" name="tags[]" class="form-control" multiple>
-                <% if (selectedTags && selectedTags.length) { %>
-                  <% selectedTags.forEach(function(tag) { %>
-                    <option value="<%= tag.id %>" selected><%= tag.text %></option>
-                  <% }) %>
-                <% } %>
-              </select>
+              <select id="tag-select" name="tags[]" class="form-select" multiple data-placeholder="Select tags"></select>
+            </div>
+            <div id="existing-files-data" data-files='<%= JSON.stringify(server.docs || []) %>' style="display:none"></div>
+            <div class="mb-3">
+              <label class="form-label">Attached Files</label>
+              <ul id="uploaded-files-list" class="list-group mb-2"></ul>
+              <input type="hidden" name="delete_files" id="delete_files" value="[]">
             </div>
             <div class="mb-3">
-              <label for="serverDescription" class="form-label">Description</label>
-              <textarea class="form-control form-control-sm" id="serverDescription" name="description" placeholder="Description" rows="2"><%= server.description || '' %></textarea>
+              <label for="docs-upload-edit" class="form-label">Upload New Files</label>
+              <input type="file" id="docs-upload-edit" class="form-control" multiple>
+              <input type="hidden" name="uploaded_docs_edit" id="uploaded-docs-edit-hidden">
+              <div id="selected-docs-list-edit" class="form-text"></div>
+              <small class="form-text text-muted">You can select multiple files.</small>
             </div>
           </div>
-          <div class="card-footer text-end">
-            <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
-            <a href="/server/server/list" class="btn btn-outline-secondary btn-sm ms-2">Cancel</a>
+          <div class="card-footer d-flex flex-column flex-lg-row justify-content-lg-end gap-2">
+            <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Save Changes</button>
+            <a href="/server/server/list" class="btn btn-secondary w-100 order-2 order-lg-1">Cancel</a>
           </div>
         </form>
       </div>
     </div>
   </div>
-</div>
-<!-- jQuery CDN (phải đặt trước select2) -->
-<script src="/js/jquery-3.6.0.min.js"></script>
+</section>
+
+<script src="/vendor/jquery-3.6.0.min.js"></script>
 <link href="/css/select2.min.css" rel="stylesheet" />
-<script src="/js/select2.min.js"></script>
+<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="/vendor/select2.min.js"></script>
+<script src="/vendor/bootstrap.min.js"></script>
+<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
+
+<script>
+  window.existingFiles = JSON.parse(document.getElementById('existing-files-data').getAttribute('data-files') || '[]');
+  window.selectedTags = JSON.parse('<%- JSON.stringify(selectedTags || []) %>');
+  window.uploadedDocsEdit = [];
+  window.deleteFiles = [];
+</script>
+
 <script>
   $(function() {
+    // IP Address select2 AJAX - Bootstrap 5 theme
     $('#ip-select').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select IP address(es)',
       allowClear: true,
+      width: '100%',
       ajax: {
-        url: '/network/api/ip-addresses/unassigned', // Use only unassigned IPs for editing
+        url: '/network/api/ip-addresses/unassigned',
         dataType: 'json',
         delay: 250,
         data: params => ({ search: params.term }),
         processResults: data => ({ results: data }),
         cache: true
       },
-      minimumInputLength: 0 // Cho phép gõ để tìm kiếm
+      minimumInputLength: 0
     });
+
+    // Manager select2 AJAX - Bootstrap 5 theme
     $('#manager-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select manager(s)',
+      placeholder: $('#manager-select').data('placeholder'),
       allowClear: true,
+      width: '100%',
       ajax: {
         url: '/organize/api/contact',
         dataType: 'json',
@@ -144,13 +163,15 @@
         data: params => ({ search: params.term }),
         processResults: data => ({ results: data }),
         cache: true
-      },
-      minimumInputLength: 0
+      }
     });
+
+    // System select2 AJAX - Bootstrap 5 theme
     $('#system-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select system(s)',
+      placeholder: $('#system-select').data('placeholder'),
       allowClear: true,
+      width: '100%',
       ajax: {
         url: '/system/api/system',
         dataType: 'json',
@@ -158,13 +179,15 @@
         data: params => ({ search: params.term }),
         processResults: data => ({ results: data }),
         cache: true
-      },
-      minimumInputLength: 0
+      }
     });
+
+    // Agent select2 AJAX - Bootstrap 5 theme
     $('#agent-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select agent(s)',
+      placeholder: $('#agent-select').data('placeholder'),
       allowClear: true,
+      width: '100%',
       ajax: {
         url: '/server/api/agent',
         dataType: 'json',
@@ -172,13 +195,15 @@
         data: params => ({ search: params.term }),
         processResults: data => ({ results: data }),
         cache: true
-      },
-      minimumInputLength: 0
+      }
     });
+
+    // Service select2 AJAX - Bootstrap 5 theme
     $('#service-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select service(s)',
+      placeholder: $('#service-select').data('placeholder'),
       allowClear: true,
+      width: '100%',
       ajax: {
         url: '/server/api/service',
         dataType: 'json',
@@ -186,13 +211,39 @@
         data: params => ({ search: params.term }),
         processResults: data => ({ results: data }),
         cache: true
-      },
-      minimumInputLength: 0
+      }
     });
+
+    // Type select2 - Bootstrap 5 theme
+    $('select[name="type"]').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select type',
+      allowClear: true,
+      width: '100%'
+    });
+
+    // Status select2 - Bootstrap 5 theme
+    $('select[name="status"]').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select status',
+      allowClear: true,
+      width: '100%'
+    });
+
+    // Location select2 - Bootstrap 5 theme
+    $('select[name="location"]').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select location',
+      allowClear: true,
+      width: '100%'
+    });
+
+    // Platform (OS) select2 AJAX - Bootstrap 5 theme
     $('#platform-select').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select platform (OS)',
       allowClear: true,
+      width: '100%',
       ajax: {
         url: '/device/api/platform',
         dataType: 'json',
@@ -202,16 +253,13 @@
         cache: true
       }
     });
-    // Pre-populate platform select2 with current value
-    var selectedPlatformObj = <%- JSON.stringify(typeof selectedPlatformObj !== 'undefined' ? selectedPlatformObj : null) %>;
-    if (selectedPlatformObj && selectedPlatformObj.id) {
-      var option = new Option(selectedPlatformObj.text, selectedPlatformObj.id, true, true);
-      $('#platform-select').append(option).trigger('change');
-    }
+
+    // Tag select2 AJAX - Bootstrap 5 theme
     $('#tag-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select tag(s)',
+      placeholder: $('#tag-select').data('placeholder'),
       allowClear: true,
+      width: '100%',
       ajax: {
         url: '/organize/api/tag',
         dataType: 'json',
@@ -221,47 +269,209 @@
         cache: true
       }
     });
-    // Pre-populate IP select2 with current server IPs
-    var selectedIPs = <%- JSON.stringify(selectedIPs || []) %>;
-    if (Array.isArray(selectedIPs) && selectedIPs.length > 0) {
-      $('#ip-select').empty();
-      selectedIPs.forEach(function(ip) {
-        if ($('#ip-select option[value="' + ip.id + '"]').length === 0) {
-          var option = new Option(ip.text, ip.id, true, true);
-          $('#ip-select').append(option);
+
+    // Load selected tags for edit (nếu có)
+    if (window.selectedTags && Array.isArray(window.selectedTags) && window.selectedTags.length > 0) {
+      $.ajax({
+        url: '/organize/api/tag',
+        dataType: 'json',
+        data: { search: '' },
+        success: function(data) {
+          var selected = [];
+          var selectedTagIds = window.selectedTags.map(function(t) { return (typeof t === 'object' && t.id) ? t.id : t; });
+          data.forEach(function(tag) {
+            if (selectedTagIds.includes(tag.id)) {
+              selected.push(tag);
+            }
+          });
+          selected.forEach(function(tag) {
+            var option = new Option(tag.text || tag.name, tag.id, true, true);
+            $('#tag-select').append(option).trigger('change');
+          });
         }
       });
-      $('#ip-select').trigger('change');
     }
-    // Client-side validation for required fields
-    $('#editServerForm').on('submit', function(e) {
-      var name = $('#serverNameInput').val().trim();
-      var ipCount = $('#ip-select').val() ? $('#ip-select').val().length : 0;
-      var valid = true;
-      if (!name) {
-        $('#serverNameInput').addClass('is-invalid');
-        valid = false;
-      } else {
-        $('#serverNameInput').removeClass('is-invalid');
-      }
-      if (ipCount === 0) {
-        $('#ip-select').addClass('is-invalid');
-        $('#ipErrorMsg').show();
-        valid = false;
-      } else {
-        $('#ip-select').removeClass('is-invalid');
-        $('#ipErrorMsg').hide();
-      }
-      if (!valid) {
-        e.preventDefault();
-      }
+    
+    // Load selected IP addresses for edit (nếu có)
+    <% if (typeof ipAddresses !== 'undefined' && ipAddresses && ipAddresses.length > 0) { %>
+      <% ipAddresses.forEach(function(ip) { %>
+        var ipOption = new Option('<%= ip.ip_address || ip.ip %>', '<%= ip.id %>', true, true);
+        $('#ip-select').append(ipOption).trigger('change');
+      <% }); %>
+    <% } %>
+    
+    // Load selected managers (contacts) for edit (nếu có)
+    <% if (typeof selectedManagerObjects !== 'undefined' && selectedManagerObjects && selectedManagerObjects.length > 0) { %>
+      <% selectedManagerObjects.forEach(function(contact) { %>
+        var managerOption = new Option('<%= contact.name %> (<%= contact.email %>)', '<%= contact.id %>', true, true);
+        $('#manager-select').append(managerOption).trigger('change');
+      <% }); %>
+    <% } %>
+    
+    // Load selected systems for edit (nếu có)
+    <% if (typeof selectedSystems !== 'undefined' && selectedSystems && selectedSystems.length > 0) { %>
+      <% selectedSystems.forEach(function(system) { %>
+        var systemOption = new Option('<%= system.name %>', '<%= system.id %>', true, true);
+        $('#system-select').append(systemOption).trigger('change');
+      <% }); %>
+    <% } %>
+    
+    // Load selected agents for edit (nếu có)
+    <% if (typeof selectedAgents !== 'undefined' && selectedAgents && selectedAgents.length > 0) { %>
+      <% selectedAgents.forEach(function(agent) { %>
+        var agentOption = new Option('<%= agent.name %>', '<%= agent.id %>', true, true);
+        $('#agent-select').append(agentOption).trigger('change');
+      <% }); %>
+    <% } %>
+    
+    // Load selected services for edit (nếu có)
+    <% if (typeof selectedServices !== 'undefined' && selectedServices && selectedServices.length > 0) { %>
+      <% selectedServices.forEach(function(service) { %>
+        var serviceOption = new Option('<%= service.name %>', '<%= service.id %>', true, true);
+        $('#service-select').append(serviceOption).trigger('change');
+      <% }); %>
+    <% } %>
+    
+    // Load selected platform (OS) for edit (nếu có)
+    <% if (typeof selectedPlatform !== 'undefined' && selectedPlatform) { %>
+      var platformOption = new Option('<%= selectedPlatform.name %>', '<%= selectedPlatform.id %>', true, true);
+      $('#platform-select').append(platformOption).trigger('change');
+    <% } %>
+
+    // Add IP button: open new tab to IP management page
+    $('#add-ip-btn').off('click').on('click', function(e) {
+      e.preventDefault();
+      window.open('/network/ip-address?add=1', '_blank');
     });
+
+    // Fix: Remove blank <option> after select2 is initialized to avoid select2 placeholder bug
+    setTimeout(function() {
+      $('#manager-select, #system-select, #agent-select, #service-select, #tag-select').each(function() {
+        $(this).find('option').filter(function() { return !$(this).val(); }).remove();
+      });
+    }, 100);
   });
 </script>
 
-<script src="/vendor/jquery-3.6.0.min.js"></script>
-<link href="/css/select2.min.css" rel="stylesheet" />
-<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-<script src="/vendor/select2.min.js"></script>
-<script src="/vendor/bootstrap.min.js"></script>
-<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
+<!-- ========== File Attachment AJAX Upload for Edit Server ========= -->
+<script>
+$(function() {
+  // Render deduplicated file list (old + new uploads)
+  function renderFiles() {
+    let html = '';
+    const fileMap = new Map();
+    // First, add all existing files by name
+    window.existingFiles.forEach(function(file) {
+      const key = file.originalname || file.name || '';
+      fileMap.set(key, {
+        ...file,
+        type: 'existing',
+        fileId: file._id || file.id,
+        fileName: file.originalname || file.name
+      });
+    });
+    // Then, add all uploaded files by name, overwriting any existing file with the same name
+    window.uploadedDocsEdit.forEach(function(file) {
+      const key = file.originalname || file.name || '';
+      fileMap.set(key, {
+        ...file,
+        type: 'uploaded',
+        fileName: file.originalname || file.name
+      });
+    });
+    if (fileMap.size > 0) {
+      fileMap.forEach(function(file) {
+        if (file.type === 'existing') {
+          html += `<li class="list-group-item d-flex justify-content-between align-items-center">${file.originalname || file.name} <a href="${file.url}" target="_blank">[View]</a> <a href="#" class="remove-doc text-danger ms-2" data-type="existing" data-id="${file.fileId}" title="Delete"><i class="fa fa-trash"></i></a></li>`;
+        } else if (file.type === 'uploaded') {
+          html += `<li class="list-group-item d-flex justify-content-between align-items-center">${file.originalname || file.name} <a href="${file.url}" target="_blank">[View]</a> <a href="#" class="remove-doc text-danger ms-2" data-type="uploaded" data-name="${file.fileName}" title="Remove"><i class="fa fa-times"></i></a> <span class="badge bg-info ms-2">new</span></li>`;
+        }
+      });
+    } else {
+      html = '<li class="list-group-item text-muted">No files uploaded.</li>';
+    }
+    $('#uploaded-files-list').html(html);
+    $('#uploaded-docs-edit-hidden').val(JSON.stringify(window.uploadedDocsEdit));
+    $('#delete_files').val(JSON.stringify(window.deleteFiles));
+  }
+
+  renderFiles();
+
+  // Remove file (old or new) on × click
+  $('#uploaded-files-list').on('click', '.remove-doc', function(e) {
+    e.preventDefault();
+    var type = $(this).data('type');
+    if (type === 'existing') {
+      var fileId = $(this).data('id');
+      var idx = window.existingFiles.findIndex(f => (f._id || f.id) == fileId);
+      if (idx !== -1) {
+        window.deleteFiles.push(fileId);
+        window.existingFiles.splice(idx, 1);
+        renderFiles();
+      }
+    } else if (type === 'uploaded') {
+      var fileName = $(this).data('name');
+      var idx = window.uploadedDocsEdit.findIndex(f => (f.originalname || f.name) === fileName);
+      if (idx !== -1) {
+        window.uploadedDocsEdit.splice(idx, 1);
+        renderFiles();
+      }
+    }
+  });
+
+  // Handle new file uploads via AJAX
+  $('#docs-upload-edit').on('change', function(e) {
+    const files = Array.from(this.files);
+    if (!files.length) return;
+    let uploadCount = 0;
+    files.forEach(file => {
+      // Check duplicate by name in both existingFiles and uploadedDocsEdit
+      const isDuplicate = window.existingFiles.some(f => (f.originalname || f.name) === file.name)
+        || window.uploadedDocsEdit.some(f => (f.originalname || f.name) === file.name);
+      if (isDuplicate) {
+        uploadCount++;
+        if (uploadCount === files.length) {
+          $('#docs-upload-edit').val('');
+        }
+        return; // skip duplicate
+      }
+      const formData = new FormData();
+      formData.append('file', file);
+      $.ajax({
+        url: '/api/upload',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        xhrFields: { withCredentials: true }, // Đảm bảo gửi cookie/session
+        success: function(res) {
+          let uploaded = null;
+          if (res.success && res.files && res.files.length > 0) {
+            uploaded = res.files[0];
+          } else if (res.file) {
+            uploaded = res.file;
+          }
+          if (uploaded) {
+            // Chỉ kiểm tra trùng tên với file cũ (existingFiles)
+            const isDup = window.existingFiles.some(f => (f.originalname || f.name) === (uploaded.originalname || uploaded.name));
+            if (!isDup) {
+              window.uploadedDocsEdit.push(uploaded);
+              renderFiles();
+            }
+          }
+        },
+        error: function(xhr, status, error) {
+          alert('Upload failed!');
+        },
+        complete: function() {
+          uploadCount++;
+          if (uploadCount === files.length) {
+            $('#docs-upload-edit').val('');
+          }
+        }
+      });
+    });
+  });
+});
+</script>
+<!-- ========== END File Attachment AJAX Upload for Edit Server ========= -->

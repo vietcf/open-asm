@@ -471,6 +471,18 @@ networkController.listDomain = async (req, res) => {
     let pageSize = parseInt(req.query.pageSize, 10);
     const pageSizeOptions = res.locals.pageSizeOptions || [10, 20, 50];
     if (!pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
+    
+    // Parse filter parameters
+    const filterStatus = req.query.status || '';
+    const filterTags = Array.isArray(req.query['tags[]']) ? req.query['tags[]'] :
+      (req.query['tags[]'] ? [req.query['tags[]']] : (Array.isArray(req.query.tags) ? req.query.tags : req.query.tags ? [req.query.tags] : []));
+    const filterSystems = Array.isArray(req.query['systems[]']) ? req.query['systems[]'] :
+      (req.query['systems[]'] ? [req.query['systems[]']] : (Array.isArray(req.query.systems) ? req.query.systems : req.query.systems ? [req.query.systems] : []));
+    const filterContacts = Array.isArray(req.query['contacts[]']) ? req.query['contacts[]'] :
+      (req.query['contacts[]'] ? [req.query['contacts[]']] : (Array.isArray(req.query.contacts) ? req.query.contacts : req.query.contacts ? [req.query.contacts] : []));
+    const filterIpAddresses = Array.isArray(req.query['ip_id[]']) ? req.query['ip_id[]'] :
+      (req.query['ip_id[]'] ? [req.query['ip_id[]']] : (Array.isArray(req.query.ip_id) ? req.query.ip_id : req.query.ip_id ? [req.query.ip_id] : []));
+    
     // Tìm kiếm domain theo domain, description, IP, hoặc tên hệ thống
     let totalCount, domainList;
     if (search) {
@@ -495,6 +507,11 @@ networkController.listDomain = async (req, res) => {
       success,
       error,
       recordTypeOptions,
+      filterStatus,
+      filterTags,
+      filterSystems,
+      filterContacts,
+      filterIpAddresses,
       title: 'Domain',
       activeMenu: 'domain'
     });
@@ -2375,6 +2392,90 @@ networkController.apiEnvironments = async (req, res) => {
   } catch (err) {
     console.error('Error fetching environments:', err);
     res.status(500).json({ error: 'Error fetching environments: ' + err.message });
+  }
+};
+
+// API: Find subnet containing an IP address
+networkController.apiFindSubnetForIP = async (req, res) => {
+  try {
+    const ipAddress = req.params.ip;
+    
+    if (!ipAddress) {
+      return res.status(400).json({ error: 'IP address is required' });
+    }
+    
+    // Validate IP format
+    const ipRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}$/;
+    if (!ipRegex.test(ipAddress)) {
+      return res.status(400).json({ error: 'Invalid IP address format' });
+    }
+    
+    // Get all subnets
+    const subnets = await Subnet.findFilteredList({ 
+      search: '', 
+      tags: [], 
+      zone: undefined,
+      environment: undefined,
+      page: 1, 
+      pageSize: 1000 // Get all subnets
+    });
+    
+    // Function to check if IP is in subnet
+    function isIPInSubnet(ip, subnetCIDR) {
+      try {
+        const [subnetIP, prefixLength] = subnetCIDR.split('/');
+        const prefix = parseInt(prefixLength);
+        
+        // Convert IPs to numbers
+        const ipParts = ip.split('.');
+        const subnetParts = subnetIP.split('.');
+        
+        if (ipParts.length !== 4 || subnetParts.length !== 4) {
+          return false;
+        }
+        
+        const ipNum = (parseInt(ipParts[0]) << 24) + (parseInt(ipParts[1]) << 16) + (parseInt(ipParts[2]) << 8) + parseInt(ipParts[3]);
+        const subnetNum = (parseInt(subnetParts[0]) << 24) + (parseInt(subnetParts[1]) << 16) + (parseInt(subnetParts[2]) << 8) + parseInt(subnetParts[3]);
+        
+        const mask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
+        
+        return (ipNum & mask) === (subnetNum & mask);
+      } catch (error) {
+        return false;
+      }
+    }
+    
+    // Find the subnet that contains this IP
+    let matchingSubnet = null;
+    for (let subnet of subnets) {
+      if (isIPInSubnet(ipAddress, subnet.address)) {
+        matchingSubnet = subnet;
+        break;
+      }
+    }
+    
+    if (matchingSubnet) {
+      res.json({
+        found: true,
+        subnet: {
+          id: matchingSubnet.id,
+          address: matchingSubnet.address,
+          description: matchingSubnet.description,
+          zone: matchingSubnet.zone,
+          environment: matchingSubnet.environment,
+          tags: matchingSubnet.tags || []
+        }
+      });
+    } else {
+      res.json({
+        found: false,
+        message: 'No subnet found containing this IP address'
+      });
+    }
+    
+  } catch (err) {
+    console.error('Error finding subnet for IP:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 

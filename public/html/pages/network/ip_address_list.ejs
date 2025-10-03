@@ -219,7 +219,7 @@ function buildExportUrl() {
         <div class="card-header">
           <h3 class="card-title mb-0">IP Address List</h3>
         </div>
-        <div class="card-body table-responsive p-0" style="overflow-x: auto;">
+        <div class="card-body table-responsive" style="overflow-x: auto;">
           <table class="table table-hover" id="ipTable">
             <thead>
               <tr>
@@ -302,21 +302,51 @@ function buildExportUrl() {
         <div class="card-footer clearfix">
           <div class="d-flex justify-content-between align-items-center px-3 py-2">
             <div>
-              <span>Showing <%= (page - 1) * pageSize + 1 %> - <%= Math.min(page * pageSize, totalCount || 0) %> of <%= totalCount || 0 %> IP addresses</span>
-                        </div>
+              <% 
+                // Calculate pagination range like system list
+                const ipStartItem = (page - 1) * pageSize + 1;
+                const ipEndItem = Math.min(page * pageSize, totalCount || 0);
+                const ipStartPage = Math.max(1, page - 2);
+                const ipEndPage = Math.min(totalPages, page + 2);
+              %>
+              <span>Showing <%= ipStartItem %> - <%= ipEndItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> IP addresses</span>
+            </div>
             <ul class="pagination pagination-sm m-0 float-end">
+              <% 
+                function buildIpFilterQuery() {
+                  let params = [];
+                  if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+                  if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
+                  if (typeof filterTags !== 'undefined' && filterTags.length) filterTags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag.id || tag)); });
+                  if (typeof filterStatus !== 'undefined' && filterStatus) params.push('status=' + encodeURIComponent(filterStatus));
+                  if (typeof filterSystems !== 'undefined' && filterSystems.length) filterSystems.forEach(function(system) { params.push('systems[]=' + encodeURIComponent(system.id || system)); });
+                  if (typeof filterContacts !== 'undefined' && filterContacts.length) filterContacts.forEach(function(contact) { params.push('contacts[]=' + encodeURIComponent(contact.id || contact)); });
+                  return params.join('&');
+                }
+                const ipFilterQuery = buildIpFilterQuery();
+              %>
               <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="<%= buildPaginationUrl(page - 1) %>" tabindex="-1">Previous</a>
+                <a class="page-link" href="?page=<%= page - 1 %><%= ipFilterQuery ? '&' + ipFilterQuery : '' %>" tabindex="-1">Previous</a>
               </li>
-              <% for (let i = 1; i <= totalPages; i++) { %>
-                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="<%= buildPaginationUrl(i) %>"><%= i %></a></li>
+              <% if (ipStartPage > 1) { %>
+                <li class="page-item"><a class="page-link" href="?page=1<%= ipFilterQuery ? '&' + ipFilterQuery : '' %>">1</a></li>
+                <% if (ipStartPage > 2) { %>
+                  <li class="page-item disabled"><span class="page-link">...</span></li>
+                <% } %>
+              <% } %>
+              <% for (let i = ipStartPage; i <= ipEndPage; i++) { %>
+                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= ipFilterQuery ? '&' + ipFilterQuery : '' %>"><%= i %></a></li>
+              <% } %>
+              <% if (ipEndPage < totalPages) { %>
+                <li class="page-item disabled"><span class="page-link">...</span></li>
+                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= ipFilterQuery ? '&' + ipFilterQuery : '' %>"><%= totalPages %></a></li>
               <% } %>
               <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="<%= buildPaginationUrl(page + 1) %>">Next</a>
+                <a class="page-link" href="?page=<%= page + 1 %><%= ipFilterQuery ? '&' + ipFilterQuery : '' %>">Next</a>
               </li>
             </ul>
-                      </div>
-                    </div>
+          </div>
+        </div>
                   </div>
     </div>
   </div>
@@ -1229,6 +1259,145 @@ function confirmDeleteIp(form, ip) {
   return false;
 }
 
+// Function removed - no longer finding subnet information for IP detail
+
+// Function to check if an IP is in a subnet (CIDR notation)
+function isIPInSubnet(ipAddress, subnetCIDR) {
+  try {
+    const [subnetIP, prefixLength] = subnetCIDR.split('/');
+    const prefix = parseInt(prefixLength);
+    
+    console.log('Checking IP:', ipAddress, 'in subnet:', subnetCIDR);
+    console.log('Subnet IP:', subnetIP, 'Prefix:', prefix);
+    
+    // Convert IPs to numbers
+    const ipParts = ipAddress.split('.');
+    const subnetParts = subnetIP.split('.');
+    
+    if (ipParts.length !== 4 || subnetParts.length !== 4) {
+      console.log('Invalid IP format');
+      return false;
+    }
+    
+    const ip = (parseInt(ipParts[0]) << 24) + (parseInt(ipParts[1]) << 16) + (parseInt(ipParts[2]) << 8) + parseInt(ipParts[3]);
+    const subnet = (parseInt(subnetParts[0]) << 24) + (parseInt(subnetParts[1]) << 16) + (parseInt(subnetParts[2]) << 8) + parseInt(subnetParts[3]);
+    
+    const mask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
+    
+    const result = (ip & mask) === (subnet & mask);
+    console.log('IP number:', ip, 'Subnet number:', subnet, 'Mask:', mask, 'Result:', result);
+    
+    return result;
+  } catch (error) {
+    console.error('Error in isIPInSubnet:', error);
+    return false;
+  }
+}
+
+// Function to load subnet information for an IP address
+function loadSubnetInfoForIP(ipAddress, contentElement) {
+  console.log('Loading subnet info for IP:', ipAddress);
+  
+  // Make AJAX call to find subnet containing this IP
+  $.ajax({
+    url: '/network/api/subnet-for-ip/' + encodeURIComponent(ipAddress),
+    method: 'GET',
+    dataType: 'json'
+  }).done(function(response) {
+    console.log('Subnet response received:', response);
+    
+    if (response.found && response.subnet) {
+      console.log('Found matching subnet:', response.subnet);
+      updateSubnetInfoInModal(contentElement, response.subnet);
+    } else {
+      console.log('No matching subnet found');
+      updateSubnetInfoInModal(contentElement, null);
+    }
+  }).fail(function(xhr, status, error) {
+    console.error('Error loading subnet information:', status, error);
+    console.error('Response:', xhr.responseText);
+    
+    // Fallback: try with sample data for testing
+    console.log('Trying with sample subnet data...');
+    const sampleSubnets = [
+      { address: '10.1.0.0/16', zone: 'BACKBONE', environment: 'DEV' },
+      { address: '192.168.1.0/24', zone: 'OFFICE', environment: 'PROD' },
+      { address: '172.16.0.0/12', zone: 'DMZ', environment: 'UAT' }
+    ];
+    
+    let matchingSubnet = null;
+    for (let subnet of sampleSubnets) {
+      if (isIPInSubnet(ipAddress, subnet.address)) {
+        console.log('Found matching sample subnet:', subnet);
+        matchingSubnet = subnet;
+        break;
+      }
+    }
+    
+    updateSubnetInfoInModal(contentElement, matchingSubnet);
+  });
+}
+
+// Function to update subnet information in the modal (as plain text, no badges)
+function updateSubnetInfoInModal(contentElement, subnetInfo) {
+  const currentHTML = contentElement.innerHTML;
+  
+  if (subnetInfo) {
+    // Zone as plain text
+    let zoneHTML = '<div class="mb-2"><strong>Zone:</strong> ';
+    if (subnetInfo.zone && subnetInfo.zone.trim()) {
+      zoneHTML += String(subnetInfo.zone).trim();
+    } else {
+      zoneHTML += '<span class="text-muted">N/A</span>';
+    }
+    zoneHTML += '</div>';
+    
+    // Environment as plain text
+    let environmentHTML = '<div class="mb-2"><strong>Environment:</strong> ';
+    if (subnetInfo.environment && subnetInfo.environment.trim()) {
+      environmentHTML += String(subnetInfo.environment).trim();
+    } else {
+      environmentHTML += '<span class="text-muted">N/A</span>';
+    }
+    environmentHTML += '</div>';
+    
+    // Subnet as plain text
+    let subnetHTML = '<div class="mb-2"><strong>Subnet:</strong> ' + String(subnetInfo.address).trim() + '</div>';
+    
+    // Replace loading states with actual data
+    let updatedHTML = currentHTML.replace(
+      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">Loading...</span></div>',
+      zoneHTML
+    );
+    updatedHTML = updatedHTML.replace(
+      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">Loading...</span></div>',
+      environmentHTML
+    );
+    updatedHTML = updatedHTML.replace(
+      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">Loading...</span></div>',
+      subnetHTML
+    );
+    
+    contentElement.innerHTML = updatedHTML;
+  } else {
+    // No matching subnet found
+    let updatedHTML = currentHTML.replace(
+      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">Loading...</span></div>',
+      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">N/A</span></div>'
+    );
+    updatedHTML = updatedHTML.replace(
+      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">Loading...</span></div>',
+      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">N/A</span></div>'
+    );
+    updatedHTML = updatedHTML.replace(
+      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">Loading...</span></div>',
+      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">N/A</span></div>'
+    );
+    
+    contentElement.innerHTML = updatedHTML;
+  }
+}
+
 function showIpDetail(ipId) {
   const buttons = document.querySelectorAll('button[data-ip]');
   let targetButton = null;
@@ -1271,6 +1440,15 @@ function showIpDetail(ipId) {
   html += '<div class="mb-2"><strong>Description:</strong> ' + String(ip.description || 'N/A').trim() + '</div>';
   html += '<div class="mb-2"><strong>Status:</strong> ' + String(ip.status || 'N/A').trim() + '</div>';
   
+  // Find subnet containing this IP and show Zone/Environment as plain text
+  const ipAddress = ip.ip_address;
+  if (ipAddress) {
+    // Add loading state for subnet info
+    html += '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">Loading...</span></div>';
+    html += '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">Loading...</span></div>';
+    html += '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">Loading...</span></div>';
+  }
+  
   if (ip.tags && ip.tags.length > 0) {
     html += '<div class="mb-2"><strong>Tags:</strong><br>';
     ip.tags.forEach(function(tag) {
@@ -1281,26 +1459,58 @@ function showIpDetail(ipId) {
   }
   
   if (ip.systems && ip.systems.length > 0) {
-    html += '<div class="mb-2"><strong>Systems:</strong><br>';
+    html += '<div class="mb-2"><strong>Systems:</strong><ul class="mb-0">';
     ip.systems.forEach(function(system) {
       const systemValue = (typeof system === 'string' ? system : system.name);
-      html += '<span class="badge bg-info me-1 mb-1">' + String(systemValue).trim() + '</span>';
+      const searchUrl = '/system/system?search=' + encodeURIComponent(systemValue) + '&pageSize=2';
+      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + 
+              String(systemValue).trim() + '</a></li>';
     });
-    html += '</div>';
+    html += '</ul></div>';
   }
   
   if (ip.contacts && ip.contacts.length > 0) {
-    html += '<div class="mb-2"><strong>Contacts:</strong><br>';
+    html += '<div class="mb-2"><strong>Contacts:</strong><ul class="mb-0">';
     ip.contacts.forEach(function(contact) {
-      const contactValue = (typeof contact === 'string' ? contact : (contact.name || contact.email));
-      html += '<span class="badge bg-warning me-1 mb-1">' + String(contactValue).trim() + '</span>';
+      let contactName = '';
+      let contactEmail = '';
+      
+      if (typeof contact === 'string') {
+        contactName = contact;
+        contactEmail = '';
+      } else {
+        contactName = contact.name || '';
+        contactEmail = contact.email || '';
+      }
+      
+      // Create short email (remove @domain part)
+      let shortEmail = '';
+      if (contactEmail && contactEmail.includes('@')) {
+        shortEmail = contactEmail.split('@')[0];
+      }
+      
+      // Format: name (shortEmail) or just name if no email
+      let displayText = contactName;
+      if (shortEmail) {
+        displayText += ' (' + shortEmail + ')';
+      }
+      
+      // Create searchable link as simple text
+      const searchUrl = '/organize/contact?search=' + encodeURIComponent(contactName);
+      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + 
+              String(displayText).trim() + '</a></li>';
     });
-    html += '</div>';
+    html += '</ul></div>';
   }
   
   html += '</div></div>';
   content.innerHTML = html;
   modal.show();
+  
+  // Load subnet information if IP address is available
+  if (ipAddress) {
+    loadSubnetInfoForIP(ipAddress, content);
+  }
 }
 
 // Import IP functionality

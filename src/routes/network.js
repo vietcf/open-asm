@@ -69,6 +69,7 @@ router.delete('/domain/:id', requirePermission('domain.delete'), networkControll
 // // ====== AJAX API ======
 router.get('/api/subnet-address/:id', requirePermission('subnet.read'), networkController.detailSubnet); //Get detail of subnet
 router.get('/api/subnet-addresses', networkController.apiSearchSubnets); // Search subnets for existence check
+router.get('/api/subnet-for-ip/:ip', networkController.apiFindSubnetForIP); // Find subnet containing IP
 router.get('/api/ip-addresses', networkController.apiSearchIPAddresses); // Search IP addresses
 router.get('/api/ip-addresses/detail', networkController.apiGetIPDetail); // Get detailed IP information
 router.get('/api/domain', networkController.apiDomainSearch); // Search domains

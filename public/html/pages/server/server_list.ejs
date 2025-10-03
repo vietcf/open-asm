@@ -1,675 +1,711 @@
-<style>
-/* Firefox mobile fix for Server List */
-@-moz-document url-prefix() {
-  @media (max-width: 768px) {
-    .table-responsive {
-      display: block !important;
-      overflow-x: scroll !important;
-      overflow-y: auto !important;
-      -webkit-overflow-scrolling: touch !important;
-    }
-    
-    .table {
-      display: table !important;
-      min-width: 1000px !important;
-      width: 100% !important;
-    }
-    
-    .card-body,
-    .card,
-    .col-12,
-    .container-fluid,
-    .row {
-      display: block !important;
-      width: 100% !important;
-      min-height: 200px !important;
-    }
-    
-    /* Button container - separate from col-12 to avoid conflicts */
-    .button-container {
-      display: flex !important;
-      justify-content: flex-end !important;
-      align-items: center !important;
-      flex-direction: row !important;
-      width: 100% !important;
-      gap: 0.5rem !important;
-    }
-    
-    /* Consistent button spacing */
-    .button-container .btn {
-      margin-right: 0 !important;
-      margin-left: 0 !important;
-    }
-    
-    .button-container .btn:not(:last-child) {
-      margin-right: 0.5rem !important;
-    }
-  }
-}
-</style>
-<div class="container-fluid">
-  <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/server/server/list" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
-    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search Server Name, IP or OS..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-    <select class="form-select form-select-sm me-2" name="page_size" onchange="this.form.submit()" style="width:90px;max-width:90px;">
-      <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
-        <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
-      <% }) %>
-    </select>
-    <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
-  </form>
-  <div class="row mb-3">
-    <div class="col-12" style="margin-top: 16px;">
-      <div class="button-container d-flex justify-content-end align-items-center">
-      <% if (hasPermission('server.create')) { %>
-        <button type="button" class="btn btn-primary btn-sm" onclick="window.location.href='/server/server/add'">
-          <i class="bi bi-plus"></i> Add Server
-        </button>
-        <a href="/server/server/template" class="btn btn-info btn-sm" download>
-          <i class="bi bi-download"></i> Download Template
-        </a>
-        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importServerModal">
-          <i class="bi bi-upload"></i> Import Server
-        </button>
-      <% } %>
-      <form id="serverExportForm" action="/server/server/export" method="GET" style="display:inline; margin-right: 8px;">
-        <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-        <input type="hidden" name="location" value="<%= typeof filterLocation !== 'undefined' ? filterLocation : '' %>">
-        <input type="hidden" name="type" value="<%= typeof filterType !== 'undefined' ? filterType : '' %>">
-        <input type="hidden" name="status" value="<%= typeof filterStatus !== 'undefined' ? filterStatus : '' %>">
-        <% if (filterTags && filterTags.length) { filterTags.forEach(function(tag) { %>
-          <input type="hidden" name="tags[]" value="<%= tag %>">
-        <% }) } %>
-        <% if (filterIp && filterIp.length) { filterIp.forEach(function(ip) { %>
-          <input type="hidden" name="ip[]" value="<%= ip %>">
-        <% }) } %>
-        <% if (filterManager && filterManager.length) { filterManager.forEach(function(m) { %>
-          <input type="hidden" name="manager[]" value="<%= m %>">
-        <% }) } %>
-        <% if (filterSystems && filterSystems.length) { filterSystems.forEach(function(s) { %>
-          <input type="hidden" name="systems[]" value="<%= s %>">
-        <% }) } %>
-        <% if (filterServices && filterServices.length) { filterServices.forEach(function(sv) { %>
-          <input type="hidden" name="services[]" value="<%= sv %>">
-        <% }) } %>
-        <% if (filterOs && filterOs.length) { filterOs.forEach(function(os) { %>
-          <input type="hidden" name="os[]" value="<%= os %>">
-        <% }) } %>
-        <button type="submit" class="btn btn-warning btn-sm">
-          <i class="bi bi-download"></i> Export
-        </button>
-      </form>
-      <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterModal">
-        <i class="bi bi-funnel"></i> Filter
-      </button>
-      </div>
-    </div>
-      <!-- Filter Modal -->
-      <div class="modal fade" id="filterModal" tabindex="-1" aria-labelledby="filterModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <form id="serverFilterForm" method="get" action="/server/server/list">
-              <!-- Preserve current pageSize and search -->
-              <input type="hidden" name="pageSize" value="<%= typeof pageSize !== 'undefined' ? pageSize : 10 %>">
-              <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-              <div class="modal-header">
-                <h5 class="modal-title" id="filterModalLabel">Filter Server List</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-              </div>
-              <div class="modal-body">
-                <div class="row g-2">
-                  <div class="col-12 mb-2">
-                    <label class="form-label">Tags</label>
-                    <select id="filterTags" name="tags[]" class="form-control" multiple></select>
-                  </div>
-                  <div class="col-12 mb-2">
-                    <label class="form-label">IP Address</label>
-                    <select id="filterIp" name="ip[]" class="form-control" multiple></select>
-                  </div>
-                  <div class="col-12 mb-2">
-                    <label class="form-label">Manager</label>
-                    <select id="filterManager" name="manager[]" class="form-control" multiple></select>
-                  </div>
-                  <div class="col-12 mb-2">
-                    <label class="form-label">Systems</label>
-                    <select id="filterSystems" name="systems[]" class="form-control" multiple></select>
-                  </div>
-                  <div class="col-12 mb-2">
-                    <label class="form-label">Services</label>
-                    <select id="filterServices" name="services[]" class="form-control" multiple></select>
-                  </div>
-                  <div class="col-12 mb-2">
-                    <label class="form-label">OS/Platform</label>
-                    <select id="filterOs" name="os[]" class="form-control" multiple></select>
-                  </div>
-                  <div class="col-12 mb-2">
-                    <label class="form-label">Status</label>
-                    <select id="filterStatus" name="status" class="form-select">
-                      <option value="">-- All --</option>
-                      <% (statusOptions || []).forEach(function(st) { %>
-                        <option value="<%= st.value %>" <%= filterStatus == st.value ? 'selected' : '' %>><%= st.label %></option>
-                      <% }) %>
-                    </select>
-                  </div>
-                  <div class="col-12 mb-2">
-                    <label class="form-label">Location</label>
-                    <select id="filterLocation" name="location" class="form-select">
-                      <option value="">-- All --</option>
-                      <% (locations || []).forEach(function(loc) { %>
-                        <option value="<%= loc.value %>" <%= filterLocation == loc.value ? 'selected' : '' %>><%= loc.label %></option>
-                      <% }) %>
-                    </select>
-                  </div>
-                  <div class="col-12 mb-2">
-                    <label class="form-label">Type</label>
-                    <select id="filterType" name="type" class="form-select">
-                      <option value="">-- All --</option>
-                      <% (typesOptions || []).forEach(function(tp) { %>
-                        <option value="<%= tp.value %>" <%= filterType == tp.value ? 'selected' : '' %>><%= tp.label %></option>
-                      <% }) %>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div class="modal-footer d-flex justify-content-between">
-                <button type="button" id="clearFilterBtn" class="btn btn-outline-danger btn-sm">Clear All Filters</button>
-                <div>
-                  <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
-                  <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="row">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">Server List</h5>
-        </div>
-        <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
-          <% if (typeof error !== 'undefined' && error) { %>
-            <div class="alert alert-danger" style="position: absolute; top: 12px; right: 32px; min-width:200px; max-width:400px; text-align:center; z-index: 1000;">
-              <%= error %>
-            </div>
-            <script>
-              setTimeout(function() {
-                var el = document.querySelector('.alert-danger');
-                if (el) el.style.display = 'none';
-              }, 3000);
-            </script>
-          <% } %>
-          <% if (typeof success !== 'undefined' && success) { %>
-            <div class="alert alert-success" style="position: absolute; top: 60px; right: 32px; min-width:200px; max-width:400px; text-align:center; z-index: 1000;">
-              <%= success %>
-            </div>
-            <script>
-              setTimeout(function() {
-                var el = document.querySelector('.alert-success');
-                if (el) el.style.display = 'none';
-              }, 3000);
-            </script>
-          <% } %>
-          <table class="table table-hover" style="table-layout: fixed; min-width: 1000px;">
-            <thead>
-              <tr>
-                <th style="width:50px;">No.</th>
-                <th style="width:150px;">Server Name</th>
-                <th style="width:200px;">Description</th>
-                <th style="width:120px;">IP Address</th>
-                <th style="width:120px;">Systems</th>
-                <th style="width:100px;">Type</th>
-                <th style="width:120px;">Tags</th>
-                <th class="text-end" style="width:120px;">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% if (serverList && serverList.length > 0) { %>
-                <% serverList.forEach(function(server, idx) { %>
-                  <tr>
-                    <td><%= idx + 1 %></td>
-                    <td><%= server.name %></td>
-                    <td>
-                      <% if (server.description) { %>
-                        <span title="<%= server.description.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
-                          <%= server.description.length > 60 ? server.description.substring(0, 60) + '…' : server.description %>
-                        </span>
-                      <% } else { %>
-                        <span class="text-muted">-</span>
-                      <% } %>
-                    </td>
-                    <td>
-                      <% if (Array.isArray(server.ip) && server.ip.length) { %>
-                        <%= server.ip.map(ipObj => ipObj.ip_address).join(', ') %>
-                      <% } else { %>
-                        <span class="text-muted">-</span>
-                      <% } %>
-                    </td>
-                    <td>
-                      <% if (Array.isArray(server.systems) && server.systems.length) { %>
-                        <div class="d-flex flex-wrap">
-                          <% server.systems.forEach(function(sys) { %>
-                            <a href="/system/system?search=<%= encodeURIComponent(sys.name) %>" target="_blank" class="me-1 mb-1 text-primary" style="text-decoration:underline; font-size:1rem; font-weight:500;">
-                              <%= sys.name %>
-                            </a>
-                          <% }) %>
-                        </div>
-                      <% } else { %>
-                        <span class="text-muted">-</span>
-                      <% } %>
-                    </td>
-                    <td><%= server.type %></td>
-                    <td>
-                      <% if (Array.isArray(server.tags) && server.tags.length) { %>
-                        <div style="line-height: 1.4;">
-                          <% server.tags.forEach(function(tag, idx) { %>
-                            <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;"><%= tag.name %></span>
-                            <% if ((idx + 1) % 2 === 0 && idx < server.tags.length - 1) { %>
-                              <br>
-                            <% } %>
-                          <% }) %>
-                        </div>
-                      <% } else { %>
-                        <span class="text-muted">No tags</span>
-                      <% } %>
-                    </td>
-                    <td class="text-end">
-                      <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#serverDetailModal-<%= server.id %>"><i class="bi bi-eye"></i></a>
-                      <% if (hasPermission('server.update')) { %>
-                        <a href="/server/server/<%= server.id %>/edit" class="btn btn-warning btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
-                      <% } %>
-                      <% if (hasPermission('server.delete')) { %>
-                        <form action="/server/server/<%= server.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirm('Are you sure you want to delete this server?')">
-                          <button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="bi bi-trash"></i></button>
-                        </form>
-                      <% } %>
-                    </td>
-                  </tr>
-                  <!-- Server Detail Modal -->
-                  <div class="modal fade" id="serverDetailModal-<%= server.id %>" tabindex="-1" aria-labelledby="serverDetailModalLabel-<%= server.id %>" aria-hidden="true">
-                    <div class="modal-dialog modal-lg">
-                      <div class="modal-content">
-                        <div class="modal-header">
-                          <h5 class="modal-title" id="serverDetailModalLabel-<%= server.id %>">Server Detail</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                          <dl class="row mb-0">
-                            <dt class="col-sm-3">Server ID</dt>
-                            <dd class="col-sm-9 text-monospace"><%= server.id %></dd>
-                            <dt class="col-sm-3">Server Name</dt>
-                            <dd class="col-sm-9"><%= server.name %></dd>
-                            <dt class="col-sm-3">Description</dt>
-                            <dd class="col-sm-9"><span class="desc-text"><%- (server.description || '').replace(/\n/g, '<br>') %></span></dd>
-                            <dt class="col-sm-3">IP Address</dt>
-                            <dd class="col-sm-9">
-                              <% if (Array.isArray(server.ip) && server.ip.length) { %>
-                                <% server.ip.forEach(function(ipObj, index) { %>
-                                  <% if (index > 0) { %>, <% } %>
-                                  <a href="/network/ip-address?search=<%= encodeURIComponent(ipObj.ip_address) %>&pageSize=10" target="_blank" class="text-decoration-none">
-                                    <%= ipObj.ip_address %>
-                                  </a>
-                                <% }) %>
-                              <% } else { %>
-                                <span class="text-muted">-</span>
-                              <% } %>
-                            </dd>
-                            <dt class="col-sm-3">Status</dt>
-                            <dd class="col-sm-9"><%= server.status || '' %></dd>
-                            <dt class="col-sm-3">Location</dt>
-                            <dd class="col-sm-9"><%= server.location || '' %></dd>
-                            <dt class="col-sm-3">Type</dt>
-                            <dd class="col-sm-9"><%= server.type || '' %></dd>
-                            <dt class="col-sm-3">Manager</dt>
-                            <dd class="col-sm-9">
-                              <% if (Array.isArray(server.managers) && server.managers.length) { %>
-                                <% server.managers.forEach(function(m, index) { %>
-                                  <% if (index > 0) { %>, <% } %>
-                                  <% var searchTerm = m.email || m.name || ''; %>
-                                  <a href="/organize/contact?search=<%= encodeURIComponent(searchTerm) %>&pageSize=10" target="_blank" class="text-decoration-none">
-                                    <%= m.email ? m.email : (m.name || 'Unknown') %>
-                                  </a>
-                                <% }) %>
-                              <% } else if (server.manager) { %>
-                                <a href="/organize/contact?search=<%= encodeURIComponent(server.manager) %>&pageSize=10" target="_blank" class="text-decoration-none"><%= server.manager %></a>
-                              <% } else { %>
-                                <span class="text-muted">-</span>
-                              <% } %>
-                            </dd>
-                            <dt class="col-sm-3">Platform (OS)</dt>
-                            <dd class="col-sm-9">
-                              <% if (server.platform_name) { %>
-                                <%= server.platform_name %>
-                              <% } else { %>
-                                <span class="text-muted">-</span>
-                              <% } %>
-                            </dd>
-                            <dt class="col-sm-3">Agents</dt>
-                            <dd class="col-sm-9">
-                              <% if (Array.isArray(server.agents) && server.agents.length) { %>
-                                <div style="line-height: 1.4;">
-                                  <% server.agents.forEach(function(a, idx) { %>
-                                    <span class="badge bg-info text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;"><%= a.name %><% if (a.version) { %> (<%= a.version %>)<% } %></span>
-                                    <% if ((idx + 1) % 2 === 0 && idx < server.agents.length - 1) { %>
-                                      <br>
-                                    <% } %>
-                                  <% }) %>
-                                </div>
-                              <% } else { %>
-                                <span class="text-muted">No agents</span>
-                              <% } %>
-                            </dd>
-                            <dt class="col-sm-3">Services</dt>
-                            <dd class="col-sm-9">
-                              <% if (Array.isArray(server.services) && server.services.length) { %>
-                                <div style="line-height: 1.4;">
-                                  <% server.services.forEach(function(s, idx) { %>
-                                    <span class="badge bg-success text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;"><%= s.name %></span>
-                                    <% if ((idx + 1) % 2 === 0 && idx < server.services.length - 1) { %>
-                                      <br>
-                                    <% } %>
-                                  <% }) %>
-                                </div>
-                              <% } else { %>
-                                <span class="text-muted">No services</span>
-                              <% } %>
-                            </dd>
-                            <dt class="col-sm-3">Systems</dt>
-                            <dd class="col-sm-9">
-                              <% if (Array.isArray(server.systems) && server.systems.length) { %>
-                                <div class="d-flex flex-wrap">
-                                  <% server.systems.forEach(function(sys) { %>
-                                    <a href="/system/system?search=<%= encodeURIComponent(sys.name) %>" target="_blank" class="me-1 mb-1 text-primary" style="text-decoration:underline; font-size:1rem; font-weight:500;">
-                                      <%= sys.name %>
-                                    </a>
-                                  <% }) %>
-                                </div>
-                              <% } else { %>
-                                <span class="text-muted">-</span>
-                              <% } %>
-                            </dd>
-                            <dt class="col-sm-3">Tags</dt>
-                            <dd class="col-sm-9">
-                              <% if (Array.isArray(server.tags) && server.tags.length) { %>
-                                <div style="line-height: 1.4;">
-                                  <% server.tags.forEach(function(tag, idx) { %>
-                                    <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;"><%= tag.name %></span>
-                                    <% if ((idx + 1) % 2 === 0 && idx < server.tags.length - 1) { %>
-                                      <br>
-                                    <% } %>
-                                  <% }) %>
-                                </div>
-                              <% } else { %>
-                                <span class="text-muted">No tags</span>
-                              <% } %>
-                            </dd>
-                            <dt class="col-sm-3">Created At</dt>
-                            <dd class="col-sm-9"><%= server.created_at ? new Date(server.created_at).toLocaleString('en-GB') : '' %></dd>
-                            <dt class="col-sm-3">Updated At</dt>
-                            <dd class="col-sm-9"><%= server.updated_at ? new Date(server.updated_at).toLocaleString('en-GB') : '' %></dd>
-                            <dt class="col-sm-3">Updated By</dt>
-                            <dd class="col-sm-9"><%= server.updated_by || '' %></dd>
-                          </dl>
-                        </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                <% }) %>
-              <% } else { %>
-                <tr><td colspan="7" class="text-center">No data</td></tr>
-              <% } %>
-            </tbody>
-          </table>
-        </div>
-        <div class="card-footer clearfix">
-          <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
-            <div>
-              <% 
-                let startItem = (page - 1) * pageSize + 1;
-                let endItem = startItem + (serverList ? serverList.length : 0) - 1;
-                if (!serverList || serverList.length === 0) {
-                  startItem = 0;
-                  endItem = 0;
-                }
-              %>
-              <span>Showing <%= startItem %> - <%= endItem %> of <%= totalCount %> servers</span>
-            </div>
-            <ul class="pagination pagination-sm m-0 float-end">
-              <% 
-                let startPage = 1;
-                let endPage = totalPages;
-                if (totalPages > 10) {
-                  if (page <= 5) {
-                    startPage = 1;
-                    endPage = 10;
-                  } else if (page + 4 >= totalPages) {
-                    startPage = totalPages - 9;
-                    endPage = totalPages;
-                  } else {
-                    startPage = page - 5 + 1;
-                    endPage = page + 4;
-                  }
-                }
-              %>
+<!--
+==========================================
+SERVER LIST PAGE - EJS TEMPLATE
+==========================================
+This template renders the server list page with search, filter, pagination,
+and CRUD operations for server management.
+-->
 
-              <% 
-                // Build filter query string for pagination links
-                function buildServerFilterQuery() {
-                  let params = [];
-                  if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
-                  if (typeof pageSize !== 'undefined' && pageSize) params.push('page_size=' + encodeURIComponent(pageSize));
-                  if (typeof filterStatus !== 'undefined' && filterStatus) params.push('status=' + encodeURIComponent(filterStatus));
-                  if (typeof filterLocation !== 'undefined' && filterLocation) params.push('location=' + encodeURIComponent(filterLocation));
-                  if (typeof filterType !== 'undefined' && filterType) params.push('type=' + encodeURIComponent(filterType));
-                  if (typeof filterTags !== 'undefined' && filterTags.length) filterTags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag)); });
-                  if (typeof filterIp !== 'undefined' && filterIp.length) filterIp.forEach(function(ip) { params.push('ip[]=' + encodeURIComponent(ip)); });
-                  if (typeof filterManager !== 'undefined' && filterManager.length) filterManager.forEach(function(m) { params.push('manager[]=' + encodeURIComponent(m)); });
-                  if (typeof filterSystems !== 'undefined' && filterSystems.length) filterSystems.forEach(function(s) { params.push('systems[]=' + encodeURIComponent(s)); });
-                  if (typeof filterServices !== 'undefined' && filterServices.length) filterServices.forEach(function(sv) { params.push('services[]=' + encodeURIComponent(sv)); });
-                  if (typeof filterOs !== 'undefined' && filterOs.length) filterOs.forEach(function(os) { params.push('os[]=' + encodeURIComponent(os)); });
-                  return params.join('&');
-                }
-                const serverFilterQuery = buildServerFilterQuery();
-              %>
-              <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page - 1 %><%= serverFilterQuery ? '&' + serverFilterQuery : '' %>" tabindex="-1">Previous</a>
-              </li>
-              <% if (startPage > 1) { %>
-                <li class="page-item"><a class="page-link" href="?page=1<%= serverFilterQuery ? '&' + serverFilterQuery : '' %>">1</a></li>
-                <% if (startPage > 2) { %>
-                  <li class="page-item disabled"><span class="page-link">...</span></li>
-                <% } %>
-              <% } %>
-              <% for (let i = startPage; i <= endPage; i++) { %>
-                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= serverFilterQuery ? '&' + serverFilterQuery : '' %>"><%= i %></a></li>
-              <% } %>
-              <% if (endPage < totalPages) { %>
-                <li class="page-item disabled"><span class="page-link">...</span></li>
-                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= serverFilterQuery ? '&' + serverFilterQuery : '' %>"><%= totalPages %></a></li>
-              <% } %>
-              <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page + 1 %><%= serverFilterQuery ? '&' + serverFilterQuery : '' %>">Next</a>
-              </li>
-            </ul>
-          </div>
-        </div>
+<%
+// ==========================================
+// HELPER FUNCTIONS
+// ==========================================
+
+// Helper function to build pagination URL with all query parameters
+function buildPaginationUrl(targetPage) {
+  const params = new URLSearchParams();
+  
+  // Add page
+  params.set('page', targetPage);
+  
+  // Add search if exists
+  if (typeof search !== 'undefined' && search) {
+    params.set('search', search);
+  }
+  
+  // Add pageSize if exists
+  if (typeof pageSize !== 'undefined' && pageSize) {
+    params.set('pageSize', pageSize);
+  }
+  
+  // Add status filter if exists
+  if (typeof filterStatus !== 'undefined' && filterStatus) {
+    params.set('status', filterStatus);
+  }
+  
+  // Add tags filter if exists
+  if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
+    filterTags.forEach(tag => {
+      params.append('tags[]', tag.id);
+    });
+  }
+  
+  // Add systems filter if exists
+  if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
+    filterSystems.forEach(system => {
+      params.append('systems[]', system.id);
+    });
+  }
+  
+  return '?' + params.toString();
+}
+
+// Helper function to build export URL with all query parameters
+function buildExportUrl() {
+  const params = new URLSearchParams();
+  
+  // Add search if exists
+  if (typeof search !== 'undefined' && search) {
+    params.set('search', search);
+  }
+  
+  // Add status filter if exists
+  if (typeof filterStatus !== 'undefined' && filterStatus) {
+    params.set('status', filterStatus);
+  }
+  
+  // Add tags filter if exists
+  if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
+    filterTags.forEach(tag => {
+      params.append('tags[]', tag.id);
+    });
+  }
+  
+  // Add systems filter if exists
+  if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
+    filterSystems.forEach(system => {
+      params.append('systems[]', system.id);
+    });
+  }
+  
+  return '/server/server/export' + (params.toString() ? '?' + params.toString() : '');
+}
+%>
+
+<!-- ========================================== -->
+<!-- MAIN CONTENT -->
+<!-- ========================================== -->
+
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">Server List</li>
+        </ol>
       </div>
     </div>
   </div>
 </div>
-<!-- Filter values for JS (an toàn cho EJS strict) -->
-<div id="filter-data"
-  data-tags='<%= JSON.stringify(filterTags || []) %>'
-  data-ip='<%= JSON.stringify(filterIp || []) %>'
-  data-manager='<%= JSON.stringify(filterManager || []) %>'
-  data-systems='<%= JSON.stringify(filterSystems || []) %>'
-  data-services='<%= JSON.stringify(filterServices || []) %>'
-  data-os='<%= JSON.stringify(filterOs || []) %>' style="display:none"></div>
-<script>
-  var filterValues = {
-    tags: JSON.parse(document.getElementById('filter-data').dataset.tags || '[]'),
-    ip: JSON.parse(document.getElementById('filter-data').dataset.ip || '[]'),
-    manager: JSON.parse(document.getElementById('filter-data').dataset.manager || '[]'),
-    systems: JSON.parse(document.getElementById('filter-data').dataset.systems || '[]'),
-    services: JSON.parse(document.getElementById('filter-data').dataset.services || '[]'),
-    os: JSON.parse(document.getElementById('filter-data').dataset.os || '[]')
-  };
-</script>
-<link href="/css/select2.min.css" rel="stylesheet" />
-<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-<script src="/js/jquery-3.6.0.min.js"></script>
-<script src="/js/select2.min.js"></script>
-<script>
-function restoreSelect2Value($el, values, url) {
-  if (!values || !values.length) return;
-  $.ajax({
-    url: url,
-    data: { ids: values },
-    dataType: 'json',
-    traditional: true,
-    xhrFields: { withCredentials: true },
-    success: function(data) {
-      data.forEach(function(item) {
-        if ($el.find('option[value="' + item.id + '"]').length === 0) {
-          var option = new Option(item.text || item.ip || item.name, item.id, true, true);
-          $el.append(option);
-        }
-      });
-      $el.val(values).trigger('change');
-    },
-    error: function(xhr, status, error) {
-      console.error('Error restoring select2 value:', error);
-    }
-  });
+
+<!-- Main content -->
+<div class="app-content">
+  <div class="container-fluid">
+    <!-- ========================================== -->
+    <!-- SEARCH AND FILTER SECTION -->
+    <!-- ========================================== -->
+    
+    <!-- Search and Page Size Row -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end align-items-center gap-2">
+          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/server/server/list">
+            <!-- Hidden inputs to preserve filter values -->
+            <input type="hidden" name="page" value="1">
+            <% if (typeof filterStatus !== 'undefined' && filterStatus) { %>
+              <input type="hidden" name="status" value="<%= filterStatus %>">
+            <% } %>
+            <% if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) { %>
+              <% filterTags.forEach(function(tag) { %>
+                <input type="hidden" name="tags[]" value="<%= tag.id %>">
+              <% }); %>
+            <% } %>
+            <% if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) { %>
+              <% filterSystems.forEach(function(system) { %>
+                <input type="hidden" name="systems[]" value="<%= system.id %>">
+              <% }); %>
+            <% } %>
+            
+            <div class="input-group input-group-sm" style="width: 250px;">
+              <input class="form-control form-control-sm" type="search" name="search" placeholder="Search Server Name, IP or OS..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+              <button class="btn btn-outline-secondary btn-sm" type="submit"><i class="bi bi-search"></i></button>
+            </div>
+            <div class="d-flex align-items-center gap-1">
+              <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+              <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
+                <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
+                  <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
+                <% }) %>
+              </select>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- ACTION BUTTONS SECTION -->
+    <!-- ========================================== -->
+    
+    <!-- Action Buttons -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end gap-2">
+          <% if (hasPermission && hasPermission('server.create')) { %>
+            <a href="/server/server/add" class="btn btn-primary btn-sm">
+              <i class="bi bi-plus"></i> Add Server
+            </a>
+          <% } %>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterServerModal">
+            <i class="bi bi-funnel"></i> Filter
+          </button>
+          <% if (hasPermission && hasPermission('server.read')) { %>
+            <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">
+              <i class="bi bi-download"></i> Export
+            </a>
+          <% } %>
+          <% if (hasPermission && hasPermission('server.create')) { %>
+            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importServerModal">
+              <i class="bi bi-upload"></i> Import Server
+            </button>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- FILTER DATA AND FLASH MESSAGES -->
+    <!-- ========================================== -->
+    
+    <!-- Filter values for JS (an toàn cho EJS strict, giống System List) -->
+    <div id="filter-server-data"
+         data-tags='<%= JSON.stringify(filterTags || []) %>'
+         data-systems='<%= JSON.stringify(filterSystems || []) %>'
+         data-status='<%= JSON.stringify(filterStatus || '') %>' 
+         style="display:none"></div>
+
+    <!-- Flash Messages -->
+    <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+      <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
+        <i class="bi bi-check-circle me-2"></i><%= successMessage %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <script>
+        // Auto-hide success message after 5 seconds
+        setTimeout(function() {
+          const alert = document.getElementById('successAlert');
+          if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+          }
+        }, 5000);
+      </script>
+    <% } %>
+    
+    <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+      <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
+        <i class="bi bi-exclamation-triangle me-2"></i><%= errorMessage %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <script>
+        // Auto-hide error message after 8 seconds (longer for errors)
+        setTimeout(function() {
+          const alert = document.getElementById('errorAlert');
+          if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+          }
+        }, 8000);
+      </script>
+    <% } %>
+
+    <!-- ========================================== -->
+    <!-- SERVER LIST TABLE -->
+    <!-- ========================================== -->
+    
+    <!-- Server List Table -->
+    <div class="row">
+      <div class="col-12">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title mb-0">Server List</h3>
+            </div>
+            <div class="card-body table-responsive" style="overflow-x: auto;">
+              <table class="table table-hover" id="serverTable">
+                <thead>
+                  <tr>
+                    <th>No.</th>
+                    <th>Server Name</th>
+                    <th>Description</th>
+                    <th>IP Address</th>
+                    <th>Systems</th>
+                    <th>Type</th>
+                    <th>Tags</th>
+                    <th class="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% if (serverList && serverList.length > 0) { %>
+                    <% serverList.forEach(function(server, idx) { %>
+                      <tr>
+                        <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                        <td><%= server.name %></td>
+                        <td><%= server.description || '-' %></td>
+                        <td><%= server.ip_address || '-' %></td>
+                        <td>
+                          <% if (server.systems && server.systems.length > 0) { %>
+                            <% server.systems.forEach(function(system) { %>
+                              <span class="badge bg-info me-1"><%= typeof system === 'string' ? system : system.name %></span>
+                            <% }) %>
+                          <% } else { %>
+                            <span class="text-muted">No systems</span>
+                          <% } %>
+                        </td>
+                        <td><%= server.type || '-' %></td>
+                        <td>
+                          <% if (server.tags && server.tags.length > 0) { %>
+                            <% server.tags.forEach(function(tag) { %>
+                              <span class="badge bg-primary me-1"><%= typeof tag === 'string' ? tag : tag.name %></span>
+                            <% }) %>
+                          <% } else { %>
+                            <span class="text-muted">No tags</span>
+                          <% } %>
+                        </td>
+                        <td class="text-end">
+                          <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showServerDetail('<%= server.id %>')" data-server='<%= JSON.stringify(server) %>'>
+                            <i class="bi bi-eye"></i>
+                          </button>
+                          <% if (hasPermission('server.update')) { %>
+                            <a href="/server/server/<%= server.id %>/edit" class="btn btn-warning btn-sm" title="Edit">
+                              <i class="bi bi-pencil"></i>
+                            </a>
+                          <% } %>
+                          <% if (hasPermission('server.delete')) { %>
+                            <form action="/server/server/<%= server.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteServer(this, '<%= server.name %>')">
+                              <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                                <i class="bi bi-trash"></i>
+                              </button>
+                            </form>
+                          <% } %>
+                        </td>
+                      </tr>
+                    <% }) %>
+                  <% } else { %>
+                    <tr><td colspan="8" class="text-center">No servers found</td></tr>
+                  <% } %>
+                </tbody>
+              </table>
+            </div>
+            <div class="card-footer clearfix">
+              <div class="d-flex justify-content-between align-items-center px-3 py-2">
+                <div>
+                  <% 
+                    // Calculate pagination range like system list
+                    const serverStartItem = (page - 1) * pageSize + 1;
+                    const serverEndItem = Math.min(page * pageSize, totalCount || 0);
+                    const serverStartPage = Math.max(1, page - 2);
+                    const serverEndPage = Math.min(totalPages, page + 2);
+                  %>
+                  <span>Showing <%= serverStartItem %> - <%= serverEndItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> servers</span>
+                </div>
+                <ul class="pagination pagination-sm m-0 float-end">
+                  <% 
+                    function buildServerFilterQuery() {
+                      let params = [];
+                      if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+                      if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
+                      if (typeof filterTags !== 'undefined' && filterTags.length) filterTags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag.id || tag)); });
+                      if (typeof filterStatus !== 'undefined' && filterStatus) params.push('status=' + encodeURIComponent(filterStatus));
+                      if (typeof filterSystems !== 'undefined' && filterSystems.length) filterSystems.forEach(function(system) { params.push('systems[]=' + encodeURIComponent(system.id || system)); });
+                      return params.join('&');
+                    }
+                    const serverFilterQuery = buildServerFilterQuery();
+                  %>
+                  <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                    <a class="page-link" href="?page=<%= page - 1 %><%= serverFilterQuery ? '&' + serverFilterQuery : '' %>" tabindex="-1">Previous</a>
+                  </li>
+                  <% if (serverStartPage > 1) { %>
+                    <li class="page-item"><a class="page-link" href="?page=1<%= serverFilterQuery ? '&' + serverFilterQuery : '' %>">1</a></li>
+                    <% if (serverStartPage > 2) { %>
+                      <li class="page-item disabled"><span class="page-link">...</span></li>
+                    <% } %>
+                  <% } %>
+                  <% for (let i = serverStartPage; i <= serverEndPage; i++) { %>
+                    <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= serverFilterQuery ? '&' + serverFilterQuery : '' %>"><%= i %></a></li>
+                  <% } %>
+                  <% if (serverEndPage < totalPages) { %>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                    <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= serverFilterQuery ? '&' + serverFilterQuery : '' %>"><%= totalPages %></a></li>
+                  <% } %>
+                  <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                    <a class="page-link" href="?page=<%= page + 1 %><%= serverFilterQuery ? '&' + serverFilterQuery : '' %>">Next</a>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODALS SECTION -->
+    <!-- ========================================== -->
+    
+    <!-- Server Detail Modal -->
+    <div class="modal fade" id="serverDetailModal" tabindex="-1" aria-labelledby="serverDetailModalLabel">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="serverDetailModalLabel">Server Detail</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="serverDetailContent">
+            <!-- Content will be loaded here -->
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Filter Server Modal -->
+    <div class="modal fade" id="filterServerModal" tabindex="-1" aria-labelledby="filterServerModalLabel">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="filterServerModalLabel">Filter Servers</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="GET" action="/server/server/list" id="filterServerForm">
+        <input type="hidden" name="page" value="1">
+        <div class="modal-body">
+          <div class="row g-2">
+            <!-- Status Filter -->
+            <div class="col-12 mb-2">
+              <label for="filterIpStatus" class="form-label">Status</label>
+              <select class="form-control" id="filterIpStatus" name="status">
+                <option value="">All Status</option>
+                <% if (typeof ipStatusOptions !== 'undefined' && ipStatusOptions.length > 0) { %>
+                  <% ipStatusOptions.forEach(function(option) { %>
+                    <option value="<%= option.value %>" <%= filterStatus === option.value ? 'selected' : '' %>><%= option.label %></option>
+                  <% }); %>
+                      <% } else { %>
+                  <option value="active" <%= filterStatus === 'active' ? 'selected' : '' %>>Active</option>
+                  <option value="inactive" <%= filterStatus === 'inactive' ? 'selected' : '' %>>Inactive</option>
+                  <option value="reserved" <%= filterStatus === 'reserved' ? 'selected' : '' %>>Reserved</option>
+                      <% } %>
+              </select>
+                  </div>
+                  
+            <!-- Tags Filter -->
+            <div class="col-12 mb-2">
+              <label class="form-label">Tags</label>
+              <select id="filterIpTags" name="tags[]" class="form-control" multiple></select>
+                  </div>
+                  
+            <!-- Systems Filter -->
+            <div class="col-12 mb-2">
+              <label class="form-label">Systems</label>
+              <select id="filterIpSystems" name="systems[]" class="form-control" multiple></select>
+                  </div>
+                  
+            <!-- Contacts Filter -->
+            <div class="col-12 mb-2">
+              <label class="form-label">Contacts</label>
+              <select id="filterIpContacts" name="contacts[]" class="form-control" multiple></select>
+                  </div>
+                </div>
+                </div>
+        <div class="modal-footer d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-danger" id="clearFilterBtnIp">Clear All Filters</button>
+          <div>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+              </div>
+        </div>
+      </form>
+    </div>
+          </div>
+        </div>
+        
+<!-- Import Server Modal -->
+<div class="modal fade" id="importServerModal" tabindex="-1" aria-labelledby="importServerModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="importServerModalLabel">Import Servers</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+      <div class="modal-body">
+        <form id="importServerForm" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label for="serverImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="file" class="form-control" id="serverImportFile" name="file" accept=".csv,.xlsx,.xls" required>
+              <a href="/server/server/template" class="btn btn-outline-info" download>
+                <i class="bi bi-download"></i> Download Template
+              </a>
+            </div>
+            <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
+          </div>
+          
+          <div class="mb-3">
+            <div class="alert alert-info">
+              <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
+              <ul class="mb-0">
+                <li>Click "Download Template" to get the Excel template with correct format</li>
+                <li>Fill the template with your IP addresses data</li>
+                <li>IPAddress (Require, one per row) is required and must be valid IP format</li>
+                <li>Description is optional</li>
+                <li>Status is optional (default: active)</li>
+                <li>Tags, Systems, and Contacts are optional and can be comma-separated if multiple</li>
+                <li>Select your filled template file and validate before importing</li>
+            </ul>
+          </div>
+        </div>
+          
+          <!-- Progress bar -->
+          <div id="ipImportProgress" class="progress mb-3" style="display: none;">
+            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+      </div>
+          
+          <!-- Results display -->
+          <div id="ipImportResults" class="alert" style="display: none;"></div>
+        </form>
+    </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning" id="validateServerBtn">Validate File</button>
+        <button type="button" class="btn btn-success" id="importServerBtn" style="display: none;">Import Servers</button>
+  </div>
+</div>
+  </div>
+</div>
+        
+<style>
+/* Fix Select2 dropdown z-index in modal */
+  .select2-dropdown {
+  z-index: 9999 !important;
 }
 
-$(function() {
-  var $filterModal = $('#filterModal');
-  var $modalContent = $filterModal.find('.modal-content');
-  // Multi-select fields: select2 ajax
-  $('#filterTags').select2({
-    theme: 'bootstrap-5',
-    placeholder: 'Select tag(s)',
-    allowClear: true,
-    width: '100%',
-    dropdownParent: $modalContent,
-    ajax: {
-      url: '/organize/api/tag',
-      dataType: 'json',
-      delay: 250,
-      data: params => ({ search: params.term }),
-      processResults: data => ({ results: data })
-    }
-  });
-  $('#filterIp').select2({
-    theme: 'bootstrap-5',
-    placeholder: 'Select IP(s)',
-    allowClear: true,
-    width: '100%',
-    dropdownParent: $modalContent,
-    ajax: {
-      url: '/network/api/ip-addresses',
-      dataType: 'json',
-      delay: 250,
-      data: params => ({ search: params.term }),
-      processResults: data => ({
-        results: data.map(x => ({
-          id: x.id,
-          text: x.text || x.ip || x.name
-        }))
-      })
-    }
-  });
-  $('#filterManager').select2({
-    theme: 'bootstrap-5',
-    placeholder: 'Select manager(s)',
-    allowClear: true,
-    width: '100%',
-    dropdownParent: $modalContent,
-    ajax: {
-      url: '/organize/api/contact',
-      dataType: 'json',
-      delay: 250,
-      data: params => ({ search: params.term }),
-      processResults: data => ({ results: data })
-    }
-  });
-  $('#filterSystems').select2({
-    theme: 'bootstrap-5',
-    placeholder: 'Select system(s)',
-    allowClear: true,
-    width: '100%',
-    dropdownParent: $modalContent,
-    ajax: {
-      url: '/system/api/system',
-      dataType: 'json',
-      delay: 250,
-      data: params => ({ search: params.term }),
-      processResults: data => ({ results: data })
-    }
-  });
-  $('#filterServices').select2({
-    theme: 'bootstrap-5',
-    placeholder: 'Select service(s)',
-    allowClear: true,
-    width: '100%',
-    dropdownParent: $modalContent,
-    ajax: {
-      url: '/server/api/service',
-      dataType: 'json',
-      delay: 250,
-      data: params => ({ search: params.term }),
-      processResults: data => ({ results: data })
-    }
-  });
-  $('#filterOs').select2({
-    theme: 'bootstrap-5',
-    placeholder: 'Select OS',
-    allowClear: true,
-    width: '100%',
-    dropdownParent: $modalContent,
-    ajax: {
-      url: '/device/api/platform',
-      dataType: 'json',
-      delay: 250,
-      data: params => ({ search: params.term }),
-      processResults: data => ({ results: data })
+.select2-container--bootstrap-5 .select2-dropdown {
+  z-index: 9999 !important;
+}
+
+.modal .select2-dropdown {
+  z-index: 9999 !important;
+}
+
+/* Ensure dropdown is visible above modal backdrop */
+.select2-container--open .select2-dropdown {
+  z-index: 9999 !important;
+  }
+</style>
+
+<script>
+  $(function() {
+  console.log('Initializing Select2...');
+  
+
+  // Edit IP Modal - Initialize Select2
+  $('#editIpTags').select2({
+            theme: 'bootstrap-5',
+    multiple: true,
+            allowClear: true,
+            width: '100%',
+    dropdownParent: $('#editIpModal'),
+            ajax: {
+              url: '/organize/api/tag',
+              dataType: 'json',
+      processResults: function(data) {
+        return { results: data };
+      }
     }
   });
 
-  // Restore selected values when modal is shown
-  $filterModal.on('shown.bs.modal', function() {
-    setTimeout(function() {
-      restoreSelect2Value($('#filterTags'), filterValues.tags, '/organize/api/tag/ids');
-      restoreSelect2Value($('#filterIp'), filterValues.ip, '/network/api/ip-addresses');
-      restoreSelect2Value($('#filterManager'), filterValues.manager, '/organize/api/contact/ids');
-      restoreSelect2Value($('#filterSystems'), filterValues.systems, '/organize/api/system/ids');
-      restoreSelect2Value($('#filterServices'), filterValues.services, '/server/api/service');
-      restoreSelect2Value($('#filterOs'), filterValues.os, '/device/api/platform');
+  $('#editIpSystems').select2({
+            theme: 'bootstrap-5',
+    multiple: true,
+            allowClear: true,
+            width: '100%',
+    dropdownParent: $('#editIpModal'),
+            ajax: {
+      url: '/system/api/system',
+              dataType: 'json',
+      processResults: function(data) {
+        return { results: data };
+      }
+    }
+  });
+
+  $('#editIpContacts').select2({
+            theme: 'bootstrap-5',
+    multiple: true,
+            allowClear: true,
+            width: '100%',
+    dropdownParent: $('#editIpModal'),
+            ajax: {
+              url: '/organize/api/contact',
+              dataType: 'json',
+      processResults: function(data) {
+        return { results: data };
+      }
+    }
+  });
+
+  // Edit IP Modal - Load data when opened
+  $('#editIpModal').on('show.bs.modal', function(event) {
+    const button = $(event.relatedTarget);
+    const ipId = button.data('ip-id');
+    const ipAddress = button.data('ip-address');
+    const description = button.data('description') || '';
+    const status = button.data('status') || 'active';
+    const tags = button.data('tags') || [];
+    const systems = button.data('systems') || [];
+    const contacts = button.data('contacts') || [];
+
+    console.log('Edit IP Modal opened with data:', {
+      ipId, ipAddress, description, status, tags, systems, contacts
+    });
+
+    // Set form action URL
+    const actionUrl = `/network/ip-address/${ipId}`;
+    $('#editIpForm').attr('action', actionUrl);
+    console.log('Form action set to:', actionUrl);
+
+    // Populate form fields
+    $('#editIpAddress').val(ipAddress);
+    $('#editIpDescription').val(description);
+    $('#editIpStatus').val(status);
+
+    // Load existing values for Select2 fields after a short delay
+        setTimeout(() => {
+      loadEditExistingValues(tags, systems, contacts);
     }, 100);
   });
 
-  // Clear Filter button: reset tất cả filter về mặc định
-  $('#clearFilterBtn').on('click', function() {
+  // Edit IP Modal - Reset form when hidden
+  $('#editIpModal').on('hidden.bs.modal', function() {
+    $('#editIpForm')[0].reset();
+    $('#editIpTags, #editIpSystems, #editIpContacts').val(null).trigger('change');
+  });
+
+  // Edit IP Form submission
+  $('#editIpForm').on('submit', function(e) {
+    console.log('Edit IP Form submitting...');
+    
+    // Get IP ID from form action or data attribute
+    const currentAction = $(this).attr('action');
+    const ipId = currentAction.split('/').pop();
+    
+    // Set the correct form action URL with method indicator
+    const correctAction = `/network/ip-address/${ipId}?_method=PUT`;
+    $(this).attr('action', correctAction);
+    
+    console.log('Form action set to:', correctAction);
+    console.log('Form method:', $(this).attr('method'));
+    console.log('Method override in URL: ?_method=PUT');
+    console.log('Note: Browser will show POST, but server will receive PUT due to method override');
+
+    // Allow normal form submission - backend handles redirect
+    const submitBtn = $(this).find('button[type="submit"]');
+    submitBtn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Updating...');
+  });
+
+  // Filter IP Modal - Initialize Select2
+  $('#filterIpTags').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select tag(s)',
+            allowClear: true,
+            width: '100%',
+    dropdownParent: $('#filterIpModal'),
+            ajax: {
+              url: '/organize/api/tag',
+              dataType: 'json',
+              delay: 250,
+      data: function(params) {
+        return { search: params.term };
+      },
+      processResults: function(data) {
+        return { results: data };
+      },
+              cache: true
+            }
+          });
+
+  $('#filterIpSystems').select2({
+            theme: 'bootstrap-5',
+    placeholder: 'Select system(s)',
+            allowClear: true,
+            width: '100%',
+    dropdownParent: $('#filterIpModal'),
+            ajax: {
+      url: '/system/api/system',
+              dataType: 'json',
+              delay: 250,
+      data: function(params) {
+        return { search: params.term };
+      },
+      processResults: function(data) {
+        return { results: data };
+      },
+              cache: true
+            }
+          });
+
+  $('#filterIpContacts').select2({
+            theme: 'bootstrap-5',
+    placeholder: 'Select contact(s)',
+            allowClear: true,
+            width: '100%',
+    dropdownParent: $('#filterIpModal'),
+            ajax: {
+              url: '/organize/api/contact',
+              dataType: 'json',
+              delay: 250,
+      data: function(params) {
+        return { search: params.term };
+      },
+      processResults: function(data) {
+        return { results: data };
+      },
+              cache: true
+            }
+          });
+
+  // Filter IP Modal - Load existing filter values when opened
+  $('#filterIpModal').on('show.bs.modal', function() {
+    console.log('Filter IP Modal opened');
+    
+    // Load existing filter values
+    setTimeout(() => {
+      loadFilterExistingValues();
+    }, 100);
+  });
+
+  // Filter IP Modal - Reset form when hidden
+  $('#filterIpModal').on('hidden.bs.modal', function() {
+    console.log('Filter IP Modal hidden, resetting form');
+    $('#filterIpForm')[0].reset();
+    $('#filterIpTags, #filterIpSystems').val(null).trigger('change');
+  });
+
+  // Clear All Filters button
+  $('#clearFilterBtnIp').on('click', function() {
     // Clear all select2 values
-    $('#filterTags').val(null).trigger('change');
-    $('#filterIp').val(null).trigger('change');
-    $('#filterManager').val(null).trigger('change');
-    $('#filterSystems').val(null).trigger('change');
-    $('#filterServices').val(null).trigger('change');
-    $('#filterOs').val(null).trigger('change');
-    $('#filterStatus').val(null).trigger('change');
-    $('#filterLocation').val(null).trigger('change');
-    $('#filterType').val(null).trigger('change');
+    $('#filterIpTags').val(null).trigger('change');
+    $('#filterIpSystems').val(null).trigger('change');
+    $('#filterIpStatus').val('');
+    
     // Close modal
-    $filterModal.modal('hide');
+    $('#filterIpModal').modal('hide');
+    
     // Redirect to clean URL but preserve pageSize and search
-    const currentPageSize = $('input[name="pageSize"]').val() || '10';
+    const currentPageSize = $('select[name="pageSize"]').val() || '10';
     const currentSearch = $('input[name="search"]').val() || '';
     let cleanUrl = '/server/server/list';
     const params = [];
@@ -679,381 +715,559 @@ $(function() {
     window.location.href = cleanUrl;
   });
 });
-</script>
-<style>
-  .select2-container--bootstrap-5 .select2-dropdown {
-    z-index: 2000 !important;
-  }
-</style>
-<% var filterLocation = typeof filterLocation !== 'undefined' ? filterLocation : '';
-   var filterType = typeof filterType !== 'undefined' ? filterType : '';
-%>
-<script>
-  // Ghi log dữ liệu services ra console khi modal chi tiết server được mở
-  document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.modal[id^="serverDetailModal-"]').forEach(function(modal) {
-      modal.addEventListener('show.bs.modal', function() {
-        try {
-          // Lấy id server từ id modal
-          var serverId = this.id.replace('serverDetailModal-', '');
-          // Tìm phần tử <pre> chứa JSON.stringify(server.services) nếu có (hoặc lấy từ thuộc tính data nếu bạn muốn tối ưu hơn)
-          var pre = this.querySelector('pre[data-services]');
-          if (pre) {
-            var services = JSON.parse(pre.getAttribute('data-services'));
-          }
-        } catch(e) {}
-      });
-    });
-  });
-</script>
 
-<!-- Import Server Modal -->
-<div class="modal fade" id="importServerModal" tabindex="-1" aria-labelledby="importServerModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="importServerModalLabel">Import Server</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="importServerForm" enctype="multipart/form-data">
-          <div class="mb-3">
-            <label for="serverFile" class="form-label">Select File to Import</label>
-            <input type="file" class="form-control" id="serverFile" name="file" accept=".csv,.xlsx,.xls" required>
-            <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
-          </div>
-        </form>
-
-        <div id="importProgress" class="mb-3" style="display: none;">
-          <div class="progress">
-            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
-          </div>
-          <div class="text-center mt-2">
-            <span id="importStatus">Processing...</span>
-          </div>
-        </div>
-
-        <div id="importResults" style="display: none;">
-          <div class="alert" id="importAlert">
-            <div id="importMessage"></div>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <div class="alert alert-info mb-3 w-100">
-          <i class="bi bi-info-circle"></i>
-          <strong>Instructions:</strong>
-          <ol class="mb-0 mt-2">
-            <li>Download the template file using the "Download Template" button above</li>
-            <li>Fill in your server data following the template format</li>
-            <li>Upload the file to validate before importing</li>
-            <li>Only import if all validations pass</li>
-          </ol>
-        </div>
-        <div class="d-flex gap-2">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="button" class="btn btn-warning" id="validateServerBtn" disabled>
-            <i class="bi bi-check-circle"></i> Validate File
-          </button>
-          <button type="button" class="btn btn-success" id="importServerBtn" disabled style="display: none;">
-            <i class="bi bi-upload"></i> Import Server
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<script>
-$(document).ready(function() {
-  const $importModal = $('#importServerModal');
-  const $fileInput = $('#serverFile');
-  const $validateBtn = $('#validateServerBtn');
-  const $importBtn = $('#importServerBtn');
-  const $progress = $('#importProgress');
-  const $results = $('#importResults');
-  const $alert = $('#importAlert');
-  const $message = $('#importMessage');
-  let selectedFile = null;
-
-  // Reset modal when shown
-  $importModal.on('show.bs.modal', function() {
-    resetImportForm();
-  });
+function loadFilterExistingValues() {
+  console.log('Loading existing filter values...');
   
-  // Also reset when modal is shown
-  $importModal.on('shown.bs.modal', function() {
-    resetImportForm();
-  });
-
-  // Reset modal when hidden
-  $importModal.on('hidden.bs.modal', function() {
-    resetImportForm();
-  });
-
-  function resetImportForm() {
-    // Clear file input completely
-    $fileInput.val('');
-    $fileInput[0].value = '';
-    selectedFile = null;
-    $validateBtn.prop('disabled', true);
-    $importBtn.prop('disabled', true).hide();
-    $progress.hide();
-    $results.hide();
-    $alert.removeClass('alert-success alert-danger alert-warning');
+  // Get filter data from hidden div
+  const filterDataEl = document.getElementById('filter-server-data');
+  if (!filterDataEl) {
+    console.log('Filter data element not found');
+    return;
+  }
+  
+  try {
+    const filterTags = JSON.parse(filterDataEl.dataset.tags || '[]');
+    const filterSystems = JSON.parse(filterDataEl.dataset.systems || '[]');
     
-    // Reset form completely
-    $('#importServerForm')[0].reset();
+    console.log('Filter data:', { filterTags, filterSystems });
+    
+    // Clear existing options first to avoid duplicates
+    $('#filterIpTags').find('option').remove();
+    $('#filterIpSystems').find('option').remove();
+    
+    // Load tags
+    if (filterTags && filterTags.length > 0) {
+      filterTags.forEach(tag => {
+        const option = new Option(tag.name, tag.id, true, true);
+        $('#filterIpTags').append(option);
+      });
+      $('#filterIpTags').trigger('change');
+    }
+    
+    // Load systems
+    if (filterSystems && filterSystems.length > 0) {
+      filterSystems.forEach(system => {
+        const option = new Option(system.name, system.id, true, true);
+        $('#filterIpSystems').append(option);
+      });
+      $('#filterIpSystems').trigger('change');
+    }
+    
+    
+  } catch (e) {
+    console.error('Error loading filter values:', e);
+  }
+}
+
+function loadEditExistingValues(tags, systems, contacts) {
+  console.log('Loading existing values:', { tags, systems, contacts });
+
+  // Load existing tags
+  if (tags && tags.length > 0) {
+    try {
+      const tagArray = typeof tags === 'string' ? JSON.parse(tags) : tags;
+      console.log('Parsed tags:', tagArray);
+      
+      // For Select2, we need to create option elements first
+      const tagOptions = tagArray.map(tag => {
+        const id = typeof tag === 'object' ? tag.id : tag;
+        const text = typeof tag === 'object' ? (tag.name || tag.text) : tag;
+        return new Option(text, id, true, true);
+      });
+      
+      $('#editIpTags').append(tagOptions).trigger('change');
+      console.log('Tags loaded successfully');
+    } catch (e) {
+      console.log('Error parsing tags:', e);
+    }
   }
 
-  // Enable validate button when file is selected
-  $fileInput.on('change', function() {
-    const file = this.files[0];
-    if (file) {
-      selectedFile = file;
-      $validateBtn.prop('disabled', false);
-      $importBtn.prop('disabled', true).hide();
+  // Load existing systems
+  if (systems && systems.length > 0) {
+    try {
+      const systemArray = typeof systems === 'string' ? JSON.parse(systems) : systems;
+      console.log('Parsed systems:', systemArray);
+      
+      const systemOptions = systemArray.map(system => {
+        const id = typeof system === 'object' ? system.id : system;
+        const text = typeof system === 'object' ? (system.name || system.text) : system;
+        return new Option(text, id, true, true);
+      });
+      
+      $('#editIpSystems').append(systemOptions).trigger('change');
+      console.log('Systems loaded successfully');
+    } catch (e) {
+      console.log('Error parsing systems:', e);
+    }
+  }
+
+  // Load existing contacts
+  if (contacts && contacts.length > 0) {
+    try {
+      const contactArray = typeof contacts === 'string' ? JSON.parse(contacts) : contacts;
+      console.log('Parsed contacts:', contactArray);
+      
+      const contactOptions = contactArray.map(contact => {
+        const id = typeof contact === 'object' ? contact.id : contact;
+        const text = typeof contact === 'object' ? (contact.name || contact.email || contact.text) : contact;
+        return new Option(text, id, true, true);
+      });
+      
+      $('#editIpContacts').append(contactOptions).trigger('change');
+      console.log('Contacts loaded successfully');
+    } catch (e) {
+      console.log('Error parsing contacts:', e);
+    }
+  }
+}
+
+
+
+        
+function confirmDeleteServer(form, server) {
+  if (confirm('Are you sure you want to delete the server: ' + server + '?')) {
+    form._deleting = true;
+    return true;
+  }
+  return false;
+}
+
+// Function removed - no longer finding subnet information for IP detail
+
+// Function to check if an IP is in a subnet (CIDR notation)
+function isIPInSubnet(ipAddress, subnetCIDR) {
+  try {
+    const [subnetIP, prefixLength] = subnetCIDR.split('/');
+    const prefix = parseInt(prefixLength);
+    
+    console.log('Checking IP:', ipAddress, 'in subnet:', subnetCIDR);
+    console.log('Subnet IP:', subnetIP, 'Prefix:', prefix);
+    
+    // Convert IPs to numbers
+    const ipParts = ipAddress.split('.');
+    const subnetParts = subnetIP.split('.');
+    
+    if (ipParts.length !== 4 || subnetParts.length !== 4) {
+      console.log('Invalid IP format');
+      return false;
+    }
+    
+    const ip = (parseInt(ipParts[0]) << 24) + (parseInt(ipParts[1]) << 16) + (parseInt(ipParts[2]) << 8) + parseInt(ipParts[3]);
+    const subnet = (parseInt(subnetParts[0]) << 24) + (parseInt(subnetParts[1]) << 16) + (parseInt(subnetParts[2]) << 8) + parseInt(subnetParts[3]);
+    
+    const mask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
+    
+    const result = (ip & mask) === (subnet & mask);
+    console.log('IP number:', ip, 'Subnet number:', subnet, 'Mask:', mask, 'Result:', result);
+    
+    return result;
+  } catch (error) {
+    console.error('Error in isIPInSubnet:', error);
+    return false;
+  }
+}
+
+// Function to load subnet information for an IP address
+function loadSubnetInfoForIP(ipAddress, contentElement) {
+  console.log('Loading subnet info for IP:', ipAddress);
+  
+  // Make AJAX call to find subnet containing this IP
+  $.ajax({
+    url: '/network/api/subnet-for-ip/' + encodeURIComponent(ipAddress),
+    method: 'GET',
+    dataType: 'json'
+  }).done(function(response) {
+    console.log('Subnet response received:', response);
+    
+    if (response.found && response.subnet) {
+      console.log('Found matching subnet:', response.subnet);
+      updateSubnetInfoInModal(contentElement, response.subnet);
     } else {
-      selectedFile = null;
-      $validateBtn.prop('disabled', true);
-      $importBtn.prop('disabled', true).hide();
+      console.log('No matching subnet found');
+      updateSubnetInfoInModal(contentElement, null);
     }
-    $results.hide();
+  }).fail(function(xhr, status, error) {
+    console.error('Error loading subnet information:', status, error);
+    console.error('Response:', xhr.responseText);
+    
+    // Fallback: try with sample data for testing
+    console.log('Trying with sample subnet data...');
+    const sampleSubnets = [
+      { address: '10.1.0.0/16', zone: 'BACKBONE', environment: 'DEV' },
+      { address: '192.168.1.0/24', zone: 'OFFICE', environment: 'PROD' },
+      { address: '172.16.0.0/12', zone: 'DMZ', environment: 'UAT' }
+    ];
+    
+    let matchingSubnet = null;
+    for (let subnet of sampleSubnets) {
+      if (isIPInSubnet(ipAddress, subnet.address)) {
+        console.log('Found matching sample subnet:', subnet);
+        matchingSubnet = subnet;
+        break;
+      }
+    }
+    
+    updateSubnetInfoInModal(contentElement, matchingSubnet);
   });
+}
 
-  // Validate file
-  $validateBtn.on('click', function() {
-    if (!selectedFile) {
-      alert('Please select a file first');
-      return;
+// Function to update subnet information in the modal (as plain text, no badges)
+function updateSubnetInfoInModal(contentElement, subnetInfo) {
+  const currentHTML = contentElement.innerHTML;
+  
+  if (subnetInfo) {
+    // Zone as plain text
+    let zoneHTML = '<div class="mb-2"><strong>Zone:</strong> ';
+    if (subnetInfo.zone && subnetInfo.zone.trim()) {
+      zoneHTML += String(subnetInfo.zone).trim();
+    } else {
+      zoneHTML += '<span class="text-muted">N/A</span>';
     }
+    zoneHTML += '</div>';
+    
+    // Environment as plain text
+    let environmentHTML = '<div class="mb-2"><strong>Environment:</strong> ';
+    if (subnetInfo.environment && subnetInfo.environment.trim()) {
+      environmentHTML += String(subnetInfo.environment).trim();
+    } else {
+      environmentHTML += '<span class="text-muted">N/A</span>';
+    }
+    environmentHTML += '</div>';
+    
+    // Subnet as plain text
+    let subnetHTML = '<div class="mb-2"><strong>Subnet:</strong> ' + String(subnetInfo.address).trim() + '</div>';
+    
+    // Replace loading states with actual data
+    let updatedHTML = currentHTML.replace(
+      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">Loading...</span></div>',
+      zoneHTML
+    );
+    updatedHTML = updatedHTML.replace(
+      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">Loading...</span></div>',
+      environmentHTML
+    );
+    updatedHTML = updatedHTML.replace(
+      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">Loading...</span></div>',
+      subnetHTML
+    );
+    
+    contentElement.innerHTML = updatedHTML;
+  } else {
+    // No matching subnet found
+    let updatedHTML = currentHTML.replace(
+      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">Loading...</span></div>',
+      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">N/A</span></div>'
+    );
+    updatedHTML = updatedHTML.replace(
+      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">Loading...</span></div>',
+      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">N/A</span></div>'
+    );
+    updatedHTML = updatedHTML.replace(
+      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">Loading...</span></div>',
+      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">N/A</span></div>'
+    );
+    
+    contentElement.innerHTML = updatedHTML;
+  }
+}
 
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-
-    $progress.show();
-    $results.hide();
-    $validateBtn.prop('disabled', true);
-
-    $.ajax({
-      url: '/server/server/validate-import',
-      type: 'POST',
-      data: formData,
-      processData: false,
-      contentType: false,
-      xhr: function() {
-        const xhr = new window.XMLHttpRequest();
-        xhr.responseType = 'blob';
-        return xhr;
-      },
-      success: function(data, status, xhr) {
-        $progress.hide();
-        $validateBtn.prop('disabled', false);
-
-        // Check if response is Excel file
-        const contentType = xhr.getResponseHeader('Content-Type');
-        if (contentType && contentType.includes('spreadsheetml')) {
-          // Download validation results
-          const blob = new Blob([data], { type: contentType });
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          
-          // Extract filename from Content-Disposition header
-          const contentDisposition = xhr.getResponseHeader('Content-Disposition');
-          let filename = 'server_validation_results.xlsx';
-          if (contentDisposition) {
-            const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-            if (filenameMatch) {
-              filename = filenameMatch[1];
-            }
-          }
-          
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          window.URL.revokeObjectURL(url);
-
-          // Check validation summary
-          const validationSummary = xhr.getResponseHeader('X-Validation-Summary');
-          if (validationSummary) {
-            try {
-              const summary = JSON.parse(validationSummary);
-              if (summary.allPassed) {
-                $importBtn.prop('disabled', false).show();
-                $validateBtn.prop('disabled', true);
-                $message.html(`
-                  <i class="bi bi-check-circle"></i>
-                  <strong>Validation Successful!</strong><br>
-                  All ${summary.totalCount} records passed validation. You can now proceed with import.
-                `);
-              } else {
-                $importBtn.prop('disabled', true).hide();
-                $validateBtn.prop('disabled', false);
-                $message.html(`
-                  <i class="bi bi-exclamation-triangle"></i>
-                  <strong>Validation Failed!</strong><br>
-                  ${summary.failCount} out of ${summary.totalCount} records failed validation. 
-                  Please check the downloaded validation results and fix the issues before importing.
-                `);
+function showServerDetail(serverId) {
+  const buttons = document.querySelectorAll('button[data-server]');
+  let targetButton = null;
+  
+  for (let button of buttons) {
+    const data = button.getAttribute('data-server');
+    if (data) {
+      try {
+        const server = JSON.parse(data);
+        if (server.id == serverId) {
+          targetButton = button;
+                break;
               }
-              $results.show();
-            } catch (e) {
-              console.error('Error parsing validation summary:', e);
-              // Fallback if header parsing fails
-              $importBtn.prop('disabled', false).show();
-              $validateBtn.prop('disabled', true);
-              $message.html(`
-                <i class="bi bi-info-circle"></i>
-                <strong>File validated!</strong><br>
-                Please check the downloaded file - only import if all validations are PASS.
-              `);
-              $results.show();
-            }
-          } else {
-            // Fallback if no validation summary header
-            $importBtn.prop('disabled', false).show();
-            $validateBtn.prop('disabled', true);
-            $message.html(`
-              <i class="bi bi-info-circle"></i>
-              <strong>File validated!</strong><br>
-              Please check the downloaded file - only import if all validations are PASS.
-            `);
-            $results.show();
-          }
-        } else {
-          // Handle JSON error response
-          const reader = new FileReader();
-          reader.onload = function() {
-            try {
-              const errorData = JSON.parse(reader.result);
-              $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
-              $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> ${errorData.error || 'Unknown error occurred'}`);
-              $results.show();
-            } catch (e) {
-              $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
-              $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> Invalid response format`);
-              $results.show();
-            }
-          };
-          reader.readAsText(data);
-        }
-      },
-      error: function(xhr, status, error) {
-        $progress.hide();
-        $validateBtn.prop('disabled', false);
-        $importBtn.prop('disabled', true).hide();
-        $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
-        $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> ${error || 'Request failed'}`);
-        $results.show();
+      } catch (e) {
+        console.error('Error parsing server data:', e);
       }
+    }
+  }
+  
+  if (!targetButton) {
+    alert('Server data not found');
+    return;
+  }
+  
+  const serverData = targetButton.getAttribute('data-server');
+  let server;
+  try {
+    server = JSON.parse(serverData);
+  } catch (e) {
+    alert('Error parsing server data: ' + e.message);
+    return;
+  }
+  
+  const modalElement = document.getElementById('serverDetailModal');
+  const modal = new bootstrap.Modal(modalElement);
+  const content = document.getElementById('serverDetailContent');
+  
+  let html = '<div class="card"><div class="card-body">';
+  html += '<div class="mb-2"><strong>Server Name:</strong> ' + String(server.name || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>Description:</strong> ' + String(server.description || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>IP Address:</strong> ' + String(server.ip_address || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>Type:</strong> ' + String(server.type || 'N/A').trim() + '</div>';
+  
+  if (server.tags && server.tags.length > 0) {
+    html += '<div class="mb-2"><strong>Tags:</strong><br>';
+    server.tags.forEach(function(tag) {
+      const tagValue = (typeof tag === 'string' ? tag : tag.name);
+      html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
     });
-  });
+    html += '</div>';
+  }
+  
+  if (server.systems && server.systems.length > 0) {
+    html += '<div class="mb-2"><strong>Systems:</strong><ul class="mb-0">';
+    server.systems.forEach(function(system) {
+      const systemValue = (typeof system === 'string' ? system : system.name);
+      const searchUrl = '/system/system?search=' + encodeURIComponent(systemValue) + '&pageSize=2';
+      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + 
+              String(systemValue).trim() + '</a></li>';
+    });
+    html += '</ul></div>';
+  }
+  
+  html += '</div></div>';
+  content.innerHTML = html;
+  modal.show();
+}
 
-  // Import servers
-  $importBtn.on('click', function() {
-    if (!selectedFile) {
-      alert('Please select a file first');
-      return;
-    }
+// Import IP functionality
+let selectedFile = null;
 
-    if (!confirm('Are you sure you want to import the servers? This action cannot be undone.')) {
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-
-    $progress.show();
-    $results.hide();
-    $importBtn.prop('disabled', true);
-
-    $.ajax({
-      url: '/server/server/import',
-      type: 'POST',
-      data: formData,
-      processData: false,
-      contentType: false,
-      xhr: function() {
-        const xhr = new window.XMLHttpRequest();
-        xhr.responseType = 'blob';
-        return xhr;
-      },
-      success: function(data, status, xhr) {
-        $progress.hide();
-        $importBtn.prop('disabled', false);
-
-        // Check if response is Excel file
-        const contentType = xhr.getResponseHeader('Content-Type');
-        if (contentType && contentType.includes('spreadsheetml')) {
-          // Download import results
-          const blob = new Blob([data], { type: contentType });
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          
-          // Extract filename from Content-Disposition header
-          const contentDisposition = xhr.getResponseHeader('Content-Disposition');
-          let filename = 'server_import_results.xlsx';
-          if (contentDisposition) {
-            const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-            if (filenameMatch) {
-              filename = filenameMatch[1];
-            }
-          }
-          
-          a.download = filename;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          window.URL.revokeObjectURL(url);
-
-          $alert.removeClass('alert-danger alert-warning').addClass('alert-success');
-          $message.html(`
-            <i class="bi bi-check-circle"></i>
-            <strong>Import Completed!</strong><br>
-            Server import has been completed. Please check the downloaded results file for details.
-            <br><br>
-            <button type="button" class="btn btn-sm btn-primary" onclick="location.reload()">
-              <i class="bi bi-arrow-clockwise"></i> Refresh Page
-            </button>
-          `);
-          $results.show();
-          
-          // Reset form after successful import
-          setTimeout(() => {
-            resetImportForm();
-          }, 2000);
+// Handle file selection
+$(document).on('change', '#ipImportFile', function() {
+  selectedFile = this.files[0];
+  if (selectedFile) {
+    console.log('File selected:', selectedFile.name);
+    $('#validateIpBtn').prop('disabled', false);
         } else {
-          // Handle JSON error response
-          const reader = new FileReader();
-          reader.onload = function() {
-            try {
-              const errorData = JSON.parse(reader.result);
-              $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
-              $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> ${errorData.error || 'Unknown error occurred'}`);
-              $results.show();
-            } catch (e) {
-              $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
-              $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> Invalid response format`);
-              $results.show();
-            }
-          };
-          reader.readAsText(data);
+    $('#validateIpBtn').prop('disabled', true);
+    $('#importIpBtn').hide();
+  }
+});
+
+// Handle validate button click
+$(document).on('click', '#validateIpBtn', function() {
+  if (!selectedFile) {
+    alert('Please select a file first');
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+  
+  // Show progress
+  $('#ipImportProgress').show();
+  $('#ipImportResults').text('Validating file...');
+  $('.progress-bar').css('width', '30%');
+  
+  $.ajax({
+    url: '/network/ip-address/validate-import',
+    type: 'POST',
+    data: formData,
+    processData: false,
+    contentType: false,
+    xhr: function() {
+      const xhr = new window.XMLHttpRequest();
+      xhr.responseType = 'blob'; // Important for file download
+      return xhr;
+    },
+    success: function(data, status, xhr) {
+      $('.progress-bar').css('width', '100%');
+      $('#ipImportResults').text('Validation complete! Downloading results...');
+      
+      // Handle file download
+      const contentType = xhr.getResponseHeader('Content-Type');
+      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+      
+      if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+        // Create blob and download file
+        const blob = new Blob([data], { type: contentType });
+        const url = window.URL.createObjectURL(blob);
+        
+        // Extract filename from Content-Disposition header
+        let filename = 'validation_results.xlsx';
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+          if (filenameMatch) {
+            filename = filenameMatch[1];
+          }
         }
-      },
-      error: function(xhr, status, error) {
-        $progress.hide();
-        $importBtn.prop('disabled', false);
-        $validateBtn.prop('disabled', false);
-        $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
-        $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> ${error || 'Request failed'}`);
-        $results.show();
+        
+        // Create download link
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        // Clean up
+        window.URL.revokeObjectURL(url);
       }
-    });
+      
+      // Check validation results from header
+      const validationSummary = xhr.getResponseHeader('X-Validation-Summary');
+      if (validationSummary) {
+        try {
+          const summary = JSON.parse(validationSummary);
+          const resultsDiv = $('#ipImportResults');
+          resultsDiv.removeClass('alert-danger').addClass('alert-success')
+            .html(`<strong>Validation Complete!</strong><br>
+                   <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
+                   <small>Validation file downloaded. Review results before importing.</small>`);
+          resultsDiv.show();
+          
+          // Show import button if validation passed
+          if (summary.allPassed) {
+            $('#importIpBtn').show();
+          }
+        } catch (e) {
+          // Fallback if header parsing fails
+          const resultsDiv = $('#ipImportResults');
+          resultsDiv.removeClass('alert-danger').addClass('alert-success')
+            .html(`<strong>Validation Complete!</strong><br>
+                   <small>Validation file downloaded. Review results before importing.</small>`);
+          resultsDiv.show();
+          $('#importIpBtn').show();
+        }
+      }
+    },
+    error: function(xhr, status, error) {
+      console.error('Validation error:', xhr.responseText);
+      console.error('Status:', xhr.status);
+      console.error('Error:', error);
+      
+      $('.progress-bar').css('width', '100%').text('Validation Failed');
+      $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
+        .html('<strong>Validation Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
+        .show();
+      },
+      complete: function() {
+      $('#validateIpBtn').prop('disabled', false);
+      setTimeout(() => {
+        $('#ipImportProgress').hide();
+      }, 2000);
+    }
   });
 });
-</script>
 
-<!-- Responsive Tables CSS -->
+// Handle import button click
+$(document).on('click', '#importIpBtn', function() {
+  if (!selectedFile) {
+    alert('Please select a file first');
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+  
+  // Show progress
+  $('#ipImportProgress').show();
+  $('#ipImportResults').text('Importing IP addresses...');
+  $('.progress-bar').css('width', '30%').text('Importing...');
+  $('#importIpBtn').prop('disabled', true);
+  
+  $.ajax({
+    url: '/network/ip-address/import',
+    type: 'POST',
+    data: formData,
+    processData: false,
+    contentType: false,
+    xhr: function() {
+      const xhr = new window.XMLHttpRequest();
+      xhr.responseType = 'blob'; // Important for file download
+      return xhr;
+    },
+    success: function(data, status, xhr) {
+      $('#ipImportProgress .progress-bar').css('width', '100%').text('Import Complete');
+      
+      // Handle file download
+      const contentType = xhr.getResponseHeader('Content-Type');
+      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+      
+      if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+        // Create blob and download file
+        const blob = new Blob([data], { type: contentType });
+        const url = window.URL.createObjectURL(blob);
+        
+        // Extract filename from Content-Disposition header
+        let filename = 'import_results.xlsx';
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+          if (filenameMatch) {
+            filename = filenameMatch[1];
+          }
+        }
+        
+        // Create download link
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        // Clean up
+        window.URL.revokeObjectURL(url);
+      }
+      
+      // Show results
+      const resultsDiv = $('#ipImportResults');
+      resultsDiv.removeClass('alert-danger').addClass('alert-success')
+        .html(`<strong>Import Completed!</strong><br>
+               <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
+      resultsDiv.show();
+      
+      // Hide import button
+      $('#importIpBtn').hide();
+      
+      // Refresh page after 2 seconds
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    },
+    error: function(xhr, status, error) {
+      console.error('Import error:', xhr.responseText);
+      console.error('Status:', xhr.status);
+      console.error('Error:', error);
+      
+      $('#ipImportProgress .progress-bar').css('width', '100%').text('Import Failed');
+      $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
+        .html('<strong>Import Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
+        .show();
+    },
+    complete: function() {
+      $('#importIpBtn').prop('disabled', false);
+      setTimeout(() => {
+        $('#ipImportProgress').hide();
+      }, 2000);
+    }
+  });
+});
+
+// Reset import modal when closed
+$('#importIpModal').on('hidden.bs.modal', function() {
+  // Reset form
+  $('#importIpForm')[0].reset();
+  selectedFile = null;
+  
+  // Reset UI elements
+  $('#validateIpBtn').prop('disabled', true);
+  $('#importIpBtn').hide();
+  $('#ipImportProgress').hide();
+  $('#ipImportResults').hide();
+  
+  // Reset progress bar
+  $('.progress-bar').css('width', '0%').text('');
+});
+</script>

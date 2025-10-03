@@ -1,7 +1,97 @@
-<!-- Load jQuery first -->
-<script src="/vendor/jquery-3.6.0.min.js"></script>
+<!--
+==========================================
+SUBNET LIST PAGE - EJS TEMPLATE
+==========================================
+This template renders the subnet list page with search, filter, pagination,
+and CRUD operations for subnet management.
 
-<!-- Content Header -->
+Structure:
+1. Helper Functions (EJS)
+2. Page Header & Breadcrumb
+3. Search & Filter Section
+4. Action Buttons
+5. Data Table
+6. Pagination
+7. Modals (Add, Edit, Detail, Filter, Import)
+8. Styles & JavaScript
+==========================================
+-->
+
+<%
+// ==========================================
+// HELPER FUNCTIONS
+// ==========================================
+
+/**
+ * Build pagination URL with all query parameters
+ * @param {number} targetPage - Target page number
+ * @returns {string} - Complete URL with query parameters
+ */
+function buildPaginationUrl(targetPage) {
+  const params = new URLSearchParams();
+  
+  // Core parameters
+  params.set('page', targetPage);
+  if (typeof search !== 'undefined' && search) params.set('search', search);
+  if (typeof pageSize !== 'undefined' && pageSize) params.set('pageSize', pageSize);
+  
+  // Filter parameters
+  if (typeof filterStatus !== 'undefined' && filterStatus) params.set('status', filterStatus);
+  
+  if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
+    filterTags.forEach(tag => params.append('tags[]', tag.id));
+  }
+  
+  if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
+    filterSystems.forEach(system => params.append('systems[]', system.id));
+  }
+  
+  if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) {
+    filterContacts.forEach(contact => params.append('contacts[]', contact.id));
+  }
+  
+  if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses && filterIpAddresses.length > 0) {
+    filterIpAddresses.forEach(ip => params.append('ip_id[]', ip.id));
+  }
+  
+  return '?' + params.toString();
+}
+
+/**
+ * Build export URL with all query parameters
+ * @returns {string} - Complete export URL with query parameters
+ */
+function buildExportUrl() {
+  const params = new URLSearchParams();
+  
+  // Core parameters
+  if (typeof search !== 'undefined' && search) params.set('search', search);
+  if (typeof filterStatus !== 'undefined' && filterStatus) params.set('status', filterStatus);
+  
+  // Filter parameters
+  if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
+    filterTags.forEach(tag => params.append('tags[]', tag.id));
+  }
+  
+  if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
+    filterSystems.forEach(system => params.append('systems[]', system.id));
+  }
+  
+  if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) {
+    filterContacts.forEach(contact => params.append('contacts[]', contact.id));
+  }
+  
+  if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses && filterIpAddresses.length > 0) {
+    filterIpAddresses.forEach(ip => params.append('ip_id[]', ip.id));
+  }
+  
+  return '/network/subnet-address/export' + (params.toString() ? '?' + params.toString() : '');
+}
+%>
+
+<!-- ==========================================
+     PAGE HEADER & BREADCRUMB
+     ========================================== -->
 <div class="app-content-header">
   <div class="container-fluid">
     <div class="row">
@@ -14,1195 +104,786 @@
     </div>
   </div>
 </div>
-
-<!-- Main content -->
+  
+<!-- ==========================================
+     MAIN CONTENT AREA
+     ========================================== -->
 <div class="app-content">
   <div class="container-fluid">
-      <div class="modal fade" id="addSubnetModal" tabindex="-1" aria-labelledby="addSubnetModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="addSubnetModalLabel">Add Subnet</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    
+    <!-- ==========================================
+         SEARCH & FILTER SECTION
+         ========================================== -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end align-items-center gap-2">
+          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/network/subnet-address">
+            <!-- Hidden inputs to preserve filter values -->
+            <input type="hidden" name="page" value="1">
+            
+            <!-- Filter Status -->
+            <% if (typeof filterStatus !== 'undefined' && filterStatus) { %>
+              <input type="hidden" name="status" value="<%= filterStatus %>">
+            <% } %>
+            
+            <!-- Filter Tags -->
+            <% if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) { %>
+              <% filterTags.forEach(function(tag) { %>
+                <input type="hidden" name="tags[]" value="<%= tag.id %>">
+              <% }); %>
+            <% } %>
+            
+            <!-- Filter Systems -->
+            <% if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) { %>
+              <% filterSystems.forEach(function(system) { %>
+                <input type="hidden" name="systems[]" value="<%= system.id %>">
+              <% }); %>
+            <% } %>
+            
+            <!-- Filter Contacts -->
+            <% if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) { %>
+              <% filterContacts.forEach(function(contact) { %>
+                <input type="hidden" name="contacts[]" value="<%= contact.id %>">
+              <% }); %>
+            <% } %>
+            
+            <!-- Filter IP Addresses -->
+            <% if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses && filterIpAddresses.length > 0) { %>
+              <% filterIpAddresses.forEach(function(ip) { %>
+                <input type="hidden" name="ip_id[]" value="<%= ip.id %>">
+              <% }); %>
+            <% } %>
+            
+            <!-- Search Input -->
+            <div class="input-group input-group-sm" style="width: 250px;">
+              <input class="form-control form-control-sm" 
+                     type="search" 
+                     name="search" 
+                     placeholder="Search Subnet or Description..." 
+                     aria-label="Search" 
+                     value="<%= typeof search !== 'undefined' ? search : '' %>">
+              <button class="btn btn-outline-secondary btn-sm" type="submit">
+                <i class="bi bi-search"></i>
+              </button>
             </div>
-            <div class="modal-body">
-              <form id="addSubnetForm" action="/network/subnet-address" method="POST">
-                <div class="mb-3">
-                  <label for="subnetAddress" class="form-label">Subnet Address <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control form-control-sm" id="subnetAddress" name="address" placeholder="Subnet Address (e.g. 192.168.1.0/24)" required>
-                </div>
-                <div class="mb-3">
-                  <label for="subnetDescription" class="form-label">Description</label>
-                  <textarea class="form-control" id="subnetDescription" name="description" placeholder="Description" rows="4"></textarea>
-                </div>
-                <div class="mb-3">
-                  <label for="subnetZone" class="form-label">Zone</label>
-                  <select class="form-control" id="subnetZone" name="zone" data-allow-custom="true"></select>
-                </div>
-                <div class="mb-3">
-                  <label for="subnetEnvironment" class="form-label">Environment</label>
-                  <select class="form-control" id="subnetEnvironment" name="environment" data-allow-custom="true"></select>
-                </div>
-                <div class="mb-3">
-                  <label for="addSubnetTags" class="form-label">Tags</label>
-                  <select id="addSubnetTags" name="tags[]" class="form-control" multiple></select>
-                </div>
-              </form>
+            
+            <!-- Page Size Selector -->
+            <div class="d-flex align-items-center gap-1">
+              <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+              <select class="form-select form-select-sm" 
+                      name="pageSize" 
+                      onchange="this.form.submit()" 
+                      style="width: 80px;">
+                <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
+                  <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>>
+                    <%= size %>
+                  </option>
+                <% }) %>
+              </select>
             </div>
-            <div class="modal-footer d-flex justify-content-end">
-              <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Close</button>
-              <button type="submit" class="btn btn-primary btn-sm" form="addSubnetForm">Add Subnet</button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <form action="/network/subnet-address/export" method="GET" style="display:inline;">
-        <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-        <% if (typeof filterTags !== 'undefined' && filterTags.length) { filterTags.forEach(function(tag) { %>
-          <input type="hidden" name="tags[]" value="<%= tag %>">
-        <% }) } %>
-        <button type="submit" class="btn btn-warning btn-sm">
-          <i class="bi bi-download"></i> Export
-        </button>
-      </form>
-      <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterSubnetModal">
-        <i class="bi bi-funnel"></i> Filter
-      </button>
-      </div>
-    </div>
-      <!-- Filter Modal -->
-      <div class="modal fade" id="filterSubnetModal" tabindex="-1" aria-labelledby="filterSubnetModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <form id="subnetFilterForm" method="get" action="/network/subnet-address">
-              <!-- Preserve current pageSize and search -->
-              <input type="hidden" name="pageSize" value="<%= typeof pageSize !== 'undefined' ? pageSize : 10 %>">
-              <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-              <div class="modal-header">
-                <h5 class="modal-title" id="filterSubnetModalLabel">Filter Subnet List</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-              </div>
-              <div class="modal-body">
-                <div class="row g-2">
-                  <div class="col-12 mb-2">
-                    <label class="form-label">Tags</label>
-                    <select id="filterSubnetTags" name="tags[]" class="form-control" multiple></select>
-                  </div>
-                  <div class="col-12 mb-2">
-                    <label class="form-label">Zone</label>
-                    <select class="form-control" id="filterSubnetZone" name="zone">
-                      <option value="">All Zones</option>
-                    </select>
-                  </div>
-                  <div class="col-12 mb-2">
-                    <label class="form-label">Environment</label>
-                    <select class="form-control" id="filterSubnetEnvironment" name="environment">
-                      <option value="">All Environments</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div class="modal-footer d-flex justify-content-between">
-                <button type="button" id="clearFilterBtnSubnet" class="btn btn-outline-danger btn-sm">Clear All Filters</button>
-                <div>
-                  <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
-                  <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-      <!-- Filter values for JS (an toàn cho EJS strict) -->
-      <div id="filter-subnet-data"
-        data-tags='<%= JSON.stringify(filterTags || []) %>' style="display:none"></div>
-      
-      <!-- Import Subnet Modal -->
-      <div class="modal fade" id="importSubnetModal" tabindex="-1" aria-labelledby="importSubnetModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="importSubnetModalLabel">Import Subnets</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              <form id="importSubnetForm" enctype="multipart/form-data">
-                <div class="mb-3">
-                  <label for="subnetImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
-                  <input type="file" class="form-control" id="subnetImportFile" name="file" accept=".csv,.xlsx,.xls" required>
-                  <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
-                </div>
-                
-                <div class="mb-3">
-                  <div class="alert alert-info">
-                    <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
-                    <ul class="mb-0">
-                      <li>Download the template first to see the required format</li>
-                      <li>Subnet Address is required and must be in CIDR format (e.g., 192.168.1.0/24)</li>
-                      <li>Description is optional</li>
-                      <li>Zone and Environment are optional</li>
-                      <li>Tags are optional and can be comma-separated if multiple</li>
-                      <li>Validate the file first before importing</li>
-                    </ul>
-                  </div>
-                </div>
-                
-                <!-- Progress bar -->
-                <div id="subnetImportProgress" class="progress mb-3" style="display: none;">
-                  <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-                </div>
-                
-                <!-- Results display -->
-                <div id="subnetImportResults" class="alert" style="display: none;"></div>
-              </form>
-            </div>
-            <div class="modal-footer d-flex gap-2">
-              <button type="button" class="btn btn-primary btn-sm" id="validateSubnetBtn">Validate File</button>
-              <button type="button" class="btn btn-success btn-sm" id="importSubnetBtn" style="display: none;">Import Subnets</button>
-              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-            </div>
-          </div>
-        </div>
+          </form>
       </div>
     </div>
   </div>
-  <div class="row">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title mb-0">Subnet List</h3>
-        </div>
-        <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
-          <table class="table table-hover" id="subnetTable">
-            <thead>
-              <tr>
-                <th>No.</th>
-                <th>Subnet Address</th>
-                <th>Description</th>
-                <th>Zone</th>
-                <th>Environment</th>
-                <th>Tags</th>
-                <th class="text-end">Actions</th>
-              </tr>
-            </thead>
-            <% function renderSubnetTree(tree, level, counter) { %>
-              <% tree.forEach(function(subnet) { %>
-                <tr>
-                  <td><%= counter.value++ %></td>
-                  <td><%= (level > 0 ? '- '.repeat(level) : '') + subnet.address %></td>
-                  </td>
-                  <td>
-                    <% if (subnet.description && subnet.description.trim()) { %>
-                      <span title="<%= subnet.description.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
-                        <%= subnet.description.length > 60 ? subnet.description.substring(0, 60) + '…' : subnet.description %>
-                      </span>
-                    <% } else { %>
-                      <span class="text-muted">-</span>
-                    <% } %>
-                  </td>
-                  <td>
-                    <% if (subnet.zone && subnet.zone.trim()) { %>
-                      <span class="badge bg-info text-white"><%= subnet.zone %></span>
-                    <% } else { %>
-                      <span class="text-muted">-</span>
-                    <% } %>
-                  </td>
-                  <td>
-                    <% if (subnet.environment && subnet.environment.trim()) { %>
-                      <span class="badge bg-success text-white"><%= subnet.environment %></span>
-                    <% } else { %>
-                      <span class="text-muted">-</span>
-                    <% } %>
-                  </td>
-                  <td>
-                    <% if (subnet.tags && subnet.tags.length > 0) { %>
-                      <div style="line-height: 1.4;">
-                        <% subnet.tags.forEach(function(tag, idx) { %>
-                          <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;"><%= tag.name %></span>
-                          <% if ((idx + 1) % 2 === 0 && idx < subnet.tags.length - 1) { %>
-                            <br>
-                          <% } %>
-                        <% }) %>
-                      </div>
-                    <% } else { %>
-                      <span class="text-muted">No tags</span>
-                    <% } %>
-                  </td>
-                  <td class="text-end">
-                    <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#subnetDetailModal-<%= subnet.id %>" data-subnet-detail-btn="<%= subnet.id %>"><i class="bi bi-eye"></i></a>
-                    <% if (hasPermission('subnet.edit')) { %>
-                      <a href="#" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#subnetEditModal-<%= subnet.id %>"><i class="bi bi-pencil"></i></a>
-                    <% } %>
-                    <% if (hasPermission('subnet.delete')) { %>
-                      <form action="/network/subnet-address/<%= subnet.id %>?_method=DELETE" method="POST" style="display:inline">
-                        <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure?')"><i class="bi bi-trash"></i></button>
-                      </form>
-                    <% } %>
-                  </td>
-                </tr>
-                <!-- Subnet Detail Modal -->
-                <div class="modal fade" id="subnetDetailModal-<%= subnet.id %>" tabindex="-1" aria-labelledby="subnetDetailModalLabel-<%= subnet.id %>" aria-hidden="true">
-                  <div class="modal-dialog modal-lg modal-dialog-centered">
-                    <div class="modal-content">
-                      <div class="modal-header">
-                        <h5 class="modal-title" id="subnetDetailModalLabel-<%= subnet.id %>">Subnet Information</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                      </div>
-                      <div class="modal-body">
-                        <dl class="row mb-0">
-                          <dt class="col-sm-3">Subnet ID</dt>
-                          <dd class="col-sm-9 text-monospace" id="subnet-id-<%= subnet.id %>"><%= subnet.id %></dd>
-                          <dt class="col-sm-3">Address</dt>
-                          <dd class="col-sm-9" data-field="address"></dd>
-                          <dt class="col-sm-3">Description</dt>
-                          <dd class="col-sm-9" data-field="description"></dd>
-                          <dt class="col-sm-3">Zone</dt>
-                          <dd class="col-sm-9" data-field="zone"></dd>
-                          <dt class="col-sm-3">Environment</dt>
-                          <dd class="col-sm-9" data-field="environment"></dd>
-                          <dt class="col-sm-3">Tags</dt>
-                          <dd class="col-sm-9">
-                            <% if (subnet.tags && subnet.tags.length > 0) { %>
-                              <div style="line-height: 1.4;">
-                                <% subnet.tags.forEach(function(tag, idx) { %>
-                                  <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;"><%= tag.name %></span>
-                                  <% if ((idx + 1) % 2 === 0 && idx < subnet.tags.length - 1) { %>
-                                    <br>
-                                  <% } %>
-                                <% }) %>
-                              </div>
-                            <% } else { %>
-                              <span class="text-muted">No tags</span>
-                            <% } %>
-                          </dd>
-                          <dt class="col-sm-3">Created At</dt>
-                          <dd class="col-sm-9" data-field="created_at"></dd>
-                          <dt class="col-sm-3">Updated At</dt>
-                          <dd class="col-sm-9" data-field="updated_at"></dd>
-                          <dt class="col-sm-3">Updated By</dt>
-                          <dd class="col-sm-9" data-field="updated_by"></dd>
-                        </dl>
-                        <div class="row mb-2 mt-3">
-                          <div class="col-sm-3">
-                            <label class="form-label fw-bold mb-1" style="font-size:1rem;">Subnet Usage</label>
-                          </div>
-                          <div class="col-sm-9">
-                            <span class="subnet-usage-badge badge" style="font-size:1rem; font-weight: 500;"></span>
-                          </div>
-                        </div>
-                        <div class="row mb-2">
-                          <div class="col-sm-3">
-                            <label class="form-label fw-bold mb-1" style="font-size:1rem;">IP Address List</label>
-                          </div>
-                          <div class="col-sm-9">
-                            <div class="ip-list table-responsive p-0"></div>
-                            <div id="ip-list-extra-<%= subnet.id %>" style="display:none;"></div>
-                            <div class="d-flex justify-content-center mt-2">
-                              <button type="button" class="btn btn-warning btn-sm fw-bold d-flex align-items-center" id="export-ip-btn-<%= subnet.id %>" style="font-size: 1rem; min-width: 90px;">
-                                <i class="bi bi-download me-1" style="font-size:1em;"></i> Export
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <!-- Subnet Edit Modal -->
-                <div class="modal fade" id="subnetEditModal-<%= subnet.id %>" tabindex="-1" aria-labelledby="subnetEditModalLabel-<%= subnet.id %>" aria-hidden="true">
-                  <div class="modal-dialog">
-                    <div class="modal-content">
-                      <div class="modal-header">
-                        <h5 class="modal-title" id="subnetEditModalLabel-<%= subnet.id %>">Edit Subnet</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                      </div>
-                      <div class="modal-body">
-                        <form class="editSubnetForm" id="editSubnetForm-<%= subnet.id %>" action="/network/subnet-address/<%= subnet.id %>?_method=PUT" method="POST">
-                          <div class="mb-3">
-                            <label for="editSubnetAddress-<%= subnet.id %>" class="form-label">Subnet Address <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control form-control-sm" id="editSubnetAddress-<%= subnet.id %>" name="address" value="<%= subnet.address %>" required>
-                          </div>
-                          <div class="mb-3">
-                            <label for="editSubnetDescription-<%= subnet.id %>" class="form-label">Description</label>
-                            <textarea class="form-control" id="editSubnetDescription-<%= subnet.id %>" name="description" rows="4"><%= subnet.description || '' %></textarea>
-                          </div>
-                          <div class="mb-3">
-                            <label for="editSubnetZone-<%= subnet.id %>" class="form-label">Zone</label>
-                            <select class="form-control" id="editSubnetZone-<%= subnet.id %>" name="zone" data-allow-custom="true">
-                              <% if (subnet.zone) { %>
-                                <option value="<%= subnet.zone %>" selected><%= subnet.zone %></option>
-                              <% } %>
-                            </select>
-                          </div>
-                          <div class="mb-3">
-                            <label for="editSubnetEnvironment-<%= subnet.id %>" class="form-label">Environment</label>
-                            <select class="form-control" id="editSubnetEnvironment-<%= subnet.id %>" name="environment" data-allow-custom="true">
-                              <% if (subnet.environment) { %>
-                                <option value="<%= subnet.environment %>" selected><%= subnet.environment %></option>
-                              <% } %>
-                            </select>
-                          </div>
-                          <div class="mb-3">
-                            <label for="editSubnetTags-<%= subnet.id %>" class="form-label">Tags</label>
-                            <select id="editSubnetTags-<%= subnet.id %>" name="tags[]" class="form-control" multiple data-tags='<%- JSON.stringify(subnet.tags || []) %>' style="min-height:38px;"></select>
-                          </div>
-                          <div class="modal-footer d-flex justify-content-end px-0">
-                            <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
-                            <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
-                          </div>
-                        </form>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <% if (subnet.children && subnet.children.length > 0) { %>
-                  <%= renderSubnetTree(subnet.children, level + 1, counter) %>
-                <% } %>
-              <% }) %>
-            <% } %>
-            <tbody>
-              <% if (subnetTree && subnetTree.length > 0) { %>
-                <% var counter = { value: (page - 1) * pageSize + 1 }; %>
-                <%= renderSubnetTree(subnetTree, 0, counter) %>
-              <% } else { %>
-                <tr><td colspan="5" class="text-center">No data</td></tr>
-              <% } %>
-            </tbody>
-          </table>
+
+    <!-- ==========================================
+         ACTION BUTTONS
+         ========================================== -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end gap-2">
+          <!-- Add Subnet Button -->
+          <% if (hasPermission && hasPermission('subnet.create')) { %>
+            <button type="button" 
+                    class="btn btn-primary btn-sm" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#addSubnetModal">
+              <i class="bi bi-plus"></i> Add Subnet
+            </button>
+          <% } %>
           
-          <!-- Mobile Cards (hidden by default, shown on small screens) -->
-          <div class="mobile-cards" style="display: none;">
-            <% if (subnetList && subnetList.length > 0) { %>
-              <% subnetList.forEach(function(subnet, idx) { %>
-                <div class="mobile-card">
-                  <div class="mobile-card-header">
-                    Subnet #<%= (page - 1) * pageSize + idx + 1 %>
-                  </div>
-                  
-                  <div class="mobile-card-row">
-                    <span class="mobile-card-label">Subnet Address:</span>
-                    <span class="mobile-card-value"><%= subnet.address %></span>
-                  </div>
-                  
-                  <div class="mobile-card-row">
-                    <span class="mobile-card-label">Description:</span>
-                    <span class="mobile-card-value">
-                      <% if (subnet.description && subnet.description.trim()) { %>
-                        <%= subnet.description.length > 30 ? subnet.description.substring(0, 30) + '...' : subnet.description %>
-                      <% } else { %>
-                        <span class="text-muted">-</span>
-                      <% } %>
-                    </span>
-                  </div>
-                  
-                  <div class="mobile-card-row">
-                    <span class="mobile-card-label">Zone:</span>
-                    <span class="mobile-card-value">
-                      <% if (subnet.zone) { %>
-                        <span class="badge bg-info"><%= subnet.zone %></span>
-                      <% } else { %>
-                        <span class="text-muted">-</span>
-                      <% } %>
-                    </span>
-                  </div>
-                  
-                  <div class="mobile-card-row">
-                    <span class="mobile-card-label">Status:</span>
-                    <span class="mobile-card-value">
-                      <% if (subnet.status) { %>
-                        <span class="badge bg-secondary"><%= subnet.status %></span>
-                      <% } else { %>
-                        <span class="text-muted">-</span>
-                      <% } %>
-                    </span>
-                  </div>
-                  
-                  <div class="mobile-card-row">
-                    <span class="mobile-card-label">Tags:</span>
-                    <span class="mobile-card-value">
-                      <% if (subnet.tags && subnet.tags.length > 0) { %>
-                        <% subnet.tags.slice(0, 2).forEach(function(tag) { %>
-                          <span class="badge bg-primary text-white" style="font-size: 10px; margin: 1px;"><%= tag.name %></span>
-                        <% }) %>
-                        <% if (subnet.tags.length > 2) { %>
-                          <span class="text-muted">+<%= subnet.tags.length - 2 %> more</span>
-                        <% } %>
-                      <% } else { %>
-                        <span class="text-muted">No tags</span>
-                      <% } %>
-                    </span>
-                  </div>
-                  
-                  <div class="mobile-card-actions">
-                    <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#subnetDetailModal-<%= subnet.id %>">
-                      <i class="bi bi-eye"></i> View
-                    </a>
-                    <button type="button" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#subnetEditModal-<%= subnet.id %>" <% if (!hasPermission('subnet.update')) { %>style="display:none"<% } %>>
-                      <i class="bi bi-pencil"></i> Edit
-                    </button>
-                    <form action="/network/subnet-address/<%= subnet.id %>?_method=DELETE" method="POST" style="display:inline">
-                      <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure?')" <% if (!hasPermission('subnet.delete')) { %>style="display:none"<% } %>>
-                        <i class="bi bi-trash"></i> Delete
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              <% }) %>
-            <% } else { %>
-              <div class="mobile-card">
-                <div class="mobile-card-header">No Subnets Found</div>
-                <div class="mobile-card-row">
-                  <span class="mobile-card-value text-muted">No subnets match your search criteria.</span>
-                </div>
-              </div>
-            <% } %>
-          </div>
+          <!-- Filter Button -->
+          <button type="button" 
+                  class="btn btn-secondary btn-sm" 
+                  data-bs-toggle="modal" 
+                  data-bs-target="#filterSubnetModal">
+            <i class="bi bi-funnel"></i> Filter
+          </button>
+          
+          <!-- Export Button -->
+          <% if (hasPermission && hasPermission('subnet.read')) { %>
+            <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">
+              <i class="bi bi-download"></i> Export
+            </a>
+          <% } %>
+          
+          <!-- Import Subnet Button -->
+          <% if (hasPermission && hasPermission('subnet.create')) { %>
+            <button type="button" 
+                    class="btn btn-success btn-sm" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#importSubnetModal">
+              <i class="bi bi-upload"></i> Import Subnet
+            </button>
+          <% } %>
         </div>
-        <div class="card-footer clearfix">
-          <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
-            <div class="pagination-info">
-              <% 
-                let startItem = (page - 1) * pageSize + 1;
-                let endItem = startItem + (subnetList ? subnetList.length : 0) - 1;
-                if (!subnetList || subnetList.length === 0) {
-                  startItem = 0;
-                  endItem = 0;
-                }
-              %>
-              <span>Showing <%= startItem %> - <%= endItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> subnets</span>
-            </div>
-            <ul class="pagination pagination-sm m-0">
-              <% 
-                let startPage = 1;
-                let endPage = totalPages;
-                if (totalPages > 10) {
-                  if (page <= 5) {
-                    startPage = 1;
-                    endPage = 10;
-                  } else if (page + 4 >= totalPages) {
-                    startPage = totalPages - 9;
-                    endPage = totalPages;
-                  } else {
-                    startPage = page - 5;
-                    endPage = page + 4;
-                  }
-                }
-              %>
-              <% 
-                // Build filter query string for pagination links
-                function buildFilterQuery() {
-                  let params = [];
-                  if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
-                  if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
-                  if (typeof filterTags !== 'undefined' && filterTags.length) filterTags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag)); });
-                  return params.join('&');
-                }
-                const filterQuery = buildFilterQuery();
-              %>
-              <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page - 1 %><%= filterQuery ? '&' + filterQuery : '' %>" tabindex="-1">Previous</a>
-              </li>
-              <% if (startPage > 1) { %>
-                <li class="page-item"><a class="page-link" href="?page=1<%= filterQuery ? '&' + filterQuery : '' %>">1</a></li>
-                <% if (startPage > 2) { %>
-                  <li class="page-item disabled"><span class="page-link">...</span></li>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         FILTER DATA FOR JAVASCRIPT
+         ========================================== -->
+    <div id="filter-subnet-data"
+          data-tags='<%= JSON.stringify(filterTags || []) %>'
+          data-zone='<%= JSON.stringify(filterZone || '') %>'
+          data-environment='<%= JSON.stringify(filterEnvironment || '') %>' 
+         
+         style="display:none">
+                </div>
+
+    <!-- ==========================================
+         FLASH MESSAGES
+         ========================================== -->
+    <!-- Success Message -->
+    <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+      <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
+        <i class="bi bi-check-circle me-2"></i><%= successMessage %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <script>
+        // Auto-hide success message after 5 seconds
+        setTimeout(function() {
+          const alert = document.getElementById('successAlert');
+          if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+          }
+        }, 5000);
+      </script>
+    <% } %>
+    
+    <!-- Error Message -->
+    <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+      <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
+        <i class="bi bi-exclamation-triangle me-2"></i><%= errorMessage %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <script>
+        // Auto-hide error message after 8 seconds (longer for errors)
+        setTimeout(function() {
+          const alert = document.getElementById('errorAlert');
+          if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+          }
+        }, 8000);
+      </script>
+    <% } %>
+
+    <!-- ==========================================
+         DOMAIN LIST TABLE
+         ========================================== -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title mb-0">Subnet List</h3>
+          </div>
+          <div class="card-body table-responsive" style="overflow-x: auto;">
+            <table class="table table-hover" id="subnetTable">
+              <thead>
+                <tr>
+                  <th>No.</th>
+                  <th>Subnet Address</th>
+                  <th>Description</th>
+                  <th>Zone</th>
+                  <th>Environment</th>
+                  <th>Tags</th>
+                  <th>Systems</th>
+                  <th>Contacts</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (subnetList && subnetList.length > 0) { %>
+                  <% subnetList.forEach(function(subnet, idx) { %>
+                    <tr>
+                      <!-- Row Number -->
+                      <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                      
+                      <!-- Subnet Address -->
+                      <td><strong><%= subnet.address %></strong></td>
+                      
+                      <!-- Description -->
+                      <td><%= subnet.description || '-' %></td>
+                      
+                      <!-- Zone -->
+                      <td>
+                        <% if (subnet.ip && subnet.zone) { %>
+                          <span class="badge bg-primary"><%= subnet.zone %></span>
+                        <% } else { %>
+                          <span class="text-muted">No IP</span>
+                        <% } %>
+                      </td>
+                      
+                      <!-- Environment -->
+                      <td><span class="badge bg-info"><%= subnet.environment || 'A' %></span></td>
+                      
+                      <!-- Tags -->
+                      <td>
+                        <% if (subnet.tags && subnet.tags.length > 0) { %>
+                          <% subnet.tags.forEach(function(tag) { %>
+                            <span class="badge bg-primary me-1">
+                              <%= (typeof tag === 'string') ? tag : tag.name %>
+                            </span>
+                          <% }) %>
+                        <% } else { %>
+                          <span class="text-muted">No tags</span>
+                        <% } %>
+                      </td>
+                      
+                      <!-- Systems -->
+                    <td>
+                      <% if (subnet.systems && subnet.systems.length > 0) { %>
+                          <% subnet.systems.forEach(function(system) { %>
+                            <span class="badge bg-info me-1">
+                              <%= (typeof system === 'string') ? system : system.name %>
+                            </span>
+                        <% }) %>
+                        <% } else { %>
+                          <span class="text-muted">No systems</span>
+                        <% } %>
+                      </td>
+                      
+                      <!-- Contacts -->
+                      <td>
+                        <% if (subnet.contacts && subnet.contacts.length > 0) { %>
+                          <% subnet.contacts.forEach(function(contact) { %>
+                            <span class="badge bg-warning me-1">
+                              <%= (typeof contact === 'string') ? contact : (contact.name || contact.email) %>
+                            </span>
+                          <% }) %>
+                        <% } else { %>
+                          <span class="text-muted">No contacts</span>
+                        <% } %>
+                      </td>
+                      
+                      <!-- Actions -->
+                      <td class="text-end">
+                        <!-- View Button -->
+                        <button type="button" 
+                                class="btn btn-info btn-sm" 
+                                title="Show" 
+                                onclick="showSubnetDetail('<%= subnet.id %>')" 
+                                data-subnet='<%= JSON.stringify(subnet) %>'>
+                          <i class="bi bi-eye"></i>
+                        </button>
+                        
+                        <!-- Edit Button -->
+                        <% if (hasPermission('subnet.update')) { %>
+                          <button type="button" 
+                                  class="btn btn-warning btn-sm" 
+                                  title="Edit" 
+                                  data-bs-toggle="modal" 
+                                  data-bs-target="#editSubnetModal"
+                                  data-subnet-id="<%= subnet.id %>"
+                                  data-subnet="<%= subnet.address %>"
+                                  data-description="<%= subnet.description || '' %>"
+                                  data-record-type="<%= subnet.environment %>"
+                                  data-ip-id="<%= subnet.ip ? subnet.ip.id : '' %>"
+                                  data-ip-address="<%= subnet.ip ? subnet.zone : '' %>"
+                                  data-tags="<%= JSON.stringify(subnet.tags || []) %>"
+                                  data-systems="<%= JSON.stringify(subnet.systems || []) %>"
+                                  data-contacts="<%= JSON.stringify(subnet.contacts || []) %>">
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                        <% } %>
+                        
+                        <!-- Delete Button -->
+                        <% if (hasPermission('subnet.delete')) { %>
+                          <form action="/network/subnet-address/<%= subnet.id %>?_method=DELETE" 
+                                method="POST" 
+                                style="display:inline" 
+                                onsubmit="return confirmDeleteSubnet(this, '<%= subnet.address %>')">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </form>
+                        <% } %>
+                      </td>
+                    </tr>
+                  <% }) %>
+                <% } else { %>
+                  <tr>
+                    <td colspan="9" class="text-center">No data</td>
+                  </tr>
                 <% } %>
-              <% } %>
-              <% for (let i = startPage; i <= endPage; i++) { %>
-                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= filterQuery ? '&' + filterQuery : '' %>"><%= i %></a></li>
-              <% } %>
-              <% if (endPage < totalPages) { %>
-                <li class="page-item disabled"><span class="page-link">...</span></li>
-                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= filterQuery ? '&' + filterQuery : '' %>"><%= totalPages %></a></li>
-              <% } %>
-              <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page + 1 %><%= filterQuery ? '&' + filterQuery : '' %>">Next</a>
-              </li>
-            </ul>
+              </tbody>
+            </table>
+          </div>
+          <!-- ==========================================
+               PAGINATION
+               ========================================== -->
+          <div class="card-footer clearfix">
+            <div class="d-flex justify-content-between align-items-center px-3 py-2">
+              <!-- Pagination Info -->
+              <div>
+                <% 
+                  // Calculate pagination range
+                  const startItem = (page - 1) * pageSize + 1;
+                  const endItem = Math.min(page * pageSize, totalCount || 0);
+                  const startPage = Math.max(1, page - 2);
+                  const endPage = Math.min(totalPages, page + 2);
+                %>
+                <span>Showing <%= startItem %> - <%= endItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> subnets</span>
+              </div>
+              
+              <!-- Pagination Controls -->
+              <ul class="pagination pagination-sm m-0 float-end">
+                <% 
+                  // Build filter query for pagination links
+                  function buildSubnetFilterQuery() {
+                    let params = [];
+                    if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+                    if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
+                    if (typeof filterTags !== 'undefined' && filterTags.length) filterTags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag.id || tag)); });
+                    if (typeof filterStatus !== 'undefined' && filterStatus) params.push('status=' + encodeURIComponent(filterStatus));
+                    if (typeof filterSystems !== 'undefined' && filterSystems.length) filterSystems.forEach(function(system) { params.push('systems[]=' + encodeURIComponent(system.id || system)); });
+                    if (typeof filterContacts !== 'undefined' && filterContacts.length) filterContacts.forEach(function(contact) { params.push('contacts[]=' + encodeURIComponent(contact.id || contact)); });
+                    if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses.length) filterIpAddresses.forEach(function(ip) { params.push('ip_id[]=' + encodeURIComponent(ip.id || ip)); });
+                    return params.join('&');
+                  }
+                  const subnetFilterQuery = buildSubnetFilterQuery();
+                %>
+                
+                <!-- Previous Button -->
+                <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                  <a class="page-link" 
+                     href="?page=<%= page - 1 %><%= subnetFilterQuery ? '&' + subnetFilterQuery : '' %>" 
+                     tabindex="-1">Previous</a>
+                </li>
+                
+                <!-- First Page -->
+                <% if (startPage > 1) { %>
+                  <li class="page-item">
+                    <a class="page-link" 
+                       href="?page=1<%= subnetFilterQuery ? '&' + subnetFilterQuery : '' %>">1</a>
+                  </li>
+                  <% if (startPage > 2) { %>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <% } %>
+                <% } %>
+                
+                <!-- Page Numbers -->
+                <% for (let i = startPage; i <= endPage; i++) { %>
+                  <li class="page-item <%= (i === page) ? 'active' : '' %>">
+                    <a class="page-link" 
+                       href="?page=<%= i %><%= subnetFilterQuery ? '&' + subnetFilterQuery : '' %>">
+                      <%= i %>
+                    </a>
+                  </li>
+                <% } %>
+                
+                <!-- Last Page -->
+                <% if (endPage < totalPages) { %>
+                  <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <li class="page-item">
+                    <a class="page-link" 
+                       href="?page=<%= totalPages %><%= subnetFilterQuery ? '&' + subnetFilterQuery : '' %>">
+                      <%= totalPages %>
+                    </a>
+                  </li>
+                <% } %>
+                
+                <!-- Next Button -->
+                <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                  <a class="page-link" 
+                     href="?page=<%= page + 1 %><%= subnetFilterQuery ? '&' + subnetFilterQuery : '' %>">Next</a>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 </div>
-<script>
-// Handle show subnet detail modal with AJAX
-function showSubnetDetail(subnetId) {
-  fetch(`/network/api/subnet-address/${subnetId}`)
-    .then(res => res.json())
-    .then(data => {
-      if (data.error) {
-        alert(data.error + (data.detail ? (': ' + data.detail) : ''));
-        return;
-      }
-      // Fill modal fields
-      document.querySelector(`#subnetDetailModal-${subnetId} .modal-title`).textContent = 'Subnet Information';
-      document.querySelector(`#subnetDetailModal-${subnetId} dd[data-field='address']`).textContent = data.address;
-      // Hiển thị mô tả subnet có xuống dòng
-      const descEl = document.querySelector(`#subnetDetailModal-${subnetId} dd[data-field='description']`);
-      if (descEl) {
-        descEl.innerHTML = (data.description || '').replace(/\n/g, '<br>');
-      }
-      // Hiển thị Zone và Environment
-      const zoneEl = document.querySelector(`#subnetDetailModal-${subnetId} dd[data-field='zone']`);
-      if (zoneEl) {
-        zoneEl.textContent = data.zone || 'N/A';
-      }
-      const envEl = document.querySelector(`#subnetDetailModal-${subnetId} dd[data-field='environment']`);
-      if (envEl) {
-        envEl.textContent = data.environment || 'N/A';
-      }
-      // Hiển thị thông tin thời gian và người cập nhật
-      const createdEl = document.querySelector(`#subnetDetailModal-${subnetId} dd[data-field='created_at']`);
-      if (createdEl) {
-        createdEl.textContent = data.created_at ? new Date(data.created_at).toLocaleString('en-GB') : '';
-      }
-      const updatedEl = document.querySelector(`#subnetDetailModal-${subnetId} dd[data-field='updated_at']`);
-      if (updatedEl) {
-        updatedEl.textContent = data.updated_at ? new Date(data.updated_at).toLocaleString('en-GB') : '';
-      }
-      const updatedByEl = document.querySelector(`#subnetDetailModal-${subnetId} dd[data-field='updated_by']`);
-      if (updatedByEl) {
-        updatedByEl.textContent = data.updated_by || '';
-      }
-      // Do NOT update tags here, let EJS render them
-      // Render IP list as a simple list, show only first 50 IPs, notify user, suggest export for more
-      const ipListEl = document.querySelector(`#subnetDetailModal-${subnetId} .ip-list`);
-      ipListEl.innerHTML = '';
-      const maxDisplay = 200;
-      if (data.ipList && data.ipList.length > 0) {
-        const showList = data.ipList.slice(0, maxDisplay);
-        let html = '<div class="mb-2 text-muted small">Showing the first 200 IPs. For the full list, please use the Export button below.</div>';
-        // Arrange IPs in 5 equal columns, not a table, but columns are even
-        const colCount = 5;
-        const rowCount = Math.ceil(showList.length / colCount);
-        html += '<div style="overflow-x:auto; width:100%;"><div class="d-flex flex-wrap gap-0">';
-        for (let i = 0; i < showList.length; i++) {
-          const ip = showList[i];
-          html += `<div style="flex:0 0 auto; display:flex; align-items:center; justify-content:center; min-width:95px; margin-bottom:2px; border-radius:5px; box-shadow:0 1px 2px rgba(0,0,0,0.01); padding:0.22em 0.35em;">
-            <a href="/network/ip-address?search=${encodeURIComponent(ip.ip_address)}" target="_blank" class="badge bg-primary text-decoration-none" title="${ip.description ? ip.description.replace(/"/g, '&quot;') : ''}" style="font-size:0.95rem; display:inline-block; min-width:75px; max-width:100%; padding:0.32em 0.7em; white-space:nowrap; text-overflow:ellipsis;">
-              ${ip.ip_address}
-            </a>
-          </div>`;
-        }
-        html += '</div></div>';
-        ipListEl.innerHTML = html;
-        // Hide/show extra note
-        const extraDiv = document.getElementById(`ip-list-extra-${subnetId}`);
-        if (extraDiv) {
-          if (data.ipList.length > maxDisplay) {
-            extraDiv.style.display = '';
-            extraDiv.innerHTML = `<div class='text-muted small mt-1'>...and ${data.ipList.length - maxDisplay} more IPs. Please use Export for the full list.</div>`;
-          } else {
-            extraDiv.style.display = 'none';
-            extraDiv.innerHTML = '';
-          }
-        }
-        // Enable export button
-        const exportBtn = document.getElementById(`export-ip-btn-${subnetId}`);
-        if (exportBtn) {
-          exportBtn.style.display = '';
-          exportBtn.onclick = function() {
-            exportIpListToExcel(data.ipList, subnetId);
-          };
-        }
-      } else {
-        ipListEl.innerHTML = '<div class="text-muted small">No IP addresses in this subnet.</div>';
-        const exportBtn = document.getElementById(`export-ip-btn-${subnetId}`);
-        if (exportBtn) exportBtn.style.display = 'none';
-        const extraDiv = document.getElementById(`ip-list-extra-${subnetId}`);
-        if (extraDiv) extraDiv.style.display = 'none';
-      }
-// Export IP list to Excel
-function exportIpListToExcel(ipList, subnetId) {
-  // Create CSV content
-  let csv = 'IP Address,Description\n';
-  ipList.forEach(ip => {
-    csv += `"${ip.ip_address}","${ip.description ? ip.description.replace(/"/g, '""') : ''}"\n`;
-  });
-  // Download as .csv (Excel compatible)
-  const blob = new Blob([csv], { type: 'text/csv' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `subnet_${subnetId}_ip_list.csv`;
-  document.body.appendChild(a);
-  a.click();
-  setTimeout(() => {
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, 100);
-}
-      // Update usage badge
-      const usageBadge = document.querySelector(`#subnetDetailModal-${subnetId} .subnet-usage-badge`);
-      if (usageBadge) {
-        if (typeof data.percentUsed !== 'undefined' && data.percentUsed !== null && typeof data.totalIPs !== 'undefined' && data.totalIPs !== null) {
-          usageBadge.textContent = `Used: ${(data.ipList ? data.ipList.length : 0)} / ${data.totalIPs} (${data.percentUsed}%)`;
-          usageBadge.style.display = '';
-        } else {
-          usageBadge.style.display = 'none';
-        }
-      }
-    })
-    .catch(() => {
-      alert('Error loading subnet detail');
-    });
-}
-// Attach event listeners to all show buttons
-window.addEventListener('DOMContentLoaded', function() {
-  document.querySelectorAll('[data-subnet-detail-btn]').forEach(btn => {
-    btn.addEventListener('click', function() {
-      const subnetId = this.getAttribute('data-subnet-detail-btn');
-      showSubnetDetail(subnetId);
-    });
-  });
 
-  // Real-time validation for subnet address on blur
-  $('#subnetAddress').on('blur', function() {
-    const subnetInput = $(this).val().trim();
-    const $input = $(this);
-    const $feedback = $input.siblings('.invalid-feedback');
-    
-    // Remove existing feedback
-    $feedback.remove();
-    $input.removeClass('is-invalid is-valid');
-    
-    if (!subnetInput) {
-      $input.addClass('is-invalid');
-      $input.after('<div class="invalid-feedback">Please enter a subnet address.</div>');
-      return;
-    }
-    
-    // Validate subnet format (e.g., 192.168.1.0/24)
-    const subnetRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}\/[0-9]{1,2}$/;
-    if (!subnetRegex.test(subnetInput)) {
-      $input.addClass('is-invalid');
-      $input.after('<div class="invalid-feedback">Invalid subnet format. Please enter valid subnet address, e.g. 192.168.1.0/24</div>');
-      return;
-    }
-    
-    // Split subnet address and CIDR
-    const [ipPart, cidrPart] = subnetInput.split('/');
-    const cidr = parseInt(cidrPart, 10);
-    
-    // Validate CIDR range (0-32)
-    if (cidr < 0 || cidr > 32) {
-      $input.addClass('is-invalid');
-      $input.after('<div class="invalid-feedback">Invalid CIDR. CIDR must be between 0 and 32.</div>');
-      return;
-    }
-    
-    // Validate IP address parts
-    const ipParts = ipPart.split('.');
-    for (const part of ipParts) {
-      const num = parseInt(part, 10);
-      if (num < 0 || num > 255) {
-        $input.addClass('is-invalid');
-        $input.after('<div class="invalid-feedback">Invalid IP address. Each octet must be between 0 and 255.</div>');
-        return;
-      }
-    }
-    
-    // Check if subnet already exists in database
-    checkSubnetExists(subnetInput, $input);
-  });
+<!-- ==========================================
+     MODALS SECTION
+     ========================================== -->
 
-  // Function to check if subnet already exists
-  function checkSubnetExists(subnetAddress, $input) {
-    $.ajax({
-      url: '/network/api/subnet-addresses',
-      method: 'GET',
-      data: { search: subnetAddress },
-      dataType: 'json'
-    }).done(function(response) {
-      // If response has items, subnet exists
-      if (response && Array.isArray(response) && response.length > 0) {
-        $input.addClass('is-invalid');
-        $input.after('<div class="invalid-feedback">Subnet address already exists.</div>');
-      } else {
-        $input.addClass('is-valid');
-      }
-    }).fail(function() {
-      console.error('Error checking subnet existence');
-      // If API fails, just mark as valid (server will handle validation)
-      $input.addClass('is-valid');
-    });
-  }
+<!-- ==========================================
+     ADD SUBNET MODAL
+     ========================================== -->
+<div class="modal fade" id="addSubnetModal" tabindex="-1" aria-labelledby="addSubnetModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addSubnetModalLabel">Add Subnet</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="addSubnetForm" action="/network/subnet-address" method="POST">
+            <div class="mb-3">
+              <label for="subnetAddress" class="form-label">Subnet Address <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-sm" id="subnetAddress" name="address" placeholder="Subnet Address (e.g. 192.168.1.0/24)" required>
+                                </div>
+            <div class="mb-3">
+              <label for="subnetDescription" class="form-label">Description</label>
+              <textarea class="form-control" id="subnetDescription" name="description" placeholder="Description" rows="4"></textarea>
+                            </div>
+            <div class="mb-3">
+              <label for="subnetZone" class="form-label">Zone</label>
+              <select class="form-control" id="subnetZone" name="zone" data-allow-custom="true"></select>
+                            </div>
+            <div class="mb-3">
+              <label for="subnetEnvironment" class="form-label">Environment</label>
+              <select class="form-control" id="subnetEnvironment" name="environment" data-allow-custom="true"></select>
+                            </div>
+            <div class="mb-3">
+              <label for="addSubnetTags" class="form-label">Tags</label>
+              <select id="addSubnetTags" name="tags[]" class="form-control" multiple></select>
+            </div>
+          </form>
+          </div>
+        <div class="modal-footer d-flex justify-content-end">
+          <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-primary btn-sm" form="addSubnetForm">Add Subnet</button>
+        </div>
+    </div>
+  </div>
+</div>
 
-  // Also validate on form submit as backup
-  $('#addSubnetForm').on('submit', function(e) {
-    const subnetInput = $('#subnetAddress').val().trim();
-    if (!subnetInput) {
-      e.preventDefault();
-      $('#subnetAddress').addClass('is-invalid');
-      $('#subnetAddress').siblings('.invalid-feedback').remove();
-      $('#subnetAddress').after('<div class="invalid-feedback">Please enter a subnet address.</div>');
-      return false;
-    }
-    
-    // Validate subnet format
-    const subnetRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}\/[0-9]{1,2}$/;
-    if (!subnetRegex.test(subnetInput)) {
-      e.preventDefault();
-      $('#subnetAddress').addClass('is-invalid');
-      $('#subnetAddress').siblings('.invalid-feedback').remove();
-      $('#subnetAddress').after('<div class="invalid-feedback">Invalid subnet format. Please enter valid subnet address, e.g. 192.168.1.0/24</div>');
-      return false;
-    }
-    
-    // Split subnet address and CIDR
-    const [ipPart, cidrPart] = subnetInput.split('/');
-    const cidr = parseInt(cidrPart, 10);
-    
-    // Validate CIDR range
-    if (cidr < 0 || cidr > 32) {
-      e.preventDefault();
-      $('#subnetAddress').addClass('is-invalid');
-      $('#subnetAddress').siblings('.invalid-feedback').remove();
-      $('#subnetAddress').after('<div class="invalid-feedback">Invalid CIDR. CIDR must be between 0 and 32.</div>');
-      return false;
-    }
-    
-    // Validate IP address parts
-    const ipParts = ipPart.split('.');
-    for (const part of ipParts) {
-      const num = parseInt(part, 10);
-      if (num < 0 || num > 255) {
-        e.preventDefault();
-        $('#subnetAddress').addClass('is-invalid');
-        $('#subnetAddress').siblings('.invalid-feedback').remove();
-        $('#subnetAddress').after('<div class="invalid-feedback">Invalid IP address. Each octet must be between 0 and 255.</div>');
-        return false;
-      }
-    }
-    
-    return true;
-  });
-});
-</script>
-<script>
-function showToast(msg, type) {
-  const toast = document.createElement('div');
-  toast.className = `alert alert-${type}`;
-  toast.style.position = 'fixed';
-  toast.style.top = '16px';
-  toast.style.right = '16px';
-  toast.style.zIndex = 9999;
-  toast.style.minWidth = '200px';
-  toast.innerText = msg;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
+<!-- ==========================================
+     EDIT SUBNET MODAL
+     ========================================== -->
+<div class="modal fade" id="editSubnetModal" tabindex="-1" aria-labelledby="editSubnetModalLabel">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="editSubnetForm" method="POST" action="">
+        <input type="hidden" name="page" value="<%= page %>">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editSubnetModalLabel">Edit Subnet</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <!-- Subnet Address (Read-only) -->
+            <div class="col-12">
+              <label for="editSubnetName" class="form-label">Subnet Address <span class="text-danger">*</span></label>
+              <input type="text" 
+                     class="form-control" 
+                     id="editSubnetName" 
+                     name="subnet" 
+                     readonly>
+              <small class="form-text text-muted">Subnet address cannot be changed</small>
+                </div>
+            
+            <!-- Description -->
+            <div class="col-12">
+              <label for="editSubnetDescription" class="form-label">Description</label>
+              <textarea class="form-control" 
+                        id="editSubnetDescription" 
+                        name="description" 
+                        rows="3"></textarea>
+            </div>
+            
+            <!-- Zone -->
+            <div class="col-12">
+              <label for="editSubnetRecordType" class="form-label">Zone</label>
+              <select class="form-select" id="editSubnetRecordType" name="zone">
+                <option value="A">A</option>
+                <option value="AAAA">AAAA</option>
+                <option value="CNAME">CNAME</option>
+                <option value="MX">MX</option>
+                <option value="TXT">TXT</option>
+                <option value="NS">NS</option>
+                <option value="SRV">SRV</option>
+                <option value="PTR">PTR</option>
+                <option value="SOA">SOA</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            
+            <!-- Environment -->
+            <div class="col-12">
+              <label for="editSubnetIpId" class="form-label">Environment</label>
+              <select id="editSubnetIpId" name="environment" class="form-select">
+                <!-- Options will be loaded via AJAX -->
+              </select>
+            </div>
+            
+            <!-- Tags -->
+            <div class="col-12">
+              <label for="editSubnetTags" class="form-label">Tags</label>
+              <select id="editSubnetTags" name="tags[]" class="form-select" multiple>
+                <!-- Options will be loaded via AJAX -->
+              </select>
+            </div>
+            
+            <!-- Systems -->
+            <div class="col-12">
+              <label for="editSubnetSystems" class="form-label">Systems</label>
+              <select id="editSubnetSystems" name="systems[]" class="form-select" multiple>
+                <!-- Options will be loaded via AJAX -->
+              </select>
+            </div>
+            
+            <!-- Contacts -->
+            <div class="col-12">
+              <label for="editSubnetContacts" class="form-label">Contacts</label>
+              <select id="editSubnetContacts" name="contacts[]" class="form-select" multiple>
+                <!-- Options will be loaded via AJAX -->
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update Subnet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+        
+<!-- ==========================================
+     DOMAIN DETAIL MODAL
+     ========================================== -->
+<div class="modal fade" id="subnetDetailModal" tabindex="-1" aria-labelledby="subnetDetailModalLabel">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="subnetDetailModalLabel">Subnet Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+      <div class="modal-body" id="subnetDetailContent">
+        <!-- Content will be loaded here -->
+                  </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+                  </div>
+                  
+<!-- ==========================================
+     FILTER SUBNET MODAL
+     ========================================== -->
+<div class="modal fade" id="filterSubnetModal" tabindex="-1" aria-labelledby="filterSubnetModalLabel">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="filterSubnetModalLabel">Filter Subnets</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="GET" action="/network/subnet-address" id="filterSubnetForm">
+        <input type="hidden" name="page" value="1">
+        <div class="modal-body">
+          <div class="row g-2">
+            <!-- Zone Filter -->
+            <div class="col-12 mb-2">
+              <label for="filterSubnetZone" class="form-label">Zone</label>
+              <select class="form-control" id="filterSubnetZone" name="zone">
+                <option value="">All Zones</option>
+              </select>
+                  </div>
+                  
+            <!-- Environment Filter -->
+            <div class="col-12 mb-2">
+              <label for="filterSubnetEnvironment" class="form-label">Environment</label>
+              <select class="form-control" id="filterSubnetEnvironment" name="environment">
+                <option value="">All Environments</option>
+              </select>
+                  </div>
+                  
+            <!-- Tags Filter -->
+            <div class="col-12 mb-2">
+              <label class="form-label">Tags</label>
+              <select id="filterSubnetTags" name="tags[]" class="form-control" multiple></select>
+                  </div>
+            
+            <!-- Systems Filter -->
+            <div class="col-12 mb-2">
+              <label class="form-label">Systems</label>
+              <select id="filterSubnetSystems" name="systems[]" class="form-control" multiple></select>
+            </div>
+            
+            <!-- Contacts Filter -->
+            <div class="col-12 mb-2">
+              <label class="form-label">Contacts</label>
+              <select id="filterSubnetContacts" name="contacts[]" class="form-control" multiple></select>
+            </div>
+            
+            <!-- IP Address Filter -->
+            <div class="col-12 mb-2">
+              <label class="form-label">IP Address</label>
+              <select id="filterSubnetIpId" name="ip_id[]" class="form-control" multiple></select>
+            </div>
+                </div>
+                </div>
+        <div class="modal-footer d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-danger" id="clearFilterBtnSubnet">Clear All Filters</button>
+          <div>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+              </div>
+        </div>
+      </form>
+    </div>
+          </div>
+        </div>
+        
+<!-- ==========================================
+     IMPORT SUBNET MODAL
+     ========================================== -->
+<div class="modal fade" id="importSubnetModal" tabindex="-1" aria-labelledby="importSubnetModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="importSubnetModalLabel">Import Subnets</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+      <div class="modal-body">
+        <form id="importSubnetForm" enctype="multipart/form-data">
+          <!-- File Selection -->
+          <div class="mb-3">
+            <label for="subnetImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="file" 
+                     class="form-control" 
+                     id="subnetImportFile" 
+                     name="file" 
+                     accept=".csv,.xlsx,.xls" 
+                     required>
+              <a href="/network/subnet-address/template" class="btn btn-outline-info" download>
+                <i class="bi bi-download"></i> Download Template
+              </a>
+            </div>
+            <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
+          </div>
+          
+          <!-- Import Instructions -->
+          <div class="mb-3">
+            <div class="alert alert-info">
+              <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
+              <ul class="mb-0">
+                <li>Click "Download Template" to get the Excel template with correct format</li>
+                <li>Fill the template with your subnet data</li>
+                <li>Subnet Address (Required, one per row) is required and must be valid subnet format</li>
+                <li>Description is optional</li>
+                <li>Record Type is optional (default: A)</li>
+                <li>IP Address, Tags, Systems, and Contacts are optional and can be comma-separated if multiple</li>
+                <li>Select your filled template file and validate before importing</li>
+            </ul>
+          </div>
+        </div>
+          
+          <!-- Progress Bar -->
+          <div id="subnetImportProgress" class="progress mb-3" style="display: none;">
+            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+      </div>
+          
+          <!-- Results Display -->
+          <div id="subnetImportResults" class="alert" style="display: none;"></div>
+        </form>
+    </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning" id="validateSubnetBtn">Validate File</button>
+        <button type="button" class="btn btn-success" id="importSubnetBtn" style="display: none;">Import Subnets</button>
+  </div>
+</div>
+  </div>
+</div>
+
+<!-- ==========================================
+     STYLES
+     ========================================== -->
+<style>
+/* Fix Select2 dropdown z-index in modal */
+.select2-dropdown {
+  z-index: 9999 !important;
 }
-</script>
-<% if (success) { %>
-  <script>
-    window.addEventListener('DOMContentLoaded', function() {
-      showToast('<%= success %>', 'success');
-    });
-  </script>
-<% } %>
-<% if (error) { %>
-  <script>
-    window.addEventListener('DOMContentLoaded', function() {
-      showToast('<%= error %>', 'danger');
-    });
-  </script>
-<% } %>
+
+.select2-container--bootstrap-5 .select2-dropdown {
+  z-index: 9999 !important;
+}
+
+.modal .select2-dropdown {
+  z-index: 9999 !important;
+}
+
+/* Ensure dropdown is visible above modal backdrop */
+.select2-container--open .select2-dropdown {
+  z-index: 9999 !important;
+}
+</style>
+
+<!-- ==========================================
+     JAVASCRIPT
+     ========================================== -->
 <script>
-  function restoreSelect2Value($el, values, url) {
-    if (!values || !values.length) return;
-    $.ajax({
-      url: url,
-      data: { ids: values },
+$(function() {
+  console.log('Initializing Subnet List JavaScript...');
+  
+  // ==========================================
+  // SELECT2 INITIALIZATION
+  // ==========================================
+  
+  // Tags Select2 - Add Subnet Modal
+  console.log('Setting up Tags Select2...');
+  $('#subnetTags').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select tags (optional)',
+    allowClear: true,
+    width: '100%',
+    multiple: true,
+    dropdownParent: $('#addSubnetModal'),
+    ajax: {
+      url: '/organize/api/tag',
       dataType: 'json',
-      traditional: true,
-      xhrFields: { withCredentials: true },
-      success: function(data) {
-        data.forEach(function(item) {
-          if ($el.find('option[value="' + item.id + '"]').length === 0) {
-            var option = new Option(item.text || item.name, item.id, true, true);
-            $el.append(option);
-          }
-        });
-        $el.val(values).trigger('change');
+      delay: 250,
+      data: params => {
+        console.log('Tags AJAX request:', params.term);
+        return { search: params.term };
       },
-      error: function(xhr, status, error) {
-        console.error('Error restoring select2 value:', error);
-      }
-    });
-  }
-  $(function() {
-    var $filterModal = $('#filterSubnetModal');
-    var $modalContent = $filterModal.find('.modal-content');
-    var filterValues = {
-      tags: JSON.parse(document.getElementById('filter-subnet-data').dataset.tags || '[]')
-    };
-    $('#filterSubnetTags').select2({
-      theme: 'bootstrap-5',
-      placeholder: 'Select tag(s)',
-      allowClear: true,
-      width: '100%',
-      dropdownParent: $modalContent,
-      ajax: {
-        url: '/organize/api/tag',
-        dataType: 'json',
-        delay: 250,
-        data: params => ({ search: params.term }),
-        processResults: data => ({ results: data })
-      }
-    });
-
-    // Initialize Zone and Environment filters with AJAX
-    $('#filterSubnetZone').select2({
-      theme: 'bootstrap-5',
-      placeholder: 'Select or type zone',
-      allowClear: true,
-      width: '100%',
-      dropdownParent: $modalContent,
-      tags: true,
-      ajax: {
-        url: '/network/api/zones',
-        dataType: 'json',
-        delay: 250,
-        data: params => ({ search: params.term }),
-        processResults: function(data, params) {
-          const results = data || [];
-          return { results: results };
-        },
-        cache: true
+      processResults: data => {
+        console.log('Tags API response:', data);
+        return { results: data };
       },
-      createTag: function(params) {
-        return {
-          id: params.term,
-          text: params.term,
-          custom: true
-        };
-      }
-    });
-
-    $('#filterSubnetEnvironment').select2({
-      theme: 'bootstrap-5',
-      placeholder: 'Select or type environment',
-      allowClear: true,
-      width: '100%',
-      dropdownParent: $modalContent,
-      tags: true,
-      ajax: {
-        url: '/network/api/environments',
-        dataType: 'json',
-        delay: 250,
-        data: params => ({ search: params.term }),
-        processResults: function(data, params) {
-          const results = data || [];
-          return { results: results };
-        },
-        cache: true
-      },
-      createTag: function(params) {
-        return {
-          id: params.term,
-          text: params.term,
-          custom: true
-        };
-      }
-    });
-    // Restore selected values for multi-select filter fields
-    restoreSelect2Value($('#filterSubnetTags'), filterValues.tags, '/organize/api/tag/ids');
-    // Clear Filter button: reset tất cả filter về mặc định
-    $('#clearFilterBtnSubnet').on('click', function() {
-      // Clear all select2 values
-      $('#filterSubnetTags').val(null).trigger('change');
-      $('#filterSubnetZone').val(null).trigger('change');
-      $('#filterSubnetEnvironment').val(null).trigger('change');
-      // Close modal
-      $filterModal.modal('hide');
-      // Redirect to clean URL but preserve pageSize and search
-      const currentPageSize = $('select[name="pageSize"]').val() || '10';
-      const currentSearch = $('input[name="search"]').val() || '';
-      let cleanUrl = '/network/subnet-address';
-      const params = [];
-      if (currentPageSize && currentPageSize !== '10') params.push('pageSize=' + encodeURIComponent(currentPageSize));
-      if (currentSearch) params.push('search=' + encodeURIComponent(currentSearch));
-      if (params.length > 0) cleanUrl += '?' + params.join('&');
-      window.location.href = cleanUrl;
-    });
-  });
-</script>
-<script>
-window.addEventListener('DOMContentLoaded', function() {
-  // Init select2 for Add Subnet modal tags
-  var $addSubnetTags = $('#addSubnetTags');
-  if ($.fn.select2 && $addSubnetTags.length && !$addSubnetTags.hasClass('select2-hidden-accessible')) {
-    $addSubnetTags.select2({
-      theme: 'bootstrap-5',
-      placeholder: 'Select tag(s)',
-      allowClear: true,
-      width: '100%',
-      ajax: {
-        url: '/organize/api/tag',
-        dataType: 'json',
-        delay: 250,
-        data: function(params) { return { search: params.term }; },
-        processResults: function(data) { return { results: data }; },
-        cache: true
-      }
-    });
-  }
-
-  // Init select2 for all Edit Subnet modals and preselect current tags, but always clear options first to avoid duplicates
-  document.querySelectorAll('select[id^="editSubnetTags-"]').forEach(function(sel) {
-    var $editTags = $(sel);
-    if ($.fn.select2 && $editTags.length && !$editTags.hasClass('select2-hidden-accessible')) {
-      $editTags.select2({
-        theme: 'bootstrap-5',
-        placeholder: 'Select tag(s)',
-        allowClear: true,
-        width: '100%',
-        ajax: {
-          url: '/organize/api/tag',
-          dataType: 'json',
-          delay: 250,
-          data: function(params) { return { search: params.term }; },
-          processResults: function(data) { return { results: data }; },
-          cache: true
-        }
-      });
-    }
-    // Always clear and re-append only the current tags to avoid duplicates
-    $editTags.find('option').remove();
-    var tagData = $editTags.data('tags');
-    if (Array.isArray(tagData)) {
-      tagData.forEach(function(tag) {
-        var option = new Option(tag.name, tag.id, true, true);
-        $editTags.append(option);
-      });
-      $editTags.trigger('change');
+      cache: true
     }
   });
-});
-</script>
-<link href="/css/select2.min.css" rel="stylesheet" />
-<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-<script src="/vendor/select2.min.js"></script>
-<script src="/vendor/bootstrap.min.js"></script>
-<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
 
-<script>
-$(document).ready(function() {
-  // Subnet Import functionality
-  let validationFile = null;
-  
-  // Reset form when modal is shown/hidden
-  $('#importSubnetModal').on('show.bs.modal', function() {
-    resetImportForm();
-  });
-  
-  $('#importSubnetModal').on('hidden.bs.modal', function() {
-    resetImportForm();
-  });
-  
-  function resetImportForm() {
-    $('#importSubnetForm')[0].reset();
-    $('#subnetImportProgress').hide();
-    $('#subnetImportResults').hide();
-    $('#validateSubnetBtn').show();
-    $('#importSubnetBtn').hide();
-    validationFile = null;
-  }
-  
-  // Validate subnets - Copy exactly from IP address validation
-  let selectedFile = null;
-  
-  // Handle file selection
-  $(document).on('change', '#subnetImportFile', function() {
-    const file = this.files[0];
-    if (file) {
-      selectedFile = file;
-      $('#validateSubnetBtn').prop('disabled', false);
-      $('#importSubnetBtn').prop('disabled', true).hide();
-    } else {
-      selectedFile = null;
-      $('#validateSubnetBtn').prop('disabled', true);
-      $('#importSubnetBtn').prop('disabled', true).hide();
+  // Tags select2 AJAX - Bootstrap 5 theme
+  console.log('Setting up Tags Select2...');
+  $('#addSubnetTags').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select tags (optional)',
+    allowClear: true,
+    width: '100%',
+    multiple: true,
+    dropdownParent: $('#addSubnetModal'),
+    ajax: {
+      url: '/system/api/system',
+      dataType: 'json',
+      delay: 250,
+      data: params => {
+        console.log('Systems AJAX request:', params.term);
+        return { search: params.term };
+      },
+      processResults: data => {
+        console.log('Systems API response:', data);
+        return { results: data };
+      },
+      cache: true
     }
   });
-  
-  // Handle validate button click
-  $(document).on('click', '#validateSubnetBtn', function() {
-    if (!selectedFile) {
-      alert('Please select a file first');
-      return;
-    }
-    
-    const formData = new FormData();
-    formData.append('file', selectedFile);
-    
-    // Show progress
-    $('#subnetImportProgress').show();
-    $('#subnetImportResults').text('Validating file...');
-    $('.progress-bar').css('width', '30%');
-    
-    $.ajax({
-      url: '/network/subnet-address/validate-import',
-      type: 'POST',
-      data: formData,
-      processData: false,
-      contentType: false,
-      xhr: function() {
-        const xhr = new window.XMLHttpRequest();
-        // Don't set responseType to 'blob' for JSON responses
-        return xhr;
-      },
-      success: function(data, status, xhr) {
-        
-        $('.progress-bar').css('width', '100%');
-        $('#subnetImportResults').text('Validation complete! Downloading results...');
-        
-        // Handle JSON response
-        if (data && data.success) {
-          // Success - download validation file
-          const validationFile = data.validation_file;
-          if (validationFile) {
-            // Create download link for validation file
-            const downloadUrl = `/network/download/subnet-validation/${validationFile}`;
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = validationFile;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-          }
-        } else {
-          // Handle error response
-          alert('Error: ' + (data.error || 'Unknown error'));
-        }
-        
-        // Check validation results from header
-        const validationSummary = xhr.getResponseHeader('X-Validation-Summary');
-        if (validationSummary) {
-          try {
-            const summary = JSON.parse(validationSummary);
-            if (summary.allPassed) {
-              $('#importSubnetBtn').prop('disabled', false).show();
-              $('#validateSubnetBtn').prop('disabled', true);
-              $('#subnetImportResults').text(`Validation complete! All ${summary.total} records passed. You can now import.`);
-            } else {
-              $('#importSubnetBtn').prop('disabled', true).hide();
-              $('#validateSubnetBtn').prop('disabled', false);
-              $('#subnetImportResults').text(`Validation complete! ${summary.passed}/${summary.total} passed, ${summary.failed} failed. Please fix errors before importing.`);
-            }
-          } catch (e) {
-            // Fallback if header parsing fails
-            $('#importSubnetBtn').prop('disabled', false).show();
-            $('#validateSubnetBtn').prop('disabled', true);
-            $('#subnetImportResults').text('File validated! Please check the downloaded file - only import if all validations are PASS.');
-          }
-        } else {
-          // Fallback if no validation summary header
-          $('#importSubnetBtn').prop('disabled', false).show();
-          $('#validateSubnetBtn').prop('disabled', true);
-          $('#subnetImportResults').text('File validated! Please check the downloaded file - only import if all validations are PASS.');
-        }
-        
-        setTimeout(() => {
-          $('#subnetImportProgress').hide();
-        }, 2000);
-      },
-      error: function(xhr, status, error) {
-        
-        $('#subnetImportProgress').hide();
-        let errorMessage = 'Validation failed';
-        if (xhr.responseJSON && xhr.responseJSON.error) {
-          errorMessage = xhr.responseJSON.error;
-        }
-        alert(errorMessage);
-      }
-    });
-  });
-  
-  // Import subnets
-  $('#importSubnetBtn').on('click', function() {
-    const fileInput = $('#subnetImportFile')[0];
-    if (!fileInput.files[0]) {
-      alert('Please select a file first');
-      return;
-    }
-    
-    const formData = new FormData();
-    formData.append('file', fileInput.files[0]);
-    
-    // Show progress
-    $('#subnetImportProgress').show();
-    $('#subnetImportProgress .progress-bar').css('width', '50%').text('Importing...');
-    $('#importSubnetBtn').prop('disabled', true);
-    
-    $.ajax({
-      url: '/network/subnet-address/import',
-      type: 'POST',
-      data: formData,
-      processData: false,
-      contentType: false,
-      xhr: function() {
-        const xhr = new window.XMLHttpRequest();
-        // Don't set responseType to 'blob' for JSON responses
-        return xhr;
-      },
-      success: function(data, status, xhr) {
-        
-        $('#subnetImportProgress .progress-bar').css('width', '100%').text('Import Complete');
-        
-        // Handle JSON response
-        if (data && data.success) {
-          // Success - download import file
-          const importFile = data.import_file;
-          if (importFile) {
-            // Create download link for import file
-            const downloadUrl = `/network/download/subnet-validation/${importFile}`;
-            const a = document.createElement('a');
-            a.href = downloadUrl;
-            a.download = importFile;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-          }
-        } else {
-          // Handle error response
-          alert('Error: ' + (data.error || 'Unknown error'));
-        }
-        
-        // Show results
-        const resultsDiv = $('#subnetImportResults');
-        resultsDiv.removeClass('alert-danger').addClass('alert-success')
-          .html(`<strong>Import Completed!</strong><br>
-                 <small>Page will refresh to show updated data.</small>`);
-        resultsDiv.show();
-        
-        // Hide import button
-        $('#importSubnetBtn').hide();
-        
-        // Refresh page after 2 seconds
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
-      },
-      error: function(xhr, status, error) {
-        
-        $('#subnetImportProgress .progress-bar').css('width', '100%').text('Import Failed');
-        $('#subnetImportResults').removeClass('alert-success').addClass('alert-danger')
-          .html('<strong>Import Error!</strong><br>' + (xhr.responseJSON?.error || 'Unknown error occurred'))
-          .show();
-      },
-      complete: function() {
-        $('#importSubnetBtn').prop('disabled', false);
-        setTimeout(() => {
-          $('#subnetImportProgress').hide();
-        }, 2000);
-      }
-    });
-  });
 
-
-  // Initialize Select2 for Zone and Environment (like Manufacturer)
+  // Zone select2 AJAX - Bootstrap 5 theme (like Manufacturer)
+  console.log('Setting up Zone Select2...');
   $('#subnetZone').select2({
     theme: 'bootstrap-5',
     placeholder: 'Select or type zone',
@@ -1231,8 +912,9 @@ $(document).ready(function() {
       };
     }
   });
-  
 
+  // Environment select2 AJAX - Bootstrap 5 theme (like Manufacturer)
+  console.log('Setting up Environment Select2...');
   $('#subnetEnvironment').select2({
     theme: 'bootstrap-5',
     placeholder: 'Select or type environment',
@@ -1262,99 +944,1042 @@ $(document).ready(function() {
     }
   });
 
-  // Initialize for edit forms (dynamic)
-  $(document).on('shown.bs.modal', 'div[id^="subnetEditModal-"]', function() {
-    const subnetId = $(this).attr('id').replace('subnetEditModal-', '');
-    const zoneSelectId = '#editSubnetZone-' + subnetId;
-    const envSelectId = '#editSubnetEnvironment-' + subnetId;
-    
-    // Only initialize if not already initialized
-    if (!$(zoneSelectId).hasClass('select2-hidden-accessible')) {
-      $(zoneSelectId).select2({
-        theme: 'bootstrap-5',
-        placeholder: 'Select or type zone',
-        allowClear: true,
-        width: '100%',
-        tags: true,
-        ajax: {
-          url: '/network/api/zones',
-          dataType: 'json',
-          delay: 250,
-          data: params => ({ search: params.term }),
-          processResults: function(data, params) {
-            const results = data || [];
-            return { results: results };
-          },
-          cache: true
-        },
-        createTag: function(params) {
-          return {
-            id: params.term,
-            text: params.term,
-            custom: true
-          };
-        }
-      });
-    }
-    
-    if (!$(envSelectId).hasClass('select2-hidden-accessible')) {
-      $(envSelectId).select2({
-        theme: 'bootstrap-5',
-        placeholder: 'Select or type environment',
-        allowClear: true,
-        width: '100%',
-        tags: true,
-        ajax: {
-          url: '/network/api/environments',
-          dataType: 'json',
-          delay: 250,
-          data: params => ({ search: params.term }),
-          processResults: function(data, params) {
-            const results = data || [];
-            return { results: results };
-          },
-          cache: true
-        },
-        createTag: function(params) {
-          return {
-            id: params.term,
-            text: params.term,
-            custom: true
-          };
-        }
-      });
-    }
+  console.log('All Select2 initialized!');
+
+  // Debug: Select2 events
+  $('#addSubnetTags').on('select2:open', function() {
+    console.log('Tags dropdown opened');
   });
   
-  // Responsive layout handler
-  function handleResponsiveLayout() {
-    const isSmallScreen = window.innerWidth <= 576;
-    const table = $('#subnetTable');
-    const mobileCards = $('.mobile-cards');
+  $('#subnetZone').on('select2:open', function() {
+    console.log('Zone dropdown opened');
+  });
+  
+  $('#subnetEnvironment').on('select2:open', function() {
+    console.log('Environment dropdown opened');
+  });
+
+  // Debug: Modal events
+  $('#addSubnetModal').on('shown.bs.modal', function() {
+    console.log('Add Subnet Modal shown');
+    console.log('Select2 elements in modal:');
+    console.log('addSubnetTags:', $('#addSubnetModal #addSubnetTags').length);
+    console.log('subnetZone:', $('#addSubnetModal #subnetZone').length);
+    console.log('subnetEnvironment:', $('#addSubnetModal #subnetEnvironment').length);
+  });
+
+  // Reset form when modal is hidden
+  $('#addSubnetModal').on('hidden.bs.modal', function() {
+    console.log('Add Subnet Modal hidden, resetting form');
+    $('#addSubnetForm')[0].reset();
+    $('#addSubnetTags, #subnetZone, #subnetEnvironment').val(null).trigger('change');
+  });
+
+
+  // IP Address validation - Check immediately on blur
+  $('#ipAddress').on('blur', function() {
+    console.log('IP input blurred - starting validation...');
+    const ipInput = $(this).val().trim();
+    const errorDiv = $('#ipAddressError');
     
-    if (isSmallScreen) {
-      table.hide();
-      mobileCards.show();
+    console.log('Input value:', ipInput);
+    
+    if (!ipInput) {
+      console.log('No input - clearing validation');
+      $(this).removeClass('is-invalid is-valid');
+      errorDiv.text('');
+      $('#ipValidationIcon').hide();
+      $('#ipAddressSuccess').hide();
+      $('#ipAddressExists').hide();
+        return;
+      }
+      
+    // Split by comma and check each IP
+    const ipList = ipInput.split(',').map(ip => ip.trim()).filter(ip => ip.length > 0);
+    console.log('IP list to check:', ipList);
+    
+    // Validate format for each IP
+    const invalidIPs = ipList.filter(ip => !isValidIP(ip));
+    if (invalidIPs.length > 0) {
+      console.log('Invalid IPs found:', invalidIPs);
+      $(this).removeClass('is-valid').addClass('is-invalid');
+      errorDiv.text(`Invalid IP format: ${invalidIPs.join(', ')}`);
+      $('#ipValidationIcon').hide();
+      $('#ipAddressSuccess').hide();
+      $('#ipAddressExists').hide();
+      return;
+    }
+    
+    console.log('All IPs format valid - checking existence...');
+    // Check if any IP already exists
+    checkMultipleIPsExist(ipList, $(this), errorDiv);
+  });
+
+  // Form submission
+  $('#addSubnetForm').on('submit', function(e) {
+    const subnetInput = $('#subnetAddress').val().trim();
+    if (!subnetInput) {
+      e.preventDefault();
+      $('#subnetAddress').addClass('is-invalid');
+      return;
+    }
+    
+    // If validation passes, allow normal form submission
+    // Backend will handle redirect and flash messages
+    const submitBtn = $(this).find('button[type="submit"]');
+    submitBtn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Adding...');
+  });
+
+  // Edit Subnet Modal - Initialize Select2
+  $('#editSubnetTags').select2({
+    theme: 'bootstrap-5',
+    multiple: true,
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#editSubnetModal'),
+    ajax: {
+      url: '/organize/api/tag',
+      dataType: 'json',
+      processResults: function(data) {
+        return { results: data };
+      }
+    }
+  });
+
+  $('#editSubnetSystems').select2({
+    theme: 'bootstrap-5',
+    multiple: true,
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#editSubnetModal'),
+    ajax: {
+      url: '/system/api/system',
+      dataType: 'json',
+      processResults: function(data) {
+        return { results: data };
+      }
+    }
+  });
+
+  $('#editSubnetContacts').select2({
+    theme: 'bootstrap-5',
+    multiple: true,
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#editSubnetModal'),
+    ajax: {
+              url: '/organize/api/contact',
+      dataType: 'json',
+      processResults: function(data) {
+        return { results: data };
+      }
+    }
+  });
+
+  $('#editSubnetIpId').select2({
+            theme: 'bootstrap-5',
+            allowClear: true,
+            width: '100%',
+    dropdownParent: $('#editSubnetModal'),
+            ajax: {
+              url: '/network/api/ip-addresses',
+              dataType: 'json',
+      processResults: function(data) {
+        return { results: data };
+      }
+    }
+  });
+
+  // Edit Subnet Modal - Load data when opened
+  $('#editSubnetModal').on('show.bs.modal', function(event) {
+    const button = $(event.relatedTarget);
+    const subnetId = button.data('subnet-id');
+    const subnet = button.data('subnet');
+    const description = button.data('description') || '';
+    const recordType = button.data('record-type') || 'A';
+    const ipId = button.data('ip-id') || '';
+    const ipAddress = button.data('ip-address') || '';
+    const tags = button.data('tags') || [];
+    const systems = button.data('systems') || [];
+    const contacts = button.data('contacts') || [];
+
+    console.log('Edit Subnet Modal opened with data:', {
+      subnetId, subnet, description, recordType, ipId, ipAddress, tags, systems, contacts
+    });
+
+    // Set form action URL
+    const actionUrl = `/network/subnet-address/${subnetId}`;
+    $('#editSubnetForm').attr('action', actionUrl);
+    console.log('Form action set to:', actionUrl);
+
+    // Populate form fields
+    $('#editSubnetName').val(subnet);
+    $('#editSubnetDescription').val(description);
+    $('#editSubnetRecordType').val(recordType);
+
+    // Load existing values for Select2 fields after a short delay
+        setTimeout(() => {
+      loadEditExistingValues(tags, systems, contacts, ipId, ipAddress);
+    }, 100);
+  });
+
+  // Edit Subnet Modal - Reset form when hidden
+  $('#editSubnetModal').on('hidden.bs.modal', function() {
+    $('#editSubnetForm')[0].reset();
+    $('#editSubnetTags, #editSubnetSystems, #editSubnetContacts, #editSubnetIpId').val(null).trigger('change');
+  });
+
+  // Edit Subnet Form submission
+  $('#editSubnetForm').on('submit', function(e) {
+    console.log('Edit Subnet Form submitting...');
+    
+    // Get Subnet ID from form action or data attribute
+    const currentAction = $(this).attr('action');
+    const subnetId = currentAction.split('/').pop();
+    
+    // Set the correct form action URL with method indicator
+    const correctAction = `/network/subnet-address/${subnetId}?_method=PUT`;
+    $(this).attr('action', correctAction);
+    
+    console.log('Form action set to:', correctAction);
+    console.log('Form method:', $(this).attr('method'));
+    console.log('Method override in URL: ?_method=PUT');
+    console.log('Note: Browser will show POST, but server will receive PUT due to method override');
+
+    // Allow normal form submission - backend handles redirect
+    const submitBtn = $(this).find('button[type="submit"]');
+    submitBtn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Updating...');
+  });
+
+  // Filter Subnet Modal - Initialize Select2
+  $('#filterSubnetTags').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select tag(s)',
+            allowClear: true,
+            width: '100%',
+    dropdownParent: $('#filterSubnetModal'),
+            ajax: {
+              url: '/organize/api/tag',
+              dataType: 'json',
+              delay: 250,
+      data: function(params) {
+        return { search: params.term };
+      },
+      processResults: function(data) {
+        return { results: data };
+      },
+              cache: true
+            }
+          });
+
+  $('#filterSubnetSystems').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Select system(s)',
+        allowClear: true,
+        width: '100%',
+    dropdownParent: $('#filterSubnetModal'),
+        ajax: {
+          url: '/system/api/system',
+          dataType: 'json',
+          delay: 250,
+      data: function(params) {
+        return { search: params.term };
+      },
+      processResults: function(data) {
+        return { results: data };
+      },
+          cache: true
+        }
+      });
+
+           $('#filterSubnetContacts').select2({
+             theme: 'bootstrap-5',
+             placeholder: 'Select contact(s)',
+             allowClear: true,
+             width: '100%',
+             dropdownParent: $('#filterSubnetModal'),
+             ajax: {
+               url: '/organize/api/contact',
+               dataType: 'json',
+               delay: 250,
+               data: function(params) {
+                 return { search: params.term };
+               },
+               processResults: function(data) {
+                 return { results: data };
+               },
+               cache: true
+             }
+           });
+
+           $('#filterSubnetIpId').select2({
+             theme: 'bootstrap-5',
+             placeholder: 'Select IP address(es)',
+             allowClear: true,
+             width: '100%',
+             dropdownParent: $('#filterSubnetModal'),
+             ajax: {
+               url: '/network/api/ip-addresses',
+               dataType: 'json',
+               delay: 250,
+               data: function(params) {
+                 return { search: params.term };
+               },
+               processResults: function(data) {
+                 return { results: data };
+               },
+               cache: true
+             }
+           });
+
+  // Filter Subnet Modal - Load existing filter values when opened
+  $('#filterSubnetModal').on('show.bs.modal', function() {
+    console.log('Filter Subnet Modal opened');
+    
+    // Load existing filter values
+    setTimeout(() => {
+      loadFilterExistingValues();
+    }, 100);
+  });
+
+  // Filter Subnet Modal - Reset form when hidden
+  $('#filterSubnetModal').on('hidden.bs.modal', function() {
+    console.log('Filter Subnet Modal hidden, resetting form');
+    $('#filterSubnetForm')[0].reset();
+    $('#filterSubnetTags, #filterSubnetSystems, #filterSubnetContacts, #filterSubnetIpId').val(null).trigger('change');
+  });
+
+  // Clear All Filters button
+  $('#clearFilterBtnSubnet').on('click', function() {
+    // Clear all select2 values
+    $('#filterSubnetTags').val(null).trigger('change');
+    $('#filterSubnetZone').val('');
+    $('#filterSubnetEnvironment').val('');
+    
+    // Close modal
+    $('#filterSubnetModal').modal('hide');
+    
+    // Redirect to clean URL but preserve pageSize and search
+    const currentPageSize = $('select[name="pageSize"]').val() || '10';
+    const currentSearch = $('input[name="search"]').val() || '';
+    let cleanUrl = '/network/subnet-address';
+    const params = [];
+    if (currentPageSize && currentPageSize !== '10') params.push('pageSize=' + encodeURIComponent(currentPageSize));
+    if (currentSearch) params.push('search=' + encodeURIComponent(currentSearch));
+    if (params.length > 0) cleanUrl += '?' + params.join('&');
+    window.location.href = cleanUrl;
+  });
+});
+
+function loadFilterExistingValues() {
+  console.log('Loading existing filter values...');
+  
+  // Get filter data from hidden div
+  const filterDataEl = document.getElementById('filter-subnet-data');
+  if (!filterDataEl) {
+    console.log('Filter data element not found');
+    return;
+  }
+  
+  try {
+    const filterTags = JSON.parse(filterDataEl.dataset.tags || '[]');
+    const filterZone = JSON.parse(filterDataEl.dataset.zone || '""');
+    const filterEnvironment = JSON.parse(filterDataEl.dataset.environment || '""');
+    
+    console.log('Filter data:', { filterTags, filterZone, filterEnvironment });
+    
+    // Clear existing options first to avoid duplicates
+    $('#filterSubnetTags').find('option').remove();
+    $('#filterSubnetSystems').find('option').remove();
+    $('#filterSubnetContacts').find('option').remove();
+    $('#filterSubnetIpId').find('option').remove();
+    
+    // Load tags
+    if (filterTags && filterTags.length > 0) {
+      filterTags.forEach(tag => {
+        const option = new Option(tag.name, tag.id, true, true);
+        $('#filterSubnetTags').append(option);
+      });
+      $('#filterSubnetTags').trigger('change');
+    }
+    
+    // Load systems
+    if (filterSystems && filterSystems.length > 0) {
+      filterSystems.forEach(system => {
+        const option = new Option(system.name, system.id, true, true);
+        $('#filterSubnetSystems').append(option);
+      });
+      $('#filterSubnetSystems').trigger('change');
+    }
+    
+    // Load contacts
+    if (filterContacts && filterContacts.length > 0) {
+      filterContacts.forEach(contact => {
+        const option = new Option(contact.name, contact.id, true, true);
+        $('#filterSubnetContacts').append(option);
+      });
+      $('#filterSubnetContacts').trigger('change');
+    }
+    
+    // Load IP addresses
+    if (filterIpAddresses && filterIpAddresses.length > 0) {
+      filterIpAddresses.forEach(ip => {
+        const option = new Option(ip.ip_address, ip.id, true, true);
+        $('#filterSubnetIpId').append(option);
+      });
+      $('#filterSubnetIpId').trigger('change');
+    }
+    
+  } catch (e) {
+    console.error('Error loading filter values:', e);
+  }
+}
+
+function loadEditExistingValues(tags, systems, contacts, ipId, ipAddress) {
+  console.log('Loading existing values:', { tags, systems, contacts, ipId, ipAddress });
+
+  // Load existing IP
+  if (ipId && ipAddress) {
+    const option = new Option(ipAddress, ipId, true, true);
+    $('#editSubnetIpId').append(option).trigger('change');
+  }
+
+  // Load existing tags
+      if (tags && tags.length > 0) {
+    try {
+        const tagArray = typeof tags === 'string' ? JSON.parse(tags) : tags;
+      console.log('Parsed tags:', tagArray);
+      
+      // For Select2, we need to create option elements first
+        const tagOptions = tagArray.map(tag => {
+          const id = typeof tag === 'object' ? tag.id : tag;
+          const text = typeof tag === 'object' ? (tag.name || tag.text) : tag;
+          return new Option(text, id, true, true);
+        });
+      
+        $('#editSubnetTags').append(tagOptions).trigger('change');
+      console.log('Tags loaded successfully');
+    } catch (e) {
+      console.log('Error parsing tags:', e);
+    }
+  }
+
+  // Load existing systems
+  if (systems && systems.length > 0) {
+    try {
+      const systemArray = typeof systems === 'string' ? JSON.parse(systems) : systems;
+      console.log('Parsed systems:', systemArray);
+      
+      const systemOptions = systemArray.map(system => {
+        const id = typeof system === 'object' ? system.id : system;
+        const text = typeof system === 'object' ? (system.name || system.text) : system;
+        return new Option(text, id, true, true);
+      });
+      
+      $('#editSubnetSystems').append(systemOptions).trigger('change');
+      console.log('Systems loaded successfully');
+    } catch (e) {
+      console.log('Error parsing systems:', e);
+    }
+  }
+
+  // Load existing contacts
+  if (contacts && contacts.length > 0) {
+    try {
+      const contactArray = typeof contacts === 'string' ? JSON.parse(contacts) : contacts;
+      console.log('Parsed contacts:', contactArray);
+      
+      const contactOptions = contactArray.map(contact => {
+        const id = typeof contact === 'object' ? contact.id : contact;
+        const text = typeof contact === 'object' ? (contact.name || contact.email || contact.text) : contact;
+        return new Option(text, id, true, true);
+      });
+      
+      $('#editSubnetContacts').append(contactOptions).trigger('change');
+      console.log('Contacts loaded successfully');
+    } catch (e) {
+      console.log('Error parsing contacts:', e);
+    }
+  }
+}
+
+function isValidIP(ip) {
+  const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  return ipRegex.test(ip);
+}
+
+function checkMultipleIPsExist(ipList, inputElement, errorDiv) {
+  console.log('=== Starting IP existence check ===');
+  console.log('IPs to check:', ipList);
+  
+  // Check each IP one by one
+  let checkedCount = 0;
+  let existingIPs = [];
+  
+  ipList.forEach((ip, index) => {
+    console.log(`Checking IP ${index + 1}/${ipList.length}: ${ip}`);
+    
+    $.ajax({
+      url: '/network/api/ip-addresses',
+      type: 'GET',
+      data: { search: ip },
+      success: function(data) {
+        console.log(`✓ IP ${ip} check response:`, data);
+        
+        // Debug: Show structure of first item if exists
+        if (data.length > 0) {
+          console.log(`First item structure:`, data[0]);
+          console.log(`Available fields:`, Object.keys(data[0]));
+        }
+        
+        // Check if this specific IP already exists
+        // Backend returns: { id: ..., text: ip_address }
+        const existingIP = data.find(item => item.text === ip);
+        console.log(`Checking if IP ${ip} exists in response:`, existingIP);
+        console.log(`Available items in response:`, data.map(item => ({ id: item.id, text: item.text })));
+        
+        if (existingIP) {
+          console.log(`✗ IP ${ip} already exists!`);
+          existingIPs.push(ip);
+      } else {
+          console.log(`✓ IP ${ip} is available`);
+        }
+        
+        checkedCount++;
+        console.log(`Progress: ${checkedCount}/${ipList.length} IPs checked`);
+        
+        // When all IPs are checked
+        if (checkedCount === ipList.length) {
+          console.log('=== All IPs checked ===');
+          console.log('Existing IPs:', existingIPs);
+          
+          if (existingIPs.length > 0) {
+            console.log('❌ Some IPs already exist - showing error');
+            inputElement.removeClass('is-valid').addClass('is-invalid');
+            errorDiv.text(''); // Clear format error
+            $('#ipValidationIcon').hide();
+            $('#ipAddressSuccess').hide();
+            $('#ipAddressExists').show();
+            $('#ipExistsMessage').text(`IP addresses already exist: ${existingIPs.join(', ')}`);
     } else {
-      table.show();
-      mobileCards.hide();
+            console.log('✅ All IPs are available - showing success');
+            inputElement.removeClass('is-invalid').addClass('is-valid');
+            errorDiv.text(''); // Clear error message
+            $('#ipValidationIcon').show();
+            $('#ipAddressSuccess').show();
+            $('#ipAddressExists').hide();
+          }
+        }
+      },
+      error: function(xhr, status, error) {
+        console.error(`❌ Error checking IP ${ip}:`, error);
+        checkedCount++;
+        
+        // When all IPs are checked (including errors)
+        if (checkedCount === ipList.length) {
+          console.log('=== All IPs checked (with errors) ===');
+          if (existingIPs.length > 0) {
+            inputElement.removeClass('is-valid').addClass('is-invalid');
+            errorDiv.text(''); // Clear format error
+            $('#ipValidationIcon').hide();
+            $('#ipAddressSuccess').hide();
+            $('#ipAddressExists').show();
+            $('#ipExistsMessage').text(`IP addresses already exist: ${existingIPs.join(', ')}`);
+    } else {
+            // Don't show error for API failure, just remove validation
+            inputElement.removeClass('is-invalid is-valid');
+            errorDiv.text(''); // Clear any error message
+            $('#ipValidationIcon').hide();
+            $('#ipAddressSuccess').hide();
+            $('#ipAddressExists').hide();
+          }
+        }
+      }
+            });
+          });
+}
+
+        
+function confirmDeleteSubnet(form, subnet) {
+  if (confirm('Are you sure you want to delete the subnet: ' + subnet + '?')) {
+    form._deleting = true;
+    return true;
+  }
+  return false;
+}
+
+// Function removed - no longer finding subnet information for IP detail
+
+// Function to check if an IP is in a subnet (CIDR notation)
+function isIPInSubnet(ipAddress, subnetCIDR) {
+  try {
+    const [subnetIP, prefixLength] = subnetCIDR.split('/');
+    const prefix = parseInt(prefixLength);
+    
+    console.log('Checking IP:', ipAddress, 'in subnet:', subnetCIDR);
+    console.log('Subnet IP:', subnetIP, 'Prefix:', prefix);
+    
+    // Convert IPs to numbers
+    const ipParts = ipAddress.split('.');
+    const subnetParts = subnetIP.split('.');
+    
+    if (ipParts.length !== 4 || subnetParts.length !== 4) {
+      console.log('Invalid IP format');
+      return false;
+    }
+    
+    const ip = (parseInt(ipParts[0]) << 24) + (parseInt(ipParts[1]) << 16) + (parseInt(ipParts[2]) << 8) + parseInt(ipParts[3]);
+    const subnet = (parseInt(subnetParts[0]) << 24) + (parseInt(subnetParts[1]) << 16) + (parseInt(subnetParts[2]) << 8) + parseInt(subnetParts[3]);
+    
+    const mask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
+    
+    const result = (ip & mask) === (subnet & mask);
+    console.log('IP number:', ip, 'Subnet number:', subnet, 'Mask:', mask, 'Result:', result);
+    
+    return result;
+  } catch (error) {
+    console.error('Error in isIPInSubnet:', error);
+    return false;
+  }
+}
+
+// Function to load subnet information for an IP address
+function loadSubnetInfoForIP(ipAddress, contentElement) {
+  console.log('Loading subnet info for IP:', ipAddress);
+  
+  // Make AJAX call to find subnet containing this IP
+  $.ajax({
+    url: '/network/api/subnet-for-ip/' + encodeURIComponent(ipAddress),
+    method: 'GET',
+    dataType: 'json'
+  }).done(function(response) {
+    console.log('Subnet response received:', response);
+    
+    if (response.found && response.subnet) {
+      console.log('Found matching subnet:', response.subnet);
+      updateSubnetInfoInModal(contentElement, response.subnet);
+    } else {
+      console.log('No matching subnet found');
+      updateSubnetInfoInModal(contentElement, null);
+    }
+  }).fail(function(xhr, status, error) {
+    console.error('Error loading subnet information:', status, error);
+    console.error('Response:', xhr.responseText);
+    
+    // Fallback: try with sample data for testing
+    console.log('Trying with sample subnet data...');
+    const sampleSubnets = [
+      { address: '10.1.0.0/16', zone: 'BACKBONE', environment: 'DEV' },
+      { address: '192.168.1.0/24', zone: 'OFFICE', environment: 'PROD' },
+      { address: '172.16.0.0/12', zone: 'DMZ', environment: 'UAT' }
+    ];
+    
+    let matchingSubnet = null;
+    for (let subnet of sampleSubnets) {
+      if (isIPInSubnet(ipAddress, subnet.address)) {
+        console.log('Found matching sample subnet:', subnet);
+        matchingSubnet = subnet;
+        break;
+      }
+    }
+    
+    updateSubnetInfoInModal(contentElement, matchingSubnet);
+  });
+}
+
+// Function to update subnet information in the modal (as plain text, no badges)
+function updateSubnetInfoInModal(contentElement, subnetInfo) {
+  const currentHTML = contentElement.innerHTML;
+  
+  if (subnetInfo) {
+    // Zone as plain text
+    let zoneHTML = '<div class="mb-2"><strong>Zone:</strong> ';
+    if (subnetInfo.zone && subnetInfo.zone.trim()) {
+      zoneHTML += String(subnetInfo.zone).trim();
+      } else {
+      zoneHTML += '<span class="text-muted">N/A</span>';
+    }
+    zoneHTML += '</div>';
+    
+    // Environment as plain text
+    let environmentHTML = '<div class="mb-2"><strong>Environment:</strong> ';
+    if (subnetInfo.environment && subnetInfo.environment.trim()) {
+      environmentHTML += String(subnetInfo.environment).trim();
+    } else {
+      environmentHTML += '<span class="text-muted">N/A</span>';
+    }
+    environmentHTML += '</div>';
+    
+    // Subnet as plain text
+    let subnetHTML = '<div class="mb-2"><strong>Subnet:</strong> ' + String(subnetInfo.address).trim() + '</div>';
+    
+    // Replace loading states with actual data
+    let updatedHTML = currentHTML.replace(
+      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">Loading...</span></div>',
+      zoneHTML
+    );
+    updatedHTML = updatedHTML.replace(
+      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">Loading...</span></div>',
+      environmentHTML
+    );
+    updatedHTML = updatedHTML.replace(
+      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">Loading...</span></div>',
+      subnetHTML
+    );
+    
+    contentElement.innerHTML = updatedHTML;
+  } else {
+    // No matching subnet found
+    let updatedHTML = currentHTML.replace(
+      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">Loading...</span></div>',
+      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">N/A</span></div>'
+    );
+    updatedHTML = updatedHTML.replace(
+      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">Loading...</span></div>',
+      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">N/A</span></div>'
+    );
+    updatedHTML = updatedHTML.replace(
+      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">Loading...</span></div>',
+      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">N/A</span></div>'
+    );
+    
+    contentElement.innerHTML = updatedHTML;
+  }
+}
+
+function showSubnetDetail(subnetId) {
+  const buttons = document.querySelectorAll('button[data-subnet]');
+  let targetButton = null;
+  
+  for (let button of buttons) {
+    const data = button.getAttribute('data-subnet');
+    if (data) {
+      try {
+        const subnet = JSON.parse(data);
+        if (subnet.id == subnetId) {
+          targetButton = button;
+          break;
+        }
+      } catch (e) {
+        console.error('Error parsing subnet data:', e);
+      }
     }
   }
   
-  // Initial call when document is ready
-  $(document).ready(function() {
-    handleResponsiveLayout();
-  });
+  if (!targetButton) {
+    alert('Subnet data not found');
+    return;
+  }
   
-  // Handle window resize
-  $(window).on('resize', function() {
-    clearTimeout(window.resizeTimeout);
-    window.resizeTimeout = setTimeout(handleResponsiveLayout, 100);
-  });
+  const subnetData = targetButton.getAttribute('data-subnet');
+  let subnet;
+  try {
+    subnet = JSON.parse(subnetData);
+  } catch (e) {
+    alert('Error parsing subnet data: ' + e.message);
+    return;
+  }
+  
+  const modalElement = document.getElementById('subnetDetailModal');
+  const modal = new bootstrap.Modal(modalElement);
+  const content = document.getElementById('subnetDetailContent');
+  
+  let html = '<div class="card"><div class="card-body">';
+  html += '<div class="mb-2"><strong>Subnet Address:</strong> ' + String(subnet.address || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>Description:</strong> ' + String(subnet.description || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>Record Type:</strong> ' + String(subnet.environment || 'A').trim() + '</div>';
+  
+  if (subnet.ip && subnet.zone) {
+    html += '<div class="mb-2"><strong>IP Address:</strong> ' + String(subnet.zone).trim() + '</div>';
+  }
+  
+  if (subnet.tags && subnet.tags.length > 0) {
+    html += '<div class="mb-2"><strong>Tags:</strong><br>';
+    subnet.tags.forEach(function(tag) {
+      const tagValue = (typeof tag === 'string' ? tag : tag.name);
+      html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
+    });
+    html += '</div>';
+  }
+  
+  if (subnet.systems && subnet.systems.length > 0) {
+    html += '<div class="mb-2"><strong>Systems:</strong><ul class="mb-0">';
+    subnet.systems.forEach(function(system) {
+      const systemValue = (typeof system === 'string' ? system : system.name);
+      const searchUrl = '/system/system?search=' + encodeURIComponent(systemValue) + '&pageSize=2';
+      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + 
+              String(systemValue).trim() + '</a></li>';
+    });
+    html += '</ul></div>';
+  }
+  
+  if (subnet.contacts && subnet.contacts.length > 0) {
+    html += '<div class="mb-2"><strong>Contacts:</strong><ul class="mb-0">';
+    subnet.contacts.forEach(function(contact) {
+      let contactName = '';
+      let contactEmail = '';
+      
+      if (typeof contact === 'string') {
+        contactName = contact;
+        contactEmail = '';
+  } else {
+        contactName = contact.name || '';
+        contactEmail = contact.email || '';
+      }
+      
+      // Create short email (remove @subnet part)
+      let shortEmail = '';
+      if (contactEmail && contactEmail.includes('@')) {
+        shortEmail = contactEmail.split('@')[0];
+      }
+      
+      // Format: name (shortEmail) or just name if no email
+      let displayText = contactName;
+      if (shortEmail) {
+        displayText += ' (' + shortEmail + ')';
+      }
+      
+      // Create searchable link as simple text
+      const searchUrl = '/organize/contact?search=' + encodeURIComponent(contactName);
+      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + 
+              String(displayText).trim() + '</a></li>';
+    });
+    html += '</ul></div>';
+  }
+  
+  html += '</div></div>';
+  content.innerHTML = html;
+  modal.show();
+}
 
+// Import Subnet functionality
+let selectedFile = null;
+
+// Handle file selection
+$(document).on('change', '#subnetImportFile', function() {
+  selectedFile = this.files[0];
+  if (selectedFile) {
+    console.log('File selected:', selectedFile.name);
+    $('#validateSubnetBtn').prop('disabled', false);
+        } else {
+    $('#validateSubnetBtn').prop('disabled', true);
+    $('#importSubnetBtn').hide();
+  }
+});
+
+// Handle validate button click
+$(document).on('click', '#validateSubnetBtn', function() {
+  if (!selectedFile) {
+    alert('Please select a file first');
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+  
+  // Show progress
+  $('#subnetImportProgress').show();
+  $('#subnetImportResults').text('Validating file...');
+  $('.progress-bar').css('width', '30%');
+  
+  $.ajax({
+    url: '/network/subnet-address/validate-import',
+    type: 'POST',
+    data: formData,
+    processData: false,
+    contentType: false,
+    xhr: function() {
+      const xhr = new window.XMLHttpRequest();
+      xhr.responseType = 'blob'; // Important for file download
+      return xhr;
+    },
+    success: function(data, status, xhr) {
+      $('.progress-bar').css('width', '100%');
+      $('#subnetImportResults').text('Validation complete! Downloading results...');
+      
+      // Handle file download
+      const contentType = xhr.getResponseHeader('Content-Type');
+      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+      
+      if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+        // Create blob and download file
+        const blob = new Blob([data], { type: contentType });
+        const url = window.URL.createObjectURL(blob);
+        
+        // Extract filename from Content-Disposition header
+        let filename = 'validation_results.xlsx';
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+          if (filenameMatch) {
+            filename = filenameMatch[1];
+          }
+        }
+        
+        // Create download link
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        // Clean up
+        window.URL.revokeObjectURL(url);
+      }
+      
+      // Check validation results from header
+      const validationSummary = xhr.getResponseHeader('X-Validation-Summary');
+      if (validationSummary) {
+        try {
+          const summary = JSON.parse(validationSummary);
+          const resultsDiv = $('#subnetImportResults');
+          resultsDiv.removeClass('alert-danger').addClass('alert-success')
+            .html(`<strong>Validation Complete!</strong><br>
+                   <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
+                   <small>Validation file downloaded. Review results before importing.</small>`);
+          resultsDiv.show();
+          
+          // Show import button if validation passed
+          if (summary.allPassed) {
+            $('#importSubnetBtn').show();
+          }
+        } catch (e) {
+          // Fallback if header parsing fails
+          const resultsDiv = $('#subnetImportResults');
+          resultsDiv.removeClass('alert-danger').addClass('alert-success')
+            .html(`<strong>Validation Complete!</strong><br>
+                   <small>Validation file downloaded. Review results before importing.</small>`);
+          resultsDiv.show();
+          $('#importSubnetBtn').show();
+        }
+      }
+    },
+    error: function(xhr, status, error) {
+      console.error('Validation error:', xhr.responseText);
+      console.error('Status:', xhr.status);
+      console.error('Error:', error);
+      
+      $('.progress-bar').css('width', '100%').text('Validation Failed');
+      $('#subnetImportResults').removeClass('alert-success').addClass('alert-danger')
+        .html('<strong>Validation Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
+        .show();
+      },
+      complete: function() {
+      $('#validateSubnetBtn').prop('disabled', false);
+      setTimeout(() => {
+        $('#subnetImportProgress').hide();
+      }, 2000);
+    }
+  });
+});
+
+// Handle import button click
+$(document).on('click', '#importSubnetBtn', function() {
+  if (!selectedFile) {
+    alert('Please select a file first');
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+  
+  // Show progress
+  $('#subnetImportProgress').show();
+  $('#subnetImportResults').text('Importing subnets...');
+  $('.progress-bar').css('width', '30%').text('Importing...');
+  $('#importSubnetBtn').prop('disabled', true);
+  
+  $.ajax({
+    url: '/network/subnet-address/import',
+    type: 'POST',
+    data: formData,
+    processData: false,
+    contentType: false,
+    xhr: function() {
+      const xhr = new window.XMLHttpRequest();
+      xhr.responseType = 'blob'; // Important for file download
+      return xhr;
+    },
+    success: function(data, status, xhr) {
+      $('#subnetImportProgress .progress-bar').css('width', '100%').text('Import Complete');
+      
+      // Handle file download
+      const contentType = xhr.getResponseHeader('Content-Type');
+      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+      
+      if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+        // Create blob and download file
+        const blob = new Blob([data], { type: contentType });
+        const url = window.URL.createObjectURL(blob);
+        
+        // Extract filename from Content-Disposition header
+        let filename = 'import_results.xlsx';
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+          if (filenameMatch) {
+            filename = filenameMatch[1];
+          }
+        }
+        
+        // Create download link
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        // Clean up
+        window.URL.revokeObjectURL(url);
+      }
+      
+      // Show results
+      const resultsDiv = $('#subnetImportResults');
+      resultsDiv.removeClass('alert-danger').addClass('alert-success')
+        .html(`<strong>Import Completed!</strong><br>
+               <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
+      resultsDiv.show();
+      
+      // Hide import button
+      $('#importSubnetBtn').hide();
+      
+      // Refresh page after 2 seconds
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    },
+    error: function(xhr, status, error) {
+      console.error('Import error:', xhr.responseText);
+      console.error('Status:', xhr.status);
+      console.error('Error:', error);
+      
+      $('#subnetImportProgress .progress-bar').css('width', '100%').text('Import Failed');
+      $('#subnetImportResults').removeClass('alert-success').addClass('alert-danger')
+        .html('<strong>Import Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
+        .show();
+    },
+    complete: function() {
+      $('#importSubnetBtn').prop('disabled', false);
+      setTimeout(() => {
+        $('#subnetImportProgress').hide();
+      }, 2000);
+    }
+  });
+});
+
+// Reset import modal when closed
+$('#importSubnetModal').on('hidden.bs.modal', function() {
+  // Reset form
+  $('#importSubnetForm')[0].reset();
+  selectedFile = null;
+  
+  // Reset UI elements
+  $('#validateSubnetBtn').prop('disabled', true);
+  $('#importSubnetBtn').hide();
+  $('#subnetImportProgress').hide();
+  $('#subnetImportResults').hide();
+  
+  // Reset progress bar
+  $('.progress-bar').css('width', '0%').text('');
 });
 </script>
-
-<!-- Responsive Tables CSS -->
-  </div>
-</div>

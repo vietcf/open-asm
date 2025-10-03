@@ -1,0 +1,2461 @@
+<!-- eslint-disable -->
+<!-- @ts-nocheck -->
+<style>
+/* Mobile responsive styles for Firewall Rules List */
+@media (max-width: 768px) {
+  .table-responsive {
+    display: block !important;
+    overflow-x: scroll !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .table {
+    display: table !important;
+    min-width: 1200px !important;
+    width: 100% !important;
+  }
+  
+  .card-body,
+  .card,
+  .col-12,
+  .container-fluid,
+  .row {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  .col-12 {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    padding: 0 15px !important;
+  }
+  
+  /* Only apply mobile styles to table container, not button row */
+  .col-12:not(.d-flex) {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    padding: 0 15px !important;
+  }
+  
+  /* Force button row to stay on the right - HIGH SPECIFICITY */
+  .row.mb-3 .col-12.button-row {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    text-align: right !important;
+  }
+  
+  /* Additional override for any conflicting styles */
+  .button-row.d-flex {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    flex-direction: row !important;
+  }
+  
+  /* Button container - separate from col-12 to avoid conflicts */
+  .button-container {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    gap: 0.5rem !important;
+  }
+  
+  /* Consistent button spacing */
+  .button-container .btn {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+  }
+  
+  .button-container .btn:not(:last-child) {
+    margin-right: 0.5rem !important;
+  }
+  
+  .card {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  .table th,
+  .table td {
+    padding: 0.25rem !important;
+    font-size: 0.75rem !important;
+    white-space: nowrap !important;
+  }
+  
+  .btn-sm {
+    padding: 0.25rem 0.5rem !important;
+    font-size: 0.75rem !important;
+  }
+  
+  /* View toggle buttons */
+  .btn-group {
+    margin-bottom: 0.5rem !important;
+  }
+  
+  .btn-group .btn {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+  }
+  
+  /* Override inline styles for mobile */
+  .card-body[style*="max-height"] {
+    max-height: none !important;
+    overflow-y: auto !important;
+    overflow-x: auto !important;
+  }
+}
+</style>
+
+<div class="container-fluid">
+  <div id="wo-alert-container"></div>
+
+  <!-- Search Form -->
+  <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/firewall/rule" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
+    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search any field (name, src, dst, service, action, status, ...)" aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+    <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
+      <% (pageSizeOptions || [5,10,15,20]).forEach(function(size) { %>
+        <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
+      <% }) %>
+    </select>
+    <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
+  </form>
+
+  <!-- View Toggle and Action Buttons -->
+  <div class="row mb-3">
+    <div class="col-12 button-row" style="margin-top: 16px;">
+      <!-- View Toggle Buttons -->
+      <div class="btn-group mb-2" role="group" aria-label="View Mode">
+        <input type="radio" class="btn-check" name="viewMode" id="groupedView" value="grouped" checked>
+        <label class="btn btn-outline-primary btn-sm" for="groupedView">
+          <i class="bi bi-collection"></i> Grouped View
+        </label>
+        <input type="radio" class="btn-check" name="viewMode" id="detailedView" value="detailed">
+        <label class="btn btn-outline-primary btn-sm" for="detailedView">
+          <i class="bi bi-list-ul"></i> Detailed View
+        </label>
+      </div>
+      
+      <!-- Action Buttons -->
+      <div class="button-container d-flex justify-content-end align-items-center">
+        <% if (hasPermission('rule.create')) { %>
+          <button id="add-rule-btn" type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addRuleModal">
+            <i class="bi bi-plus"></i> Add Rule
+          </button>
+          <button id="import-rule-btn" type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importRuleModal">
+            <i class="bi bi-upload"></i> Import
+          </button>
+        <% } %>
+        <% if (hasPermission('rule.read')) { %>
+          <a href="/firewall/rule/template" class="btn btn-info btn-sm" download>
+            <i class="bi bi-download"></i> Download Template
+          </a>
+        <% } %>
+        <button type="button" class="btn btn-success btn-sm" id="editMultiWOButton">
+          <i class="bi bi-pencil-square"></i> Edit Batch WO
+        </button>
+        <form action="/firewall/rule/export" method="GET" style="display:inline;" id="exportRuleForm">
+          <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+          <input type="hidden" name="ou_id" value="<%= typeof filterUnitId !== 'undefined' ? filterUnitId : '' %>">
+          <% if (typeof filterTagIds !== 'undefined' && Array.isArray(filterTagIds)) { filterTagIds.forEach(function(t) { %>
+            <input type="hidden" name="tags[]" value="<%= t %>">
+          <% }) } %>
+          <% if (typeof filterContactIds !== 'undefined' && Array.isArray(filterContactIds)) { filterContactIds.forEach(function(c) { %>
+            <input type="hidden" name="contacts[]" value="<%= c %>">
+          <% }) } %>
+          <input type="hidden" name="violation_type" value="<%= typeof violation_type !== 'undefined' ? violation_type : '' %>">
+          <input type="hidden" name="status" value="<%= typeof status !== 'undefined' ? status : '' %>">
+          <input type="hidden" name="firewall_name" value="<%= typeof firewall_name !== 'undefined' ? firewall_name : '' %>">
+          <button type="submit" class="btn btn-warning btn-sm">
+            <i class="bi bi-download"></i> Export
+          </button>
+        </form>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterRuleModal">
+          <i class="bi bi-funnel"></i> Filter
+        </button>
+      </div>
+    </div>
+    </div>
+  </div>
+
+  <!-- Warning Alert -->
+  <div id="editWoWarning" class="alert alert-warning d-none" style="position:fixed; top:80px; right:30px; z-index:9999; min-width:200px; max-width:400px; text-align:center;">
+    Please select at least one rule to edit WO.
+  </div>
+
+  <!-- Firewall Rules List Table -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title mb-0">Firewall Rules List</h3>
+    </div>
+    <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
+      <% if (typeof error !== 'undefined' && error) { %>
+        <div id="toast-error" class="toast-error alert alert-danger" style="position:absolute; left:0; right:0; top:0; margin:auto; z-index:9999; min-width:200px; max-width:400px; text-align:center;">
+          <%= error %>
+        </div>
+        <script>setTimeout(function(){var el=document.getElementById('toast-error');if(el)el.style.display='none';},6000);</script>
+      <% } %>
+      <% if (typeof success !== 'undefined' && success) { %>
+        <div id="toast-success" class="toast-success alert alert-success" style="position:absolute; left:0; right:0; top:40px; margin:auto; z-index:9999; min-width:200px; max-width:400px; text-align:center;">
+          <%= success %>
+        </div>
+        <script>setTimeout(function(){var el=document.getElementById('toast-success');if(el)el.style.display='none';},6000);</script>
+      <% } %>
+      
+      <table class="table table-hover" id="rulesTable" style="table-layout: fixed; min-width: 1200px;">
+        <thead>
+          <tr id="detailedHeader">
+            <th style="width:32px;"><input type="checkbox" id="selectAllRules"></th>
+            <th style="width:50px;">No.</th>
+            <th style="width:100px;">Audit Batch</th>
+            <th style="width:120px;">Firewall Name</th>
+            <th style="width:150px;">Rule Name</th>
+            <th style="width:120px;">Source</th>
+            <th style="width:120px;">Destination</th>
+            <th style="width:100px;">Service</th>
+            <th style="width:80px;">Status</th>
+            <th class="d-none">Work Order</th>
+            <th class="d-none">OU (Unit)</th>
+            <th class="d-none d-lg-table-cell" style="width:120px;">Contacts</th>
+            <th style="width:120px;">Violation Type</th>
+            <th style="width:100px;">Tags</th>
+            <th class="text-end" style="width:120px;">Actions</th>
+          </tr>
+          <tr id="groupedHeader" style="display: none;">
+            <th style="width:32px;"><input type="checkbox" id="selectAllGroups"></th>
+            <th style="width:50px;">No.</th>
+            <th style="width:100px;">Audit Batch</th>
+            <th style="width:120px;">Firewall Name</th>
+            <th style="width:150px;">Rule Name</th>
+            <th style="width:120px;">Source</th>
+            <th style="width:120px;">Destination</th>
+            <th style="width:100px;">Service</th>
+            <th style="width:120px;">Last Update</th>
+            <th class="text-end" style="width:120px;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="rulesTableBody">
+          <!-- Fallback: Show rules if JavaScript fails -->
+          <% if (ruleList && ruleList.length > 0) { %>
+            <% ruleList.forEach(function(rule, idx) { %>
+              <tr>
+                <td><input type="checkbox" class="rule-checkbox" value="<%= rule.id %>"></td>
+                <td><%= idx + 1 %></td>
+                <td><%= rule.audit_batch || '' %></td>
+                <td><%= rule.firewall_name || '' %></td>
+                <td><%= rule.rulename %></td>
+                <td><%= rule.src || '' %></td>
+                <td><%= rule.dst || '' %></td>
+                <td><%= rule.services || '' %></td>
+                <td><%= rule.status || '' %></td>
+                <td class="d-none"><%= rule.work_order || '' %></td>
+                <td class="d-none"><%= rule.ou_name || '' %></td>
+                <td class="d-none d-lg-table-cell">
+                  <% if (rule.contacts && rule.contacts.length > 0) { %>
+                    <% 
+                      var contactLinks = [];
+                      rule.contacts.forEach(function(contact) {
+                        if (contact.email) {
+                          var emailPrefix = contact.email.split('@')[0];
+                          contactLinks.push('<a href="/organize/contact?search=' + encodeURIComponent(emailPrefix) + '&pageSize=10" class="text-decoration-none">' + emailPrefix + '</a>');
+                        }
+                      });
+                    %>
+                    <%- contactLinks.join(', ') %>
+                  <% } else { %>
+                    <span class="text-muted">No contacts</span>
+                  <% } %>
+                </td>
+                <td><%= rule.violation_type || '' %></td>
+                <td>
+                  <% if (rule.tagNames && rule.tagNames.length > 0) { %>
+                    <% rule.tagNames.forEach(function(tag) { %>
+                      <span class="badge bg-primary text-white me-1" style="font-size:0.8rem;"><%= tag %></span>
+                    <% }) %>
+                  <% } else { %>
+                    <span class="text-muted">No tags</span>
+                  <% } %>
+                </td>
+                <td class="text-end">
+                  <div class="btn-group btn-group-sm">
+                    <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#ruleDetailModal-<%= rule.id %>">
+                      <i class="bi bi-eye"></i>
+                    </a>
+                    <% if (hasPermission('rule.update')) { %>
+                      <button type="button" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#ruleEditModal-<%= rule.id %>">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                    <% } %>
+                    <% if (hasPermission('rule.delete')) { %>
+                      <form action="/firewall/rule/<%= rule.id %>?_method=DELETE" method="POST" style="display:inline">
+                        <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete this rule?')">
+                          <i class="bi bi-trash"></i>
+                        </button>
+                      </form>
+                    <% } %>
+                  </div>
+                </td>
+              </tr>
+            <% }) %>
+          <% } else { %>
+            <tr><td colspan="9" class="text-center">No rules found</td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-footer clearfix">
+      <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
+        <div>
+          <span>Showing <%= ruleList && ruleList.length ? ((page - 1) * pageSize + 1) : 0 %> - <%= ruleList && ruleList.length ? ((page - 1) * pageSize + ruleList.length) : 0 %> of <%= totalCount %> rules</span>
+        </div>
+      </div>
+      <ul class="pagination pagination-sm m-0 float-end">
+        <% 
+          let startPage = 1;
+          let endPage = totalPages;
+          if (totalPages > 10) {
+            if (page <= 5) {
+              startPage = 1;
+              endPage = 10;
+            } else if (page + 4 >= totalPages) {
+              startPage = totalPages - 9;
+              endPage = totalPages;
+            } else {
+              startPage = page - 5 + 1;
+              endPage = page + 4;
+            }
+          }
+          // Build filter query string for pagination links
+          function buildRuleFilterQuery() {
+            let params = [];
+            if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+            if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
+            if (typeof firewall_name !== 'undefined' && firewall_name) params.push('firewall_name=' + encodeURIComponent(firewall_name));
+            if (typeof filterUnitId !== 'undefined' && filterUnitId) params.push('ou_id=' + encodeURIComponent(filterUnitId));
+            if (typeof filterTagIds !== 'undefined' && Array.isArray(filterTagIds) && filterTagIds.length) filterTagIds.forEach(function(id) { params.push('tags[]=' + encodeURIComponent(id)); });
+            if (typeof filterContactIds !== 'undefined' && Array.isArray(filterContactIds) && filterContactIds.length) filterContactIds.forEach(function(id) { params.push('contacts[]=' + encodeURIComponent(id)); });
+            if (typeof audit_batch !== 'undefined' && audit_batch) params.push('audit_batch=' + encodeURIComponent(audit_batch));
+            if (typeof violation_type !== 'undefined' && violation_type) params.push('violation_type=' + encodeURIComponent(violation_type));
+            if (typeof status !== 'undefined' && status) params.push('status=' + encodeURIComponent(status));
+            return params.join('&');
+          }
+          const ruleFilterQuery = buildRuleFilterQuery();
+        %>
+        <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+          <a class="page-link" href="?page=<%= page - 1 %><%= ruleFilterQuery ? '&' + ruleFilterQuery : '' %>" tabindex="-1">Previous</a>
+        </li>
+        <% for (let i = startPage; i <= endPage; i++) { %>
+          <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= ruleFilterQuery ? '&' + ruleFilterQuery : '' %>"><%= i %></a></li>
+        <% } %>
+        <% if (endPage < totalPages) { %>
+          <li class="page-item disabled"><span class="page-link">...</span></li>
+        <% } %>
+        <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+          <a class="page-link" href="?page=<%= page + 1 %><%= ruleFilterQuery ? '&' + ruleFilterQuery : '' %>">Next</a>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Add Rule Modal -->
+  <div class="modal fade" id="addRuleModal" tabindex="-1" aria-labelledby="addRuleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addRuleModalLabel">Add Firewall Rule</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="addRuleForm" action="/firewall/rule" method="POST" onsubmit="return validateAddRuleForm()">
+            <!-- Audit Batch -->
+            <div class="mb-3">
+              <label for="audit_batch" class="form-label">Audit Batch <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-sm" id="audit_batch" name="audit_batch" required placeholder="YYYY-MM" pattern="^\d{4}-\d{2}$">
+              <div class="form-text">Format: YYYY-MM (e.g., 2024-01)</div>
+            </div>
+            
+            <div class="mb-3">
+              <label for="firewall_name" class="form-label">Firewall Name <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm" id="firewall_name" name="firewall_name" required>
+                <option value="">-- Select Firewall Name --</option>
+                <% (firewallNameOptions || []).forEach(function(fw) { %>
+                  <option value="<%= fw.value %>"><%= fw.label %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="rulename" class="form-label">Rule Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-sm" id="rulename" name="rulename" required placeholder="Rule Name">
+            </div>
+            
+            <!-- Source Section -->
+            <div class="mb-3">
+              <label for="src_zone" class="form-label">Source Zone</label>
+              <input type="text" class="form-control form-control-sm" id="src_zone" name="src_zone" placeholder="Source Zone">
+            </div>
+            <div class="mb-3">
+              <label for="src" class="form-label">Source <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-sm" id="src" name="src" required placeholder="Source IP/Network">
+            </div>
+            <div class="mb-3">
+              <label for="src_detail" class="form-label">Source Detail</label>
+              <input type="text" class="form-control form-control-sm" id="src_detail" name="src_detail" placeholder="Source Detail">
+            </div>
+            
+            <!-- Destination Section -->
+            <div class="mb-3">
+              <label for="dst_zone" class="form-label">Destination Zone</label>
+              <input type="text" class="form-control form-control-sm" id="dst_zone" name="dst_zone" placeholder="Destination Zone">
+            </div>
+            <div class="mb-3">
+              <label for="dst" class="form-label">Destination <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-sm" id="dst" name="dst" required placeholder="Destination IP/Network">
+            </div>
+            <div class="mb-3">
+              <label for="dst_detail" class="form-label">Destination Detail</label>
+              <input type="text" class="form-control form-control-sm" id="dst_detail" name="dst_detail" placeholder="Destination Detail">
+            </div>
+            
+            <!-- Service Section -->
+            <div class="mb-3">
+              <label for="services" class="form-label">Services</label>
+              <input type="text" class="form-control form-control-sm" id="services" name="services" placeholder="Service/Port">
+            </div>
+            <div class="mb-3">
+              <label for="application" class="form-label">Application</label>
+              <input type="text" class="form-control form-control-sm" id="application" name="application" placeholder="Application">
+            </div>
+            <div class="mb-3">
+              <label for="url" class="form-label">URL</label>
+              <input type="text" class="form-control form-control-sm" id="url" name="url" placeholder="URL">
+            </div>
+            <div class="mb-3">
+              <label for="action" class="form-label">Action <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm" id="action" name="action" required>
+                <option value="">-- Select Action --</option>
+                <% (actionsOptions || []).forEach(function(act) { %>
+                  <option value="<%= act.value %>"><%= act.label %></option>
+                <% }) %>
+              </select>
+            </div>
+            
+            <!-- Violation Type -->
+            <div class="mb-3">
+              <label for="violation_type" class="form-label">Violation Type</label>
+              <select class="form-select form-select-sm" id="violation_type" name="violation_type">
+                <option value="">-- No violation --</option>
+                <% (violationTypeOptions || []).forEach(function(vt) { %>
+                  <option value="<%= vt.value %>"><%= vt.label %></option>
+                <% }) %>
+              </select>
+            </div>
+            
+            <!-- Violation Detail -->
+            <div class="mb-3">
+              <label for="violation_detail" class="form-label">Violation Detail</label>
+              <textarea class="form-control form-control-sm" id="violation_detail" name="violation_detail" rows="2" placeholder="Violation Detail"></textarea>
+            </div>
+            
+            <!-- OU (Organizational Unit) -->
+            <div class="mb-3">
+              <label for="ou_id" class="form-label">OU (Organizational Unit)</label>
+              <select class="form-select form-select-sm" id="ou_id" name="ou_id">
+                <option value="">-- Select OU --</option>
+              </select>
+            </div>
+            
+            <!-- Contacts -->
+            <div class="mb-3">
+              <label for="add-contact-select" class="form-label">Contacts</label>
+              <select id="add-contact-select" name="contacts[]" class="form-control" multiple>
+                <!-- Selected contacts will be populated here -->
+              </select>
+              <div class="form-text">Select contacts responsible for this rule</div>
+            </div>
+            
+            <!-- Solution Proposal -->
+            <div class="mb-3">
+              <label for="solution_proposal" class="form-label">Solution Proposal</label>
+              <textarea class="form-control form-control-sm" id="solution_proposal" name="solution_proposal" rows="2" placeholder="Solution Proposal"></textarea>
+            </div>
+            
+            <!-- Solution Confirm -->
+            <div class="mb-3">
+              <label for="solution_confirm" class="form-label">Solution Confirm</label>
+              <textarea class="form-control form-control-sm" id="solution_confirm" name="solution_confirm" rows="2" placeholder="Solution Confirm"></textarea>
+            </div>
+            
+            <!-- Work Order -->
+            <div class="mb-3">
+              <label for="work_order" class="form-label">Work Order</label>
+              <input type="text" class="form-control form-control-sm" id="work_order" name="work_order" placeholder="Work Order">
+            </div>
+            
+            <!-- Status -->
+            <div class="mb-3">
+              <label for="status" class="form-label">Status</label>
+              <select class="form-select form-select-sm" id="status" name="status">
+                <option value="">-- No status --</option>
+                <% (statusOptions || []).forEach(function(st) { %>
+                  <option value="<%= st.value %>"><%= st.label %></option>
+                <% }) %>
+              </select>
+            </div>
+            
+            <!-- Description -->
+            <div class="mb-3">
+              <label for="description" class="form-label">Description</label>
+              <textarea class="form-control form-control-sm" id="description" name="description" rows="2" placeholder="Description"></textarea>
+            </div>
+            
+            <div class="modal-footer d-flex justify-content-end">
+              <button type="submit" class="btn btn-primary btn-sm">Add Rule</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Rule Modal -->
+  <div class="modal fade" id="editRuleModal" tabindex="-1" aria-labelledby="editRuleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editRuleModalLabel">Edit Firewall Rule</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editRuleForm" action="/firewall/rule" method="POST" onsubmit="return validateEditRuleForm()">
+            <input type="hidden" name="_method" value="PUT">
+            <input type="hidden" id="editRuleId" name="id">
+            
+            <div class="mb-3">
+              <label for="edit_audit_batch" class="form-label">Audit Batch <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-sm" id="edit_audit_batch" name="audit_batch" required placeholder="YYYY-MM" pattern="^\d{4}-\d{2}$">
+              <div class="form-text">Format: YYYY-MM (e.g., 2024-01)</div>
+            </div>
+            <div class="mb-3">
+              <label for="edit_firewall_name" class="form-label">Firewall Name <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm" id="edit_firewall_name" name="firewall_name" required>
+                <option value="">-- Select Firewall Name --</option>
+                <% (firewallNameOptions || []).forEach(function(fw) { %>
+                  <option value="<%= fw.value %>"><%= fw.label %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="edit_rulename" class="form-label">Rule Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-sm" id="edit_rulename" name="rulename" required placeholder="Rule Name">
+            </div>
+            
+            <!-- Source Section -->
+            <div class="mb-3">
+              <label for="edit_src_zone" class="form-label">Source Zone</label>
+              <input type="text" class="form-control form-control-sm" id="edit_src_zone" name="src_zone" placeholder="Source Zone">
+            </div>
+            <div class="mb-3">
+              <label for="edit_src" class="form-label">Source <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-sm" id="edit_src" name="src" required placeholder="Source IP/Network">
+            </div>
+            <div class="mb-3">
+              <label for="edit_src_detail" class="form-label">Source Detail</label>
+              <input type="text" class="form-control form-control-sm" id="edit_src_detail" name="src_detail" placeholder="Source Detail">
+            </div>
+            
+            <!-- Destination Section -->
+            <div class="mb-3">
+              <label for="edit_dst_zone" class="form-label">Destination Zone</label>
+              <input type="text" class="form-control form-control-sm" id="edit_dst_zone" name="dst_zone" placeholder="Destination Zone">
+            </div>
+            <div class="mb-3">
+              <label for="edit_dst" class="form-label">Destination <span class="text-danger">*</span></label>
+              <input type="text" class="form-control form-control-sm" id="edit_dst" name="dst" required placeholder="Destination IP/Network">
+            </div>
+            <div class="mb-3">
+              <label for="edit_dst_detail" class="form-label">Destination Detail</label>
+              <input type="text" class="form-control form-control-sm" id="edit_dst_detail" name="dst_detail" placeholder="Destination Detail">
+            </div>
+            
+            <!-- Service Section -->
+            <div class="mb-3">
+              <label for="edit_services" class="form-label">Services</label>
+              <input type="text" class="form-control form-control-sm" id="edit_services" name="services" placeholder="Service/Port">
+            </div>
+            <div class="mb-3">
+              <label for="edit_application" class="form-label">Application</label>
+              <input type="text" class="form-control form-control-sm" id="edit_application" name="application" placeholder="Application">
+            </div>
+            <div class="mb-3">
+              <label for="edit_url" class="form-label">URL</label>
+              <input type="text" class="form-control form-control-sm" id="edit_url" name="url" placeholder="URL">
+            </div>
+            <div class="mb-3">
+              <label for="edit_action" class="form-label">Action <span class="text-danger">*</span></label>
+              <select class="form-select form-select-sm" id="edit_action" name="action" required>
+                <option value="">-- Select Action --</option>
+                <% (actionsOptions || []).forEach(function(act) { %>
+                  <option value="<%= act.value %>"><%= act.label %></option>
+                <% }) %>
+              </select>
+            </div>
+            
+            <!-- Violation Type -->
+            <div class="mb-3">
+              <label for="edit_violation_type" class="form-label">Violation Type</label>
+              <select class="form-select form-select-sm" id="edit_violation_type" name="violation_type">
+                <option value="">-- No violation --</option>
+                <% (violationTypeOptions || []).forEach(function(vt) { %>
+                  <option value="<%= vt.value %>"><%= vt.label %></option>
+                <% }) %>
+              </select>
+            </div>
+            
+            <!-- Violation Detail -->
+            <div class="mb-3">
+              <label for="edit_violation_detail" class="form-label">Violation Detail</label>
+              <textarea class="form-control form-control-sm" id="edit_violation_detail" name="violation_detail" rows="2" placeholder="Violation Detail"></textarea>
+            </div>
+            
+            <!-- OU (Organizational Unit) -->
+            <div class="mb-3">
+              <label for="edit_ou_id" class="form-label">OU (Organizational Unit)</label>
+              <select class="form-select form-select-sm" id="edit_ou_id" name="ou_id">
+                <option value="">-- Select OU --</option>
+              </select>
+            </div>
+            
+            <!-- Contacts -->
+            <div class="mb-3">
+              <label for="edit-contact-select" class="form-label">Contacts</label>
+              <select id="edit-contact-select" name="contacts[]" class="form-control" multiple>
+                <!-- Selected contacts will be populated here -->
+              </select>
+              <div class="form-text">Select contacts responsible for this rule</div>
+            </div>
+            
+            <!-- Solution Section -->
+            <div class="mb-3">
+              <label for="edit_solution_proposal" class="form-label">Solution Proposal</label>
+              <textarea class="form-control form-control-sm" id="edit_solution_proposal" name="solution_proposal" rows="2" placeholder="Solution Proposal"></textarea>
+            </div>
+            <div class="mb-3">
+              <label for="edit_solution_confirm" class="form-label">Solution Confirm</label>
+              <textarea class="form-control form-control-sm" id="edit_solution_confirm" name="solution_confirm" rows="2" placeholder="Solution Confirm"></textarea>
+            </div>
+            
+            <!-- Work Order -->
+            <div class="mb-3">
+              <label for="edit_work_order" class="form-label">Work Order</label>
+              <input type="text" class="form-control form-control-sm" id="edit_work_order" name="work_order" placeholder="Work Order">
+            </div>
+            
+            <!-- Status -->
+            <div class="mb-3">
+              <label for="edit_status" class="form-label">Status</label>
+              <select class="form-select form-select-sm" id="edit_status" name="status">
+                <option value="">-- No status --</option>
+                <% (statusOptions || []).forEach(function(st) { %>
+                  <option value="<%= st.value %>"><%= st.label %></option>
+                <% }) %>
+              </select>
+            </div>
+            
+            <!-- Description -->
+            <div class="mb-3">
+              <label for="edit_description" class="form-label">Description</label>
+              <textarea class="form-control form-control-sm" id="edit_description" name="description" rows="2" placeholder="Description"></textarea>
+            </div>
+            <div class="modal-footer d-flex justify-content-end">
+              <button type="submit" class="btn btn-primary btn-sm">Update Rule</button>
+              <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Rule Modal -->
+  <div class="modal fade" id="filterRuleModal" tabindex="-1" aria-labelledby="filterRuleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="filterRuleModalLabel">Filter Firewall Rules</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form method="get" action="/firewall/rule">
+          <input type="hidden" name="pageSize" value="<%= typeof pageSize !== 'undefined' ? pageSize : 10 %>">
+          <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="filterRuleFirewallName" class="form-label">Firewall Name</label>
+              <select class="form-select form-select-sm" id="filterRuleFirewallName" name="firewall_name">
+                <option value="">-- All --</option>
+                <% (firewallNameOptions || []).forEach(function(fw) { %>
+                  <option value="<%= fw.value %>" <%= typeof firewall_name !== 'undefined' && firewall_name === fw.value ? 'selected' : '' %>><%= fw.label %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="filterRuleStatus" class="form-label">Status</label>
+              <select class="form-select form-select-sm" id="filterRuleStatus" name="status">
+                <option value="">-- All --</option>
+                <% (statusOptions || []).forEach(function(st) { %>
+                  <option value="<%= st.value %>" <%= typeof status !== 'undefined' && status === st.value ? 'selected' : '' %>><%= st.label %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="filterRuleContacts" class="form-label">Contacts</label>
+              <select id="filterRuleContacts" name="contacts[]" class="form-control" multiple>
+                <% if (typeof filterContactIds !== 'undefined' && Array.isArray(filterContactIds) && filterContactIds.length > 0) { %>
+                  <% filterContactIds.forEach(function(contactId, idx) { %>
+                    <option value="<%= contactId %>" selected><%= selectedContacts[idx] || '' %></option>
+                  <% }) %>
+                <% } %>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer d-flex justify-content-end">
+            <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-warning btn-sm ms-2" id="clearAllFilterBtn">Clear All Filter</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import Rule Modal -->
+  <div class="modal fade" id="importRuleModal" tabindex="-1" aria-labelledby="importRuleModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="importRuleModalLabel">Import Firewall Rules</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="importRuleForm" enctype="multipart/form-data">
+            <div class="mb-3">
+              <label for="ruleFile" class="form-label">Select File to Import</label>
+              <input type="file" class="form-control" id="ruleFile" name="file" accept=".csv,.xlsx,.xls" required>
+              <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
+            </div>
+          </form>
+
+          <div id="importProgress" class="mb-3" style="display: none;">
+            <div class="progress">
+              <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+            </div>
+            <div class="text-center mt-2">
+              <span id="importStatus">Processing...</span>
+            </div>
+          </div>
+
+          <div id="importResults" style="display: none;">
+            <div class="alert" id="importAlert">
+              <div id="importMessage"></div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer d-flex flex-column">
+          <div class="alert alert-info mb-3">
+            <i class="bi bi-info-circle"></i>
+            <strong>Instructions:</strong>
+            <ol class="mb-0 mt-2">
+              <li>Download the template file using the "Download Template" button above</li>
+              <li>Fill in your firewall rule data following the template format</li>
+              <li>Upload the file to validate before importing</li>
+              <li>Only import if all validations pass</li>
+            </ol>
+          </div>
+          <div class="d-flex gap-2 justify-content-end">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-warning" id="validateBtn" disabled>
+              <i class="bi bi-check-circle"></i> Validate File
+            </button>
+            <button type="button" class="btn btn-success" id="importBtn" disabled style="display: none;">
+              <i class="bi bi-upload"></i> Import Rules
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit WO Modal -->
+  <div class="modal fade" id="editWoModal" tabindex="-1" aria-labelledby="editWoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editWoModalLabel">Edit Work Order (WO)</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editWoForm">
+            <div class="mb-3">
+              <label for="woInput" class="form-label">Work Order</label>
+              <input type="text" class="form-control form-control-sm" id="woInput" name="work_order" placeholder="Enter WO">
+            </div>
+            <div class="modal-footer d-flex justify-content-end">
+              <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-primary btn-sm ms-2" id="saveWoBtn">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rule Detail Modals -->
+  <% if (ruleList && ruleList.length > 0) { ruleList.forEach(function(rule) { %>
+    <div class="modal fade" id="ruleDetailModal-<%= rule.id %>" tabindex="-1" aria-labelledby="ruleDetailModalLabel-<%= rule.id %>" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content firewall-detail-modal">
+          <div class="modal-header">
+            <h5 class="modal-title" id="ruleDetailModalLabel-<%= rule.id %>">Firewall Rule Detail</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <dl class="row mb-0">
+              <dt class="col-sm-4">Audit Batch</dt>
+              <dd class="col-sm-8"><%= rule.audit_batch || '' %></dd>
+              <dt class="col-sm-4">Firewall Name</dt>
+              <dd class="col-sm-8"><%= rule.firewall_name || '' %></dd>
+              <dt class="col-sm-4">Rule Name</dt>
+              <dd class="col-sm-8"><%= rule.rulename %></dd>
+              
+              <!-- Source Section -->
+              <dt class="col-sm-4">Source Zone</dt>
+              <dd class="col-sm-8"><%= rule.src_zone || '' %></dd>
+              <dt class="col-sm-4">Source</dt>
+              <dd class="col-sm-8"><%= rule.src %></dd>
+              <dt class="col-sm-4">Source Detail</dt>
+              <dd class="col-sm-8"><%= rule.src_detail || '' %></dd>
+              
+              <!-- Destination Section -->
+              <dt class="col-sm-4">Destination Zone</dt>
+              <dd class="col-sm-8"><%= rule.dst_zone || '' %></dd>
+              <dt class="col-sm-4">Destination</dt>
+              <dd class="col-sm-8"><%= rule.dst %></dd>
+              <dt class="col-sm-4">Destination Detail</dt>
+              <dd class="col-sm-8"><%= rule.dst_detail || '' %></dd>
+              
+              <!-- Service Section -->
+              <dt class="col-sm-4">Services</dt>
+              <dd class="col-sm-8"><%= rule.services || '' %></dd>
+              <dt class="col-sm-4">Application</dt>
+              <dd class="col-sm-8"><%= rule.application || '' %></dd>
+              <dt class="col-sm-4">URL</dt>
+              <dd class="col-sm-8"><%= rule.url || '' %></dd>
+              
+              <dt class="col-sm-4">Action</dt>
+              <dd class="col-sm-8"><%= rule.action %></dd>
+              
+              <!-- Violation Section -->
+              <dt class="col-sm-4">Violation Type</dt>
+              <dd class="col-sm-8"><%= rule.violation_type || '' %></dd>
+              <dt class="col-sm-4">Violation Detail</dt>
+              <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.violation_detail || '').replace(/\r?\n/g, '<br>') %></dd>
+              
+              <!-- OU and Contacts -->
+              <dt class="col-sm-4">OU (Organizational Unit)</dt>
+              <dd class="col-sm-8"><%= rule.ou_name || '' %></dd>
+              <dt class="col-sm-4">Contacts</dt>
+              <dd class="col-sm-8">
+                <% if (rule.contacts && rule.contacts.length > 0) { %>
+                  <% 
+                    var contactLinks = [];
+                    rule.contacts.forEach(function(contact) {
+                      if (contact.email) {
+                        var emailPrefix = contact.email.split('@')[0];
+                        contactLinks.push('<a href="/organize/contact?search=' + encodeURIComponent(emailPrefix) + '&pageSize=10" class="text-decoration-none">' + emailPrefix + '</a>');
+                      }
+                    });
+                  %>
+                  <%- contactLinks.join(', ') %>
+                <% } else { %>
+                  <span class="text-muted">No contacts</span>
+                <% } %>
+              </dd>
+              
+              <!-- Solution Section -->
+              <dt class="col-sm-4">Solution Proposal</dt>
+              <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.solution_proposal || '').replace(/\r?\n/g, '<br>') %></dd>
+              <dt class="col-sm-4">Solution Confirm</dt>
+              <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.solution_confirm || '').replace(/\r?\n/g, '<br>') %></dd>
+              
+              <dt class="col-sm-4">Work Order</dt>
+              <dd class="col-sm-8"><%= rule.work_order || '' %></dd>
+              <dt class="col-sm-4">Status</dt>
+              <dd class="col-sm-8"><%= rule.status || '' %></dd>
+              <dt class="col-sm-4">Description</dt>
+              <dd class="col-sm-8" style="white-space:pre-line"><%- (rule.description || '').replace(/\r?\n/g, '<br>') %></dd>
+              
+              <!-- Timestamps -->
+              <dt class="col-sm-4">Created At</dt>
+              <dd class="col-sm-8"><%= rule.created_at ? (rule.created_at.toLocaleString ? rule.created_at.toLocaleString() : rule.created_at) : '' %></dd>
+              <dt class="col-sm-4">Updated At</dt>
+              <dd class="col-sm-8"><%= rule.updated_at ? (rule.updated_at.toLocaleString ? rule.updated_at.toLocaleString() : rule.updated_at) : '' %></dd>
+            </dl>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% }) } %>
+</div>
+
+<style>
+/* Form validation styles */
+.is-invalid {
+  border-color: #dc3545 !important;
+}
+
+.invalid-feedback {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  font-size: 0.875em;
+  color: #dc3545;
+}
+
+/* Responsive table styles */
+.table-responsive {
+  border: none;
+}
+
+.table {
+  margin-bottom: 0;
+}
+
+.table th,
+.table td {
+  padding: 0.5rem;
+  vertical-align: middle;
+  word-wrap: break-word;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.table th {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.table td {
+  border-bottom: 1px solid #dee2e6;
+  font-size: 0.875rem;
+}
+
+/* Ensure Actions column buttons don't wrap */
+.table td:last-child {
+  white-space: nowrap;
+}
+
+/* Responsive breakpoints */
+@media (max-width: 768px) {
+  .table th,
+  .table td {
+    padding: 0.25rem;
+    font-size: 0.75rem;
+  }
+  
+  .btn-group-sm .btn {
+    padding: 0.125rem 0.25rem;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .table th,
+  .table td {
+    padding: 0.125rem;
+    font-size: 0.7rem;
+  }
+  
+  .btn-group-sm .btn {
+    padding: 0.1rem 0.2rem;
+    font-size: 0.7rem;
+  }
+}
+
+/* Grouped View Styles */
+.group-row {
+  background-color: #f8f9fa;
+  border-left: 4px solid #007bff;
+}
+
+.group-row:hover {
+  background-color: #e9ecef;
+}
+
+.group-detail-row {
+  background-color: #ffffff;
+  border-left: 2px solid #dee2e6;
+}
+
+.group-detail-row:hover {
+  background-color: #f8f9fa;
+}
+
+.group-detail-row td {
+  padding-left: 2rem;
+  font-size: 0.9rem;
+}
+
+.expand-group, .view-group {
+  transition: all 0.2s ease;
+}
+
+.expand-group:hover, .view-group:hover {
+  transform: scale(1.1);
+}
+
+/* View Toggle Buttons */
+.btn-check:checked + .btn-outline-primary {
+  background-color: #007bff;
+  border-color: #007bff;
+  color: white;
+}
+
+/* Table Improvements */
+.table {
+  margin-bottom: 0;
+  font-size: 0.85rem;
+  table-layout: fixed;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Sticky table header */
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.table th {
+  border-top: none;
+  font-weight: 600;
+  background-color: #f8f9fa;
+  padding: 0.5rem 0.3rem;
+  font-size: 0.8rem;
+}
+
+/* Column width optimization for better fit */
+.table th:nth-child(1), .table td:nth-child(1) { width: 40px; min-width: 40px; } /* Checkbox */
+.table th:nth-child(2), .table td:nth-child(2) { width: 50px; min-width: 50px; } /* No. */
+.table th:nth-child(3), .table td:nth-child(3) { width: 80px; min-width: 80px; text-align: center; } /* Audit Batch */
+.table th:nth-child(4), .table td:nth-child(4) { width: 100px; min-width: 100px; } /* Firewall Name */
+.table th:nth-child(5), .table td:nth-child(5) { width: 120px; min-width: 120px; } /* Rule Name */
+.table th:nth-child(6), .table td:nth-child(6) { width: 100px; min-width: 100px; } /* Source */
+.table th:nth-child(7), .table td:nth-child(7) { width: 100px; min-width: 100px; } /* Destination */
+.table th:nth-child(8), .table td:nth-child(8) { width: 80px; min-width: 80px; } /* Service */
+.table th:nth-child(9), .table td:nth-child(9) { width: 80px; min-width: 80px; } /* Status */
+.table th:nth-child(10), .table td:nth-child(10) { width: 100px; min-width: 100px; } /* Work Order (hidden) */
+.table th:nth-child(11), .table td:nth-child(11) { width: 100px; min-width: 100px; } /* OU (hidden) */
+.table th:nth-child(12), .table td:nth-child(12) { width: 120px; min-width: 120px; } /* Contacts */
+.table th:nth-child(13), .table td:nth-child(13) { width: 120px; min-width: 120px; } /* Violation Type */
+.table th:nth-child(14), .table td:nth-child(14) { width: 100px; min-width: 100px; } /* Tags */
+.table th:nth-child(15), .table td:nth-child(15) { width: 120px; min-width: 120px; } /* Actions */
+
+/* Audit Batch in grouped view - smaller and simpler */
+.group-row td:nth-child(3) {
+  font-size: 0.7rem !important;
+  color: #6c757d !important;
+  font-weight: normal !important;
+  padding: 0.2rem 0.1rem !important;
+}
+
+/* Audit Batch in detailed view - also smaller */
+.table td:nth-child(3) {
+  font-size: 0.75rem;
+  padding: 0.3rem 0.1rem;
+}
+
+.table td {
+  padding: 0.4rem 0.3rem;
+  vertical-align: middle;
+  font-size: 0.8rem;
+}
+
+/* Text wrapping for better fit */
+.table td {
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+/* Text wrapping for specific columns */
+.table td:nth-child(5), /* Rule Name */
+.table td:nth-child(6), /* Source */
+.table td:nth-child(7), /* Destination */
+.table td:nth-child(12), /* Contacts */
+.table td:nth-child(13), /* Violation Type */
+.table td:nth-child(14) { /* Tags */
+  white-space: normal;
+  word-wrap: break-word;
+  line-height: 1.2;
+  max-height: 3.6em; /* Allow max 3 lines */
+  overflow: hidden;
+}
+
+/* Contact links styling */
+.table td a {
+  color: #0d6efd;
+  text-decoration: none;
+  font-size: 0.8rem;
+}
+
+.table td a:hover {
+  color: #0a58ca;
+  text-decoration: underline;
+}
+
+/* Select2 styling */
+.select2-container--bootstrap-5 .select2-selection--multiple {
+  min-height: 38px;
+  border: 1px solid #ced4da;
+  border-radius: 0.375rem;
+}
+
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+  background-color: #0d6efd;
+  border: 1px solid #0d6efd;
+  color: white;
+  border-radius: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  margin: 0.125rem;
+}
+
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
+  color: white;
+  margin-right: 0.25rem;
+}
+
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove:hover {
+  color: #ffc107;
+}
+
+/* Fix select2 dropdown z-index for modals */
+.select2-container {
+  z-index: 9999 !important;
+}
+
+.select2-dropdown {
+  z-index: 9999 !important;
+}
+
+/* Ensure select2 is visible in modals */
+.modal .select2-container {
+  z-index: 1055 !important;
+}
+
+.modal .select2-dropdown {
+  z-index: 1055 !important;
+}
+
+/* Fix select2 positioning in modals */
+.modal .select2-container--bootstrap-5 .select2-selection--multiple {
+  min-height: 38px;
+  border: 1px solid #ced4da;
+  border-radius: 0.375rem;
+  background-color: #fff;
+}
+
+/* Ensure select2 dropdown appears in correct position */
+.select2-dropdown {
+  position: absolute !important;
+  z-index: 9999 !important;
+}
+
+.modal .select2-dropdown {
+  z-index: 1055 !important;
+}
+
+/* Force contact select2 dropdown to appear in correct position */
+#add-contact-select + .select2-container .select2-dropdown {
+  position: absolute !important;
+  z-index: 1055 !important;
+  top: 100% !important;
+  left: 0 !important;
+  width: 100% !important;
+}
+
+#edit-contact-select + .select2-container .select2-dropdown {
+  position: absolute !important;
+  z-index: 1055 !important;
+  top: 100% !important;
+  left: 0 !important;
+  width: 100% !important;
+}
+
+/* Container adjustments for better fit */
+.card-body {
+  overflow-x: auto;
+  padding: 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .d-flex.justify-content-between {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .btn-group {
+    align-self: center;
+  }
+
+  .d-flex.align-items-center {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  /* Button container - separate from col-12 to avoid conflicts */
+  .button-container {
+    display: flex !important;
+    justify-content: flex-end !important;
+    align-items: center !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    gap: 0.5rem !important;
+  }
+  
+  /* Consistent button spacing */
+  .button-container .btn {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+  }
+  
+  .button-container .btn:not(:last-child) {
+    margin-right: 0.5rem !important;
+  }
+
+  .gap-2 {
+    gap: 0.5rem !important;
+  }
+
+  /* Make table more compact on mobile */
+  .table {
+    font-size: 0.75rem;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.3rem 0.2rem;
+    font-size: 0.7rem;
+  }
+}
+</style>
+
+<script>
+$(function() {
+  // ===== GROUPED/DETAILED VIEW LOGIC =====
+  var originalRules = <%- JSON.stringify(ruleList || []) %>;
+  var currentView = 'grouped';
+  
+  // Permissions
+  var hasUpdatePermission = <%= hasPermission('rule.update') %>;
+  var hasDeletePermission = <%= hasPermission('rule.delete') %>;
+
+  // Group rules by rulename + firewall_name
+  function groupRules(rules) {
+    var groups = {};
+    rules.forEach(function(rule) {
+      var key = rule.rulename + '|' + rule.firewall_name;
+      if (!groups[key]) {
+        groups[key] = {
+          rulename: rule.rulename,
+          firewall_name: rule.firewall_name,
+          rules: [],
+          occurrences: 0,
+          latestUpdatedAt: '',
+          latestAudit: ''
+        };
+      }
+      groups[key].rules.push(rule);
+      groups[key].occurrences++;
+
+      // Get latest updated_at and audit
+      if (!groups[key].latestAudit || rule.audit_batch > groups[key].latestAudit) {
+        groups[key].latestUpdatedAt = rule.updated_at || '';
+        groups[key].latestAudit = rule.audit_batch || '';
+      }
+
+      // Also check for latest updated_at across all rules in group
+      if (rule.updated_at && (!groups[key].latestUpdatedAt || rule.updated_at > groups[key].latestUpdatedAt)) {
+        groups[key].latestUpdatedAt = rule.updated_at;
+      }
+    });
+    return Object.values(groups);
+  }
+
+  // Render grouped view
+  function renderGroupedView() {
+    if (!originalRules || originalRules.length === 0) {
+      return;
+    }
+
+    var groups = groupRules(originalRules);
+    var tbody = $('#rulesTableBody');
+    tbody.empty();
+
+    if (groups.length === 0) {
+      tbody.append('<tr><td colspan="10" class="text-center">No rules found</td></tr>');
+      return;
+    }
+
+    groups.forEach(function(group, idx) {
+      var row = $('<tr class="group-row" data-group-key="' + group.rulename + '|' + group.firewall_name + '">');
+      row.append('<td><input type="checkbox" class="group-checkbox" value="' + group.rulename + '|' + group.firewall_name + '"></td>');
+      row.append('<td>' + (idx + 1) + '</td>');
+      row.append('<td style="font-size: 0.75rem; color: #6c757d;">' + (group.latestAudit || '') + '</td>');
+      row.append('<td><span class="badge bg-info">' + group.firewall_name + '</span></td>');
+      row.append('<td><strong>' + group.rulename + '</strong></td>');
+
+      // Show first rule's src/dst/service as representative
+      var firstRule = group.rules[0];
+      row.append('<td>' + (firstRule ? firstRule.src || '' : '') + '</td>');
+      row.append('<td>' + (firstRule ? firstRule.dst || '' : '') + '</td>');
+      row.append('<td>' + (firstRule ? firstRule.services || 'N/A' : 'N/A') + '</td>');
+
+      // Format updated_at date
+      var updatedAtText = 'N/A';
+      if (group.latestUpdatedAt) {
+        try {
+          var date = new Date(group.latestUpdatedAt);
+          updatedAtText = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        } catch(e) {
+          updatedAtText = group.latestUpdatedAt;
+        }
+      }
+      row.append('<td>' + updatedAtText + '</td>');
+
+      var actionsHtml = '<div class="btn-group btn-group-sm">';
+      actionsHtml += '<button type="button" class="btn btn-outline-info btn-sm expand-group" title="Expand Details">';
+      actionsHtml += '<i class="bi bi-chevron-down"></i></button>';
+      actionsHtml += '<button type="button" class="btn btn-outline-primary btn-sm view-group" title="View All">';
+      actionsHtml += '<i class="bi bi-eye"></i></button>';
+      actionsHtml += '</div>';
+      row.append('<td class="text-end">' + actionsHtml + '</td>');
+
+      tbody.append(row);
+
+      // Add expandable detail rows (match grouped header: 10 columns)
+      group.rules.forEach(function(rule, ruleIdx) {
+        var detailRow = $('<tr class="group-detail-row" style="display: none;" data-group-key="' + group.rulename + '|' + group.firewall_name + '">');
+        detailRow.append('<td></td>'); // Checkbox column (empty)
+        detailRow.append('<td class="text-muted">' + (ruleIdx + 1) + '</td>'); // No.
+        detailRow.append('<td class="text-muted">' + (rule.audit_batch || '') + '</td>'); // Audit Batch
+        detailRow.append('<td class="text-muted">' + (rule.firewall_name || '') + '</td>'); // Firewall Name
+        detailRow.append('<td class="text-muted">' + (rule.rulename || '') + '</td>'); // Rule Name
+        detailRow.append('<td class="text-muted">' + (rule.src || '') + '</td>'); // Source
+        detailRow.append('<td class="text-muted">' + (rule.dst || '') + '</td>'); // Destination
+        detailRow.append('<td class="text-muted">' + (rule.services || 'N/A') + '</td>'); // Service
+        detailRow.append('<td class="text-muted">' + (rule.updated_at ? new Date(rule.updated_at).toLocaleDateString() + ' ' + new Date(rule.updated_at).toLocaleTimeString() : 'N/A') + '</td>'); // Last Update
+
+        var ruleActionsHtml = '<div class="btn-group btn-group-sm">';
+        ruleActionsHtml += '<a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#ruleDetailModal-' + rule.id + '">';
+        ruleActionsHtml += '<i class="bi bi-eye"></i></a>';
+        if (hasUpdatePermission) {
+          ruleActionsHtml += '<button type="button" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#editRuleModal" data-rule-id="' + rule.id + '">';
+          ruleActionsHtml += '<i class="bi bi-pencil"></i></button>';
+        }
+        if (hasDeletePermission) {
+          ruleActionsHtml += '<form action="/firewall/rule/' + rule.id + '?_method=DELETE" method="POST" style="display:inline">';
+          ruleActionsHtml += '<button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm(\'Are you sure you want to delete this rule?\')">';
+          ruleActionsHtml += '<i class="bi bi-trash"></i></button></form>';
+        }
+        ruleActionsHtml += '</div>';
+        detailRow.append('<td class="text-end">' + ruleActionsHtml + '</td>'); // Actions
+
+        tbody.append(detailRow);
+      });
+    });
+  }
+
+  // Render detailed view (original)
+  function renderDetailedView() {
+    if (!originalRules || originalRules.length === 0) {
+      return;
+    }
+
+    var tbody = $('#rulesTableBody');
+    tbody.empty();
+
+    if (originalRules.length === 0) {
+      tbody.append('<tr><td colspan="9" class="text-center">No rules found</td></tr>');
+      return;
+    }
+
+    originalRules.forEach(function(rule, idx) {
+      var row = $('<tr>');
+      row.append('<td><input type="checkbox" class="rule-checkbox" value="' + rule.id + '"></td>');
+      row.append('<td>' + (idx + 1) + '</td>');
+      row.append('<td>' + (rule.audit_batch || '') + '</td>');
+      row.append('<td>' + (rule.firewall_name || '') + '</td>');
+      row.append('<td>' + rule.rulename + '</td>');
+      row.append('<td>' + (rule.src || '') + '</td>');
+      row.append('<td>' + (rule.dst || '') + '</td>');
+      row.append('<td>' + (rule.services || '') + '</td>');
+      row.append('<td>' + (rule.status || '') + '</td>');
+      row.append('<td class="d-none">' + (rule.work_order || '') + '</td>');
+      row.append('<td class="d-none">' + (rule.ou_name || '') + '</td>');
+
+      var contactsHtml = '';
+      if (rule.contacts && rule.contacts.length > 0) {
+        var contactLinks = [];
+        rule.contacts.forEach(function(contact) {
+          if (contact.email) {
+            var emailPrefix = contact.email.split('@')[0];
+            contactLinks.push('<a href="/organize/contact?search=' + encodeURIComponent(emailPrefix) + '&pageSize=10" class="text-decoration-none">' + emailPrefix + '</a>');
+          }
+        });
+        contactsHtml = contactLinks.join(', ');
+      } else {
+        contactsHtml = '<span class="text-muted">No contacts</span>';
+      }
+      row.append('<td class="d-none d-lg-table-cell">' + contactsHtml + '</td>');
+
+      row.append('<td>' + (rule.violation_type || '') + '</td>');
+
+      var tagsHtml = '';
+      if (rule.tagNames && rule.tagNames.length > 0) {
+        rule.tagNames.forEach(function(tag) {
+          tagsHtml += '<span class="badge bg-primary text-white me-1" style="font-size:0.8rem;">' + tag + '</span>';
+        });
+      } else {
+        tagsHtml = '<span class="text-muted">No tags</span>';
+      }
+      row.append('<td>' + tagsHtml + '</td>');
+
+      var actionsHtml = '<div class="btn-group btn-group-sm">';
+      actionsHtml += '<a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#ruleDetailModal-' + rule.id + '">';
+      actionsHtml += '<i class="bi bi-eye"></i></a>';
+      if (hasUpdatePermission) {
+        actionsHtml += '<button type="button" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#editRuleModal" data-rule-id="' + rule.id + '">';
+        actionsHtml += '<i class="bi bi-pencil"></i></button>';
+      }
+      if (hasDeletePermission) {
+        actionsHtml += '<form action="/firewall/rule/' + rule.id + '?_method=DELETE" method="POST" style="display:inline">';
+        actionsHtml += '<button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm(\'Are you sure you want to delete this rule?\')">';
+        actionsHtml += '<i class="bi bi-trash"></i></button></form>';
+      }
+      actionsHtml += '</div>';
+      row.append('<td class="text-end">' + actionsHtml + '</td>');
+
+      tbody.append(row);
+    });
+  }
+
+  // View mode toggle handlers
+  $('input[name="viewMode"]').on('change', function() {
+    currentView = $(this).val();
+
+    if (currentView === 'grouped') {
+      $('#detailedHeader').hide();
+      $('#groupedHeader').show();
+      renderGroupedView();
+    } else {
+      $('#groupedHeader').hide();
+      $('#detailedHeader').show();
+      renderDetailedView();
+    }
+  });
+
+  // Expand/collapse group details
+  $(document).on('click', '.expand-group', function() {
+    var $row = $(this).closest('tr');
+    var groupKey = $row.data('group-key');
+    var $detailRows = $('.group-detail-row[data-group-key="' + groupKey + '"]');
+    var $icon = $(this).find('i');
+
+    if ($detailRows.is(':visible')) {
+      $detailRows.hide();
+      $icon.removeClass('bi-chevron-up').addClass('bi-chevron-down');
+    } else {
+      $detailRows.show();
+      $icon.removeClass('bi-chevron-down').addClass('bi-chevron-up');
+    }
+  });
+
+  // View all rules in group
+  $(document).on('click', '.view-group', function() {
+    var $row = $(this).closest('tr');
+    var groupKey = $row.data('group-key');
+    var parts = groupKey.split('|');
+    var rulename = parts[0];
+    var firewall_name = parts[1];
+
+    // Switch to detailed view and filter by this group
+    $('#detailedView').prop('checked', true).trigger('change');
+  });
+
+  // Initialize with grouped view
+  currentView = 'grouped';
+  $('#groupedView').prop('checked', true);
+  $('#detailedHeader').hide();
+  $('#groupedHeader').show();
+
+  // Small delay to ensure DOM is ready
+  setTimeout(function() {
+    renderGroupedView();
+  }, 100);
+
+  // Select all rules functionality
+  $('#selectAllRules').on('change', function() {
+    $('.rule-checkbox').prop('checked', this.checked);
+  });
+
+  // If one checkbox is unchecked, uncheck selectAllRules
+  $(document).on('change', '.rule-checkbox', function() {
+    if (!this.checked) {
+      $('#selectAllRules').prop('checked', false);
+    } else if ($('.rule-checkbox:checked').length === $('.rule-checkbox').length) {
+      $('#selectAllRules').prop('checked', true);
+    }
+  });
+
+  // Handle Edit WO button
+  $('#editMultiWOButton').on('click', function() {
+    var checked = $('.rule-checkbox:checked');
+    if (checked.length === 0) {
+      $('#editWoWarning').removeClass('d-none');
+      setTimeout(function() { $('#editWoWarning').addClass('d-none'); }, 2000);
+    } else {
+      $('#editWoModal').modal('show');
+    }
+  });
+
+  // Handle Save button for batch WO
+  $('#saveWoBtn').on('click', function() {
+    var selectedIds = $('.rule-checkbox:checked').map(function() { return $(this).val(); }).get();
+    var woValue = $('#woInput').val().trim();
+    if (!woValue) {
+      $('#woInput').addClass('is-invalid');
+      if ($('#woInput').next('.invalid-feedback').length === 0) {
+        $('#woInput').after('<div class="invalid-feedback">Work Order is required.</div>');
+      }
+      return;
+    } else {
+      $('#woInput').removeClass('is-invalid');
+      $('#woInput').next('.invalid-feedback').remove();
+    }
+    $.ajax({
+      url: '/firewall/api/batch-update-wo',
+      method: 'POST',
+      contentType: 'application/json',
+      data: JSON.stringify({ ids: selectedIds, work_order: woValue }),
+      success: function(res) {
+        $('#editWoModal').modal('hide');
+        var url = new URL(window.location.href);
+        url.searchParams.set('success', res.message || 'Work Order updated successfully!');
+        window.location.href = url.toString();
+      },
+      error: function(xhr) {
+        let msg = 'Update failed!';
+        if (xhr.responseJSON && xhr.responseJSON.error) msg = xhr.responseJSON.error;
+        $('#editWoModal').modal('hide');
+        var url = new URL(window.location.href);
+        url.searchParams.set('error', msg);
+        window.location.href = url.toString();
+      }
+    });
+  });
+
+  // Button to clear all filters
+  $('#clearAllFilterBtn').on('click', function() {
+    const currentPageSize = $('select[name="pageSize"]').val() || '10';
+    const currentSearch = $('input[name="search"]').val() || '';
+    let cleanUrl = '/firewall/rule';
+    const params = [];
+    if (currentPageSize && currentPageSize !== '10') params.push('pageSize=' + encodeURIComponent(currentPageSize));
+    if (currentSearch) params.push('search=' + encodeURIComponent(currentSearch));
+    if (params.length > 0) cleanUrl += '?' + params.join('&');
+    window.location.href = cleanUrl;
+  });
+
+  // Form validation for Add Rule
+  window.validateAddRuleForm = function() {
+    var auditBatch = $('#audit_batch').val();
+    var firewallName = $('#firewall_name').val();
+    var ruleName = $('#rulename').val();
+    var src = $('#src').val();
+    var dst = $('#dst').val();
+    var action = $('#action').val();
+
+    // Clear previous error states
+    $('.is-invalid').removeClass('is-invalid');
+    $('.invalid-feedback').remove();
+
+    var hasError = false;
+
+    // Validate audit batch
+    if (!auditBatch || auditBatch.trim() === '') {
+      $('#audit_batch').addClass('is-invalid');
+      $('#audit_batch').after('<div class="invalid-feedback">Audit Batch is required.</div>');
+      hasError = true;
+    } else {
+      // Validate audit batch format (YYYY-MM)
+      var auditBatchPattern = /^\d{4}-\d{2}$/;
+      if (!auditBatchPattern.test(auditBatch.trim())) {
+        $('#audit_batch').addClass('is-invalid');
+        $('#audit_batch').after('<div class="invalid-feedback">Audit Batch must be in format YYYY-MM (e.g., 2024-01).</div>');
+        hasError = true;
+      } else {
+        // Additional validation for valid month (01-12)
+        var parts = auditBatch.trim().split('-');
+        var year = parseInt(parts[0]);
+        var month = parseInt(parts[1]);
+        if (month < 1 || month > 12) {
+          $('#audit_batch').addClass('is-invalid');
+          $('#audit_batch').after('<div class="invalid-feedback">Month must be between 01 and 12.</div>');
+          hasError = true;
+        }
+      }
+    }
+
+    // Validate firewall name
+    if (!firewallName || firewallName === '' || firewallName === null) {
+      $('#firewall_name').addClass('is-invalid');
+      $('#firewall_name').after('<div class="invalid-feedback">Please select a firewall name.</div>');
+      hasError = true;
+    }
+
+    // Validate rule name
+    if (!ruleName || ruleName.trim() === '') {
+      $('#rulename').addClass('is-invalid');
+      $('#rulename').after('<div class="invalid-feedback">Rule name is required.</div>');
+      hasError = true;
+    }
+
+    // Validate source
+    if (!src || src.trim() === '') {
+      $('#src').addClass('is-invalid');
+      $('#src').after('<div class="invalid-feedback">Source is required.</div>');
+      hasError = true;
+    }
+
+    // Validate destination
+    if (!dst || dst.trim() === '') {
+      $('#dst').addClass('is-invalid');
+      $('#dst').after('<div class="invalid-feedback">Destination is required.</div>');
+      hasError = true;
+    }
+
+    // Validate action
+    if (!action || action === '') {
+      $('#action').addClass('is-invalid');
+      $('#action').after('<div class="invalid-feedback">Please select an action.</div>');
+      hasError = true;
+    }
+
+    return !hasError;
+  };
+
+  // Form validation for Edit Rule
+  window.validateEditRuleForm = function() {
+    var auditBatch = $('#edit_audit_batch').val();
+    var firewallName = $('#edit_firewall_name').val();
+    var ruleName = $('#edit_rulename').val();
+    var src = $('#edit_src').val();
+    var dst = $('#edit_dst').val();
+    var action = $('#edit_action').val();
+
+    // Clear previous error states
+    $('.is-invalid').removeClass('is-invalid');
+    $('.invalid-feedback').remove();
+
+    var hasError = false;
+
+    // Validate audit batch
+    if (!auditBatch || auditBatch.trim() === '') {
+      $('#edit_audit_batch').addClass('is-invalid');
+      $('#edit_audit_batch').after('<div class="invalid-feedback">Audit Batch is required.</div>');
+      hasError = true;
+    } else {
+      // Validate audit batch format (YYYY-MM)
+      var auditBatchPattern = /^\d{4}-\d{2}$/;
+      if (!auditBatchPattern.test(auditBatch.trim())) {
+        $('#edit_audit_batch').addClass('is-invalid');
+        $('#edit_audit_batch').after('<div class="invalid-feedback">Audit Batch must be in format YYYY-MM (e.g., 2024-01).</div>');
+        hasError = true;
+      } else {
+        // Additional validation for valid month (01-12)
+        var parts = auditBatch.trim().split('-');
+        var year = parseInt(parts[0]);
+        var month = parseInt(parts[1]);
+        if (month < 1 || month > 12) {
+          $('#edit_audit_batch').addClass('is-invalid');
+          $('#edit_audit_batch').after('<div class="invalid-feedback">Month must be between 01 and 12.</div>');
+          hasError = true;
+        }
+      }
+    }
+
+    // Validate firewall name
+    if (!firewallName || firewallName === '' || firewallName === null) {
+      $('#edit_firewall_name').addClass('is-invalid');
+      $('#edit_firewall_name').after('<div class="invalid-feedback">Please select a firewall name.</div>');
+      hasError = true;
+    }
+
+    // Validate rule name
+    if (!ruleName || ruleName.trim() === '') {
+      $('#edit_rulename').addClass('is-invalid');
+      $('#edit_rulename').after('<div class="invalid-feedback">Rule name is required.</div>');
+      hasError = true;
+    }
+
+    // Validate source
+    if (!src || src.trim() === '') {
+      $('#edit_src').addClass('is-invalid');
+      $('#edit_src').after('<div class="invalid-feedback">Source is required.</div>');
+      hasError = true;
+    }
+
+    // Validate destination
+    if (!dst || dst.trim() === '') {
+      $('#edit_dst').addClass('is-invalid');
+      $('#edit_dst').after('<div class="invalid-feedback">Destination is required.</div>');
+      hasError = true;
+    }
+
+    // Validate action
+    if (!action || action === '') {
+      $('#edit_action').addClass('is-invalid');
+      $('#edit_action').after('<div class="invalid-feedback">Please select an action.</div>');
+      hasError = true;
+    }
+
+    return !hasError;
+  };
+
+      // Clear error states when user changes values
+      $('#audit_batch, #firewall_name, #rulename, #src, #dst, #action, #src_zone, #src_detail, #dst_zone, #dst_detail, #services, #application, #url, #ou_id, #status, #violation_type, #violation_detail, #solution_proposal, #solution_confirm, #work_order, #description').on('change input', function() {
+        $(this).removeClass('is-invalid');
+        $(this).next('.invalid-feedback').remove();
+      });
+
+      // Clear error states for edit form when user changes values
+      $('#edit_audit_batch, #edit_firewall_name, #edit_rulename, #edit_src, #edit_dst, #edit_action, #edit_src_zone, #edit_src_detail, #edit_dst_zone, #edit_dst_detail, #edit_services, #edit_application, #edit_url, #edit_ou_id, #edit_status, #edit_violation_type, #edit_violation_detail, #edit_solution_proposal, #edit_solution_confirm, #edit_work_order, #edit_description').on('change input', function() {
+        $(this).removeClass('is-invalid');
+        $(this).next('.invalid-feedback').remove();
+      });
+
+      // Real-time validation for Audit Batch fields
+      function validateAuditBatchFormat(fieldId) {
+        var value = $('#' + fieldId).val();
+        var $field = $('#' + fieldId);
+        
+        // Clear previous errors
+        $field.removeClass('is-invalid');
+        $field.next('.invalid-feedback').remove();
+        
+        if (value && value.trim() !== '') {
+          // Validate audit batch format (YYYY-MM)
+          var auditBatchPattern = /^\d{4}-\d{2}$/;
+          if (!auditBatchPattern.test(value.trim())) {
+            $field.addClass('is-invalid');
+            $field.after('<div class="invalid-feedback">Audit Batch must be in format YYYY-MM (e.g., 2024-01).</div>');
+            return false;
+          } else {
+            // Additional validation for valid month (01-12)
+            var parts = value.trim().split('-');
+            var year = parseInt(parts[0]);
+            var month = parseInt(parts[1]);
+            if (month < 1 || month > 12) {
+              $field.addClass('is-invalid');
+              $field.after('<div class="invalid-feedback">Month must be between 01 and 12.</div>');
+              return false;
+            }
+          }
+        }
+        return true;
+      }
+
+      // Add blur validation for Audit Batch fields
+      $('#audit_batch').on('blur', function() {
+        validateAuditBatchFormat('audit_batch');
+      });
+
+      $('#edit_audit_batch').on('blur', function() {
+        validateAuditBatchFormat('edit_audit_batch');
+      });
+
+
+  // Initialize contact select2 when add modal is shown
+  $('#addRuleModal').on('shown.bs.modal', function () {
+    // Small delay to ensure modal is fully rendered
+    setTimeout(function() {
+      // Check if element exists and is not already select2
+      var $contactSelect = $('#add-contact-select');
+      
+      if ($contactSelect.length && !$contactSelect.hasClass('select2-hidden-accessible')) {
+        // Destroy any existing select2 on this element first
+        if ($contactSelect.hasClass('select2-hidden-accessible')) {
+          try {
+            $contactSelect.select2('destroy');
+          } catch(e) {
+          }
+        }
+        
+        // Initialize select2 for contact dropdown
+        $contactSelect.select2({
+          theme: 'bootstrap-5',
+          placeholder: 'Select contacts',
+          allowClear: true,
+          width: '100%',
+          dropdownParent: $('#addRuleModal .modal-body'),
+          ajax: {
+            url: '/organize/api/contact',
+            dataType: 'json',
+            delay: 250,
+            data: params => ({ search: params.term }),
+            processResults: data => ({ results: data }),
+            cache: true
+          },
+          minimumInputLength: 0
+        });
+        
+        
+        // Force dropdown to appear in correct position
+        setTimeout(function() {
+          var $container = $contactSelect.next('.select2-container');
+          if ($container.length) {
+            $container.css({
+              'position': 'relative',
+              'z-index': '1055'
+            });
+            
+            // Force dropdown positioning
+            $container.on('select2:open', function() {
+              var $dropdown = $('.select2-dropdown');
+              $dropdown.css({
+                'position': 'absolute',
+                'top': '100%',
+                'left': '0',
+                'width': '100%',
+                'z-index': '1055'
+              });
+            });
+          }
+        }, 100);
+      } else {
+      }
+
+      // Initialize OU select2 for add modal
+      var $ouSelect = $('#ou_id');
+      if ($ouSelect.length && !$ouSelect.hasClass('select2-hidden-accessible')) {
+        // Destroy any existing select2 on this element first
+        if ($ouSelect.hasClass('select2-hidden-accessible')) {
+          try {
+            $ouSelect.select2('destroy');
+          } catch(e) {
+          }
+        }
+        
+        // Initialize select2 for OU dropdown
+        $ouSelect.select2({
+          theme: 'bootstrap-5',
+          placeholder: 'Select OU',
+          allowClear: true,
+          width: '100%',
+          dropdownParent: $('#addRuleModal .modal-body'),
+          ajax: {
+            url: '/organize/api/unit',
+            dataType: 'json',
+            delay: 250,
+            data: params => ({ search: params.term }),
+            processResults: data => ({ results: data }),
+            cache: true
+          },
+          minimumInputLength: 0
+        });
+        
+      }
+    }, 300);
+  });
+
+  // Clear form when add modal is opened
+  $('#addRuleModal').on('show.bs.modal', function () {
+    $('#addRuleForm')[0].reset();
+    $('.is-invalid').removeClass('is-invalid');
+    $('.invalid-feedback').remove();
+    
+    // Debug: Check all select elements in modal
+  });
+
+  // Destroy select2 when modal is hidden to prevent conflicts
+  $('#addRuleModal').on('hidden.bs.modal', function () {
+    var $contactSelect = $('#add-contact-select');
+    if ($contactSelect.hasClass('select2-hidden-accessible')) {
+      try {
+        $contactSelect.select2('destroy');
+      } catch(e) {
+      }
+    }
+    
+    var $ouSelect = $('#ou_id');
+    if ($ouSelect.hasClass('select2-hidden-accessible')) {
+      try {
+        $ouSelect.select2('destroy');
+      } catch(e) {
+      }
+    }
+  });
+
+  // Initialize filter contact select2 when filter modal is shown
+  $('#filterRuleModal').on('shown.bs.modal', function () {
+    // Destroy existing select2 if any
+    var $filterContacts = $('#filterRuleContacts');
+    if ($filterContacts.hasClass('select2-hidden-accessible')) {
+      try {
+        $filterContacts.select2('destroy');
+      } catch(e) {
+      }
+    }
+    
+    // Initialize select2 for filter contact dropdown
+    $('#filterRuleContacts').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select contacts to filter',
+      allowClear: true,
+      width: '100%',
+      dropdownParent: $('#filterRuleModal'),
+      ajax: {
+        url: '/organize/api/contact',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      },
+      minimumInputLength: 0
+    });
+  });
+
+  // Destroy filter select2 when modal is hidden
+  $('#filterRuleModal').on('hidden.bs.modal', function () {
+    var $filterContacts = $('#filterRuleContacts');
+    if ($filterContacts.hasClass('select2-hidden-accessible')) {
+      try {
+        $filterContacts.select2('destroy');
+      } catch(e) {
+      }
+    }
+  });
+
+  // Initialize edit contact select2 when edit modal is shown
+  $('#editRuleModal').on('shown.bs.modal', function () {
+    // Small delay to ensure modal is fully rendered
+    setTimeout(function() {
+      // Check if element exists and is not already select2
+      var $contactSelect = $('#edit-contact-select');
+      
+      if ($contactSelect.length && !$contactSelect.hasClass('select2-hidden-accessible')) {
+        // Destroy any existing select2 on this element first
+        if ($contactSelect.hasClass('select2-hidden-accessible')) {
+          try {
+            $contactSelect.select2('destroy');
+          } catch(e) {
+          }
+        }
+        
+        // Initialize select2 for edit contact dropdown
+        $contactSelect.select2({
+          theme: 'bootstrap-5',
+          placeholder: 'Select contacts',
+          allowClear: true,
+          width: '100%',
+          dropdownParent: $('#editRuleModal .modal-body'),
+          ajax: {
+            url: '/organize/api/contact',
+            dataType: 'json',
+            delay: 250,
+            data: params => ({ search: params.term }),
+            processResults: data => ({ results: data }),
+            cache: true
+          },
+          minimumInputLength: 0
+        });
+        
+        
+        // Force dropdown to appear in correct position
+        setTimeout(function() {
+          var $container = $contactSelect.next('.select2-container');
+          if ($container.length) {
+            $container.css({
+              'position': 'relative',
+              'z-index': '1055'
+            });
+            
+            // Force dropdown positioning
+            $container.on('select2:open', function() {
+              var $dropdown = $('.select2-dropdown');
+              $dropdown.css({
+                'position': 'absolute',
+                'top': '100%',
+                'left': '0',
+                'width': '100%',
+                'z-index': '1055'
+              });
+            });
+          }
+        }, 100);
+      } else {
+      }
+
+      // Initialize OU select2 for edit modal
+      var $editOuSelect = $('#edit_ou_id');
+      if ($editOuSelect.length && !$editOuSelect.hasClass('select2-hidden-accessible')) {
+        // Destroy any existing select2 on this element first
+        if ($editOuSelect.hasClass('select2-hidden-accessible')) {
+          try {
+            $editOuSelect.select2('destroy');
+          } catch(e) {
+          }
+        }
+        
+        // Initialize select2 for edit OU dropdown
+        $editOuSelect.select2({
+          theme: 'bootstrap-5',
+          placeholder: 'Select OU',
+          allowClear: true,
+          width: '100%',
+          dropdownParent: $('#editRuleModal .modal-body'),
+          ajax: {
+            url: '/organize/api/unit',
+            dataType: 'json',
+            delay: 250,
+            data: params => ({ search: params.term }),
+            processResults: data => ({ results: data }),
+            cache: true
+          },
+          minimumInputLength: 0
+        });
+        
+      }
+    }, 300);
+  });
+
+  // Destroy edit select2 when modal is hidden
+  $('#editRuleModal').on('hidden.bs.modal', function () {
+    var $editContactSelect = $('#edit-contact-select');
+    if ($editContactSelect.hasClass('select2-hidden-accessible')) {
+      try {
+        $editContactSelect.select2('destroy');
+      } catch(e) {
+      }
+    }
+    
+    var $editOuSelect = $('#edit_ou_id');
+    if ($editOuSelect.hasClass('select2-hidden-accessible')) {
+      try {
+        $editOuSelect.select2('destroy');
+      } catch(e) {
+        console.log('Error destroying edit OU select2:', e);
+      }
+    }
+  });
+
+  // Handle edit button clicks
+  $(document).on('click', '[data-bs-target="#editRuleModal"]', function() {
+    var ruleId = $(this).data('rule-id');
+    var rule = originalRules.find(r => r.id == ruleId);
+    
+    // Debug: Check all select elements in edit modal
+    
+    if (rule) {
+      // Populate form fields
+      $('#editRuleId').val(rule.id);
+      $('#edit_firewall_name').val(rule.firewall_name || '');
+      $('#edit_rulename').val(rule.rulename || '');
+      $('#edit_src_zone').val(rule.src_zone || '');
+      $('#edit_src').val(rule.src || '');
+      $('#edit_src_detail').val(rule.src_detail || '');
+      $('#edit_dst_zone').val(rule.dst_zone || '');
+      $('#edit_dst').val(rule.dst || '');
+      $('#edit_dst_detail').val(rule.dst_detail || '');
+      $('#edit_services').val(rule.services || '');
+      $('#edit_application').val(rule.application || '');
+      $('#edit_url').val(rule.url || '');
+      $('#edit_action').val(rule.action || '');
+      $('#edit_ou_id').val(rule.ou_id || '');
+      $('#edit_status').val(rule.status || '');
+      $('#edit_violation_type').val(rule.violation_type || '');
+      $('#edit_audit_batch').val(rule.audit_batch || '');
+      $('#edit_violation_detail').val(rule.violation_detail || '');
+      $('#edit_solution_proposal').val(rule.solution_proposal || '');
+      $('#edit_solution_confirm').val(rule.solution_confirm || '');
+      $('#edit_work_order').val(rule.work_order || '');
+      $('#edit_description').val(rule.description || '');
+      
+      // Clear and populate contacts after select2 is initialized
+      setTimeout(function() {
+        var $editContactSelect = $('#edit-contact-select');
+        $editContactSelect.empty();
+        if (rule.contacts && rule.contacts.length > 0) {
+          rule.contacts.forEach(function(contact) {
+            var option = new Option(contact.name + (contact.email ? ' (' + contact.email + ')' : ''), contact.id, true, true);
+            $editContactSelect.append(option);
+          });
+        }
+        $editContactSelect.trigger('change');
+        
+        // Populate OU field
+        var $editOuSelect = $('#edit_ou_id');
+        $editOuSelect.empty();
+        if (rule.ou_id && rule.ou_name) {
+          var option = new Option(rule.ou_name, rule.ou_id, true, true);
+          $editOuSelect.append(option);
+          $editOuSelect.trigger('change');
+        }
+      }, 400);
+      
+      // Update form action
+      $('#editRuleForm').attr('action', '/firewall/rule/' + ruleId);
+    }
+  });
+
+  // Import functionality
+  let selectedFile = null;
+  const $importModal = $('#importRuleModal');
+  const $fileInput = $('#ruleFile');
+  const $validateBtn = $('#validateBtn');
+  const $importBtn = $('#importBtn');
+  const $progress = $('#importProgress');
+  const $results = $('#importResults');
+  const $alert = $('#importAlert');
+  const $message = $('#importMessage');
+  const $status = $('#importStatus');
+
+  // Reset modal when shown
+  $importModal.on('show.bs.modal', function() {
+    resetImportForm();
+  });
+  
+  // Also reset when modal is shown
+  $importModal.on('shown.bs.modal', function() {
+    resetImportForm();
+  });
+
+  // Reset modal when hidden
+  $importModal.on('hidden.bs.modal', function() {
+    resetImportForm();
+  });
+
+  function resetImportForm() {
+    // Clear file input completely
+    $fileInput.val('');
+    $fileInput[0].value = '';
+    selectedFile = null;
+    $validateBtn.prop('disabled', true);
+    $importBtn.prop('disabled', true).hide();
+    $progress.hide();
+    $results.hide();
+    $alert.removeClass('alert-success alert-danger alert-warning');
+    
+    // Reset form completely
+    $('#importRuleForm')[0].reset();
+  }
+
+  // File selection handler
+  $fileInput.on('change', function() {
+    const file = this.files[0];
+    if (file) {
+      selectedFile = file;
+      $validateBtn.prop('disabled', false);
+      $('#testFileBtn').prop('disabled', false);
+      $importBtn.prop('disabled', true).hide();
+    } else {
+      selectedFile = null;
+      $validateBtn.prop('disabled', true);
+      $('#testFileBtn').prop('disabled', true);
+      $importBtn.prop('disabled', true).hide();
+    }
+    $results.hide();
+  });
+
+  // Validate file
+
+  $validateBtn.on('click', function() {
+    
+    if (!selectedFile) {
+      alert('Please select a file first');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    $progress.show();
+    $results.hide();
+    $validateBtn.prop('disabled', true);
+
+    $.ajax({
+      url: '/firewall/rule/validate-import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      xhr: function() {
+        const xhr = new window.XMLHttpRequest();
+        xhr.responseType = 'blob';
+        return xhr;
+      },
+      success: function(data, status, xhr) {
+        $progress.hide();
+        $validateBtn.prop('disabled', false);
+
+        // Check content type to determine response format
+        const contentType = xhr.getResponseHeader('Content-Type');
+        
+        if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+          // Excel file response
+          // Download validation results file
+          const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          
+          // Extract filename from Content-Disposition header
+          const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+          let filename = 'firewall_rule_validation_results.xlsx';
+          if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+            if (filenameMatch) {
+              filename = filenameMatch[1];
+            }
+          }
+          
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+
+          // Check validation summary from header
+          const validationSummary = xhr.getResponseHeader('X-Validation-Summary');
+          if (validationSummary) {
+            try {
+              const summary = JSON.parse(validationSummary);
+              if (summary.allPassed) {
+                $importBtn.prop('disabled', false).show();
+                $validateBtn.prop('disabled', true);
+                $alert.removeClass('alert-danger alert-warning').addClass('alert-success');
+                $message.html(`
+                  <i class="bi bi-check-circle"></i>
+                  <strong>Validation Successful!</strong><br>
+                  All ${summary.totalCount} records passed validation. You can now proceed with import.
+                `);
+              } else {
+                $importBtn.prop('disabled', true).hide();
+                $validateBtn.prop('disabled', false);
+                $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+                $message.html(`
+                  <i class="bi bi-exclamation-triangle"></i>
+                  <strong>Validation Failed!</strong><br>
+                  ${summary.failCount} out of ${summary.totalCount} records failed validation. 
+                  Please check the downloaded validation results and fix the issues before importing.
+                `);
+              }
+              $results.show();
+            } catch (e) {
+              console.error('Error parsing validation summary:', e);
+              $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+              $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> Unexpected response format`);
+              $results.show();
+            }
+          } else {
+            $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+            $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> Unexpected response format`);
+            $results.show();
+          }
+        } else if (contentType && contentType.includes('application/json')) {
+          // JSON response (should not happen in success, but handle it)
+          $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+          $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> Unexpected JSON response in success handler`);
+          $results.show();
+        } else {
+          // Handle other response types
+          $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+          $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> Unexpected response format`);
+          $results.show();
+        }
+      },
+      error: function(xhr, status, error) {
+        
+        // Try to parse JSON error response
+        let errorMessage = 'Validation failed. Please download the template and ensure your file has the correct format and required columns.';
+        
+        try {
+          if (xhr.responseText) {
+            const errorData = JSON.parse(xhr.responseText);
+            errorMessage = errorData.error || errorMessage;
+          }
+        } catch (e) {
+          // Keep the default error message
+        }
+        
+        function displayError() {
+          $progress.hide();
+          $validateBtn.prop('disabled', false);
+          $importBtn.prop('disabled', true).hide();
+          $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+          $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> ${errorMessage}`);
+          $results.show();
+        }
+        
+        displayError();
+      }
+    });
+  });
+
+  // Import rules
+  $importBtn.on('click', function() {
+    if (!selectedFile) {
+      alert('Please select a file first');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to import the firewall rules? This action cannot be undone.')) {
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    $progress.show();
+    $results.hide();
+    $importBtn.prop('disabled', true);
+
+    $.ajax({
+      url: '/firewall/rule/import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      xhr: function() {
+        const xhr = new window.XMLHttpRequest();
+        xhr.responseType = 'blob';
+        return xhr;
+      },
+      success: function(data, status, xhr) {
+        $progress.hide();
+        $importBtn.prop('disabled', false);
+
+        // Check if response is Excel file
+        const contentType = xhr.getResponseHeader('Content-Type');
+        if (contentType && contentType.includes('spreadsheetml')) {
+          // Download import results
+          const blob = new Blob([data], { type: contentType });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          
+          // Extract filename from Content-Disposition header
+          const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+          let filename = 'firewall_rule_import_results.xlsx';
+          if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+            if (filenameMatch) {
+              filename = filenameMatch[1];
+            }
+          }
+          
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+
+          $alert.removeClass('alert-danger alert-warning').addClass('alert-success');
+          $message.html(`
+            <i class="bi bi-check-circle"></i>
+            <strong>Import Completed!</strong><br>
+            Firewall rule import has been completed. Please check the downloaded results file for details.
+            <br><br>
+            <button type="button" class="btn btn-sm btn-primary" onclick="location.reload()">
+              <i class="bi bi-arrow-clockwise"></i> Refresh Page
+            </button>
+          `);
+          $results.show();
+          
+          // Reset form after successful import
+          setTimeout(() => {
+            resetImportForm();
+          }, 2000);
+        } else {
+          // Handle non-Excel response (should be JSON error)
+          $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+          $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> Unexpected response format`);
+          $results.show();
+        }
+      },
+      error: function(xhr, status, error) {
+        $progress.hide();
+        $importBtn.prop('disabled', false);
+        $validateBtn.prop('disabled', false);
+        
+        // Try to parse JSON error response
+        let errorMessage = 'Import failed. Please download the template and ensure your file has the correct format and required columns.';
+        try {
+          if (xhr.responseText) {
+            const errorData = JSON.parse(xhr.responseText);
+            errorMessage = errorData.error || errorMessage;
+          }
+        } catch (e) {
+          // Keep the default error message
+        }
+        
+        $alert.removeClass('alert-success alert-warning').addClass('alert-danger');
+        $message.html(`<i class="bi bi-exclamation-triangle"></i> <strong>Error:</strong> ${errorMessage}`);
+        $results.show();
+      }
+    });
+  });
+
+  // Reset modal when closed
+  $importModal.on('hidden.bs.modal', function() {
+    $fileInput.val('');
+    selectedFile = null;
+    $validateBtn.prop('disabled', true);
+    $importBtn.prop('disabled', true);
+    $progress.hide();
+    $results.hide();
+  });
+
+});
+</script>
+
+<script src="/vendor/jquery-3.6.0.min.js"></script>
+<script src="/vendor/bootstrap.min.js"></script>
+<!-- Source map disabled to prevent console errors -->
+<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
+<!-- Select2 CSS and JS -->
+<link href="/css/select2.min.css" rel="stylesheet" />
+<script src="/js/select2.min.js"></script>
+<!-- Responsive Tables CSS -->

@@ -1,190 +1,297 @@
-<style>
-/* Mobile responsive styles for Domain List */
-@media (max-width: 768px) {
-  .table-responsive {
-    display: block !important;
-    overflow-x: scroll !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
+<!--
+==========================================
+DOMAIN LIST PAGE - EJS TEMPLATE
+==========================================
+This template renders the domain list page with search, filter, pagination,
+and CRUD operations for domain management.
+
+Structure:
+1. Helper Functions (EJS)
+2. Page Header & Breadcrumb
+3. Search & Filter Section
+4. Action Buttons
+5. Data Table
+6. Pagination
+7. Modals (Add, Edit, Detail, Filter, Import)
+8. Styles & JavaScript
+==========================================
+-->
+
+<%
+// ==========================================
+// HELPER FUNCTIONS
+// ==========================================
+
+/**
+ * Build pagination URL with all query parameters
+ * @param {number} targetPage - Target page number
+ * @returns {string} - Complete URL with query parameters
+ */
+function buildPaginationUrl(targetPage) {
+  const params = new URLSearchParams();
+  
+  // Core parameters
+  params.set('page', targetPage);
+  if (typeof search !== 'undefined' && search) params.set('search', search);
+  if (typeof pageSize !== 'undefined' && pageSize) params.set('pageSize', pageSize);
+  
+  // Filter parameters
+  if (typeof filterStatus !== 'undefined' && filterStatus) params.set('status', filterStatus);
+  
+  if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
+    filterTags.forEach(tag => params.append('tags[]', tag.id));
   }
   
-  .table {
-    display: table !important;
-    min-width: 800px !important;
-    width: 100% !important;
+  if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
+    filterSystems.forEach(system => params.append('systems[]', system.id));
   }
   
-  .card-body,
-  .card,
-  .col-12,
-  .container-fluid,
-  .row {
-    position: relative !important;
-    z-index: 1 !important;
-    width: 100% !important;
-    margin: 0 !important;
+  if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) {
+    filterContacts.forEach(contact => params.append('contacts[]', contact.id));
   }
   
-  .col-12 {
-    position: relative !important;
-    z-index: 1 !important;
-    width: 100% !important;
-    padding: 0 15px !important;
+  if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses && filterIpAddresses.length > 0) {
+    filterIpAddresses.forEach(ip => params.append('ip_id[]', ip.id));
   }
   
-  /* Only apply mobile styles to table container, not button row */
-  .col-12:not(.d-flex) {
-    position: relative !important;
-    z-index: 1 !important;
-    width: 100% !important;
-    padding: 0 15px !important;
-  }
-  
-  /* Force button row to stay on the right - HIGH SPECIFICITY */
-  .row.mb-3 .col-12.button-row {
-    display: flex !important;
-    justify-content: flex-end !important;
-    align-items: center !important;
-    flex-direction: row !important;
-    width: 100% !important;
-    text-align: right !important;
-  }
-  
-  /* Additional override for any conflicting styles */
-  .button-row.d-flex {
-    display: flex !important;
-    justify-content: flex-end !important;
-    align-items: center !important;
-    flex-direction: row !important;
-  }
-  
-  /* Button container - separate from col-12 to avoid conflicts */
-  .button-container {
-    display: flex !important;
-    justify-content: flex-end !important;
-    align-items: center !important;
-    flex-direction: row !important;
-    width: 100% !important;
-    gap: 0.5rem !important;
-  }
-  
-  /* Consistent button spacing */
-  .button-container .btn {
-    margin-right: 0 !important;
-    margin-left: 0 !important;
-  }
-  
-  .button-container .btn:not(:last-child) {
-    margin-right: 0.5rem !important;
-  }
-  
-  .card {
-    position: relative !important;
-    z-index: 1 !important;
-    width: 100% !important;
-    margin: 0 !important;
-  }
-  
-  .table th,
-  .table td {
-    padding: 0.25rem !important;
-    font-size: 0.75rem !important;
-    white-space: nowrap !important;
-  }
-  
-  .btn-sm {
-    padding: 0.25rem 0.5rem !important;
-    font-size: 0.75rem !important;
-  }
+  return '?' + params.toString();
 }
-</style>
+
+/**
+ * Build export URL with all query parameters
+ * @returns {string} - Complete export URL with query parameters
+ */
+function buildExportUrl() {
+  const params = new URLSearchParams();
+  
+  // Core parameters
+  if (typeof search !== 'undefined' && search) params.set('search', search);
+  if (typeof filterStatus !== 'undefined' && filterStatus) params.set('status', filterStatus);
+  
+  // Filter parameters
+  if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
+    filterTags.forEach(tag => params.append('tags[]', tag.id));
+  }
+  
+  if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
+    filterSystems.forEach(system => params.append('systems[]', system.id));
+  }
+  
+  if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) {
+    filterContacts.forEach(contact => params.append('contacts[]', contact.id));
+  }
+  
+  if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses && filterIpAddresses.length > 0) {
+    filterIpAddresses.forEach(ip => params.append('ip_id[]', ip.id));
+  }
+  
+  return '/network/domain/export' + (params.toString() ? '?' + params.toString() : '');
+}
+%>
+
+<!-- ==========================================
+     PAGE HEADER & BREADCRUMB
+     ========================================== -->
+<div class="app-content-header">
 <div class="container-fluid">
-  <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/network/domain" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
-    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search Domain..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-    <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
-      <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
-        <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
-      <% }) %>
-    </select>
-    <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
-  </form>
-  <div class="row mb-3">
-    <div class="col-12" style="margin-top: 16px;">
-      <div class="button-container d-flex justify-content-end align-items-center">
-      <% if (hasPermission('domain.create')) { %>
-        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addDomainModal">
-          <i class="bi bi-plus"></i> Add Domain
-        </button>
-        <a href="/network/domain/template" class="btn btn-info btn-sm" download>
-          <i class="bi bi-download"></i> Download Template
-        </a>
-        <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importDomainModal">
-          <i class="bi bi-upload"></i> Import Domain
-        </button>
-      <% } %>
-      <% if (hasPermission('domain.read')) { %>
-        <form id="domainExportForm" action="/network/domain/export" method="GET" style="display:inline; margin-right: 8px;">
-          <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-          <button type="submit" class="btn btn-warning btn-sm">
-            <i class="bi bi-download"></i> Export
-          </button>
-        </form>
-      <% } %>
-      </div>
-    </div>
-      <!-- Add Domain Modal -->
-      <div class="modal fade" id="addDomainModal" tabindex="-1" aria-labelledby="addDomainModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="addDomainModalLabel">Add Domain</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="addDomainForm" action="/network/domain" method="POST">
-              <div class="modal-body">
-                <div class="mb-3">
-                  <label for="domainName" class="form-label">Domain <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control form-control-sm" id="domainName" name="domain" placeholder="Domain" required>
-                </div>
-                <div class="mb-3">
-                  <label for="domainDescription" class="form-label">Description</label>
-                  <input type="text" class="form-control form-control-sm" id="domainDescription" name="description" placeholder="Description">
-                </div>
-                <div class="mb-3">
-                  <label for="domainIpId" class="form-label">IP Address</label>
-                  <select id="domainIpId" name="ip_id" class="form-select form-select-sm select2"></select>
-                </div>
-                <div class="mb-3">
-                  <label for="domainRecordType" class="form-label">Record Type</label>
-                  <select id="domainRecordType" name="record_type" class="form-select form-select-sm">
-                    <% (recordTypeOptions || []).forEach(function(opt) { %>
-                      <option value="<%= opt.value %>" <%= opt.value === 'A' ? 'selected' : '' %>><%= opt.label %></option>
-                    <% }) %>
-                  </select>
-                </div>
-                <div class="mb-3">
-                  <label for="domainSystems" class="form-label">Systems</label>
-                  <select id="domainSystems" name="systems[]" class="form-select form-select-sm select2" multiple></select>
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                <button type="submit" class="btn btn-primary btn-sm">Add Domain</button>
-              </div>
-            </form>
-          </div>
-        </div>
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">Domain List</li>
+        </ol>
       </div>
     </div>
   </div>
+</div>
+  
+<!-- ==========================================
+     MAIN CONTENT AREA
+     ========================================== -->
+<div class="app-content">
+  <div class="container-fluid">
+    
+    <!-- ==========================================
+         SEARCH & FILTER SECTION
+         ========================================== -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end align-items-center gap-2">
+          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/network/domain">
+            <!-- Hidden inputs to preserve filter values -->
+            <input type="hidden" name="page" value="1">
+            
+            <!-- Filter Status -->
+            <% if (typeof filterStatus !== 'undefined' && filterStatus) { %>
+              <input type="hidden" name="status" value="<%= filterStatus %>">
+            <% } %>
+            
+            <!-- Filter Tags -->
+            <% if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) { %>
+              <% filterTags.forEach(function(tag) { %>
+                <input type="hidden" name="tags[]" value="<%= tag.id %>">
+              <% }); %>
+            <% } %>
+            
+            <!-- Filter Systems -->
+            <% if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) { %>
+              <% filterSystems.forEach(function(system) { %>
+                <input type="hidden" name="systems[]" value="<%= system.id %>">
+              <% }); %>
+            <% } %>
+            
+            <!-- Filter Contacts -->
+            <% if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) { %>
+              <% filterContacts.forEach(function(contact) { %>
+                <input type="hidden" name="contacts[]" value="<%= contact.id %>">
+              <% }); %>
+            <% } %>
+            
+            <!-- Filter IP Addresses -->
+            <% if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses && filterIpAddresses.length > 0) { %>
+              <% filterIpAddresses.forEach(function(ip) { %>
+                <input type="hidden" name="ip_id[]" value="<%= ip.id %>">
+              <% }); %>
+            <% } %>
+            
+            <!-- Search Input -->
+            <div class="input-group input-group-sm" style="width: 250px;">
+              <input class="form-control form-control-sm" 
+                     type="search" 
+                     name="search" 
+                     placeholder="Search Domain or Description..." 
+                     aria-label="Search" 
+                     value="<%= typeof search !== 'undefined' ? search : '' %>">
+              <button class="btn btn-outline-secondary btn-sm" type="submit">
+                <i class="bi bi-search"></i>
+              </button>
+            </div>
+            
+            <!-- Page Size Selector -->
+            <div class="d-flex align-items-center gap-1">
+              <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+              <select class="form-select form-select-sm" 
+                      name="pageSize" 
+                      onchange="this.form.submit()" 
+                      style="width: 80px;">
+      <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
+                  <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>>
+                    <%= size %>
+                  </option>
+      <% }) %>
+    </select>
+            </div>
+  </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================
+         ACTION BUTTONS
+         ========================================== -->
+  <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end gap-2">
+          <!-- Add Domain Button -->
+          <% if (hasPermission && hasPermission('domain.create')) { %>
+            <button type="button" 
+                    class="btn btn-primary btn-sm" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#addDomainModal">
+          <i class="bi bi-plus"></i> Add Domain
+        </button>
+          <% } %>
+          
+          <!-- Filter Button -->
+          <button type="button" 
+                  class="btn btn-secondary btn-sm" 
+                  data-bs-toggle="modal" 
+                  data-bs-target="#filterDomainModal">
+            <i class="bi bi-funnel"></i> Filter
+          </button>
+          
+          <!-- Export Button -->
+          <% if (hasPermission && hasPermission('domain.read')) { %>
+            <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">
+              <i class="bi bi-download"></i> Export
+            </a>
+          <% } %>
+          
+          <!-- Import Domain Button -->
+          <% if (hasPermission && hasPermission('domain.create')) { %>
+            <button type="button" 
+                    class="btn btn-success btn-sm" 
+                    data-bs-toggle="modal" 
+                    data-bs-target="#importDomainModal">
+          <i class="bi bi-upload"></i> Import Domain
+        </button>
+      <% } %>
+      </div>
+    </div>
+            </div>
+
+    <!-- ==========================================
+         FILTER DATA FOR JAVASCRIPT
+         ========================================== -->
+    <div id="filter-domain-data"
+         data-tags='<%= JSON.stringify(filterTags || []) %>'
+         data-systems='<%= JSON.stringify(filterSystems || []) %>'
+         data-contacts='<%= JSON.stringify(filterContacts || []) %>'
+         data-ipAddresses='<%= JSON.stringify(filterIpAddresses || []) %>'
+         data-status='<%= JSON.stringify(filterStatus || '') %>' 
+         style="display:none">
+                </div>
+
+    <!-- ==========================================
+         FLASH MESSAGES
+         ========================================== -->
+    <!-- Success Message -->
+    <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+      <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
+        <i class="bi bi-check-circle me-2"></i><%= successMessage %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+      <script>
+        // Auto-hide success message after 5 seconds
+        setTimeout(function() {
+          const alert = document.getElementById('successAlert');
+          if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+          }
+        }, 5000);
+      </script>
+    <% } %>
+    
+    <!-- Error Message -->
+    <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+      <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
+        <i class="bi bi-exclamation-triangle me-2"></i><%= errorMessage %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+      <script>
+        // Auto-hide error message after 8 seconds (longer for errors)
+        setTimeout(function() {
+          const alert = document.getElementById('errorAlert');
+          if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+          }
+        }, 8000);
+      </script>
+    <% } %>
+
+    <!-- ==========================================
+         DOMAIN LIST TABLE
+         ========================================== -->
   <div class="row">
     <div class="col-12">
       <div class="card">
         <div class="card-header">
           <h3 class="card-title mb-0">Domain List</h3>
         </div>
-        <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
-          <table class="table table-hover">
+          <div class="card-body table-responsive" style="overflow-x: auto;">
+            <table class="table table-hover" id="domainTable">
             <thead>
               <tr>
                 <th>No.</th>
@@ -192,7 +299,9 @@
                 <th>Description</th>
                 <th>IP Address</th>
                 <th>Record Type</th>
-                <th>System</th>
+                  <th>Tags</th>
+                  <th>Systems</th>
+                  <th>Contacts</th>
                 <th class="text-end">Actions</th>
               </tr>
             </thead>
@@ -200,362 +309,1725 @@
               <% if (domainList && domainList.length > 0) { %>
                 <% domainList.forEach(function(domain, idx) { %>
                   <tr>
+                      <!-- Row Number -->
                     <td><%= (page - 1) * pageSize + idx + 1 %></td>
-                    <td><%= domain.domain %></td>
-                    <td>
-                      <% if (domain.description && domain.description.trim()) { %>
-                        <span title="<%= domain.description.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
-                          <%= domain.description.length > 60 ? domain.description.substring(0, 60) + '…' : domain.description %>
-                        </span>
+                      
+                      <!-- Domain Name -->
+                      <td><strong><%= domain.domain %></strong></td>
+                      
+                      <!-- Description -->
+                      <td><%= domain.description || '-' %></td>
+                      
+                      <!-- IP Address -->
+                      <td>
+                        <% if (domain.ip && domain.ip.ip_address) { %>
+                          <span class="badge bg-primary"><%= domain.ip.ip_address %></span>
                       <% } else { %>
-                        <span class="text-muted">-</span>
+                          <span class="text-muted">No IP</span>
                       <% } %>
                     </td>
-                    <td>
-                      <% if (domain.ip && domain.ip.ip_address) { %>
-                        <span class="badge bg-primary"><%= domain.ip.ip_address %></span>
+                      
+                      <!-- Record Type -->
+                      <td><span class="badge bg-info"><%= domain.record_type || 'A' %></span></td>
+                      
+                      <!-- Tags -->
+                      <td>
+                        <% if (domain.tags && domain.tags.length > 0) { %>
+                          <% domain.tags.forEach(function(tag) { %>
+                            <span class="badge bg-primary me-1">
+                              <%= (typeof tag === 'string') ? tag : tag.name %>
+                            </span>
+                          <% }) %>
                       <% } else { %>
-                        <span class="text-muted">No IP</span>
+                          <span class="text-muted">No tags</span>
                       <% } %>
                     </td>
-                    <td><%= domain.record_type || '' %></td>
+                      
+                      <!-- Systems -->
                     <td>
                       <% if (domain.systems && domain.systems.length > 0) { %>
-                        <% domain.systems.forEach(function(sys, i) { %>
-                          <%= sys.name %><%= i < domain.systems.length - 1 ? ', ' : '' %>
+                          <% domain.systems.forEach(function(system) { %>
+                            <span class="badge bg-info me-1">
+                              <%= (typeof system === 'string') ? system : system.name %>
+                            </span>
                         <% }) %>
                       <% } else { %>
-                        <span class="text-muted">No system</span>
+                          <span class="text-muted">No systems</span>
                       <% } %>
                     </td>
-                    <td class="text-end">
-                      <button type="button" class="btn btn-info btn-sm" title="Detail" data-bs-toggle="modal" data-bs-target="#domainDetailModal-<%= domain.id %>"><i class="bi bi-eye"></i></button>
-                      <% if (hasPermission('domain.edit')) { %>
-                        <button type="button" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#editDomainModal-<%= domain.id %>"><i class="bi bi-pencil"></i></button>
-                      <% } %>
-                      <form action="/network/domain/<%= domain.id %>?_method=DELETE" method="POST" style="display:inline">
-                        <% if (hasPermission('domain.delete')) { %>
-                          <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure?')"><i class="bi bi-trash"></i></button>
+                      
+                      <!-- Contacts -->
+                      <td>
+                        <% if (domain.contacts && domain.contacts.length > 0) { %>
+                          <% domain.contacts.forEach(function(contact) { %>
+                            <span class="badge bg-warning me-1">
+                              <%= (typeof contact === 'string') ? contact : (contact.name || contact.email) %>
+                            </span>
+                          <% }) %>
+                        <% } else { %>
+                          <span class="text-muted">No contacts</span>
                         <% } %>
+                      </td>
+                      
+                      <!-- Actions -->
+                    <td class="text-end">
+                        <!-- View Button -->
+                        <button type="button" 
+                                class="btn btn-info btn-sm" 
+                                title="Show" 
+                                onclick="showDomainDetail('<%= domain.id %>')" 
+                                data-domain='<%= JSON.stringify(domain) %>'>
+                          <i class="bi bi-eye"></i>
+                        </button>
+                        
+                        <!-- Edit Button -->
+                        <% if (hasPermission('domain.update')) { %>
+                          <button type="button" 
+                                  class="btn btn-warning btn-sm" 
+                                  title="Edit" 
+                                  data-bs-toggle="modal" 
+                                  data-bs-target="#editDomainModal"
+                                  data-domain-id="<%= domain.id %>"
+                                  data-domain="<%= domain.domain %>"
+                                  data-description="<%= domain.description || '' %>"
+                                  data-record-type="<%= domain.record_type %>"
+                                  data-ip-id="<%= domain.ip ? domain.ip.id : '' %>"
+                                  data-ip-address="<%= domain.ip ? domain.ip.ip_address : '' %>"
+                                  data-tags="<%= JSON.stringify(domain.tags || []) %>"
+                                  data-systems="<%= JSON.stringify(domain.systems || []) %>"
+                                  data-contacts="<%= JSON.stringify(domain.contacts || []) %>">
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                      <% } %>
+                        
+                        <!-- Delete Button -->
+                        <% if (hasPermission('domain.delete')) { %>
+                          <form action="/network/domain/<%= domain.id %>?_method=DELETE" 
+                                method="POST" 
+                                style="display:inline" 
+                                onsubmit="return confirmDeleteDomain(this, '<%= domain.domain %>')">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                              <i class="bi bi-trash"></i>
+                            </button>
                       </form>
+                        <% } %>
                     </td>
                   </tr>
-                  <!-- Domain Detail Modal -->
-                  <div class="modal fade" id="domainDetailModal-<%= domain.id %>" tabindex="-1" aria-labelledby="domainDetailModalLabel-<%= domain.id %>" aria-hidden="true">
-                    <div class="modal-dialog">
-                      <div class="modal-content">
-                        <div class="modal-header">
-                          <h5 class="modal-title" id="domainDetailModalLabel-<%= domain.id %>">Domain Detail</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                          <dl class="row mb-0">
-                            <dt class="col-sm-4">Domain ID</dt>
-                            <dd class="col-sm-8"><%= domain.id %></dd>
-                            <dt class="col-sm-4">Domain</dt>
-                            <dd class="col-sm-8"><%= domain.domain %></dd>
-                            <dt class="col-sm-4">Description</dt>
-                            <dd class="col-sm-8"><%= domain.description || '' %></dd>
-                            <dt class="col-sm-4">IP</dt>
-                            <dd class="col-sm-8">
-                              <% if (domain.ip && domain.ip.ip_address) { %>
-                                <a href="/network/ip-address?search=<%= encodeURIComponent(domain.ip.ip_address) %>" target="_blank" class="text-primary" style="text-decoration: underline; cursor: pointer;">
-                                  <%= domain.ip.ip_address %>
-                                </a>
-                              <% } else { %>
-                                <span class="text-muted">No IP</span>
-                              <% } %>
-                            </dd>
-                            <dt class="col-sm-4">Record Type</dt>
-                            <dd class="col-sm-8"><%= domain.record_type || '' %></dd>
-                            <dt class="col-sm-4">System</dt>
-                            <dd class="col-sm-8">
-                              <% if (domain.systems && domain.systems.length > 0) { %>
-                                <% domain.systems.forEach(function(sys) { %>
-                                  <div>
-                                    <a href="/system/system?search=<%= encodeURIComponent(sys.name) %>" target="_blank" class="text-primary" style="text-decoration: underline; cursor: pointer;">
-                                      <%= sys.name %>
-                                    </a>
-                                  </div>
-                                <% }) %>
-                              <% } else { %>
-                                <span class="text-muted">No system</span>
-                              <% } %>
-                            </dd>
-                          </dl>
-                        </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <!-- Edit Domain Modal -->
-                  <div class="modal fade" id="editDomainModal-<%= domain.id %>" tabindex="-1" aria-labelledby="editDomainModalLabel-<%= domain.id %>" aria-hidden="true">
-                    <div class="modal-dialog">
-                      <div class="modal-content">
-                        <div class="modal-header">
-                          <h5 class="modal-title" id="editDomainModalLabel-<%= domain.id %>">Edit Domain</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <form action="/network/domain/<%= domain.id %>?_method=PUT" method="POST">
-                          <div class="modal-body">
-                            <div class="mb-3">
-                              <label class="form-label">Domain</label>
-                              <input type="text" class="form-control form-control-sm" value="<%= domain.domain %>" readonly>
-                            </div>
-                            <div class="mb-3">
-                              <label class="form-label">Description</label>
-                              <input type="text" class="form-control form-control-sm" name="description" value="<%= domain.description %>">
-                            </div>
-                            <div class="mb-3">
-                              <label for="editDomainIpId-<%= domain.id %>" class="form-label">IP Address</label>
-                              <select id="editDomainIpId-<%= domain.id %>" name="ip_id" class="form-select form-select-sm select2">
-                                <% if (domain.ip && domain.ip.id) { %>
-                                  <option value="<%= domain.ip.id %>" selected><%= domain.ip.ip_address %></option>
-                                <% } %>
-                              </select>
-                            </div>
-                            <div class="mb-3">
-                              <label for="editDomainRecordType-<%= domain.id %>" class="form-label">Record Type</label>
-                              <select id="editDomainRecordType-<%= domain.id %>" name="record_type" class="form-select form-select-sm">
-                                <option value="A" <%= domain.record_type === 'A' ? 'selected' : '' %>>A</option>
-                                <option value="AAAA" <%= domain.record_type === 'AAAA' ? 'selected' : '' %>>AAAA</option>
-                                <option value="CNAME" <%= domain.record_type === 'CNAME' ? 'selected' : '' %>>CNAME</option>
-                                <option value="MX" <%= domain.record_type === 'MX' ? 'selected' : '' %>>MX</option>
-                                <option value="TXT" <%= domain.record_type === 'TXT' ? 'selected' : '' %>>TXT</option>
-                                <option value="NS" <%= domain.record_type === 'NS' ? 'selected' : '' %>>NS</option>
-                                <option value="SRV" <%= domain.record_type === 'SRV' ? 'selected' : '' %>>SRV</option>
-                                <option value="PTR" <%= domain.record_type === 'PTR' ? 'selected' : '' %>>PTR</option>
-                                <option value="SOA" <%= domain.record_type === 'SOA' ? 'selected' : '' %>>SOA</option>
-                                <option value="OTHER" <%= domain.record_type === 'OTHER' ? 'selected' : '' %>>Other</option>
-                              </select>
-                            </div>
-                            <div class="mb-3">
-                              <label for="editDomainSystems-<%= domain.id %>" class="form-label">Systems</label>
-                              <select id="editDomainSystems-<%= domain.id %>" name="systems[]" class="form-select form-select-sm select2" multiple></select>
-                            </div>
-                          </div>
-                          <div class="modal-footer">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-primary btn-sm">Save changes</button>
-                          </div>
-                        </form>
-                      </div>
-                    </div>
-                  </div>
-                <% }) %>
-              <% } else { %>
-                <tr><td colspan="7" class="text-center">No data</td></tr>
-              <% } %>
-            </tbody>
-          </table>
-        </div>
-        <div class="card-footer clearfix">
-          <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
-            <div>
-              <% 
-                let startItem = (page - 1) * pageSize + 1;
-                let endItem = startItem + (domainList ? domainList.length : 0) - 1;
-                if (!domainList || domainList.length === 0) {
-                  startItem = 0;
-                  endItem = 0;
-                }
-              %>
-              <span>Showing <%= startItem %> - <%= endItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> domains</span>
-            </div>
-            <ul class="pagination pagination-sm m-0 float-end">
-              <% 
-                let startPage = 1;
-                let endPage = totalPages;
-                if (totalPages > 10) {
-                  if (page <= 5) {
-                    startPage = 1;
-                    endPage = 10;
-                  } else if (page + 4 >= totalPages) {
-                    startPage = totalPages - 9;
-                    endPage = totalPages;
-                  } else {
-                    startPage = page - 5 + 1;
-                    endPage = page + 4;
-                  }
-                }
-              %>
-              <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page - 1 %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>" tabindex="-1">Previous</a>
-              </li>
-              <% if (startPage > 1) { %>
-                <li class="page-item"><a class="page-link" href="?page=1&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>">1</a></li>
-                <% if (startPage > 2) { %>
-                  <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <% }) %>
+                <% } else { %>
+                  <tr>
+                    <td colspan="9" class="text-center">No data</td>
+                  </tr>
                 <% } %>
-              <% } %>
-              <% for (let i = startPage; i <= endPage; i++) { %>
-                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>"><%= i %></a></li>
-              <% } %>
-              <% if (endPage < totalPages) { %>
-                <li class="page-item disabled"><span class="page-link">...</span></li>
-                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>"><%= totalPages %></a></li>
-              <% } %>
-              <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page + 1 %>&search=<%= encodeURIComponent(search || '') %>&pageSize=<%= pageSize %>">Next</a>
-              </li>
-            </ul>
+              </tbody>
+            </table>
+          </div>
+          <!-- ==========================================
+               PAGINATION
+               ========================================== -->
+          <div class="card-footer clearfix">
+            <div class="d-flex justify-content-between align-items-center px-3 py-2">
+              <!-- Pagination Info -->
+              <div>
+                <% 
+                  // Calculate pagination range
+                  const startItem = (page - 1) * pageSize + 1;
+                  const endItem = Math.min(page * pageSize, totalCount || 0);
+                  const startPage = Math.max(1, page - 2);
+                  const endPage = Math.min(totalPages, page + 2);
+                %>
+                <span>Showing <%= startItem %> - <%= endItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> domains</span>
+              </div>
+              
+              <!-- Pagination Controls -->
+              <ul class="pagination pagination-sm m-0 float-end">
+                <% 
+                  // Build filter query for pagination links
+                  function buildDomainFilterQuery() {
+                    let params = [];
+                    if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+                    if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
+                    if (typeof filterTags !== 'undefined' && filterTags.length) filterTags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag.id || tag)); });
+                    if (typeof filterStatus !== 'undefined' && filterStatus) params.push('status=' + encodeURIComponent(filterStatus));
+                    if (typeof filterSystems !== 'undefined' && filterSystems.length) filterSystems.forEach(function(system) { params.push('systems[]=' + encodeURIComponent(system.id || system)); });
+                    if (typeof filterContacts !== 'undefined' && filterContacts.length) filterContacts.forEach(function(contact) { params.push('contacts[]=' + encodeURIComponent(contact.id || contact)); });
+                    if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses.length) filterIpAddresses.forEach(function(ip) { params.push('ip_id[]=' + encodeURIComponent(ip.id || ip)); });
+                    return params.join('&');
+                  }
+                  const domainFilterQuery = buildDomainFilterQuery();
+                %>
+                
+                <!-- Previous Button -->
+                <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                  <a class="page-link" 
+                     href="?page=<%= page - 1 %><%= domainFilterQuery ? '&' + domainFilterQuery : '' %>" 
+                     tabindex="-1">Previous</a>
+                </li>
+                
+                <!-- First Page -->
+                <% if (startPage > 1) { %>
+                  <li class="page-item">
+                    <a class="page-link" 
+                       href="?page=1<%= domainFilterQuery ? '&' + domainFilterQuery : '' %>">1</a>
+                  </li>
+                  <% if (startPage > 2) { %>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <% } %>
+                <% } %>
+                
+                <!-- Page Numbers -->
+                <% for (let i = startPage; i <= endPage; i++) { %>
+                  <li class="page-item <%= (i === page) ? 'active' : '' %>">
+                    <a class="page-link" 
+                       href="?page=<%= i %><%= domainFilterQuery ? '&' + domainFilterQuery : '' %>">
+                      <%= i %>
+                    </a>
+                  </li>
+                <% } %>
+                
+                <!-- Last Page -->
+                <% if (endPage < totalPages) { %>
+                  <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <li class="page-item">
+                    <a class="page-link" 
+                       href="?page=<%= totalPages %><%= domainFilterQuery ? '&' + domainFilterQuery : '' %>">
+                      <%= totalPages %>
+                    </a>
+                  </li>
+                <% } %>
+                
+                <!-- Next Button -->
+                <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                  <a class="page-link" 
+                     href="?page=<%= page + 1 %><%= domainFilterQuery ? '&' + domainFilterQuery : '' %>">Next</a>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 </div>
-<script>
-window.domainList = <%- JSON.stringify(domainList || []) %>
-</script>
-<script>
-function showToast(msg, type) {
-  const toast = document.createElement('div');
-  toast.className = `alert alert-${type}`;
-  toast.style.position = 'fixed';
-  toast.style.top = '16px';
-  toast.style.right = '16px';
-  toast.style.zIndex = 9999;
-  toast.style.minWidth = '200px';
-  toast.innerText = msg;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
+
+<!-- ==========================================
+     MODALS SECTION
+     ========================================== -->
+
+<!-- ==========================================
+     ADD DOMAIN MODAL
+     ========================================== -->
+<div class="modal fade" id="addDomainModal" tabindex="-1" aria-labelledby="addDomainModalLabel">
+  <div class="modal-dialog modal-lg">
+                      <div class="modal-content">
+      <form id="addDomainForm" method="POST" action="/network/domain">
+                        <div class="modal-header">
+          <h5 class="modal-title" id="addDomainModalLabel">Add Domain</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+          <div class="row g-3">
+            <!-- Domain Name -->
+            <div class="col-12">
+              <label for="domainName" class="form-label">Domain <span class="text-danger">*</span></label>
+              <input type="text" 
+                     class="form-control" 
+                     id="domainName" 
+                     name="domain" 
+                     required 
+                     placeholder="example.com">
+                                  </div>
+            
+            <!-- Description -->
+            <div class="col-12">
+              <label for="domainDescription" class="form-label">Description</label>
+              <textarea class="form-control" 
+                        id="domainDescription" 
+                        name="description" 
+                        rows="3"></textarea>
+            </div>
+            
+            <!-- Record Type -->
+            <div class="col-12">
+              <label for="domainRecordType" class="form-label">Record Type</label>
+              <select class="form-select" id="domainRecordType" name="record_type">
+                <option value="A" selected>A</option>
+                <option value="AAAA">AAAA</option>
+                <option value="CNAME">CNAME</option>
+                <option value="MX">MX</option>
+                <option value="TXT">TXT</option>
+                <option value="NS">NS</option>
+                <option value="SRV">SRV</option>
+                <option value="PTR">PTR</option>
+                <option value="SOA">SOA</option>
+                <option value="OTHER">Other</option>
+              </select>
+            </div>
+            
+            <!-- IP Address -->
+            <div class="col-12">
+              <label for="domainIpId" class="form-label">IP Address</label>
+              <select id="domainIpId" name="ip_id" class="form-select">
+                <!-- Options will be loaded via AJAX -->
+              </select>
+            </div>
+            
+            <!-- Tags -->
+            <div class="col-12">
+              <label for="domainTags" class="form-label">Tags</label>
+              <select id="domainTags" name="tags[]" class="form-select" multiple>
+                <!-- Options will be loaded via AJAX -->
+              </select>
+            </div>
+            
+            <!-- Systems -->
+            <div class="col-12">
+              <label for="domainSystems" class="form-label">Systems</label>
+              <select id="domainSystems" name="systems[]" class="form-select" multiple>
+                <!-- Options will be loaded via AJAX -->
+              </select>
+            </div>
+            
+            <!-- Contacts -->
+            <div class="col-12">
+              <label for="domainContacts" class="form-label">Contacts</label>
+              <select id="domainContacts" name="contacts[]" class="form-select" multiple>
+                <!-- Options will be loaded via AJAX -->
+              </select>
+            </div>
+          </div>
+                        </div>
+                        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add Domain</button>
+                        </div>
+      </form>
+                      </div>
+                    </div>
+                  </div>
+
+<!-- ==========================================
+     EDIT DOMAIN MODAL
+     ========================================== -->
+<div class="modal fade" id="editDomainModal" tabindex="-1" aria-labelledby="editDomainModalLabel">
+  <div class="modal-dialog modal-lg">
+                      <div class="modal-content">
+      <form id="editDomainForm" method="POST" action="">
+        <input type="hidden" name="page" value="<%= page %>">
+                        <div class="modal-header">
+          <h5 class="modal-title" id="editDomainModalLabel">Edit Domain</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                          <div class="modal-body">
+          <div class="row g-3">
+            <!-- Domain Name (Read-only) -->
+            <div class="col-12">
+              <label for="editDomainName" class="form-label">Domain <span class="text-danger">*</span></label>
+              <input type="text" 
+                     class="form-control" 
+                     id="editDomainName" 
+                     name="domain" 
+                     readonly>
+              <small class="form-text text-muted">Domain cannot be changed</small>
+                            </div>
+            
+            <!-- Description -->
+            <div class="col-12">
+              <label for="editDomainDescription" class="form-label">Description</label>
+              <textarea class="form-control" 
+                        id="editDomainDescription" 
+                        name="description" 
+                        rows="3"></textarea>
+                            </div>
+            
+            <!-- Record Type -->
+            <div class="col-12">
+              <label for="editDomainRecordType" class="form-label">Record Type</label>
+              <select class="form-select" id="editDomainRecordType" name="record_type">
+                <option value="A">A</option>
+                <option value="AAAA">AAAA</option>
+                <option value="CNAME">CNAME</option>
+                <option value="MX">MX</option>
+                <option value="TXT">TXT</option>
+                <option value="NS">NS</option>
+                <option value="SRV">SRV</option>
+                <option value="PTR">PTR</option>
+                <option value="SOA">SOA</option>
+                <option value="OTHER">Other</option>
+                              </select>
+                            </div>
+            
+            <!-- IP Address -->
+            <div class="col-12">
+              <label for="editDomainIpId" class="form-label">IP Address</label>
+              <select id="editDomainIpId" name="ip_id" class="form-select">
+                <!-- Options will be loaded via AJAX -->
+                              </select>
+                            </div>
+            
+            <!-- Tags -->
+            <div class="col-12">
+              <label for="editDomainTags" class="form-label">Tags</label>
+              <select id="editDomainTags" name="tags[]" class="form-select" multiple>
+                <!-- Options will be loaded via AJAX -->
+              </select>
+            </div>
+            
+            <!-- Systems -->
+            <div class="col-12">
+              <label for="editDomainSystems" class="form-label">Systems</label>
+              <select id="editDomainSystems" name="systems[]" class="form-select" multiple>
+                <!-- Options will be loaded via AJAX -->
+              </select>
+            </div>
+            
+            <!-- Contacts -->
+            <div class="col-12">
+              <label for="editDomainContacts" class="form-label">Contacts</label>
+              <select id="editDomainContacts" name="contacts[]" class="form-select" multiple>
+                <!-- Options will be loaded via AJAX -->
+              </select>
+            </div>
+                            </div>
+                          </div>
+                          <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update Domain</button>
+                          </div>
+                        </form>
+                      </div>
+                    </div>
+                  </div>
+        
+<!-- ==========================================
+     DOMAIN DETAIL MODAL
+     ========================================== -->
+<div class="modal fade" id="domainDetailModal" tabindex="-1" aria-labelledby="domainDetailModalLabel">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="domainDetailModalLabel">Domain Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+      <div class="modal-body" id="domainDetailContent">
+        <!-- Content will be loaded here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+                  
+<!-- ==========================================
+     FILTER DOMAIN MODAL
+     ========================================== -->
+<div class="modal fade" id="filterDomainModal" tabindex="-1" aria-labelledby="filterDomainModalLabel">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="filterDomainModalLabel">Filter Domains</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="GET" action="/network/domain" id="filterDomainForm">
+        <input type="hidden" name="page" value="1">
+        <div class="modal-body">
+          <div class="row g-2">
+            <!-- Record Type Filter -->
+            <div class="col-12 mb-2">
+              <label for="filterDomainRecordType" class="form-label">Record Type</label>
+              <select class="form-control" id="filterDomainRecordType" name="status">
+                <option value="">All Record Types</option>
+                <option value="A" <%= (filterStatus === 'A') ? 'selected' : '' %>>A</option>
+                <option value="AAAA" <%= (filterStatus === 'AAAA') ? 'selected' : '' %>>AAAA</option>
+                <option value="CNAME" <%= (filterStatus === 'CNAME') ? 'selected' : '' %>>CNAME</option>
+                <option value="MX" <%= (filterStatus === 'MX') ? 'selected' : '' %>>MX</option>
+                <option value="TXT" <%= (filterStatus === 'TXT') ? 'selected' : '' %>>TXT</option>
+                <option value="NS" <%= (filterStatus === 'NS') ? 'selected' : '' %>>NS</option>
+                <option value="SRV" <%= (filterStatus === 'SRV') ? 'selected' : '' %>>SRV</option>
+                <option value="PTR" <%= (filterStatus === 'PTR') ? 'selected' : '' %>>PTR</option>
+                <option value="SOA" <%= (filterStatus === 'SOA') ? 'selected' : '' %>>SOA</option>
+                <option value="OTHER" <%= (filterStatus === 'OTHER') ? 'selected' : '' %>>Other</option>
+              </select>
+            </div>
+            
+            <!-- Tags Filter -->
+            <div class="col-12 mb-2">
+              <label class="form-label">Tags</label>
+              <select id="filterDomainTags" name="tags[]" class="form-control" multiple></select>
+            </div>
+            
+            <!-- Systems Filter -->
+            <div class="col-12 mb-2">
+              <label class="form-label">Systems</label>
+              <select id="filterDomainSystems" name="systems[]" class="form-control" multiple></select>
+            </div>
+            
+            <!-- Contacts Filter -->
+            <div class="col-12 mb-2">
+              <label class="form-label">Contacts</label>
+              <select id="filterDomainContacts" name="contacts[]" class="form-control" multiple></select>
+            </div>
+            
+            <!-- IP Address Filter -->
+            <div class="col-12 mb-2">
+              <label class="form-label">IP Address</label>
+              <select id="filterDomainIpId" name="ip_id[]" class="form-control" multiple></select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-danger" id="clearFilterBtnDomain">Clear All Filters</button>
+            <div>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary">Apply Filters</button>
+            </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+        
+<!-- ==========================================
+     IMPORT DOMAIN MODAL
+     ========================================== -->
+<div class="modal fade" id="importDomainModal" tabindex="-1" aria-labelledby="importDomainModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="importDomainModalLabel">Import Domains</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="importDomainForm" enctype="multipart/form-data">
+          <!-- File Selection -->
+          <div class="mb-3">
+            <label for="domainImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="file" 
+                     class="form-control" 
+                     id="domainImportFile" 
+                     name="file" 
+                     accept=".csv,.xlsx,.xls" 
+                     required>
+              <a href="/network/domain/template" class="btn btn-outline-info" download>
+                <i class="bi bi-download"></i> Download Template
+              </a>
+            </div>
+            <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
+          </div>
+          
+          <!-- Import Instructions -->
+          <div class="mb-3">
+            <div class="alert alert-info">
+              <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
+              <ul class="mb-0">
+                <li>Click "Download Template" to get the Excel template with correct format</li>
+                <li>Fill the template with your domain data</li>
+                <li>Domain (Required, one per row) is required and must be valid domain format</li>
+                <li>Description is optional</li>
+                <li>Record Type is optional (default: A)</li>
+                <li>IP Address, Tags, Systems, and Contacts are optional and can be comma-separated if multiple</li>
+                <li>Select your filled template file and validate before importing</li>
+            </ul>
+          </div>
+        </div>
+          
+          <!-- Progress Bar -->
+          <div id="domainImportProgress" class="progress mb-3" style="display: none;">
+            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+      </div>
+          
+          <!-- Results Display -->
+          <div id="domainImportResults" class="alert" style="display: none;"></div>
+        </form>
+    </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning" id="validateDomainBtn">Validate File</button>
+        <button type="button" class="btn btn-success" id="importDomainBtn" style="display: none;">Import Domains</button>
+  </div>
+</div>
+  </div>
+</div>
+        
+<!-- ==========================================
+     STYLES
+     ========================================== -->
+<style>
+/* Fix Select2 dropdown z-index in modal */
+.select2-dropdown {
+  z-index: 9999 !important;
 }
-</script>
-<script src="/js/select2.min.js"></script>
-<link href="/css/select2.min.css" rel="stylesheet" />
+
+.select2-container--bootstrap-5 .select2-dropdown {
+  z-index: 9999 !important;
+}
+
+.modal .select2-dropdown {
+  z-index: 9999 !important;
+}
+
+/* Ensure dropdown is visible above modal backdrop */
+.select2-container--open .select2-dropdown {
+  z-index: 9999 !important;
+}
+</style>
+
+<!-- ==========================================
+     JAVASCRIPT
+     ========================================== -->
 <script>
 $(function() {
-  $('#domainIpId').select2({
+  console.log('Initializing Domain List JavaScript...');
+  
+  // ==========================================
+  // SELECT2 INITIALIZATION
+  // ==========================================
+  
+  // Tags Select2 - Add Domain Modal
+  console.log('Setting up Tags Select2...');
+  $('#domainTags').select2({
     theme: 'bootstrap-5',
-    placeholder: 'Select IP address',
+    placeholder: 'Select tags (optional)',
     allowClear: true,
     width: '100%',
+    multiple: true,
     dropdownParent: $('#addDomainModal'),
     ajax: {
-      url: '/network/api/ip-addresses',
+      url: '/organize/api/tag',
       dataType: 'json',
       delay: 250,
-      data: function(params) { return { search: params.term }; },
-      processResults: function(data) { return { results: data }; },
+      data: params => {
+        console.log('Tags AJAX request:', params.term);
+        return { search: params.term };
+      },
+      processResults: data => {
+        console.log('Tags API response:', data);
+        return { results: data };
+      },
       cache: true
     }
   });
+
+  // Systems select2 AJAX - Bootstrap 5 theme (clone from system_add.ejs)
+  console.log('Setting up Systems Select2...');
   $('#domainSystems').select2({
     theme: 'bootstrap-5',
-    placeholder: 'Select system(s)',
+    placeholder: 'Select systems (optional)',
     allowClear: true,
     width: '100%',
+    multiple: true,
     dropdownParent: $('#addDomainModal'),
     ajax: {
       url: '/system/api/system',
       dataType: 'json',
       delay: 250,
-      data: function(params) { return { search: params.term }; },
-      processResults: function(data) { return { results: data }; },
+      data: params => {
+        console.log('Systems AJAX request:', params.term);
+        return { search: params.term };
+      },
+      processResults: data => {
+        console.log('Systems API response:', data);
+        return { results: data };
+      },
       cache: true
     }
   });
-  var domainList = window.domainList;
-  if (domainList && domainList.length > 0) {
-    domainList.forEach(function(domain) {
-      $('#editDomainIpId-' + domain.id).select2({
+
+  // Contacts select2 AJAX - Bootstrap 5 theme (clone from system_add.ejs)
+  console.log('Setting up Contacts Select2...');
+  $('#domainContacts').select2({
         theme: 'bootstrap-5',
-        placeholder: 'Select IP address',
+    placeholder: 'Select contacts (optional)',
         allowClear: true,
         width: '100%',
-        dropdownParent: $('#editDomainModal-' + domain.id),
+    multiple: true,
+    dropdownParent: $('#addDomainModal'),
+      ajax: {
+      url: '/organize/api/contact',
+        dataType: 'json',
+        delay: 250,
+      data: params => {
+        console.log('Contacts AJAX request:', params.term);
+        return { search: params.term };
+      },
+      processResults: data => {
+        console.log('Contacts API response:', data);
+        return { results: data };
+      },
+        cache: true
+      }
+    });
+
+  // IP Address select2 AJAX - Bootstrap 5 theme
+  console.log('Setting up IP Address Select2...');
+  $('#domainIpId').select2({
+      theme: 'bootstrap-5',
+    placeholder: 'Select IP address (optional)',
+      allowClear: true,
+      width: '100%',
+    dropdownParent: $('#addDomainModal'),
         ajax: {
           url: '/network/api/ip-addresses',
           dataType: 'json',
           delay: 250,
-          data: function(params) { return { search: params.term }; },
-          processResults: function(data) { return { results: data }; },
+      data: params => {
+        console.log('IP Address AJAX request:', params.term);
+        return { search: params.term };
+      },
+      processResults: data => {
+        console.log('IP Address API response:', data);
+        return { results: data };
+      },
           cache: true
         }
       });
-      $('#editDomainSystems-' + domain.id).select2({
+  
+  console.log('All Select2 initialized!');
+
+  // Debug: Select2 events
+  $('#domainTags').on('select2:open', function() {
+    console.log('Tags dropdown opened');
+  });
+  
+  $('#domainSystems').on('select2:open', function() {
+    console.log('Systems dropdown opened');
+  });
+  
+  $('#domainContacts').on('select2:open', function() {
+    console.log('Contacts dropdown opened');
+  });
+  
+  $('#domainIpId').on('select2:open', function() {
+    console.log('IP Address dropdown opened');
+  });
+
+  // Debug: Modal events
+  $('#addDomainModal').on('shown.bs.modal', function() {
+    console.log('Add Domain Modal shown');
+    console.log('Select2 elements in modal:');
+    console.log('domainTags:', $('#addDomainModal #domainTags').length);
+    console.log('domainSystems:', $('#addDomainModal #domainSystems').length);
+    console.log('domainContacts:', $('#addDomainModal #domainContacts').length);
+    console.log('domainIpId:', $('#addDomainModal #domainIpId').length);
+  });
+
+  // Reset form when modal is hidden
+  $('#addDomainModal').on('hidden.bs.modal', function() {
+    console.log('Add Domain Modal hidden, resetting form');
+    $('#addDomainForm')[0].reset();
+    $('#domainTags, #domainSystems, #domainContacts, #domainIpId').val(null).trigger('change');
+  });
+
+
+  // IP Address validation - Check immediately on blur
+  $('#ipAddress').on('blur', function() {
+    console.log('IP input blurred - starting validation...');
+    const ipInput = $(this).val().trim();
+    const errorDiv = $('#ipAddressError');
+    
+    console.log('Input value:', ipInput);
+    
+    if (!ipInput) {
+      console.log('No input - clearing validation');
+      $(this).removeClass('is-invalid is-valid');
+      errorDiv.text('');
+      $('#ipValidationIcon').hide();
+      $('#ipAddressSuccess').hide();
+      $('#ipAddressExists').hide();
+      return;
+    }
+    
+    // Split by comma and check each IP
+    const ipList = ipInput.split(',').map(ip => ip.trim()).filter(ip => ip.length > 0);
+    console.log('IP list to check:', ipList);
+    
+    // Validate format for each IP
+    const invalidIPs = ipList.filter(ip => !isValidIP(ip));
+    if (invalidIPs.length > 0) {
+      console.log('Invalid IPs found:', invalidIPs);
+      $(this).removeClass('is-valid').addClass('is-invalid');
+      errorDiv.text(`Invalid IP format: ${invalidIPs.join(', ')}`);
+      $('#ipValidationIcon').hide();
+      $('#ipAddressSuccess').hide();
+      $('#ipAddressExists').hide();
+        return;
+      }
+      
+    console.log('All IPs format valid - checking existence...');
+    // Check if any IP already exists
+    checkMultipleIPsExist(ipList, $(this), errorDiv);
+  });
+
+  // Form submission
+  $('#addDomainForm').on('submit', function(e) {
+    const domainInput = $('#domainName').val().trim();
+    if (!domainInput) {
+      e.preventDefault();
+      $('#domainName').addClass('is-invalid');
+      return;
+    }
+    
+    // If validation passes, allow normal form submission
+    // Backend will handle redirect and flash messages
+    const submitBtn = $(this).find('button[type="submit"]');
+    submitBtn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Adding...');
+  });
+
+  // Edit Domain Modal - Initialize Select2
+  $('#editDomainTags').select2({
+            theme: 'bootstrap-5',
+    multiple: true,
+            allowClear: true,
+            width: '100%',
+    dropdownParent: $('#editDomainModal'),
+            ajax: {
+              url: '/organize/api/tag',
+              dataType: 'json',
+      processResults: function(data) {
+        return { results: data };
+      }
+    }
+  });
+
+  $('#editDomainSystems').select2({
+            theme: 'bootstrap-5',
+    multiple: true,
+            allowClear: true,
+            width: '100%',
+    dropdownParent: $('#editDomainModal'),
+            ajax: {
+      url: '/system/api/system',
+              dataType: 'json',
+      processResults: function(data) {
+        return { results: data };
+      }
+    }
+  });
+
+  $('#editDomainContacts').select2({
+            theme: 'bootstrap-5',
+    multiple: true,
+            allowClear: true,
+            width: '100%',
+    dropdownParent: $('#editDomainModal'),
+            ajax: {
+              url: '/organize/api/contact',
+              dataType: 'json',
+      processResults: function(data) {
+        return { results: data };
+      }
+    }
+  });
+
+  $('#editDomainIpId').select2({
+            theme: 'bootstrap-5',
+            allowClear: true,
+            width: '100%',
+    dropdownParent: $('#editDomainModal'),
+            ajax: {
+              url: '/network/api/ip-addresses',
+              dataType: 'json',
+      processResults: function(data) {
+        return { results: data };
+      }
+    }
+  });
+
+  // Edit Domain Modal - Load data when opened
+  $('#editDomainModal').on('show.bs.modal', function(event) {
+    const button = $(event.relatedTarget);
+    const domainId = button.data('domain-id');
+    const domain = button.data('domain');
+    const description = button.data('description') || '';
+    const recordType = button.data('record-type') || 'A';
+    const ipId = button.data('ip-id') || '';
+    const ipAddress = button.data('ip-address') || '';
+    const tags = button.data('tags') || [];
+    const systems = button.data('systems') || [];
+    const contacts = button.data('contacts') || [];
+
+    console.log('Edit Domain Modal opened with data:', {
+      domainId, domain, description, recordType, ipId, ipAddress, tags, systems, contacts
+    });
+
+    // Set form action URL
+    const actionUrl = `/network/domain/${domainId}`;
+    $('#editDomainForm').attr('action', actionUrl);
+    console.log('Form action set to:', actionUrl);
+
+    // Populate form fields
+    $('#editDomainName').val(domain);
+    $('#editDomainDescription').val(description);
+    $('#editDomainRecordType').val(recordType);
+
+    // Load existing values for Select2 fields after a short delay
+        setTimeout(() => {
+      loadEditExistingValues(tags, systems, contacts, ipId, ipAddress);
+    }, 100);
+  });
+
+  // Edit Domain Modal - Reset form when hidden
+  $('#editDomainModal').on('hidden.bs.modal', function() {
+    $('#editDomainForm')[0].reset();
+    $('#editDomainTags, #editDomainSystems, #editDomainContacts, #editDomainIpId').val(null).trigger('change');
+  });
+
+  // Edit Domain Form submission
+  $('#editDomainForm').on('submit', function(e) {
+    console.log('Edit Domain Form submitting...');
+    
+    // Get Domain ID from form action or data attribute
+    const currentAction = $(this).attr('action');
+    const domainId = currentAction.split('/').pop();
+    
+    // Set the correct form action URL with method indicator
+    const correctAction = `/network/domain/${domainId}?_method=PUT`;
+    $(this).attr('action', correctAction);
+    
+    console.log('Form action set to:', correctAction);
+    console.log('Form method:', $(this).attr('method'));
+    console.log('Method override in URL: ?_method=PUT');
+    console.log('Note: Browser will show POST, but server will receive PUT due to method override');
+
+    // Allow normal form submission - backend handles redirect
+    const submitBtn = $(this).find('button[type="submit"]');
+    submitBtn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Updating...');
+  });
+
+  // Filter Domain Modal - Initialize Select2
+  $('#filterDomainTags').select2({
+            theme: 'bootstrap-5',
+            placeholder: 'Select tag(s)',
+            allowClear: true,
+            width: '100%',
+    dropdownParent: $('#filterDomainModal'),
+            ajax: {
+              url: '/organize/api/tag',
+              dataType: 'json',
+              delay: 250,
+      data: function(params) {
+        return { search: params.term };
+      },
+      processResults: function(data) {
+        return { results: data };
+      },
+              cache: true
+            }
+          });
+
+  $('#filterDomainSystems').select2({
         theme: 'bootstrap-5',
         placeholder: 'Select system(s)',
         allowClear: true,
         width: '100%',
-        dropdownParent: $('#editDomainModal-' + domain.id),
+    dropdownParent: $('#filterDomainModal'),
         ajax: {
           url: '/system/api/system',
           dataType: 'json',
           delay: 250,
-          data: function(params) { return { search: params.term }; },
-          processResults: function(data) { return { results: data }; },
+      data: function(params) {
+        return { search: params.term };
+      },
+      processResults: function(data) {
+        return { results: data };
+      },
           cache: true
         }
       });
-      // Preselect các systems đã liên kết
-      try {
-        var systems = domain.systems || [];
-        if (Array.isArray(systems) && systems.length) {
-          var systemData = systems.map(function(s) {
-            if (typeof s === 'object' && s.id && s.name) {
-              return { id: s.id, text: s.name };
-            } else {
-              return null;
-            }
-          }).filter(Boolean);
-          $('#editDomainSystems-' + domain.id).empty();
-          systemData.forEach(function(system) {
-            if ($('#editDomainSystems-' + domain.id + ' option[value="' + system.id + '"]').length === 0) {
-              var option = new Option(system.text, system.id, true, true);
-              $('#editDomainSystems-' + domain.id).append(option);
-            }
-          });
-          $('#editDomainSystems-' + domain.id).trigger('change');
-        }
-      } catch (e) { console.error('System preselect error:', e); }
-      // --- Bổ sung: preselect lại IP và System mỗi lần mở modal ---
-      $('#editDomainModal-' + domain.id).off('shown.bs.modal').on('shown.bs.modal', function() {
-        // IP
-        var ip = domain.ip;
-        var $ipSelect = $('#editDomainIpId-' + domain.id);
-        $ipSelect.val(null).trigger('change');
-        $ipSelect.empty();
-        if (ip && ip.id && ip.ip_address) {
-          var option = new Option(ip.ip_address, ip.id, true, true);
-          $ipSelect.append(option);
-          $ipSelect.val(String(ip.id)).trigger('change');
-        }
-        // System
-        var $sysSelect = $('#editDomainSystems-' + domain.id);
-        $sysSelect.val(null).trigger('change');
-        $sysSelect.empty();
-        var systems = domain.systems || [];
-        if (Array.isArray(systems) && systems.length) {
-          systems.forEach(function(system) {
-            if ($sysSelect.find('option[value="' + system.id + '"]').length === 0) {
-              var option = new Option(system.name, system.id, true, true);
-              $sysSelect.append(option);
-            }
-          });
-          $sysSelect.val(systems.map(function(s){return String(s.id);})).trigger('change');
-        }
+
+           $('#filterDomainContacts').select2({
+             theme: 'bootstrap-5',
+             placeholder: 'Select contact(s)',
+             allowClear: true,
+             width: '100%',
+             dropdownParent: $('#filterDomainModal'),
+             ajax: {
+               url: '/organize/api/contact',
+               dataType: 'json',
+               delay: 250,
+               data: function(params) {
+                 return { search: params.term };
+               },
+               processResults: function(data) {
+                 return { results: data };
+               },
+               cache: true
+             }
+           });
+
+           $('#filterDomainIpId').select2({
+             theme: 'bootstrap-5',
+             placeholder: 'Select IP address(es)',
+             allowClear: true,
+             width: '100%',
+             dropdownParent: $('#filterDomainModal'),
+             ajax: {
+               url: '/network/api/ip-addresses',
+               dataType: 'json',
+               delay: 250,
+               data: function(params) {
+                 return { search: params.term };
+               },
+               processResults: function(data) {
+                 return { results: data };
+               },
+               cache: true
+             }
+           });
+
+  // Filter Domain Modal - Load existing filter values when opened
+  $('#filterDomainModal').on('show.bs.modal', function() {
+    console.log('Filter Domain Modal opened');
+    
+    // Load existing filter values
+    setTimeout(() => {
+      loadFilterExistingValues();
+    }, 100);
+  });
+
+  // Filter Domain Modal - Reset form when hidden
+  $('#filterDomainModal').on('hidden.bs.modal', function() {
+    console.log('Filter Domain Modal hidden, resetting form');
+    $('#filterDomainForm')[0].reset();
+    $('#filterDomainTags, #filterDomainSystems, #filterDomainContacts, #filterDomainIpId').val(null).trigger('change');
+  });
+
+  // Clear All Filters button
+  $('#clearFilterBtnDomain').on('click', function() {
+    // Clear all select2 values
+    $('#filterDomainTags').val(null).trigger('change');
+    $('#filterDomainSystems').val(null).trigger('change');
+    $('#filterDomainContacts').val(null).trigger('change');
+    $('#filterDomainIpId').val(null).trigger('change');
+    $('#filterDomainRecordType').val('');
+    
+    // Close modal
+    $('#filterDomainModal').modal('hide');
+    
+    // Redirect to clean URL but preserve pageSize and search
+    const currentPageSize = $('select[name="pageSize"]').val() || '10';
+    const currentSearch = $('input[name="search"]').val() || '';
+    let cleanUrl = '/network/domain';
+    const params = [];
+    if (currentPageSize && currentPageSize !== '10') params.push('pageSize=' + encodeURIComponent(currentPageSize));
+    if (currentSearch) params.push('search=' + encodeURIComponent(currentSearch));
+    if (params.length > 0) cleanUrl += '?' + params.join('&');
+    window.location.href = cleanUrl;
+  });
+});
+
+function loadFilterExistingValues() {
+  console.log('Loading existing filter values...');
+  
+  // Get filter data from hidden div
+  const filterDataEl = document.getElementById('filter-domain-data');
+  if (!filterDataEl) {
+    console.log('Filter data element not found');
+    return;
+  }
+  
+  try {
+    const filterTags = JSON.parse(filterDataEl.dataset.tags || '[]');
+    const filterSystems = JSON.parse(filterDataEl.dataset.systems || '[]');
+    const filterContacts = JSON.parse(filterDataEl.dataset.contacts || '[]');
+    const filterIpAddresses = JSON.parse(filterDataEl.dataset.ipAddresses || '[]');
+    
+    console.log('Filter data:', { filterTags, filterSystems, filterContacts, filterIpAddresses });
+    
+    // Clear existing options first to avoid duplicates
+    $('#filterDomainTags').find('option').remove();
+    $('#filterDomainSystems').find('option').remove();
+    $('#filterDomainContacts').find('option').remove();
+    $('#filterDomainIpId').find('option').remove();
+    
+    // Load tags
+    if (filterTags && filterTags.length > 0) {
+      filterTags.forEach(tag => {
+        const option = new Option(tag.name, tag.id, true, true);
+        $('#filterDomainTags').append(option);
       });
+      $('#filterDomainTags').trigger('change');
+    }
+    
+    // Load systems
+    if (filterSystems && filterSystems.length > 0) {
+      filterSystems.forEach(system => {
+        const option = new Option(system.name, system.id, true, true);
+        $('#filterDomainSystems').append(option);
+      });
+      $('#filterDomainSystems').trigger('change');
+    }
+    
+    // Load contacts
+    if (filterContacts && filterContacts.length > 0) {
+      filterContacts.forEach(contact => {
+        const option = new Option(contact.name, contact.id, true, true);
+        $('#filterDomainContacts').append(option);
+      });
+      $('#filterDomainContacts').trigger('change');
+    }
+    
+    // Load IP addresses
+    if (filterIpAddresses && filterIpAddresses.length > 0) {
+      filterIpAddresses.forEach(ip => {
+        const option = new Option(ip.ip_address, ip.id, true, true);
+        $('#filterDomainIpId').append(option);
+      });
+      $('#filterDomainIpId').trigger('change');
+    }
+    
+  } catch (e) {
+    console.error('Error loading filter values:', e);
+  }
+}
+
+function loadEditExistingValues(tags, systems, contacts, ipId, ipAddress) {
+  console.log('Loading existing values:', { tags, systems, contacts, ipId, ipAddress });
+
+  // Load existing IP
+  if (ipId && ipAddress) {
+    const option = new Option(ipAddress, ipId, true, true);
+    $('#editDomainIpId').append(option).trigger('change');
+  }
+
+  // Load existing tags
+  if (tags && tags.length > 0) {
+    try {
+      const tagArray = typeof tags === 'string' ? JSON.parse(tags) : tags;
+      console.log('Parsed tags:', tagArray);
+      
+      // For Select2, we need to create option elements first
+      const tagOptions = tagArray.map(tag => {
+        const id = typeof tag === 'object' ? tag.id : tag;
+        const text = typeof tag === 'object' ? (tag.name || tag.text) : tag;
+        return new Option(text, id, true, true);
+      });
+      
+      $('#editDomainTags').append(tagOptions).trigger('change');
+      console.log('Tags loaded successfully');
+    } catch (e) {
+      console.log('Error parsing tags:', e);
+    }
+  }
+
+  // Load existing systems
+  if (systems && systems.length > 0) {
+    try {
+      const systemArray = typeof systems === 'string' ? JSON.parse(systems) : systems;
+      console.log('Parsed systems:', systemArray);
+      
+      const systemOptions = systemArray.map(system => {
+        const id = typeof system === 'object' ? system.id : system;
+        const text = typeof system === 'object' ? (system.name || system.text) : system;
+        return new Option(text, id, true, true);
+      });
+      
+      $('#editDomainSystems').append(systemOptions).trigger('change');
+      console.log('Systems loaded successfully');
+    } catch (e) {
+      console.log('Error parsing systems:', e);
+    }
+  }
+
+  // Load existing contacts
+  if (contacts && contacts.length > 0) {
+    try {
+      const contactArray = typeof contacts === 'string' ? JSON.parse(contacts) : contacts;
+      console.log('Parsed contacts:', contactArray);
+      
+      const contactOptions = contactArray.map(contact => {
+        const id = typeof contact === 'object' ? contact.id : contact;
+        const text = typeof contact === 'object' ? (contact.name || contact.email || contact.text) : contact;
+        return new Option(text, id, true, true);
+      });
+      
+      $('#editDomainContacts').append(contactOptions).trigger('change');
+      console.log('Contacts loaded successfully');
+    } catch (e) {
+      console.log('Error parsing contacts:', e);
+    }
+  }
+}
+
+function isValidIP(ip) {
+  const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  return ipRegex.test(ip);
+}
+
+function checkMultipleIPsExist(ipList, inputElement, errorDiv) {
+  console.log('=== Starting IP existence check ===');
+  console.log('IPs to check:', ipList);
+  
+  // Check each IP one by one
+  let checkedCount = 0;
+  let existingIPs = [];
+  
+  ipList.forEach((ip, index) => {
+    console.log(`Checking IP ${index + 1}/${ipList.length}: ${ip}`);
+    
+    $.ajax({
+      url: '/network/api/ip-addresses',
+      type: 'GET',
+      data: { search: ip },
+      success: function(data) {
+        console.log(`✓ IP ${ip} check response:`, data);
+        
+        // Debug: Show structure of first item if exists
+        if (data.length > 0) {
+          console.log(`First item structure:`, data[0]);
+          console.log(`Available fields:`, Object.keys(data[0]));
+        }
+        
+        // Check if this specific IP already exists
+        // Backend returns: { id: ..., text: ip_address }
+        const existingIP = data.find(item => item.text === ip);
+        console.log(`Checking if IP ${ip} exists in response:`, existingIP);
+        console.log(`Available items in response:`, data.map(item => ({ id: item.id, text: item.text })));
+        
+        if (existingIP) {
+          console.log(`✗ IP ${ip} already exists!`);
+          existingIPs.push(ip);
+            } else {
+          console.log(`✓ IP ${ip} is available`);
+        }
+        
+        checkedCount++;
+        console.log(`Progress: ${checkedCount}/${ipList.length} IPs checked`);
+        
+        // When all IPs are checked
+        if (checkedCount === ipList.length) {
+          console.log('=== All IPs checked ===');
+          console.log('Existing IPs:', existingIPs);
+          
+          if (existingIPs.length > 0) {
+            console.log('❌ Some IPs already exist - showing error');
+            inputElement.removeClass('is-valid').addClass('is-invalid');
+            errorDiv.text(''); // Clear format error
+            $('#ipValidationIcon').hide();
+            $('#ipAddressSuccess').hide();
+            $('#ipAddressExists').show();
+            $('#ipExistsMessage').text(`IP addresses already exist: ${existingIPs.join(', ')}`);
+    } else {
+            console.log('✅ All IPs are available - showing success');
+            inputElement.removeClass('is-invalid').addClass('is-valid');
+            errorDiv.text(''); // Clear error message
+            $('#ipValidationIcon').show();
+            $('#ipAddressSuccess').show();
+            $('#ipAddressExists').hide();
+          }
+        }
+      },
+      error: function(xhr, status, error) {
+        console.error(`❌ Error checking IP ${ip}:`, error);
+        checkedCount++;
+        
+        // When all IPs are checked (including errors)
+        if (checkedCount === ipList.length) {
+          console.log('=== All IPs checked (with errors) ===');
+          if (existingIPs.length > 0) {
+            inputElement.removeClass('is-valid').addClass('is-invalid');
+            errorDiv.text(''); // Clear format error
+            $('#ipValidationIcon').hide();
+            $('#ipAddressSuccess').hide();
+            $('#ipAddressExists').show();
+            $('#ipExistsMessage').text(`IP addresses already exist: ${existingIPs.join(', ')}`);
+    } else {
+            // Don't show error for API failure, just remove validation
+            inputElement.removeClass('is-invalid is-valid');
+            errorDiv.text(''); // Clear any error message
+            $('#ipValidationIcon').hide();
+            $('#ipAddressSuccess').hide();
+            $('#ipAddressExists').hide();
+          }
+        }
+      }
+            });
+          });
+}
+
+        
+function confirmDeleteDomain(form, domain) {
+  if (confirm('Are you sure you want to delete the domain: ' + domain + '?')) {
+    form._deleting = true;
+    return true;
+  }
+  return false;
+}
+
+// Function removed - no longer finding subnet information for IP detail
+
+// Function to check if an IP is in a subnet (CIDR notation)
+function isIPInSubnet(ipAddress, subnetCIDR) {
+  try {
+    const [subnetIP, prefixLength] = subnetCIDR.split('/');
+    const prefix = parseInt(prefixLength);
+    
+    console.log('Checking IP:', ipAddress, 'in subnet:', subnetCIDR);
+    console.log('Subnet IP:', subnetIP, 'Prefix:', prefix);
+    
+    // Convert IPs to numbers
+    const ipParts = ipAddress.split('.');
+    const subnetParts = subnetIP.split('.');
+    
+    if (ipParts.length !== 4 || subnetParts.length !== 4) {
+      console.log('Invalid IP format');
+      return false;
+    }
+    
+    const ip = (parseInt(ipParts[0]) << 24) + (parseInt(ipParts[1]) << 16) + (parseInt(ipParts[2]) << 8) + parseInt(ipParts[3]);
+    const subnet = (parseInt(subnetParts[0]) << 24) + (parseInt(subnetParts[1]) << 16) + (parseInt(subnetParts[2]) << 8) + parseInt(subnetParts[3]);
+    
+    const mask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
+    
+    const result = (ip & mask) === (subnet & mask);
+    console.log('IP number:', ip, 'Subnet number:', subnet, 'Mask:', mask, 'Result:', result);
+    
+    return result;
+  } catch (error) {
+    console.error('Error in isIPInSubnet:', error);
+    return false;
+  }
+}
+
+// Function to load subnet information for an IP address
+function loadSubnetInfoForIP(ipAddress, contentElement) {
+  console.log('Loading subnet info for IP:', ipAddress);
+  
+  // Make AJAX call to find subnet containing this IP
+  $.ajax({
+    url: '/network/api/subnet-for-ip/' + encodeURIComponent(ipAddress),
+    method: 'GET',
+    dataType: 'json'
+  }).done(function(response) {
+    console.log('Subnet response received:', response);
+    
+    if (response.found && response.subnet) {
+      console.log('Found matching subnet:', response.subnet);
+      updateSubnetInfoInModal(contentElement, response.subnet);
+    } else {
+      console.log('No matching subnet found');
+      updateSubnetInfoInModal(contentElement, null);
+    }
+  }).fail(function(xhr, status, error) {
+    console.error('Error loading subnet information:', status, error);
+    console.error('Response:', xhr.responseText);
+    
+    // Fallback: try with sample data for testing
+    console.log('Trying with sample subnet data...');
+    const sampleSubnets = [
+      { address: '10.1.0.0/16', zone: 'BACKBONE', environment: 'DEV' },
+      { address: '192.168.1.0/24', zone: 'OFFICE', environment: 'PROD' },
+      { address: '172.16.0.0/12', zone: 'DMZ', environment: 'UAT' }
+    ];
+    
+    let matchingSubnet = null;
+    for (let subnet of sampleSubnets) {
+      if (isIPInSubnet(ipAddress, subnet.address)) {
+        console.log('Found matching sample subnet:', subnet);
+        matchingSubnet = subnet;
+        break;
+      }
+    }
+    
+    updateSubnetInfoInModal(contentElement, matchingSubnet);
+  });
+}
+
+// Function to update subnet information in the modal (as plain text, no badges)
+function updateSubnetInfoInModal(contentElement, subnetInfo) {
+  const currentHTML = contentElement.innerHTML;
+  
+  if (subnetInfo) {
+    // Zone as plain text
+    let zoneHTML = '<div class="mb-2"><strong>Zone:</strong> ';
+    if (subnetInfo.zone && subnetInfo.zone.trim()) {
+      zoneHTML += String(subnetInfo.zone).trim();
+    } else {
+      zoneHTML += '<span class="text-muted">N/A</span>';
+    }
+    zoneHTML += '</div>';
+    
+    // Environment as plain text
+    let environmentHTML = '<div class="mb-2"><strong>Environment:</strong> ';
+    if (subnetInfo.environment && subnetInfo.environment.trim()) {
+      environmentHTML += String(subnetInfo.environment).trim();
+    } else {
+      environmentHTML += '<span class="text-muted">N/A</span>';
+    }
+    environmentHTML += '</div>';
+    
+    // Subnet as plain text
+    let subnetHTML = '<div class="mb-2"><strong>Subnet:</strong> ' + String(subnetInfo.address).trim() + '</div>';
+    
+    // Replace loading states with actual data
+    let updatedHTML = currentHTML.replace(
+      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">Loading...</span></div>',
+      zoneHTML
+    );
+    updatedHTML = updatedHTML.replace(
+      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">Loading...</span></div>',
+      environmentHTML
+    );
+    updatedHTML = updatedHTML.replace(
+      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">Loading...</span></div>',
+      subnetHTML
+    );
+    
+    contentElement.innerHTML = updatedHTML;
+  } else {
+    // No matching subnet found
+    let updatedHTML = currentHTML.replace(
+      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">Loading...</span></div>',
+      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">N/A</span></div>'
+    );
+    updatedHTML = updatedHTML.replace(
+      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">Loading...</span></div>',
+      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">N/A</span></div>'
+    );
+    updatedHTML = updatedHTML.replace(
+      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">Loading...</span></div>',
+      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">N/A</span></div>'
+    );
+    
+    contentElement.innerHTML = updatedHTML;
+  }
+}
+
+function showDomainDetail(domainId) {
+  const buttons = document.querySelectorAll('button[data-domain]');
+  let targetButton = null;
+  
+  for (let button of buttons) {
+    const data = button.getAttribute('data-domain');
+    if (data) {
+      try {
+        const domain = JSON.parse(data);
+        if (domain.id == domainId) {
+          targetButton = button;
+                break;
+              }
+      } catch (e) {
+        console.error('Error parsing domain data:', e);
+      }
+    }
+  }
+  
+  if (!targetButton) {
+    alert('Domain data not found');
+    return;
+  }
+  
+  const domainData = targetButton.getAttribute('data-domain');
+  let domain;
+  try {
+    domain = JSON.parse(domainData);
+  } catch (e) {
+    alert('Error parsing domain data: ' + e.message);
+    return;
+  }
+  
+  const modalElement = document.getElementById('domainDetailModal');
+  const modal = new bootstrap.Modal(modalElement);
+  const content = document.getElementById('domainDetailContent');
+  
+  let html = '<div class="card"><div class="card-body">';
+  html += '<div class="mb-2"><strong>Domain:</strong> ' + String(domain.domain || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>Description:</strong> ' + String(domain.description || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>Record Type:</strong> ' + String(domain.record_type || 'A').trim() + '</div>';
+  
+  if (domain.ip && domain.ip.ip_address) {
+    html += '<div class="mb-2"><strong>IP Address:</strong> ' + String(domain.ip.ip_address).trim() + '</div>';
+  }
+  
+  if (domain.tags && domain.tags.length > 0) {
+    html += '<div class="mb-2"><strong>Tags:</strong><br>';
+    domain.tags.forEach(function(tag) {
+      const tagValue = (typeof tag === 'string' ? tag : tag.name);
+      html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
     });
+    html += '</div>';
+  }
+  
+  if (domain.systems && domain.systems.length > 0) {
+    html += '<div class="mb-2"><strong>Systems:</strong><ul class="mb-0">';
+    domain.systems.forEach(function(system) {
+      const systemValue = (typeof system === 'string' ? system : system.name);
+      const searchUrl = '/system/system?search=' + encodeURIComponent(systemValue) + '&pageSize=2';
+      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + 
+              String(systemValue).trim() + '</a></li>';
+    });
+    html += '</ul></div>';
+  }
+  
+  if (domain.contacts && domain.contacts.length > 0) {
+    html += '<div class="mb-2"><strong>Contacts:</strong><ul class="mb-0">';
+    domain.contacts.forEach(function(contact) {
+      let contactName = '';
+      let contactEmail = '';
+      
+      if (typeof contact === 'string') {
+        contactName = contact;
+        contactEmail = '';
+      } else {
+        contactName = contact.name || '';
+        contactEmail = contact.email || '';
+      }
+      
+      // Create short email (remove @domain part)
+      let shortEmail = '';
+      if (contactEmail && contactEmail.includes('@')) {
+        shortEmail = contactEmail.split('@')[0];
+      }
+      
+      // Format: name (shortEmail) or just name if no email
+      let displayText = contactName;
+      if (shortEmail) {
+        displayText += ' (' + shortEmail + ')';
+      }
+      
+      // Create searchable link as simple text
+      const searchUrl = '/organize/contact?search=' + encodeURIComponent(contactName);
+      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + 
+              String(displayText).trim() + '</a></li>';
+    });
+    html += '</ul></div>';
+  }
+  
+  html += '</div></div>';
+  content.innerHTML = html;
+  modal.show();
+}
+
+// Import Domain functionality
+let selectedFile = null;
+
+// Handle file selection
+$(document).on('change', '#domainImportFile', function() {
+  selectedFile = this.files[0];
+  if (selectedFile) {
+    console.log('File selected:', selectedFile.name);
+    $('#validateDomainBtn').prop('disabled', false);
+        } else {
+    $('#validateDomainBtn').prop('disabled', true);
+    $('#importDomainBtn').hide();
   }
 });
-</script>
-<% if (success) { %>
-  <script>
-    window.addEventListener('DOMContentLoaded', function() {
-      showToast('<%= success %>', 'success');
-    });
-  </script>
-<% } %>
-<% if (error) { %>
-  <script>
-    window.addEventListener('DOMContentLoaded', function() {
-      showToast('<%= error %>', 'danger');
-    });
-  </script>
 
-<!-- Responsive Tables CSS -->
-<% } %>
+// Handle validate button click
+$(document).on('click', '#validateDomainBtn', function() {
+  if (!selectedFile) {
+    alert('Please select a file first');
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+  
+  // Show progress
+  $('#domainImportProgress').show();
+  $('#domainImportResults').text('Validating file...');
+  $('.progress-bar').css('width', '30%');
+  
+  $.ajax({
+    url: '/network/domain/validate-import',
+    type: 'POST',
+    data: formData,
+    processData: false,
+    contentType: false,
+    xhr: function() {
+      const xhr = new window.XMLHttpRequest();
+      xhr.responseType = 'blob'; // Important for file download
+      return xhr;
+    },
+    success: function(data, status, xhr) {
+      $('.progress-bar').css('width', '100%');
+      $('#domainImportResults').text('Validation complete! Downloading results...');
+      
+      // Handle file download
+      const contentType = xhr.getResponseHeader('Content-Type');
+      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+      
+      if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+        // Create blob and download file
+        const blob = new Blob([data], { type: contentType });
+        const url = window.URL.createObjectURL(blob);
+        
+        // Extract filename from Content-Disposition header
+        let filename = 'validation_results.xlsx';
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+          if (filenameMatch) {
+            filename = filenameMatch[1];
+          }
+        }
+        
+        // Create download link
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        // Clean up
+        window.URL.revokeObjectURL(url);
+      }
+      
+      // Check validation results from header
+      const validationSummary = xhr.getResponseHeader('X-Validation-Summary');
+      if (validationSummary) {
+        try {
+          const summary = JSON.parse(validationSummary);
+          const resultsDiv = $('#domainImportResults');
+          resultsDiv.removeClass('alert-danger').addClass('alert-success')
+            .html(`<strong>Validation Complete!</strong><br>
+                   <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
+                   <small>Validation file downloaded. Review results before importing.</small>`);
+          resultsDiv.show();
+          
+          // Show import button if validation passed
+          if (summary.allPassed) {
+            $('#importDomainBtn').show();
+          }
+        } catch (e) {
+          // Fallback if header parsing fails
+          const resultsDiv = $('#domainImportResults');
+          resultsDiv.removeClass('alert-danger').addClass('alert-success')
+            .html(`<strong>Validation Complete!</strong><br>
+                   <small>Validation file downloaded. Review results before importing.</small>`);
+          resultsDiv.show();
+          $('#importDomainBtn').show();
+        }
+      }
+    },
+    error: function(xhr, status, error) {
+      console.error('Validation error:', xhr.responseText);
+      console.error('Status:', xhr.status);
+      console.error('Error:', error);
+      
+      $('.progress-bar').css('width', '100%').text('Validation Failed');
+      $('#domainImportResults').removeClass('alert-success').addClass('alert-danger')
+        .html('<strong>Validation Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
+        .show();
+      },
+      complete: function() {
+      $('#validateDomainBtn').prop('disabled', false);
+      setTimeout(() => {
+        $('#domainImportProgress').hide();
+      }, 2000);
+    }
+  });
+});
+
+// Handle import button click
+$(document).on('click', '#importDomainBtn', function() {
+  if (!selectedFile) {
+    alert('Please select a file first');
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('file', selectedFile);
+  
+  // Show progress
+  $('#domainImportProgress').show();
+  $('#domainImportResults').text('Importing domains...');
+  $('.progress-bar').css('width', '30%').text('Importing...');
+  $('#importDomainBtn').prop('disabled', true);
+  
+  $.ajax({
+    url: '/network/domain/import',
+    type: 'POST',
+    data: formData,
+    processData: false,
+    contentType: false,
+    xhr: function() {
+      const xhr = new window.XMLHttpRequest();
+      xhr.responseType = 'blob'; // Important for file download
+      return xhr;
+    },
+    success: function(data, status, xhr) {
+      $('#domainImportProgress .progress-bar').css('width', '100%').text('Import Complete');
+      
+      // Handle file download
+      const contentType = xhr.getResponseHeader('Content-Type');
+      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+      
+      if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+        // Create blob and download file
+        const blob = new Blob([data], { type: contentType });
+        const url = window.URL.createObjectURL(blob);
+        
+        // Extract filename from Content-Disposition header
+        let filename = 'import_results.xlsx';
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+          if (filenameMatch) {
+            filename = filenameMatch[1];
+          }
+        }
+        
+        // Create download link
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        // Clean up
+        window.URL.revokeObjectURL(url);
+      }
+      
+      // Show results
+      const resultsDiv = $('#domainImportResults');
+      resultsDiv.removeClass('alert-danger').addClass('alert-success')
+        .html(`<strong>Import Completed!</strong><br>
+               <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
+      resultsDiv.show();
+      
+      // Hide import button
+      $('#importDomainBtn').hide();
+      
+      // Refresh page after 2 seconds
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    },
+    error: function(xhr, status, error) {
+      console.error('Import error:', xhr.responseText);
+      console.error('Status:', xhr.status);
+      console.error('Error:', error);
+      
+      $('#domainImportProgress .progress-bar').css('width', '100%').text('Import Failed');
+      $('#domainImportResults').removeClass('alert-success').addClass('alert-danger')
+        .html('<strong>Import Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
+        .show();
+    },
+    complete: function() {
+      $('#importDomainBtn').prop('disabled', false);
+      setTimeout(() => {
+        $('#domainImportProgress').hide();
+      }, 2000);
+    }
+  });
+});
+
+// Reset import modal when closed
+$('#importDomainModal').on('hidden.bs.modal', function() {
+  // Reset form
+  $('#importDomainForm')[0].reset();
+  selectedFile = null;
+  
+  // Reset UI elements
+  $('#validateDomainBtn').prop('disabled', true);
+  $('#importDomainBtn').hide();
+  $('#domainImportProgress').hide();
+  $('#domainImportResults').hide();
+  
+  // Reset progress bar
+  $('.progress-bar').css('width', '0%').text('');
+});
+</script>

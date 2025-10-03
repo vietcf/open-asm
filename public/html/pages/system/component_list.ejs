@@ -804,7 +804,7 @@
     // Contacts
     if (component.contacts && component.contacts.length > 0) {
       html += '<div class="mb-2">';
-      html += '<strong>Contacts:</strong><br>';
+      html += '<strong>Contacts:</strong><ul class="mb-0">';
       component.contacts.forEach(function(contactObj) {
         const contactName = contactObj.name || contactObj;
         const contactEmail = contactObj.email || '';
@@ -818,9 +818,9 @@
           searchTerm = contactEmail; // Still use full email for search
         }
         
-        html += '<a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary me-2">' + String(displayText).trim() + '</a>';
+        html += '<li><a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary">' + String(displayText).trim() + '</a></li>';
       });
-      html += '</div>';
+      html += '</ul></div>';
     }
     
     // Created

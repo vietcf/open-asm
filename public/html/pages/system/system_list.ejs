@@ -687,7 +687,7 @@
         // Contacts
         if (system.contacts && system.contacts.length > 0) {
           html += '<div class="mb-2">';
-          html += '<strong>Contacts:</strong><br>';
+          html += '<strong>Contacts:</strong><ul class="mb-0">';
           system.contacts.forEach(function(contactObj) {
             const contactName = contactObj.name || contactObj;
             const contactEmail = contactObj.email || '';
@@ -701,9 +701,9 @@
               searchTerm = contactEmail; // Still use full email for search
             }
             
-            html += '<a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary me-2">' + String(displayText).trim() + '</a>';
+            html += '<li><a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary">' + String(displayText).trim() + '</a></li>';
           });
-          html += '</div>';
+          html += '</ul></div>';
         }
         
         // Created
@@ -947,7 +947,7 @@
               if (component.contacts && component.contacts.length > 0) {
                 componentsHtml += '<div class="mb-2">';
                 componentsHtml += '<span class="fw-semibold">Contacts:</span>';
-                componentsHtml += '<div class="mt-1">';
+                componentsHtml += '<ul class="mb-0 mt-1">';
                 component.contacts.forEach(function(contactObj) {
                   const contactName = contactObj.name || contactObj;
                   const contactEmail = contactObj.email || '';
@@ -961,9 +961,9 @@
                     searchTerm = contactEmail; // Still use full email for search
                   }
                   
-                  componentsHtml += '<a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary me-2">' + String(displayText).trim() + '</a>';
+                  componentsHtml += '<li><a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary">' + String(displayText).trim() + '</a></li>';
                 });
-                componentsHtml += '</div>';
+                componentsHtml += '</ul>';
                 componentsHtml += '</div>';
               }
               

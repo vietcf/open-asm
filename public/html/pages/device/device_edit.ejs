@@ -1,295 +1,384 @@
-<div class="container-fluid">
-  <div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
-      <div class="card mt-4">
-        <div class="card-header d-flex align-items-center justify-content-between">
-          <h5 class="mb-0">Edit Device</h5>
-        </div>
-        <div class="card-body">
-          <% if (typeof error !== 'undefined' && error) { %>
-            <div class="alert alert-danger" style="text-align:center;">
-              <%= error %>
-            </div>
-          <% } %>
-          <% if (typeof success !== 'undefined' && success) { %>
-            <div class="alert alert-success" style="text-align:center;">
-              <%= success %>
-            </div>
-          <% } %>
-          <form action="/device/device/<%= device.id %>?_method=PUT" method="POST">
-            <div class="mb-3">
-              <label class="form-label">Device Type <span class="text-danger">*</span></label>
-              <select id="device-type-select" name="device_type_id" class="form-select form-select-sm select2" required></select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">IP Address(es) <span class="text-danger">*</span></label>
-              <select id="ip-select" name="ip_addresses[]" class="form-control" multiple required></select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Device Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control form-control-sm" id="deviceName" name="name" value="<%= device.name %>" placeholder="Device Name" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Platform (OS)</label>
-              <select id="platform-select" name="platform_id" class="form-select form-select-sm select2"></select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Location</label>
-              <select name="location" class="form-select form-select-sm">
-                <option value="">-- Select location --</option>
-                <% if (locationOptions && Array.isArray(locationOptions)) { locationOptions.forEach(function(opt) { %>
-                  <option value="<%= opt.value %>" <%= device.location === opt.value ? 'selected' : '' %>><%= opt.label %></option>
-                <% }) } %>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Serial</label>
-              <input type="text" class="form-control form-control-sm" name="serial" value="<%= device.serial_number %>" placeholder="Serial">
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Management</label>
-              <input type="text" class="form-control form-control-sm" name="management" value="<%= device.management_address %>" placeholder="Management">
-              <div class="form-text text-muted">You can enter multiple values separated by commas (e.g., 192.168.1.1, 192.168.1.2)</div>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Manufacturer</label>
-              <select id="manufacturer-select" name="manufacturer" class="form-control" data-allow-custom="true">
-                <% if (device.manufacturer) { %>
-                  <option value="<%= device.manufacturer %>" selected><%= device.manufacturer %></option>
-                <% } %>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Device Role</label>
-              <select id="device-role-select" name="device_role" class="form-control" data-allow-custom="true">
-                <% if (device.device_role) { %>
-                  <option value="<%= device.device_role %>" selected><%= device.device_role %></option>
-                <% } %>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Description</label>
-              <textarea class="form-control form-control-sm" name="description" placeholder="Description" rows="3"><%= device.description %></textarea>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Tags</label>
-              <select id="tag-select" name="tags[]" class="form-control" multiple></select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Contacts</label>
-              <select id="contact-select" name="contacts[]" class="form-control" multiple></select>
-            </div>
-            <div class="modal-footer d-flex justify-content-end gap-2" style="padding:0; background:none; border:none;">
-              <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
-              <a href="/device/device" class="btn btn-outline-secondary btn-sm">Cancel</a>
-            </div>
-          </form>
-        </div>
+<!-- Modal Buttons Custom CSS -->
+<link rel="stylesheet" href="/css/modal-buttons.css">
+
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item"><a href="/device/device">Device List</a></li>
+          <li class="breadcrumb-item active">Edit Device</li>
+        </ol>
       </div>
     </div>
   </div>
 </div>
-<script src="/vendor/jquery-3.6.0.min.js"></script>
-<link href="/css/select2.min.css" rel="stylesheet" />
-<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-<script src="/vendor/select2.min.js"></script>
-<script src="/vendor/bootstrap.min.js"></script>
-<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
-<script>
-  $(function() {
-    $('#ip-select').select2({
-      theme: 'bootstrap-5',
-      placeholder: 'Select IP address(es)',
-      width: '100%',
-      allowClear: true,
-      ajax: {
-        url: '/network/api/ip-addresses/unassigned',
-        dataType: 'json',
-        delay: 250,
-        data: params => ({ search: params.term }),
-        processResults: data => ({ results: data }),
-        cache: true
-      },
-      minimumInputLength: 0
-    });
-    $('#platform-select').select2({
-      theme: 'bootstrap-5',
-      placeholder: 'Select platform (OS)',
-      width: '100%',
-      allowClear: true,
-      ajax: {
-        url: '/device/api/platform',
-        dataType: 'json',
-        delay: 250,
-        data: params => ({ search: params.term }),
-        processResults: data => ({ results: data }),
-        cache: true
-      }
-    });
-    $('#tag-select').select2({
-      theme: 'bootstrap-5',
-      placeholder: 'Select tag(s)',
-      allowClear: true,
-      width: '100%',
-      ajax: {
-        url: '/organize/api/tag',
-        dataType: 'json',
-        delay: 250,
-        data: params => ({ search: params.term }),
-        processResults: data => ({ results: data }),
-        cache: true
-      }
-    });
-    $('#device-type-select').select2({
-      theme: 'bootstrap-5',
-      placeholder: 'Select device type',
-      width: '100%',
-      allowClear: true,
-      ajax: {
-        url: '/device/api/device-type',
-        dataType: 'json',
-        delay: 250,
-        data: params => ({ search: params.term }),
-        processResults: data => ({ results: data }),
-        cache: true
-      }
-    });
-    $('#contact-select').select2({
-      theme: 'bootstrap-5',
-      placeholder: 'Select contact(s)',
-      allowClear: true,
-      width: '100%',
-      multiple: true,
-      ajax: {
-        url: '/organize/api/contact',
-        dataType: 'json',
-        delay: 250,
-        data: params => ({ search: params.term }),
-        processResults: data => ({ results: data }),
-        cache: true
-      }
-    });
-    $('#manufacturer-select').select2({
-      theme: 'bootstrap-5',
-      placeholder: 'Select or type manufacturer',
-      allowClear: true,
-      width: '100%',
-      tags: true, // Allow custom values
-      ajax: {
-        url: '/device/api/manufacturers',
-        dataType: 'json',
-        delay: 250,
-        data: params => ({ search: params.term }),
-        processResults: function(data, params) {
-          // Add custom option if user typed something not in results
-          const results = data || [];
-          if (params.term && !results.some(item => item.text.toLowerCase() === params.term.toLowerCase())) {
-            results.unshift({
-              id: params.term,
-              text: params.term,
-              custom: true
-            });
-          }
-          return { results: results };
-        },
-        cache: true
-      },
-      createTag: function(params) {
-        // Allow creating new tags
-        return {
-          id: params.term,
-          text: params.term,
-          custom: true
-        };
-      }
-    });
-    $('#device-role-select').select2({
-      theme: 'bootstrap-5',
-      placeholder: 'Select or type device role',
-      allowClear: true,
-      width: '100%',
-      tags: true, // Allow custom values
-      ajax: {
-        url: '/device/api/device-roles',
-        dataType: 'json',
-        delay: 250,
-        data: params => ({ search: params.term }),
-        processResults: function(data, params) {
-          // Add custom option if user typed something not in results
-          const results = data || [];
-          if (params.term && !results.some(item => item.text.toLowerCase() === params.term.toLowerCase())) {
-            results.unshift({
-              id: params.term,
-              text: params.term,
-              custom: true
-            });
-          }
-          return { results: results };
-        },
-        cache: true
-      },
-      createTag: function(params) {
-        // Allow creating new tags
-        return {
-          id: params.term,
-          text: params.term,
-          custom: true
-        };
-      }
-    });
-    // Pre-populate selected tags if any
-    <% if (selectedTags && selectedTags.length) { %>
-      $.ajax({
-        url: '/organize/api/tag',
-        dataType: 'json',
-        data: { search: '' },
-        success: function(data) {
-          var selected = [];
-          var selectedTagIds = <%- JSON.stringify(selectedTags.map(function(t) { return t.id; })) %>;
-          data.forEach(function(tag) {
-            if (selectedTagIds.includes(tag.id)) {
-              selected.push(tag);
-            }
-          });
-          selected.forEach(function(tag) {
-            var option = new Option(tag.text || tag.name, tag.id, true, true);
-            $('#tag-select').append(option).trigger('change');
-          });
-        }
-      });
-    <% } %>
-    // Pre-populate selected IPs if any
-    <% if (device && device.ip_addresses && device.ip_addresses.length) { %>
-      var selectedIps = <%- JSON.stringify(device.ip_addresses.map(function(ip) { return { id: ip.id, text: ip.ip_address }; })) %>;
-      selectedIps.forEach(function(ip) {
-        if ($('#ip-select option[value="' + ip.id + '"]').length === 0) {
-          var option = new Option(ip.text, ip.id, true, true);
-          $('#ip-select').append(option);
-        }
-      });
-      $('#ip-select').val(selectedIps.map(function(ip){return String(ip.id);})).trigger('change');
-    <% } %>
-    // Pre-populate selected platform if any
-    <% if (device && device.platform_id && device.platform_name) { %>
-      var platformOption = new Option('<%= device.platform_name %>', '<%= device.platform_id %>', true, true);
-      $('#platform-select').append(platformOption).trigger('change');
-    <% } %>
-    // Pre-populate selected device type if any
-    <% if (device && device.device_type_id && device.device_type_name) { %>
-      var typeOption = new Option('<%= device.device_type_name %>', '<%= device.device_type_id %>', true, true);
-      $('#device-type-select').append(typeOption).trigger('change');
-    <% } %>
-    // Pre-populate selected contacts if any
-    <% if (selectedContacts && selectedContacts.length) { %>
-      var selectedContacts = <%- JSON.stringify(selectedContacts.map(function(c) { return { id: c.id, text: c.name }; })) %>;
-      selectedContacts.forEach(function(contact) {
-        if ($('#contact-select option[value="' + contact.id + '"]').length === 0) {
-          var option = new Option(contact.text, contact.id, true, true);
-          $('#contact-select').append(option);
-        }
-      });
-      $('#contact-select').val(selectedContacts.map(function(c){return String(c.id);})).trigger('change');
-    <% } %>
-  });
-</script>
 
+<!-- Main content -->
+<section class="app-content">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 col-md-10 col-sm-12">
+      <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Edit Device</h5>
+        </div>
+        <form id="editDeviceForm" action="/device/<%= device.id %>?_method=PUT" method="POST" enctype="multipart/form-data">
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label">Device Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control form-control-sm" value="<%= device.name %>" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Description</label>
+              <textarea name="description" class="form-control form-control-sm" rows="3" placeholder="Device description"><%= device.description || '' %></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">IP Address(es)</label>
+              <div class="d-flex align-items-center gap-2">
+                <select id="ip-select" name="ip_addresses[]" class="form-control flex-grow-1" multiple></select>
+                <button type="button" class="btn btn-outline-success btn-sm" id="add-ip-btn" title="Add new IP"><i class="bi bi-plus-circle"></i> Add IP</button>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Type</label>
+              <select name="type" class="form-select" data-placeholder="Select type">
+                <option value="">-- Select type --</option>
+                <% if (typeof typesOptions !== 'undefined' && typesOptions) { %>
+                  <% typesOptions.forEach(function(tp) { %>
+                    <option value="<%= tp.value %>" <%= device.type === tp.value ? 'selected' : '' %>><%= tp.label %></option>
+                  <% }) %>
+                <% } else { %>
+                  <option value="server" <%= device.type === 'server' ? 'selected' : '' %>>Server</option>
+                  <option value="network" <%= device.type === 'network' ? 'selected' : '' %>>Network</option>
+                  <option value="storage" <%= device.type === 'storage' ? 'selected' : '' %>>Storage</option>
+                <% } %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Status</label>
+              <select name="status" class="form-select" data-placeholder="Select status">
+                <option value="">-- Select Status --</option>
+                <% if (typeof statusOptions !== 'undefined' && statusOptions) { %>
+                  <% statusOptions.forEach(function(st) { %>
+                    <option value="<%= st.value %>" <%= device.status === st.value ? 'selected' : '' %>><%= st.label %></option>
+                  <% }) %>
+                <% } else { %>
+                  <option value="active" <%= device.status === 'active' ? 'selected' : '' %>>Active</option>
+                  <option value="inactive" <%= device.status === 'inactive' ? 'selected' : '' %>>Inactive</option>
+                  <option value="reserved" <%= device.status === 'reserved' ? 'selected' : '' %>>Reserved</option>
+                <% } %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Location</label>
+              <select name="location" class="form-select" data-placeholder="Select location">
+                <option value="">-- Select Location --</option>
+                <% if (typeof locationOptions !== 'undefined' && locationOptions) { %>
+                  <% locationOptions.forEach(function(loc) { %>
+                    <option value="<%= loc.value %>" <%= device.location === loc.value ? 'selected' : '' %>><%= loc.label %></option>
+                  <% }) %>
+                <% } else { %>
+                  <option value="datacenter" <%= device.location === 'datacenter' ? 'selected' : '' %>>Data Center</option>
+                  <option value="office" <%= device.location === 'office' ? 'selected' : '' %>>Office</option>
+                  <option value="remote" <%= device.location === 'remote' ? 'selected' : '' %>>Remote</option>
+                <% } %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Platform (OS)</label>
+              <select id="platform-select" name="platform" class="form-select" data-placeholder="Select platform">
+                <option value="">-- Select Platform --</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Managers</label>
+              <select id="manager-select" name="managers[]" class="form-control" multiple data-placeholder="Select managers">
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Systems</label>
+              <select id="system-select" name="systems[]" class="form-control" multiple data-placeholder="Select systems">
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Agents</label>
+              <select id="agent-select" name="agents[]" class="form-control" multiple data-placeholder="Select agents">
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Services</label>
+              <select id="service-select" name="services[]" class="form-control" multiple data-placeholder="Select services">
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Tags</label>
+              <select id="tag-select" name="tags[]" class="form-control" multiple data-placeholder="Select tags">
+              </select>
+            </div>
+          </div>
+          <div class="card-footer d-flex flex-column flex-lg-row justify-content-lg-end gap-2">
+            <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Update Device</button>
+            <a href="/device/device" class="btn btn-secondary w-100 order-2 order-lg-1">Cancel</a>
+          </div>
+        </form>
+      </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+$(document).ready(function() {
+  // Initialize Select2 for all select elements
+  $('.form-control').select2({
+    theme: 'bootstrap-5',
+    placeholder: function() {
+      return $(this).data('placeholder') || 'Select...';
+    },
+    allowClear: true,
+    width: '100%'
+  });
+
+  // Type select2 - Bootstrap 5 theme
+  $('select[name="type"]').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select type',
+    allowClear: true,
+    width: '100%'
+  });
+
+  // Status select2 - Bootstrap 5 theme
+  $('select[name="status"]').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select status',
+    allowClear: true,
+    width: '100%'
+  });
+
+  // Location select2 - Bootstrap 5 theme
+  $('select[name="location"]').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select location',
+    allowClear: true,
+    width: '100%'
+  });
+
+  // IP Address Select2 with AJAX
+  $('#ip-select').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select IP addresses',
+    allowClear: true,
+    width: '100%',
+    ajax: {
+      url: '/device/api/ip-addresses',
+      dataType: 'json',
+      delay: 250,
+      data: function (params) {
+        return {
+          search: params.term,
+          page: params.page || 1
+        };
+      },
+      processResults: function (data) {
+        return {
+          results: data.map(function(item) {
+            return {
+              id: item.id,
+              text: item.ip_address + (item.description ? ' - ' + item.description : '')
+            };
+          })
+        };
+      },
+      cache: true
+    }
+  });
+
+  // Manager Select2 with AJAX
+  $('#manager-select').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select managers',
+    allowClear: true,
+    width: '100%',
+    ajax: {
+      url: '/device/api/contacts',
+      dataType: 'json',
+      delay: 250,
+      data: function (params) {
+        return {
+          search: params.term,
+          page: params.page || 1
+        };
+      },
+      processResults: function (data) {
+        return {
+          results: data.map(function(item) {
+            return {
+              id: item.id,
+              text: item.name + ' (' + item.email + ')'
+            };
+          })
+        };
+      },
+      cache: true
+    }
+  });
+
+  // System Select2 with AJAX
+  $('#system-select').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select systems',
+    allowClear: true,
+    width: '100%',
+    ajax: {
+      url: '/device/api/systems',
+      dataType: 'json',
+      delay: 250,
+      data: function (params) {
+        return {
+          search: params.term,
+          page: params.page || 1
+        };
+      },
+      processResults: function (data) {
+        return {
+          results: data.map(function(item) {
+            return {
+              id: item.id,
+              text: item.name
+            };
+          })
+        };
+      },
+      cache: true
+    }
+  });
+
+  // Agent Select2 with AJAX
+  $('#agent-select').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select agents',
+    allowClear: true,
+    width: '100%',
+    ajax: {
+      url: '/device/api/agents',
+      dataType: 'json',
+      delay: 250,
+      data: function (params) {
+        return {
+          search: params.term,
+          page: params.page || 1
+        };
+      },
+      processResults: function (data) {
+        return {
+          results: data.map(function(item) {
+            return {
+              id: item.id,
+              text: item.name
+            };
+          })
+        };
+      },
+      cache: true
+    }
+  });
+
+  // Service Select2 with AJAX
+  $('#service-select').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select services',
+    allowClear: true,
+    width: '100%',
+    ajax: {
+      url: '/device/api/services',
+      dataType: 'json',
+      delay: 250,
+      data: function (params) {
+        return {
+          search: params.term,
+          page: params.page || 1
+        };
+      },
+      processResults: function (data) {
+        return {
+          results: data.map(function(item) {
+            return {
+              id: item.id,
+              text: item.name
+            };
+          })
+        };
+      },
+      cache: true
+    }
+  });
+
+  // Tag Select2 with AJAX
+  $('#tag-select').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select tags',
+    allowClear: true,
+    width: '100%',
+    ajax: {
+      url: '/device/api/tags',
+      dataType: 'json',
+      delay: 250,
+      data: function (params) {
+        return {
+          search: params.term,
+          page: params.page || 1
+        };
+      },
+      processResults: function (data) {
+        return {
+          results: data.map(function(item) {
+            return {
+              id: item.id,
+              text: item.name
+            };
+          })
+        };
+      },
+      cache: true
+    }
+  });
+
+  // Platform Select2 with AJAX
+  $('#platform-select').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select platform',
+    allowClear: true,
+    width: '100%',
+    ajax: {
+      url: '/device/api/platform',
+      dataType: 'json',
+      delay: 250,
+      data: function (params) {
+        return {
+          search: params.term,
+          page: params.page || 1
+        };
+      },
+      processResults: function (data) {
+        return {
+          results: data.map(function(item) {
+            return {
+              id: item.id,
+              text: item.name
+            };
+          })
+        };
+      },
+      cache: true
+    }
+  });
+
+  // Add IP button: open new tab to IP management page
+  $('#add-ip-btn').click(function() {
+    window.open('/network/ip_address', '_blank');
+  });
+});
+</script>
