@@ -240,9 +240,9 @@
         display: none !important;
       }
       
-      /* Add "Search" text instead of icon - only for search form buttons */
-      form .btn[type="submit"]:after,
-      .input-group .btn[type="submit"]:after {
+      /* Add "Search" text instead of icon - only for specific search buttons */
+      #searchBtn:after,
+      .btn-search:after {
         content: "Search";
         font-size: 0.8rem;
         font-weight: 500;

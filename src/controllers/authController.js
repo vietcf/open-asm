@@ -47,6 +47,12 @@ export const postLogin = async (req, res) => {
     }
     const match = await bcrypt.compare(password, user.password_hash);
     if (match) {
+      // Check if user is active
+      if (!user.is_active) {
+        await writeLog({ action: 'login', description: 'Login failed: account is inactive', status: 'failed', req });
+        return res.redirect('/login?error=Account%20is%20inactive');
+      }
+      
       req.session.isLoggedIn = true; // Logined username and password successfully
       req.session.user = buildSessionUser(user); // Only store user info, not permissions
 

@@ -89,6 +89,24 @@ async function addZoneEnvironmentToSubnets() {
   }
 }
 
+// Thêm cột is_active vào bảng users
+async function addIsActiveToUsers() {
+  try {
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;`);
+    console.log('Added is_active column to users table!');
+    
+    // Update existing users to be active by default
+    await pool.query(`UPDATE users SET is_active = TRUE WHERE is_active IS NULL;`);
+    console.log('Updated existing users to be active!');
+    
+    // Tạo index cho is_active để tối ưu filtering
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_is_active ON users (is_active);`);
+    console.log('Created index on is_active column!');
+  } catch (err) {
+    console.error('Add is_active column to users failed:', err);
+  }
+}
+
 (async () => {
   try {
     await addFqdnToSystems();
@@ -97,6 +115,7 @@ async function addZoneEnvironmentToSubnets() {
     await addUpdatedFieldsToSubnets();
     await addDeviceRoleToDevices();
     await addZoneEnvironmentToSubnets();
+    await addIsActiveToUsers();
   } catch (err) {
     console.error('Error running alter statements:', err);
   } finally {

@@ -31,6 +31,7 @@ import { siteConfig } from './utils/siteConfig.js';
 import { loadPermissions } from './middlewares/permissions.middleware.js';
 import requirePasswordChange from './middlewares/requirePasswordChange.middleware.js';
 import require2fa from './middlewares/require2fa.middleware.js';
+import accessLog from './middlewares/accessLog.middleware.js';
 
 // =========================
 // Routers
@@ -76,7 +77,7 @@ app.set('trust proxy', 1);
 // 3. Core middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(methodOverride('_method'));
+app.use(methodOverride('_method', { methods: ['POST', 'GET'] }));
 
 // 4. Session and flash
 app.use(session({
@@ -93,6 +94,8 @@ app.use(session({
 // Flash middleware for session messages
 app.use(flash());
 
+// 4.1. Access logging middleware (after session, before other middleware)
+app.use(accessLog);
 
 // 5. Global template variables (res.locals)
 // 5.1. Load permissions for every request (after session, before routes)
