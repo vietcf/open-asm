@@ -72,11 +72,14 @@ class Domain {
     const result = await pool.query(
       `SELECT d.*, 
         jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address) AS ip,
-        COALESCE(json_agg(DISTINCT jsonb_build_object('id', s.id, 'name', s.name)) FILTER (WHERE s.id IS NOT NULL), '[]') AS systems
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', s.id, 'name', s.name)) FILTER (WHERE s.id IS NOT NULL), '[]') AS systems,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags
       FROM domains d
       LEFT JOIN ip_addresses ip ON d.ip_id = ip.id
       LEFT JOIN system_domain sd ON d.id = sd.domain_id
       LEFT JOIN systems s ON sd.system_id = s.id
+      LEFT JOIN tag_object tobj ON tobj.object_type = 'domain' AND tobj.object_id = d.id
+      LEFT JOIN tags t ON t.id = tobj.tag_id
       GROUP BY d.id, ip.id
       ORDER BY d.id
       LIMIT $1 OFFSET $2`,
@@ -84,6 +87,7 @@ class Domain {
     );
     return result.rows.map(row => {
       row.systems = Array.isArray(row.systems) ? row.systems : JSON.parse(row.systems);
+      row.tags = Array.isArray(row.tags) ? row.tags : JSON.parse(row.tags);
       return row;
     });
   }
@@ -96,11 +100,14 @@ class Domain {
     const result = await pool.query(
       `SELECT d.*, 
         jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address) AS ip,
-        COALESCE(json_agg(DISTINCT jsonb_build_object('id', s.id, 'name', s.name)) FILTER (WHERE s.id IS NOT NULL), '[]') AS systems
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', s.id, 'name', s.name)) FILTER (WHERE s.id IS NOT NULL), '[]') AS systems,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags
       FROM domains d
       LEFT JOIN ip_addresses ip ON d.ip_id = ip.id
       LEFT JOIN system_domain sd ON d.id = sd.domain_id
       LEFT JOIN systems s ON sd.system_id = s.id
+      LEFT JOIN tag_object tobj ON tobj.object_type = 'domain' AND tobj.object_id = d.id
+      LEFT JOIN tags t ON t.id = tobj.tag_id
       WHERE d.domain ILIKE $1 OR d.description ILIKE $1 OR ip.ip_address::text ILIKE $1 OR s.name ILIKE $1
       GROUP BY d.id, ip.id
       ORDER BY d.id DESC
@@ -109,6 +116,7 @@ class Domain {
     );
     return result.rows.map(row => {
       row.systems = Array.isArray(row.systems) ? row.systems : JSON.parse(row.systems);
+      row.tags = Array.isArray(row.tags) ? row.tags : JSON.parse(row.tags);
       return row;
     });
   }
@@ -129,6 +137,140 @@ class Domain {
       ) sub`,
       [`%${search}%`]
     );
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  /**
+   * Get filtered list of domains with pagination
+   */
+  static async findFilteredList({ search = '', tags = [], systems = [], status = '', page = 1, pageSize = 10 }) {
+    const offset = (page - 1) * pageSize;
+    let whereClauses = [];
+    let params = [];
+    let paramCount = 0;
+
+    // Search condition
+    if (search) {
+      paramCount++;
+      whereClauses.push(`(d.domain ILIKE $${paramCount} OR d.description ILIKE $${paramCount} OR ip.ip_address::text ILIKE $${paramCount} OR s.name ILIKE $${paramCount})`);
+      params.push(`%${search}%`);
+    }
+
+    // Tags filter
+    if (tags && tags.length > 0) {
+      paramCount++;
+      whereClauses.push(`d.id IN (
+        SELECT tobj.object_id 
+        FROM tag_object tobj 
+        WHERE tobj.object_type = 'domain' 
+        AND tobj.tag_id = ANY($${paramCount})
+      )`);
+      params.push(tags);
+    }
+
+    // Systems filter
+    if (systems && systems.length > 0) {
+      paramCount++;
+      whereClauses.push(`d.id IN (
+        SELECT sd.domain_id 
+        FROM system_domain sd 
+        WHERE sd.system_id = ANY($${paramCount})
+      )`);
+      params.push(systems);
+    }
+
+    // Status filter (Record Type)
+    if (status) {
+      paramCount++;
+      whereClauses.push(`d.record_type = $${paramCount}`);
+      params.push(status);
+    }
+
+    const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    const result = await pool.query(
+      `SELECT d.*, 
+        jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address) AS ip,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', s.id, 'name', s.name)) FILTER (WHERE s.id IS NOT NULL), '[]') AS systems,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags
+      FROM domains d
+      LEFT JOIN ip_addresses ip ON d.ip_id = ip.id
+      LEFT JOIN system_domain sd ON d.id = sd.domain_id
+      LEFT JOIN systems s ON sd.system_id = s.id
+      LEFT JOIN tag_object tobj ON tobj.object_type = 'domain' AND tobj.object_id = d.id
+      LEFT JOIN tags t ON t.id = tobj.tag_id
+      ${whereClause}
+      GROUP BY d.id, ip.id
+      ORDER BY d.id DESC
+      LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`,
+      [...params, pageSize, offset]
+    );
+    
+    return result.rows.map(row => {
+      row.systems = Array.isArray(row.systems) ? row.systems : JSON.parse(row.systems);
+      row.tags = Array.isArray(row.tags) ? row.tags : JSON.parse(row.tags);
+      return row;
+    });
+  }
+
+  /**
+   * Count filtered domains
+   */
+  static async countFiltered({ search = '', tags = [], systems = [], status = '' }) {
+    let whereClauses = [];
+    let params = [];
+    let paramCount = 0;
+
+    // Search condition
+    if (search) {
+      paramCount++;
+      whereClauses.push(`(d.domain ILIKE $${paramCount} OR d.description ILIKE $${paramCount} OR ip.ip_address::text ILIKE $${paramCount} OR s.name ILIKE $${paramCount})`);
+      params.push(`%${search}%`);
+    }
+
+    // Tags filter
+    if (tags && tags.length > 0) {
+      paramCount++;
+      whereClauses.push(`d.id IN (
+        SELECT tobj.object_id 
+        FROM tag_object tobj 
+        WHERE tobj.object_type = 'domain' 
+        AND tobj.tag_id = ANY($${paramCount})
+      )`);
+      params.push(tags);
+    }
+
+    // Systems filter
+    if (systems && systems.length > 0) {
+      paramCount++;
+      whereClauses.push(`d.id IN (
+        SELECT sd.domain_id 
+        FROM system_domain sd 
+        WHERE sd.system_id = ANY($${paramCount})
+      )`);
+      params.push(systems);
+    }
+
+    // Status filter (Record Type)
+    if (status) {
+      paramCount++;
+      whereClauses.push(`d.record_type = $${paramCount}`);
+      params.push(status);
+    }
+
+    const whereClause = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+    const result = await pool.query(
+      `SELECT COUNT(DISTINCT d.id) 
+      FROM domains d
+      LEFT JOIN ip_addresses ip ON d.ip_id = ip.id
+      LEFT JOIN system_domain sd ON d.id = sd.domain_id
+      LEFT JOIN systems s ON sd.system_id = s.id
+      LEFT JOIN tag_object tobj ON tobj.object_type = 'domain' AND tobj.object_id = d.id
+      ${whereClause}`,
+      params
+    );
+    
     return parseInt(result.rows[0].count, 10);
   }
 
@@ -165,6 +307,20 @@ class Domain {
       await client.query(
         `INSERT INTO system_domain (domain_id, system_id) VALUES ${values} ON CONFLICT DO NOTHING`,
         [domainId, ...systemIds]
+      );
+    }
+  }
+
+  /**
+   * Set all tags for a domain (removes all old, adds new)
+   */
+  static async setTags(domainId, tagIds, client = pool) {
+    await client.query('DELETE FROM tag_object WHERE object_type = $1 AND object_id = $2', ['domain', domainId]);
+    if (Array.isArray(tagIds) && tagIds.length > 0) {
+      const values = tagIds.map((tagId, idx) => `($${idx + 1}, $${tagIds.length + 1}, $${tagIds.length + 2})`).join(',');
+      await client.query(
+        `INSERT INTO tag_object (tag_id, object_type, object_id) VALUES ${values} ON CONFLICT DO NOTHING`,
+        [...tagIds, 'domain', domainId]
       );
     }
   }

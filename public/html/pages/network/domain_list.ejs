@@ -12,7 +12,7 @@ Structure:
 4. Action Buttons
 5. Data Table
 6. Pagination
-7. Modals (Add, Edit, Detail, Filter, Import)
+7. Modals (Add, Edit, Detail, Filter)
 8. Styles & JavaScript
 ==========================================
 -->
@@ -46,47 +46,9 @@ function buildPaginationUrl(targetPage) {
     filterSystems.forEach(system => params.append('systems[]', system.id));
   }
   
-  if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) {
-    filterContacts.forEach(contact => params.append('contacts[]', contact.id));
-  }
-  
-  if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses && filterIpAddresses.length > 0) {
-    filterIpAddresses.forEach(ip => params.append('ip_id[]', ip.id));
-  }
-  
   return '?' + params.toString();
 }
 
-/**
- * Build export URL with all query parameters
- * @returns {string} - Complete export URL with query parameters
- */
-function buildExportUrl() {
-  const params = new URLSearchParams();
-  
-  // Core parameters
-  if (typeof search !== 'undefined' && search) params.set('search', search);
-  if (typeof filterStatus !== 'undefined' && filterStatus) params.set('status', filterStatus);
-  
-  // Filter parameters
-  if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
-    filterTags.forEach(tag => params.append('tags[]', tag.id));
-  }
-  
-  if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
-    filterSystems.forEach(system => params.append('systems[]', system.id));
-  }
-  
-  if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) {
-    filterContacts.forEach(contact => params.append('contacts[]', contact.id));
-  }
-  
-  if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses && filterIpAddresses.length > 0) {
-    filterIpAddresses.forEach(ip => params.append('ip_id[]', ip.id));
-  }
-  
-  return '/network/domain/export' + (params.toString() ? '?' + params.toString() : '');
-}
 %>
 
 <!-- ==========================================
@@ -140,19 +102,6 @@ function buildExportUrl() {
               <% }); %>
             <% } %>
             
-            <!-- Filter Contacts -->
-            <% if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) { %>
-              <% filterContacts.forEach(function(contact) { %>
-                <input type="hidden" name="contacts[]" value="<%= contact.id %>">
-              <% }); %>
-            <% } %>
-            
-            <!-- Filter IP Addresses -->
-            <% if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses && filterIpAddresses.length > 0) { %>
-              <% filterIpAddresses.forEach(function(ip) { %>
-                <input type="hidden" name="ip_id[]" value="<%= ip.id %>">
-              <% }); %>
-            <% } %>
             
             <!-- Search Input -->
             <div class="input-group input-group-sm" style="width: 250px;">
@@ -210,22 +159,6 @@ function buildExportUrl() {
             <i class="bi bi-funnel"></i> Filter
           </button>
           
-          <!-- Export Button -->
-          <% if (hasPermission && hasPermission('domain.read')) { %>
-            <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">
-              <i class="bi bi-download"></i> Export
-            </a>
-          <% } %>
-          
-          <!-- Import Domain Button -->
-          <% if (hasPermission && hasPermission('domain.create')) { %>
-            <button type="button" 
-                    class="btn btn-success btn-sm" 
-                    data-bs-toggle="modal" 
-                    data-bs-target="#importDomainModal">
-          <i class="bi bi-upload"></i> Import Domain
-        </button>
-      <% } %>
       </div>
     </div>
             </div>
@@ -236,8 +169,6 @@ function buildExportUrl() {
     <div id="filter-domain-data"
          data-tags='<%= JSON.stringify(filterTags || []) %>'
          data-systems='<%= JSON.stringify(filterSystems || []) %>'
-         data-contacts='<%= JSON.stringify(filterContacts || []) %>'
-         data-ipAddresses='<%= JSON.stringify(filterIpAddresses || []) %>'
          data-status='<%= JSON.stringify(filterStatus || '') %>' 
          style="display:none">
                 </div>
@@ -382,11 +313,8 @@ function buildExportUrl() {
                         
                         <!-- Edit Button -->
                         <% if (hasPermission('domain.update')) { %>
-                          <button type="button" 
-                                  class="btn btn-warning btn-sm" 
-                                  title="Edit" 
-                                  data-bs-toggle="modal" 
-                                  data-bs-target="#editDomainModal"
+                          <button type="button" class="btn btn-warning btn-sm" title="Edit" 
+                                  data-bs-toggle="modal" data-bs-target="#editDomainModal"
                                   data-domain-id="<%= domain.id %>"
                                   data-domain="<%= domain.domain %>"
                                   data-description="<%= domain.description || '' %>"
@@ -394,8 +322,7 @@ function buildExportUrl() {
                                   data-ip-id="<%= domain.ip ? domain.ip.id : '' %>"
                                   data-ip-address="<%= domain.ip ? domain.ip.ip_address : '' %>"
                                   data-tags="<%= JSON.stringify(domain.tags || []) %>"
-                                  data-systems="<%= JSON.stringify(domain.systems || []) %>"
-                                  data-contacts="<%= JSON.stringify(domain.contacts || []) %>">
+                                  data-systems="<%= JSON.stringify(domain.systems || []) %>">
                             <i class="bi bi-pencil"></i>
                           </button>
                       <% } %>
@@ -450,7 +377,6 @@ function buildExportUrl() {
                     if (typeof filterTags !== 'undefined' && filterTags.length) filterTags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag.id || tag)); });
                     if (typeof filterStatus !== 'undefined' && filterStatus) params.push('status=' + encodeURIComponent(filterStatus));
                     if (typeof filterSystems !== 'undefined' && filterSystems.length) filterSystems.forEach(function(system) { params.push('systems[]=' + encodeURIComponent(system.id || system)); });
-                    if (typeof filterContacts !== 'undefined' && filterContacts.length) filterContacts.forEach(function(contact) { params.push('contacts[]=' + encodeURIComponent(contact.id || contact)); });
                     if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses.length) filterIpAddresses.forEach(function(ip) { params.push('ip_id[]=' + encodeURIComponent(ip.id || ip)); });
                     return params.join('&');
                   }
@@ -588,13 +514,6 @@ function buildExportUrl() {
               </select>
             </div>
             
-            <!-- Contacts -->
-            <div class="col-12">
-              <label for="domainContacts" class="form-label">Contacts</label>
-              <select id="domainContacts" name="contacts[]" class="form-select" multiple>
-                <!-- Options will be loaded via AJAX -->
-              </select>
-            </div>
           </div>
                         </div>
                         <div class="modal-footer">
@@ -681,13 +600,6 @@ function buildExportUrl() {
               </select>
             </div>
             
-            <!-- Contacts -->
-            <div class="col-12">
-              <label for="editDomainContacts" class="form-label">Contacts</label>
-              <select id="editDomainContacts" name="contacts[]" class="form-select" multiple>
-                <!-- Options will be loaded via AJAX -->
-              </select>
-            </div>
                             </div>
                           </div>
                           <div class="modal-footer">
@@ -763,17 +675,6 @@ function buildExportUrl() {
               <select id="filterDomainSystems" name="systems[]" class="form-control" multiple></select>
             </div>
             
-            <!-- Contacts Filter -->
-            <div class="col-12 mb-2">
-              <label class="form-label">Contacts</label>
-              <select id="filterDomainContacts" name="contacts[]" class="form-control" multiple></select>
-            </div>
-            
-            <!-- IP Address Filter -->
-            <div class="col-12 mb-2">
-              <label class="form-label">IP Address</label>
-              <select id="filterDomainIpId" name="ip_id[]" class="form-control" multiple></select>
-            </div>
           </div>
         </div>
         <div class="modal-footer d-flex justify-content-between">
@@ -788,68 +689,6 @@ function buildExportUrl() {
   </div>
 </div>
         
-<!-- ==========================================
-     IMPORT DOMAIN MODAL
-     ========================================== -->
-<div class="modal fade" id="importDomainModal" tabindex="-1" aria-labelledby="importDomainModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="importDomainModalLabel">Import Domains</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="importDomainForm" enctype="multipart/form-data">
-          <!-- File Selection -->
-          <div class="mb-3">
-            <label for="domainImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
-            <div class="input-group">
-              <input type="file" 
-                     class="form-control" 
-                     id="domainImportFile" 
-                     name="file" 
-                     accept=".csv,.xlsx,.xls" 
-                     required>
-              <a href="/network/domain/template" class="btn btn-outline-info" download>
-                <i class="bi bi-download"></i> Download Template
-              </a>
-            </div>
-            <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
-          </div>
-          
-          <!-- Import Instructions -->
-          <div class="mb-3">
-            <div class="alert alert-info">
-              <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
-              <ul class="mb-0">
-                <li>Click "Download Template" to get the Excel template with correct format</li>
-                <li>Fill the template with your domain data</li>
-                <li>Domain (Required, one per row) is required and must be valid domain format</li>
-                <li>Description is optional</li>
-                <li>Record Type is optional (default: A)</li>
-                <li>IP Address, Tags, Systems, and Contacts are optional and can be comma-separated if multiple</li>
-                <li>Select your filled template file and validate before importing</li>
-            </ul>
-          </div>
-        </div>
-          
-          <!-- Progress Bar -->
-          <div id="domainImportProgress" class="progress mb-3" style="display: none;">
-            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-      </div>
-          
-          <!-- Results Display -->
-          <div id="domainImportResults" class="alert" style="display: none;"></div>
-        </form>
-    </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-warning" id="validateDomainBtn">Validate File</button>
-        <button type="button" class="btn btn-success" id="importDomainBtn" style="display: none;">Import Domains</button>
-  </div>
-</div>
-  </div>
-</div>
         
 <!-- ==========================================
      STYLES
@@ -935,30 +774,6 @@ $(function() {
     }
   });
 
-  // Contacts select2 AJAX - Bootstrap 5 theme (clone from system_add.ejs)
-  console.log('Setting up Contacts Select2...');
-  $('#domainContacts').select2({
-        theme: 'bootstrap-5',
-    placeholder: 'Select contacts (optional)',
-        allowClear: true,
-        width: '100%',
-    multiple: true,
-    dropdownParent: $('#addDomainModal'),
-      ajax: {
-      url: '/organize/api/contact',
-        dataType: 'json',
-        delay: 250,
-      data: params => {
-        console.log('Contacts AJAX request:', params.term);
-        return { search: params.term };
-      },
-      processResults: data => {
-        console.log('Contacts API response:', data);
-        return { results: data };
-      },
-        cache: true
-      }
-    });
 
   // IP Address select2 AJAX - Bootstrap 5 theme
   console.log('Setting up IP Address Select2...');
@@ -1009,7 +824,6 @@ $(function() {
     console.log('Select2 elements in modal:');
     console.log('domainTags:', $('#addDomainModal #domainTags').length);
     console.log('domainSystems:', $('#addDomainModal #domainSystems').length);
-    console.log('domainContacts:', $('#addDomainModal #domainContacts').length);
     console.log('domainIpId:', $('#addDomainModal #domainIpId').length);
   });
 
@@ -1017,7 +831,7 @@ $(function() {
   $('#addDomainModal').on('hidden.bs.modal', function() {
     console.log('Add Domain Modal hidden, resetting form');
     $('#addDomainForm')[0].reset();
-    $('#domainTags, #domainSystems, #domainContacts, #domainIpId').val(null).trigger('change');
+    $('#domainTags, #domainSystems, #domainIpId').val(null).trigger('change');
   });
 
 
@@ -1106,20 +920,6 @@ $(function() {
     }
   });
 
-  $('#editDomainContacts').select2({
-            theme: 'bootstrap-5',
-    multiple: true,
-            allowClear: true,
-            width: '100%',
-    dropdownParent: $('#editDomainModal'),
-            ajax: {
-              url: '/organize/api/contact',
-              dataType: 'json',
-      processResults: function(data) {
-        return { results: data };
-      }
-    }
-  });
 
   $('#editDomainIpId').select2({
             theme: 'bootstrap-5',
@@ -1164,14 +964,14 @@ $(function() {
 
     // Load existing values for Select2 fields after a short delay
         setTimeout(() => {
-      loadEditExistingValues(tags, systems, contacts, ipId, ipAddress);
+      loadEditExistingValues(tags, systems, ipId, ipAddress);
     }, 100);
   });
 
   // Edit Domain Modal - Reset form when hidden
   $('#editDomainModal').on('hidden.bs.modal', function() {
     $('#editDomainForm')[0].reset();
-    $('#editDomainTags, #editDomainSystems, #editDomainContacts, #editDomainIpId').val(null).trigger('change');
+    $('#editDomainTags, #editDomainSystems, #editDomainIpId').val(null).trigger('change');
   });
 
   // Edit Domain Form submission
@@ -1237,45 +1037,6 @@ $(function() {
         }
       });
 
-           $('#filterDomainContacts').select2({
-             theme: 'bootstrap-5',
-             placeholder: 'Select contact(s)',
-             allowClear: true,
-             width: '100%',
-             dropdownParent: $('#filterDomainModal'),
-             ajax: {
-               url: '/organize/api/contact',
-               dataType: 'json',
-               delay: 250,
-               data: function(params) {
-                 return { search: params.term };
-               },
-               processResults: function(data) {
-                 return { results: data };
-               },
-               cache: true
-             }
-           });
-
-           $('#filterDomainIpId').select2({
-             theme: 'bootstrap-5',
-             placeholder: 'Select IP address(es)',
-             allowClear: true,
-             width: '100%',
-             dropdownParent: $('#filterDomainModal'),
-             ajax: {
-               url: '/network/api/ip-addresses',
-               dataType: 'json',
-               delay: 250,
-               data: function(params) {
-                 return { search: params.term };
-               },
-               processResults: function(data) {
-                 return { results: data };
-               },
-               cache: true
-             }
-           });
 
   // Filter Domain Modal - Load existing filter values when opened
   $('#filterDomainModal').on('show.bs.modal', function() {
@@ -1291,7 +1052,7 @@ $(function() {
   $('#filterDomainModal').on('hidden.bs.modal', function() {
     console.log('Filter Domain Modal hidden, resetting form');
     $('#filterDomainForm')[0].reset();
-    $('#filterDomainTags, #filterDomainSystems, #filterDomainContacts, #filterDomainIpId').val(null).trigger('change');
+    $('#filterDomainTags, #filterDomainSystems').val(null).trigger('change');
   });
 
   // Clear All Filters button
@@ -1299,8 +1060,6 @@ $(function() {
     // Clear all select2 values
     $('#filterDomainTags').val(null).trigger('change');
     $('#filterDomainSystems').val(null).trigger('change');
-    $('#filterDomainContacts').val(null).trigger('change');
-    $('#filterDomainIpId').val(null).trigger('change');
     $('#filterDomainRecordType').val('');
     
     // Close modal
@@ -1331,16 +1090,18 @@ function loadFilterExistingValues() {
   try {
     const filterTags = JSON.parse(filterDataEl.dataset.tags || '[]');
     const filterSystems = JSON.parse(filterDataEl.dataset.systems || '[]');
-    const filterContacts = JSON.parse(filterDataEl.dataset.contacts || '[]');
-    const filterIpAddresses = JSON.parse(filterDataEl.dataset.ipAddresses || '[]');
+    const filterStatus = JSON.parse(filterDataEl.dataset.status || '""');
     
-    console.log('Filter data:', { filterTags, filterSystems, filterContacts, filterIpAddresses });
+    console.log('Filter data:', { filterTags, filterSystems, filterStatus });
     
     // Clear existing options first to avoid duplicates
     $('#filterDomainTags').find('option').remove();
     $('#filterDomainSystems').find('option').remove();
-    $('#filterDomainContacts').find('option').remove();
-    $('#filterDomainIpId').find('option').remove();
+    
+    // Load Record Type
+    if (filterStatus) {
+      $('#filterDomainRecordType').val(filterStatus);
+    }
     
     // Load tags
     if (filterTags && filterTags.length > 0) {
@@ -1360,31 +1121,13 @@ function loadFilterExistingValues() {
       $('#filterDomainSystems').trigger('change');
     }
     
-    // Load contacts
-    if (filterContacts && filterContacts.length > 0) {
-      filterContacts.forEach(contact => {
-        const option = new Option(contact.name, contact.id, true, true);
-        $('#filterDomainContacts').append(option);
-      });
-      $('#filterDomainContacts').trigger('change');
-    }
-    
-    // Load IP addresses
-    if (filterIpAddresses && filterIpAddresses.length > 0) {
-      filterIpAddresses.forEach(ip => {
-        const option = new Option(ip.ip_address, ip.id, true, true);
-        $('#filterDomainIpId').append(option);
-      });
-      $('#filterDomainIpId').trigger('change');
-    }
-    
   } catch (e) {
     console.error('Error loading filter values:', e);
   }
 }
 
-function loadEditExistingValues(tags, systems, contacts, ipId, ipAddress) {
-  console.log('Loading existing values:', { tags, systems, contacts, ipId, ipAddress });
+function loadEditExistingValues(tags, systems, ipId, ipAddress) {
+  console.log('Loading existing values:', { tags, systems, ipId, ipAddress });
 
   // Load existing IP
   if (ipId && ipAddress) {
@@ -1431,24 +1174,6 @@ function loadEditExistingValues(tags, systems, contacts, ipId, ipAddress) {
     }
   }
 
-  // Load existing contacts
-  if (contacts && contacts.length > 0) {
-    try {
-      const contactArray = typeof contacts === 'string' ? JSON.parse(contacts) : contacts;
-      console.log('Parsed contacts:', contactArray);
-      
-      const contactOptions = contactArray.map(contact => {
-        const id = typeof contact === 'object' ? contact.id : contact;
-        const text = typeof contact === 'object' ? (contact.name || contact.email || contact.text) : contact;
-        return new Option(text, id, true, true);
-      });
-      
-      $('#editDomainContacts').append(contactOptions).trigger('change');
-      console.log('Contacts loaded successfully');
-    } catch (e) {
-      console.log('Error parsing contacts:', e);
-    }
-  }
 }
 
 function isValidIP(ip) {
@@ -1800,234 +1525,4 @@ function showDomainDetail(domainId) {
   modal.show();
 }
 
-// Import Domain functionality
-let selectedFile = null;
-
-// Handle file selection
-$(document).on('change', '#domainImportFile', function() {
-  selectedFile = this.files[0];
-  if (selectedFile) {
-    console.log('File selected:', selectedFile.name);
-    $('#validateDomainBtn').prop('disabled', false);
-        } else {
-    $('#validateDomainBtn').prop('disabled', true);
-    $('#importDomainBtn').hide();
-  }
-});
-
-// Handle validate button click
-$(document).on('click', '#validateDomainBtn', function() {
-  if (!selectedFile) {
-    alert('Please select a file first');
-    return;
-  }
-  
-  const formData = new FormData();
-  formData.append('file', selectedFile);
-  
-  // Show progress
-  $('#domainImportProgress').show();
-  $('#domainImportResults').text('Validating file...');
-  $('.progress-bar').css('width', '30%');
-  
-  $.ajax({
-    url: '/network/domain/validate-import',
-    type: 'POST',
-    data: formData,
-    processData: false,
-    contentType: false,
-    xhr: function() {
-      const xhr = new window.XMLHttpRequest();
-      xhr.responseType = 'blob'; // Important for file download
-      return xhr;
-    },
-    success: function(data, status, xhr) {
-      $('.progress-bar').css('width', '100%');
-      $('#domainImportResults').text('Validation complete! Downloading results...');
-      
-      // Handle file download
-      const contentType = xhr.getResponseHeader('Content-Type');
-      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
-      
-      if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
-        // Create blob and download file
-        const blob = new Blob([data], { type: contentType });
-        const url = window.URL.createObjectURL(blob);
-        
-        // Extract filename from Content-Disposition header
-        let filename = 'validation_results.xlsx';
-        if (contentDisposition) {
-          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-          if (filenameMatch) {
-            filename = filenameMatch[1];
-          }
-        }
-        
-        // Create download link
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
-        // Clean up
-        window.URL.revokeObjectURL(url);
-      }
-      
-      // Check validation results from header
-      const validationSummary = xhr.getResponseHeader('X-Validation-Summary');
-      if (validationSummary) {
-        try {
-          const summary = JSON.parse(validationSummary);
-          const resultsDiv = $('#domainImportResults');
-          resultsDiv.removeClass('alert-danger').addClass('alert-success')
-            .html(`<strong>Validation Complete!</strong><br>
-                   <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
-                   <small>Validation file downloaded. Review results before importing.</small>`);
-          resultsDiv.show();
-          
-          // Show import button if validation passed
-          if (summary.allPassed) {
-            $('#importDomainBtn').show();
-          }
-        } catch (e) {
-          // Fallback if header parsing fails
-          const resultsDiv = $('#domainImportResults');
-          resultsDiv.removeClass('alert-danger').addClass('alert-success')
-            .html(`<strong>Validation Complete!</strong><br>
-                   <small>Validation file downloaded. Review results before importing.</small>`);
-          resultsDiv.show();
-          $('#importDomainBtn').show();
-        }
-      }
-    },
-    error: function(xhr, status, error) {
-      console.error('Validation error:', xhr.responseText);
-      console.error('Status:', xhr.status);
-      console.error('Error:', error);
-      
-      $('.progress-bar').css('width', '100%').text('Validation Failed');
-      $('#domainImportResults').removeClass('alert-success').addClass('alert-danger')
-        .html('<strong>Validation Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
-        .show();
-      },
-      complete: function() {
-      $('#validateDomainBtn').prop('disabled', false);
-      setTimeout(() => {
-        $('#domainImportProgress').hide();
-      }, 2000);
-    }
-  });
-});
-
-// Handle import button click
-$(document).on('click', '#importDomainBtn', function() {
-  if (!selectedFile) {
-    alert('Please select a file first');
-    return;
-  }
-  
-  const formData = new FormData();
-  formData.append('file', selectedFile);
-  
-  // Show progress
-  $('#domainImportProgress').show();
-  $('#domainImportResults').text('Importing domains...');
-  $('.progress-bar').css('width', '30%').text('Importing...');
-  $('#importDomainBtn').prop('disabled', true);
-  
-  $.ajax({
-    url: '/network/domain/import',
-    type: 'POST',
-    data: formData,
-    processData: false,
-    contentType: false,
-    xhr: function() {
-      const xhr = new window.XMLHttpRequest();
-      xhr.responseType = 'blob'; // Important for file download
-      return xhr;
-    },
-    success: function(data, status, xhr) {
-      $('#domainImportProgress .progress-bar').css('width', '100%').text('Import Complete');
-      
-      // Handle file download
-      const contentType = xhr.getResponseHeader('Content-Type');
-      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
-      
-      if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
-        // Create blob and download file
-        const blob = new Blob([data], { type: contentType });
-        const url = window.URL.createObjectURL(blob);
-        
-        // Extract filename from Content-Disposition header
-        let filename = 'import_results.xlsx';
-        if (contentDisposition) {
-          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-          if (filenameMatch) {
-            filename = filenameMatch[1];
-          }
-        }
-        
-        // Create download link
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
-        // Clean up
-        window.URL.revokeObjectURL(url);
-      }
-      
-      // Show results
-      const resultsDiv = $('#domainImportResults');
-      resultsDiv.removeClass('alert-danger').addClass('alert-success')
-        .html(`<strong>Import Completed!</strong><br>
-               <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
-      resultsDiv.show();
-      
-      // Hide import button
-      $('#importDomainBtn').hide();
-      
-      // Refresh page after 2 seconds
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-    },
-    error: function(xhr, status, error) {
-      console.error('Import error:', xhr.responseText);
-      console.error('Status:', xhr.status);
-      console.error('Error:', error);
-      
-      $('#domainImportProgress .progress-bar').css('width', '100%').text('Import Failed');
-      $('#domainImportResults').removeClass('alert-success').addClass('alert-danger')
-        .html('<strong>Import Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
-        .show();
-    },
-    complete: function() {
-      $('#importDomainBtn').prop('disabled', false);
-      setTimeout(() => {
-        $('#domainImportProgress').hide();
-      }, 2000);
-    }
-  });
-});
-
-// Reset import modal when closed
-$('#importDomainModal').on('hidden.bs.modal', function() {
-  // Reset form
-  $('#importDomainForm')[0].reset();
-  selectedFile = null;
-  
-  // Reset UI elements
-  $('#validateDomainBtn').prop('disabled', true);
-  $('#importDomainBtn').hide();
-  $('#domainImportProgress').hide();
-  $('#domainImportResults').hide();
-  
-  // Reset progress bar
-  $('.progress-bar').css('width', '0%').text('');
-});
 </script>

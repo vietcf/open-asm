@@ -42,13 +42,6 @@ function buildPaginationUrl(targetPage) {
     filterTags.forEach(tag => params.append('tags[]', tag.id));
   }
   
-  if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
-    filterSystems.forEach(system => params.append('systems[]', system.id));
-  }
-  
-  if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) {
-    filterContacts.forEach(contact => params.append('contacts[]', contact.id));
-  }
   
   if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses && filterIpAddresses.length > 0) {
     filterIpAddresses.forEach(ip => params.append('ip_id[]', ip.id));
@@ -73,13 +66,6 @@ function buildExportUrl() {
     filterTags.forEach(tag => params.append('tags[]', tag.id));
   }
   
-  if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
-    filterSystems.forEach(system => params.append('systems[]', system.id));
-  }
-  
-  if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) {
-    filterContacts.forEach(contact => params.append('contacts[]', contact.id));
-  }
   
   if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses && filterIpAddresses.length > 0) {
     filterIpAddresses.forEach(ip => params.append('ip_id[]', ip.id));
@@ -133,19 +119,6 @@ function buildExportUrl() {
               <% }); %>
             <% } %>
             
-            <!-- Filter Systems -->
-            <% if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) { %>
-              <% filterSystems.forEach(function(system) { %>
-                <input type="hidden" name="systems[]" value="<%= system.id %>">
-              <% }); %>
-            <% } %>
-            
-            <!-- Filter Contacts -->
-            <% if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) { %>
-              <% filterContacts.forEach(function(contact) { %>
-                <input type="hidden" name="contacts[]" value="<%= contact.id %>">
-              <% }); %>
-            <% } %>
             
             <!-- Filter IP Addresses -->
             <% if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses && filterIpAddresses.length > 0) { %>
@@ -299,8 +272,6 @@ function buildExportUrl() {
                   <th>Zone</th>
                   <th>Environment</th>
                   <th>Tags</th>
-                  <th>Systems</th>
-                  <th>Contacts</th>
                   <th class="text-end">Actions</th>
                 </tr>
               </thead>
@@ -342,31 +313,6 @@ function buildExportUrl() {
                         <% } %>
                       </td>
                       
-                      <!-- Systems -->
-                    <td>
-                      <% if (subnet.systems && subnet.systems.length > 0) { %>
-                          <% subnet.systems.forEach(function(system) { %>
-                            <span class="badge bg-info me-1">
-                              <%= (typeof system === 'string') ? system : system.name %>
-                            </span>
-                        <% }) %>
-                        <% } else { %>
-                          <span class="text-muted">No systems</span>
-                        <% } %>
-                      </td>
-                      
-                      <!-- Contacts -->
-                      <td>
-                        <% if (subnet.contacts && subnet.contacts.length > 0) { %>
-                          <% subnet.contacts.forEach(function(contact) { %>
-                            <span class="badge bg-warning me-1">
-                              <%= (typeof contact === 'string') ? contact : (contact.name || contact.email) %>
-                            </span>
-                          <% }) %>
-                        <% } else { %>
-                          <span class="text-muted">No contacts</span>
-                        <% } %>
-                      </td>
                       
                       <!-- Actions -->
                       <td class="text-end">
@@ -381,20 +327,14 @@ function buildExportUrl() {
                         
                         <!-- Edit Button -->
                         <% if (hasPermission('subnet.update')) { %>
-                          <button type="button" 
-                                  class="btn btn-warning btn-sm" 
-                                  title="Edit" 
-                                  data-bs-toggle="modal" 
-                                  data-bs-target="#editSubnetModal"
+                          <button type="button" class="btn btn-warning btn-sm" title="Edit" 
+                                  data-bs-toggle="modal" data-bs-target="#editSubnetModal"
                                   data-subnet-id="<%= subnet.id %>"
                                   data-subnet="<%= subnet.address %>"
                                   data-description="<%= subnet.description || '' %>"
-                                  data-record-type="<%= subnet.environment %>"
-                                  data-ip-id="<%= subnet.ip ? subnet.ip.id : '' %>"
-                                  data-ip-address="<%= subnet.ip ? subnet.zone : '' %>"
-                                  data-tags="<%= JSON.stringify(subnet.tags || []) %>"
-                                  data-systems="<%= JSON.stringify(subnet.systems || []) %>"
-                                  data-contacts="<%= JSON.stringify(subnet.contacts || []) %>">
+                                  data-zone="<%= subnet.zone || '' %>"
+                                  data-environment="<%= subnet.environment || '' %>"
+                                  data-tags="<%= JSON.stringify(subnet.tags || []) %>">
                             <i class="bi bi-pencil"></i>
                           </button>
                         <% } %>
@@ -448,8 +388,6 @@ function buildExportUrl() {
                     if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
                     if (typeof filterTags !== 'undefined' && filterTags.length) filterTags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag.id || tag)); });
                     if (typeof filterStatus !== 'undefined' && filterStatus) params.push('status=' + encodeURIComponent(filterStatus));
-                    if (typeof filterSystems !== 'undefined' && filterSystems.length) filterSystems.forEach(function(system) { params.push('systems[]=' + encodeURIComponent(system.id || system)); });
-                    if (typeof filterContacts !== 'undefined' && filterContacts.length) filterContacts.forEach(function(contact) { params.push('contacts[]=' + encodeURIComponent(contact.id || contact)); });
                     if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses.length) filterIpAddresses.forEach(function(ip) { params.push('ip_id[]=' + encodeURIComponent(ip.id || ip)); });
                     return params.join('&');
                   }
@@ -528,7 +466,9 @@ function buildExportUrl() {
             <div class="mb-3">
               <label for="subnetAddress" class="form-label">Subnet Address <span class="text-danger">*</span></label>
               <input type="text" class="form-control form-control-sm" id="subnetAddress" name="address" placeholder="Subnet Address (e.g. 192.168.1.0/24)" required>
-                                </div>
+              <div class="invalid-feedback" id="subnetAddressError"></div>
+              <div class="valid-feedback" id="subnetAddressSuccess"></div>
+            </div>
             <div class="mb-3">
               <label for="subnetDescription" class="form-label">Description</label>
               <textarea class="form-control" id="subnetDescription" name="description" placeholder="Description" rows="4"></textarea>
@@ -591,25 +531,14 @@ function buildExportUrl() {
             
             <!-- Zone -->
             <div class="col-12">
-              <label for="editSubnetRecordType" class="form-label">Zone</label>
-              <select class="form-select" id="editSubnetRecordType" name="zone">
-                <option value="A">A</option>
-                <option value="AAAA">AAAA</option>
-                <option value="CNAME">CNAME</option>
-                <option value="MX">MX</option>
-                <option value="TXT">TXT</option>
-                <option value="NS">NS</option>
-                <option value="SRV">SRV</option>
-                <option value="PTR">PTR</option>
-                <option value="SOA">SOA</option>
-                <option value="OTHER">Other</option>
-              </select>
+              <label for="editSubnetZone" class="form-label">Zone</label>
+              <select class="form-select" id="editSubnetZone" name="zone"></select>
             </div>
             
             <!-- Environment -->
             <div class="col-12">
-              <label for="editSubnetIpId" class="form-label">Environment</label>
-              <select id="editSubnetIpId" name="environment" class="form-select">
+              <label for="editSubnetEnvironment" class="form-label">Environment</label>
+              <select id="editSubnetEnvironment" name="environment" class="form-select">
                 <!-- Options will be loaded via AJAX -->
               </select>
             </div>
@@ -622,21 +551,6 @@ function buildExportUrl() {
               </select>
             </div>
             
-            <!-- Systems -->
-            <div class="col-12">
-              <label for="editSubnetSystems" class="form-label">Systems</label>
-              <select id="editSubnetSystems" name="systems[]" class="form-select" multiple>
-                <!-- Options will be loaded via AJAX -->
-              </select>
-            </div>
-            
-            <!-- Contacts -->
-            <div class="col-12">
-              <label for="editSubnetContacts" class="form-label">Contacts</label>
-              <select id="editSubnetContacts" name="contacts[]" class="form-select" multiple>
-                <!-- Options will be loaded via AJAX -->
-              </select>
-            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -704,17 +618,6 @@ function buildExportUrl() {
               <select id="filterSubnetTags" name="tags[]" class="form-control" multiple></select>
                   </div>
             
-            <!-- Systems Filter -->
-            <div class="col-12 mb-2">
-              <label class="form-label">Systems</label>
-              <select id="filterSubnetSystems" name="systems[]" class="form-control" multiple></select>
-            </div>
-            
-            <!-- Contacts Filter -->
-            <div class="col-12 mb-2">
-              <label class="form-label">Contacts</label>
-              <select id="filterSubnetContacts" name="contacts[]" class="form-control" multiple></select>
-            </div>
             
             <!-- IP Address Filter -->
             <div class="col-12 mb-2">
@@ -774,7 +677,7 @@ function buildExportUrl() {
                 <li>Subnet Address (Required, one per row) is required and must be valid subnet format</li>
                 <li>Description is optional</li>
                 <li>Record Type is optional (default: A)</li>
-                <li>IP Address, Tags, Systems, and Contacts are optional and can be comma-separated if multiple</li>
+                <li>IP Address and Tags are optional and can be comma-separated if multiple</li>
                 <li>Select your filled template file and validate before importing</li>
             </ul>
           </div>
@@ -826,14 +729,12 @@ function buildExportUrl() {
      ========================================== -->
 <script>
 $(function() {
-  console.log('Initializing Subnet List JavaScript...');
   
   // ==========================================
   // SELECT2 INITIALIZATION
   // ==========================================
   
   // Tags Select2 - Add Subnet Modal
-  console.log('Setting up Tags Select2...');
   $('#subnetTags').select2({
     theme: 'bootstrap-5',
     placeholder: 'Select tags (optional)',
@@ -846,11 +747,9 @@ $(function() {
       dataType: 'json',
       delay: 250,
       data: params => {
-        console.log('Tags AJAX request:', params.term);
         return { search: params.term };
       },
       processResults: data => {
-        console.log('Tags API response:', data);
         return { results: data };
       },
       cache: true
@@ -858,7 +757,6 @@ $(function() {
   });
 
   // Tags select2 AJAX - Bootstrap 5 theme
-  console.log('Setting up Tags Select2...');
   $('#addSubnetTags').select2({
     theme: 'bootstrap-5',
     placeholder: 'Select tags (optional)',
@@ -867,15 +765,13 @@ $(function() {
     multiple: true,
     dropdownParent: $('#addSubnetModal'),
     ajax: {
-      url: '/system/api/system',
+      url: '/organize/api/tag',
       dataType: 'json',
       delay: 250,
       data: params => {
-        console.log('Systems AJAX request:', params.term);
         return { search: params.term };
       },
       processResults: data => {
-        console.log('Systems API response:', data);
         return { results: data };
       },
       cache: true
@@ -883,7 +779,6 @@ $(function() {
   });
 
   // Zone select2 AJAX - Bootstrap 5 theme (like Manufacturer)
-  console.log('Setting up Zone Select2...');
   $('#subnetZone').select2({
     theme: 'bootstrap-5',
     placeholder: 'Select or type zone',
@@ -914,7 +809,6 @@ $(function() {
   });
 
   // Environment select2 AJAX - Bootstrap 5 theme (like Manufacturer)
-  console.log('Setting up Environment Select2...');
   $('#subnetEnvironment').select2({
     theme: 'bootstrap-5',
     placeholder: 'Select or type environment',
@@ -944,33 +838,9 @@ $(function() {
     }
   });
 
-  console.log('All Select2 initialized!');
-
-  // Debug: Select2 events
-  $('#addSubnetTags').on('select2:open', function() {
-    console.log('Tags dropdown opened');
-  });
-  
-  $('#subnetZone').on('select2:open', function() {
-    console.log('Zone dropdown opened');
-  });
-  
-  $('#subnetEnvironment').on('select2:open', function() {
-    console.log('Environment dropdown opened');
-  });
-
-  // Debug: Modal events
-  $('#addSubnetModal').on('shown.bs.modal', function() {
-    console.log('Add Subnet Modal shown');
-    console.log('Select2 elements in modal:');
-    console.log('addSubnetTags:', $('#addSubnetModal #addSubnetTags').length);
-    console.log('subnetZone:', $('#addSubnetModal #subnetZone').length);
-    console.log('subnetEnvironment:', $('#addSubnetModal #subnetEnvironment').length);
-  });
 
   // Reset form when modal is hidden
   $('#addSubnetModal').on('hidden.bs.modal', function() {
-    console.log('Add Subnet Modal hidden, resetting form');
     $('#addSubnetForm')[0].reset();
     $('#addSubnetTags, #subnetZone, #subnetEnvironment').val(null).trigger('change');
   });
@@ -978,14 +848,10 @@ $(function() {
 
   // IP Address validation - Check immediately on blur
   $('#ipAddress').on('blur', function() {
-    console.log('IP input blurred - starting validation...');
     const ipInput = $(this).val().trim();
     const errorDiv = $('#ipAddressError');
     
-    console.log('Input value:', ipInput);
-    
     if (!ipInput) {
-      console.log('No input - clearing validation');
       $(this).removeClass('is-invalid is-valid');
       errorDiv.text('');
       $('#ipValidationIcon').hide();
@@ -996,12 +862,10 @@ $(function() {
       
     // Split by comma and check each IP
     const ipList = ipInput.split(',').map(ip => ip.trim()).filter(ip => ip.length > 0);
-    console.log('IP list to check:', ipList);
     
     // Validate format for each IP
     const invalidIPs = ipList.filter(ip => !isValidIP(ip));
     if (invalidIPs.length > 0) {
-      console.log('Invalid IPs found:', invalidIPs);
       $(this).removeClass('is-valid').addClass('is-invalid');
       errorDiv.text(`Invalid IP format: ${invalidIPs.join(', ')}`);
       $('#ipValidationIcon').hide();
@@ -1010,17 +874,113 @@ $(function() {
       return;
     }
     
-    console.log('All IPs format valid - checking existence...');
     // Check if any IP already exists
     checkMultipleIPsExist(ipList, $(this), errorDiv);
+  });
+
+  // Subnet address validation
+  $('#subnetAddress').on('blur', function() {
+    const subnetInput = $(this).val().trim();
+    const errorDiv = $('#subnetAddressError');
+    const successDiv = $('#subnetAddressSuccess');
+    const input = $(this);
+    
+    // Remove previous validation classes
+    input.removeClass('is-valid is-invalid');
+    errorDiv.text('');
+    successDiv.text('');
+    
+    if (!subnetInput) {
+      return;
+    }
+    
+    // Validate format first
+    const subnetRegex = /^\d{1,3}(\.\d{1,3}){3}\/\d{1,2}$/;
+    if (!subnetRegex.test(subnetInput)) {
+      input.addClass('is-invalid');
+      errorDiv.text('Invalid subnet format. Please use format like 192.168.1.0/24');
+      return;
+    }
+    
+    // Validate IP address parts
+    const [ipPart, cidrPart] = subnetInput.split('/');
+    const ipParts = ipPart.split('.');
+    const cidr = parseInt(cidrPart);
+    
+    // Check IP address validity
+    let isValidIP = true;
+    for (let part of ipParts) {
+      const num = parseInt(part);
+      if (isNaN(num) || num < 0 || num > 255) {
+        isValidIP = false;
+        break;
+      }
+    }
+    
+    if (!isValidIP) {
+      input.addClass('is-invalid');
+      errorDiv.text('Invalid IP address. Each octet must be between 0-255');
+      return;
+    }
+    
+    // Check CIDR validity
+    if (isNaN(cidr) || cidr < 0 || cidr > 32) {
+      input.addClass('is-invalid');
+      errorDiv.text('Invalid CIDR. Must be between 0-32');
+      return;
+    }
+    
+    // Show format is valid
+    input.addClass('is-valid');
+    successDiv.text('Format is valid, checking availability...');
+    
+    // Check if subnet already exists
+    $.ajax({
+      url: '/network/api/subnet-addresses',
+      method: 'GET',
+      data: { search: subnetInput },
+      success: function(response) {
+        // Check if any subnet matches exactly
+        const exactMatch = response.find(subnet => 
+          subnet.address && subnet.address.toLowerCase() === subnetInput.toLowerCase()
+        );
+        
+        if (exactMatch) {
+          input.removeClass('is-valid');
+          input.addClass('is-invalid');
+          errorDiv.text('This subnet address already exists');
+          successDiv.text('');
+        } else {
+          input.removeClass('is-invalid');
+          input.addClass('is-valid');
+          errorDiv.text('');
+          successDiv.text('✓ Subnet address is available');
+        }
+      },
+      error: function(xhr) {
+        // Other error
+        input.removeClass('is-valid is-invalid');
+        errorDiv.text('Error checking subnet availability');
+        successDiv.text('');
+      }
+    });
   });
 
   // Form submission
   $('#addSubnetForm').on('submit', function(e) {
     const subnetInput = $('#subnetAddress').val().trim();
+    const input = $('#subnetAddress');
+    
     if (!subnetInput) {
       e.preventDefault();
-      $('#subnetAddress').addClass('is-invalid');
+      input.addClass('is-invalid');
+      $('#subnetAddressError').text('Subnet address is required');
+      return;
+    }
+    
+    // Check if input has validation errors
+    if (input.hasClass('is-invalid')) {
+      e.preventDefault();
       return;
     }
     
@@ -1046,35 +1006,66 @@ $(function() {
     }
   });
 
-  $('#editSubnetSystems').select2({
+  // Edit Subnet Zone Select2
+  $('#editSubnetZone').select2({
     theme: 'bootstrap-5',
-    multiple: true,
+    placeholder: 'Select or type zone',
     allowClear: true,
     width: '100%',
     dropdownParent: $('#editSubnetModal'),
+    tags: true,
     ajax: {
-      url: '/system/api/system',
+      url: '/network/api/zones',
       dataType: 'json',
-      processResults: function(data) {
-        return { results: data };
-      }
+      delay: 250,
+      data: params => {
+        return { search: params.term };
+      },
+      processResults: function(data, params) {
+        const results = data || [];
+        return { results: results };
+      },
+      cache: true
+    },
+    createTag: function(params) {
+      return {
+        id: params.term,
+        text: params.term,
+        custom: true
+      };
     }
   });
 
-  $('#editSubnetContacts').select2({
+  // Edit Subnet Environment Select2
+  $('#editSubnetEnvironment').select2({
     theme: 'bootstrap-5',
-    multiple: true,
+    placeholder: 'Select or type environment',
     allowClear: true,
     width: '100%',
     dropdownParent: $('#editSubnetModal'),
+    tags: true,
     ajax: {
-              url: '/organize/api/contact',
+      url: '/network/api/environments',
       dataType: 'json',
-      processResults: function(data) {
-        return { results: data };
-      }
+      delay: 250,
+      data: params => {
+        return { search: params.term };
+      },
+      processResults: function(data, params) {
+        const results = data || [];
+        return { results: results };
+      },
+      cache: true
+    },
+    createTag: function(params) {
+      return {
+        id: params.term,
+        text: params.term,
+        custom: true
+      };
     }
   });
+
 
   $('#editSubnetIpId').select2({
             theme: 'bootstrap-5',
@@ -1090,48 +1081,61 @@ $(function() {
     }
   });
 
-  // Edit Subnet Modal - Load data when opened
+
+  // Edit Subnet Modal - Load data when shown
   $('#editSubnetModal').on('show.bs.modal', function(event) {
     const button = $(event.relatedTarget);
     const subnetId = button.data('subnet-id');
     const subnet = button.data('subnet');
-    const description = button.data('description') || '';
-    const recordType = button.data('record-type') || 'A';
-    const ipId = button.data('ip-id') || '';
-    const ipAddress = button.data('ip-address') || '';
-    const tags = button.data('tags') || [];
-    const systems = button.data('systems') || [];
-    const contacts = button.data('contacts') || [];
-
-    console.log('Edit Subnet Modal opened with data:', {
-      subnetId, subnet, description, recordType, ipId, ipAddress, tags, systems, contacts
-    });
-
-    // Set form action URL
-    const actionUrl = `/network/subnet-address/${subnetId}`;
-    $('#editSubnetForm').attr('action', actionUrl);
-    console.log('Form action set to:', actionUrl);
-
-    // Populate form fields
+    const description = button.data('description');
+    const zone = button.data('zone');
+    const environment = button.data('environment');
+    const tags = button.data('tags');
+    
+    // Set form action
+    $('#editSubnetForm').attr('action', '/network/subnet-address/' + subnetId);
+    
+    // Load basic data
     $('#editSubnetName').val(subnet);
     $('#editSubnetDescription').val(description);
-    $('#editSubnetRecordType').val(recordType);
-
-    // Load existing values for Select2 fields after a short delay
-        setTimeout(() => {
-      loadEditExistingValues(tags, systems, contacts, ipId, ipAddress);
-    }, 100);
+    
+    // Load zone
+    if (zone) {
+      const zoneOption = new Option(zone, zone, true, true);
+      $('#editSubnetZone').append(zoneOption).trigger('change');
+    }
+    
+    // Load environment
+    if (environment) {
+      const envOption = new Option(environment, environment, true, true);
+      $('#editSubnetEnvironment').append(envOption).trigger('change');
+    }
+    
+    // Load tags - clear existing first to avoid duplicates
+    $('#editSubnetTags').empty();
+    if (tags && tags.length > 0) {
+      try {
+        const tagArray = typeof tags === 'string' ? JSON.parse(tags) : tags;
+        const tagOptions = tagArray.map(tag => {
+          const id = typeof tag === 'object' ? tag.id : tag;
+          const text = typeof tag === 'object' ? (tag.name || tag.text) : tag;
+          return new Option(text, id, true, true);
+        });
+        
+        $('#editSubnetTags').append(tagOptions).trigger('change');
+      } catch (e) {
+      }
+    }
   });
 
   // Edit Subnet Modal - Reset form when hidden
   $('#editSubnetModal').on('hidden.bs.modal', function() {
     $('#editSubnetForm')[0].reset();
-    $('#editSubnetTags, #editSubnetSystems, #editSubnetContacts, #editSubnetIpId').val(null).trigger('change');
+    $('#editSubnetTags, #editSubnetZone, #editSubnetEnvironment').val(null).trigger('change');
   });
 
   // Edit Subnet Form submission
   $('#editSubnetForm').on('submit', function(e) {
-    console.log('Edit Subnet Form submitting...');
     
     // Get Subnet ID from form action or data attribute
     const currentAction = $(this).attr('action');
@@ -1141,10 +1145,6 @@ $(function() {
     const correctAction = `/network/subnet-address/${subnetId}?_method=PUT`;
     $(this).attr('action', correctAction);
     
-    console.log('Form action set to:', correctAction);
-    console.log('Form method:', $(this).attr('method'));
-    console.log('Method override in URL: ?_method=PUT');
-    console.log('Note: Browser will show POST, but server will receive PUT due to method override');
 
     // Allow normal form submission - backend handles redirect
     const submitBtn = $(this).find('button[type="submit"]');
@@ -1172,45 +1172,6 @@ $(function() {
             }
           });
 
-  $('#filterSubnetSystems').select2({
-        theme: 'bootstrap-5',
-        placeholder: 'Select system(s)',
-        allowClear: true,
-        width: '100%',
-    dropdownParent: $('#filterSubnetModal'),
-        ajax: {
-          url: '/system/api/system',
-          dataType: 'json',
-          delay: 250,
-      data: function(params) {
-        return { search: params.term };
-      },
-      processResults: function(data) {
-        return { results: data };
-      },
-          cache: true
-        }
-      });
-
-           $('#filterSubnetContacts').select2({
-             theme: 'bootstrap-5',
-             placeholder: 'Select contact(s)',
-             allowClear: true,
-             width: '100%',
-             dropdownParent: $('#filterSubnetModal'),
-             ajax: {
-               url: '/organize/api/contact',
-               dataType: 'json',
-               delay: 250,
-               data: function(params) {
-                 return { search: params.term };
-               },
-               processResults: function(data) {
-                 return { results: data };
-               },
-               cache: true
-             }
-           });
 
            $('#filterSubnetIpId').select2({
              theme: 'bootstrap-5',
@@ -1234,7 +1195,6 @@ $(function() {
 
   // Filter Subnet Modal - Load existing filter values when opened
   $('#filterSubnetModal').on('show.bs.modal', function() {
-    console.log('Filter Subnet Modal opened');
     
     // Load existing filter values
     setTimeout(() => {
@@ -1244,9 +1204,8 @@ $(function() {
 
   // Filter Subnet Modal - Reset form when hidden
   $('#filterSubnetModal').on('hidden.bs.modal', function() {
-    console.log('Filter Subnet Modal hidden, resetting form');
     $('#filterSubnetForm')[0].reset();
-    $('#filterSubnetTags, #filterSubnetSystems, #filterSubnetContacts, #filterSubnetIpId').val(null).trigger('change');
+    $('#filterSubnetTags, #filterSubnetIpId').val(null).trigger('change');
   });
 
   // Clear All Filters button
@@ -1272,12 +1231,9 @@ $(function() {
 });
 
 function loadFilterExistingValues() {
-  console.log('Loading existing filter values...');
-  
   // Get filter data from hidden div
   const filterDataEl = document.getElementById('filter-subnet-data');
   if (!filterDataEl) {
-    console.log('Filter data element not found');
     return;
   }
   
@@ -1286,12 +1242,9 @@ function loadFilterExistingValues() {
     const filterZone = JSON.parse(filterDataEl.dataset.zone || '""');
     const filterEnvironment = JSON.parse(filterDataEl.dataset.environment || '""');
     
-    console.log('Filter data:', { filterTags, filterZone, filterEnvironment });
     
     // Clear existing options first to avoid duplicates
     $('#filterSubnetTags').find('option').remove();
-    $('#filterSubnetSystems').find('option').remove();
-    $('#filterSubnetContacts').find('option').remove();
     $('#filterSubnetIpId').find('option').remove();
     
     // Load tags
@@ -1303,23 +1256,6 @@ function loadFilterExistingValues() {
       $('#filterSubnetTags').trigger('change');
     }
     
-    // Load systems
-    if (filterSystems && filterSystems.length > 0) {
-      filterSystems.forEach(system => {
-        const option = new Option(system.name, system.id, true, true);
-        $('#filterSubnetSystems').append(option);
-      });
-      $('#filterSubnetSystems').trigger('change');
-    }
-    
-    // Load contacts
-    if (filterContacts && filterContacts.length > 0) {
-      filterContacts.forEach(contact => {
-        const option = new Option(contact.name, contact.id, true, true);
-        $('#filterSubnetContacts').append(option);
-      });
-      $('#filterSubnetContacts').trigger('change');
-    }
     
     // Load IP addresses
     if (filterIpAddresses && filterIpAddresses.length > 0) {
@@ -1331,12 +1267,10 @@ function loadFilterExistingValues() {
     }
     
   } catch (e) {
-    console.error('Error loading filter values:', e);
   }
 }
 
-function loadEditExistingValues(tags, systems, contacts, ipId, ipAddress) {
-  console.log('Loading existing values:', { tags, systems, contacts, ipId, ipAddress });
+function loadEditExistingValues(tags, ipId, ipAddress) {
 
   // Load existing IP
   if (ipId && ipAddress) {
@@ -1344,63 +1278,24 @@ function loadEditExistingValues(tags, systems, contacts, ipId, ipAddress) {
     $('#editSubnetIpId').append(option).trigger('change');
   }
 
-  // Load existing tags
-      if (tags && tags.length > 0) {
+  // Load existing tags - clear existing first to avoid duplicates
+  $('#editSubnetTags').empty();
+  if (tags && tags.length > 0) {
     try {
-        const tagArray = typeof tags === 'string' ? JSON.parse(tags) : tags;
-      console.log('Parsed tags:', tagArray);
+      const tagArray = typeof tags === 'string' ? JSON.parse(tags) : tags;
       
       // For Select2, we need to create option elements first
-        const tagOptions = tagArray.map(tag => {
-          const id = typeof tag === 'object' ? tag.id : tag;
-          const text = typeof tag === 'object' ? (tag.name || tag.text) : tag;
-          return new Option(text, id, true, true);
-        });
-      
-        $('#editSubnetTags').append(tagOptions).trigger('change');
-      console.log('Tags loaded successfully');
-    } catch (e) {
-      console.log('Error parsing tags:', e);
-    }
-  }
-
-  // Load existing systems
-  if (systems && systems.length > 0) {
-    try {
-      const systemArray = typeof systems === 'string' ? JSON.parse(systems) : systems;
-      console.log('Parsed systems:', systemArray);
-      
-      const systemOptions = systemArray.map(system => {
-        const id = typeof system === 'object' ? system.id : system;
-        const text = typeof system === 'object' ? (system.name || system.text) : system;
+      const tagOptions = tagArray.map(tag => {
+        const id = typeof tag === 'object' ? tag.id : tag;
+        const text = typeof tag === 'object' ? (tag.name || tag.text) : tag;
         return new Option(text, id, true, true);
       });
       
-      $('#editSubnetSystems').append(systemOptions).trigger('change');
-      console.log('Systems loaded successfully');
+      $('#editSubnetTags').append(tagOptions).trigger('change');
     } catch (e) {
-      console.log('Error parsing systems:', e);
     }
   }
 
-  // Load existing contacts
-  if (contacts && contacts.length > 0) {
-    try {
-      const contactArray = typeof contacts === 'string' ? JSON.parse(contacts) : contacts;
-      console.log('Parsed contacts:', contactArray);
-      
-      const contactOptions = contactArray.map(contact => {
-        const id = typeof contact === 'object' ? contact.id : contact;
-        const text = typeof contact === 'object' ? (contact.name || contact.email || contact.text) : contact;
-        return new Option(text, id, true, true);
-      });
-      
-      $('#editSubnetContacts').append(contactOptions).trigger('change');
-      console.log('Contacts loaded successfully');
-    } catch (e) {
-      console.log('Error parsing contacts:', e);
-    }
-  }
 }
 
 function isValidIP(ip) {
@@ -1409,60 +1304,36 @@ function isValidIP(ip) {
 }
 
 function checkMultipleIPsExist(ipList, inputElement, errorDiv) {
-  console.log('=== Starting IP existence check ===');
-  console.log('IPs to check:', ipList);
-  
   // Check each IP one by one
   let checkedCount = 0;
   let existingIPs = [];
   
   ipList.forEach((ip, index) => {
-    console.log(`Checking IP ${index + 1}/${ipList.length}: ${ip}`);
-    
     $.ajax({
       url: '/network/api/ip-addresses',
       type: 'GET',
       data: { search: ip },
       success: function(data) {
-        console.log(`✓ IP ${ip} check response:`, data);
-        
-        // Debug: Show structure of first item if exists
-        if (data.length > 0) {
-          console.log(`First item structure:`, data[0]);
-          console.log(`Available fields:`, Object.keys(data[0]));
-        }
-        
         // Check if this specific IP already exists
         // Backend returns: { id: ..., text: ip_address }
         const existingIP = data.find(item => item.text === ip);
-        console.log(`Checking if IP ${ip} exists in response:`, existingIP);
-        console.log(`Available items in response:`, data.map(item => ({ id: item.id, text: item.text })));
         
         if (existingIP) {
-          console.log(`✗ IP ${ip} already exists!`);
           existingIPs.push(ip);
-      } else {
-          console.log(`✓ IP ${ip} is available`);
         }
         
         checkedCount++;
-        console.log(`Progress: ${checkedCount}/${ipList.length} IPs checked`);
         
         // When all IPs are checked
         if (checkedCount === ipList.length) {
-          console.log('=== All IPs checked ===');
-          console.log('Existing IPs:', existingIPs);
-          
           if (existingIPs.length > 0) {
-            console.log('❌ Some IPs already exist - showing error');
             inputElement.removeClass('is-valid').addClass('is-invalid');
             errorDiv.text(''); // Clear format error
             $('#ipValidationIcon').hide();
             $('#ipAddressSuccess').hide();
             $('#ipAddressExists').show();
             $('#ipExistsMessage').text(`IP addresses already exist: ${existingIPs.join(', ')}`);
-    } else {
-            console.log('✅ All IPs are available - showing success');
+          } else {
             inputElement.removeClass('is-invalid').addClass('is-valid');
             errorDiv.text(''); // Clear error message
             $('#ipValidationIcon').show();
@@ -1472,12 +1343,10 @@ function checkMultipleIPsExist(ipList, inputElement, errorDiv) {
         }
       },
       error: function(xhr, status, error) {
-        console.error(`❌ Error checking IP ${ip}:`, error);
         checkedCount++;
         
         // When all IPs are checked (including errors)
         if (checkedCount === ipList.length) {
-          console.log('=== All IPs checked (with errors) ===');
           if (existingIPs.length > 0) {
             inputElement.removeClass('is-valid').addClass('is-invalid');
             errorDiv.text(''); // Clear format error
@@ -1485,7 +1354,7 @@ function checkMultipleIPsExist(ipList, inputElement, errorDiv) {
             $('#ipAddressSuccess').hide();
             $('#ipAddressExists').show();
             $('#ipExistsMessage').text(`IP addresses already exist: ${existingIPs.join(', ')}`);
-    } else {
+          } else {
             // Don't show error for API failure, just remove validation
             inputElement.removeClass('is-invalid is-valid');
             errorDiv.text(''); // Clear any error message
@@ -1495,8 +1364,8 @@ function checkMultipleIPsExist(ipList, inputElement, errorDiv) {
           }
         }
       }
-            });
-          });
+    });
+  });
 }
 
         
@@ -1516,15 +1385,12 @@ function isIPInSubnet(ipAddress, subnetCIDR) {
     const [subnetIP, prefixLength] = subnetCIDR.split('/');
     const prefix = parseInt(prefixLength);
     
-    console.log('Checking IP:', ipAddress, 'in subnet:', subnetCIDR);
-    console.log('Subnet IP:', subnetIP, 'Prefix:', prefix);
     
     // Convert IPs to numbers
     const ipParts = ipAddress.split('.');
     const subnetParts = subnetIP.split('.');
     
     if (ipParts.length !== 4 || subnetParts.length !== 4) {
-      console.log('Invalid IP format');
       return false;
     }
     
@@ -1534,18 +1400,15 @@ function isIPInSubnet(ipAddress, subnetCIDR) {
     const mask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
     
     const result = (ip & mask) === (subnet & mask);
-    console.log('IP number:', ip, 'Subnet number:', subnet, 'Mask:', mask, 'Result:', result);
     
     return result;
   } catch (error) {
-    console.error('Error in isIPInSubnet:', error);
     return false;
   }
 }
 
 // Function to load subnet information for an IP address
 function loadSubnetInfoForIP(ipAddress, contentElement) {
-  console.log('Loading subnet info for IP:', ipAddress);
   
   // Make AJAX call to find subnet containing this IP
   $.ajax({
@@ -1553,21 +1416,13 @@ function loadSubnetInfoForIP(ipAddress, contentElement) {
     method: 'GET',
     dataType: 'json'
   }).done(function(response) {
-    console.log('Subnet response received:', response);
-    
     if (response.found && response.subnet) {
-      console.log('Found matching subnet:', response.subnet);
       updateSubnetInfoInModal(contentElement, response.subnet);
     } else {
-      console.log('No matching subnet found');
       updateSubnetInfoInModal(contentElement, null);
     }
   }).fail(function(xhr, status, error) {
-    console.error('Error loading subnet information:', status, error);
-    console.error('Response:', xhr.responseText);
-    
     // Fallback: try with sample data for testing
-    console.log('Trying with sample subnet data...');
     const sampleSubnets = [
       { address: '10.1.0.0/16', zone: 'BACKBONE', environment: 'DEV' },
       { address: '192.168.1.0/24', zone: 'OFFICE', environment: 'PROD' },
@@ -1577,7 +1432,6 @@ function loadSubnetInfoForIP(ipAddress, contentElement) {
     let matchingSubnet = null;
     for (let subnet of sampleSubnets) {
       if (isIPInSubnet(ipAddress, subnet.address)) {
-        console.log('Found matching sample subnet:', subnet);
         matchingSubnet = subnet;
         break;
       }
@@ -1687,11 +1541,8 @@ function showSubnetDetail(subnetId) {
   let html = '<div class="card"><div class="card-body">';
   html += '<div class="mb-2"><strong>Subnet Address:</strong> ' + String(subnet.address || 'N/A').trim() + '</div>';
   html += '<div class="mb-2"><strong>Description:</strong> ' + String(subnet.description || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>Record Type:</strong> ' + String(subnet.environment || 'A').trim() + '</div>';
-  
-  if (subnet.ip && subnet.zone) {
-    html += '<div class="mb-2"><strong>IP Address:</strong> ' + String(subnet.zone).trim() + '</div>';
-  }
+  html += '<div class="mb-2"><strong>Zone:</strong> ' + String(subnet.zone || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>Environment:</strong> ' + String(subnet.environment || 'N/A').trim() + '</div>';
   
   if (subnet.tags && subnet.tags.length > 0) {
     html += '<div class="mb-2"><strong>Tags:</strong><br>';
@@ -1702,50 +1553,6 @@ function showSubnetDetail(subnetId) {
     html += '</div>';
   }
   
-  if (subnet.systems && subnet.systems.length > 0) {
-    html += '<div class="mb-2"><strong>Systems:</strong><ul class="mb-0">';
-    subnet.systems.forEach(function(system) {
-      const systemValue = (typeof system === 'string' ? system : system.name);
-      const searchUrl = '/system/system?search=' + encodeURIComponent(systemValue) + '&pageSize=2';
-      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + 
-              String(systemValue).trim() + '</a></li>';
-    });
-    html += '</ul></div>';
-  }
-  
-  if (subnet.contacts && subnet.contacts.length > 0) {
-    html += '<div class="mb-2"><strong>Contacts:</strong><ul class="mb-0">';
-    subnet.contacts.forEach(function(contact) {
-      let contactName = '';
-      let contactEmail = '';
-      
-      if (typeof contact === 'string') {
-        contactName = contact;
-        contactEmail = '';
-  } else {
-        contactName = contact.name || '';
-        contactEmail = contact.email || '';
-      }
-      
-      // Create short email (remove @subnet part)
-      let shortEmail = '';
-      if (contactEmail && contactEmail.includes('@')) {
-        shortEmail = contactEmail.split('@')[0];
-      }
-      
-      // Format: name (shortEmail) or just name if no email
-      let displayText = contactName;
-      if (shortEmail) {
-        displayText += ' (' + shortEmail + ')';
-      }
-      
-      // Create searchable link as simple text
-      const searchUrl = '/organize/contact?search=' + encodeURIComponent(contactName);
-      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + 
-              String(displayText).trim() + '</a></li>';
-    });
-    html += '</ul></div>';
-  }
   
   html += '</div></div>';
   content.innerHTML = html;
@@ -1759,7 +1566,6 @@ let selectedFile = null;
 $(document).on('change', '#subnetImportFile', function() {
   selectedFile = this.files[0];
   if (selectedFile) {
-    console.log('File selected:', selectedFile.name);
     $('#validateSubnetBtn').prop('disabled', false);
         } else {
     $('#validateSubnetBtn').prop('disabled', true);
@@ -1855,9 +1661,6 @@ $(document).on('click', '#validateSubnetBtn', function() {
       }
     },
     error: function(xhr, status, error) {
-      console.error('Validation error:', xhr.responseText);
-      console.error('Status:', xhr.status);
-      console.error('Error:', error);
       
       $('.progress-bar').css('width', '100%').text('Validation Failed');
       $('#subnetImportResults').removeClass('alert-success').addClass('alert-danger')
@@ -1949,9 +1752,6 @@ $(document).on('click', '#importSubnetBtn', function() {
       }, 2000);
     },
     error: function(xhr, status, error) {
-      console.error('Import error:', xhr.responseText);
-      console.error('Status:', xhr.status);
-      console.error('Error:', error);
       
       $('#subnetImportProgress .progress-bar').css('width', '100%').text('Import Failed');
       $('#subnetImportResults').removeClass('alert-success').addClass('alert-danger')

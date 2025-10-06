@@ -343,8 +343,8 @@ networkController.listSubnet = async (req, res) => {
     const uniqueZones = await Subnet.getUniqueZones();
     const uniqueEnvironments = await Subnet.getUniqueEnvironments();
     
-    const success = req.flash('success')[0];
-    const error = req.flash('error')[0];
+    const successMessage = req.flash('success')[0];
+    const errorMessage = req.flash('error')[0];
     res.render('pages/network/subnet_list', {
       subnetList,
       subnetTree, // truyền thêm biến này
@@ -358,8 +358,8 @@ networkController.listSubnet = async (req, res) => {
       filterEnvironment,
       uniqueZones,
       uniqueEnvironments,
-      success,
-      error,
+      successMessage,
+      errorMessage,
       // allowedPageSizes không cần truyền, đã có global
       title: 'Subnet List',
       activeMenu: 'subnet-address'
@@ -377,12 +377,42 @@ networkController.createSubnet = async (req, res) => {
     await client.query('BEGIN');
     let { address, description, zone, environment, page, tags } = req.body;
     tags = tags ? (Array.isArray(tags) ? tags : [tags]) : [];
+    
+    console.log('Create Subnet - Raw tags from request:', tags);
+    console.log('Create Subnet - Tags type:', typeof tags, 'Is Array:', Array.isArray(tags));
     if (!address || !/\d{1,3}(\.\d{1,3}){3}\/\d{1,2}$/.test(address)) {
       req.flash('error', 'Invalid subnet address format. Please enter a valid subnet, e.g. 192.168.1.0/24');
       await client.query('ROLLBACK');
       return res.redirect('/network/subnet-address');
     }
     const updated_by = req.session.user?.username || '';
+    
+    // Validate tags if provided
+    if (tags && tags.length > 0) {
+      // Filter out empty/invalid tag IDs
+      const validTagIds = tags.filter(tagId => tagId && tagId.toString().trim() !== '');
+      
+      if (validTagIds.length !== tags.length) {
+        req.flash('error', 'Some selected tags are invalid. Please refresh the page and try again.');
+        await client.query('ROLLBACK');
+        return res.redirect('/network/subnet-address');
+      }
+      
+      // Check if all tags exist
+      for (const tagId of validTagIds) {
+        const tagExists = await Tag.exists(tagId);
+        if (!tagExists) {
+          console.log(`Tag validation failed: Tag ID ${tagId} does not exist`);
+          req.flash('error', 'One or more selected tags no longer exist. Please refresh the page and select tags again.');
+          await client.query('ROLLBACK');
+          return res.redirect('/network/subnet-address');
+        }
+      }
+      
+      // Use only valid tags
+      tags = validTagIds;
+    }
+    
     // Create subnet without tags
     // @ts-ignore - client parameter is supported by model methods
     const newSubnet = await Subnet.create({ address, description, zone, environment, updated_by }, client);
@@ -397,6 +427,10 @@ networkController.createSubnet = async (req, res) => {
     let errorMessage = err.message || 'Add failed.';
     if (errorMessage.includes('duplicate key value') && errorMessage.includes('unique constraint')) {
       errorMessage = 'Subnet address already exists.';
+    } else if (err.code === '23503' && errorMessage.includes('tag_object_tag_id_fkey')) {
+      errorMessage = 'One or more selected tags do not exist. Please select valid tags.';
+    } else if (err.code === '23503') {
+      errorMessage = 'Cannot create subnet due to invalid reference. Please check all selected options.';
     }
     req.flash('error', errorMessage);
     return res.redirect('/network/subnet-address');
@@ -412,10 +446,40 @@ networkController.updateSubnet = async (req, res) => {
     await client.query('BEGIN');
     let { description, zone, environment, page, tags } = req.body;
     tags = tags ? (Array.isArray(tags) ? tags : [tags]) : [];
+    
+    console.log('Update Subnet - Raw tags from request:', tags);
+    console.log('Update Subnet - Tags type:', typeof tags, 'Is Array:', Array.isArray(tags));
     description = description || '';
     zone = zone || '';
     environment = environment || '';
     const updated_by = req.session.user?.username || '';
+    
+    // Validate tags if provided
+    if (tags && tags.length > 0) {
+      // Filter out empty/invalid tag IDs
+      const validTagIds = tags.filter(tagId => tagId && tagId.toString().trim() !== '');
+      
+      if (validTagIds.length !== tags.length) {
+        req.flash('error', 'Some selected tags are invalid. Please refresh the page and try again.');
+        await client.query('ROLLBACK');
+        return res.redirect(`/network/subnet-address?page=${req.body.page || 1}`);
+      }
+      
+      // Check if all tags exist
+      for (const tagId of validTagIds) {
+        const tagExists = await Tag.exists(tagId);
+        if (!tagExists) {
+          console.log(`Tag validation failed: Tag ID ${tagId} does not exist`);
+          req.flash('error', 'One or more selected tags no longer exist. Please refresh the page and select tags again.');
+          await client.query('ROLLBACK');
+          return res.redirect(`/network/subnet-address?page=${req.body.page || 1}`);
+        }
+      }
+      
+      // Use only valid tags
+      tags = validTagIds;
+    }
+    
     // @ts-ignore - client parameter is supported by model methods
     await Subnet.update(req.params.id, { description, zone, environment, updated_by }, client);
     // @ts-ignore - client parameter is supported by model methods
@@ -428,6 +492,10 @@ networkController.updateSubnet = async (req, res) => {
     let errorMessage = err.message || 'Save failed.';
     if (errorMessage.includes('duplicate key value') && errorMessage.includes('unique constraint')) {
       errorMessage = 'Subnet address already exists.';
+    } else if (err.code === '23503' && errorMessage.includes('tag_object_tag_id_fkey')) {
+      errorMessage = 'One or more selected tags do not exist. Please select valid tags.';
+    } else if (err.code === '23503') {
+      errorMessage = 'Cannot update subnet due to invalid reference. Please check all selected options.';
     }
     req.flash('error', errorMessage);
     return res.redirect(`/network/subnet-address?page=${req.body.page || 1}`);
@@ -478,25 +546,47 @@ networkController.listDomain = async (req, res) => {
       (req.query['tags[]'] ? [req.query['tags[]']] : (Array.isArray(req.query.tags) ? req.query.tags : req.query.tags ? [req.query.tags] : []));
     const filterSystems = Array.isArray(req.query['systems[]']) ? req.query['systems[]'] :
       (req.query['systems[]'] ? [req.query['systems[]']] : (Array.isArray(req.query.systems) ? req.query.systems : req.query.systems ? [req.query.systems] : []));
-    const filterContacts = Array.isArray(req.query['contacts[]']) ? req.query['contacts[]'] :
-      (req.query['contacts[]'] ? [req.query['contacts[]']] : (Array.isArray(req.query.contacts) ? req.query.contacts : req.query.contacts ? [req.query.contacts] : []));
-    const filterIpAddresses = Array.isArray(req.query['ip_id[]']) ? req.query['ip_id[]'] :
-      (req.query['ip_id[]'] ? [req.query['ip_id[]']] : (Array.isArray(req.query.ip_id) ? req.query.ip_id : req.query.ip_id ? [req.query.ip_id] : []));
     
-    // Tìm kiếm domain theo domain, description, IP, hoặc tên hệ thống
-    let totalCount, domainList;
-    if (search) {
-      totalCount = await Domain.countSearch(search);
-      domainList = await Domain.findSearchPage(search, page, pageSize);
-    } else {
-      totalCount = await Domain.countAll();
-      domainList = await Domain.findPage(page, pageSize);
-    }
+    // Tìm kiếm domain với filters
+    const domainList = await Domain.findFilteredList({
+      search,
+      tags: filterTags,
+      systems: filterSystems,
+      status: filterStatus,
+      page,
+      pageSize
+    });
+    
+    const totalCount = await Domain.countFiltered({
+      search,
+      tags: filterTags,
+      systems: filterSystems,
+      status: filterStatus
+    });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const success = req.flash('success')[0];
     const error = req.flash('error')[0];
     // Load record type options from DB (Configuration)
     const recordTypeOptions = await getRecordTypeOptionsFromConfig();
+
+    // --- Fetch display names for selected filters (for select2 persistence) ---
+    let selectedTags = [];
+    if (Array.isArray(filterTags) && filterTags.length > 0) {
+      const tagList = await Tag.findByIds(filterTags);
+      selectedTags = filterTags.map(tid => {
+        const found = tagList.find(t => t.id == tid);
+        return found ? { id: found.id, name: found.name } : null;
+      }).filter(Boolean);
+    }
+    
+    let selectedSystems = [];
+    if (Array.isArray(filterSystems) && filterSystems.length > 0) {
+      const systemList = await System.findByIds(filterSystems);
+      selectedSystems = filterSystems.map(sid => {
+        const found = systemList.find(s => s.id == sid);
+        return found ? { id: found.id, name: found.name } : null;
+      }).filter(Boolean);
+    }
     res.render('pages/network/domain_list', {
       domainList,
       page,
@@ -508,10 +598,8 @@ networkController.listDomain = async (req, res) => {
       error,
       recordTypeOptions,
       filterStatus,
-      filterTags,
-      filterSystems,
-      filterContacts,
-      filterIpAddresses,
+      filterTags: selectedTags,
+      filterSystems: selectedSystems,
       title: 'Domain',
       activeMenu: 'domain'
     });
@@ -526,21 +614,24 @@ networkController.createDomain = async (req, res) => {
   try {
     await client.query('BEGIN');
     // Extract and normalize form data
-    let { domain, description, ip_id, record_type, systems } = req.body;
+    let { domain, description, ip_id, record_type, systems, tags } = req.body;
     domain = domain ? domain.trim() : '';
     description = description || '';
     record_type = record_type ? record_type.trim() : 'A';
     ip_id = ip_id && String(ip_id).trim() !== '' ? ip_id : null;
     systems = systems ? (Array.isArray(systems) ? systems : [systems]) : [];
+    tags = tags ? (Array.isArray(tags) ? tags : [tags]) : [];
     if (!domain) {
       req.flash('error', 'Domain name is required.');
       return res.redirect('/network/domain');
     }
-    // Create domain, then set systems via model
+    // Create domain, then set systems and tags via model
     // @ts-ignore - client parameter is supported by model methods
     const newDomain = await Domain.create({ domain, description, ip_id, record_type }, client);
     // @ts-ignore - client parameter is supported by model methods
     await Domain.setSystems(newDomain.id, systems, client);
+    // @ts-ignore - client parameter is supported by model methods
+    await Domain.setTags(newDomain.id, tags, client);
     await client.query('COMMIT');
     req.flash('success', 'Domain added successfully!');
     res.redirect('/network/domain');
@@ -563,17 +654,20 @@ networkController.updateDomain = async (req, res) => {
   try {
     await client.query('BEGIN');
     // Extract and normalize form data
-    let { description, ip_id, record_type, systems } = req.body;
+    let { description, ip_id, record_type, systems, tags } = req.body;
     description = description || '';
     record_type = record_type ? record_type.trim() : 'A';
     ip_id = ip_id && String(ip_id).trim() !== '' ? ip_id : null;
     systems = systems ? (Array.isArray(systems) ? systems : [systems]) : [];
+    tags = tags ? (Array.isArray(tags) ? tags : [tags]) : [];
     const id = req.params.id;
-    // Update domain, then set systems via model
+    // Update domain, then set systems and tags via model
     // @ts-ignore - client parameter is supported by model methods
     await Domain.update(id, { description, ip_id, record_type }, client);
     // @ts-ignore - client parameter is supported by model methods
     await Domain.setSystems(id, systems, client);
+    // @ts-ignore - client parameter is supported by model methods
+    await Domain.setTags(id, tags, client);
     await client.query('COMMIT');
     req.flash('success', 'Domain updated successfully!');
     res.redirect('/network/domain');
@@ -1375,7 +1469,11 @@ networkController.exportIpAddressList = async (req, res) => {
       ip.updated_at ? new Date(ip.updated_at).toLocaleString('en-GB') : '',
       ip.updated_by || '',
       (ip.systems && ip.systems.length ? ip.systems.map(s => s.name).join(', ') : ''),
-      (ip.contacts && ip.contacts.length ? ip.contacts.map(c => `${c.name} <${c.email}>`).join(', ') : '')
+      (ip.contacts && ip.contacts.length ? ip.contacts.map(c => {
+        // Extract username from email (part before @)
+        const emailUsername = c.email ? c.email.split('@')[0] : '';
+        return emailUsername || c.name || '';
+      }).join(', ') : '')
     ]);
     // Tạo file Excel
     const workbook = new ExcelJS.Workbook();
