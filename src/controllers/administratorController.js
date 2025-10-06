@@ -228,7 +228,18 @@ administratorController.deleteUser = async (req, res) => {
     req.flash('success', 'User deleted successfully!');
     res.redirect('/administrator/users');
   } catch (err) {
-    req.flash('error', 'Failed to delete user: ' + err.message);
+    // Handle specific database constraint errors with user-friendly messages
+    let errorMessage = 'Failed to delete user';
+    
+    if (err.code === '23503') { // foreign_key_violation
+      errorMessage = 'Cannot delete this user because they have associated records. Please remove all related data first.';
+    } else if (err.message && err.message.includes('foreign key constraint')) {
+      errorMessage = 'Cannot delete this user because they are referenced by other records. Please clean up all references first.';
+    } else {
+      errorMessage = 'Failed to delete user: ' + err.message;
+    }
+    
+    req.flash('error', errorMessage);
     res.redirect('/administrator/users');
   }
 };
@@ -386,7 +397,22 @@ administratorController.deleteRole = async (req, res) => {
     req.flash('success', 'Role deleted successfully!');
     res.redirect('/administrator/roles');
   } catch (err) {
-    req.flash('error', 'Failed to delete role: ' + err.message);
+    // Handle specific database constraint errors with user-friendly messages
+    let errorMessage = 'Failed to delete role';
+    
+    if (err.code === '23503') { // foreign_key_violation
+      if (err.constraint === 'users_role_id_fkey') {
+        errorMessage = 'Cannot delete this role because it is currently assigned to one or more users. Please reassign or remove those users first.';
+      } else {
+        errorMessage = 'Cannot delete this role because it is being used by other records. Please remove all references first.';
+      }
+    } else if (err.message && err.message.includes('foreign key constraint')) {
+      errorMessage = 'Cannot delete this role because it is currently in use. Please remove all users assigned to this role first.';
+    } else {
+      errorMessage = 'Failed to delete role: ' + err.message;
+    }
+    
+    req.flash('error', errorMessage);
     res.redirect('/administrator/roles');
   }
 };
@@ -783,19 +809,33 @@ administratorController.listSystemLogs = async (req, res) => {
   try {
     // Get query parameters
     const search = req.query.search ? req.query.search.trim() : '';
+    const dateFrom = req.query.dateFrom ? req.query.dateFrom.trim() : '';
+    const dateTo = req.query.dateTo ? req.query.dateTo.trim() : '';
     const page = parseInt(req.query.page, 10) || 1;
     const pageSize = parseInt(req.query.pageSize, 10) || res.locals.defaultPageSize || 20;
     
     // Build search conditions
-    let whereClause = '';
+    let whereConditions = [];
     let queryParams = [];
     let paramCount = 0;
     
     if (search) {
-      whereClause = `WHERE username ILIKE $${++paramCount} OR action ILIKE $${++paramCount} OR description ILIKE $${++paramCount} OR status ILIKE $${++paramCount}`;
+      whereConditions.push(`(username ILIKE $${++paramCount} OR action ILIKE $${++paramCount} OR description ILIKE $${++paramCount} OR status ILIKE $${++paramCount})`);
       const searchPattern = `%${search}%`;
-      queryParams = [searchPattern, searchPattern, searchPattern, searchPattern];
+      queryParams.push(searchPattern, searchPattern, searchPattern, searchPattern);
     }
+    
+    if (dateFrom) {
+      whereConditions.push(`created_at >= $${++paramCount}`);
+      queryParams.push(dateFrom + ' 00:00:00');
+    }
+    
+    if (dateTo) {
+      whereConditions.push(`created_at <= $${++paramCount}`);
+      queryParams.push(dateTo + ' 23:59:59');
+    }
+    
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
     
     // Get total count with search
     const countQuery = `SELECT COUNT(*) FROM system_log ${whereClause}`;
@@ -819,6 +859,8 @@ administratorController.listSystemLogs = async (req, res) => {
     res.render('pages/administrator/system_log', {
       logs,
       search,
+      dateFrom,
+      dateTo,
       page,
       pageSize,
       totalPages,

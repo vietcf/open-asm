@@ -804,44 +804,39 @@
 
           <!--begin::User Account Menu-->
           <li class="nav-item dropdown">
-            <a class="nav-link" data-bs-toggle="dropdown" href="#" id="userDropdown" role="button" aria-expanded="false">
-              <img src="<%= typeof userAvatar !== 'undefined' ? userAvatar : (imgPath + 'avatar.png') %>" alt="User Avatar" class="user-image rounded-circle" style="width:32px;height:32px;object-fit:cover;">
+            <a class="nav-link d-flex align-items-center" data-bs-toggle="dropdown" href="#" id="userDropdown" role="button" aria-expanded="false">
+              <img src="<%= typeof userAvatar !== 'undefined' ? userAvatar : (imgPath + 'avatar.png') %>" alt="User Avatar" class="rounded-circle me-2" style="width:32px;height:32px;object-fit:cover;">
               <span class="d-none d-md-inline"><%= typeof user !== 'undefined' && user && user.username ? user.username : 'User' %></span>
+              <i class="bi bi-caret-down ms-1"></i>
             </a>
-            <ul class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
-              <!--begin::User Image-->
-              <li class="user-header bg-primary">
-                <img src="<%= typeof userAvatar !== 'undefined' ? userAvatar : (imgPath + 'avatar.png') %>" alt="User Avatar" class="rounded-circle" style="width:90px;height:90px;object-fit:cover;">
-                <p>
-                  <%= typeof user !== 'undefined' && user && user.username ? user.username : 'User' %>
-                  <small>Member since Nov. 2012</small>
-                </p>
-              </li>
-              <!--end::User Image-->
-
-              <!--begin::Menu Body-->
-              <li class="user-body">
-                <div class="row">
-                  <div class="col-4 text-center">
-                    <a href="#">Followers</a>
-                  </div>
-                  <div class="col-4 text-center">
-                    <a href="#">Sales</a>
-                  </div>
-                  <div class="col-4 text-center">
-                    <a href="#">Friends</a>
+            <ul class="dropdown-menu dropdown-menu-end" style="min-width: 200px;">
+              <!--begin::User Header-->
+              <li class="dropdown-header bg-light border-bottom">
+                <div class="d-flex align-items-center">
+                  <img src="<%= typeof userAvatar !== 'undefined' ? userAvatar : (imgPath + 'avatar.png') %>" alt="User Avatar" class="rounded-circle me-3" style="width:40px;height:40px;object-fit:cover;">
+                  <div>
+                    <div class="fw-bold text-dark"><%= typeof user !== 'undefined' && user && user.username ? user.username : 'User' %></div>
+                    <small class="text-muted">Administrator</small>
                   </div>
                 </div>
-                <!--end::Row-->
               </li>
-              <!--end::Menu Body-->
+              <!--end::User Header-->
 
-              <!--begin::Menu Footer-->
-              <li class="user-footer">
-                <a href="/profile" class="btn btn-default btn-flat">Profile</a>
-                <a href="/logout" class="btn btn-default btn-flat float-end">Sign out</a>
+              <!--begin::Menu Items-->
+              <li><hr class="dropdown-divider my-1"></li>
+              <li>
+                <a class="dropdown-item d-flex align-items-center py-2" href="/change-password">
+                  <i class="bi bi-key me-3 text-primary"></i>
+                  <span>Change Password</span>
+                </a>
               </li>
-              <!--end::Menu Footer-->
+              <li>
+                <a class="dropdown-item d-flex align-items-center py-2" href="/logout">
+                  <i class="bi bi-box-arrow-right me-3 text-danger"></i>
+                  <span>Logout</span>
+                </a>
+              </li>
+              <!--end::Menu Items-->
             </ul>
           </li>
           <!--end::User Account Menu-->

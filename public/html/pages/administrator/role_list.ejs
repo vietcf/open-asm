@@ -1,21 +1,16 @@
-<!-- Content Header -->
-<div class="app-content-header">
 <div class="container-fluid">
-    <div class="row">
+  <!-- Breadcrumb -->
+  <div class="row mb-3">
     <div class="col-12">
-        <ol class="breadcrumb">
+      <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-0">
           <li class="breadcrumb-item"><a href="/">Home</a></li>
           <li class="breadcrumb-item"><a href="/administrator">Administrator</a></li>
-          <li class="breadcrumb-item active">Role List</li>
+          <li class="breadcrumb-item active" aria-current="page">Role List</li>
         </ol>
-        </div>
-        </div>
-      </div>
+      </nav>
     </div>
-  
-<!-- Main content -->
-<div class="app-content">
-  <div class="container-fluid">
+  </div>
   <!-- Search and Page Size Row -->
   <div class="row mb-3">
     <div class="col-12">
@@ -478,21 +473,4 @@ editRoleModals.forEach(modal => {
   });
 });
 </script>
-<% if (success) { %>
-  <script>
-    window.addEventListener('DOMContentLoaded', function() {
-      showToast('<%= success %>', 'success');
-    });
-  </script>
-<% } %>
-<% if (error) { %>
-  <script>
-    window.addEventListener('DOMContentLoaded', function() {
-      showToast('<%= error %>', 'danger');
-    });
-  </script>
-
 <!-- Responsive Tables CSS -->
-<% } %>
-</div>
-</div>

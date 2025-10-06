@@ -500,7 +500,18 @@ privAccountController.deleteRole = async (req, res) => {
     req.flash && req.flash('success', 'Privileged role deleted successfully!');
     res.redirect('/priv-account/role');
   } catch (err) {
-    req.flash && req.flash('error', err.message || 'Delete failed.');
+    // Handle specific database constraint errors with user-friendly messages
+    let errorMessage = 'Delete failed';
+    
+    if (err.code === '23503') { // foreign_key_violation
+      errorMessage = 'Cannot delete this role because it is currently assigned to users. Please reassign those users to other roles first.';
+    } else if (err.message && err.message.includes('foreign key constraint')) {
+      errorMessage = 'Cannot delete this role because it is being used. Please remove all users assigned to this role first.';
+    } else {
+      errorMessage = err.message || 'Delete failed';
+    }
+    
+    req.flash && req.flash('error', errorMessage);
     res.redirect('/priv-account/role');
   }
 };

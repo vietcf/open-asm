@@ -1,22 +1,36 @@
-<div class="container-fluid">
-  <!-- Breadcrumb -->
-  <div class="row mb-3">
-    <div class="col-12">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
           <li class="breadcrumb-item"><a href="/">Home</a></li>
           <li class="breadcrumb-item"><a href="/administrator">Administrator</a></li>
-          <li class="breadcrumb-item active" aria-current="page">System Logs</li>
+          <li class="breadcrumb-item active">System Logs</li>
         </ol>
-      </nav>
+      </div>
     </div>
   </div>
+</div>
+
+<!-- Main content -->
+<div class="app-content">
+  <div class="container-fluid">
 
   <!-- Search & Filter -->
   <div class="row mb-3">
     <div class="col-12">
       <div class="d-flex justify-content-end align-items-center gap-2">
         <form class="d-flex align-items-center gap-2" role="search" method="get" action="/administrator/log">
+          <!-- Date Range Picker -->
+          <div class="d-flex align-items-center gap-1">
+            <label class="form-label form-label-sm mb-0 text-muted">From:</label>
+            <input type="date" class="form-control form-control-sm" name="dateFrom" value="<%= typeof dateFrom !== 'undefined' ? dateFrom : '' %>" style="width: 140px;">
+          </div>
+          <div class="d-flex align-items-center gap-1">
+            <label class="form-label form-label-sm mb-0 text-muted">To:</label>
+            <input type="date" class="form-control form-control-sm" name="dateTo" value="<%= typeof dateTo !== 'undefined' ? dateTo : '' %>" style="width: 140px;">
+          </div>
           <div class="input-group input-group-sm" style="width: 250px;">
             <input class="form-control form-control-sm" type="search" name="search" placeholder="Search Logs..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
             <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
@@ -75,7 +89,7 @@
         <div class="card-header">
           <h3 class="card-title mb-0">Recent System Logs</h3>
         </div>
-        <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
+        <div class="card-body table-responsive" style="overflow-x: auto;">
           <table class="table table-hover">
             <thead>
               <tr>
@@ -153,6 +167,8 @@
                   let params = [];
                   if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
                   if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
+                  if (typeof dateFrom !== 'undefined' && dateFrom) params.push('dateFrom=' + encodeURIComponent(dateFrom));
+                  if (typeof dateTo !== 'undefined' && dateTo) params.push('dateTo=' + encodeURIComponent(dateTo));
                   return params.join('&');
                 }
                 const logFilterQuery = buildLogFilterQuery();
@@ -183,6 +199,7 @@
     </div>
   </div>
 </div>
+</div>
 <% if (success) { %>
   <script>
     window.addEventListener('DOMContentLoaded', function() {
@@ -199,3 +216,114 @@
 
 <!-- Responsive Tables CSS -->
 <% } %>
+
+<script>
+$(document).ready(function() {
+  // Date range picker functionality
+  const dateFromInput = $('input[name="dateFrom"]');
+  const dateToInput = $('input[name="dateTo"]');
+  
+  // Set max date for "From" field to today
+  const today = new Date().toISOString().split('T')[0];
+  dateFromInput.attr('max', today);
+  dateToInput.attr('max', today);
+  
+  // Validate date range
+  function validateDateRange() {
+    const fromDate = dateFromInput.val();
+    const toDate = dateToInput.val();
+    
+    if (fromDate && toDate && fromDate > toDate) {
+      dateToInput[0].setCustomValidity('End date must be after start date');
+      return false;
+    } else {
+      dateToInput[0].setCustomValidity('');
+      return true;
+    }
+  }
+  
+  // Add validation on change
+  dateFromInput.on('change', function() {
+    validateDateRange();
+    // Auto-submit form when date range changes
+    if (dateFromInput.val() || dateToInput.val()) {
+      $(this).closest('form').submit();
+    }
+  });
+  
+  dateToInput.on('change', function() {
+    validateDateRange();
+    // Auto-submit form when date range changes
+    if (dateFromInput.val() || dateToInput.val()) {
+      $(this).closest('form').submit();
+    }
+  });
+  
+  // Quick date range buttons
+  function addQuickDateButtons() {
+    const form = $('form[action="/administrator/log"]');
+    const quickButtons = $(`
+      <div class="d-flex align-items-center gap-1 ms-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-range="today">Today</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-range="yesterday">Yesterday</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-range="week">This Week</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-range="month">This Month</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-range="clear">Clear</button>
+      </div>
+    `);
+    
+    form.append(quickButtons);
+    
+    // Handle quick date buttons
+    quickButtons.find('button').on('click', function() {
+      const range = $(this).data('range');
+      const today = new Date();
+      
+      switch(range) {
+        case 'today':
+          const todayStr = today.toISOString().split('T')[0];
+          dateFromInput.val(todayStr);
+          dateToInput.val(todayStr);
+          break;
+        case 'yesterday':
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayStr = yesterday.toISOString().split('T')[0];
+          dateFromInput.val(yesterdayStr);
+          dateToInput.val(yesterdayStr);
+          break;
+        case 'week':
+          const weekStart = new Date(today);
+          weekStart.setDate(today.getDate() - today.getDay());
+          const weekStartStr = weekStart.toISOString().split('T')[0];
+          const todayStr2 = today.toISOString().split('T')[0];
+          dateFromInput.val(weekStartStr);
+          dateToInput.val(todayStr2);
+          break;
+        case 'month':
+          const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+          const monthStartStr = monthStart.toISOString().split('T')[0];
+          const todayStr3 = today.toISOString().split('T')[0];
+          dateFromInput.val(monthStartStr);
+          dateToInput.val(todayStr3);
+          break;
+        case 'clear':
+          dateFromInput.val('');
+          dateToInput.val('');
+          break;
+      }
+      
+      // Submit form after setting dates
+      if (range !== 'clear') {
+        form.submit();
+      } else {
+        // For clear, submit to remove date filters
+        form.submit();
+      }
+    });
+  }
+  
+  // Add quick date buttons
+  addQuickDateButtons();
+});
+</script>
