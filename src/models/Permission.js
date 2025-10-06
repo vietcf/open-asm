@@ -84,9 +84,18 @@ class Permission {
    * @returns {Promise<number>}
    */
   static async countFiltered(filters = {}) {
-    // Hiện tại chỉ hỗ trợ đếm tất cả, có thể mở rộng filter sau
-    const sql = 'SELECT COUNT(*) FROM permissions';
-    const result = await pool.query(sql);
+    let whereClause = '';
+    let queryParams = [];
+    let paramCount = 0;
+    
+    if (filters.search) {
+      whereClause = `WHERE name ILIKE $${++paramCount} OR description ILIKE $${++paramCount}`;
+      const searchPattern = `%${filters.search}%`;
+      queryParams = [searchPattern, searchPattern];
+    }
+    
+    const sql = `SELECT COUNT(*) FROM permissions ${whereClause}`;
+    const result = await pool.query(sql, queryParams);
     return parseInt(result.rows[0].count, 10);
   }
 
@@ -98,10 +107,19 @@ class Permission {
    * @returns {Promise<Array>}
    */
   static async findFilteredList({ page, pageSize, ...filters }) {
-    // Hiện tại chỉ hỗ trợ phân trang, có thể mở rộng filter sau
+    let whereClause = '';
+    let queryParams = [];
+    let paramCount = 0;
+    
+    if (filters.search) {
+      whereClause = `WHERE name ILIKE $${++paramCount} OR description ILIKE $${++paramCount}`;
+      const searchPattern = `%${filters.search}%`;
+      queryParams = [searchPattern, searchPattern];
+    }
+    
     const offset = (page - 1) * pageSize;
-    const sql = `SELECT id, name, description FROM permissions ORDER BY name LIMIT $1 OFFSET $2`;
-    const result = await pool.query(sql, [pageSize, offset]);
+    const sql = `SELECT id, name, description FROM permissions ${whereClause} ORDER BY name LIMIT $${++paramCount} OFFSET $${++paramCount}`;
+    const result = await pool.query(sql, [...queryParams, pageSize, offset]);
     return result.rows;
   }
 }

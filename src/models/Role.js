@@ -47,6 +47,51 @@ const Role = {
       await client.query('INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)', [newRole.id, pid]);
     }
     return newRole;
+  },
+  
+  /**
+   * Count roles with optional filters (for pagination/search)
+   * @param {Object} filters
+   * @returns {Promise<number>}
+   */
+  countFiltered: async (filters = {}) => {
+    let whereClause = '';
+    let queryParams = [];
+    let paramCount = 0;
+    
+    if (filters.search) {
+      whereClause = `WHERE name ILIKE $${++paramCount} OR description ILIKE $${++paramCount}`;
+      const searchPattern = `%${filters.search}%`;
+      queryParams = [searchPattern, searchPattern];
+    }
+    
+    const sql = `SELECT COUNT(*) FROM roles ${whereClause}`;
+    const result = await pool.query(sql, queryParams);
+    return parseInt(result.rows[0].count, 10);
+  },
+  
+  /**
+   * Get a filtered page of roles (for pagination/search)
+   * @param {Object} params
+   * @param {number} params.page
+   * @param {number} params.pageSize
+   * @returns {Promise<Array>}
+   */
+  findFilteredList: async ({ page, pageSize, ...filters }) => {
+    let whereClause = '';
+    let queryParams = [];
+    let paramCount = 0;
+    
+    if (filters && typeof filters['search'] === 'string' && filters['search'].trim()) {
+      whereClause = `WHERE name ILIKE $${++paramCount} OR description ILIKE $${++paramCount}`;
+      const searchPattern = `%${filters['search']}%`;
+      queryParams = [searchPattern, searchPattern];
+    }
+    
+    const offset = (page - 1) * pageSize;
+    const sql = `SELECT id, name, description FROM roles ${whereClause} ORDER BY name LIMIT $${++paramCount} OFFSET $${++paramCount}`;
+    const result = await pool.query(sql, [...queryParams, pageSize, offset]);
+    return result.rows;
   }
 };
 
