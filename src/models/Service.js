@@ -19,6 +19,14 @@ class Service {
     return result.rows[0];
   }
 
+  // Get services by array of ids
+  static async findByIds(ids) {
+    if (!ids || ids.length === 0) return [];
+    const placeholders = ids.map((_, index) => `$${index + 1}`).join(',');
+    const result = await pool.query(`SELECT * FROM services WHERE id IN (${placeholders}) ORDER BY name`, ids);
+    return result.rows;
+  }
+
   // Update a service (partial update - only update provided fields)
   static async update(id, updateData) {
     // Build dynamic query based on provided fields

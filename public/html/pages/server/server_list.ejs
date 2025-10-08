@@ -64,6 +64,16 @@ function buildExportUrl() {
     params.set('status', filterStatus);
   }
   
+  // Add type filter if exists
+  if (typeof filterType !== 'undefined' && filterType) {
+    params.set('type', filterType);
+  }
+  
+  // Add location filter if exists
+  if (typeof filterLocation !== 'undefined' && filterLocation) {
+    params.set('location', filterLocation);
+  }
+  
   // Add tags filter if exists
   if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
     filterTags.forEach(tag => {
@@ -76,6 +86,25 @@ function buildExportUrl() {
     filterSystems.forEach(system => {
       params.append('systems[]', system.id);
     });
+  }
+  
+  // Add contacts filter if exists
+  if (typeof filterManager !== 'undefined' && filterManager && filterManager.length > 0) {
+    filterManager.forEach(contact => {
+      params.append('contacts[]', contact.id);
+    });
+  }
+  
+  // Add services filter if exists
+  if (typeof filterServices !== 'undefined' && filterServices && filterServices.length > 0) {
+    filterServices.forEach(service => {
+      params.append('services[]', service.id);
+    });
+  }
+  
+  // Add OS filter if exists
+  if (typeof filterOs !== 'undefined' && filterOs) {
+    params.set('os', filterOs);
   }
   
   return '/server/server/export' + (params.toString() ? '?' + params.toString() : '');
@@ -183,13 +212,18 @@ function buildExportUrl() {
     <div id="filter-server-data"
          data-tags='<%= JSON.stringify(filterTags || []) %>'
          data-systems='<%= JSON.stringify(filterSystems || []) %>'
-         data-status='<%= JSON.stringify(filterStatus || '') %>' 
+         data-status='<%= filterStatus || '' %>'
+         data-manager='<%= JSON.stringify(filterManager || []) %>'
+         data-services='<%= JSON.stringify(filterServices || []) %>'
+         data-os='<%= filterOs || '' %>'
+         data-type='<%= filterType || '' %>'
+         data-location='<%= filterLocation || '' %>'
          style="display:none"></div>
 
     <!-- Flash Messages -->
-    <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+    <% if (typeof success !== 'undefined' && success) { %>
       <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
-        <i class="bi bi-check-circle me-2"></i><%= successMessage %>
+        <i class="bi bi-check-circle me-2"></i><%= success %>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
       <script>
@@ -204,9 +238,9 @@ function buildExportUrl() {
       </script>
     <% } %>
     
-    <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+    <% if (typeof error !== 'undefined' && error) { %>
       <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
-        <i class="bi bi-exclamation-triangle me-2"></i><%= errorMessage %>
+        <i class="bi bi-exclamation-triangle me-2"></i><%= error %>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
       <script>
@@ -252,8 +286,22 @@ function buildExportUrl() {
                       <tr>
                         <td><%= (page - 1) * pageSize + idx + 1 %></td>
                         <td><%= server.name %></td>
-                        <td><%= server.description || '-' %></td>
-                        <td><%= server.ip_address || '-' %></td>
+                        <td>
+                          <%
+                            const description = server.description || '-';
+                            const truncatedDesc = description.length > 50 ? description.substring(0, 50) + '...' : description;
+                          %>
+                          <span title="<%= description %>"><%= truncatedDesc %></span>
+                        </td>
+                        <td>
+                          <% if (server.ip && server.ip.length > 0) { %>
+                            <% server.ip.forEach(function(ip) { %>
+                              <span class="badge bg-success me-1"><%= typeof ip === 'string' ? ip : ip.ip_address %></span>
+                            <% }) %>
+                          <% } else { %>
+                            <span class="text-muted">No IP</span>
+                          <% } %>
+                        </td>
                         <td>
                           <% if (server.systems && server.systems.length > 0) { %>
                             <% server.systems.forEach(function(system) { %>
@@ -382,15 +430,18 @@ function buildExportUrl() {
       </div>
       <form method="GET" action="/server/server/list" id="filterServerForm">
         <input type="hidden" name="page" value="1">
+        <% if (typeof pageSize !== 'undefined' && pageSize) { %>
+          <input type="hidden" name="pageSize" value="<%= pageSize %>">
+        <% } %>
         <div class="modal-body">
           <div class="row g-2">
             <!-- Status Filter -->
             <div class="col-12 mb-2">
-              <label for="filterIpStatus" class="form-label">Status</label>
-              <select class="form-control" id="filterIpStatus" name="status">
+              <label for="filterServerStatus" class="form-label">Status</label>
+              <select class="form-control" id="filterServerStatus" name="status">
                 <option value="">All Status</option>
-                <% if (typeof ipStatusOptions !== 'undefined' && ipStatusOptions.length > 0) { %>
-                  <% ipStatusOptions.forEach(function(option) { %>
+                <% if (typeof statusOptions !== 'undefined' && statusOptions.length > 0) { %>
+                  <% statusOptions.forEach(function(option) { %>
                     <option value="<%= option.value %>" <%= filterStatus === option.value ? 'selected' : '' %>><%= option.label %></option>
                   <% }); %>
                       <% } else { %>
@@ -404,24 +455,65 @@ function buildExportUrl() {
             <!-- Tags Filter -->
             <div class="col-12 mb-2">
               <label class="form-label">Tags</label>
-              <select id="filterIpTags" name="tags[]" class="form-control" multiple></select>
+              <select id="filterServerTags" name="tags[]" class="form-control" multiple></select>
                   </div>
                   
             <!-- Systems Filter -->
             <div class="col-12 mb-2">
               <label class="form-label">Systems</label>
-              <select id="filterIpSystems" name="systems[]" class="form-control" multiple></select>
+              <select id="filterServerSystems" name="systems[]" class="form-control" multiple></select>
                   </div>
                   
             <!-- Contacts Filter -->
             <div class="col-12 mb-2">
               <label class="form-label">Contacts</label>
-              <select id="filterIpContacts" name="contacts[]" class="form-control" multiple></select>
+              <select id="filterServerContacts" name="contacts[]" class="form-control" multiple></select>
+                  </div>
+                  
+            <!-- Services Filter -->
+            <div class="col-12 mb-2">
+              <label class="form-label">Services</label>
+              <select id="filterServerServices" name="services[]" class="form-control" multiple></select>
+                  </div>
+                  
+            <!-- OS/Platform Filter -->
+            <div class="col-12 mb-2">
+              <label class="form-label">OS/Platform</label>
+              <select id="filterServerOs" name="os" class="form-control">
+                <option value="">All OS/Platform</option>
+                <!-- Options will be loaded via AJAX -->
+              </select>
+                  </div>
+                  
+            <!-- Type Filter -->
+            <div class="col-12 mb-2">
+              <label class="form-label">Type</label>
+              <select id="filterServerType" name="type" class="form-control">
+                <option value="">All Types</option>
+                <% if (typeof typesOptions !== 'undefined' && typesOptions.length > 0) { %>
+                  <% typesOptions.forEach(function(option) { %>
+                    <option value="<%= option.value %>" <%= filterType === option.value ? 'selected' : '' %>><%= option.label %></option>
+                  <% }); %>
+                <% } %>
+              </select>
+                  </div>
+                  
+            <!-- Location Filter -->
+            <div class="col-12 mb-2">
+              <label class="form-label">Location</label>
+              <select id="filterServerLocation" name="location" class="form-control">
+                <option value="">All Locations</option>
+                <% if (typeof locations !== 'undefined' && locations.length > 0) { %>
+                  <% locations.forEach(function(option) { %>
+                    <option value="<%= option.value %>" <%= filterLocation === option.value ? 'selected' : '' %>><%= option.label %></option>
+                  <% }); %>
+                <% } %>
+              </select>
                   </div>
                 </div>
                 </div>
         <div class="modal-footer d-flex justify-content-between">
-          <button type="button" class="btn btn-outline-danger" id="clearFilterBtnIp">Clear All Filters</button>
+          <button type="button" class="btn btn-outline-danger" id="clearFilterBtnServer">Clear All Filters</button>
           <div>
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
             <button type="submit" class="btn btn-primary">Apply Filters</button>
@@ -458,23 +550,24 @@ function buildExportUrl() {
               <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
               <ul class="mb-0">
                 <li>Click "Download Template" to get the Excel template with correct format</li>
-                <li>Fill the template with your IP addresses data</li>
-                <li>IPAddress (Require, one per row) is required and must be valid IP format</li>
+                <li>Fill the template with your server data</li>
+                <li>IPAddress (Required, comma-separated if multiple) is required and must be valid IP format</li>
+                <li>Name is optional (auto-generated if empty using format: platform_firstIP)</li>
+                <li>OS, Status, Location, Type are optional</li>
+                <li>Manager, System, Agent, Service, Tag are optional and can be comma-separated if multiple</li>
                 <li>Description is optional</li>
-                <li>Status is optional (default: active)</li>
-                <li>Tags, Systems, and Contacts are optional and can be comma-separated if multiple</li>
                 <li>Select your filled template file and validate before importing</li>
             </ul>
           </div>
         </div>
           
           <!-- Progress bar -->
-          <div id="ipImportProgress" class="progress mb-3" style="display: none;">
+          <div id="serverImportProgress" class="progress mb-3" style="display: none;">
             <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-      </div>
+          </div>
           
           <!-- Results display -->
-          <div id="ipImportResults" class="alert" style="display: none;"></div>
+          <div id="serverImportResults" class="alert" style="display: none;"></div>
         </form>
     </div>
       <div class="modal-footer">
@@ -504,125 +597,88 @@ function buildExportUrl() {
 .select2-container--open .select2-dropdown {
   z-index: 9999 !important;
   }
+
+/* Force override for Filter Servers modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #filterServerModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #filterServerModal .modal-footer .btn,
+  #filterServerModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #filterServerModal .modal-footer > div {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+  }
+  
+  #filterServerModal .modal-footer > div .btn {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  /* Order: Apply Filters trên, Cancel giữa, Clear All Filters dưới */
+  #filterServerModal .modal-footer .btn:first-child {
+    order: 3 !important; /* Clear All Filters dưới */
+  }
+  
+  #filterServerModal .modal-footer > div .btn:first-child {
+    order: 2 !important; /* Cancel giữa */
+  }
+  
+  #filterServerModal .modal-footer > div .btn:last-child {
+    order: 1 !important; /* Apply Filters trên */
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #filterServerModal .modal-footer .btn.btn-outline-danger,
+  #filterServerModal .modal-footer .btn.btn-secondary,
+  #filterServerModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+  }
 </style>
 
 <script>
+  // Initialize window variables for Select2
+  window.selectedTags = <%- JSON.stringify(selectedTags || []) %>;
+  window.selectedSystems = <%- JSON.stringify(selectedSystems || []) %>;
+  window.selectedManagers = <%- JSON.stringify(selectedManagers || []) %>;
+  window.selectedServices = <%- JSON.stringify(selectedServices || []) %>;
+  window.selectedOS = <%- JSON.stringify(selectedOS || null) %>;
+  
   $(function() {
   console.log('Initializing Select2...');
   
 
-  // Edit IP Modal - Initialize Select2
-  $('#editIpTags').select2({
-            theme: 'bootstrap-5',
-    multiple: true,
-            allowClear: true,
-            width: '100%',
-    dropdownParent: $('#editIpModal'),
-            ajax: {
-              url: '/organize/api/tag',
-              dataType: 'json',
-      processResults: function(data) {
-        return { results: data };
-      }
-    }
-  });
 
-  $('#editIpSystems').select2({
-            theme: 'bootstrap-5',
-    multiple: true,
-            allowClear: true,
-            width: '100%',
-    dropdownParent: $('#editIpModal'),
-            ajax: {
-      url: '/system/api/system',
-              dataType: 'json',
-      processResults: function(data) {
-        return { results: data };
-      }
-    }
-  });
 
-  $('#editIpContacts').select2({
-            theme: 'bootstrap-5',
-    multiple: true,
-            allowClear: true,
-            width: '100%',
-    dropdownParent: $('#editIpModal'),
-            ajax: {
-              url: '/organize/api/contact',
-              dataType: 'json',
-      processResults: function(data) {
-        return { results: data };
-      }
-    }
-  });
 
-  // Edit IP Modal - Load data when opened
-  $('#editIpModal').on('show.bs.modal', function(event) {
-    const button = $(event.relatedTarget);
-    const ipId = button.data('ip-id');
-    const ipAddress = button.data('ip-address');
-    const description = button.data('description') || '';
-    const status = button.data('status') || 'active';
-    const tags = button.data('tags') || [];
-    const systems = button.data('systems') || [];
-    const contacts = button.data('contacts') || [];
-
-    console.log('Edit IP Modal opened with data:', {
-      ipId, ipAddress, description, status, tags, systems, contacts
-    });
-
-    // Set form action URL
-    const actionUrl = `/network/ip-address/${ipId}`;
-    $('#editIpForm').attr('action', actionUrl);
-    console.log('Form action set to:', actionUrl);
-
-    // Populate form fields
-    $('#editIpAddress').val(ipAddress);
-    $('#editIpDescription').val(description);
-    $('#editIpStatus').val(status);
-
-    // Load existing values for Select2 fields after a short delay
-        setTimeout(() => {
-      loadEditExistingValues(tags, systems, contacts);
-    }, 100);
-  });
-
-  // Edit IP Modal - Reset form when hidden
-  $('#editIpModal').on('hidden.bs.modal', function() {
-    $('#editIpForm')[0].reset();
-    $('#editIpTags, #editIpSystems, #editIpContacts').val(null).trigger('change');
-  });
-
-  // Edit IP Form submission
-  $('#editIpForm').on('submit', function(e) {
-    console.log('Edit IP Form submitting...');
-    
-    // Get IP ID from form action or data attribute
-    const currentAction = $(this).attr('action');
-    const ipId = currentAction.split('/').pop();
-    
-    // Set the correct form action URL with method indicator
-    const correctAction = `/network/ip-address/${ipId}?_method=PUT`;
-    $(this).attr('action', correctAction);
-    
-    console.log('Form action set to:', correctAction);
-    console.log('Form method:', $(this).attr('method'));
-    console.log('Method override in URL: ?_method=PUT');
-    console.log('Note: Browser will show POST, but server will receive PUT due to method override');
-
-    // Allow normal form submission - backend handles redirect
-    const submitBtn = $(this).find('button[type="submit"]');
-    submitBtn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Updating...');
-  });
 
   // Filter IP Modal - Initialize Select2
-  $('#filterIpTags').select2({
+  $('#filterServerTags').select2({
             theme: 'bootstrap-5',
             placeholder: 'Select tag(s)',
             allowClear: true,
             width: '100%',
-    dropdownParent: $('#filterIpModal'),
+    dropdownParent: $('#filterServerModal'),
             ajax: {
               url: '/organize/api/tag',
               dataType: 'json',
@@ -634,17 +690,37 @@ function buildExportUrl() {
         return { results: data };
       },
               cache: true
-            }
-          });
+    }
+  });
 
-  $('#filterIpSystems').select2({
+  $('#filterServerSystems').select2({
             theme: 'bootstrap-5',
     placeholder: 'Select system(s)',
             allowClear: true,
             width: '100%',
-    dropdownParent: $('#filterIpModal'),
+    dropdownParent: $('#filterServerModal'),
             ajax: {
       url: '/system/api/system',
+              dataType: 'json',
+              delay: 250,
+      data: function(params) {
+        return { search: params.term };
+      },
+      processResults: function(data) {
+        return { results: data };
+      },
+              cache: true
+    }
+  });
+
+  $('#filterServerContacts').select2({
+            theme: 'bootstrap-5',
+    placeholder: 'Select contact(s)',
+            allowClear: true,
+            width: '100%',
+    dropdownParent: $('#filterServerModal'),
+            ajax: {
+              url: '/organize/api/contact',
               dataType: 'json',
               delay: 250,
       data: function(params) {
@@ -657,14 +733,35 @@ function buildExportUrl() {
             }
           });
 
-  $('#filterIpContacts').select2({
+  $('#filterServerServices').select2({
             theme: 'bootstrap-5',
-    placeholder: 'Select contact(s)',
+    placeholder: 'Select service(s)',
             allowClear: true,
             width: '100%',
-    dropdownParent: $('#filterIpModal'),
+    dropdownParent: $('#filterServerModal'),
             ajax: {
-              url: '/organize/api/contact',
+              url: '/server/api/service',
+              dataType: 'json',
+              delay: 250,
+      data: function(params) {
+        return { search: params.term };
+      },
+      processResults: function(data) {
+        return { results: data };
+      },
+              cache: true
+            }
+          });
+
+  // OS/Platform select2 AJAX - Bootstrap 5 theme
+  $('#filterServerOs').select2({
+            theme: 'bootstrap-5',
+    placeholder: 'Select OS/Platform',
+            allowClear: true,
+            width: '100%',
+    dropdownParent: $('#filterServerModal'),
+            ajax: {
+      url: '/device/api/platform',
               dataType: 'json',
               delay: 250,
       data: function(params) {
@@ -678,7 +775,7 @@ function buildExportUrl() {
           });
 
   // Filter IP Modal - Load existing filter values when opened
-  $('#filterIpModal').on('show.bs.modal', function() {
+  $('#filterServerModal').on('show.bs.modal', function() {
     console.log('Filter IP Modal opened');
     
     // Load existing filter values
@@ -687,22 +784,27 @@ function buildExportUrl() {
     }, 100);
   });
 
-  // Filter IP Modal - Reset form when hidden
-  $('#filterIpModal').on('hidden.bs.modal', function() {
-    console.log('Filter IP Modal hidden, resetting form');
-    $('#filterIpForm')[0].reset();
-    $('#filterIpTags, #filterIpSystems').val(null).trigger('change');
+  // Filter Server Modal - Reset form when hidden
+  $('#filterServerModal').on('hidden.bs.modal', function() {
+    console.log('Filter Server Modal hidden, resetting form');
+    $('#filterServerForm')[0].reset();
+    $('#filterServerTags, #filterServerSystems, #filterServerContacts, #filterServerServices, #filterServerOs').val(null).trigger('change');
   });
 
   // Clear All Filters button
-  $('#clearFilterBtnIp').on('click', function() {
+  $('#clearFilterBtnServer').on('click', function() {
     // Clear all select2 values
-    $('#filterIpTags').val(null).trigger('change');
-    $('#filterIpSystems').val(null).trigger('change');
-    $('#filterIpStatus').val('');
+    $('#filterServerTags').val(null).trigger('change');
+    $('#filterServerSystems').val(null).trigger('change');
+    $('#filterServerContacts').val(null).trigger('change');
+    $('#filterServerServices').val(null).trigger('change');
+    $('#filterServerOs').val(null).trigger('change');
+    $('#filterServerStatus').val('');
+    $('#filterServerType').val('');
+    $('#filterServerLocation').val('');
     
     // Close modal
-    $('#filterIpModal').modal('hide');
+    $('#filterServerModal').modal('hide');
     
     // Redirect to clean URL but preserve pageSize and search
     const currentPageSize = $('select[name="pageSize"]').val() || '10';
@@ -729,98 +831,94 @@ function loadFilterExistingValues() {
   try {
     const filterTags = JSON.parse(filterDataEl.dataset.tags || '[]');
     const filterSystems = JSON.parse(filterDataEl.dataset.systems || '[]');
+    const filterStatus = filterDataEl.dataset.status || '';
+    const filterManagers = JSON.parse(filterDataEl.dataset.manager || '[]');
+    const filterServices = JSON.parse(filterDataEl.dataset.services || '[]');
+    const filterOS = filterDataEl.dataset.os || '';
+    const filterType = filterDataEl.dataset.type || '';
+    const filterLocation = filterDataEl.dataset.location || '';
     
-    console.log('Filter data:', { filterTags, filterSystems });
+    console.log('Filter data:', { filterTags, filterSystems, filterStatus, filterManagers, filterServices, filterOS, filterType, filterLocation });
+    console.log('Window selectedManagers:', window.selectedManagers);
+    console.log('Window selectedOS:', window.selectedOS);
     
     // Clear existing options first to avoid duplicates
-    $('#filterIpTags').find('option').remove();
-    $('#filterIpSystems').find('option').remove();
+    $('#filterServerTags').find('option').remove();
+    $('#filterServerSystems').find('option').remove();
+    $('#filterServerContacts').find('option').remove();
+    $('#filterServerServices').find('option').remove();
+    $('#filterServerOs').find('option').remove();
     
-    // Load tags
-    if (filterTags && filterTags.length > 0) {
-      filterTags.forEach(tag => {
+    // Add default option back for OS
+    $('#filterServerOs').append('<option value="">All OS/Platform</option>');
+    
+    // Load status
+    if (filterStatus) {
+      $('#filterServerStatus').val(filterStatus);
+    }
+    
+    // Load tags from window variables (more reliable)
+    if (window.selectedTags && window.selectedTags.length > 0) {
+      window.selectedTags.forEach(tag => {
         const option = new Option(tag.name, tag.id, true, true);
-        $('#filterIpTags').append(option);
+        $('#filterServerTags').append(option);
       });
-      $('#filterIpTags').trigger('change');
+      $('#filterServerTags').trigger('change');
     }
     
-    // Load systems
-    if (filterSystems && filterSystems.length > 0) {
-      filterSystems.forEach(system => {
+    // Load systems from window variables
+    if (window.selectedSystems && window.selectedSystems.length > 0) {
+      window.selectedSystems.forEach(system => {
         const option = new Option(system.name, system.id, true, true);
-        $('#filterIpSystems').append(option);
+        $('#filterServerSystems').append(option);
       });
-      $('#filterIpSystems').trigger('change');
+      $('#filterServerSystems').trigger('change');
     }
     
+    // Load Managers from window variables
+    console.log('Loading Managers:', window.selectedManagers);
+    if (window.selectedManagers && window.selectedManagers.length > 0) {
+      window.selectedManagers.forEach(manager => {
+        console.log('Adding manager option:', manager);
+        const option = new Option(manager.name, manager.id, true, true);
+        $('#filterServerContacts').append(option);
+      });
+      $('#filterServerContacts').trigger('change');
+    }
     
-  } catch (e) {
+    // Load Services from window variables
+    if (window.selectedServices && window.selectedServices.length > 0) {
+      window.selectedServices.forEach(service => {
+        const option = new Option(service.name, service.id, true, true);
+        $('#filterServerServices').append(option);
+      });
+      $('#filterServerServices').trigger('change');
+    }
+    
+    // Load OS from window variable
+    console.log('Loading OS:', window.selectedOS);
+    if (window.selectedOS && window.selectedOS.id) {
+      console.log('Setting OS value to:', window.selectedOS.id);
+      // For Select2, we need to add the option first, then set the value
+      const option = new Option(window.selectedOS.text, window.selectedOS.id, true, true);
+      $('#filterServerOs').append(option).trigger('change');
+    }
+    
+    // Load Type
+    if (filterType) {
+      $('#filterServerType').val(filterType);
+    }
+    
+    // Load Location
+    if (filterLocation) {
+      $('#filterServerLocation').val(filterLocation);
+    }
+    
+    } catch (e) {
     console.error('Error loading filter values:', e);
   }
 }
 
-function loadEditExistingValues(tags, systems, contacts) {
-  console.log('Loading existing values:', { tags, systems, contacts });
-
-  // Load existing tags
-  if (tags && tags.length > 0) {
-    try {
-      const tagArray = typeof tags === 'string' ? JSON.parse(tags) : tags;
-      console.log('Parsed tags:', tagArray);
-      
-      // For Select2, we need to create option elements first
-      const tagOptions = tagArray.map(tag => {
-        const id = typeof tag === 'object' ? tag.id : tag;
-        const text = typeof tag === 'object' ? (tag.name || tag.text) : tag;
-        return new Option(text, id, true, true);
-      });
-      
-      $('#editIpTags').append(tagOptions).trigger('change');
-      console.log('Tags loaded successfully');
-    } catch (e) {
-      console.log('Error parsing tags:', e);
-    }
-  }
-
-  // Load existing systems
-  if (systems && systems.length > 0) {
-    try {
-      const systemArray = typeof systems === 'string' ? JSON.parse(systems) : systems;
-      console.log('Parsed systems:', systemArray);
-      
-      const systemOptions = systemArray.map(system => {
-        const id = typeof system === 'object' ? system.id : system;
-        const text = typeof system === 'object' ? (system.name || system.text) : system;
-        return new Option(text, id, true, true);
-      });
-      
-      $('#editIpSystems').append(systemOptions).trigger('change');
-      console.log('Systems loaded successfully');
-    } catch (e) {
-      console.log('Error parsing systems:', e);
-    }
-  }
-
-  // Load existing contacts
-  if (contacts && contacts.length > 0) {
-    try {
-      const contactArray = typeof contacts === 'string' ? JSON.parse(contacts) : contacts;
-      console.log('Parsed contacts:', contactArray);
-      
-      const contactOptions = contactArray.map(contact => {
-        const id = typeof contact === 'object' ? contact.id : contact;
-        const text = typeof contact === 'object' ? (contact.name || contact.email || contact.text) : contact;
-        return new Option(text, id, true, true);
-      });
-      
-      $('#editIpContacts').append(contactOptions).trigger('change');
-      console.log('Contacts loaded successfully');
-    } catch (e) {
-      console.log('Error parsing contacts:', e);
-    }
-  }
-}
 
 
 
@@ -833,144 +931,6 @@ function confirmDeleteServer(form, server) {
   return false;
 }
 
-// Function removed - no longer finding subnet information for IP detail
-
-// Function to check if an IP is in a subnet (CIDR notation)
-function isIPInSubnet(ipAddress, subnetCIDR) {
-  try {
-    const [subnetIP, prefixLength] = subnetCIDR.split('/');
-    const prefix = parseInt(prefixLength);
-    
-    console.log('Checking IP:', ipAddress, 'in subnet:', subnetCIDR);
-    console.log('Subnet IP:', subnetIP, 'Prefix:', prefix);
-    
-    // Convert IPs to numbers
-    const ipParts = ipAddress.split('.');
-    const subnetParts = subnetIP.split('.');
-    
-    if (ipParts.length !== 4 || subnetParts.length !== 4) {
-      console.log('Invalid IP format');
-      return false;
-    }
-    
-    const ip = (parseInt(ipParts[0]) << 24) + (parseInt(ipParts[1]) << 16) + (parseInt(ipParts[2]) << 8) + parseInt(ipParts[3]);
-    const subnet = (parseInt(subnetParts[0]) << 24) + (parseInt(subnetParts[1]) << 16) + (parseInt(subnetParts[2]) << 8) + parseInt(subnetParts[3]);
-    
-    const mask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
-    
-    const result = (ip & mask) === (subnet & mask);
-    console.log('IP number:', ip, 'Subnet number:', subnet, 'Mask:', mask, 'Result:', result);
-    
-    return result;
-  } catch (error) {
-    console.error('Error in isIPInSubnet:', error);
-    return false;
-  }
-}
-
-// Function to load subnet information for an IP address
-function loadSubnetInfoForIP(ipAddress, contentElement) {
-  console.log('Loading subnet info for IP:', ipAddress);
-  
-  // Make AJAX call to find subnet containing this IP
-  $.ajax({
-    url: '/network/api/subnet-for-ip/' + encodeURIComponent(ipAddress),
-    method: 'GET',
-    dataType: 'json'
-  }).done(function(response) {
-    console.log('Subnet response received:', response);
-    
-    if (response.found && response.subnet) {
-      console.log('Found matching subnet:', response.subnet);
-      updateSubnetInfoInModal(contentElement, response.subnet);
-    } else {
-      console.log('No matching subnet found');
-      updateSubnetInfoInModal(contentElement, null);
-    }
-  }).fail(function(xhr, status, error) {
-    console.error('Error loading subnet information:', status, error);
-    console.error('Response:', xhr.responseText);
-    
-    // Fallback: try with sample data for testing
-    console.log('Trying with sample subnet data...');
-    const sampleSubnets = [
-      { address: '10.1.0.0/16', zone: 'BACKBONE', environment: 'DEV' },
-      { address: '192.168.1.0/24', zone: 'OFFICE', environment: 'PROD' },
-      { address: '172.16.0.0/12', zone: 'DMZ', environment: 'UAT' }
-    ];
-    
-    let matchingSubnet = null;
-    for (let subnet of sampleSubnets) {
-      if (isIPInSubnet(ipAddress, subnet.address)) {
-        console.log('Found matching sample subnet:', subnet);
-        matchingSubnet = subnet;
-        break;
-      }
-    }
-    
-    updateSubnetInfoInModal(contentElement, matchingSubnet);
-  });
-}
-
-// Function to update subnet information in the modal (as plain text, no badges)
-function updateSubnetInfoInModal(contentElement, subnetInfo) {
-  const currentHTML = contentElement.innerHTML;
-  
-  if (subnetInfo) {
-    // Zone as plain text
-    let zoneHTML = '<div class="mb-2"><strong>Zone:</strong> ';
-    if (subnetInfo.zone && subnetInfo.zone.trim()) {
-      zoneHTML += String(subnetInfo.zone).trim();
-    } else {
-      zoneHTML += '<span class="text-muted">N/A</span>';
-    }
-    zoneHTML += '</div>';
-    
-    // Environment as plain text
-    let environmentHTML = '<div class="mb-2"><strong>Environment:</strong> ';
-    if (subnetInfo.environment && subnetInfo.environment.trim()) {
-      environmentHTML += String(subnetInfo.environment).trim();
-    } else {
-      environmentHTML += '<span class="text-muted">N/A</span>';
-    }
-    environmentHTML += '</div>';
-    
-    // Subnet as plain text
-    let subnetHTML = '<div class="mb-2"><strong>Subnet:</strong> ' + String(subnetInfo.address).trim() + '</div>';
-    
-    // Replace loading states with actual data
-    let updatedHTML = currentHTML.replace(
-      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">Loading...</span></div>',
-      zoneHTML
-    );
-    updatedHTML = updatedHTML.replace(
-      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">Loading...</span></div>',
-      environmentHTML
-    );
-    updatedHTML = updatedHTML.replace(
-      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">Loading...</span></div>',
-      subnetHTML
-    );
-    
-    contentElement.innerHTML = updatedHTML;
-  } else {
-    // No matching subnet found
-    let updatedHTML = currentHTML.replace(
-      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">Loading...</span></div>',
-      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">N/A</span></div>'
-    );
-    updatedHTML = updatedHTML.replace(
-      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">Loading...</span></div>',
-      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">N/A</span></div>'
-    );
-    updatedHTML = updatedHTML.replace(
-      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">Loading...</span></div>',
-      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">N/A</span></div>'
-    );
-    
-    contentElement.innerHTML = updatedHTML;
-  }
-}
 
 function showServerDetail(serverId) {
   const buttons = document.querySelectorAll('button[data-server]');
@@ -1009,11 +969,24 @@ function showServerDetail(serverId) {
   const modal = new bootstrap.Modal(modalElement);
   const content = document.getElementById('serverDetailContent');
   
-  let html = '<div class="card"><div class="card-body">';
-  html += '<div class="mb-2"><strong>Server Name:</strong> ' + String(server.name || 'N/A').trim() + '</div>';
+  let html = '<div class="mb-2"><strong>Server Name:</strong> ' + String(server.name || 'N/A').trim() + '</div>';
   html += '<div class="mb-2"><strong>Description:</strong> ' + String(server.description || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>IP Address:</strong> ' + String(server.ip_address || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>Status:</strong> ' + String(server.status || 'N/A').trim() + '</div>';
   html += '<div class="mb-2"><strong>Type:</strong> ' + String(server.type || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>Location:</strong> ' + String(server.location || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>Operating System:</strong> ' + String(server.platform_name || server.os || 'N/A').trim() + '</div>';
+  
+  if (server.ip && server.ip.length > 0) {
+    html += '<div class="mb-2"><strong>IP Addresses:</strong><br>';
+    server.ip.forEach(function(ip) {
+      const ipValue = (typeof ip === 'string' ? ip : ip.ip_address);
+      const searchUrl = '/network/ip-address?page=1&search=' + encodeURIComponent(ipValue);
+      html += '<div class="mb-1"><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + String(ipValue).trim() + '</a></div>';
+    });
+    html += '</div>';
+  } else {
+    html += '<div class="mb-2"><strong>IP Address:</strong> N/A</div>';
+  }
   
   if (server.tags && server.tags.length > 0) {
     html += '<div class="mb-2"><strong>Tags:</strong><br>';
@@ -1035,43 +1008,75 @@ function showServerDetail(serverId) {
     html += '</ul></div>';
   }
   
-  html += '</div></div>';
+  if (server.managers && server.managers.length > 0) {
+    html += '<div class="mb-2"><strong>Managers:</strong><br>';
+    server.managers.forEach(function(manager) {
+      const managerName = (typeof manager === 'string' ? manager : manager.name);
+      const managerEmail = (typeof manager === 'string' ? '' : manager.email);
+      const searchUrl = '/organize/contact?page=1&search=' + encodeURIComponent(managerName);
+      html += '<div class="mb-1"><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + String(managerName).trim();
+      if (managerEmail) {
+        const emailUsername = managerEmail.split('@')[0];
+        html += ' (' + String(emailUsername).trim() + ')';
+      }
+      html += '</a></div>';
+    });
+    html += '</div>';
+  }
+  
+  if (server.services && server.services.length > 0) {
+    html += '<div class="mb-2"><strong>Services:</strong><br>';
+    server.services.forEach(function(service) {
+      const serviceValue = (typeof service === 'string' ? service : service.name);
+      html += '<span class="badge bg-warning text-dark me-1 mb-1">' + String(serviceValue).trim() + '</span>';
+    });
+    html += '</div>';
+  }
+  
+  if (server.agents && server.agents.length > 0) {
+    html += '<div class="mb-2"><strong>Agents:</strong><br>';
+    server.agents.forEach(function(agent) {
+      const agentName = (typeof agent === 'string' ? agent : agent.name);
+      html += '<span class="badge bg-secondary me-1 mb-1">' + String(agentName).trim() + '</span>';
+    });
+    html += '</div>';
+  }
   content.innerHTML = html;
   modal.show();
 }
 
-// Import IP functionality
-let selectedFile = null;
+// Import Server functionality
+let selectedServerFile = null;
 
 // Handle file selection
-$(document).on('change', '#ipImportFile', function() {
-  selectedFile = this.files[0];
-  if (selectedFile) {
-    console.log('File selected:', selectedFile.name);
-    $('#validateIpBtn').prop('disabled', false);
-        } else {
-    $('#validateIpBtn').prop('disabled', true);
-    $('#importIpBtn').hide();
+$(document).on('change', '#serverImportFile', function() {
+  selectedServerFile = this.files[0];
+  if (selectedServerFile) {
+    console.log('Server file selected:', selectedServerFile.name);
+    $('#validateServerBtn').prop('disabled', false);
+  } else {
+    $('#validateServerBtn').prop('disabled', true);
+    $('#importServerBtn').hide();
   }
 });
 
 // Handle validate button click
-$(document).on('click', '#validateIpBtn', function() {
-  if (!selectedFile) {
+$(document).on('click', '#validateServerBtn', function() {
+  if (!selectedServerFile) {
     alert('Please select a file first');
     return;
   }
   
   const formData = new FormData();
-  formData.append('file', selectedFile);
+  formData.append('file', selectedServerFile);
   
   // Show progress
-  $('#ipImportProgress').show();
-  $('#ipImportResults').text('Validating file...');
+  $('#serverImportProgress').show();
+  $('#serverImportResults').text('Validating file...');
   $('.progress-bar').css('width', '30%');
   
   $.ajax({
-    url: '/network/ip-address/validate-import',
+    url: '/server/server/validate-import',
     type: 'POST',
     data: formData,
     processData: false,
@@ -1083,19 +1088,19 @@ $(document).on('click', '#validateIpBtn', function() {
     },
     success: function(data, status, xhr) {
       $('.progress-bar').css('width', '100%');
-      $('#ipImportResults').text('Validation complete! Downloading results...');
       
       // Handle file download
       const contentType = xhr.getResponseHeader('Content-Type');
       const contentDisposition = xhr.getResponseHeader('Content-Disposition');
       
       if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+        $('#serverImportResults').text('Validation complete! Downloading results...');
         // Create blob and download file
         const blob = new Blob([data], { type: contentType });
         const url = window.URL.createObjectURL(blob);
         
         // Extract filename from Content-Disposition header
-        let filename = 'validation_results.xlsx';
+        let filename = 'server_validation_results.xlsx';
         if (contentDisposition) {
           const filenameMatch = contentDisposition.match(/filename="(.+)"/);
           if (filenameMatch) {
@@ -1113,6 +1118,26 @@ $(document).on('click', '#validateIpBtn', function() {
         
         // Clean up
         window.URL.revokeObjectURL(url);
+      } else if (contentType && contentType.includes('application/json')) {
+        // Handle JSON error response
+        let errorMessage = 'Unknown error occurred';
+        try {
+          const errorData = typeof data === 'string' ? JSON.parse(data) : data;
+          errorMessage = errorData.error || errorData.message || 'Validation failed';
+        } catch (e) {
+          errorMessage = 'Failed to parse error response';
+        }
+        
+        $('#serverImportResults').removeClass('alert-success').addClass('alert-danger')
+          .html('<strong>Validation Error!</strong><br>' + errorMessage)
+          .show();
+        return;
+      } else {
+        // Handle other response types
+        $('#serverImportResults').removeClass('alert-success').addClass('alert-danger')
+          .html('<strong>Validation Error!</strong><br>Unexpected response type: ' + contentType)
+          .show();
+        return;
       }
       
       // Check validation results from header
@@ -1120,7 +1145,7 @@ $(document).on('click', '#validateIpBtn', function() {
       if (validationSummary) {
         try {
           const summary = JSON.parse(validationSummary);
-          const resultsDiv = $('#ipImportResults');
+          const resultsDiv = $('#serverImportResults');
           resultsDiv.removeClass('alert-danger').addClass('alert-success')
             .html(`<strong>Validation Complete!</strong><br>
                    <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
@@ -1129,56 +1154,72 @@ $(document).on('click', '#validateIpBtn', function() {
           
           // Show import button if validation passed
           if (summary.allPassed) {
-            $('#importIpBtn').show();
+            $('#importServerBtn').show();
           }
         } catch (e) {
           // Fallback if header parsing fails
-          const resultsDiv = $('#ipImportResults');
+          const resultsDiv = $('#serverImportResults');
           resultsDiv.removeClass('alert-danger').addClass('alert-success')
             .html(`<strong>Validation Complete!</strong><br>
                    <small>Validation file downloaded. Review results before importing.</small>`);
           resultsDiv.show();
-          $('#importIpBtn').show();
+          $('#importServerBtn').show();
         }
       }
     },
     error: function(xhr, status, error) {
-      console.error('Validation error:', xhr.responseText);
+      console.error('Server validation error:', xhr);
       console.error('Status:', xhr.status);
       console.error('Error:', error);
       
       $('.progress-bar').css('width', '100%').text('Validation Failed');
-      $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
-        .html('<strong>Validation Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
+      
+      let errorMessage = 'Unknown error occurred';
+      try {
+        // Try to parse JSON response
+        if (xhr.responseJSON && xhr.responseJSON.error) {
+          errorMessage = xhr.responseJSON.error;
+        } else if (xhr.responseText && typeof xhr.responseText === 'string') {
+          errorMessage = xhr.responseText;
+        } else if (xhr.response && typeof xhr.response === 'string') {
+          errorMessage = xhr.response;
+        }
+      } catch (e) {
+        console.error('Error parsing response:', e);
+        errorMessage = `HTTP ${xhr.status}: ${error}`;
+      }
+      
+      $('#serverImportResults').removeClass('alert-success').addClass('alert-danger')
+        .html('<strong>Validation Error!</strong><br>' + errorMessage)
         .show();
-      },
-      complete: function() {
-      $('#validateIpBtn').prop('disabled', false);
+    },
+    complete: function() {
+      $('#validateServerBtn').prop('disabled', false);
       setTimeout(() => {
-        $('#ipImportProgress').hide();
+        $('#serverImportProgress').hide();
       }, 2000);
     }
   });
 });
 
 // Handle import button click
-$(document).on('click', '#importIpBtn', function() {
-  if (!selectedFile) {
+$(document).on('click', '#importServerBtn', function() {
+  if (!selectedServerFile) {
     alert('Please select a file first');
     return;
   }
   
   const formData = new FormData();
-  formData.append('file', selectedFile);
+  formData.append('file', selectedServerFile);
   
   // Show progress
-  $('#ipImportProgress').show();
-  $('#ipImportResults').text('Importing IP addresses...');
+  $('#serverImportProgress').show();
+  $('#serverImportResults').text('Importing servers...');
   $('.progress-bar').css('width', '30%').text('Importing...');
-  $('#importIpBtn').prop('disabled', true);
+  $('#importServerBtn').prop('disabled', true);
   
   $.ajax({
-    url: '/network/ip-address/import',
+    url: '/server/server/import',
     type: 'POST',
     data: formData,
     processData: false,
@@ -1189,7 +1230,7 @@ $(document).on('click', '#importIpBtn', function() {
       return xhr;
     },
     success: function(data, status, xhr) {
-      $('#ipImportProgress .progress-bar').css('width', '100%').text('Import Complete');
+      $('#serverImportProgress .progress-bar').css('width', '100%').text('Import Complete');
       
       // Handle file download
       const contentType = xhr.getResponseHeader('Content-Type');
@@ -1201,7 +1242,7 @@ $(document).on('click', '#importIpBtn', function() {
         const url = window.URL.createObjectURL(blob);
         
         // Extract filename from Content-Disposition header
-        let filename = 'import_results.xlsx';
+        let filename = 'server_import_results.xlsx';
         if (contentDisposition) {
           const filenameMatch = contentDisposition.match(/filename="(.+)"/);
           if (filenameMatch) {
@@ -1222,52 +1263,49 @@ $(document).on('click', '#importIpBtn', function() {
       }
       
       // Show results
-      const resultsDiv = $('#ipImportResults');
+      const resultsDiv = $('#serverImportResults');
       resultsDiv.removeClass('alert-danger').addClass('alert-success')
-        .html(`<strong>Import Completed!</strong><br>
-               <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
-      resultsDiv.show();
+        .html('<strong>Import Complete!</strong><br><small>Import results file downloaded. Page will refresh in 3 seconds...</small>')
+        .show();
       
-      // Hide import button
-      $('#importIpBtn').hide();
-      
-      // Refresh page after 2 seconds
+      // Refresh page after delay
       setTimeout(() => {
         window.location.reload();
-      }, 2000);
+      }, 3000);
     },
     error: function(xhr, status, error) {
-      console.error('Import error:', xhr.responseText);
+      console.error('Server import error:', xhr);
       console.error('Status:', xhr.status);
       console.error('Error:', error);
       
-      $('#ipImportProgress .progress-bar').css('width', '100%').text('Import Failed');
-      $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
-        .html('<strong>Import Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
+      $('.progress-bar').css('width', '100%').text('Import Failed');
+      
+      let errorMessage = 'Unknown error occurred';
+      try {
+        // Try to parse JSON response
+        if (xhr.responseJSON && xhr.responseJSON.error) {
+          errorMessage = xhr.responseJSON.error;
+        } else if (xhr.responseText && typeof xhr.responseText === 'string') {
+          errorMessage = xhr.responseText;
+        } else if (xhr.response && typeof xhr.response === 'string') {
+          errorMessage = xhr.response;
+        }
+      } catch (e) {
+        console.error('Error parsing response:', e);
+        errorMessage = `HTTP ${xhr.status}: ${error}`;
+      }
+      
+      $('#serverImportResults').removeClass('alert-success').addClass('alert-danger')
+        .html('<strong>Import Error!</strong><br>' + errorMessage)
         .show();
     },
     complete: function() {
-      $('#importIpBtn').prop('disabled', false);
+      $('#importServerBtn').prop('disabled', false);
       setTimeout(() => {
-        $('#ipImportProgress').hide();
+        $('#serverImportProgress').hide();
       }, 2000);
     }
   });
 });
 
-// Reset import modal when closed
-$('#importIpModal').on('hidden.bs.modal', function() {
-  // Reset form
-  $('#importIpForm')[0].reset();
-  selectedFile = null;
-  
-  // Reset UI elements
-  $('#validateIpBtn').prop('disabled', true);
-  $('#importIpBtn').hide();
-  $('#ipImportProgress').hide();
-  $('#ipImportResults').hide();
-  
-  // Reset progress bar
-  $('.progress-bar').css('width', '0%').text('');
-});
 </script>

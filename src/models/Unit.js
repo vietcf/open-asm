@@ -9,14 +9,13 @@ class Unit {
    * Create a new unit
    * @param {Object} data
    * @param {string} data.name
-   * @param {string} data.code
    * @param {string} data.description
    * @returns {Promise<Object>} The created unit
    */
-  static async create({ name, code, description }) {
+  static async create({ name, description }) {
     const result = await pool.query(
-      `INSERT INTO units (name, code, description) VALUES ($1, $2, $3) RETURNING *`,
-      [name, code, description]
+      `INSERT INTO units (name, description) VALUES ($1, $2) RETURNING *`,
+      [name, description]
     );
     return result.rows[0];
   }
@@ -62,10 +61,10 @@ class Unit {
    * @param {string} data.description
    * @returns {Promise<Object>} The updated unit
    */
-  static async update(id, { name, code, description }) {
+  static async update(id, { name, description }) {
     const result = await pool.query(
-      `UPDATE units SET name=$1, code=$2, description=$3 WHERE id=$4 RETURNING *`,
-      [name, code, description, id]
+      `UPDATE units SET name=$1, description=$2 WHERE id=$3 RETURNING *`,
+      [name, description, id]
     );
     return result.rows[0];
   }
@@ -128,7 +127,7 @@ class Unit {
     const offset = (page - 1) * pageSize;
     const q = `%${search}%`;
     const result = await pool.query(
-      `SELECT * FROM units WHERE name ILIKE $1 OR code ILIKE $1 OR description ILIKE $1 ORDER BY id LIMIT $2 OFFSET $3`,
+      `SELECT * FROM units WHERE name ILIKE $1 OR description ILIKE $1 ORDER BY id LIMIT $2 OFFSET $3`,
       [q, pageSize, offset]
     );
     return result.rows;

@@ -90,16 +90,6 @@ function buildPaginationUrl(targetPage) {
               <i class="bi bi-plus"></i> Add Device Type
             </button>
           <% } %>
-          <% if (hasPermission && hasPermission('device_type.read')) { %>
-            <a href="/device/type/export" class="btn btn-info btn-sm">
-              <i class="bi bi-download"></i> Export
-            </a>
-          <% } %>
-          <% if (hasPermission && hasPermission('device_type.create')) { %>
-            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importDeviceTypeModal">
-              <i class="bi bi-upload"></i> Import Device Type
-            </button>
-          <% } %>
         </div>
       </div>
     </div>
@@ -173,13 +163,13 @@ function buildPaginationUrl(targetPage) {
                       <td><%= deviceType.description || '-' %></td>
                       <td class="text-end">
                         <% if (hasPermission('device_type.update')) { %>
-                          <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editDeviceTypeModal" data-device-type-id="<%= deviceType.id %>" data-device-type-name="<%= deviceType.name %>" data-device-type-description="<%= deviceType.description || '' %>" title="Edit">
+                          <button type="button" class="btn btn-warning btn-sm me-1" data-bs-toggle="modal" data-bs-target="#editDeviceTypeModal" data-device-type-id="<%= deviceType.id %>" data-device-type-name="<%= deviceType.name %>" data-device-type-description="<%= deviceType.description || '' %>" title="Edit">
                             <i class="bi bi-pencil"></i>
                           </button>
                         <% } %>
-                        <% if (hasPermission('device_type.delete')) { %>
+                        <% if (hasPermission('device_type.delete') || (user && (user.role_name === 'superadmin' || user.role_name === 'admin'))) { %>
                           <form action="/device/type/<%= deviceType.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteDeviceType(this, '<%= deviceType.name %>')">
-                            <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Delete" style="display: inline-block !important; visibility: visible !important;">
                               <i class="bi bi-trash"></i>
                             </button>
                           </form>
@@ -304,57 +294,6 @@ function buildPaginationUrl(targetPage) {
   </div>
 </div>
 
-<!-- Import Device Type Modal -->
-<div class="modal fade" id="importDeviceTypeModal" tabindex="-1" aria-labelledby="importDeviceTypeModalLabel">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="importDeviceTypeModalLabel">Import Device Types</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="importDeviceTypeForm" enctype="multipart/form-data">
-          <div class="mb-3">
-            <label for="deviceTypeImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
-            <div class="input-group">
-              <input type="file" class="form-control" id="deviceTypeImportFile" name="file" accept=".csv,.xlsx,.xls" required>
-              <a href="/device/type/template" class="btn btn-outline-info" download>
-                <i class="bi bi-download"></i> Download Template
-              </a>
-            </div>
-            <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
-          </div>
-          
-          <div class="mb-3">
-            <div class="alert alert-info">
-              <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
-              <ul class="mb-0">
-                <li>Click "Download Template" to get the Excel template with correct format</li>
-                <li>Fill the template with your device type data</li>
-                <li>Device Type Name (Required) is required</li>
-                <li>Description is optional</li>
-                <li>Select your filled template file and validate before importing</li>
-              </ul>
-            </div>
-          </div>
-          
-          <!-- Progress bar -->
-          <div id="deviceTypeImportProgress" class="progress mb-3" style="display: none;">
-            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-          </div>
-          
-          <!-- Results display -->
-          <div id="deviceTypeImportResults" class="alert" style="display: none;"></div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-warning" id="validateDeviceTypeBtn">Validate File</button>
-        <button type="button" class="btn btn-success" id="importDeviceTypeBtn" style="display: none;">Import Device Types</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <script>
 // ==========================================

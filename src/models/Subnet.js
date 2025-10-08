@@ -305,7 +305,7 @@ class Subnet {
       
       if (search && search.trim()) {
         query += ` AND zone ILIKE $1`;
-        params.push(`%${search.trim()}%`);
+        params.push(`${search.trim()}%`);
       }
       
       query += ` ORDER BY zone ASC LIMIT 20`;
@@ -334,7 +334,7 @@ class Subnet {
       
       if (search && search.trim()) {
         query += ` AND environment ILIKE $1`;
-        params.push(`%${search.trim()}%`);
+        params.push(`${search.trim()}%`);
       }
       
       query += ` ORDER BY environment ASC LIMIT 20`;

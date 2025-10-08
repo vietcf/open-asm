@@ -43,6 +43,7 @@ import networkRouter from './routes/network.js';
 import systemRouter from './routes/system.js';
 import privAccountRouter from './routes/privAccount.js';
 import serverRouter from './routes/server.js';
+import serverController from './controllers/serverController.js';
 import organizeRouter from './routes/organize.js';
 import administratorRouter from './routes/administrator.js';
 import deviceRoutes from './routes/device.js';
@@ -178,6 +179,8 @@ app.use('/2fa', requireLogin, twofaRouter);
 app.use('/dashboard', requireLogin, require2fa, dashboardRouter);
 app.use('/system', requireLogin, require2fa, systemRouter);
 app.use('/network', requireLogin, require2fa, networkRouter);
+// Public template download route (no auth required)
+app.get('/server/server/template', serverController.downloadServerTemplate);
 app.use('/server', requireLogin, require2fa, serverRouter);
 app.use('/organize', requireLogin, require2fa, organizeRouter);
 app.use('/device', requireLogin, require2fa, deviceRoutes);

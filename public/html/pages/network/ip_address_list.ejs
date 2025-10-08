@@ -1,3 +1,5 @@
+<link rel="stylesheet" href="/css/custom.css">
+
 <%
 // Helper function to build pagination URL with all query parameters
 function buildPaginationUrl(targetPage) {
@@ -240,7 +242,13 @@ function buildExportUrl() {
                   <tr>
                     <td><%= (page - 1) * pageSize + idx + 1 %></td>
                     <td><%= ip.ip_address %></td>
-                    <td><%= ip.description || '-' %></td>
+                    <td>
+                      <%
+                        const description = ip.description || '-';
+                        const truncatedDesc = description.length > 50 ? description.substring(0, 50) + '...' : description;
+                      %>
+                      <span title="<%= description %>"><%= truncatedDesc %></span>
+                    </td>
                     <td>
                       <% if (ip.server_name || ip.device_name) { %>
                         <div class="fw-bold">
@@ -441,7 +449,7 @@ function buildExportUrl() {
                             </div>
                           </div>
                         </div>
-                        <div class="modal-footer">
+                        <div class="modal-footer d-flex justify-content-end">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-primary">Add IP Address</button>
                         </div>
@@ -542,6 +550,9 @@ function buildExportUrl() {
       </div>
       <form method="GET" action="/network/ip-address" id="filterIpForm">
         <input type="hidden" name="page" value="1">
+        <% if (typeof pageSize !== 'undefined' && pageSize) { %>
+          <input type="hidden" name="pageSize" value="<%= pageSize %>">
+        <% } %>
         <div class="modal-body">
           <div class="row g-2">
             <!-- Status Filter -->
@@ -1460,7 +1471,7 @@ function showIpDetail(ipId) {
   
   let html = '<div class="card"><div class="card-body">';
   html += '<div class="mb-2"><strong>IP Address:</strong> ' + String(ip.ip_address || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>Description:</strong> ' + String(ip.description || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>Description:</strong><br><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + String(ip.description || 'N/A').trim() + '</pre></div>';
   html += '<div class="mb-2"><strong>Status:</strong> ' + String(ip.status || 'N/A').trim() + '</div>';
   
   // Add Server/Device information with search links
@@ -1790,3 +1801,165 @@ $('#importIpModal').on('hidden.bs.modal', function() {
   $('.progress-bar').css('width', '0%').text('');
 });
 </script>
+
+<style>
+/* Force override for Add IP Address modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #addIpModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #addIpModal .modal-footer .btn,
+  #addIpModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #addIpModal .modal-footer .btn:first-child,
+  #addIpModal .modal-footer button:first-child {
+    order: 2 !important;
+  }
+  
+  #addIpModal .modal-footer .btn:last-child,
+  #addIpModal .modal-footer button:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #addIpModal .modal-footer .btn.btn-secondary,
+  #addIpModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+
+/* Force override for Edit IP Address modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #editIpModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #editIpModal .modal-footer .btn,
+  #editIpModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #editIpModal .modal-footer .btn:first-child,
+  #editIpModal .modal-footer button:first-child {
+    order: 2 !important;
+  }
+  
+  #editIpModal .modal-footer .btn:last-child,
+  #editIpModal .modal-footer button:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #editIpModal .modal-footer .btn.btn-secondary,
+  #editIpModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+
+/* Force override for Filter IP Addresses modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #filterIpModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #filterIpModal .modal-footer .btn,
+  #filterIpModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #filterIpModal .modal-footer > div {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+  }
+  
+  #filterIpModal .modal-footer > div .btn {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  /* Order: Apply Filters trên, Cancel giữa, Clear All Filters dưới */
+  #filterIpModal .modal-footer .btn:first-child {
+    order: 3 !important; /* Clear All Filters dưới */
+  }
+  
+  #filterIpModal .modal-footer > div .btn:first-child {
+    order: 2 !important; /* Cancel giữa */
+  }
+  
+  #filterIpModal .modal-footer > div .btn:last-child {
+    order: 1 !important; /* Apply Filters trên */
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #filterIpModal .modal-footer .btn.btn-outline-danger,
+  #filterIpModal .modal-footer .btn.btn-secondary,
+  #filterIpModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+</style>
+
+<script>
+// Auto-open Add IP modal when add=1 parameter is present
+document.addEventListener('DOMContentLoaded', function() {
+  // Check if add=1 parameter exists in URL
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('add') === '1') {
+    // Wait a bit for Bootstrap to be fully loaded
+    setTimeout(function() {
+      const addIpModal = new bootstrap.Modal(document.getElementById('addIpModal'));
+      addIpModal.show();
+      
+      // Clean up URL by removing the add parameter
+      urlParams.delete('add');
+      const newUrl = window.location.pathname + (urlParams.toString() ? '?' + urlParams.toString() : '');
+      window.history.replaceState({}, '', newUrl);
+    }, 100);
+  }
+});
+</script>
+

@@ -11,6 +11,25 @@ import path from 'path';
 
 const organizeController = {};
 
+// Helper: Load position options from DB config
+async function getPositionOptionsFromConfig() {
+  let positionOptions = [];
+  try {
+    const config = await Configuration.findById('contact_position');
+    if (config && config.value) {
+      let parsed;
+      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
+      if (Array.isArray(parsed)) {
+        positionOptions = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
+      }
+    }
+  } catch (e) { 
+    // Nếu không load được từ DB thì để rỗng
+    positionOptions = []; 
+  }
+  return positionOptions;
+}
+
 // Contact List page handler
 organizeController.contactList = async (req, res) => {
   try {
@@ -32,12 +51,15 @@ organizeController.contactList = async (req, res) => {
     const totalPages = Math.ceil(totalCount / pageSize);
     // fetch units for Org Unit select options
     const units = await Unit.findAll();
+    // fetch position options from config
+    const positionOptions = await getPositionOptionsFromConfig();
     // bubble any error message
     const errorMessage = req.query.error || null;
     const successMessage = req.query.success || null;
     return res.render('pages/organize/contact_list', {
       contactList,
       units,
+      positionOptions,
       search,
       page,
       totalPages,
@@ -136,6 +158,7 @@ organizeController.unitList = async (req, res) => {
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const errorMessage = req.query.error || null;
     const successMessage = req.query.success || null;
+    
     res.render('pages/organize/unit_list', {
       unitList,
       search,
@@ -158,17 +181,17 @@ organizeController.unitList = async (req, res) => {
 
 // Create new unit
 organizeController.createUnit = async (req, res) => {
-  let { name, code, description, page, search } = req.body;
+  let { name, description, page, search } = req.body;
   name = (name || '').trim();
-  code = (code || '').trim();
   description = (description || '').trim();
+  
   if (!name) {
     const pageNum = page || 1;
     const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
     return res.redirect(`/organize/unit?page=${pageNum}${searchQuery}&error=Unit Name is required`);
   }
   try {
-    await Unit.create({ name, code, description });
+    await Unit.create({ name, description });
     const pageNum = page || 1;
     const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
     return res.redirect(`/organize/unit?page=${pageNum}${searchQuery}&success=Unit added successfully`);
@@ -195,17 +218,17 @@ organizeController.createUnit = async (req, res) => {
 // Update existing unit
 organizeController.updateUnit = async (req, res) => {
   const { id } = req.params;
-  let { name, code, description, page, search } = req.body;
+  let { name, description, page, search } = req.body;
   name = (name || '').trim();
-  code = (code || '').trim();
   description = (description || '').trim();
+  
   if (!name) {
     const pageNum = page || 1;
     const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
     return res.redirect(`/organize/unit?page=${pageNum}${searchQuery}&error=Unit Name is required`);
   }
   try {
-    await Unit.update(id, { name, code, description });
+    await Unit.update(id, { name, description });
     const pageNum = page || 1;
     const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
     return res.redirect(`/organize/unit?page=${pageNum}${searchQuery}&success=Unit updated successfully`);

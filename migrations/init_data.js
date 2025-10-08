@@ -239,6 +239,22 @@ async function seedConfiguration(pool) {
           { value: 'win-app', label: 'Windows App' }
         ],
         description: 'Kiến trúc của System'
+      },
+      {
+        key: 'contact_position',
+        value: [
+          { value: 'Manager', label: 'Manager' },
+          { value: 'Staff', label: 'Staff' },
+          { value: 'Accountant', label: 'Accountant' },
+          { value: 'Engineer', label: 'Engineer' },
+          { value: 'Technician', label: 'Technician' },
+          { value: 'Director', label: 'Director' },
+          { value: 'Supervisor', label: 'Supervisor' },
+          { value: 'Analyst', label: 'Analyst' },
+          { value: 'Developer', label: 'Developer' },
+          { value: 'Administrator', label: 'Administrator' }
+        ],
+        description: 'Chức vụ của Contact'
       }
     ];
     for (const conf of dynamicConfigs) {

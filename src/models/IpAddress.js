@@ -361,14 +361,16 @@ class IpAddress {
       // Map device/server info into each IP object
       if (row.device_id) {
         row.device = { id: row.device_id, name: row.device_name };
+        // Keep device_name for easy access in frontend
+        row.device_name = row.device_name;
       }
       if (row.server_id) {
         row.server = { id: row.server_id, name: row.server_name };
+        // Keep server_name for easy access in frontend
+        row.server_name = row.server_name;
       }
       delete row.device_id;
-      delete row.device_name;
       delete row.server_id;
-      delete row.server_name;
       
       // Get subnet information for this IP
       const subnetInfo = await IpAddress.getSubnetInfo(row.ip_address);

@@ -161,7 +161,6 @@ function buildPaginationUrl(targetPage) {
                   <th>No.</th>
                   <th>Unit Name</th>
                   <th>Description</th>
-                  <th>Parent Unit</th>
                   <th class="text-end">Actions</th>
                 </tr>
               </thead>
@@ -172,16 +171,16 @@ function buildPaginationUrl(targetPage) {
                       <td><%= (page - 1) * pageSize + idx + 1 %></td>
                       <td><%= unit.name %></td>
                       <td><%= unit.description || '-' %></td>
-                      <td><%= unit.parent_name || '-' %></td>
                       <td class="text-end">
+                        <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showUnitDetail('<%= unit.id %>')" data-unit='<%= JSON.stringify(unit) %>'><i class="bi bi-eye"></i></button>
                         <% if (hasPermission('unit.update')) { %>
-                          <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editUnitModal" data-unit-id="<%= unit.id %>" data-unit-name="<%= unit.name %>" data-unit-description="<%= unit.description || '' %>" data-unit-parent-id="<%= unit.parent_id || '' %>" title="Edit">
+                          <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editUnitModal" data-unit-id="<%= unit.id %>" data-unit-name="<%= unit.name %>" data-unit-description="<%= unit.description || '' %>" title="Edit">
                             <i class="bi bi-pencil"></i>
                           </button>
                         <% } %>
                         <% if (hasPermission('unit.delete')) { %>
-                          <form action="/organize/unit/<%= unit.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteUnit(this, '<%= unit.name %>')">
-                            <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                          <form action="/organize/unit/<%= unit.id %>?_method=DELETE" method="POST" style="display:inline !important;" onsubmit="return confirmDeleteUnit(this, '<%= unit.name %>')">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Delete" style="display: inline-block !important; visibility: visible !important; position: relative !important;">
                               <i class="bi bi-trash"></i>
                             </button>
                           </form>
@@ -190,7 +189,7 @@ function buildPaginationUrl(targetPage) {
                     </tr>
                   <% }) %>
                 <% } else { %>
-                  <tr><td colspan="5" class="text-center">No units found</td></tr>
+                  <tr><td colspan="4" class="text-center">No units found</td></tr>
                 <% } %>
               </tbody>
             </table>
@@ -249,6 +248,24 @@ function buildPaginationUrl(targetPage) {
 <!-- MODALS SECTION -->
 <!-- ========================================== -->
 
+<!-- Unit Detail Modal -->
+<div class="modal fade" id="unitDetailModal" tabindex="-1" aria-labelledby="unitDetailModalLabel">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="unitDetailModalLabel">Unit Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="unitDetailContent">
+        <!-- Content will be loaded here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Add Unit Modal -->
 <div class="modal fade" id="addUnitModal" tabindex="-1" aria-labelledby="addUnitModalLabel">
   <div class="modal-dialog">
@@ -266,17 +283,6 @@ function buildPaginationUrl(targetPage) {
           <div class="mb-3">
             <label for="unitDescription" class="form-label">Description</label>
             <textarea class="form-control" id="unitDescription" name="description" rows="3"></textarea>
-          </div>
-          <div class="mb-3">
-            <label for="unitParent" class="form-label">Parent Unit</label>
-            <select class="form-control" id="unitParent" name="parent_id">
-              <option value="">-- Select Parent Unit --</option>
-              <% if (typeof unitList !== 'undefined' && unitList) { %>
-                <% unitList.forEach(function(unit) { %>
-                  <option value="<%= unit.id %>"><%= unit.name %></option>
-                <% }) %>
-              <% } %>
-            </select>
           </div>
         </div>
         <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
@@ -306,17 +312,6 @@ function buildPaginationUrl(targetPage) {
           <div class="mb-3">
             <label for="editUnitDescription" class="form-label">Description</label>
             <textarea class="form-control" id="editUnitDescription" name="description" rows="3"></textarea>
-          </div>
-          <div class="mb-3">
-            <label for="editUnitParent" class="form-label">Parent Unit</label>
-            <select class="form-control" id="editUnitParent" name="parent_id">
-              <option value="">-- Select Parent Unit --</option>
-              <% if (typeof unitList !== 'undefined' && unitList) { %>
-                <% unitList.forEach(function(unit) { %>
-                  <option value="<%= unit.id %>"><%= unit.name %></option>
-                <% }) %>
-              <% } %>
-            </select>
           </div>
         </div>
         <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
@@ -385,21 +380,41 @@ function buildPaginationUrl(targetPage) {
 // JAVASCRIPT FUNCTIONS
 // ==========================================
 
+// Show unit detail
+function showUnitDetail(unitId) {
+  const button = document.querySelector(`button[onclick="showUnitDetail('${unitId}')"]`);
+  const unitData = JSON.parse(button.getAttribute('data-unit'));
+  
+  const modalElement = document.getElementById('unitDetailModal');
+  const content = document.getElementById('unitDetailContent');
+  
+  let html = '<div class="row">';
+  html += '<div class="col-md-6"><strong>Unit Name:</strong> ' + (unitData.name || '-') + '</div>';
+  html += '<div class="col-md-6"><strong>Created:</strong> ' + (unitData.created_at ? new Date(unitData.created_at).toLocaleDateString() : '-') + '</div>';
+  if (unitData.description) {
+    html += '<div class="col-12 mt-3"><strong>Description:</strong><br>' + unitData.description + '</div>';
+  }
+  html += '</div>';
+  
+  content.innerHTML = html;
+  
+  const modal = new bootstrap.Modal(modalElement);
+  modal.show();
+}
+
 // Handle edit button click with data attributes
 $(document).on('click', 'button[data-bs-target="#editUnitModal"]', function() {
   const id = $(this).data('unit-id');
   const name = $(this).data('unit-name');
   const description = $(this).data('unit-description');
-  const parentId = $(this).data('unit-parent-id');
-  editUnit(id, name, description, parentId);
+  editUnit(id, name, description);
 });
 
 // Edit unit function
-function editUnit(id, name, description, parentId) {
+function editUnit(id, name, description) {
   document.getElementById('editUnitForm').action = '/organize/unit/' + id;
   document.getElementById('editUnitName').value = name;
   document.getElementById('editUnitDescription').value = description;
-  document.getElementById('editUnitParent').value = parentId;
 }
 
 // Confirm delete unit
@@ -423,4 +438,100 @@ function buildExportUrl() {
   
   return '/organize/unit/export' + (params.toString() ? '?' + params.toString() : '');
 }
+
+// Unit Import functionality
+$(document).ready(function() {
+  console.log('Unit Import - JavaScript loaded');
+  
+  // Validate file button handler
+  $('#validateUnitFile').on('click', function() {
+    console.log('Unit Import - Validate button clicked');
+    const fileInput = $('#unitImportFile')[0];
+    
+    if (!fileInput.files.length) {
+      alert('Please select a file first');
+      return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    
+    console.log('Unit Import - Sending validation request');
+    $.ajax({
+      url: '/organize/unit/validate',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      xhr: function() {
+        const xhr = new window.XMLHttpRequest();
+        xhr.responseType = 'blob';
+        return xhr;
+      },
+      success: function(data, status, xhr) {
+        console.log('Unit Import - Validation success');
+        const validationSummary = xhr.getResponseHeader('X-Validation-Summary');
+        console.log('Unit Import - Validation summary:', validationSummary);
+        
+        if (validationSummary) {
+          const summary = JSON.parse(validationSummary);
+          if (summary.total > 0 && summary.valid === summary.total) {
+            $('#importUnitBtn').show();
+            alert('Validation successful! All records are valid. You can now import.');
+          } else {
+            $('#importUnitBtn').hide();
+            alert(`Validation completed. ${summary.valid}/${summary.total} records are valid. Please check the downloaded file for details.`);
+          }
+        }
+        
+        // Download validation results
+        const blob = new Blob([data]);
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'unit_validation_results.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      },
+      error: function(xhr, status, error) {
+        console.error('Unit Import - Validation error:', error);
+        alert('Validation failed: ' + error);
+      }
+    });
+  });
+  
+  // Import button handler
+  $('#importUnitBtn').on('click', function() {
+    console.log('Unit Import - Import button clicked');
+    const fileInput = $('#unitImportFile')[0];
+    
+    if (!fileInput.files.length) {
+      alert('Please select a file first');
+      return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    
+    console.log('Unit Import - Sending import request');
+    $.ajax({
+      url: '/organize/unit/import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      success: function(data) {
+        console.log('Unit Import - Import success');
+        alert('Import completed successfully!');
+        location.reload();
+      },
+      error: function(xhr, status, error) {
+        console.error('Unit Import - Import error:', error);
+        alert('Import failed: ' + error);
+      }
+    });
+  });
+});
 </script>

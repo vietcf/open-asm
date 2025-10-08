@@ -343,6 +343,16 @@ networkController.listSubnet = async (req, res) => {
     const uniqueZones = await Subnet.getUniqueZones();
     const uniqueEnvironments = await Subnet.getUniqueEnvironments();
     
+    // --- Fetch display names for selected filters (for select2 persistence) ---
+    let selectedTags = [];
+    if (Array.isArray(filterTags) && filterTags.length > 0) {
+      const tagList = await Tag.findByIds(filterTags);
+      selectedTags = filterTags.map(tid => {
+        const found = tagList.find(t => t.id == tid);
+        return found ? { id: found.id, name: found.name } : null;
+      }).filter(Boolean);
+    }
+    
     const successMessage = req.flash('success')[0];
     const errorMessage = req.flash('error')[0];
     res.render('pages/network/subnet_list', {
@@ -353,7 +363,7 @@ networkController.listSubnet = async (req, res) => {
       totalPages,
       totalCount,
       search,
-      filterTags,
+      filterTags: selectedTags,
       filterZone,
       filterEnvironment,
       uniqueZones,
@@ -1442,6 +1452,8 @@ networkController.exportIpAddressList = async (req, res) => {
     let filterStatus = req.query.status || '';
     let filterSystems = req.query['systems[]'] || req.query.systems || [];
     let filterContacts = req.query['contacts[]'] || req.query.contacts || [];
+    const filterZone = req.query.zone ? req.query.zone.trim() : '';
+    const filterEnvironment = req.query.environment ? req.query.environment.trim() : '';
     filterTags = normalizeArray(filterTags).filter(x => x !== '');
     filterSystems = normalizeArray(filterSystems).filter(x => x !== '');
     filterContacts = normalizeArray(filterContacts).filter(x => x !== '');
@@ -1452,18 +1464,22 @@ networkController.exportIpAddressList = async (req, res) => {
       status: filterStatus,
       systems: filterSystems,
       contacts: filterContacts,
+      zone: filterZone,
+      environment: filterEnvironment,
       page: 1,
       pageSize: 10000
     });
     // Định nghĩa các cột xuất Excel
     const headers = [
-      'ID', 'IP Address', 'Description', 'Status', 'Tags', 'Created At', 'Updated At', 'Updated By', 'Systems', 'Contacts'
+      'ID', 'IP Address', 'Description', 'Status', 'Zone', 'Environment', 'Tags', 'Created At', 'Updated At', 'Updated By', 'Systems', 'Contacts'
     ];
     const rows = ipList.map(ip => [
       ip.id,
       ip.ip_address || '',
       ip.description ? ip.description.replace(/\r?\n|\r/g, ' ') : '',
       ip.status || '',
+      ip.zone || '',
+      ip.environment || '',
       (ip.tags && ip.tags.length ? ip.tags.map(t => t.name).join(', ') : ''),
       ip.created_at ? new Date(ip.created_at).toLocaleString('en-GB') : '',
       ip.updated_at ? new Date(ip.updated_at).toLocaleString('en-GB') : '',
@@ -1499,15 +1515,17 @@ networkController.exportSubnetList = async (req, res) => {
     const search = req.query.search ? req.query.search.trim() : '';
     let filterTags = req.query['tags[]'] || req.query.tags || [];
     filterTags = normalizeArray(filterTags).filter(x => x !== '');
+    const filterZone = req.query.zone ? req.query.zone.trim() : '';
+    const filterEnvironment = req.query.environment ? req.query.environment.trim() : '';
     
     // Lấy toàn bộ danh sách (không phân trang)
     let subnetList = [];
-    if (search || filterTags.length > 0) {
+    if (search || filterTags.length > 0 || filterZone || filterEnvironment) {
       subnetList = await Subnet.findFilteredList({ 
         search, 
         tags: filterTags, 
-        zone: undefined,
-        environment: undefined,
+        zone: filterZone,
+        environment: filterEnvironment,
         page: 1, 
         pageSize: 10000 
       });
@@ -1517,12 +1535,14 @@ networkController.exportSubnetList = async (req, res) => {
     
     // Định nghĩa các cột xuất Excel
     const headers = [
-      'ID', 'Subnet Address', 'Description', 'Tags', 'Created At', 'Updated At', 'Updated By'
+      'ID', 'Subnet Address', 'Description', 'Zone', 'Environment', 'Tags', 'Created At', 'Updated At', 'Updated By'
     ];
     const rows = subnetList.map(subnet => [
       subnet.id,
       subnet.address || '',
       subnet.description ? subnet.description.replace(/\r?\n|\r/g, ' ') : '',
+      subnet.zone || '',
+      subnet.environment || '',
       (subnet.tags && subnet.tags.length ? subnet.tags.map(t => t.name).join(', ') : ''),
       subnet.created_at ? new Date(subnet.created_at).toLocaleString('en-GB') : '',
       subnet.updated_at ? new Date(subnet.updated_at).toLocaleString('en-GB') : '',
@@ -1543,6 +1563,64 @@ networkController.exportSubnetList = async (req, res) => {
   } catch (err) {
     console.error('Error exporting subnet list:', err);
     res.status(500).send('Error exporting subnet list: ' + err.message);
+  }
+};
+
+// Export Domain List as Excel (filtered)
+networkController.exportDomainList = async (req, res) => {
+  try {
+    // Chuẩn hóa filter giống listDomain
+    const normalizeArray = v => (Array.isArray(v) ? v : (v ? [v] : []));
+    const search = req.query.search ? req.query.search.trim() : '';
+    let filterTags = req.query['tags[]'] || req.query.tags || [];
+    let filterSystems = req.query['systems[]'] || req.query.systems || [];
+    const filterZone = req.query.zone ? req.query.zone.trim() : '';
+    const filterEnvironment = req.query.environment ? req.query.environment.trim() : '';
+    filterTags = normalizeArray(filterTags).filter(x => x !== '');
+    filterSystems = normalizeArray(filterSystems).filter(x => x !== '');
+    
+    // Lấy toàn bộ danh sách (không phân trang)
+    const domainList = await Domain.findFilteredList({
+      search,
+      tags: filterTags,
+      systems: filterSystems,
+      zone: filterZone,
+      environment: filterEnvironment,
+      page: 1,
+      pageSize: 10000
+    });
+    
+    // Định nghĩa các cột xuất Excel
+    const headers = [
+      'ID', 'Domain Name', 'Description', 'Zone', 'Environment', 'Tags', 'Created At', 'Updated At', 'Updated By', 'Systems'
+    ];
+    const rows = domainList.map(domain => [
+      domain.id,
+      domain.name || '',
+      domain.description ? domain.description.replace(/\r?\n|\r/g, ' ') : '',
+      domain.zone || '',
+      domain.environment || '',
+      (domain.tags && domain.tags.length ? domain.tags.map(t => t.name).join(', ') : ''),
+      domain.created_at ? new Date(domain.created_at).toLocaleString('en-GB') : '',
+      domain.updated_at ? new Date(domain.updated_at).toLocaleString('en-GB') : '',
+      domain.updated_by || '',
+      (domain.systems && domain.systems.length ? domain.systems.map(s => s.name).join(', ') : '')
+    ]);
+    
+    // Tạo file Excel
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Domain List');
+    worksheet.addRow(headers);
+    rows.forEach(row => worksheet.addRow(row));
+    worksheet.columns.forEach(col => { col.width = 22; });
+    
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="domain_list.xlsx"');
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    console.error('Error exporting domain list:', err);
+    res.status(500).send('Error exporting domain list: ' + err.message);
   }
 };
 

@@ -34,10 +34,7 @@ async function getServerLocationsFromConfig() {
     }
   } catch (e) { options = []; }
   if (!Array.isArray(options) || options.length === 0) {
-    options = [
-      { value: 'DC', label: 'DC' },
-      { value: 'DR', label: 'DR' }
-    ];
+    options = [];
   }
   return options;
 }
@@ -55,11 +52,7 @@ async function getServerStatusOptionsFromConfig() {
     }
   } catch (e) { options = []; }
   if (!Array.isArray(options) || options.length === 0) {
-    options = [
-      { value: 'ONLINE', label: 'ONLINE' },
-      { value: 'OFFLINE', label: 'OFFLINE' },
-      { value: 'MAINTENANCE', label: 'MAINTENANCE' }
-    ];
+    options = [];
   }
   return options;
 }
@@ -77,20 +70,16 @@ async function getServerTypeOptionsFromConfig() {
     }
   } catch (e) { options = []; }
   if (!Array.isArray(options) || options.length === 0) {
-    options = [
-      { value: 'PHYSICAL', label: 'PHYSICAL' },
-      { value: 'VIRTUAL-MACHINE', label: 'VIRTUAL-MACHINE' },
-      { value: 'CLOUD-INSTANCE', label: 'CLOUD-INSTANCE' }
-    ];
+    options = [];
   }
   return options;
 }
 
 // Helper: always return array of strings for select2 filters
 function normalizeFilterArray(val) {
-  if (!val) return [];
-  if (Array.isArray(val)) return val.map(String);
-  if (typeof val === 'string') return [val];
+  if (!val || val === 'undefined' || val === undefined) return [];
+  if (Array.isArray(val)) return val.filter(v => v && v !== 'undefined' && v !== undefined).map(String);
+  if (typeof val === 'string' && val !== 'undefined') return [val];
   return [];
 }
 
@@ -102,7 +91,7 @@ serverController.listServer = async (req, res) => {
   try {
     // Use global pageSizeOptions from res.locals
     const pageSizeOptions = res.locals.pageSizeOptions || [10, 20, 50];
-    let pageSize = parseInt(req.query.page_size, 10) || pageSizeOptions[0];
+    let pageSize = parseInt(req.query.pageSize, 10) || pageSizeOptions[0];
     if (!pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
     const page = parseInt(req.query.page, 10) || 1;
 
@@ -113,12 +102,13 @@ serverController.listServer = async (req, res) => {
       type: typeof req.query.type !== 'undefined' ? req.query.type : '',
       status: typeof req.query.status !== 'undefined' ? req.query.status : '',
       tags: normalizeFilterArray(req.query['tags[]'] || req.query.tags),
-      ip: normalizeFilterArray(req.query['ip[]'] || req.query.ip),
-      manager: normalizeFilterArray(req.query['manager[]'] || req.query.manager),
+      manager: normalizeFilterArray(req.query['contacts[]'] || req.query.manager),
       systems: normalizeFilterArray(req.query['systems[]'] || req.query.systems),
       services: normalizeFilterArray(req.query['services[]'] || req.query.services),
       os: normalizeFilterArray(req.query['os[]'] || req.query.os)
     };
+    
+    console.log('Filter params:', filterParams);
 
     // --- Query server list and count ---
     const serverList = await Server.findFilteredList({
@@ -127,7 +117,6 @@ serverController.listServer = async (req, res) => {
       type: filterParams.type,
       location: filterParams.location,
       tags: filterParams.tags,
-      ip: filterParams.ip,
       manager: filterParams.manager,
       systems: filterParams.systems,
       services: filterParams.services,
@@ -141,7 +130,6 @@ serverController.listServer = async (req, res) => {
       type: filterParams.type,
       location: filterParams.location,
       tags: filterParams.tags,
-      ip: filterParams.ip,
       manager: filterParams.manager,
       systems: filterParams.systems,
       services: filterParams.services,
@@ -160,6 +148,48 @@ serverController.listServer = async (req, res) => {
       getServerStatusOptionsFromConfig(),
       getServerTypeOptionsFromConfig()
     ]);
+
+    // Load selected data for filter (if any)
+    let selectedTags = [];
+    let selectedSystems = [];
+    let selectedManagers = [];
+    let selectedServices = [];
+    let selectedOS = null;
+    
+    if (filterParams.tags && filterParams.tags.length > 0) {
+      selectedTags = await Tag.findByIds(filterParams.tags);
+    }
+    
+    if (filterParams.systems && filterParams.systems.length > 0) {
+      selectedSystems = await System.findByIds(filterParams.systems);
+    }
+    
+    if (filterParams.manager && filterParams.manager.length > 0) {
+      console.log('Loading managers with IDs:', filterParams.manager);
+      selectedManagers = await Contact.findByIds(filterParams.manager);
+      console.log('Loaded managers:', selectedManagers);
+    }
+    
+    if (filterParams.services && filterParams.services.length > 0) {
+      selectedServices = await Service.findByIds(filterParams.services);
+    }
+    
+    if (filterParams.os && filterParams.os.length > 0) {
+      // Load OS/Platform info from database
+      console.log('Loading OS with value:', filterParams.os[0]);
+      try {
+        const platform = await Platform.findById(filterParams.os[0]);
+        if (platform) {
+          selectedOS = { id: platform.id, text: platform.name };
+        } else {
+          selectedOS = { id: filterParams.os[0], text: filterParams.os[0] };
+        }
+      } catch (err) {
+        console.error('Error loading platform:', err);
+        selectedOS = { id: filterParams.os[0], text: filterParams.os[0] };
+      }
+      console.log('Selected OS:', selectedOS);
+    }
     res.render('pages/server/server_list', {
       serverList,
       search: filterParams.search,
@@ -178,11 +208,15 @@ serverController.listServer = async (req, res) => {
       filterType: filterParams.type,
       filterStatus: filterParams.status,
       filterTags: filterParams.tags,
-      filterIp: filterParams.ip,
       filterManager: filterParams.manager,
       filterSystems: filterParams.systems,
       filterServices: filterParams.services,
       filterOs: filterParams.os,
+      selectedTags,
+      selectedSystems,
+      selectedManagers,
+      selectedServices,
+      selectedOS,
       title: 'Server List',
       activeMenu: 'server-list'
     });
@@ -196,6 +230,16 @@ serverController.createServer = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    
+    // Check if req.body exists
+    if (!req.body) {
+      throw new Error('Request body is missing. Please check if body parsing middleware is configured correctly.');
+    }
+    
+    // Debug logging
+    console.log('req.body:', req.body);
+    console.log('req.body keys:', Object.keys(req.body));
+    
     let { name, os, status, location, type, managers, systems, agents, services, tags, ip_addresses, description } = req.body;
     // Validation and normalization
     if (!name || !name.trim()) {
@@ -337,6 +381,16 @@ serverController.updateServer = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    
+    // Check if req.body exists
+    if (!req.body) {
+      throw new Error('Request body is missing. Please check if body parsing middleware is configured correctly.');
+    }
+    
+    // Debug logging
+    console.log('UPDATE - req.body:', req.body);
+    console.log('UPDATE - req.body keys:', Object.keys(req.body));
+    
     const id = req.params.id;
     let { name, os, status, location, type, managers, systems, agents, services, ip, tags, ip_addresses, description } = req.body;
     if (!name || !name.trim()) {
@@ -403,7 +457,7 @@ serverController.listService = async (req, res) => {
   try {
     // pageSizeOptions đã có sẵn qua res.locals.pageSizeOptions
     const pageSizeOptions = res.locals.pageSizeOptions || [10, 20, 50];
-    let pageSize = parseInt(req.query.page_size, 10) || pageSizeOptions[0];
+    let pageSize = parseInt(req.query.pageSize, 10) || pageSizeOptions[0];
     if (!pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
     const search = req.query.search ? req.query.search.trim().toLowerCase() : '';
     const page = parseInt(req.query.page, 10) || 1;
@@ -413,7 +467,10 @@ serverController.listService = async (req, res) => {
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
     const success = req.flash('success')[0];
-    const error = req.flash('error')[0];res.render('pages/server/service_list', {
+    const error = req.flash('error')[0];
+    
+    
+    res.render('pages/server/service_list', {
       serviceList,
       search,
       page,
@@ -485,7 +542,7 @@ serverController.listAgent = async (req, res) => {
   try {
     // pageSizeOptions đã có sẵn qua res.locals.pageSizeOptions
     const pageSizeOptions = res.locals.pageSizeOptions || [10, 20, 50];
-    let pageSize = parseInt(req.query.page_size, 10) || pageSizeOptions[0];
+    let pageSize = parseInt(req.query.pageSize, 10) || pageSizeOptions[0];
     if (!pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
     const page = parseInt(req.query.page, 10) || 1;
     const search = req.query.search ? req.query.search.trim() : '';
@@ -623,9 +680,9 @@ serverController.exportServerList = async (req, res) => {
   try {
     // Chuẩn hóa các tham số filter (giống listServer)
     function normalizeFilterArray(val) {
-      if (!val) return [];
-      if (Array.isArray(val)) return val.map(String);
-      if (typeof val === 'string') return [val];
+      if (!val || val === 'undefined' || val === undefined) return [];
+      if (Array.isArray(val)) return val.filter(v => v && v !== 'undefined' && v !== undefined).map(String);
+      if (typeof val === 'string' && val !== 'undefined') return [val];
       return [];
     }
     const filterParams = {
@@ -634,12 +691,14 @@ serverController.exportServerList = async (req, res) => {
       type: typeof req.query.type !== 'undefined' ? req.query.type : '',
       status: typeof req.query.status !== 'undefined' ? req.query.status : '',
       tags: normalizeFilterArray(req.query['tags[]'] || req.query.tags),
-      ip: normalizeFilterArray(req.query['ip[]'] || req.query.ip),
-      manager: normalizeFilterArray(req.query['manager[]'] || req.query.manager),
+      manager: normalizeFilterArray(req.query['contacts[]'] || req.query.manager),
       systems: normalizeFilterArray(req.query['systems[]'] || req.query.systems),
       services: normalizeFilterArray(req.query['services[]'] || req.query.services),
       os: normalizeFilterArray(req.query['os[]'] || req.query.os)
     };
+    
+    console.log('Export filter params:', filterParams);
+    
     // Lấy toàn bộ danh sách (không phân trang)
     const serverList = await Server.findFilteredList({
       search: filterParams.search,
@@ -647,7 +706,6 @@ serverController.exportServerList = async (req, res) => {
       type: filterParams.type,
       location: filterParams.location,
       tags: filterParams.tags,
-      ip: filterParams.ip,
       manager: filterParams.manager,
       systems: filterParams.systems,
       services: filterParams.services,
@@ -712,6 +770,7 @@ function sanitizeString(str) {
 // Download server template
 serverController.downloadServerTemplate = async (req, res) => {
   try {
+    console.log('Starting server template download...');
     // Create Excel workbook
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Server Template');
@@ -783,25 +842,33 @@ serverController.downloadServerTemplate = async (req, res) => {
     // Create temp directory if not exists
     const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
     const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
+    try {
+      await fs.promises.mkdir(tempDir, { recursive: true });
+    } catch (err) {
+      // Directory might already exist, ignore error
+      console.log('Temp directory creation:', err.message);
     }
     const tempPath = path.join(tempDir, 'temp_server_template.xlsx');
+    console.log('Writing template to:', tempPath);
     await workbook.xlsx.writeFile(tempPath);
+    console.log('Template file written successfully');
     
     // Check if file exists and get size
     if (fs.existsSync(tempPath)) {
       const stats = fs.statSync(tempPath);
+      console.log('Template file created successfully, size:', stats.size, 'bytes');
       
-      // Use res.download() for proper file download handling
-      res.download(tempPath, 'server_list_template.xlsx', (err) => {
-        if (err) {
-          console.error('Error downloading template file:', err);
-          if (!res.headersSent) {
-            res.status(500).json({ error: 'Error downloading template file' });
-          }
-        }
-        
+      // Set headers for file download
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="server_list_template.xlsx"');
+      res.setHeader('Content-Length', stats.size);
+      
+      // Stream the file
+      const fileStream = fs.createReadStream(tempPath);
+      fileStream.pipe(res);
+      
+      fileStream.on('end', () => {
+        console.log('Template file sent successfully');
         // Clean up template file after download
         setTimeout(() => {
           try {
@@ -813,6 +880,13 @@ serverController.downloadServerTemplate = async (req, res) => {
             console.error('Error cleaning up template file:', cleanupErr);
           }
         }, 5000); // 5 seconds delay
+      });
+      
+      fileStream.on('error', (err) => {
+        console.error('Error streaming template file:', err);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Error streaming template file' });
+        }
       });
     } else {
       throw new Error('Template Excel file was not created');
@@ -829,9 +903,13 @@ serverController.downloadServerTemplate = async (req, res) => {
 // Validate server import file
 serverController.validateImportServers = async (req, res) => {
   try {
+    console.log('Starting server validation...');
     if (!req.file) {
+      console.log('No file uploaded');
       return res.status(400).json({ error: 'No file uploaded' });
     }
+    
+    console.log('File uploaded:', req.file.originalname, 'Size:', req.file.size);
 
     const filePath = req.file.path;
     const originalFileName = req.file.originalname;
@@ -839,6 +917,7 @@ serverController.validateImportServers = async (req, res) => {
 
     // Parse file based on extension
     const ext = path.extname(originalFileName).toLowerCase();
+    console.log('File extension:', ext);
     let headers = [];
     
     if (ext === '.csv') {
@@ -1272,6 +1351,8 @@ serverController.validateImportServers = async (req, res) => {
 
   } catch (err) {
     console.error('Error validating server import file:', err);
+    console.error('Error stack:', err.stack);
+    console.error('Error message:', err.message);
     if (!res.headersSent) {
       res.status(500).json({ error: 'Error validating import file: ' + err.message });
     }

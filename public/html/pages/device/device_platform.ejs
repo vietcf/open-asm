@@ -87,16 +87,6 @@ function buildPaginationUrl(targetPage) {
               <i class="bi bi-plus"></i> Add Platform
             </button>
           <% } %>
-          <% if (hasPermission && hasPermission('platform.read')) { %>
-            <a href="/device/platform/export" class="btn btn-info btn-sm">
-              <i class="bi bi-download"></i> Export
-            </a>
-          <% } %>
-          <% if (hasPermission && hasPermission('platform.create')) { %>
-            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importPlatformModal">
-              <i class="bi bi-upload"></i> Import Platform
-            </button>
-          <% } %>
         </div>
       </div>
     </div>
@@ -172,17 +162,17 @@ function buildPaginationUrl(targetPage) {
                       <td><%= platform.name %></td>
                       <td><%= platform.description || '-' %></td>
                       <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showPlatformDetail('<%= platform.id %>')" data-platform='<%= JSON.stringify(platform) %>'>
+                        <button type="button" class="btn btn-info btn-sm me-1" title="Show" onclick="showPlatformDetail('<%= platform.id %>')" data-platform='<%= JSON.stringify(platform) %>'>
                           <i class="bi bi-eye"></i>
                         </button>
                         <% if (hasPermission('platform.update')) { %>
-                          <button type="button" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#editPlatformModal" data-platform-id="<%= platform.id %>" data-platform-name="<%= platform.name %>" data-platform-description="<%= platform.description || '' %>">
+                          <button type="button" class="btn btn-warning btn-sm me-1" title="Edit" data-bs-toggle="modal" data-bs-target="#editPlatformModal" data-platform-id="<%= platform.id %>" data-platform-name="<%= platform.name %>" data-platform-description="<%= platform.description || '' %>">
                             <i class="bi bi-pencil"></i>
                           </button>
                         <% } %>
-                        <% if (hasPermission('platform.delete')) { %>
+                        <% if (hasPermission('platform.delete') || (user && (user.role_name === 'superadmin' || user.role_name === 'admin'))) { %>
                           <form action="/device/platform/<%= platform.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeletePlatform(this, '<%= platform.name %>')">
-                            <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Delete" style="display: inline-block !important; visibility: visible !important;">
                               <i class="bi bi-trash"></i>
                             </button>
                           </form>
@@ -329,29 +319,6 @@ function buildPaginationUrl(targetPage) {
       </div>
     </div>
 
-    <!-- Import Platform Modal -->
-    <div class="modal fade" id="importPlatformModal" tabindex="-1" aria-labelledby="importPlatformModalLabel">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <form id="importPlatformForm" method="POST" action="/device/platform/import" enctype="multipart/form-data">
-            <div class="modal-header">
-              <h5 class="modal-title" id="importPlatformModalLabel">Import Platform</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              <div class="mb-3">
-                <label for="platformFile" class="form-label">Select Excel File</label>
-                <input type="file" class="form-control" id="platformFile" name="file" accept=".xlsx,.xls" required>
-              </div>
-            </div>
-            <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
-              <button type="submit" class="btn btn-success w-100 order-1 order-lg-2">Import Platform</button>
-              <button type="button" class="btn btn-secondary w-100 order-2 order-lg-1" data-bs-dismiss="modal">Cancel</button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
 
 <!-- Modal Buttons Custom CSS -->
 <link rel="stylesheet" href="/css/modal-buttons.css">
@@ -411,6 +378,10 @@ $(document).on('click', 'button[data-bs-target="#editPlatformModal"]', function(
 
 // Confirm Delete Platform
 function confirmDeletePlatform(form, platformName) {
-  return confirm('Are you sure you want to delete platform "' + platformName + '"?');
+  if (confirm(`Are you sure you want to delete platform "${platformName}"?`)) {
+    return true;
+  } else {
+    return false;
+  }
 }
 </script>

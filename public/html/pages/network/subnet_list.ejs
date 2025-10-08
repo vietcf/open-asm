@@ -1,3 +1,5 @@
+<link rel="stylesheet" href="/css/custom.css">
+
 <!--
 ==========================================
 SUBNET LIST PAGE - EJS TEMPLATE
@@ -42,10 +44,8 @@ function buildPaginationUrl(targetPage) {
     filterTags.forEach(tag => params.append('tags[]', tag.id));
   }
   
-  
-  if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses && filterIpAddresses.length > 0) {
-    filterIpAddresses.forEach(ip => params.append('ip_id[]', ip.id));
-  }
+  if (typeof filterZone !== 'undefined' && filterZone) params.set('zone', filterZone);
+  if (typeof filterEnvironment !== 'undefined' && filterEnvironment) params.set('environment', filterEnvironment);
   
   return '?' + params.toString();
 }
@@ -66,10 +66,8 @@ function buildExportUrl() {
     filterTags.forEach(tag => params.append('tags[]', tag.id));
   }
   
-  
-  if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses && filterIpAddresses.length > 0) {
-    filterIpAddresses.forEach(ip => params.append('ip_id[]', ip.id));
-  }
+  if (typeof filterZone !== 'undefined' && filterZone) params.set('zone', filterZone);
+  if (typeof filterEnvironment !== 'undefined' && filterEnvironment) params.set('environment', filterEnvironment);
   
   return '/network/subnet-address/export' + (params.toString() ? '?' + params.toString() : '');
 }
@@ -119,13 +117,16 @@ function buildExportUrl() {
               <% }); %>
             <% } %>
             
-            
-            <!-- Filter IP Addresses -->
-            <% if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses && filterIpAddresses.length > 0) { %>
-              <% filterIpAddresses.forEach(function(ip) { %>
-                <input type="hidden" name="ip_id[]" value="<%= ip.id %>">
-              <% }); %>
+            <!-- Filter Zone -->
+            <% if (typeof filterZone !== 'undefined' && filterZone) { %>
+              <input type="hidden" name="zone" value="<%= filterZone %>">
             <% } %>
+            
+            <!-- Filter Environment -->
+            <% if (typeof filterEnvironment !== 'undefined' && filterEnvironment) { %>
+              <input type="hidden" name="environment" value="<%= filterEnvironment %>">
+            <% } %>
+            
             
             <!-- Search Input -->
             <div class="input-group input-group-sm" style="width: 250px;">
@@ -210,9 +211,8 @@ function buildExportUrl() {
           data-tags='<%= JSON.stringify(filterTags || []) %>'
           data-zone='<%= JSON.stringify(filterZone || '') %>'
           data-environment='<%= JSON.stringify(filterEnvironment || '') %>' 
-         
          style="display:none">
-                </div>
+    </div>
 
     <!-- ==========================================
          FLASH MESSAGES
@@ -286,19 +286,31 @@ function buildExportUrl() {
                       <td><strong><%= subnet.address %></strong></td>
                       
                       <!-- Description -->
-                      <td><%= subnet.description || '-' %></td>
+                      <td>
+                        <% 
+                          const description = subnet.description || '-';
+                          const truncatedDesc = description.length > 50 ? description.substring(0, 50) + '...' : description;
+                        %>
+                        <span title="<%= description %>"><%= truncatedDesc %></span>
+                      </td>
                       
                       <!-- Zone -->
                       <td>
-                        <% if (subnet.ip && subnet.zone) { %>
+                        <% if (subnet.zone) { %>
                           <span class="badge bg-primary"><%= subnet.zone %></span>
                         <% } else { %>
-                          <span class="text-muted">No IP</span>
+                          <span class="text-muted">-</span>
                         <% } %>
                       </td>
                       
                       <!-- Environment -->
-                      <td><span class="badge bg-info"><%= subnet.environment || 'A' %></span></td>
+                      <td>
+                        <% if (subnet.environment) { %>
+                          <span class="badge bg-info"><%= subnet.environment %></span>
+                        <% } else { %>
+                          <span class="text-muted">-</span>
+                        <% } %>
+                      </td>
                       
                       <!-- Tags -->
                       <td>
@@ -388,7 +400,8 @@ function buildExportUrl() {
                     if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
                     if (typeof filterTags !== 'undefined' && filterTags.length) filterTags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag.id || tag)); });
                     if (typeof filterStatus !== 'undefined' && filterStatus) params.push('status=' + encodeURIComponent(filterStatus));
-                    if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses.length) filterIpAddresses.forEach(function(ip) { params.push('ip_id[]=' + encodeURIComponent(ip.id || ip)); });
+                    if (typeof filterZone !== 'undefined' && filterZone) params.push('zone=' + encodeURIComponent(filterZone));
+                    if (typeof filterEnvironment !== 'undefined' && filterEnvironment) params.push('environment=' + encodeURIComponent(filterEnvironment));
                     return params.join('&');
                   }
                   const subnetFilterQuery = buildSubnetFilterQuery();
@@ -594,6 +607,12 @@ function buildExportUrl() {
       </div>
       <form method="GET" action="/network/subnet-address" id="filterSubnetForm">
         <input type="hidden" name="page" value="1">
+        <input type="hidden" name="pageSize" value="<%= typeof pageSize !== 'undefined' ? pageSize : 10 %>">
+        
+        <!-- Preserve current search term -->
+        <% if (typeof search !== 'undefined' && search) { %>
+          <input type="hidden" name="search" value="<%= search %>">
+        <% } %>
         <div class="modal-body">
           <div class="row g-2">
             <!-- Zone Filter -->
@@ -618,12 +637,6 @@ function buildExportUrl() {
               <select id="filterSubnetTags" name="tags[]" class="form-control" multiple></select>
                   </div>
             
-            
-            <!-- IP Address Filter -->
-            <div class="col-12 mb-2">
-              <label class="form-label">IP Address</label>
-              <select id="filterSubnetIpId" name="ip_id[]" class="form-control" multiple></select>
-            </div>
                 </div>
                 </div>
         <div class="modal-footer d-flex justify-content-between">
@@ -799,13 +812,6 @@ $(function() {
       },
       cache: true
     },
-    createTag: function(params) {
-      return {
-        id: params.term,
-        text: params.term,
-        custom: true
-      };
-    }
   });
 
   // Environment select2 AJAX - Bootstrap 5 theme (like Manufacturer)
@@ -829,13 +835,6 @@ $(function() {
       },
       cache: true
     },
-    createTag: function(params) {
-      return {
-        id: params.term,
-        text: params.term,
-        custom: true
-      };
-    }
   });
 
 
@@ -1027,13 +1026,6 @@ $(function() {
       },
       cache: true
     },
-    createTag: function(params) {
-      return {
-        id: params.term,
-        text: params.term,
-        custom: true
-      };
-    }
   });
 
   // Edit Subnet Environment Select2
@@ -1057,13 +1049,6 @@ $(function() {
       },
       cache: true
     },
-    createTag: function(params) {
-      return {
-        id: params.term,
-        text: params.term,
-        custom: true
-      };
-    }
   });
 
 
@@ -1173,25 +1158,50 @@ $(function() {
           });
 
 
-           $('#filterSubnetIpId').select2({
-             theme: 'bootstrap-5',
-             placeholder: 'Select IP address(es)',
-             allowClear: true,
-             width: '100%',
-             dropdownParent: $('#filterSubnetModal'),
-             ajax: {
-               url: '/network/api/ip-addresses',
-               dataType: 'json',
-               delay: 250,
-               data: function(params) {
-                 return { search: params.term };
-               },
-               processResults: function(data) {
-                 return { results: data };
-               },
-               cache: true
-             }
-           });
+
+  // Filter Zone select2 AJAX - Bootstrap 5 theme
+  $('#filterSubnetZone').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select zone',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterSubnetModal'),
+    ajax: {
+      url: '/network/api/zones',
+      dataType: 'json',
+      delay: 250,
+      data: params => {
+        return { search: params.term };
+      },
+      processResults: function(data, params) {
+        const results = data || [];
+        return { results: results };
+      },
+      cache: true
+    },
+  });
+
+  // Filter Environment select2 AJAX - Bootstrap 5 theme
+  $('#filterSubnetEnvironment').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select environment',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterSubnetModal'),
+    ajax: {
+      url: '/network/api/environments',
+      dataType: 'json',
+      delay: 250,
+      data: params => {
+        return { search: params.term };
+      },
+      processResults: function(data, params) {
+        const results = data || [];
+        return { results: results };
+      },
+      cache: true
+    },
+  });
 
   // Filter Subnet Modal - Load existing filter values when opened
   $('#filterSubnetModal').on('show.bs.modal', function() {
@@ -1205,15 +1215,15 @@ $(function() {
   // Filter Subnet Modal - Reset form when hidden
   $('#filterSubnetModal').on('hidden.bs.modal', function() {
     $('#filterSubnetForm')[0].reset();
-    $('#filterSubnetTags, #filterSubnetIpId').val(null).trigger('change');
+    $('#filterSubnetTags, #filterSubnetZone, #filterSubnetEnvironment').val(null).trigger('change');
   });
 
   // Clear All Filters button
   $('#clearFilterBtnSubnet').on('click', function() {
     // Clear all select2 values
     $('#filterSubnetTags').val(null).trigger('change');
-    $('#filterSubnetZone').val('');
-    $('#filterSubnetEnvironment').val('');
+    $('#filterSubnetZone').val(null).trigger('change');
+    $('#filterSubnetEnvironment').val(null).trigger('change');
     
     // Close modal
     $('#filterSubnetModal').modal('hide');
@@ -1242,10 +1252,8 @@ function loadFilterExistingValues() {
     const filterZone = JSON.parse(filterDataEl.dataset.zone || '""');
     const filterEnvironment = JSON.parse(filterDataEl.dataset.environment || '""');
     
-    
     // Clear existing options first to avoid duplicates
     $('#filterSubnetTags').find('option').remove();
-    $('#filterSubnetIpId').find('option').remove();
     
     // Load tags
     if (filterTags && filterTags.length > 0) {
@@ -1256,17 +1264,20 @@ function loadFilterExistingValues() {
       $('#filterSubnetTags').trigger('change');
     }
     
+    // Load zone
+    if (filterZone && filterZone.trim() !== '') {
+      const zoneOption = new Option(filterZone, filterZone, true, true);
+      $('#filterSubnetZone').append(zoneOption).trigger('change');
+    }
     
-    // Load IP addresses
-    if (filterIpAddresses && filterIpAddresses.length > 0) {
-      filterIpAddresses.forEach(ip => {
-        const option = new Option(ip.ip_address, ip.id, true, true);
-        $('#filterSubnetIpId').append(option);
-      });
-      $('#filterSubnetIpId').trigger('change');
+    // Load environment
+    if (filterEnvironment && filterEnvironment.trim() !== '') {
+      const envOption = new Option(filterEnvironment, filterEnvironment, true, true);
+      $('#filterSubnetEnvironment').append(envOption).trigger('change');
     }
     
   } catch (e) {
+    console.error('Error loading filter values:', e);
   }
 }
 
@@ -1783,3 +1794,144 @@ $('#importSubnetModal').on('hidden.bs.modal', function() {
   $('.progress-bar').css('width', '0%').text('');
 });
 </script>
+
+<style>
+/* Force override for Add Subnet modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #addSubnetModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #addSubnetModal .modal-footer .btn,
+  #addSubnetModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #addSubnetModal .modal-footer .btn:first-child,
+  #addSubnetModal .modal-footer button:first-child {
+    order: 2 !important;
+  }
+  
+  #addSubnetModal .modal-footer .btn:last-child,
+  #addSubnetModal .modal-footer button:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #addSubnetModal .modal-footer .btn.btn-outline-secondary,
+  #addSubnetModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+
+/* Force override for Edit Subnet modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #editSubnetModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #editSubnetModal .modal-footer .btn,
+  #editSubnetModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #editSubnetModal .modal-footer .btn:first-child,
+  #editSubnetModal .modal-footer button:first-child {
+    order: 2 !important;
+  }
+  
+  #editSubnetModal .modal-footer .btn:last-child,
+  #editSubnetModal .modal-footer button:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #editSubnetModal .modal-footer .btn.btn-secondary,
+  #editSubnetModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+
+/* Force override for Filter Subnets modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #filterSubnetModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #filterSubnetModal .modal-footer .btn,
+  #filterSubnetModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #filterSubnetModal .modal-footer > div {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+  }
+  
+  #filterSubnetModal .modal-footer > div .btn {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  /* Order: Apply Filters trên, Cancel giữa, Clear All Filters dưới */
+  #filterSubnetModal .modal-footer .btn:first-child {
+    order: 3 !important; /* Clear All Filters dưới */
+  }
+  
+  #filterSubnetModal .modal-footer > div .btn:first-child {
+    order: 2 !important; /* Cancel giữa */
+  }
+  
+  #filterSubnetModal .modal-footer > div .btn:last-child {
+    order: 1 !important; /* Apply Filters trên */
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #filterSubnetModal .modal-footer .btn.btn-outline-danger,
+  #filterSubnetModal .modal-footer .btn.btn-secondary,
+  #filterSubnetModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+</style>

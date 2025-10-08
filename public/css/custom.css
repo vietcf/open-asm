@@ -388,6 +388,44 @@
   color: #fff !important;
 }
 
+/* ========== SELECT2 MULTI-SELECT AUTO-WRAP STYLING ========== */
+/* Auto-wrap and expand height for multi-selection - keep original colors */
+
+/* Multi-select container - auto-expand height */
+.select2-container--bootstrap-5 .select2-selection--multiple {
+  min-height: 38px !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+}
+
+/* Rendered container - flex-wrap for auto-wrap */
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  gap: 4px !important;
+}
+
+/* Individual choice styling - auto-wrap friendly, keep original colors */
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 24px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Search input field styling - auto-wrap friendly */
+.select2-container--bootstrap-5 .select2-search--inline .select2-search__field {
+  min-width: 120px !important;
+  height: auto !important;
+  min-height: 24px !important;
+  flex: 1 !important;
+}
+
 /* ========================================
    FOOTER STYLING
    ======================================== */
@@ -435,6 +473,51 @@
   
   .main-footer .text-end {
     text-align: center !important;
+  }
+}
+
+/* ========== MODAL BUTTONS RESPONSIVE STYLES ========== */
+/* Common responsive styles for all modal buttons (Add/Edit IP, Subnet, Domain) */
+
+/* Mobile responsive for modal buttons - Force override */
+@media (max-width: 991.98px) {
+  .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  .modal-footer .btn,
+  .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  .modal-footer .btn:first-child,
+  .modal-footer button:first-child {
+    order: 2 !important;
+  }
+  
+  .modal-footer .btn:last-child,
+  .modal-footer button:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  .modal-footer .btn.btn-secondary,
+  .modal-footer .btn.btn-primary,
+  .modal-footer .btn.btn-outline-secondary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
   }
 }
 

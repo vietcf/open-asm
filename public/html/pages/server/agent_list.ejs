@@ -23,19 +23,6 @@ function buildPaginationUrl(targetPage) {
     params.set('pageSize', pageSize);
   }
   
-  if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
-    filterSystems.forEach(system => {
-      params.append('systems[]', system.id);
-    });
-  }
-  
-  // Add contacts filter if exists
-  if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) {
-    filterContacts.forEach(contact => {
-      params.append('contacts[]', contact.id);
-    });
-  }
-  
   return '?' + params.toString();
 }
 %>
@@ -69,7 +56,7 @@ function buildPaginationUrl(targetPage) {
     <div class="row mb-3">
       <div class="col-12">
         <div class="d-flex justify-content-end align-items-center gap-2">
-          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/server/agent">
+          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/server/agent/list">
             <!-- Hidden inputs to preserve filter values -->
             <input type="hidden" name="page" value="1">
             
@@ -98,14 +85,11 @@ function buildPaginationUrl(targetPage) {
     <div class="row mb-3">
       <div class="col-12">
         <div class="d-flex justify-content-end gap-2">
-          <% if (hasPermission && hasPermission('server.create')) { %>
+          <% if (hasPermission && hasPermission('agent.create')) { %>
             <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAgentModal">
               <i class="bi bi-plus"></i> Add Agent
             </button>
           <% } %>
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterAgentModal">
-            <i class="bi bi-funnel"></i> Filter
-          </button>
         </div>
       </div>
     </div>
@@ -114,42 +98,19 @@ function buildPaginationUrl(targetPage) {
     <!-- FILTER DATA AND FLASH MESSAGES -->
     <!-- ========================================== -->
     
-    <!-- Filter values for JS (an toàn cho EJS strict, giống System List) -->
-    <div id="filter-agent-data" style="display:none"></div>
-
     <!-- Flash Messages -->
-    <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+    <% if (typeof success !== 'undefined' && success) { %>
       <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
-        <i class="bi bi-check-circle me-2"></i><%= successMessage %>
+        <i class="bi bi-check-circle me-2"></i><%= success %>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
-      <script>
-        // Auto-hide success message after 5 seconds
-        setTimeout(function() {
-          const alert = document.getElementById('successAlert');
-          if (alert) {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-          }
-        }, 5000);
-      </script>
     <% } %>
     
-    <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+    <% if (typeof error !== 'undefined' && error) { %>
       <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
-        <i class="bi bi-exclamation-triangle me-2"></i><%= errorMessage %>
+        <i class="bi bi-exclamation-triangle me-2"></i><%= error %>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
-      <script>
-        // Auto-hide error message after 8 seconds (longer for errors)
-        setTimeout(function() {
-          const alert = document.getElementById('errorAlert');
-          if (alert) {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-          }
-        }, 8000);
-      </script>
     <% } %>
 
     <!-- ========================================== -->
@@ -175,25 +136,26 @@ function buildPaginationUrl(targetPage) {
                 </tr>
               </thead>
               <tbody>
-                <% if (agentList && agentList.length > 0) { %>
-                  <% agentList.forEach(function(agent, idx) { %>
+                <% if (typeof agentList !== 'undefined' && agentList && agentList.length > 0) { %>
+                  <% agentList.forEach(function(agent, index) { %>
                     <tr>
-                      <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                      <td><%= (page - 1) * pageSize + index + 1 %></td>
                       <td><%= agent.name %></td>
                       <td><%= agent.version || '-' %></td>
                       <td><%= agent.description || '-' %></td>
                       <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showAgentDetail('<%= agent.id %>')" data-agent='<%= JSON.stringify(agent) %>'>
+                        <button type="button" class="btn btn-info btn-sm me-1" title="Show" onclick="showAgentDetail('<%= agent.id %>')" data-agent='<%= JSON.stringify(agent) %>'>
                           <i class="bi bi-eye"></i>
                         </button>
-                        <% if (hasPermission('server.update')) { %>
-                          <a href="/server/agent/<%= agent.id %>/edit" class="btn btn-warning btn-sm" title="Edit">
+                        <% if (hasPermission('agent.update')) { %>
+                          <button type="button" class="btn btn-warning btn-sm me-1" title="Edit" data-bs-toggle="modal" data-bs-target="#editAgentModal" 
+                                  data-agent-id="<%= agent.id %>" data-agent-name="<%= agent.name %>" data-agent-version="<%= agent.version || '' %>" data-agent-description="<%= agent.description || '' %>">
                             <i class="bi bi-pencil"></i>
-                          </a>
+                          </button>
                         <% } %>
-                        <% if (hasPermission('server.delete')) { %>
-                          <form action="/server/agent/<%= agent.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteAgent(this, '<%= agent.name %>')">
-                            <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                        <% if (user && (user.role_name === 'superadmin' || user.role_name === 'admin')) { %>
+                          <form action="/server/agent/<%= agent.id %>/delete" method="POST" style="display:inline" onsubmit="return confirmDeleteAgent(this, '<%= agent.name %>')">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Delete" style="display: inline-block !important; visibility: visible !important;">
                               <i class="bi bi-trash"></i>
                             </button>
                           </form>
@@ -207,10 +169,10 @@ function buildPaginationUrl(targetPage) {
               </tbody>
             </table>
           </div>
-          <div class="card-footer clearfix">
-            <div class="d-flex justify-content-between align-items-center px-3 py-2">
+          <div class="card-footer">
+            <div class="d-flex justify-content-between align-items-center">
               <div>
-                <% 
+                <%
                   // Calculate pagination range like system list
                   const agentStartItem = (page - 1) * pageSize + 1;
                   const agentEndItem = Math.min(page * pageSize, totalCount || 0);
@@ -265,7 +227,7 @@ function buildPaginationUrl(targetPage) {
     <div class="modal fade" id="addAgentModal" tabindex="-1" aria-labelledby="addAgentModalLabel">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
-          <form id="addAgentForm" method="POST" action="/server/agent">
+          <form id="addAgentForm" method="POST" action="/server/agent/add">
             <div class="modal-header">
               <h5 class="modal-title" id="addAgentModalLabel">Add Agent</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -294,3 +256,84 @@ function buildPaginationUrl(targetPage) {
         </div>
       </div>
     </div>
+
+    <!-- Edit Agent Modal -->
+    <div class="modal fade" id="editAgentModal" tabindex="-1" aria-labelledby="editAgentModalLabel">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <form id="editAgentForm" method="POST" action="">
+            <div class="modal-header">
+              <h5 class="modal-title" id="editAgentModalLabel">Edit Agent</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="row g-3">
+                <div class="col-12">
+                  <label for="editAgentName" class="form-label">Agent Name <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="editAgentName" name="name" required placeholder="Enter agent name">
+                </div>
+                <div class="col-12">
+                  <label for="editAgentVersion" class="form-label">Version</label>
+                  <input type="text" class="form-control" id="editAgentVersion" name="version" placeholder="Enter agent version">
+                </div>
+                <div class="col-12">
+                  <label for="editAgentDescription" class="form-label">Description</label>
+                  <textarea class="form-control" id="editAgentDescription" name="description" rows="3" placeholder="Enter agent description"></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
+              <button type="button" class="btn btn-secondary w-100 order-2 order-lg-1" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Update Agent</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+<script>
+// Confirm delete agent function
+function confirmDeleteAgent(form, agentName) {
+  if (confirm(`Are you sure you want to delete agent "${agentName}"?`)) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+$(document).ready(function() {
+  // Wait for Bootstrap to be fully loaded
+  setTimeout(function() {
+    // Edit Agent Modal
+    $('#editAgentModal').on('show.bs.modal', function(event) {
+      const button = $(event.relatedTarget);
+      const agentId = button.data('agent-id');
+      const agentName = button.data('agent-name');
+      const agentVersion = button.data('agent-version');
+      const agentDescription = button.data('agent-description');
+
+      console.log('Edit Agent Modal opened with data:', {
+        agentId, agentName, agentVersion, agentDescription
+      });
+
+      const actionUrl = `/server/agent/${agentId}/edit`;
+      $('#editAgentForm').attr('action', actionUrl);
+      console.log('Form action set to:', actionUrl);
+
+      $('#editAgentName').val(agentName);
+      $('#editAgentVersion').val(agentVersion);
+      $('#editAgentDescription').val(agentDescription);
+    });
+
+    $('#editAgentModal').on('hidden.bs.modal', function() {
+      $('#editAgentForm')[0].reset();
+    });
+
+    $('#editAgentForm').on('submit', function(e) {
+      console.log('Edit Agent Form submitting...');
+      const submitBtn = $(this).find('button[type="submit"]');
+      submitBtn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Updating...');
+    });
+  }, 100);
+});
+</script>

@@ -176,14 +176,15 @@ function buildPaginationUrl(targetPage) {
                       <td><%= contact.phone || '-' %></td>
                       <td><%= contact.organization || '-' %></td>
                       <td class="text-end">
+                        <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showContactDetail('<%= contact.id %>')" data-contact='<%= JSON.stringify(contact) %>'><i class="bi bi-eye"></i></button>
                         <% if (hasPermission('contact.update')) { %>
-                          <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editContactModal" data-contact-id="<%= contact.id %>" data-contact-name="<%= contact.name %>" data-contact-email="<%= contact.email || '' %>" data-contact-phone="<%= contact.phone || '' %>" data-contact-organization="<%= contact.organization || '' %>" title="Edit">
+                          <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editContactModal" data-contact-id="<%= contact.id %>" data-contact-name="<%= contact.name %>" data-contact-email="<%= contact.email || '' %>" data-contact-position="<%= contact.position || '' %>" data-contact-phone="<%= contact.phone || '' %>" data-contact-unit-id="<%= contact.unit_id || '' %>" title="Edit">
                             <i class="bi bi-pencil"></i>
                           </button>
                         <% } %>
                         <% if (hasPermission('contact.delete')) { %>
-                          <form action="/organize/contact/<%= contact.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteContact(this, '<%= contact.name %>')">
-                            <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                          <form action="/organize/contact/<%= contact.id %>?_method=DELETE" method="POST" style="display:inline !important;" onsubmit="return confirmDeleteContact(this, '<%= contact.name %>')">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Delete" style="display: inline-block !important; visibility: visible !important; position: relative !important;">
                               <i class="bi bi-trash"></i>
                             </button>
                           </form>
@@ -202,41 +203,30 @@ function buildPaginationUrl(targetPage) {
               <div>
                 <% 
                   // Calculate pagination range
-                  const contactStartItem = (page - 1) * pageSize + 1;
-                  const contactEndItem = Math.min(page * pageSize, totalCount || 0);
                   const contactStartPage = Math.max(1, page - 2);
                   const contactEndPage = Math.min(totalPages, page + 2);
                 %>
-                <span>Showing <%= contactStartItem %> - <%= contactEndItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> contacts</span>
+                <span>Showing <%= startItem %> - <%= endItem %> of <%= totalCount %> contacts</span>
               </div>
               <ul class="pagination pagination-sm m-0 float-end">
-                <% 
-                  function buildContactFilterQuery() {
-                    let params = [];
-                    if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
-                    if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
-                    return params.join('&');
-                  }
-                  const contactFilterQuery = buildContactFilterQuery();
-                %>
                 <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page - 1 %><%= contactFilterQuery ? '&' + contactFilterQuery : '' %>" tabindex="-1">Previous</a>
+                  <a class="page-link" href="<%= buildPaginationUrl(page - 1) %>" tabindex="-1">Previous</a>
                 </li>
                 <% if (contactStartPage > 1) { %>
-                  <li class="page-item"><a class="page-link" href="?page=1<%= contactFilterQuery ? '&' + contactFilterQuery : '' %>">1</a></li>
+                  <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(1) %>">1</a></li>
                   <% if (contactStartPage > 2) { %>
                     <li class="page-item disabled"><span class="page-link">...</span></li>
                   <% } %>
                 <% } %>
                 <% for (let i = contactStartPage; i <= contactEndPage; i++) { %>
-                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= contactFilterQuery ? '&' + contactFilterQuery : '' %>"><%= i %></a></li>
+                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="<%= buildPaginationUrl(i) %>"><%= i %></a></li>
                 <% } %>
                 <% if (contactEndPage < totalPages) { %>
                   <li class="page-item disabled"><span class="page-link">...</span></li>
-                  <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= contactFilterQuery ? '&' + contactFilterQuery : '' %>"><%= totalPages %></a></li>
+                  <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(totalPages) %>"><%= totalPages %></a></li>
                 <% } %>
                 <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page + 1 %><%= contactFilterQuery ? '&' + contactFilterQuery : '' %>">Next</a>
+                  <a class="page-link" href="<%= buildPaginationUrl(page + 1) %>">Next</a>
                 </li>
               </ul>
             </div>
@@ -250,6 +240,24 @@ function buildPaginationUrl(targetPage) {
 <!-- ========================================== -->
 <!-- MODALS SECTION -->
 <!-- ========================================== -->
+
+<!-- Contact Detail Modal -->
+<div class="modal fade" id="contactDetailModal" tabindex="-1" aria-labelledby="contactDetailModalLabel">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="contactDetailModalLabel">Contact Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="contactDetailContent">
+        <!-- Content will be loaded here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Add Contact Modal -->
 <div class="modal fade" id="addContactModal" tabindex="-1" aria-labelledby="addContactModalLabel">
@@ -266,16 +274,34 @@ function buildPaginationUrl(targetPage) {
             <input type="text" class="form-control" id="contactName" name="name" required>
           </div>
           <div class="mb-3">
-            <label for="contactEmail" class="form-label">Email</label>
-            <input type="email" class="form-control" id="contactEmail" name="email">
+            <label for="contactEmail" class="form-label">Email <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" id="contactEmail" name="email" required>
+          </div>
+          <div class="mb-3">
+            <label for="contactPosition" class="form-label">Position <span class="text-danger">*</span></label>
+            <select class="form-select" id="contactPosition" name="position" required>
+              <option value="">Select Position</option>
+              <% if (positionOptions && positionOptions.length > 0) { %>
+                <% positionOptions.forEach(function(position) { %>
+                  <option value="<%= position.value %>"><%= position.label %></option>
+                <% }) %>
+              <% } %>
+            </select>
           </div>
           <div class="mb-3">
             <label for="contactPhone" class="form-label">Phone</label>
             <input type="text" class="form-control" id="contactPhone" name="phone">
           </div>
           <div class="mb-3">
-            <label for="contactOrganization" class="form-label">Organization</label>
-            <input type="text" class="form-control" id="contactOrganization" name="organization">
+            <label for="contactUnit" class="form-label">Organization</label>
+            <select class="form-select" id="contactUnit" name="unit_id">
+              <option value="">Select Organization</option>
+              <% if (units && units.length > 0) { %>
+                <% units.forEach(function(unit) { %>
+                  <option value="<%= unit.id %>"><%= unit.name %></option>
+                <% }) %>
+              <% } %>
+            </select>
           </div>
         </div>
         <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
@@ -303,16 +329,34 @@ function buildPaginationUrl(targetPage) {
             <input type="text" class="form-control" id="editContactName" name="name" required>
           </div>
           <div class="mb-3">
-            <label for="editContactEmail" class="form-label">Email</label>
-            <input type="email" class="form-control" id="editContactEmail" name="email">
+            <label for="editContactEmail" class="form-label">Email <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" id="editContactEmail" name="email" required>
+          </div>
+          <div class="mb-3">
+            <label for="editContactPosition" class="form-label">Position <span class="text-danger">*</span></label>
+            <select class="form-select" id="editContactPosition" name="position" required>
+              <option value="">Select Position</option>
+              <% if (positionOptions && positionOptions.length > 0) { %>
+                <% positionOptions.forEach(function(position) { %>
+                  <option value="<%= position.value %>"><%= position.label %></option>
+                <% }) %>
+              <% } %>
+            </select>
           </div>
           <div class="mb-3">
             <label for="editContactPhone" class="form-label">Phone</label>
             <input type="text" class="form-control" id="editContactPhone" name="phone">
           </div>
           <div class="mb-3">
-            <label for="editContactOrganization" class="form-label">Organization</label>
-            <input type="text" class="form-control" id="editContactOrganization" name="organization">
+            <label for="editContactUnit" class="form-label">Organization</label>
+            <select class="form-select" id="editContactUnit" name="unit_id">
+              <option value="">Select Organization</option>
+              <% if (units && units.length > 0) { %>
+                <% units.forEach(function(unit) { %>
+                  <option value="<%= unit.id %>"><%= unit.name %></option>
+                <% }) %>
+              <% } %>
+            </select>
           </div>
         </div>
         <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
@@ -382,12 +426,13 @@ function buildPaginationUrl(targetPage) {
 // ==========================================
 
 // Edit contact function
-function editContact(id, name, email, phone, organization) {
+function editContact(id, name, email, position, phone, unitId) {
   document.getElementById('editContactForm').action = '/organize/contact/' + id;
   document.getElementById('editContactName').value = name;
   document.getElementById('editContactEmail').value = email;
+  document.getElementById('editContactPosition').value = position;
   document.getElementById('editContactPhone').value = phone;
-  document.getElementById('editContactOrganization').value = organization;
+  document.getElementById('editContactUnit').value = unitId || '';
 }
 
 // Handle edit button click
@@ -395,10 +440,37 @@ $(document).on('click', 'button[data-bs-target="#editContactModal"]', function()
   const id = $(this).data('contact-id');
   const name = $(this).data('contact-name');
   const email = $(this).data('contact-email');
+  const position = $(this).data('contact-position');
   const phone = $(this).data('contact-phone');
-  const organization = $(this).data('contact-organization');
-  editContact(id, name, email, phone, organization);
+  const unitId = $(this).data('contact-unit-id');
+  editContact(id, name, email, position, phone, unitId);
 });
+
+// Show contact detail
+function showContactDetail(contactId) {
+  const button = document.querySelector(`button[onclick="showContactDetail('${contactId}')"]`);
+  const contactData = JSON.parse(button.getAttribute('data-contact'));
+  
+  const modalElement = document.getElementById('contactDetailModal');
+  const content = document.getElementById('contactDetailContent');
+  
+  let html = '<div class="row">';
+  html += '<div class="col-md-6"><strong>Name:</strong> ' + (contactData.name || '-') + '</div>';
+  html += '<div class="col-md-6"><strong>Email:</strong> ' + (contactData.email || '-') + '</div>';
+  html += '<div class="col-md-6"><strong>Phone:</strong> ' + (contactData.phone || '-') + '</div>';
+  html += '<div class="col-md-6"><strong>Position:</strong> ' + (contactData.position || '-') + '</div>';
+  html += '<div class="col-md-6"><strong>Organization:</strong> ' + (contactData.organization || '-') + '</div>';
+  html += '<div class="col-md-6"><strong>Created:</strong> ' + (contactData.created_at ? new Date(contactData.created_at).toLocaleDateString() : '-') + '</div>';
+  if (contactData.description) {
+    html += '<div class="col-12 mt-3"><strong>Description:</strong><br>' + contactData.description + '</div>';
+  }
+  html += '</div>';
+  
+  content.innerHTML = html;
+  
+  const modal = new bootstrap.Modal(modalElement);
+  modal.show();
+}
 
 // Confirm delete contact
 function confirmDeleteContact(form, contactName) {

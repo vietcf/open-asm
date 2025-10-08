@@ -64,6 +64,7 @@ router.get('/domain', requirePermission('domain.read'), networkController.listDo
 router.post('/domain', requirePermission('domain.create'), networkController.createDomain);
 router.put('/domain/:id', requirePermission('domain.update'), networkController.updateDomain);
 router.delete('/domain/:id', requirePermission('domain.delete'), networkController.deleteDomain);
+router.get('/domain/export', requirePermission('domain.read'), networkController.exportDomainList);
 
 
 // // ====== AJAX API ======

@@ -64,7 +64,7 @@ router.post('/service/add', requirePermission('service.create'), serverControlle
 // Edit service
 router.post('/service/:id/edit', requirePermission('service.update'), serverController.updateService);
 // Delete service
-router.post('/service/:id/delete', requirePermission('service.delete'), serverController.deleteService);
+router.delete('/service/:id', requirePermission('service.delete'), serverController.deleteService);
 
 // ====== AGENT MENU ======
 // List agents

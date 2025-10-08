@@ -1,6 +1,7 @@
 <!-- Modal Buttons Custom CSS -->
 <link rel="stylesheet" href="/css/modal-buttons.css">
 
+
 <%
 // ==========================================
 // HELPER FUNCTIONS
@@ -56,7 +57,7 @@ function buildPaginationUrl(targetPage) {
     <div class="row mb-3">
       <div class="col-12">
         <div class="d-flex justify-content-end align-items-center gap-2">
-          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/server/service">
+          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/server/service/list">
             <!-- Hidden inputs to preserve filter values -->
             <input type="hidden" name="page" value="1">
             
@@ -90,9 +91,6 @@ function buildPaginationUrl(targetPage) {
               <i class="bi bi-plus"></i> Add Service
             </button>
           <% } %>
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterServiceModal">
-            <i class="bi bi-funnel"></i> Filter
-          </button>
         </div>
       </div>
     </div>
@@ -105,9 +103,9 @@ function buildPaginationUrl(targetPage) {
     <div id="filter-service-data" style="display:none"></div>
 
     <!-- Flash Messages -->
-    <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+    <% if (typeof success !== 'undefined' && success) { %>
       <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
-        <i class="bi bi-check-circle me-2"></i><%= successMessage %>
+        <i class="bi bi-check-circle me-2"></i><%= success %>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
       <script>
@@ -122,9 +120,9 @@ function buildPaginationUrl(targetPage) {
       </script>
     <% } %>
     
-    <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+    <% if (typeof error !== 'undefined' && error) { %>
       <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
-        <i class="bi bi-exclamation-triangle me-2"></i><%= errorMessage %>
+        <i class="bi bi-exclamation-triangle me-2"></i><%= error %>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
       <script>
@@ -168,17 +166,18 @@ function buildPaginationUrl(targetPage) {
                       <td><%= service.name %></td>
                       <td><%= service.description || '-' %></td>
                       <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showServiceDetail('<%= service.id %>')" data-service='<%= JSON.stringify(service) %>'>
+                        <button type="button" class="btn btn-info btn-sm me-1" title="Show" onclick="showServiceDetail('<%= service.id %>')" data-service='<%= JSON.stringify(service) %>'>
                           <i class="bi bi-eye"></i>
                         </button>
-                        <% if (hasPermission('server.update')) { %>
-                          <a href="/server/service/<%= service.id %>/edit" class="btn btn-warning btn-sm" title="Edit">
+                        <% if (hasPermission('service.update')) { %>
+                          <button type="button" class="btn btn-warning btn-sm me-1" title="Edit" data-bs-toggle="modal" data-bs-target="#editServiceModal" 
+                                  data-service-id="<%= service.id %>" data-service-name="<%= service.name %>" data-service-description="<%= service.description || '' %>">
                             <i class="bi bi-pencil"></i>
-                          </a>
+                          </button>
                         <% } %>
-                        <% if (hasPermission('server.delete')) { %>
-                          <form action="/server/service/<%= service.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteService(this, '<%= service.name %>')">
-                            <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                        <% if (hasPermission('service.delete')) { %>
+                          <form action="/server/service/<%= service.id %>?_method=DELETE" method="POST" style="display:inline !important;" onsubmit="return confirmDeleteService(this, '<%= service.name %>')">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Delete" style="display: inline-block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 9999 !important;">
                               <i class="bi bi-trash"></i>
                             </button>
                           </form>
@@ -250,7 +249,7 @@ function buildPaginationUrl(targetPage) {
     <div class="modal fade" id="addServiceModal" tabindex="-1" aria-labelledby="addServiceModalLabel">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
-          <form id="addServiceForm" method="POST" action="/server/service">
+          <form id="addServiceForm" method="POST" action="/server/service/add">
             <div class="modal-header">
               <h5 class="modal-title" id="addServiceModalLabel">Add Service</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -275,3 +274,91 @@ function buildPaginationUrl(targetPage) {
         </div>
       </div>
     </div>
+
+    <!-- Edit Service Modal -->
+    <div class="modal fade" id="editServiceModal" tabindex="-1" aria-labelledby="editServiceModalLabel">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <form id="editServiceForm" method="POST" action="">
+            <div class="modal-header">
+              <h5 class="modal-title" id="editServiceModalLabel">Edit Service</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+              <div class="row g-3">
+                <div class="col-12">
+                  <label for="editServiceName" class="form-label">Service Name <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="editServiceName" name="name" required placeholder="Enter service name">
+                </div>
+                <div class="col-12">
+                  <label for="editServiceDescription" class="form-label">Description</label>
+                  <textarea class="form-control" id="editServiceDescription" name="description" rows="3" placeholder="Enter service description"></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
+              <button type="button" class="btn btn-secondary w-100 order-2 order-lg-1" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Update Service</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+<script>
+$(document).ready(function() {
+  // Edit Service Modal - Load data when opened
+  $('#editServiceModal').on('show.bs.modal', function(event) {
+    const button = $(event.relatedTarget);
+    const serviceId = button.data('service-id');
+    const serviceName = button.data('service-name');
+    const serviceDescription = button.data('service-description');
+
+    console.log('Edit Service Modal opened with data:', {
+      serviceId, serviceName, serviceDescription
+    });
+
+    // Set form action URL
+    const actionUrl = `/server/service/${serviceId}/edit`;
+    $('#editServiceForm').attr('action', actionUrl);
+    console.log('Form action set to:', actionUrl);
+
+    // Populate form fields
+    $('#editServiceName').val(serviceName);
+    $('#editServiceDescription').val(serviceDescription);
+  });
+
+  // Edit Service Modal - Reset form when hidden
+  $('#editServiceModal').on('hidden.bs.modal', function() {
+    $('#editServiceForm')[0].reset();
+  });
+
+  // Edit Service Form submission
+  $('#editServiceForm').on('submit', function(e) {
+    console.log('Edit Service Form submitting...');
+    
+    // Get Service ID from form action
+    const currentAction = $(this).attr('action');
+    const serviceId = currentAction.split('/').pop();
+    
+    console.log('Form action:', currentAction);
+    console.log('Service ID:', serviceId);
+    console.log('Form method:', $(this).attr('method'));
+
+    // Allow normal form submission - backend handles redirect
+    const submitBtn = $(this).find('button[type="submit"]');
+    submitBtn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Updating...');
+  });
+});
+
+// Function to show service detail (if needed)
+function showServiceDetail(serviceId) {
+  console.log('Show service detail for ID:', serviceId);
+  // Implement service detail modal if needed
+}
+
+// Function to confirm delete service
+function confirmDeleteService(form, serviceName) {
+  return confirm('Are you sure you want to delete the service: ' + serviceName + '?');
+}
+</script>

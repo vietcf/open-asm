@@ -1,3 +1,5 @@
+<link rel="stylesheet" href="/css/custom.css">
+
 <!--
 ==========================================
 DOMAIN LIST PAGE - EJS TEMPLATE
@@ -247,7 +249,13 @@ function buildPaginationUrl(targetPage) {
                       <td><strong><%= domain.domain %></strong></td>
                       
                       <!-- Description -->
-                      <td><%= domain.description || '-' %></td>
+                      <td>
+                        <% 
+                          const description = domain.description || '-';
+                          const truncatedDesc = description.length > 50 ? description.substring(0, 50) + '...' : description;
+                        %>
+                        <span title="<%= description %>"><%= truncatedDesc %></span>
+                      </td>
                       
                       <!-- IP Address -->
                       <td>
@@ -377,7 +385,6 @@ function buildPaginationUrl(targetPage) {
                     if (typeof filterTags !== 'undefined' && filterTags.length) filterTags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag.id || tag)); });
                     if (typeof filterStatus !== 'undefined' && filterStatus) params.push('status=' + encodeURIComponent(filterStatus));
                     if (typeof filterSystems !== 'undefined' && filterSystems.length) filterSystems.forEach(function(system) { params.push('systems[]=' + encodeURIComponent(system.id || system)); });
-                    if (typeof filterIpAddresses !== 'undefined' && filterIpAddresses.length) filterIpAddresses.forEach(function(ip) { params.push('ip_id[]=' + encodeURIComponent(ip.id || ip)); });
                     return params.join('&');
                   }
                   const domainFilterQuery = buildDomainFilterQuery();
@@ -643,6 +650,12 @@ function buildPaginationUrl(targetPage) {
       </div>
       <form method="GET" action="/network/domain" id="filterDomainForm">
         <input type="hidden" name="page" value="1">
+        <input type="hidden" name="pageSize" value="<%= typeof pageSize !== 'undefined' ? pageSize : 10 %>">
+        
+        <!-- Preserve current search term -->
+        <% if (typeof search !== 'undefined' && search) { %>
+          <input type="hidden" name="search" value="<%= search %>">
+        <% } %>
         <div class="modal-body">
           <div class="row g-2">
             <!-- Record Type Filter -->
@@ -1526,3 +1539,144 @@ function showDomainDetail(domainId) {
 }
 
 </script>
+
+<style>
+/* Force override for Add Domain modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #addDomainModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #addDomainModal .modal-footer .btn,
+  #addDomainModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #addDomainModal .modal-footer .btn:first-child,
+  #addDomainModal .modal-footer button:first-child {
+    order: 2 !important;
+  }
+  
+  #addDomainModal .modal-footer .btn:last-child,
+  #addDomainModal .modal-footer button:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #addDomainModal .modal-footer .btn.btn-secondary,
+  #addDomainModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+
+/* Force override for Edit Domain modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #editDomainModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #editDomainModal .modal-footer .btn,
+  #editDomainModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #editDomainModal .modal-footer .btn:first-child,
+  #editDomainModal .modal-footer button:first-child {
+    order: 2 !important;
+  }
+  
+  #editDomainModal .modal-footer .btn:last-child,
+  #editDomainModal .modal-footer button:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #editDomainModal .modal-footer .btn.btn-secondary,
+  #editDomainModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+
+/* Force override for Filter Domains modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #filterDomainModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #filterDomainModal .modal-footer .btn,
+  #filterDomainModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #filterDomainModal .modal-footer > div {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+  }
+  
+  #filterDomainModal .modal-footer > div .btn {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  /* Order: Apply Filters trên, Cancel giữa, Clear All Filters dưới */
+  #filterDomainModal .modal-footer .btn:first-child {
+    order: 3 !important; /* Clear All Filters dưới */
+  }
+  
+  #filterDomainModal .modal-footer > div .btn:first-child {
+    order: 2 !important; /* Cancel giữa */
+  }
+  
+  #filterDomainModal .modal-footer > div .btn:last-child {
+    order: 1 !important; /* Apply Filters trên */
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #filterDomainModal .modal-footer .btn.btn-outline-danger,
+  #filterDomainModal .modal-footer .btn.btn-secondary,
+  #filterDomainModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+</style>
