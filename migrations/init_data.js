@@ -145,6 +145,24 @@ async function seedConfiguration(pool) {
         description: 'Action firewall rule'
       },
       {
+        key: 'firewall_rule_status',
+        value: [
+          { value: 'DONE', label: 'Done' },
+          { value: 'INPROCESS', label: 'Inprocess' }
+        ],
+        description: 'Trạng thái xử lý của rule fw'
+      },
+      {
+        key: 'firewall_rule_violation_type',
+        value: [
+          { value: 'SECURITY_VIOLATION', label: 'Security Violation' },
+          { value: 'POLICY_VIOLATION', label: 'Policy Violation' },
+          { value: 'COMPLIANCE_VIOLATION', label: 'Compliance Violation' },
+          { value: 'BEST_PRACTICE_VIOLATION', label: 'Best Practice Violation' }
+        ],
+        description: 'Firewall rule violation types'
+      },
+      {
         key: 'ip_address_type',
         value: [
           { value: 'STATIC', label: 'Static' },

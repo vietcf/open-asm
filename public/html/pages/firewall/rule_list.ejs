@@ -196,13 +196,26 @@ function buildExportUrl() {
   <div class="row">
     <div class="col-12">
       <div class="card">
-        <div class="card-header">
+        <div class="card-header d-flex justify-content-between align-items-center">
           <h3 class="card-title mb-0">Firewall Rules List</h3>
+          <div class="d-flex align-items-center gap-2">
+            <!-- View Toggle -->
+            <div class="btn-group" role="group" aria-label="View toggle">
+              <input type="radio" class="btn-check" name="viewToggle" id="groupedView" autocomplete="off" checked>
+              <label class="btn btn-outline-primary btn-sm" for="groupedView">
+                <i class="bi bi-collection"></i> Grouped
+              </label>
+              <input type="radio" class="btn-check" name="viewToggle" id="detailedView" autocomplete="off">
+              <label class="btn btn-outline-primary btn-sm" for="detailedView">
+                <i class="bi bi-list"></i> Detailed
+              </label>
+            </div>
+          </div>
         </div>
           <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
             <table class="table table-hover" style="table-layout: fixed; min-width: 800px;">
             <thead>
-              <tr>
+              <tr id="detailedHeader">
                 <th>No.</th>
                 <th>Rule Name</th>
                 <th>Source</th>
@@ -213,8 +226,19 @@ function buildExportUrl() {
                 <th>Status</th>
                 <th class="text-end">Actions</th>
               </tr>
+              <tr id="groupedHeader" style="display: none;">
+                <th>No.</th>
+                <th>Audit Batch</th>
+                <th>Firewall Name</th>
+                <th>Rule Name</th>
+                <th>Source</th>
+                <th>Destination</th>
+                <th>Service</th>
+                <th>Last Update</th>
+                <th class="text-end">Actions</th>
+              </tr>
             </thead>
-            <tbody>
+            <tbody id="rulesTableBody">
               <% if (typeof ruleList !== 'undefined' && ruleList && ruleList.length > 0) { %>
                 <% ruleList.forEach(function(rule, idx) { %>
                   <tr>
@@ -232,14 +256,7 @@ function buildExportUrl() {
                       <button type="button" class="btn btn-warning btn-sm" title="Edit" 
                               data-bs-toggle="modal" data-bs-target="#editRuleModal"
                               data-rule-id="<%= rule.id %>"
-                              data-rule-name="<%= rule.rulename %>"
-                              data-source="<%= rule.src || '' %>"
-                              data-destination="<%= rule.dst || '' %>"
-                              data-services="<%= rule.services || '' %>"
-                              data-protocol="<%= rule.protocol || '' %>"
-                              data-action="<%= rule.action %>"
-                              data-status="<%= rule.status %>"
-                              data-raw-data="<%= rule.raw_data || '' %>">
+                              data-rule='<%= JSON.stringify(rule) %>'>
                         <i class="bi bi-pencil"></i>
                       </button>
                       <% } %>
@@ -430,6 +447,15 @@ function buildExportUrl() {
               <div class="form-text">Select contacts responsible for this rule</div>
             </div>
             
+            <!-- Tags -->
+            <div class="mb-3">
+              <label for="add-tag-select" class="form-label">Tags</label>
+              <select id="add-tag-select" name="tags[]" class="form-control" multiple style="width:100%">
+                <!-- Selected tags will be populated here -->
+              </select>
+              <div class="form-text">Select tags for this rule</div>
+            </div>
+            
             <!-- Solution Proposal -->
             <div class="mb-3">
               <label for="solution_proposal" class="form-label">Solution Proposal</label>
@@ -596,6 +622,15 @@ function buildExportUrl() {
                 <!-- Selected contacts will be populated here -->
               </select>
               <div class="form-text">Select contacts responsible for this rule</div>
+            </div>
+            
+            <!-- Tags -->
+            <div class="mb-3">
+              <label for="edit-tag-select" class="form-label">Tags</label>
+              <select id="edit-tag-select" name="tags[]" class="form-control" multiple style="width:100%">
+                <!-- Selected tags will be populated here -->
+              </select>
+              <div class="form-text">Select tags for this rule</div>
             </div>
             
             <!-- Solution Section -->
@@ -1056,6 +1091,50 @@ $(function() {
     });
   }
 
+  // Load Tag options for Add Rule Modal
+  function loadTagOptions() {
+    $.ajax({
+      url: '/organize/api/tag',
+      dataType: 'json',
+      success: function(data) {
+        const $tagSelect = $('#add-tag-select');
+        $tagSelect.empty();
+        if (data && data.length > 0) {
+          data.forEach(function(tag) {
+            const option = new Option(tag.text, tag.id, false, false);
+            $tagSelect.append(option);
+          });
+        }
+        $tagSelect.trigger('change');
+      },
+      error: function() {
+        console.error('Failed to load tag options');
+      }
+    });
+  }
+
+  // Load Tag options for Edit Rule Modal
+  function loadEditTagOptions() {
+    $.ajax({
+      url: '/organize/api/tag',
+      dataType: 'json',
+      success: function(data) {
+        const $tagSelect = $('#edit-tag-select');
+        $tagSelect.empty();
+        if (data && data.length > 0) {
+          data.forEach(function(tag) {
+            const option = new Option(tag.text, tag.id, false, false);
+            $tagSelect.append(option);
+          });
+        }
+        $tagSelect.trigger('change');
+      },
+      error: function() {
+        console.error('Failed to load tag options for edit');
+      }
+    });
+  }
+
   // Initialize Select2 for all selects in Add Rule Modal
   $('#firewall_name').select2({
     theme: 'bootstrap-5',
@@ -1092,6 +1171,14 @@ $(function() {
   $('#add-contact-select').select2({
     theme: 'bootstrap-5',
     placeholder: '-- Select contacts --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#addRuleModal .modal-body')
+  });
+
+  $('#add-tag-select').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- Select tags --',
     width: '100%',
     allowClear: true,
     dropdownParent: $('#addRuleModal .modal-body')
@@ -1146,6 +1233,14 @@ $(function() {
     dropdownParent: $('#editRuleModal .modal-body')
   });
 
+  $('#edit-tag-select').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- Select tags --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#editRuleModal .modal-body')
+  });
+
   $('#edit_status').select2({
     theme: 'bootstrap-5',
     placeholder: '-- No status --',
@@ -1191,48 +1286,565 @@ $(function() {
   $('#addRuleModal').on('show.bs.modal', function() {
     loadOUOptions();
     loadContactOptions();
+    loadTagOptions();
   });
 
   // Load data when Edit Rule Modal is opened
   $('#editRuleModal').on('show.bs.modal', function() {
     loadEditOUOptions();
     loadEditContactOptions();
+    loadEditTagOptions();
   });
+  
+  // Additional event to handle modal opening
+  $('#editRuleModal').on('show.bs.modal', function() {
+    console.log('Edit modal show event triggered');
+    
+    // Small delay to ensure modal is starting to show
+    setTimeout(function() {
+      if (currentEditRuleData) {
+        console.log('Setting values in show.bs.modal event');
+        
+        // Try to set values immediately when modal starts showing
+        if (currentEditRuleData.firewall_name) {
+          $('#edit_firewall_name').val(currentEditRuleData.firewall_name);
+        }
+        if (currentEditRuleData.action) {
+          $('#edit_action').val(currentEditRuleData.action);
+        }
+        if (currentEditRuleData.status) {
+          $('#edit_status').val(currentEditRuleData.status);
+        }
+        if (currentEditRuleData.violation_type) {
+          $('#edit_violation_type').val(currentEditRuleData.violation_type);
+        }
+        if (currentEditRuleData.ou_id) {
+          $('#edit_ou_id').val(currentEditRuleData.ou_id);
+        }
+      }
+    }, 10);
+  });
+  
+  // Alternative method to set values when modal is fully shown
+  $('#editRuleModal').on('shown.bs.modal', function() {
+    // This ensures the modal is fully rendered before setting values
+    console.log('Edit modal fully shown');
+    
+    if (currentEditRuleData) {
+      console.log('Setting values from stored data:', currentEditRuleData);
+      
+      // Reinitialize select2 first
+      reinitializeEditSelect2();
+      
+      // Set select2 fields again to ensure they work
+      setTimeout(function() {
+        console.log('Modal shown - setting values again:');
+        console.log('- firewall_name:', currentEditRuleData.firewall_name);
+        console.log('- action:', currentEditRuleData.action);
+        console.log('- violation_type:', currentEditRuleData.violation_type);
+        console.log('- status:', currentEditRuleData.status);
+        console.log('- ou_id:', currentEditRuleData.ou_id);
+        
+        // Set each field individually using multiple methods
+        if (currentEditRuleData.firewall_name) {
+          $('#edit_firewall_name').val(currentEditRuleData.firewall_name).trigger('change');
+          // Also try using select2 API
+          try {
+            $('#edit_firewall_name').select2('val', currentEditRuleData.firewall_name);
+          } catch(e) {
+            console.log('Select2 API failed for firewall_name:', e);
+          }
+        }
+        if (currentEditRuleData.action) {
+          $('#edit_action').val(currentEditRuleData.action).trigger('change');
+          try {
+            $('#edit_action').select2('val', currentEditRuleData.action);
+          } catch(e) {
+            console.log('Select2 API failed for action:', e);
+          }
+        }
+        if (currentEditRuleData.violation_type) {
+          $('#edit_violation_type').val(currentEditRuleData.violation_type).trigger('change');
+          try {
+            $('#edit_violation_type').select2('val', currentEditRuleData.violation_type);
+          } catch(e) {
+            console.log('Select2 API failed for violation_type:', e);
+          }
+        }
+        if (currentEditRuleData.status) {
+          $('#edit_status').val(currentEditRuleData.status).trigger('change');
+          try {
+            $('#edit_status').select2('val', currentEditRuleData.status);
+          } catch(e) {
+            console.log('Select2 API failed for status:', e);
+          }
+        }
+        if (currentEditRuleData.ou_id) {
+          $('#edit_ou_id').val(currentEditRuleData.ou_id).trigger('change');
+          try {
+            $('#edit_ou_id').select2('val', currentEditRuleData.ou_id);
+          } catch(e) {
+            console.log('Select2 API failed for ou_id:', e);
+          }
+        }
+        
+        // Debug: Check final values
+        setTimeout(function() {
+          console.log('Final values after modal shown:');
+          console.log('- Firewall name:', $('#edit_firewall_name').val());
+          console.log('- Action:', $('#edit_action').val());
+          console.log('- Violation type:', $('#edit_violation_type').val());
+          console.log('- Status:', $('#edit_status').val());
+          console.log('- OU ID:', $('#edit_ou_id').val());
+          
+          // Force set values one more time if they're still empty
+          if (!$('#edit_firewall_name').val() && currentEditRuleData.firewall_name) {
+            console.log('Force setting firewall_name again');
+            $('#edit_firewall_name').val(currentEditRuleData.firewall_name).trigger('change');
+            // Also try native DOM method
+            document.getElementById('edit_firewall_name').value = currentEditRuleData.firewall_name;
+          }
+          if (!$('#edit_action').val() && currentEditRuleData.action) {
+            console.log('Force setting action again');
+            $('#edit_action').val(currentEditRuleData.action).trigger('change');
+            // Also try native DOM method
+            document.getElementById('edit_action').value = currentEditRuleData.action;
+          }
+          if (!$('#edit_status').val() && currentEditRuleData.status) {
+            console.log('Force setting status again');
+            $('#edit_status').val(currentEditRuleData.status).trigger('change');
+            // Also try native DOM method
+            document.getElementById('edit_status').value = currentEditRuleData.status;
+          }
+          if (!$('#edit_violation_type').val() && currentEditRuleData.violation_type) {
+            console.log('Force setting violation_type again');
+            $('#edit_violation_type').val(currentEditRuleData.violation_type).trigger('change');
+            // Also try native DOM method
+            document.getElementById('edit_violation_type').value = currentEditRuleData.violation_type;
+          }
+          if (!$('#edit_ou_id').val() && currentEditRuleData.ou_id) {
+            console.log('Force setting ou_id again');
+            $('#edit_ou_id').val(currentEditRuleData.ou_id).trigger('change');
+            // Also try native DOM method
+            document.getElementById('edit_ou_id').value = currentEditRuleData.ou_id;
+          }
+          
+          // Final check and force trigger change events
+          setTimeout(function() {
+            console.log('Final force trigger change events');
+            $('#edit_firewall_name').trigger('change');
+            $('#edit_action').trigger('change');
+            $('#edit_status').trigger('change');
+            $('#edit_violation_type').trigger('change');
+            $('#edit_ou_id').trigger('change');
+            
+            // Final debug check
+            console.log('Final values after force trigger:');
+            console.log('- Firewall name:', $('#edit_firewall_name').val());
+            console.log('- Action:', $('#edit_action').val());
+            console.log('- Status:', $('#edit_status').val());
+            console.log('- Violation type:', $('#edit_violation_type').val());
+            console.log('- OU ID:', $('#edit_ou_id').val());
+          }, 50);
+        }, 100);
+      }, 100);
+    }
+  });
+
+  // Store rule data globally for modal events
+  let currentEditRuleData = null;
+  
+  // Function to reinitialize select2 for edit modal
+  function reinitializeEditSelect2() {
+    console.log('Reinitializing select2 for edit modal');
+    
+    // Destroy existing select2 if any
+    try {
+      $('#edit_firewall_name').select2('destroy');
+      $('#edit_action').select2('destroy');
+      $('#edit_violation_type').select2('destroy');
+      $('#edit_status').select2('destroy');
+      $('#edit_ou_id').select2('destroy');
+    } catch(e) {
+      console.log('Some select2 elements were not initialized yet');
+    }
+    
+    // Reinitialize select2 with enhanced configuration
+    $('#edit_firewall_name').select2({
+      theme: 'bootstrap-5',
+      placeholder: '-- Select Firewall Name --',
+      width: '100%',
+      allowClear: true,
+      dropdownParent: $('#editRuleModal .modal-body'),
+      minimumResultsForSearch: Infinity // Disable search for better performance
+    });
+
+    $('#edit_action').select2({
+      theme: 'bootstrap-5',
+      placeholder: '-- Select Action --',
+      width: '100%',
+      allowClear: true,
+      dropdownParent: $('#editRuleModal .modal-body'),
+      minimumResultsForSearch: Infinity
+    });
+
+    $('#edit_violation_type').select2({
+      theme: 'bootstrap-5',
+      placeholder: '-- No violation --',
+      width: '100%',
+      allowClear: true,
+      dropdownParent: $('#editRuleModal .modal-body'),
+      minimumResultsForSearch: Infinity
+    });
+
+    $('#edit_status').select2({
+      theme: 'bootstrap-5',
+      placeholder: '-- No status --',
+      width: '100%',
+      allowClear: true,
+      dropdownParent: $('#editRuleModal .modal-body'),
+      minimumResultsForSearch: Infinity
+    });
+
+    $('#edit_ou_id').select2({
+      theme: 'bootstrap-5',
+      placeholder: '-- Select OU --',
+      width: '100%',
+      allowClear: true,
+      dropdownParent: $('#editRuleModal .modal-body')
+    });
+    
+    console.log('Select2 reinitialized for edit modal');
+  }
 
   // Edit Rule Modal - Load data when opened
   $(document).on('click', '[data-bs-target="#editRuleModal"]', function() {
     const ruleId = $(this).data('rule-id');
-    const ruleName = $(this).data('rule-name');
-    const source = $(this).data('source');
-    const destination = $(this).data('destination');
-    const services = $(this).data('services');
-    const protocol = $(this).data('protocol');
-    const action = $(this).data('action');
-    const status = $(this).data('status');
-    const rawData = $(this).data('raw-data');
+    const ruleData = $(this).data('rule');
     
-    // Populate form fields
-    $('#editRuleId').val(ruleId);
-    $('#edit_rulename').val(ruleName);
-    $('#edit_src').val(source);
-    $('#edit_dst').val(destination);
-    $('#edit_services').val(services);
-    $('#edit_action').val(action);
-    $('#edit_status').val(status);
-    $('#edit_raw_data').val(rawData);
+    console.log('Edit button clicked, ruleId:', ruleId);
+    console.log('Rule data:', ruleData);
+    
+    // Store rule data globally
+    currentEditRuleData = ruleData;
+    
+    if (ruleData) {
+      // Populate all form fields with data from rule object
+      $('#editRuleId').val(ruleData.id);
+      $('#edit_audit_batch').val(ruleData.audit_batch || '');
+      $('#edit_rulename').val(ruleData.rulename || '');
+      $('#edit_src_zone').val(ruleData.src_zone || '');
+      $('#edit_src').val(ruleData.src || '');
+      $('#edit_src_detail').val(ruleData.src_detail || '');
+      $('#edit_dst_zone').val(ruleData.dst_zone || '');
+      $('#edit_dst').val(ruleData.dst || '');
+      $('#edit_dst_detail').val(ruleData.dst_detail || '');
+      $('#edit_services').val(ruleData.services || '');
+      $('#edit_application').val(ruleData.application || '');
+      $('#edit_url').val(ruleData.url || '');
+      $('#edit_violation_detail').val(ruleData.violation_detail || '');
+      $('#edit_solution_proposal').val(ruleData.solution_proposal || '');
+      $('#edit_solution_confirm').val(ruleData.solution_confirm || '');
+      $('#edit_work_order').val(ruleData.work_order || '');
+      $('#edit_description').val(ruleData.description || '');
+      $('#edit_raw_data').val(ruleData.raw_data || '');
+      
+      // Set select2 fields with proper timing
+      setTimeout(function() {
+        console.log('Setting select2 fields:');
+        console.log('- firewall_name:', ruleData.firewall_name);
+        console.log('- action:', ruleData.action);
+        console.log('- violation_type:', ruleData.violation_type);
+        console.log('- status:', ruleData.status);
+        
+        // Set each field individually with more debugging
+        if (ruleData.firewall_name) {
+          $('#edit_firewall_name').val(ruleData.firewall_name).trigger('change');
+          console.log('Set firewall_name to:', ruleData.firewall_name);
+        }
+        
+        if (ruleData.action) {
+          $('#edit_action').val(ruleData.action).trigger('change');
+          console.log('Set action to:', ruleData.action);
+        }
+        
+        if (ruleData.violation_type) {
+          $('#edit_violation_type').val(ruleData.violation_type).trigger('change');
+          console.log('Set violation_type to:', ruleData.violation_type);
+        }
+        
+        if (ruleData.status) {
+          $('#edit_status').val(ruleData.status).trigger('change');
+          console.log('Set status to:', ruleData.status);
+        }
+        
+        // Debug: Check if values were set
+        setTimeout(function() {
+          console.log('Values after setting:');
+          console.log('- Firewall name:', $('#edit_firewall_name').val());
+          console.log('- Action:', $('#edit_action').val());
+          console.log('- Violation type:', $('#edit_violation_type').val());
+          console.log('- Status:', $('#edit_status').val());
+        }, 100);
+      }, 50);
     
     // Set form action
     $('#editRuleForm').attr('action', '/firewall/rule/' + ruleId + '?_method=PUT');
     
-    // Load OU and Contact options for edit modal
+      // Load OU, Contact, and Tag options for edit modal
     loadEditOUOptions();
     loadEditContactOptions();
+      loadEditTagOptions();
+      
+      // Set OU value after options are loaded
+      setTimeout(function() {
+        $('#edit_ou_id').val(ruleData.ou_id || '').trigger('change');
+      }, 150);
+      
+      // Set contacts and tags after options are loaded
+      setTimeout(function() {
+        if (ruleData.contacts && ruleData.contacts.length > 0) {
+          const contactIds = ruleData.contacts.map(c => c.id);
+          $('#edit-contact-select').val(contactIds).trigger('change');
+        }
+        if (ruleData.tags && ruleData.tags.length > 0) {
+          const tagIds = ruleData.tags.map(t => t.id);
+          $('#edit-tag-select').val(tagIds).trigger('change');
+        }
+      }, 200);
+    } else {
+      console.error('No rule data found for ruleId:', ruleId);
+    }
   });
 
   // Clear filter button
   $('#clearRuleFilterBtn').on('click', function() {
     window.location.href = '/firewall/rule';
   });
+
+  // ===== GROUPED/DETAILED VIEW LOGIC =====
+  var originalRules = <%- JSON.stringify(ruleList || []) %>;
+  var currentView = 'grouped';
+  
+  // Permissions
+  var hasUpdatePermission = <%= hasPermission('firewall.update') %>;
+  var hasDeletePermission = <%= hasPermission('firewall.delete') %>;
+
+  // Group rules by rulename + firewall_name
+  function groupRules(rules) {
+    var groups = {};
+    rules.forEach(function(rule) {
+      var key = rule.rulename + '|' + rule.firewall_name;
+      if (!groups[key]) {
+        groups[key] = {
+          rulename: rule.rulename,
+          firewall_name: rule.firewall_name,
+          rules: [],
+          occurrences: 0,
+          latestUpdatedAt: '',
+          latestAudit: ''
+        };
+      }
+      groups[key].rules.push(rule);
+      groups[key].occurrences++;
+
+      // Get latest updated_at and audit
+      if (!groups[key].latestAudit || rule.audit_batch > groups[key].latestAudit) {
+        groups[key].latestUpdatedAt = rule.updated_at || '';
+        groups[key].latestAudit = rule.audit_batch || '';
+      }
+
+      // Also check for latest updated_at across all rules in group
+      if (rule.updated_at && (!groups[key].latestUpdatedAt || rule.updated_at > groups[key].latestUpdatedAt)) {
+        groups[key].latestUpdatedAt = rule.updated_at;
+      }
+    });
+    return Object.values(groups);
+  }
+
+  // Render grouped view
+  function renderGroupedView() {
+    if (!originalRules || originalRules.length === 0) {
+      $('#rulesTableBody').html('<tr><td colspan="9" class="text-center">No rules found</td></tr>');
+      return;
+    }
+
+    var groups = groupRules(originalRules);
+    var tbody = $('#rulesTableBody');
+    tbody.empty();
+
+    if (groups.length === 0) {
+      tbody.append('<tr><td colspan="9" class="text-center">No rules found</td></tr>');
+      return;
+    }
+
+    groups.forEach(function(group, idx) {
+      var row = $('<tr class="group-row" data-group-key="' + group.rulename + '|' + group.firewall_name + '">');
+      row.append('<td>' + (idx + 1) + '</td>');
+      row.append('<td style="font-size: 0.75rem; color: #6c757d;">' + (group.latestAudit || '') + '</td>');
+      row.append('<td><span class="badge bg-info">' + group.firewall_name + '</span></td>');
+      row.append('<td><strong>' + group.rulename + '</strong></td>');
+
+      // Show first rule's src/dst/service as representative
+      var firstRule = group.rules[0];
+      row.append('<td>' + (firstRule ? firstRule.src || '' : '') + '</td>');
+      row.append('<td>' + (firstRule ? firstRule.dst || '' : '') + '</td>');
+      row.append('<td>' + (firstRule ? firstRule.services || 'N/A' : 'N/A') + '</td>');
+
+      // Format updated_at date
+      var updatedAtText = 'N/A';
+      if (group.latestUpdatedAt) {
+        try {
+          var date = new Date(group.latestUpdatedAt);
+          updatedAtText = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        } catch(e) {
+          updatedAtText = group.latestUpdatedAt;
+        }
+      }
+      row.append('<td>' + updatedAtText + '</td>');
+
+      var actionsHtml = '<div class="btn-group btn-group-sm">';
+      actionsHtml += '<button type="button" class="btn btn-outline-info btn-sm expand-group" title="Expand Details">';
+      actionsHtml += '<i class="bi bi-chevron-down"></i></button>';
+      actionsHtml += '<button type="button" class="btn btn-outline-primary btn-sm view-group" title="View All">';
+      actionsHtml += '<i class="bi bi-eye"></i></button>';
+      actionsHtml += '</div>';
+      row.append('<td class="text-end">' + actionsHtml + '</td>');
+
+      tbody.append(row);
+
+      // Add expandable detail rows
+      group.rules.forEach(function(rule, ruleIdx) {
+        var detailRow = $('<tr class="group-detail-row" style="display: none;" data-group-key="' + group.rulename + '|' + group.firewall_name + '">');
+        detailRow.append('<td></td>'); // Empty for No.
+        detailRow.append('<td class="text-muted">' + (rule.audit_batch || '') + '</td>'); // Audit Batch
+        detailRow.append('<td class="text-muted">' + (rule.firewall_name || '') + '</td>'); // Firewall Name
+        detailRow.append('<td class="text-muted">' + (rule.rulename || '') + '</td>'); // Rule Name
+        detailRow.append('<td class="text-muted">' + (rule.src || '') + '</td>'); // Source
+        detailRow.append('<td class="text-muted">' + (rule.dst || '') + '</td>'); // Destination
+        detailRow.append('<td class="text-muted">' + (rule.services || 'N/A') + '</td>'); // Service
+        detailRow.append('<td class="text-muted">' + (rule.updated_at ? new Date(rule.updated_at).toLocaleDateString() + ' ' + new Date(rule.updated_at).toLocaleTimeString() : 'N/A') + '</td>'); // Last Update
+
+        var ruleActionsHtml = '<div class="btn-group btn-group-sm">';
+        ruleActionsHtml += '<button type="button" class="btn btn-info btn-sm" title="Show" onclick="showRuleDetail(\'' + rule.id + '\')" data-rule-id="' + rule.id + '" data-rule=\'' + JSON.stringify(rule) + '\'>';
+        ruleActionsHtml += '<i class="bi bi-eye"></i></button>';
+        if (hasUpdatePermission) {
+          ruleActionsHtml += '<button type="button" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#editRuleModal" data-rule-id="' + rule.id + '" data-rule=\'' + JSON.stringify(rule) + '\'>';
+          ruleActionsHtml += '<i class="bi bi-pencil"></i></button>';
+        }
+        if (hasDeletePermission) {
+          ruleActionsHtml += '<form action="/firewall/rule/' + rule.id + '?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteRule(this, \'' + rule.rulename + '\')">';
+          ruleActionsHtml += '<button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="bi bi-trash"></i></button>';
+          ruleActionsHtml += '</form>';
+        }
+        ruleActionsHtml += '</div>';
+        detailRow.append('<td class="text-end">' + ruleActionsHtml + '</td>');
+
+        tbody.append(detailRow);
+      });
+    });
+  }
+
+  // Render detailed view (original)
+  function renderDetailedView() {
+    if (!originalRules || originalRules.length === 0) {
+      $('#rulesTableBody').html('<tr><td colspan="9" class="text-center">No rules found</td></tr>');
+      return;
+    }
+
+    var tbody = $('#rulesTableBody');
+    tbody.empty();
+
+    if (originalRules.length === 0) {
+      tbody.append('<tr><td colspan="9" class="text-center">No rules found</td></tr>');
+      return;
+    }
+
+    originalRules.forEach(function(rule, idx) {
+      var row = $('<tr>');
+      row.append('<td>' + (idx + 1) + '</td>');
+      row.append('<td>' + rule.rulename + '</td>');
+      row.append('<td>' + (rule.src || '-') + '</td>');
+      row.append('<td>' + (rule.dst || '-') + '</td>');
+      row.append('<td>' + (rule.services || '-') + '</td>');
+      row.append('<td><span class="badge bg-primary">' + (rule.protocol || '-') + '</span></td>');
+      row.append('<td><span class="badge bg-' + (rule.action === 'allow' ? 'success' : 'danger') + '">' + rule.action + '</span></td>');
+      row.append('<td><span class="badge bg-' + (rule.status === 'active' ? 'success' : 'secondary') + '">' + rule.status + '</span></td>');
+
+      var actionsHtml = '<div class="btn-group btn-group-sm">';
+      actionsHtml += '<button type="button" class="btn btn-info btn-sm" title="Show" onclick="showRuleDetail(\'' + rule.id + '\')" data-rule-id="' + rule.id + '" data-rule=\'' + JSON.stringify(rule) + '\'><i class="bi bi-eye"></i></button>';
+      if (hasUpdatePermission) {
+        actionsHtml += '<button type="button" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#editRuleModal" data-rule-id="' + rule.id + '" data-rule=\'' + JSON.stringify(rule) + '\'><i class="bi bi-pencil"></i></button>';
+      }
+      if (hasDeletePermission) {
+        actionsHtml += '<form action="/firewall/rule/' + rule.id + '?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteRule(this, \'' + rule.rulename + '\')">';
+        actionsHtml += '<button type="submit" class="btn btn-danger btn-sm" title="Delete"><i class="bi bi-trash"></i></button>';
+        actionsHtml += '</form>';
+      }
+      actionsHtml += '</div>';
+      row.append('<td class="text-end">' + actionsHtml + '</td>');
+
+      tbody.append(row);
+    });
+  }
+
+  // View toggle handlers
+  $('#groupedView').on('change', function() {
+    if (this.checked) {
+      currentView = 'grouped';
+      $('#detailedHeader').hide();
+      $('#groupedHeader').show();
+      renderGroupedView();
+    }
+  });
+
+  $('#detailedView').on('change', function() {
+    if (this.checked) {
+      currentView = 'detailed';
+      $('#groupedHeader').hide();
+      $('#detailedHeader').show();
+      renderDetailedView();
+    }
+  });
+
+  // Expand/collapse group details
+  $(document).on('click', '.expand-group', function() {
+    var $row = $(this).closest('tr');
+    var groupKey = $row.data('group-key');
+    var $detailRows = $('.group-detail-row[data-group-key="' + groupKey + '"]');
+    var $icon = $(this).find('i');
+
+    if ($detailRows.is(':visible')) {
+      $detailRows.hide();
+      $icon.removeClass('bi-chevron-up').addClass('bi-chevron-down');
+    } else {
+      $detailRows.show();
+      $icon.removeClass('bi-chevron-down').addClass('bi-chevron-up');
+    }
+  });
+
+  // View all rules in group
+  $(document).on('click', '.view-group', function() {
+    var $row = $(this).closest('tr');
+    var groupKey = $row.data('group-key');
+    var parts = groupKey.split('|');
+    var rulename = parts[0];
+    var firewall_name = parts[1];
+
+    // Switch to detailed view and filter by this group
+    $('#detailedView').prop('checked', true).trigger('change');
+  });
+
+  // Initialize with grouped view
+  currentView = 'grouped';
+  $('#groupedView').prop('checked', true);
+  $('#detailedHeader').hide();
+  $('#groupedHeader').show();
+
+  // Small delay to ensure DOM is ready
+  setTimeout(function() {
+    renderGroupedView();
+  }, 100);
 
   // Import functionality
 let selectedFile = null;
@@ -1270,17 +1882,69 @@ let selectedFile = null;
     data: formData,
     processData: false,
     contentType: false,
-      success: function(data) {
+    xhrFields: {
+      responseType: 'blob'
+    },
+      success: function(data, status, xhr) {
       $('.progress-bar').css('width', '100%');
         $('#importStatus').text('Validation complete!');
+        
+        // Get validation summary from headers
+        const validationSummary = xhr.getResponseHeader('X-Validation-Summary');
+        let summaryInfo = '';
+        let showImportBtn = false;
+        if (validationSummary) {
+          try {
+            const summary = JSON.parse(validationSummary);
+            summaryInfo = `<br>Total: ${summary.totalCount}, Passed: ${summary.passedCount}, Failed: ${summary.failCount}`;
+            // Only show import button if all rows passed (Failed: 0)
+            showImportBtn = summary.failCount === 0;
+          } catch (e) {
+            console.log('Could not parse validation summary');
+          }
+        }
+        
+        // Create download link for the validation results file
+        const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'firewall_rule_validation_results.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
         $('#importResults').show();
-        $('#importMessage').html('<strong>Validation Complete!</strong><br>File is ready for import.');
-        $('#importBtn').show();
+        $('#importMessage').html('<strong>Validation Complete!</strong><br>Validation results file has been downloaded.' + summaryInfo);
+        
+        // Only show import button if all validations passed
+        if (showImportBtn) {
+          $('#importBtn').show().prop('disabled', false);
+          $('#importMessage').append('<br><br><strong style="color: green;">All validations passed! You can now import the rules.</strong>');
+        } else {
+          $('#importBtn').hide().prop('disabled', true);
+          $('#importMessage').append('<br><br><strong style="color: red;">Please fix the validation errors before importing.</strong>');
+        }
     },
     error: function(xhr, status, error) {
       $('.progress-bar').css('width', '100%').text('Validation Failed');
         $('#importResults').show();
-        $('#importMessage').html('<strong>Validation Error!</strong><br>' + (xhr.responseJSON?.error || 'Unknown error occurred'));
+        
+        // Try to parse error response
+        let errorMessage = 'Unknown error occurred';
+        if (xhr.responseJSON && xhr.responseJSON.error) {
+          errorMessage = xhr.responseJSON.error;
+        } else if (xhr.responseText) {
+          try {
+            const errorData = JSON.parse(xhr.responseText);
+            errorMessage = errorData.error || errorMessage;
+          } catch (e) {
+            errorMessage = xhr.responseText;
+          }
+        }
+        
+        $('#importMessage').html('<strong>Validation Error!</strong><br>' + errorMessage);
       },
       complete: function() {
         $('#validateBtn').prop('disabled', false);
@@ -1313,18 +1977,46 @@ let selectedFile = null;
     data: formData,
     processData: false,
     contentType: false,
-      success: function(data) {
+    xhrFields: {
+      responseType: 'blob' // Important for downloading files
+    },
+      success: function(data, status, xhr) {
         $('#importProgress .progress-bar').css('width', '100%').text('Import Complete');
         $('#importResults').show();
-        $('#importMessage').html('<strong>Import Completed!</strong><br>Rules imported successfully. Page will refresh.');
+        
+        // Get import summary from headers
+        const importSummary = xhr.getResponseHeader('X-Import-Summary');
+        let summaryInfo = '';
+        if (importSummary) {
+          try {
+            const summary = JSON.parse(importSummary);
+            summaryInfo = `<br>Total: ${summary.totalCount}, Success: ${summary.successCount}, Failed: ${summary.errorCount}`;
+          } catch (e) {
+            console.log('Could not parse import summary');
+          }
+        }
+        
+        // Download the import results Excel file
+        const blob = new Blob([data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'firewall_rule_import_results.xlsx';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        // Show success message
+        $('#importMessage').html('<strong>Import Completed!</strong><br>Import results file has been downloaded.' + summaryInfo + '<br><br>Page will refresh in 3 seconds.');
       
       // Hide import button
         $('#importBtn').hide();
       
-      // Refresh page after 2 seconds
+      // Refresh page after 3 seconds
       setTimeout(() => {
         window.location.reload();
-      }, 2000);
+      }, 3000);
     },
     error: function(xhr, status, error) {
         $('#importProgress .progress-bar').css('width', '100%').text('Import Failed');
