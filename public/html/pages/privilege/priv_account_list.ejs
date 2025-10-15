@@ -16,29 +16,22 @@ function buildPaginationUrl(targetPage) {
     params.set('pageSize', pageSize);
   }
   
-  // Add status filter if exists
-  if (typeof filterStatus !== 'undefined' && filterStatus) {
-    params.set('status', filterStatus);
+  // Add organize_id filter if exists
+  if (typeof organize_id !== 'undefined' && organize_id) {
+    params.set('organize_id', organize_id);
   }
   
-  // Add tags filter if exists
-  if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
-    filterTags.forEach(tag => {
-      params.append('tags[]', tag.id);
+  // Add system_ids filter if exists
+  if (typeof system_ids !== 'undefined' && system_ids && system_ids.length) {
+    system_ids.forEach(function(id) {
+      params.append('system_ids[]', id);
     });
   }
   
-  // Add systems filter if exists
-  if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
-    filterSystems.forEach(system => {
-      params.append('systems[]', system.id);
-    });
-  }
-  
-  // Add contacts filter if exists
-  if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) {
-    filterContacts.forEach(contact => {
-      params.append('contacts[]', contact.id);
+  // Add contact_ids filter if exists
+  if (typeof contact_ids !== 'undefined' && contact_ids && contact_ids.length) {
+    contact_ids.forEach(function(id) {
+      params.append('contact_ids[]', id);
     });
   }
   
@@ -54,33 +47,26 @@ function buildExportUrl() {
     params.set('search', search);
   }
   
-  // Add status filter if exists
-  if (typeof filterStatus !== 'undefined' && filterStatus) {
-    params.set('status', filterStatus);
+  // Add organize_id filter if exists
+  if (typeof organize_id !== 'undefined' && organize_id) {
+    params.set('organize_id', organize_id);
   }
   
-  // Add tags filter if exists
-  if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
-    filterTags.forEach(tag => {
-      params.append('tags[]', tag.id);
+  // Add system_ids filter if exists
+  if (typeof system_ids !== 'undefined' && system_ids && system_ids.length) {
+    system_ids.forEach(function(id) {
+      params.append('system_ids[]', id);
     });
   }
   
-  // Add systems filter if exists
-  if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
-    filterSystems.forEach(system => {
-      params.append('systems[]', system.id);
+  // Add contact_ids filter if exists
+  if (typeof contact_ids !== 'undefined' && contact_ids && contact_ids.length) {
+    contact_ids.forEach(function(id) {
+      params.append('contact_ids[]', id);
     });
   }
   
-  // Add contacts filter if exists
-  if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) {
-    filterContacts.forEach(contact => {
-      params.append('contacts[]', contact.id);
-    });
-  }
-  
-  return '/network/ip-address/export' + (params.toString() ? '?' + params.toString() : '');
+  return '/priv-account/account/export' + (params.toString() ? '?' + params.toString() : '');
 }
 %>
 
@@ -97,94 +83,84 @@ function buildExportUrl() {
     </div>
   </div>
 </div>
-  
+
 <!-- Main content -->
 <div class="app-content">
   <div class="container-fluid">
-  <!-- Search and Page Size Row -->
-  <div class="row mb-3">
-    <div class="col-12">
-      <div class="d-flex justify-content-end align-items-center gap-2">
-        <form class="d-flex align-items-center gap-2" role="search" method="get" action="/network/ip-address">
-          <!-- Hidden inputs to preserve filter values -->
-          <input type="hidden" name="page" value="1">
-          <% if (typeof filterStatus !== 'undefined' && filterStatus) { %>
-            <input type="hidden" name="status" value="<%= filterStatus %>">
-      <% } %>
-          <% if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) { %>
-            <% filterTags.forEach(function(tag) { %>
-              <input type="hidden" name="tags[]" value="<%= tag.id %>">
-            <% }); %>
-          <% } %>
-          <% if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) { %>
-            <% filterSystems.forEach(function(system) { %>
-              <input type="hidden" name="systems[]" value="<%= system.id %>">
-            <% }); %>
-          <% } %>
-          <% if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) { %>
-            <% filterContacts.forEach(function(contact) { %>
-              <input type="hidden" name="contacts[]" value="<%= contact.id %>">
-            <% }); %>
-          <% } %>
-          
-          <div class="input-group input-group-sm" style="width: 250px;">
-            <input class="form-control form-control-sm" type="search" name="search" placeholder="Search IP or Description..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-            <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
+    <!-- Search and Page Size Row -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end align-items-center gap-2">
+          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/priv-account/account">
+            <!-- Hidden inputs to preserve filter values -->
+            <input type="hidden" name="page" value="1">
+            <% if (typeof organize_id !== 'undefined' && organize_id) { %>
+              <input type="hidden" name="organize_id" value="<%= organize_id %>">
+            <% } %>
+            <% if (typeof system_ids !== 'undefined' && system_ids && system_ids.length) { %>
+              <% system_ids.forEach(function(id) { %>
+                <input type="hidden" name="system_ids[]" value="<%= id %>">
+              <% }) %>
+            <% } %>
+            <% if (typeof contact_ids !== 'undefined' && contact_ids && contact_ids.length) { %>
+              <% contact_ids.forEach(function(id) { %>
+                <input type="hidden" name="contact_ids[]" value="<%= id %>">
+              <% }) %>
+            <% } %>
+            
+            <div class="input-group input-group-sm" style="width: 250px;">
+              <input class="form-control form-control-sm" type="search" name="search" placeholder="Search Account or Description..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+              <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
             </div>
-          <div class="d-flex align-items-center gap-1">
-            <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
-            <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
-              <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
-                <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
-                    <% }) %>
-                  </select>
-                </div>
-              </form>
+            <div class="d-flex align-items-center gap-1">
+              <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+              <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
+                <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
+                  <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
+                <% }) %>
+              </select>
             </div>
-          </div>
+          </form>
         </div>
+      </div>
+    </div>
 
     <!-- Action Buttons -->
     <div class="row mb-3">
       <div class="col-12">
         <div class="d-flex justify-content-end gap-2">
-          <% if (hasPermission && hasPermission('network.create')) { %>
-            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addIpModal">
-              <i class="bi bi-plus"></i> Add IP Address
-              </button>
-        <% } %>
-      <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterIpModal">
-        <i class="bi bi-funnel"></i> Filter
-      </button>
-          <% if (hasPermission && hasPermission('network.read')) { %>
+          <% if (hasPermission('priv_account.create')) { %>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addPrivUserModal">
+              <i class="bi bi-plus"></i> Add Privileged Account
+            </button>
+          <% } %>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterPrivAccountModal">
+            <i class="bi bi-funnel"></i> Filter
+          </button>
+          <% if (hasPermission('priv_account.read')) { %>
             <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">
               <i class="bi bi-download"></i> Export
             </a>
           <% } %>
-          <% if (hasPermission && hasPermission('network.create')) { %>
-            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importIpModal">
-              <i class="bi bi-upload"></i> Import IP
-            </button>
-          <% } %>
+        </div>
       </div>
-              </div>
-                  </div>
-
-  <!-- Filter values for JS (an toàn cho EJS strict, giống System List) -->
-  <div id="filter-account-data"
-        data-role='<%= JSON.stringify(typeof filterRole !== 'undefined' ? filterRole : '') %>'
-        data-permissions='<%= JSON.stringify(typeof filterPermissions !== 'undefined' ? filterPermissions : []) %>'
-        data-status='<%= JSON.stringify(typeof filterStatus !== 'undefined' ? filterStatus : '') %>' style="display:none"></div>
-
-  <!-- Flash Messages -->
-  <% if (typeof successMessage !== 'undefined' && successMessage) { %>
-    <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
-      <i class="bi bi-check-circle me-2"></i><%= successMessage %>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
+
+    <!-- Filter values for JS -->
+    <div id="filter-account-data"
+          data-organize-id='<%= JSON.stringify(organize_id || '') %>'
+          data-system-ids='<%= JSON.stringify(system_ids || []) %>'
+          data-contact-ids='<%= JSON.stringify(contact_ids || []) %>' style="display:none"></div>
+
+    <!-- Flash Messages -->
+    <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+      <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
+        <i class="bi bi-check-circle me-2"></i><%= successMessage %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
       <script>
       // Auto-hide success message after 5 seconds
-            setTimeout(function() {
+      setTimeout(function() {
         const alert = document.getElementById('successAlert');
         if (alert) {
           const bsAlert = new bootstrap.Alert(alert);
@@ -192,1548 +168,1074 @@ function buildExportUrl() {
         }
       }, 5000);
       </script>
-  <% } %>
-  
-  <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
-      <i class="bi bi-exclamation-triangle me-2"></i><%= errorMessage %>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-    <script>
-      // Auto-hide error message after 8 seconds (longer for errors)
+    <% } %>
+    
+    <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+      <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
+        <i class="bi bi-exclamation-triangle me-2"></i><%= errorMessage %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <script>
+      // Auto-hide error message after 5 seconds
       setTimeout(function() {
         const alert = document.getElementById('errorAlert');
         if (alert) {
           const bsAlert = new bootstrap.Alert(alert);
           bsAlert.close();
         }
-      }, 8000);
-    </script>
-  <% } %>
+      }, 5000);
+      </script>
+    <% } %>
 
-  <!-- Privileged Account List Table -->
-  <div class="row">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title mb-0">Privileged Account List</h3>
-        </div>
-        <div class="card-body table-responsive" style="overflow-x: auto;">
-          <table class="table table-hover" id="ipTable">
-            <thead>
-              <tr>
-                <th>No.</th>
-                <th>Account Name</th>
-                <th>Description</th>
-                <th>Status</th>
-                <th>Role</th>
-                <th>Permissions</th>
-                <th>Last Login</th>
-                <th class="text-end">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% if (typeof accountList !== 'undefined' && accountList && accountList.length > 0) { %>
-                <% accountList.forEach(function(account, idx) { %>
-                  <tr>
-                    <td><%= (page - 1) * pageSize + idx + 1 %></td>
-                    <td><%= account.username %></td>
-                    <td><%= account.description || '-' %></td>
-                    <td><span class="badge bg-<%= account.status === 'active' ? 'success' : 'secondary' %>"><%= account.status %></span></td>
-                    <td>
-                      <% if (account.role) { %>
-                        <span class="badge bg-primary"><%= account.role %></span>
-                      <% } else { %>
-                        <span class="text-muted">No role</span>
-                      <% } %>
-                    </td>
-                    <td>
-                      <% if (account.permissions && account.permissions.length > 0) { %>
-                        <% account.permissions.forEach(function(permission) { %>
-                          <span class="badge bg-info me-1"><%= typeof permission === 'string' ? permission : permission.name %></span>
-                          <% }) %>
-                      <% } else { %>
-                        <span class="text-muted">No permissions</span>
-                      <% } %>
-                    </td>
-                    <td>
-                      <% if (account.last_login) { %>
-                        <span class="text-muted"><%= new Date(account.last_login).toLocaleDateString() %></span>
-                      <% } else { %>
-                        <span class="text-muted">Never</span>
-                      <% } %>
-                    </td>
-                    <td class="text-end">
-                      <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showAccountDetail('<%= account.id %>')" data-account='<%= JSON.stringify(account) %>'><i class="bi bi-eye"></i></button>
-                      <% if (hasPermission('priv_account.update')) { %>
-                      <button type="button" class="btn btn-warning btn-sm" title="Edit" 
-                              data-bs-toggle="modal" data-bs-target="#editAccountModal"
-                              data-account-id="<%= account.id %>"
-                              data-username="<%= account.username %>"
-                              data-description="<%= account.description || '' %>"
-                              data-status="<%= account.status %>"
-                              data-role="<%= account.role || '' %>"
-                              data-permissions="<%= JSON.stringify(account.permissions || []) %>">
-                        <i class="bi bi-pencil"></i>
-                      </button>
-                      <% } %>
-                      <% if (hasPermission('priv_account.delete')) { %>
-                      <form action="/priv-account/account/<%= account.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteAccount(this, '<%= account.username %>')">
-                        <button type="submit" class="btn btn-danger btn-sm" title="Delete">
-                          <i class="bi bi-trash"></i>
+    <!-- Data Table -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title mb-0">Privileged Account List</h3>
+          </div>
+          <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
+            <table class="table table-hover" style="table-layout: fixed; min-width: 800px;">
+              <thead>
+                <tr>
+                  <th>No.</th>
+                  <th>Account Name</th>
+                  <th>Description</th>
+                  <th>Systems</th>
+                  <th>Created At</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (privUserList && privUserList.length > 0) { %>
+                  <% privUserList.forEach(function(account, idx) { %>
+                    <tr>
+                      <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                      <td><%= account.username %></td>
+                      <td><%= account.description %></td>
+                      <td>
+                        <% if (account.systems && account.systems.length) { %>
+                          <%= account.systems.map(s => s.name).join(', ') %>
+                        <% } else { %>
+                          <span class="text-muted">-</span>
+                        <% } %>
+                      </td>
+                      <td><%= account.created_at ? account.created_at.toLocaleString() : '' %></td>
+                      <td class="text-end">
+                        <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showAccountDetail('<%= account.id %>')" data-account-id="<%= account.id %>" data-account='<%= JSON.stringify(account) %>'><i class="bi bi-eye"></i></button>
+                        <% if (hasPermission('priv_account.update')) { %>
+                        <button type="button" class="btn btn-warning btn-sm" title="Edit" 
+                                data-bs-toggle="modal" data-bs-target="#editPrivAccountModal"
+                                data-account-id="<%= account.id %>"
+                                data-account-username="<%= account.username %>"
+                                data-account-description="<%= account.description || '' %>"
+                                data-account-contacts="<%= JSON.stringify(account.contacts || []) %>"
+                                data-account-organize="<%= JSON.stringify(account.organize || {}) %>"
+                                data-account-type="<%= account.account_type %>"
+                                data-account-servers="<%= JSON.stringify(account.servers || []) %>"
+                                data-account-app-url="<%= account.app_url || '' %>"
+                                data-account-systems="<%= JSON.stringify(account.systems || []) %>"
+                                data-account-manage-type="<%= account.manage_type %>"
+                                data-account-role="<%= JSON.stringify(account.role || {}) %>">
+                          <i class="bi bi-pencil"></i>
                         </button>
-                      </form>
-                              <% } %>
-                    </td>
-                  </tr>
-                <% }) %>
-              <% } else { %>
-                <tr><td colspan="8" class="text-center">No privileged accounts found</td></tr>
-              <% } %>
-            </tbody>
-          </table>
-                        </div>
-        <div class="card-footer clearfix">
-          <div class="d-flex justify-content-between align-items-center px-3 py-2">
-            <div>
-              <% 
-                // Calculate pagination range like system list
-                const accountStartItem = (page - 1) * pageSize + 1;
-                const accountEndItem = Math.min(page * pageSize, totalCount || 0);
-                const accountStartPage = Math.max(1, page - 2);
-                const accountEndPage = Math.min(totalPages, page + 2);
-              %>
-              <span>Showing <%= accountStartItem %> - <%= accountEndItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> privileged accounts</span>
-            </div>
-            <ul class="pagination pagination-sm m-0 float-end">
-              <% 
-                function buildAccountFilterQuery() {
-                  let params = [];
-                  if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
-                  if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
-                  if (typeof filterStatus !== 'undefined' && filterStatus) params.push('status=' + encodeURIComponent(filterStatus));
-                  if (typeof filterRole !== 'undefined' && filterRole) params.push('role=' + encodeURIComponent(filterRole));
-                  if (typeof filterPermissions !== 'undefined' && filterPermissions.length) filterPermissions.forEach(function(permission) { params.push('permissions[]=' + encodeURIComponent(permission.id || permission)); });
-                  return params.join('&');
-                }
-                const accountFilterQuery = buildAccountFilterQuery();
-              %>
-              <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page - 1 %><%= accountFilterQuery ? '&' + accountFilterQuery : '' %>" tabindex="-1">Previous</a>
-              </li>
-              <% if (accountStartPage > 1) { %>
-                <li class="page-item"><a class="page-link" href="?page=1<%= accountFilterQuery ? '&' + accountFilterQuery : '' %>">1</a></li>
-                <% if (accountStartPage > 2) { %>
-                  <li class="page-item disabled"><span class="page-link">...</span></li>
+                        <% } %>
+                        <% if (hasPermission('priv_account.delete')) { %>
+                        <form action="/priv-account/account/<%= account.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteAccount(this, '<%= account.username %>')">
+                          <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </form>
+                        <% } %>
+                      </td>
+                    </tr>
+                  <% }) %>
+                <% } else { %>
+                  <tr><td colspan="6" class="text-center">No data</td></tr>
                 <% } %>
-              <% } %>
-              <% for (let i = accountStartPage; i <= accountEndPage; i++) { %>
-                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= accountFilterQuery ? '&' + accountFilterQuery : '' %>"><%= i %></a></li>
-              <% } %>
-              <% if (accountEndPage < totalPages) { %>
-                <li class="page-item disabled"><span class="page-link">...</span></li>
-                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= accountFilterQuery ? '&' + accountFilterQuery : '' %>"><%= totalPages %></a></li>
-              <% } %>
-              <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page + 1 %><%= accountFilterQuery ? '&' + accountFilterQuery : '' %>">Next</a>
-              </li>
-            </ul>
+              </tbody>
+            </table>
+          </div>
+          <div class="card-footer clearfix">
+            <div class="d-flex justify-content-between align-items-center px-3 py-2">
+              <div>
+                <span>Showing <%= startItem %> - <%= endItem %> of <%= totalCount %> accounts</span>
+              </div>
+              <ul class="pagination pagination-sm m-0">
+                <% 
+                  let startPage = 1;
+                  let endPage = totalPages;
+                  if (totalPages > 10) {
+                    if (page <= 6) {
+                      startPage = 1;
+                      endPage = 10;
+                    } else if (page + 4 >= totalPages) {
+                      startPage = totalPages - 9;
+                      endPage = totalPages;
+                    } else {
+                      startPage = page - 5;
+                      endPage = page + 4;
+                    }
+                  }
+                %>
+                <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                  <a class="page-link" href="<%= buildPaginationUrl(page - 1) %>">Previous</a>
+                </li>
+                <% if (startPage > 1) { %>
+                  <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(1) %>">1</a></li>
+                  <% if (startPage > 2) { %>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <% } %>
+                <% } %>
+                <% for (let i = startPage; i <= endPage; i++) { %>
+                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="<%= buildPaginationUrl(i) %>"><%= i %></a></li>
+                <% } %>
+                <% if (endPage < totalPages) { %>
+                  <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(totalPages) %>"><%= totalPages %></a></li>
+                <% } %>
+                <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                  <a class="page-link" href="<%= buildPaginationUrl(page + 1) %>">Next</a>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
-                  </div>
+      </div>
     </div>
   </div>
 </div>
 
-<!-- Add IP Modal -->
-<div class="modal fade" id="addIpModal" tabindex="-1" aria-labelledby="addIpModalLabel">
-  <div class="modal-dialog modal-lg">
-                      <div class="modal-content">
-      <form id="addIpForm" method="POST" action="/network/ip-address">
-                        <div class="modal-header">
-          <h5 class="modal-title" id="addIpModalLabel">Add IP Address</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-          <div class="row g-3">
-            <div class="col-12">
-              <label for="ipAddress" class="form-label">IP Address(es) <span class="text-danger">*</span></label>
-              <small class="form-text text-muted">Enter multiple IP addresses separated by commas</small>
-              <div class="position-relative">
-                <input type="text" class="form-control" id="ipAddress" name="address" required placeholder="192.168.1.1, 192.168.1.2, 10.0.0.1">
-                <div class="position-absolute top-50 end-0 translate-middle-y me-3" id="ipValidationIcon" style="display: none; pointer-events: none;">
-                  <i class="bi bi-check-circle-fill text-success fs-5"></i>
-                                </div>
-                            </div>
-              <div class="invalid-feedback" id="ipAddressError"></div>
-              <div class="valid-feedback" id="ipAddressSuccess" style="display: none;">
-                <!-- Success message removed - only show green checkmark icon -->
-              </div>
-              <div class="text-danger small mt-1" id="ipAddressExists" style="display: none;">
-                <i class="bi bi-exclamation-triangle-fill me-1"></i><span id="ipExistsMessage"></span>
-              </div>
-            </div>
-            <div class="col-12">
-              <label for="ipDescription" class="form-label">Description</label>
-              <textarea class="form-control" id="ipDescription" name="description" rows="3"></textarea>
-                            </div>
-            <div class="col-12">
-              <label for="ipStatus" class="form-label">Status</label>
-              <select class="form-select" id="ipStatus" name="status">
-                <% if (typeof ipStatusOptions !== 'undefined' && ipStatusOptions.length > 0) { %>
-                  <% ipStatusOptions.forEach(function(option) { %>
-                    <option value="<%= option.value %>" <%= option.value === 'active' ? 'selected' : '' %>><%= option.label %></option>
-                  <% }); %>
-                              <% } else { %>
-                  <option value="active" selected>Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="reserved">Reserved</option>
-                              <% } %>
-                              </select>
-                            </div>
-            <div class="col-12">
-              <label for="ipTags" class="form-label">Tags</label>
-              <select id="ipTags" name="tags[]" class="form-select" multiple>
-                <!-- Options will be loaded via AJAX -->
-              </select>
-                            </div>
-            <div class="col-12">
-              <label for="ipSystems" class="form-label">Systems</label>
-              <select id="ipSystems" name="systems[]" class="form-select" multiple>
-                <!-- Options will be loaded via AJAX -->
-              </select>
-                            </div>
-            <div class="col-12">
-              <label for="ipContacts" class="form-label">Contacts</label>
-              <select id="ipContacts" name="contacts[]" class="form-select" multiple>
-                <!-- Options will be loaded via AJAX -->
-              </select>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Add IP Address</button>
-                        </div>
-                        </form>
-                      </div>
-                    </div>
-                  </div>
-
-<!-- Edit IP Modal -->
-<div class="modal fade" id="editIpModal" tabindex="-1" aria-labelledby="editIpModalLabel">
-  <div class="modal-dialog modal-lg">
-                      <div class="modal-content">
-      <form id="editIpForm" method="POST" action="">
-        <input type="hidden" name="page" value="<%= page %>">
-                        <div class="modal-header">
-          <h5 class="modal-title" id="editIpModalLabel">Edit IP Address</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                          <div class="modal-body">
-          <div class="row g-3">
-            <div class="col-12">
-              <label for="editIpAddress" class="form-label">IP Address <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" id="editIpAddress" name="ip_address" readonly>
-              <small class="form-text text-muted">IP address cannot be changed</small>
-                            </div>
-            <div class="col-12">
-              <label for="editIpDescription" class="form-label">Description</label>
-              <textarea class="form-control" id="editIpDescription" name="description" rows="3"></textarea>
-                            </div>
-            <div class="col-12">
-              <label for="editIpStatus" class="form-label">Status</label>
-              <select class="form-select" id="editIpStatus" name="status">
-                <% if (typeof ipStatusOptions !== 'undefined' && ipStatusOptions.length > 0) { %>
-                  <% ipStatusOptions.forEach(function(option) { %>
-                    <option value="<%= option.value %>"><%= option.label %></option>
-                  <% }); %>
-                      <% } else { %>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="reserved">Reserved</option>
-                      <% } %>
-                              </select>
-                            </div>
-            <div class="col-12">
-              <label for="editIpTags" class="form-label">Tags</label>
-              <select id="editIpTags" name="tags[]" class="form-select" multiple>
-                <!-- Options will be loaded via AJAX -->
-              </select>
-                            </div>
-            <div class="col-12">
-              <label for="editIpSystems" class="form-label">Systems</label>
-              <select id="editIpSystems" name="systems[]" class="form-select" multiple>
-                <!-- Options will be loaded via AJAX -->
-              </select>
-                            </div>
-            <div class="col-12">
-              <label for="editIpContacts" class="form-label">Contacts</label>
-              <select id="editIpContacts" name="contacts[]" class="form-select" multiple>
-                <!-- Options will be loaded via AJAX -->
-              </select>
-                            </div>
-                          </div>
-                </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Update IP Address</button>
-                          </div>
-                        </form>
-                      </div>
-                    </div>
-                  </div>
-        
-<!-- IP Detail Modal -->
-<div class="modal fade" id="ipDetailModal" tabindex="-1" aria-labelledby="ipDetailModalLabel">
+<!-- Add Privileged Account Modal -->
+<div class="modal fade" id="addPrivUserModal" tabindex="-1" aria-labelledby="addPrivUserModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="ipDetailModalLabel">IP Address Detail</h5>
+        <h5 class="modal-title" id="addPrivUserModalLabel">Add Privileged Account</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                  </div>
-      <div class="modal-body" id="ipDetailContent">
-        <!-- Content will be loaded here -->
-                  </div>
+      </div>
+      <div class="modal-body">
+        <form id="addPrivUserForm" action="/priv-account/account" method="POST" autocomplete="off">
+          <div class="mb-3">
+            <label for="privUserUsername" class="form-label">Account Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="privUserUsername" name="username" placeholder="Account Name" required>
+          </div>
+          <div class="mb-3">
+            <label for="privUserDescription" class="form-label">Description</label>
+            <textarea class="form-control" id="privUserDescription" name="description" placeholder="Description" rows="3" style="min-height:70px;"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="privUserContacts" class="form-label">Assign Contacts <span class="text-danger">*</span></label>
+            <select id="privUserContacts" name="contacts[]" class="form-control" multiple style="width:100%" required></select>
+          </div>
+          <div class="mb-3">
+            <label for="privUserOrganize" class="form-label">Organize Unit <span class="text-danger">*</span></label>
+            <select id="privUserOrganize" name="organize_id" class="form-select form-select-sm" style="width:100%" required></select>
+          </div>
+          <div class="mb-3">
+            <label for="privUserType" class="form-label">Account Type <span class="text-danger">*</span></label>
+            <select id="privUserType" name="account_type" class="form-control" required style="width:100%">
+              <option value="">-- Select Type --</option>
+              <% (accountTypes || []).forEach(function(opt) { %>
+                <option value="<%= opt.value %>"><%= opt.label %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="mb-3 d-none" id="privUserServerGroup">
+            <label for="privUserServers" class="form-label">Server(s) <span class="text-danger">*</span></label>
+            <select id="privUserServers" name="server_ids[]" class="form-control" multiple style="width:100%" required></select>
+          </div>
+          <div class="mb-3 d-none" id="privUserAppUrlGroup">
+            <label for="privUserAppUrl" class="form-label">Application URL <span class="text-danger">*</span></label>
+            <input type="text" id="privUserAppUrl" name="app_url" class="form-control" placeholder="https://example.com/app" required>
+          </div>
+          <div class="mb-3" id="privUserSystemGroup">
+            <label for="privUserSystem" class="form-label">System(s) <span class="text-danger">*</span></label>
+            <select id="privUserSystem" name="system_ids[]" class="form-control" multiple required style="width:100%"></select>
+          </div>
+          <div class="mb-3">
+            <label for="privUserManageType" class="form-label">Management Method <span class="text-danger">*</span></label>
+            <select id="privUserManageType" name="manage_type" class="form-control" required style="width:100%">
+              <option value="">-- Select Method --</option>
+              <% (manageTypes || []).forEach(function(opt) { %>
+                <option value="<%= opt.value %>"><%= opt.label %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="privUserRole" class="form-label">Role <span class="text-danger">*</span></label>
+            <select id="privUserRole" name="role_id" class="form-select form-select-sm" required style="width:100%"></select>
+          </div>
+        </form>
+      </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button type="submit" class="btn btn-primary btn-sm" form="addPrivUserForm">Add User</button>
       </div>
     </div>
   </div>
-                  </div>
-                  
-<!-- Filter IP Modal -->
-<div class="modal fade" id="filterIpModal" tabindex="-1" aria-labelledby="filterIpModalLabel">
+</div>
+
+<!-- Edit Privileged Account Modal -->
+<div class="modal fade" id="editPrivAccountModal" tabindex="-1" aria-labelledby="editPrivAccountModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="filterIpModalLabel">Filter IP Addresses</h5>
+        <h5 class="modal-title" id="editPrivAccountModalLabel">Edit Privileged Account</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <form method="GET" action="/network/ip-address" id="filterIpForm">
-        <input type="hidden" name="page" value="1">
+      <div class="modal-body">
+        <form id="editPrivAccountForm" method="POST" autocomplete="off">
+          <input type="hidden" id="editAccountId" name="id">
+          <div class="mb-3">
+            <label for="editAccountUsername" class="form-label">Account Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="editAccountUsername" name="username" required>
+          </div>
+          <div class="mb-3">
+            <label for="editAccountDescription" class="form-label">Description</label>
+            <textarea class="form-control" id="editAccountDescription" name="description" rows="3" style="min-height:70px;"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="editAccountContacts" class="form-label">Assign Contacts <span class="text-danger">*</span></label>
+            <select id="editAccountContacts" name="contacts[]" class="form-control" multiple style="width:100%" required></select>
+          </div>
+          <div class="mb-3">
+            <label for="editAccountOrganize" class="form-label">Organize Unit <span class="text-danger">*</span></label>
+            <select id="editAccountOrganize" name="organize_id" class="form-select form-select-sm" style="width:100%" required></select>
+          </div>
+          <div class="mb-3">
+            <label for="editAccountType" class="form-label">Account Type <span class="text-danger">*</span></label>
+            <select id="editAccountType" name="account_type" class="form-control" required style="width:100%">
+              <option value="">-- Select Type --</option>
+              <% (accountTypes || []).forEach(function(opt) { %>
+                <option value="<%= opt.value %>"><%= opt.label %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="mb-3 d-none" id="editAccountServerGroup">
+            <label for="editAccountServers" class="form-label">Server(s) <span class="text-danger">*</span></label>
+            <select id="editAccountServers" name="server_ids[]" class="form-control" multiple style="width:100%" required></select>
+          </div>
+          <div class="mb-3 d-none" id="editAccountAppUrlGroup">
+            <label for="editAccountAppUrl" class="form-label">Application URL <span class="text-danger">*</span></label>
+            <input type="text" id="editAccountAppUrl" name="app_url" class="form-control" placeholder="https://example.com/app" required>
+          </div>
+          <div class="mb-3" id="editAccountSystemGroup">
+            <label for="editAccountSystem" class="form-label">System(s) <span class="text-danger">*</span></label>
+            <select id="editAccountSystem" name="system_ids[]" class="form-control" multiple required style="width:100%"></select>
+          </div>
+          <div class="mb-3">
+            <label for="editAccountManageType" class="form-label">Management Method <span class="text-danger">*</span></label>
+            <select id="editAccountManageType" name="manage_type" class="form-control" required style="width:100%">
+              <option value="">-- Select Method --</option>
+              <% (manageTypes || []).forEach(function(opt) { %>
+                <option value="<%= opt.value %>"><%= opt.label %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="editAccountRole" class="form-label">Role <span class="text-danger">*</span></label>
+            <select id="editAccountRole" name="role_id" class="form-select form-select-sm" required style="width:100%"></select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button type="submit" class="btn btn-primary btn-sm" form="editPrivAccountForm">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filter Modal -->
+<div class="modal fade" id="filterPrivAccountModal" tabindex="-1" aria-labelledby="filterPrivAccountModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="filterPrivAccountModalLabel">Filter Privileged Accounts</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="get" action="/priv-account/account">
         <div class="modal-body">
-          <div class="row g-2">
-            <!-- Status Filter -->
-            <div class="col-12 mb-2">
-              <label for="filterIpStatus" class="form-label">Status</label>
-              <select class="form-control" id="filterIpStatus" name="status">
-                <option value="">All Status</option>
-                <% if (typeof ipStatusOptions !== 'undefined' && ipStatusOptions.length > 0) { %>
-                  <% ipStatusOptions.forEach(function(option) { %>
-                    <option value="<%= option.value %>" <%= typeof filterStatus !== 'undefined' && filterStatus === option.value ? 'selected' : '' %>><%= option.label %></option>
-                  <% }); %>
-                      <% } else { %>
-                  <option value="active" <%= typeof filterStatus !== 'undefined' && filterStatus === 'active' ? 'selected' : '' %>>Active</option>
-                  <option value="inactive" <%= typeof filterStatus !== 'undefined' && filterStatus === 'inactive' ? 'selected' : '' %>>Inactive</option>
-                  <option value="reserved" <%= typeof filterStatus !== 'undefined' && filterStatus === 'reserved' ? 'selected' : '' %>>Reserved</option>
-                      <% } %>
-              </select>
-                  </div>
-                  
-            <!-- Tags Filter -->
-            <div class="col-12 mb-2">
-              <label class="form-label">Tags</label>
-              <select id="filterIpTags" name="tags[]" class="form-control" multiple></select>
-                  </div>
-                  
-            <!-- Systems Filter -->
-            <div class="col-12 mb-2">
-              <label class="form-label">Systems</label>
-              <select id="filterIpSystems" name="systems[]" class="form-control" multiple></select>
-                  </div>
-                  
-            <!-- Contacts Filter -->
-            <div class="col-12 mb-2">
-              <label class="form-label">Contacts</label>
-              <select id="filterIpContacts" name="contacts[]" class="form-control" multiple></select>
-                  </div>
-                </div>
-                </div>
-        <div class="modal-footer d-flex justify-content-between">
-          <button type="button" class="btn btn-outline-danger" id="clearFilterBtnIp">Clear All Filters</button>
-          <div>
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Apply Filters</button>
-              </div>
+          <div class="mb-3">
+            <label for="filterSystem" class="form-label">System(s)</label>
+            <select id="filterSystem" name="system_ids[]" class="form-control" multiple style="width:100%"></select>
+          </div>
+          <div class="mb-3">
+            <label for="filterOrganize" class="form-label">Organize Unit</label>
+            <select id="filterOrganize" name="organize_id" class="form-select form-select-sm" style="width:100%">
+              <option value="">All Organize Units</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="filterContacts" class="form-label">Contacts</label>
+            <select id="filterContacts" name="contact_ids[]" class="form-control" multiple style="width:100%"></select>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-warning btn-sm" id="clearPrivAccountFilterBtn">Clear Filter</button>
+          <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
         </div>
       </form>
     </div>
-          </div>
-        </div>
-        
-<!-- Import IP Modal -->
-<div class="modal fade" id="importIpModal" tabindex="-1" aria-labelledby="importIpModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="importIpModalLabel">Import IP Addresses</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-      <div class="modal-body">
-        <form id="importIpForm" enctype="multipart/form-data">
-          <div class="mb-3">
-            <label for="ipImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
-            <div class="input-group">
-              <input type="file" class="form-control" id="ipImportFile" name="file" accept=".csv,.xlsx,.xls" required>
-              <a href="/network/ip-address/template" class="btn btn-outline-info" download>
-                <i class="bi bi-download"></i> Download Template
-              </a>
-            </div>
-            <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
-          </div>
-          
-          <div class="mb-3">
-            <div class="alert alert-info">
-              <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
-              <ul class="mb-0">
-                <li>Click "Download Template" to get the Excel template with correct format</li>
-                <li>Fill the template with your IP addresses data</li>
-                <li>IPAddress (Require, one per row) is required and must be valid IP format</li>
-                <li>Description is optional</li>
-                <li>Status is optional (default: active)</li>
-                <li>Tags, Systems, and Contacts are optional and can be comma-separated if multiple</li>
-                <li>Select your filled template file and validate before importing</li>
-            </ul>
-          </div>
-        </div>
-          
-          <!-- Progress bar -->
-          <div id="ipImportProgress" class="progress mb-3" style="display: none;">
-            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-      </div>
-          
-          <!-- Results display -->
-          <div id="ipImportResults" class="alert" style="display: none;"></div>
-        </form>
-    </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-warning" id="validateIpBtn">Validate File</button>
-        <button type="button" class="btn btn-success" id="importIpBtn" style="display: none;">Import IP Addresses</button>
   </div>
 </div>
-  </div>
-</div>
-        
-<style>
-/* Fix Select2 dropdown z-index in modal */
-  .select2-dropdown {
-  z-index: 9999 !important;
-}
-
-.select2-container--bootstrap-5 .select2-dropdown {
-  z-index: 9999 !important;
-}
-
-.modal .select2-dropdown {
-  z-index: 9999 !important;
-}
-
-/* Ensure dropdown is visible above modal backdrop */
-.select2-container--open .select2-dropdown {
-  z-index: 9999 !important;
-  }
-</style>
 
 <script>
-  $(function() {
-  console.log('Initializing Select2...');
+function showToast(msg, type) {
+  const toast = document.createElement('div');
+  toast.className = `alert alert-${type}`;
+  toast.style.position = 'fixed';
+  toast.style.top = '16px';
+  toast.style.right = '16px';
+  toast.style.zIndex = 9999;
+  toast.style.minWidth = '200px';
+  toast.innerText = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function showAccountDetail(accountId) {
+  console.log('showAccountDetail called with accountId:', accountId);
   
-  // Tags select2 AJAX - Bootstrap 5 theme (clone from system_add.ejs)
-  console.log('Setting up Tags Select2...');
-    $('#ipTags').select2({
-      theme: 'bootstrap-5',
-    placeholder: 'Select tags (optional)',
-      allowClear: true,
-      width: '100%',
-    multiple: true,
-    dropdownParent: $('#addIpModal'),
-      ajax: {
-        url: '/organize/api/tag',
-        dataType: 'json',
-        delay: 250,
-      data: params => {
-        console.log('Tags AJAX request:', params.term);
-        return { search: params.term };
-      },
-      processResults: data => {
-        console.log('Tags API response:', data);
-        return { results: data };
-      },
-        cache: true
-      }
-    });
-
-  // Systems select2 AJAX - Bootstrap 5 theme (clone from system_add.ejs)
-  console.log('Setting up Systems Select2...');
-  $('#ipSystems').select2({
-      theme: 'bootstrap-5',
-    placeholder: 'Select systems (optional)',
-      allowClear: true,
-      width: '100%',
-    multiple: true,
-    dropdownParent: $('#addIpModal'),
-      ajax: {
-      url: '/system/api/system',
-        dataType: 'json',
-        delay: 250,
-      data: params => {
-        console.log('Systems AJAX request:', params.term);
-        return { search: params.term };
-      },
-      processResults: data => {
-        console.log('Systems API response:', data);
-        return { results: data };
-      },
-        cache: true
-      }
-    });
-
-  // Contacts select2 AJAX - Bootstrap 5 theme (clone from system_add.ejs)
-  console.log('Setting up Contacts Select2...');
-  $('#ipContacts').select2({
-      theme: 'bootstrap-5',
-    placeholder: 'Select contacts (optional)',
-      allowClear: true,
-      width: '100%',
-    multiple: true,
-    dropdownParent: $('#addIpModal'),
-      ajax: {
-      url: '/organize/api/contact',
-        dataType: 'json',
-        delay: 250,
-      data: params => {
-        console.log('Contacts AJAX request:', params.term);
-        return { search: params.term };
-      },
-      processResults: data => {
-        console.log('Contacts API response:', data);
-        return { results: data };
-      },
-        cache: true
-      }
-    });
-  
-  console.log('All Select2 initialized!');
-
-  // Debug: Select2 events
-  $('#ipTags').on('select2:open', function() {
-    console.log('Tags dropdown opened');
-  });
-  
-  $('#ipSystems').on('select2:open', function() {
-    console.log('Systems dropdown opened');
-  });
-  
-  $('#ipContacts').on('select2:open', function() {
-    console.log('Contacts dropdown opened');
-  });
-
-  // Debug: Modal events
-  $('#addIpModal').on('shown.bs.modal', function() {
-    console.log('Add IP Modal shown');
-    console.log('Select2 elements in modal:');
-    console.log('ipTags:', $('#addIpModal #ipTags').length);
-    console.log('ipSystems:', $('#addIpModal #ipSystems').length);
-    console.log('ipContacts:', $('#addIpModal #ipContacts').length);
-  });
-
-  // Reset form when modal is hidden
-  $('#addIpModal').on('hidden.bs.modal', function() {
-    console.log('Add IP Modal hidden, resetting form');
-    $('#addIpForm')[0].reset();
-    $('#ipTags, #ipSystems, #ipContacts').val(null).trigger('change');
-    // Clear validation states
-    $('#ipAddress').removeClass('is-invalid is-valid');
-    $('#ipValidationIcon').hide();
-    $('#ipAddressSuccess').hide();
-    $('#ipAddressExists').hide();
-    $('#ipAddressError').text('');
-  });
-
-
-  // IP Address validation - Check immediately on blur
-  $('#ipAddress').on('blur', function() {
-    console.log('IP input blurred - starting validation...');
-    const ipInput = $(this).val().trim();
-    const errorDiv = $('#ipAddressError');
-    
-    console.log('Input value:', ipInput);
-    
-    if (!ipInput) {
-      console.log('No input - clearing validation');
-      $(this).removeClass('is-invalid is-valid');
-      errorDiv.text('');
-      $('#ipValidationIcon').hide();
-      $('#ipAddressSuccess').hide();
-      $('#ipAddressExists').hide();
-      return;
-    }
-    
-    // Split by comma and check each IP
-    const ipList = ipInput.split(',').map(ip => ip.trim()).filter(ip => ip.length > 0);
-    console.log('IP list to check:', ipList);
-    
-    // Validate format for each IP
-    const invalidIPs = ipList.filter(ip => !isValidIP(ip));
-    if (invalidIPs.length > 0) {
-      console.log('Invalid IPs found:', invalidIPs);
-      $(this).removeClass('is-valid').addClass('is-invalid');
-      errorDiv.text(`Invalid IP format: ${invalidIPs.join(', ')}`);
-      $('#ipValidationIcon').hide();
-      $('#ipAddressSuccess').hide();
-      $('#ipAddressExists').hide();
-        return;
-      }
-      
-    console.log('All IPs format valid - checking existence...');
-    // Check if any IP already exists
-    checkMultipleIPsExist(ipList, $(this), errorDiv);
-  });
-
-  // Form submission
-  $('#addIpForm').on('submit', function(e) {
-    const ipInput = $('#ipAddress').val().trim();
-    if (!ipInput) {
-      e.preventDefault();
-      $('#ipAddress').addClass('is-invalid');
-      $('#ipAddressError').text('Please enter at least one IP address');
-      return;
-    }
-    
-    // Split and validate all IPs
-    const ipList = ipInput.split(',').map(ip => ip.trim()).filter(ip => ip.length > 0);
-    const invalidIPs = ipList.filter(ip => !isValidIP(ip));
-    
-    if (invalidIPs.length > 0) {
-        e.preventDefault();
-        $('#ipAddress').addClass('is-invalid');
-      $('#ipAddressError').text(`Invalid IP format: ${invalidIPs.join(', ')}`);
-      return;
-    }
-    
-    // Check if any IP already exists before submitting
-    if ($('#ipAddress').hasClass('is-invalid')) {
-          e.preventDefault();
-      return; // Don't submit if IP is invalid or exists
-    }
-    
-    // If validation passes, allow normal form submission
-    // Backend will handle redirect and flash messages
-    const submitBtn = $(this).find('button[type="submit"]');
-    submitBtn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Adding...');
-  });
-
-  // Edit IP Modal - Initialize Select2
-  $('#editIpTags').select2({
-            theme: 'bootstrap-5',
-    multiple: true,
-            allowClear: true,
-            width: '100%',
-    dropdownParent: $('#editIpModal'),
-            ajax: {
-              url: '/organize/api/tag',
-              dataType: 'json',
-      processResults: function(data) {
-        return { results: data };
-      }
-    }
-  });
-
-  $('#editIpSystems').select2({
-            theme: 'bootstrap-5',
-    multiple: true,
-            allowClear: true,
-            width: '100%',
-    dropdownParent: $('#editIpModal'),
-            ajax: {
-      url: '/system/api/system',
-              dataType: 'json',
-      processResults: function(data) {
-        return { results: data };
-      }
-    }
-  });
-
-  $('#editIpContacts').select2({
-            theme: 'bootstrap-5',
-    multiple: true,
-            allowClear: true,
-            width: '100%',
-    dropdownParent: $('#editIpModal'),
-            ajax: {
-              url: '/organize/api/contact',
-              dataType: 'json',
-      processResults: function(data) {
-        return { results: data };
-      }
-    }
-  });
-
-  // Edit IP Modal - Load data when opened
-  $('#editIpModal').on('show.bs.modal', function(event) {
-    const button = $(event.relatedTarget);
-    const ipId = button.data('ip-id');
-    const ipAddress = button.data('ip-address');
-    const description = button.data('description') || '';
-    const status = button.data('status') || 'active';
-    const tags = button.data('tags') || [];
-    const systems = button.data('systems') || [];
-    const contacts = button.data('contacts') || [];
-
-    console.log('Edit IP Modal opened with data:', {
-      ipId, ipAddress, description, status, tags, systems, contacts
-    });
-
-    // Set form action URL
-    const actionUrl = `/network/ip-address/${ipId}`;
-    $('#editIpForm').attr('action', actionUrl);
-    console.log('Form action set to:', actionUrl);
-
-    // Populate form fields
-    $('#editIpAddress').val(ipAddress);
-    $('#editIpDescription').val(description);
-    $('#editIpStatus').val(status);
-
-    // Load existing values for Select2 fields after a short delay
-        setTimeout(() => {
-      loadEditExistingValues(tags, systems, contacts);
-    }, 100);
-  });
-
-  // Edit IP Modal - Reset form when hidden
-  $('#editIpModal').on('hidden.bs.modal', function() {
-    $('#editIpForm')[0].reset();
-    $('#editIpTags, #editIpSystems, #editIpContacts').val(null).trigger('change');
-  });
-
-  // Edit IP Form submission
-  $('#editIpForm').on('submit', function(e) {
-    console.log('Edit IP Form submitting...');
-    
-    // Get IP ID from form action or data attribute
-    const currentAction = $(this).attr('action');
-    const ipId = currentAction.split('/').pop();
-    
-    // Set the correct form action URL with method indicator
-    const correctAction = `/network/ip-address/${ipId}?_method=PUT`;
-    $(this).attr('action', correctAction);
-    
-    console.log('Form action set to:', correctAction);
-    console.log('Form method:', $(this).attr('method'));
-    console.log('Method override in URL: ?_method=PUT');
-    console.log('Note: Browser will show POST, but server will receive PUT due to method override');
-
-    // Allow normal form submission - backend handles redirect
-    const submitBtn = $(this).find('button[type="submit"]');
-    submitBtn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Updating...');
-  });
-
-  // Filter IP Modal - Initialize Select2
-  $('#filterIpTags').select2({
-            theme: 'bootstrap-5',
-            placeholder: 'Select tag(s)',
-            allowClear: true,
-            width: '100%',
-    dropdownParent: $('#filterIpModal'),
-            ajax: {
-              url: '/organize/api/tag',
-              dataType: 'json',
-              delay: 250,
-      data: function(params) {
-        return { search: params.term };
-      },
-      processResults: function(data) {
-        return { results: data };
-      },
-              cache: true
-            }
-          });
-
-  $('#filterIpSystems').select2({
-            theme: 'bootstrap-5',
-    placeholder: 'Select system(s)',
-            allowClear: true,
-            width: '100%',
-    dropdownParent: $('#filterIpModal'),
-            ajax: {
-      url: '/system/api/system',
-              dataType: 'json',
-              delay: 250,
-      data: function(params) {
-        return { search: params.term };
-      },
-      processResults: function(data) {
-        return { results: data };
-      },
-              cache: true
-            }
-          });
-
-  $('#filterIpContacts').select2({
-            theme: 'bootstrap-5',
-    placeholder: 'Select contact(s)',
-            allowClear: true,
-            width: '100%',
-    dropdownParent: $('#filterIpModal'),
-            ajax: {
-              url: '/organize/api/contact',
-              dataType: 'json',
-              delay: 250,
-      data: function(params) {
-        return { search: params.term };
-      },
-      processResults: function(data) {
-        return { results: data };
-      },
-              cache: true
-            }
-          });
-
-  // Filter IP Modal - Load existing filter values when opened
-  $('#filterIpModal').on('show.bs.modal', function() {
-    console.log('Filter IP Modal opened');
-    
-    // Load existing filter values
-    setTimeout(() => {
-      loadFilterExistingValues();
-    }, 100);
-  });
-
-  // Filter IP Modal - Reset form when hidden
-  $('#filterIpModal').on('hidden.bs.modal', function() {
-    console.log('Filter IP Modal hidden, resetting form');
-    $('#filterIpForm')[0].reset();
-    $('#filterIpTags, #filterIpSystems, #filterIpContacts').val(null).trigger('change');
-  });
-
-  // Clear All Filters button
-  $('#clearFilterBtnIp').on('click', function() {
-    // Clear all select2 values
-    $('#filterIpTags').val(null).trigger('change');
-    $('#filterIpSystems').val(null).trigger('change');
-    $('#filterIpContacts').val(null).trigger('change');
-    $('#filterIpStatus').val('');
-    
-    // Close modal
-    $('#filterIpModal').modal('hide');
-    
-    // Redirect to clean URL but preserve pageSize and search
-    const currentPageSize = $('select[name="pageSize"]').val() || '10';
-    const currentSearch = $('input[name="search"]').val() || '';
-    let cleanUrl = '/network/ip-address';
-    const params = [];
-    if (currentPageSize && currentPageSize !== '10') params.push('pageSize=' + encodeURIComponent(currentPageSize));
-    if (currentSearch) params.push('search=' + encodeURIComponent(currentSearch));
-    if (params.length > 0) cleanUrl += '?' + params.join('&');
-    window.location.href = cleanUrl;
-  });
-});
-
-function loadFilterExistingValues() {
-  console.log('Loading existing filter values...');
-  
-  // Get filter data from hidden div
-  const filterDataEl = document.getElementById('filter-ip-data');
-  if (!filterDataEl) {
-    console.log('Filter data element not found');
+  // Get account data from button (specifically the show button)
+  const button = document.querySelector(`button[data-account-id="${accountId}"][title="Show"]`);
+  if (!button) {
+    console.error('Button not found for accountId:', accountId);
     return;
   }
   
+  console.log('Button found:', button);
+  
+  const accountData = button.getAttribute('data-account');
+  if (!accountData) {
+    console.error('No account data found for accountId:', accountId);
+    return;
+  }
+  
+  let account;
   try {
-    const filterTags = JSON.parse(filterDataEl.dataset.tags || '[]');
-    const filterSystems = JSON.parse(filterDataEl.dataset.systems || '[]');
-    const filterContacts = JSON.parse(filterDataEl.dataset.contacts || '[]');
-    
-    console.log('Filter data:', { filterTags, filterSystems, filterContacts });
-    
-    // Clear existing options first to avoid duplicates
-    $('#filterIpTags').find('option').remove();
-    $('#filterIpSystems').find('option').remove();
-    $('#filterIpContacts').find('option').remove();
-    
-    // Load tags
-    if (filterTags && filterTags.length > 0) {
-      filterTags.forEach(tag => {
-        const option = new Option(tag.name, tag.id, true, true);
-        $('#filterIpTags').append(option);
-      });
-      $('#filterIpTags').trigger('change');
-    }
-    
-    // Load systems
-    if (filterSystems && filterSystems.length > 0) {
-      filterSystems.forEach(system => {
-        const option = new Option(system.name, system.id, true, true);
-        $('#filterIpSystems').append(option);
-      });
-      $('#filterIpSystems').trigger('change');
-    }
-    
-    // Load contacts
-    if (filterContacts && filterContacts.length > 0) {
-      filterContacts.forEach(contact => {
-        const option = new Option(contact.name, contact.id, true, true);
-        $('#filterIpContacts').append(option);
-      });
-      $('#filterIpContacts').trigger('change');
-    }
-    
+    account = JSON.parse(accountData);
   } catch (e) {
-    console.error('Error loading filter values:', e);
-  }
-}
-
-function loadEditExistingValues(tags, systems, contacts) {
-  console.log('Loading existing values:', { tags, systems, contacts });
-
-  // Load existing tags
-  if (tags && tags.length > 0) {
-    try {
-      const tagArray = typeof tags === 'string' ? JSON.parse(tags) : tags;
-      console.log('Parsed tags:', tagArray);
-      
-      // For Select2, we need to create option elements first
-      const tagOptions = tagArray.map(tag => {
-        const id = typeof tag === 'object' ? tag.id : tag;
-        const text = typeof tag === 'object' ? (tag.name || tag.text) : tag;
-        return new Option(text, id, true, true);
-      });
-      
-      $('#editIpTags').append(tagOptions).trigger('change');
-      console.log('Tags loaded successfully');
-    } catch (e) {
-      console.log('Error parsing tags:', e);
-    }
-  }
-
-  // Load existing systems
-  if (systems && systems.length > 0) {
-    try {
-      const systemArray = typeof systems === 'string' ? JSON.parse(systems) : systems;
-      console.log('Parsed systems:', systemArray);
-      
-      const systemOptions = systemArray.map(system => {
-        const id = typeof system === 'object' ? system.id : system;
-        const text = typeof system === 'object' ? (system.name || system.text) : system;
-        return new Option(text, id, true, true);
-      });
-      
-      $('#editIpSystems').append(systemOptions).trigger('change');
-      console.log('Systems loaded successfully');
-    } catch (e) {
-      console.log('Error parsing systems:', e);
-    }
-  }
-
-  // Load existing contacts
-  if (contacts && contacts.length > 0) {
-    try {
-      const contactArray = typeof contacts === 'string' ? JSON.parse(contacts) : contacts;
-      console.log('Parsed contacts:', contactArray);
-      
-      const contactOptions = contactArray.map(contact => {
-        const id = typeof contact === 'object' ? contact.id : contact;
-        const text = typeof contact === 'object' ? (contact.name || contact.email || contact.text) : contact;
-        return new Option(text, id, true, true);
-      });
-      
-      $('#editIpContacts').append(contactOptions).trigger('change');
-      console.log('Contacts loaded successfully');
-    } catch (e) {
-      console.log('Error parsing contacts:', e);
-    }
-  }
-}
-
-function isValidIP(ip) {
-  const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-  return ipRegex.test(ip);
-}
-
-function checkMultipleIPsExist(ipList, inputElement, errorDiv) {
-  console.log('=== Starting IP existence check ===');
-  console.log('IPs to check:', ipList);
-  
-  // Check each IP one by one
-  let checkedCount = 0;
-  let existingIPs = [];
-  
-  ipList.forEach((ip, index) => {
-    console.log(`Checking IP ${index + 1}/${ipList.length}: ${ip}`);
-    
-    $.ajax({
-      url: '/network/api/ip-addresses',
-      type: 'GET',
-      data: { search: ip },
-      success: function(data) {
-        console.log(`✓ IP ${ip} check response:`, data);
-        
-        // Debug: Show structure of first item if exists
-        if (data.length > 0) {
-          console.log(`First item structure:`, data[0]);
-          console.log(`Available fields:`, Object.keys(data[0]));
-        }
-        
-        // Check if this specific IP already exists
-        // Backend returns: { id: ..., text: ip_address }
-        const existingIP = data.find(item => item.text === ip);
-        console.log(`Checking if IP ${ip} exists in response:`, existingIP);
-        console.log(`Available items in response:`, data.map(item => ({ id: item.id, text: item.text })));
-        
-        if (existingIP) {
-          console.log(`✗ IP ${ip} already exists!`);
-          existingIPs.push(ip);
-        } else {
-          console.log(`✓ IP ${ip} is available`);
-        }
-        
-        checkedCount++;
-        console.log(`Progress: ${checkedCount}/${ipList.length} IPs checked`);
-        
-        // When all IPs are checked
-        if (checkedCount === ipList.length) {
-          console.log('=== All IPs checked ===');
-          console.log('Existing IPs:', existingIPs);
-          
-          if (existingIPs.length > 0) {
-            console.log('❌ Some IPs already exist - showing error');
-            inputElement.removeClass('is-valid').addClass('is-invalid');
-            errorDiv.text(''); // Clear format error
-            $('#ipValidationIcon').hide();
-            $('#ipAddressSuccess').hide();
-            $('#ipAddressExists').show();
-            $('#ipExistsMessage').text(`IP addresses already exist: ${existingIPs.join(', ')}`);
-    } else {
-            console.log('✅ All IPs are available - showing success');
-            inputElement.removeClass('is-invalid').addClass('is-valid');
-            errorDiv.text(''); // Clear error message
-            $('#ipValidationIcon').show();
-            $('#ipAddressSuccess').show();
-            $('#ipAddressExists').hide();
-          }
-        }
-      },
-      error: function(xhr, status, error) {
-        console.error(`❌ Error checking IP ${ip}:`, error);
-        checkedCount++;
-        
-        // When all IPs are checked (including errors)
-        if (checkedCount === ipList.length) {
-          console.log('=== All IPs checked (with errors) ===');
-          if (existingIPs.length > 0) {
-            inputElement.removeClass('is-valid').addClass('is-invalid');
-            errorDiv.text(''); // Clear format error
-            $('#ipValidationIcon').hide();
-            $('#ipAddressSuccess').hide();
-            $('#ipAddressExists').show();
-            $('#ipExistsMessage').text(`IP addresses already exist: ${existingIPs.join(', ')}`);
-    } else {
-            // Don't show error for API failure, just remove validation
-            inputElement.removeClass('is-invalid is-valid');
-            errorDiv.text(''); // Clear any error message
-            $('#ipValidationIcon').hide();
-            $('#ipAddressSuccess').hide();
-            $('#ipAddressExists').hide();
-          }
-        }
-      }
-            });
-          });
-}
-
-        
-function confirmDeleteIp(form, ip) {
-  if (confirm('Are you sure you want to delete the IP address: ' + ip + '?')) {
-    form._deleting = true;
-    return true;
-  }
-  return false;
-}
-
-// Function removed - no longer finding subnet information for IP detail
-
-// Function to check if an IP is in a subnet (CIDR notation)
-function isIPInSubnet(ipAddress, subnetCIDR) {
-  try {
-    const [subnetIP, prefixLength] = subnetCIDR.split('/');
-    const prefix = parseInt(prefixLength);
-    
-    console.log('Checking IP:', ipAddress, 'in subnet:', subnetCIDR);
-    console.log('Subnet IP:', subnetIP, 'Prefix:', prefix);
-    
-    // Convert IPs to numbers
-    const ipParts = ipAddress.split('.');
-    const subnetParts = subnetIP.split('.');
-    
-    if (ipParts.length !== 4 || subnetParts.length !== 4) {
-      console.log('Invalid IP format');
-      return false;
-    }
-    
-    const ip = (parseInt(ipParts[0]) << 24) + (parseInt(ipParts[1]) << 16) + (parseInt(ipParts[2]) << 8) + parseInt(ipParts[3]);
-    const subnet = (parseInt(subnetParts[0]) << 24) + (parseInt(subnetParts[1]) << 16) + (parseInt(subnetParts[2]) << 8) + parseInt(subnetParts[3]);
-    
-    const mask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
-    
-    const result = (ip & mask) === (subnet & mask);
-    console.log('IP number:', ip, 'Subnet number:', subnet, 'Mask:', mask, 'Result:', result);
-    
-    return result;
-  } catch (error) {
-    console.error('Error in isIPInSubnet:', error);
-    return false;
-  }
-}
-
-// Function to load subnet information for an IP address
-function loadSubnetInfoForIP(ipAddress, contentElement) {
-  console.log('Loading subnet info for IP:', ipAddress);
-  
-  // Make AJAX call to find subnet containing this IP
-  $.ajax({
-    url: '/network/api/subnet-for-ip/' + encodeURIComponent(ipAddress),
-    method: 'GET',
-    dataType: 'json'
-  }).done(function(response) {
-    console.log('Subnet response received:', response);
-    
-    if (response.found && response.subnet) {
-      console.log('Found matching subnet:', response.subnet);
-      updateSubnetInfoInModal(contentElement, response.subnet);
-    } else {
-      console.log('No matching subnet found');
-      updateSubnetInfoInModal(contentElement, null);
-    }
-  }).fail(function(xhr, status, error) {
-    console.error('Error loading subnet information:', status, error);
-    console.error('Response:', xhr.responseText);
-    
-    // Fallback: try with sample data for testing
-    console.log('Trying with sample subnet data...');
-    const sampleSubnets = [
-      { address: '10.1.0.0/16', zone: 'BACKBONE', environment: 'DEV' },
-      { address: '192.168.1.0/24', zone: 'OFFICE', environment: 'PROD' },
-      { address: '172.16.0.0/12', zone: 'DMZ', environment: 'UAT' }
-    ];
-    
-    let matchingSubnet = null;
-    for (let subnet of sampleSubnets) {
-      if (isIPInSubnet(ipAddress, subnet.address)) {
-        console.log('Found matching sample subnet:', subnet);
-        matchingSubnet = subnet;
-        break;
-      }
-    }
-    
-    updateSubnetInfoInModal(contentElement, matchingSubnet);
-  });
-}
-
-// Function to update subnet information in the modal (as plain text, no badges)
-function updateSubnetInfoInModal(contentElement, subnetInfo) {
-  const currentHTML = contentElement.innerHTML;
-  
-  if (subnetInfo) {
-    // Zone as plain text
-    let zoneHTML = '<div class="mb-2"><strong>Zone:</strong> ';
-    if (subnetInfo.zone && subnetInfo.zone.trim()) {
-      zoneHTML += String(subnetInfo.zone).trim();
-    } else {
-      zoneHTML += '<span class="text-muted">N/A</span>';
-    }
-    zoneHTML += '</div>';
-    
-    // Environment as plain text
-    let environmentHTML = '<div class="mb-2"><strong>Environment:</strong> ';
-    if (subnetInfo.environment && subnetInfo.environment.trim()) {
-      environmentHTML += String(subnetInfo.environment).trim();
-    } else {
-      environmentHTML += '<span class="text-muted">N/A</span>';
-    }
-    environmentHTML += '</div>';
-    
-    // Subnet as plain text
-    let subnetHTML = '<div class="mb-2"><strong>Subnet:</strong> ' + String(subnetInfo.address).trim() + '</div>';
-    
-    // Replace loading states with actual data
-    let updatedHTML = currentHTML.replace(
-      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">Loading...</span></div>',
-      zoneHTML
-    );
-    updatedHTML = updatedHTML.replace(
-      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">Loading...</span></div>',
-      environmentHTML
-    );
-    updatedHTML = updatedHTML.replace(
-      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">Loading...</span></div>',
-      subnetHTML
-    );
-    
-    contentElement.innerHTML = updatedHTML;
-  } else {
-    // No matching subnet found
-    let updatedHTML = currentHTML.replace(
-      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">Loading...</span></div>',
-      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">N/A</span></div>'
-    );
-    updatedHTML = updatedHTML.replace(
-      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">Loading...</span></div>',
-      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">N/A</span></div>'
-    );
-    updatedHTML = updatedHTML.replace(
-      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">Loading...</span></div>',
-      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">N/A</span></div>'
-    );
-    
-    contentElement.innerHTML = updatedHTML;
-  }
-}
-
-function showIpDetail(ipId) {
-  const buttons = document.querySelectorAll('button[data-ip]');
-  let targetButton = null;
-  
-  for (let button of buttons) {
-    const data = button.getAttribute('data-ip');
-    if (data) {
-      try {
-        const ip = JSON.parse(data);
-        if (ip.id == ipId) {
-          targetButton = button;
-                break;
-              }
-      } catch (e) {
-        console.error('Error parsing IP data:', e);
-      }
-    }
-  }
-  
-  if (!targetButton) {
-    alert('IP data not found');
+    console.error('Error parsing account data:', e);
     return;
   }
   
-  const ipData = targetButton.getAttribute('data-ip');
-  let ip;
-  try {
-    ip = JSON.parse(ipData);
-  } catch (e) {
-    alert('Error parsing IP data: ' + e.message);
-    return;
+  // Create modal HTML
+  const modalId = `accountDetailModal-${accountId}`;
+  const modalHtml = `
+    <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="${modalId}Label">Privileged Account Information</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <dl class="row mb-0">
+              <dt class="col-sm-4">Account Name</dt>
+              <dd class="col-sm-8">${account.username || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Description</dt>
+              <dd class="col-sm-8">${account.description || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Contacts</dt>
+              <dd class="col-sm-8">
+                ${account.contacts && account.contacts.length 
+                  ? account.contacts.map(c => {
+                      const name = c.name || c.text || '';
+                      const email = c.email || '';
+                      if (email) {
+                        const shortEmail = email.split('@')[0];
+                        return `${name} (${shortEmail})`;
+                      }
+                      return name;
+                    }).join('<br>')
+                  : '<span class="text-muted">N/A</span>'
+                }
+              </dd>
+              <dt class="col-sm-4">Organize Unit</dt>
+              <dd class="col-sm-8">${account.organize ? (account.organize.name || account.organize.text) : '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Account Type</dt>
+              <dd class="col-sm-8">${account.account_type || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Server(s)</dt>
+              <dd class="col-sm-8">
+                ${account.servers && account.servers.length 
+                  ? account.servers.map(s => s.name || s.text).join('<br>')
+                  : '<span class="text-muted">N/A</span>'
+                }
+              </dd>
+              <dt class="col-sm-4">Application URL</dt>
+              <dd class="col-sm-8">${account.app_url || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">System(s)</dt>
+              <dd class="col-sm-8">
+                ${account.systems && account.systems.length 
+                  ? account.systems.map(s => s.name || s.text).join('<br>')
+                  : '<span class="text-muted">N/A</span>'
+                }
+              </dd>
+              <dt class="col-sm-4">Management Method</dt>
+              <dd class="col-sm-8">${account.manage_type || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Role</dt>
+              <dd class="col-sm-8">${account.role ? (account.role.name || account.role.text) : '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Created At</dt>
+              <dd class="col-sm-8">${account.created_at ? new Date(account.created_at).toLocaleString() : '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Updated At</dt>
+              <dd class="col-sm-8">${account.updated_date ? new Date(account.updated_date).toLocaleString() : '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Updated By</dt>
+              <dd class="col-sm-8">${account.updated_by || '<span class="text-muted">No data</span>'}</dd>
+            </dl>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Remove existing modal if any
+  const existingModal = document.getElementById(modalId);
+  if (existingModal) {
+    existingModal.remove();
   }
   
-  const modalElement = document.getElementById('ipDetailModal');
-  const modal = new bootstrap.Modal(modalElement);
-  const content = document.getElementById('ipDetailContent');
+  // Add modal to body
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
   
-  let html = '<div class="card"><div class="card-body">';
-  html += '<div class="mb-2"><strong>IP Address:</strong> ' + String(ip.ip_address || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>Description:</strong> ' + String(ip.description || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>Status:</strong> ' + String(ip.status || 'N/A').trim() + '</div>';
-  
-  // Find subnet containing this IP and show Zone/Environment as plain text
-  const ipAddress = ip.ip_address;
-  if (ipAddress) {
-    // Add loading state for subnet info
-    html += '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">Loading...</span></div>';
-    html += '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">Loading...</span></div>';
-    html += '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">Loading...</span></div>';
-  }
-  
-  if (ip.tags && ip.tags.length > 0) {
-    html += '<div class="mb-2"><strong>Tags:</strong><br>';
-    ip.tags.forEach(function(tag) {
-      const tagValue = (typeof tag === 'string' ? tag : tag.name);
-      html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
-    });
-    html += '</div>';
-  }
-  
-  if (ip.systems && ip.systems.length > 0) {
-    html += '<div class="mb-2"><strong>Systems:</strong><ul class="mb-0">';
-    ip.systems.forEach(function(system) {
-      const systemValue = (typeof system === 'string' ? system : system.name);
-      const searchUrl = '/system/system?search=' + encodeURIComponent(systemValue) + '&pageSize=2';
-      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + 
-              String(systemValue).trim() + '</a></li>';
-    });
-    html += '</ul></div>';
-  }
-  
-  if (ip.contacts && ip.contacts.length > 0) {
-    html += '<div class="mb-2"><strong>Contacts:</strong><ul class="mb-0">';
-    ip.contacts.forEach(function(contact) {
-      let contactName = '';
-      let contactEmail = '';
-      
-      if (typeof contact === 'string') {
-        contactName = contact;
-        contactEmail = '';
-      } else {
-        contactName = contact.name || '';
-        contactEmail = contact.email || '';
-      }
-      
-      // Create short email (remove @domain part)
-      let shortEmail = '';
-      if (contactEmail && contactEmail.includes('@')) {
-        shortEmail = contactEmail.split('@')[0];
-      }
-      
-      // Format: name (shortEmail) or just name if no email
-      let displayText = contactName;
-      if (shortEmail) {
-        displayText += ' (' + shortEmail + ')';
-      }
-      
-      // Create searchable link as simple text
-      const searchUrl = '/organize/contact?search=' + encodeURIComponent(contactName);
-      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + 
-              String(displayText).trim() + '</a></li>';
-    });
-    html += '</ul></div>';
-  }
-  
-  html += '</div></div>';
-  content.innerHTML = html;
+  // Show modal
+  const modal = new bootstrap.Modal(document.getElementById(modalId));
   modal.show();
   
-  // Load subnet information if IP address is available
-  if (ipAddress) {
-    loadSubnetInfoForIP(ipAddress, content);
+  // Remove modal from DOM when hidden
+  document.getElementById(modalId).addEventListener('hidden.bs.modal', function() {
+    this.remove();
+  });
+}
+
+function confirmDeleteAccount(form, accountName) {
+  return confirm(`Are you sure you want to delete account "${accountName}"?`);
+}
+</script>
+
+<% if (success) { %>
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      showToast('<%= success %>', 'success');
+    });
+  </script>
+<% } %>
+<% if (error) { %>
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      showToast('<%= error %>', 'danger');
+    });
+  </script>
+<% } %>
+
+<script>
+$(function() {
+  // Utility Functions
+  function showToast(msg, type) {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type}`;
+    toast.style.position = 'fixed';
+    toast.style.top = '16px';
+    toast.style.right = '16px';
+    toast.style.zIndex = 9999;
+    toast.style.minWidth = '200px';
+    toast.innerText = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
+  // Initialize Select2 with common options
+  function initSelect2(selector, options) {
+    const defaultOptions = {
+      theme: 'bootstrap-5',
+      width: '100%',
+      allowClear: true,
+      delay: 250,
+      cache: true
+    };
+    return $(selector).select2({...defaultOptions, ...options});
+  }
+
+  // Pre-populate select2 with data
+  function prePopulateSelect2(selector, data) {
+    if (!data || !data.length) return;
+    
+    const $select = $(selector);
+    data.forEach(item => {
+      const option = new Option(item.text || item.name, item.id, true, true);
+      $select.append(option);
+    });
+    $select.trigger('change');
+  }
+
+  // AJAX endpoints configuration
+  const API_ENDPOINTS = {
+    system: '/system/api/system',
+    server: '/server/api/server',
+    contact: '/organize/api/contact',
+    unit: '/organize/api/unit',
+    roleBySystem: '/priv-account/api/role/by-system'
+  };
+
+  // Initialize System select2
+  function initSystemSelect2(selector, modalParent) {
+    return initSelect2(selector, {
+      placeholder: 'Select system(s)',
+      multiple: true,
+      dropdownParent: modalParent,
+      ajax: {
+        url: API_ENDPOINTS.system,
+        dataType: 'json',
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data })
+      }
+    });
+  }
+
+  // Initialize Server select2
+  function initServerSelect2(selector, modalParent) {
+    return initSelect2(selector, {
+      placeholder: 'Select server(s)',
+      multiple: true,
+      dropdownParent: modalParent,
+      ajax: {
+        url: API_ENDPOINTS.server,
+        dataType: 'json',
+        data: params => ({ search: params.term }),
+        processResults: function(data) {
+          if (Array.isArray(data)) return { results: data };
+          if (Array.isArray(data.results)) {
+            return { results: data.results.map(x => ({ id: x.id, text: x.text || x.name })) };
+          }
+          return { results: [] };
+        }
+      }
+    });
+  }
+
+  // Initialize Contact select2
+  function initContactSelect2(selector, modalParent) {
+    return initSelect2(selector, {
+      placeholder: 'Select contact(s)',
+      multiple: true,
+      dropdownParent: modalParent,
+      ajax: {
+        url: API_ENDPOINTS.contact,
+        dataType: 'json',
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data })
+      }
+    });
+  }
+
+  // Initialize Organize Unit select2
+  function initOrganizeSelect2(selector, modalParent) {
+    return initSelect2(selector, {
+      placeholder: 'Select organize unit',
+      dropdownParent: modalParent,
+      ajax: {
+        url: API_ENDPOINTS.unit,
+        dataType: 'json',
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data })
+      }
+    });
+  }
+
+  // Initialize Role select2 (only by system)
+  function initRoleSelect2(selector, modalParent, systemSelector) {
+    if ($(selector).hasClass('select2-hidden-accessible')) {
+      $(selector).select2('destroy');
+    }
+
+    return initSelect2(selector, {
+      placeholder: 'Select role',
+      dropdownParent: modalParent,
+      ajax: {
+        url: API_ENDPOINTS.roleBySystem,
+        type: 'POST',
+        contentType: 'application/json',
+        dataType: 'json',
+        data: function(params) {
+          const systemIds = $(systemSelector).val()?.filter(Boolean) || [];
+          if (!systemIds.length) {
+            return JSON.stringify({ system_ids: [] });
+          }
+          return JSON.stringify({ system_ids: systemIds });
+        },
+        processResults: data => ({ results: data })
+      }
+    });
+  }
+
+  // Add Privileged Account Modal Functionality
+  function initAddPrivAccountModal() {
+    const modalElement = $('#addPrivUserModal');
+    const modalContent = modalElement.find('.modal-content');
+
+    // Initialize select2 components
+    initSystemSelect2('#privUserSystem', modalElement);
+    initServerSelect2('#privUserServers', modalElement);
+    initContactSelect2('#privUserContacts', modalElement);
+    initOrganizeSelect2('#privUserOrganize', modalElement);
+
+    // Initialize and handle Role select2
+    function initPrivUserRoleSelect2() {
+      initRoleSelect2('#privUserRole', modalContent, '#privUserSystem');
+    }
+
+    // Handle system selection change
+    $('#privUserSystem').on('change', function() {
+      $('#privUserRole').val(null).trigger('change');
+      initPrivUserRoleSelect2();
+      // Force reload options
+      setTimeout(() => {
+        $('#privUserRole').select2('open');
+        setTimeout(() => $('#privUserRole').select2('close'), 0);
+      }, 0);
+    });
+
+    // Initialize role select2
+    initPrivUserRoleSelect2();
+
+    // Handle account type changes
+    function updateAccountTypeFields() {
+      const val = $('#privUserType').val();
+      const isOSorDB = val === 'OS' || val === 'DB';
+      const isAPP = val === 'APP';
+
+      // Toggle server fields
+      $('#privUserServerGroup').toggleClass('d-none', !isOSorDB);
+      $('#privUserServers').prop('required', isOSorDB);
+
+      // Toggle app URL fields
+      $('#privUserAppUrlGroup').toggleClass('d-none', !isAPP);
+      $('#privUserAppUrl').prop('required', isAPP);
+    }
+
+    $('#privUserType').on('change', updateAccountTypeFields);
+    updateAccountTypeFields(); // Initial state
+  }
+
+  // Filter Modal Functionality
+  function initFilterModal() {
+    const modalElement = $('#filterPrivAccountModal');
+
+    // Initialize select2 components
+    initSystemSelect2('#filterSystem', modalElement);
+    initOrganizeSelect2('#filterOrganize', modalElement);
+    initContactSelect2('#filterContacts', modalElement);
+
+    // When modal filter is opened, clear and append selected options if any
+    modalElement.on('shown.bs.modal', function() {
+      // Get filter data from hidden div
+      const filterData = document.getElementById('filter-account-data');
+      if (!filterData) return;
+      
+      // SYSTEMS
+      $('#filterSystem').val(null).empty().trigger('change');
+      const systemIds = filterData.getAttribute('data-system-ids');
+      if (systemIds && systemIds !== '[]') {
+        try {
+          const systemIdsArray = JSON.parse(systemIds);
+          if (systemIdsArray && systemIdsArray.length) {
+            // Load systems by IDs
+            systemIdsArray.forEach(systemId => {
+              $.ajax({
+                url: '/system/api/system',
+                data: { id: systemId },
+                dataType: 'json',
+                success: function(systems) {
+                  if (systems && systems.length) {
+                    const system = systems[0];
+                    const option = new Option(system.text || system.name, system.id, true, true);
+                    $('#filterSystem').append(option).trigger('change');
+                  }
+                }
+              });
+            });
+          }
+        } catch (e) {
+          console.error('Error parsing system IDs:', e);
+        }
+      }
+      
+      // ORGANIZE
+      $('#filterOrganize').val(null).empty().trigger('change');
+      const organizeId = filterData.getAttribute('data-organize-id');
+      if (organizeId && organizeId !== '""' && organizeId !== '') {
+        try {
+          const organizeIdValue = JSON.parse(organizeId);
+          if (organizeIdValue) {
+            $.ajax({
+              url: '/organize/api/unit',
+              data: { id: organizeIdValue },
+              dataType: 'json',
+              success: function(units) {
+                if (units && units.length) {
+                  const unit = units[0];
+                  const option = new Option(unit.text || unit.name, unit.id, true, true);
+                  $('#filterOrganize').append(option).trigger('change');
+                }
+              }
+            });
+          }
+        } catch (e) {
+          console.error('Error parsing organize ID:', e);
+        }
+      }
+      
+      // CONTACTS
+      $('#filterContacts').val(null).empty().trigger('change');
+      const contactIds = filterData.getAttribute('data-contact-ids');
+      if (contactIds && contactIds !== '[]') {
+        try {
+          const contactIdsArray = JSON.parse(contactIds);
+          if (contactIdsArray && contactIdsArray.length) {
+            // Load contacts by IDs
+            contactIdsArray.forEach(contactId => {
+              $.ajax({
+                url: '/organize/api/contact',
+                data: { id: contactId },
+                dataType: 'json',
+                success: function(contacts) {
+                  if (contacts && contacts.length) {
+                    const contact = contacts[0];
+                    const option = new Option(contact.text || contact.name, contact.id, true, true);
+                    $('#filterContacts').append(option).trigger('change');
+                  }
+                }
+              });
+            });
+          }
+        } catch (e) {
+          console.error('Error parsing contact IDs:', e);
+        }
+      }
+    });
+  }
+
+  // Edit Modal Functionality
+  function initEditPrivAccountModal() {
+    const modalElement = $('#editPrivAccountModal');
+    const modalContent = modalElement.find('.modal-content');
+
+    // Initialize all select2 components
+    const systemSelect = initSystemSelect2('#editAccountSystem', modalElement);
+    const serverSelect = initServerSelect2('#editAccountServers', modalElement);
+    const contactSelect = initContactSelect2('#editAccountContacts', modalElement);
+    const organizeSelect = initOrganizeSelect2('#editAccountOrganize', modalElement);
+    const roleSelect = initRoleSelect2('#editAccountRole', modalContent, '#editAccountSystem');
+
+    // Handle account type changes
+    function updateEditModalFields() {
+      const val = $('#editAccountType').val();
+      const serverGroup = $('#editAccountServerGroup');
+      const appUrlGroup = $('#editAccountAppUrlGroup');
+      const servers = $('#editAccountServers');
+      const appUrl = $('#editAccountAppUrl');
+
+      if (val === 'OS' || val === 'DB') {
+        serverGroup.removeClass('d-none');
+        appUrlGroup.addClass('d-none');
+        servers.prop('required', true);
+        appUrl.prop('required', false);
+      } else if (val === 'APP') {
+        serverGroup.addClass('d-none');
+        appUrlGroup.removeClass('d-none');
+        servers.prop('required', false);
+        appUrl.prop('required', true);
+      } else {
+        serverGroup.addClass('d-none');
+        appUrlGroup.addClass('d-none');
+        servers.prop('required', false);
+        appUrl.prop('required', false);
+      }
+    }
+
+    // Bind events
+    $('#editAccountType').on('change', updateEditModalFields);
+    
+    // Handle system selection change for role updates
+    $('#editAccountSystem').on('change', function() {
+      $('#editAccountRole').val(null).trigger('change');
+      roleSelect.trigger('change');
+    });
+
+    // When Edit button is clicked, populate the edit modal
+    $(document).on('click', '[data-bs-target="#editPrivAccountModal"]', function() {
+      const accountId = $(this).data('account-id');
+      const accountUsername = $(this).data('account-username');
+      const accountDescription = $(this).data('account-description');
+      const accountContacts = $(this).data('account-contacts');
+      const accountOrganize = $(this).data('account-organize');
+      const accountType = $(this).data('account-type');
+      const accountServers = $(this).data('account-servers');
+      const accountAppUrl = $(this).data('account-app-url');
+      const accountSystems = $(this).data('account-systems');
+      const accountManageType = $(this).data('account-manage-type');
+      const accountRole = $(this).data('account-role');
+      
+      // Populate form fields
+      $('#editAccountId').val(accountId);
+      $('#editAccountUsername').val(accountUsername);
+      $('#editAccountDescription').val(accountDescription);
+      $('#editAccountType').val(accountType);
+      $('#editAccountAppUrl').val(accountAppUrl);
+      $('#editAccountManageType').val(accountManageType);
+      
+      // Set form action
+      $('#editPrivAccountForm').attr('action', '/priv-account/account/' + accountId + '?_method=PUT');
+      
+      // Clear and populate system select
+      const $systemSelect = $('#editAccountSystem');
+      $systemSelect.val(null).trigger('change');
+      $systemSelect.find('option').remove();
+      if (accountSystems && accountSystems.length) {
+        prePopulateSelect2('#editAccountSystem', 
+          accountSystems.map(sys => ({ id: sys.id, text: sys.name }))
+        );
+      }
+
+      // Clear and populate server select
+      const $serverSelect = $('#editAccountServers');
+      $serverSelect.val(null).trigger('change');
+      $serverSelect.find('option').remove();
+      if (accountServers && accountServers.length) {
+        prePopulateSelect2('#editAccountServers', 
+          accountServers.map(srv => ({ id: srv.id, text: srv.name }))
+        );
+      }
+
+      // Clear and populate contact select
+      const $contactSelect = $('#editAccountContacts');
+      $contactSelect.val(null).trigger('change');
+      $contactSelect.find('option').remove();
+      if (accountContacts && accountContacts.length) {
+        prePopulateSelect2('#editAccountContacts', 
+          accountContacts.map(contact => ({ id: contact.id, text: contact.name }))
+        );
+      }
+
+      // Clear and populate organize select
+      const $organizeSelect = $('#editAccountOrganize');
+      $organizeSelect.val(null).trigger('change');
+      $organizeSelect.find('option').remove();
+      if (accountOrganize && accountOrganize.id && accountOrganize.name) {
+        prePopulateSelect2('#editAccountOrganize', [{
+          id: accountOrganize.id,
+          text: accountOrganize.name
+        }]);
+      }
+
+      // Clear and populate role select
+      const $roleSelect = $('#editAccountRole');
+      $roleSelect.val(null).trigger('change');
+      $roleSelect.find('option').remove();
+      if (accountRole && accountRole.id && accountRole.name) {
+        prePopulateSelect2('#editAccountRole', [{
+          id: accountRole.id,
+          text: accountRole.name
+        }]);
+      }
+
+      // Update fields visibility based on account type
+      updateEditModalFields();
+    });
+  }
+
+  // Initialize everything
+  initAddPrivAccountModal();
+  initFilterModal();
+  initEditPrivAccountModal();
+
+  // Clear filter button
+  $('#clearPrivAccountFilterBtn').on('click', function() {
+    window.location.href = '/priv-account/account';
+  });
+});
+</script>
+
+<!-- Responsive Tables CSS -->
+<style>
+/* Mobile responsive styles for Privileged Account List */
+@media (max-width: 768px) {
+  .table-responsive {
+    display: block !important;
+    overflow-x: scroll !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .table {
+    display: table !important;
+    min-width: 800px !important;
+    width: 100% !important;
+  }
+  
+  .card-body,
+  .card,
+  .col-12,
+  .container-fluid,
+  .row {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  .col-12 {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    padding: 0 15px !important;
+  }
+  
+  /* Button responsive */
+  .btn-sm {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+  }
+  
+  /* Search form responsive */
+  .input-group {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  
+  .input-group .form-control {
+    font-size: 0.875rem !important;
+  }
+  
+  .input-group .form-select {
+    font-size: 0.75rem !important;
+    width: 80px !important;
   }
 }
 
-// Import IP functionality
-let selectedFile = null;
-
-// Handle file selection
-$(document).on('change', '#ipImportFile', function() {
-  selectedFile = this.files[0];
-  if (selectedFile) {
-    console.log('File selected:', selectedFile.name);
-    $('#validateIpBtn').prop('disabled', false);
-        } else {
-    $('#validateIpBtn').prop('disabled', true);
-    $('#importIpBtn').hide();
-  }
-});
-
-// Handle validate button click
-$(document).on('click', '#validateIpBtn', function() {
-  if (!selectedFile) {
-    alert('Please select a file first');
-    return;
+/* Force override for Add Privileged Account modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #addPrivUserModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
   }
   
-  const formData = new FormData();
-  formData.append('file', selectedFile);
-  
-  // Show progress
-  $('#ipImportProgress').show();
-  $('#ipImportResults').text('Validating file...');
-  $('.progress-bar').css('width', '30%');
-  
-  $.ajax({
-    url: '/network/ip-address/validate-import',
-    type: 'POST',
-    data: formData,
-    processData: false,
-    contentType: false,
-    xhr: function() {
-      const xhr = new window.XMLHttpRequest();
-      xhr.responseType = 'blob'; // Important for file download
-      return xhr;
-    },
-    success: function(data, status, xhr) {
-      $('.progress-bar').css('width', '100%');
-      $('#ipImportResults').text('Validation complete! Downloading results...');
-      
-      // Handle file download
-      const contentType = xhr.getResponseHeader('Content-Type');
-      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
-      
-      if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
-        // Create blob and download file
-        const blob = new Blob([data], { type: contentType });
-        const url = window.URL.createObjectURL(blob);
-        
-        // Extract filename from Content-Disposition header
-        let filename = 'validation_results.xlsx';
-        if (contentDisposition) {
-          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-          if (filenameMatch) {
-            filename = filenameMatch[1];
-          }
-        }
-        
-        // Create download link
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
-        // Clean up
-        window.URL.revokeObjectURL(url);
-      }
-      
-      // Check validation results from header
-      const validationSummary = xhr.getResponseHeader('X-Validation-Summary');
-      if (validationSummary) {
-        try {
-          const summary = JSON.parse(validationSummary);
-          const resultsDiv = $('#ipImportResults');
-          resultsDiv.removeClass('alert-danger').addClass('alert-success')
-            .html(`<strong>Validation Complete!</strong><br>
-                   <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
-                   <small>Validation file downloaded. Review results before importing.</small>`);
-          resultsDiv.show();
-          
-          // Show import button if validation passed
-          if (summary.allPassed) {
-            $('#importIpBtn').show();
-          }
-        } catch (e) {
-          // Fallback if header parsing fails
-          const resultsDiv = $('#ipImportResults');
-          resultsDiv.removeClass('alert-danger').addClass('alert-success')
-            .html(`<strong>Validation Complete!</strong><br>
-                   <small>Validation file downloaded. Review results before importing.</small>`);
-          resultsDiv.show();
-          $('#importIpBtn').show();
-        }
-      }
-    },
-    error: function(xhr, status, error) {
-      console.error('Validation error:', xhr.responseText);
-      console.error('Status:', xhr.status);
-      console.error('Error:', error);
-      
-      $('.progress-bar').css('width', '100%').text('Validation Failed');
-      $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
-        .html('<strong>Validation Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
-        .show();
-      },
-      complete: function() {
-      $('#validateIpBtn').prop('disabled', false);
-      setTimeout(() => {
-        $('#ipImportProgress').hide();
-      }, 2000);
-    }
-  });
-});
-
-// Handle import button click
-$(document).on('click', '#importIpBtn', function() {
-  if (!selectedFile) {
-    alert('Please select a file first');
-    return;
+  #addPrivUserModal .modal-footer .btn,
+  #addPrivUserModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
   }
   
-  const formData = new FormData();
-  formData.append('file', selectedFile);
+  #addPrivUserModal .modal-footer .btn:first-child,
+  #addPrivUserModal .modal-footer button:first-child {
+    order: 2 !important;
+  }
   
-  // Show progress
-  $('#ipImportProgress').show();
-  $('#ipImportResults').text('Importing IP addresses...');
-  $('.progress-bar').css('width', '30%').text('Importing...');
-  $('#importIpBtn').prop('disabled', true);
+  #addPrivUserModal .modal-footer .btn:last-child,
+  #addPrivUserModal .modal-footer button:last-child {
+    order: 1 !important;
+  }
   
-  $.ajax({
-    url: '/network/ip-address/import',
-    type: 'POST',
-    data: formData,
-    processData: false,
-    contentType: false,
-    xhr: function() {
-      const xhr = new window.XMLHttpRequest();
-      xhr.responseType = 'blob'; // Important for file download
-      return xhr;
-    },
-    success: function(data, status, xhr) {
-      $('#ipImportProgress .progress-bar').css('width', '100%').text('Import Complete');
-      
-      // Handle file download
-      const contentType = xhr.getResponseHeader('Content-Type');
-      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
-      
-      if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
-        // Create blob and download file
-        const blob = new Blob([data], { type: contentType });
-        const url = window.URL.createObjectURL(blob);
-        
-        // Extract filename from Content-Disposition header
-        let filename = 'import_results.xlsx';
-        if (contentDisposition) {
-          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-          if (filenameMatch) {
-            filename = filenameMatch[1];
-          }
-        }
-        
-        // Create download link
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
-        // Clean up
-        window.URL.revokeObjectURL(url);
-      }
-      
-      // Show results
-      const resultsDiv = $('#ipImportResults');
-      resultsDiv.removeClass('alert-danger').addClass('alert-success')
-        .html(`<strong>Import Completed!</strong><br>
-               <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
-      resultsDiv.show();
-      
-      // Hide import button
-      $('#importIpBtn').hide();
-      
-      // Refresh page after 2 seconds
-      setTimeout(() => {
-        window.location.reload();
-      }, 2000);
-    },
-    error: function(xhr, status, error) {
-      console.error('Import error:', xhr.responseText);
-      console.error('Status:', xhr.status);
-      console.error('Error:', error);
-      
-      $('#ipImportProgress .progress-bar').css('width', '100%').text('Import Failed');
-      $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
-        .html('<strong>Import Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
-        .show();
-    },
-    complete: function() {
-      $('#importIpBtn').prop('disabled', false);
-      setTimeout(() => {
-        $('#ipImportProgress').hide();
-      }, 2000);
-    }
-  });
-});
+  /* Force override any Bootstrap or AdminLTE styles */
+  #addPrivUserModal .modal-footer .btn.btn-secondary,
+  #addPrivUserModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
 
-// Reset import modal when closed
-$('#importIpModal').on('hidden.bs.modal', function() {
-  // Reset form
-  $('#importIpForm')[0].reset();
-  selectedFile = null;
+/* Force override for Edit Privileged Account modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #editPrivAccountModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
   
-  // Reset UI elements
-  $('#validateIpBtn').prop('disabled', true);
-  $('#importIpBtn').hide();
-  $('#ipImportProgress').hide();
-  $('#ipImportResults').hide();
+  #editPrivAccountModal .modal-footer .btn,
+  #editPrivAccountModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
   
-  // Reset progress bar
-  $('.progress-bar').css('width', '0%').text('');
-});
-</script>
+  #editPrivAccountModal .modal-footer .btn:first-child,
+  #editPrivAccountModal .modal-footer button:first-child {
+    order: 2 !important;
+  }
+  
+  #editPrivAccountModal .modal-footer .btn:last-child,
+  #editPrivAccountModal .modal-footer button:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #editPrivAccountModal .modal-footer .btn.btn-secondary,
+  #editPrivAccountModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+
+/* Force override for Filter Privileged Account modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #filterPrivAccountModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #filterPrivAccountModal .modal-footer .btn,
+  #filterPrivAccountModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #filterPrivAccountModal .modal-footer .btn:first-child {
+    order: 2 !important;
+  }
+  
+  #filterPrivAccountModal .modal-footer .btn:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #filterPrivAccountModal .modal-footer .btn.btn-outline-danger,
+  #filterPrivAccountModal .modal-footer .btn.btn-secondary,
+  #filterPrivAccountModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+</style>

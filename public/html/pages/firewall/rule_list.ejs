@@ -17,29 +17,23 @@ function buildPaginationUrl(targetPage) {
   }
   
   // Add status filter if exists
-  if (typeof filterStatus !== 'undefined' && filterStatus) {
-    params.set('status', filterStatus);
+  if (typeof status !== 'undefined' && status) {
+    params.set('status', status);
   }
   
-  // Add tags filter if exists
-  if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
-    filterTags.forEach(tag => {
-      params.append('tags[]', tag.id);
-    });
+  // Add protocol filter if exists
+  if (typeof protocol !== 'undefined' && protocol) {
+    params.set('protocol', protocol);
   }
   
-  // Add systems filter if exists
-  if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
-    filterSystems.forEach(system => {
-      params.append('systems[]', system.id);
-    });
+  // Add action filter if exists
+  if (typeof action !== 'undefined' && action) {
+    params.set('action', action);
   }
   
-  // Add contacts filter if exists
-  if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) {
-    filterContacts.forEach(contact => {
-      params.append('contacts[]', contact.id);
-    });
+  // Add firewall_name filter if exists
+  if (typeof firewall_name !== 'undefined' && firewall_name) {
+    params.set('firewall_name', firewall_name);
   }
   
   return '?' + params.toString();
@@ -55,32 +49,26 @@ function buildExportUrl() {
   }
   
   // Add status filter if exists
-  if (typeof filterStatus !== 'undefined' && filterStatus) {
-    params.set('status', filterStatus);
+  if (typeof status !== 'undefined' && status) {
+    params.set('status', status);
   }
   
-  // Add tags filter if exists
-  if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
-    filterTags.forEach(tag => {
-      params.append('tags[]', tag.id);
-    });
+  // Add protocol filter if exists
+  if (typeof protocol !== 'undefined' && protocol) {
+    params.set('protocol', protocol);
   }
   
-  // Add systems filter if exists
-  if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
-    filterSystems.forEach(system => {
-      params.append('systems[]', system.id);
-    });
+  // Add action filter if exists
+  if (typeof action !== 'undefined' && action) {
+    params.set('action', action);
   }
   
-  // Add contacts filter if exists
-  if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) {
-    filterContacts.forEach(contact => {
-      params.append('contacts[]', contact.id);
-    });
+  // Add firewall_name filter if exists
+  if (typeof firewall_name !== 'undefined' && firewall_name) {
+    params.set('firewall_name', firewall_name);
   }
   
-  return '/network/ip-address/export' + (params.toString() ? '?' + params.toString() : '');
+  return '/firewall/rule/export' + (params.toString() ? '?' + params.toString() : '');
 }
 %>
 
@@ -105,30 +93,24 @@ function buildExportUrl() {
   <div class="row mb-3">
     <div class="col-12">
       <div class="d-flex justify-content-end align-items-center gap-2">
-        <form class="d-flex align-items-center gap-2" role="search" method="get" action="/network/ip-address">
+          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/firewall/rule">
           <!-- Hidden inputs to preserve filter values -->
           <input type="hidden" name="page" value="1">
-          <% if (typeof filterStatus !== 'undefined' && filterStatus) { %>
-            <input type="hidden" name="status" value="<%= filterStatus %>">
+            <% if (typeof status !== 'undefined' && status) { %>
+              <input type="hidden" name="status" value="<%= status %>">
       <% } %>
-          <% if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) { %>
-            <% filterTags.forEach(function(tag) { %>
-              <input type="hidden" name="tags[]" value="<%= tag.id %>">
-            <% }); %>
+            <% if (typeof protocol !== 'undefined' && protocol) { %>
+              <input type="hidden" name="protocol" value="<%= protocol %>">
           <% } %>
-          <% if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) { %>
-            <% filterSystems.forEach(function(system) { %>
-              <input type="hidden" name="systems[]" value="<%= system.id %>">
-            <% }); %>
+            <% if (typeof action !== 'undefined' && action) { %>
+              <input type="hidden" name="action" value="<%= action %>">
           <% } %>
-          <% if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) { %>
-            <% filterContacts.forEach(function(contact) { %>
-              <input type="hidden" name="contacts[]" value="<%= contact.id %>">
-            <% }); %>
+            <% if (typeof firewall_name !== 'undefined' && firewall_name) { %>
+              <input type="hidden" name="firewall_name" value="<%= firewall_name %>">
           <% } %>
           
           <div class="input-group input-group-sm" style="width: 250px;">
-            <input class="form-control form-control-sm" type="search" name="search" placeholder="Search rule name, source, destination, action..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+              <input class="form-control form-control-sm" type="search" name="search" placeholder="Search rule name, source, destination..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
             <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
             </div>
           <div class="d-flex align-items-center gap-1">
@@ -147,52 +129,33 @@ function buildExportUrl() {
     <!-- Action Buttons -->
     <div class="row mb-3">
       <div class="col-12">
-      <!-- Action Buttons -->
-      <div class="button-container d-flex justify-content-end align-items-center">
+        <div class="d-flex justify-content-end gap-2">
         <% if (hasPermission('rule.create')) { %>
-          <button id="add-rule-btn" type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addRuleModal">
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addRuleModal">
             <i class="bi bi-plus"></i> Add Rule
           </button>
-          <button id="import-rule-btn" type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importRuleModal">
+            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importRuleModal">
             <i class="bi bi-upload"></i> Import
           </button>
         <% } %>
-        <% if (hasPermission('rule.read')) { %>
-          <a href="/firewall/rule/template" class="btn btn-info btn-sm" download>
-            <i class="bi bi-download"></i> Download Template
-          </a>
-        <% } %>
-        <button type="button" class="btn btn-success btn-sm" id="editMultiWOButton">
-          <i class="bi bi-pencil-square"></i> Edit Batch WO
-        </button>
-        <form action="/firewall/rule/export" method="GET" style="display:inline;" id="exportRuleForm">
-          <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-          <input type="hidden" name="ou_id" value="<%= typeof filterUnitId !== 'undefined' ? filterUnitId : '' %>">
-          <% if (typeof filterTagIds !== 'undefined' && Array.isArray(filterTagIds)) { filterTagIds.forEach(function(t) { %>
-            <input type="hidden" name="tags[]" value="<%= t %>">
-          <% }) } %>
-          <% if (typeof filterContactIds !== 'undefined' && Array.isArray(filterContactIds)) { filterContactIds.forEach(function(c) { %>
-            <input type="hidden" name="contacts[]" value="<%= c %>">
-          <% }) } %>
-          <input type="hidden" name="violation_type" value="<%= typeof violation_type !== 'undefined' ? violation_type : '' %>">
-          <input type="hidden" name="status" value="<%= typeof status !== 'undefined' ? status : '' %>">
-          <input type="hidden" name="firewall_name" value="<%= typeof firewall_name !== 'undefined' ? firewall_name : '' %>">
-          <button type="submit" class="btn btn-warning btn-sm">
-            <i class="bi bi-download"></i> Export
-          </button>
-        </form>
         <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterRuleModal">
           <i class="bi bi-funnel"></i> Filter
         </button>
+          <% if (hasPermission('rule.read')) { %>
+            <a href="<%= buildExportUrl() %>" class="btn btn-warning btn-sm">
+              <i class="bi bi-download"></i> Export
+            </a>
+          <% } %>
       </div>
               </div>
                   </div>
 
-  <!-- Filter values for JS (an toàn cho EJS strict, giống System List) -->
+    <!-- Filter values for JS -->
   <div id="filter-rule-data"
-        data-protocol='<%= JSON.stringify(typeof filterProtocol !== 'undefined' ? filterProtocol : '') %>'
-        data-action='<%= JSON.stringify(typeof filterAction !== 'undefined' ? filterAction : '') %>'
-        data-status='<%= JSON.stringify(typeof filterStatus !== 'undefined' ? filterStatus : '') %>' style="display:none"></div>
+          data-status='<%= JSON.stringify(typeof status !== "undefined" ? status : '') %>'
+          data-protocol='<%= JSON.stringify(typeof protocol !== "undefined" ? protocol : '') %>'
+          data-action='<%= JSON.stringify(typeof action !== "undefined" ? action : '') %>'
+          data-firewall-name='<%= JSON.stringify(typeof firewall_name !== "undefined" ? firewall_name : '') %>' style="display:none"></div>
 
   <!-- Flash Messages -->
   <% if (typeof successMessage !== 'undefined' && successMessage) { %>
@@ -229,15 +192,15 @@ function buildExportUrl() {
     </script>
   <% } %>
 
-  <!-- Firewall Rules List Table -->
+    <!-- Data Table -->
   <div class="row">
     <div class="col-12">
       <div class="card">
         <div class="card-header">
           <h3 class="card-title mb-0">Firewall Rules List</h3>
         </div>
-        <div class="card-body table-responsive" style="overflow-x: auto;">
-          <table class="table table-hover" id="ipTable">
+          <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
+            <table class="table table-hover" style="table-layout: fixed; min-width: 800px;">
             <thead>
               <tr>
                 <th>No.</th>
@@ -256,31 +219,32 @@ function buildExportUrl() {
                 <% ruleList.forEach(function(rule, idx) { %>
                   <tr>
                     <td><%= (page - 1) * pageSize + idx + 1 %></td>
-                    <td><%= rule.name %></td>
-                    <td><%= rule.source || '-' %></td>
-                    <td><%= rule.destination || '-' %></td>
-                    <td><%= rule.port || '-' %></td>
+                    <td><%= rule.rulename %></td>
+                    <td><%= rule.src || '-' %></td>
+                    <td><%= rule.dst || '-' %></td>
+                    <td><%= rule.services || '-' %></td>
                     <td><span class="badge bg-primary"><%= rule.protocol || '-' %></span></td>
                     <td><span class="badge bg-<%= rule.action === 'allow' ? 'success' : 'danger' %>"><%= rule.action %></span></td>
                     <td><span class="badge bg-<%= rule.status === 'active' ? 'success' : 'secondary' %>"><%= rule.status %></span></td>
                     <td class="text-end">
-                      <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showRuleDetail('<%= rule.id %>')" data-rule='<%= JSON.stringify(rule) %>'><i class="bi bi-eye"></i></button>
+                        <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showRuleDetail('<%= rule.id %>')" data-rule-id="<%= rule.id %>" data-rule='<%= JSON.stringify(rule) %>'><i class="bi bi-eye"></i></button>
                       <% if (hasPermission('firewall.update')) { %>
                       <button type="button" class="btn btn-warning btn-sm" title="Edit" 
                               data-bs-toggle="modal" data-bs-target="#editRuleModal"
                               data-rule-id="<%= rule.id %>"
-                              data-rule-name="<%= rule.name %>"
-                              data-source="<%= rule.source || '' %>"
-                              data-destination="<%= rule.destination || '' %>"
-                              data-port="<%= rule.port || '' %>"
+                              data-rule-name="<%= rule.rulename %>"
+                              data-source="<%= rule.src || '' %>"
+                              data-destination="<%= rule.dst || '' %>"
+                              data-services="<%= rule.services || '' %>"
                               data-protocol="<%= rule.protocol || '' %>"
                               data-action="<%= rule.action %>"
-                              data-status="<%= rule.status %>">
+                              data-status="<%= rule.status %>"
+                              data-raw-data="<%= rule.raw_data || '' %>">
                         <i class="bi bi-pencil"></i>
                       </button>
                       <% } %>
                       <% if (hasPermission('firewall.delete')) { %>
-                      <form action="/firewall/rule/<%= rule.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteRule(this, '<%= rule.name %>')">
+                        <form action="/firewall/rule/<%= rule.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteRule(this, '<%= rule.rulename %>')">
                         <button type="submit" class="btn btn-danger btn-sm" title="Delete">
                           <i class="bi bi-trash"></i>
                         </button>
@@ -299,47 +263,50 @@ function buildExportUrl() {
           <div class="d-flex justify-content-between align-items-center px-3 py-2">
             <div>
               <% 
-                // Calculate pagination range like system list
+                // Calculate pagination range
                 const ruleStartItem = (page - 1) * pageSize + 1;
                 const ruleEndItem = Math.min(page * pageSize, totalCount || 0);
-                const ruleStartPage = Math.max(1, page - 2);
-                const ruleEndPage = Math.min(totalPages, page + 2);
               %>
               <span>Showing <%= ruleStartItem %> - <%= ruleEndItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> firewall rules</span>
             </div>
-            <ul class="pagination pagination-sm m-0 float-end">
-              <% 
-                function buildRuleFilterQuery() {
-                  let params = [];
-                  if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
-                  if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
-                  if (typeof filterStatus !== 'undefined' && filterStatus) params.push('status=' + encodeURIComponent(filterStatus));
-                  if (typeof filterProtocol !== 'undefined' && filterProtocol) params.push('protocol=' + encodeURIComponent(filterProtocol));
-                  if (typeof filterAction !== 'undefined' && filterAction) params.push('action=' + encodeURIComponent(filterAction));
-                  return params.join('&');
-                }
-                const ruleFilterQuery = buildRuleFilterQuery();
+              <ul class="pagination pagination-sm m-0">
+                <% 
+                  let startPage = 1;
+                  let endPage = totalPages;
+                  if (totalPages > 10) {
+                    if (page <= 6) {
+                      startPage = 1;
+                      endPage = 10;
+                    } else if (page + 4 >= totalPages) {
+                      startPage = totalPages - 9;
+                      endPage = totalPages;
+                    } else {
+                      startPage = page - 5;
+                      endPage = page + 4;
+                    }
+                  }
               %>
               <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page - 1 %><%= ruleFilterQuery ? '&' + ruleFilterQuery : '' %>" tabindex="-1">Previous</a>
+                  <a class="page-link" href="<%= buildPaginationUrl(page - 1) %>">Previous</a>
               </li>
-              <% if (ruleStartPage > 1) { %>
-                <li class="page-item"><a class="page-link" href="?page=1<%= ruleFilterQuery ? '&' + ruleFilterQuery : '' %>">1</a></li>
-                <% if (ruleStartPage > 2) { %>
+                <% if (startPage > 1) { %>
+                  <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(1) %>">1</a></li>
+                  <% if (startPage > 2) { %>
                   <li class="page-item disabled"><span class="page-link">...</span></li>
                 <% } %>
               <% } %>
-              <% for (let i = ruleStartPage; i <= ruleEndPage; i++) { %>
-                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= ruleFilterQuery ? '&' + ruleFilterQuery : '' %>"><%= i %></a></li>
+                <% for (let i = startPage; i <= endPage; i++) { %>
+                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="<%= buildPaginationUrl(i) %>"><%= i %></a></li>
               <% } %>
-              <% if (ruleEndPage < totalPages) { %>
+                <% if (endPage < totalPages) { %>
                 <li class="page-item disabled"><span class="page-link">...</span></li>
-                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= ruleFilterQuery ? '&' + ruleFilterQuery : '' %>"><%= totalPages %></a></li>
+                  <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(totalPages) %>"><%= totalPages %></a></li>
               <% } %>
               <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page + 1 %><%= ruleFilterQuery ? '&' + ruleFilterQuery : '' %>">Next</a>
+                  <a class="page-link" href="<%= buildPaginationUrl(page + 1) %>">Next</a>
               </li>
             </ul>
+            </div>
           </div>
         </div>
                   </div>
@@ -360,13 +327,13 @@ function buildExportUrl() {
             <!-- Audit Batch -->
             <div class="mb-3">
               <label for="audit_batch" class="form-label">Audit Batch <span class="text-danger">*</span></label>
-              <input type="text" class="form-control form-control-sm" id="audit_batch" name="audit_batch" required placeholder="YYYY-MM" pattern="^\d{4}-\d{2}$">
-              <div class="form-text">Format: YYYY-MM (e.g., 2024-01)</div>
+            <input type="text" class="form-control" id="audit_batch" name="audit_batch" required placeholder="Audit Batch">
+              <div class="form-text">Enter audit batch name</div>
             </div>
             
             <div class="mb-3">
               <label for="firewall_name" class="form-label">Firewall Name <span class="text-danger">*</span></label>
-              <select class="form-select form-select-sm" id="firewall_name" name="firewall_name" required>
+            <select class="form-control" id="firewall_name" name="firewall_name" required style="width:100%">
                 <option value="">-- Select Firewall Name --</option>
                 <% (firewallNameOptions || []).forEach(function(fw) { %>
                   <option value="<%= fw.value %>"><%= fw.label %></option>
@@ -375,53 +342,53 @@ function buildExportUrl() {
             </div>
             <div class="mb-3">
               <label for="rulename" class="form-label">Rule Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control form-control-sm" id="rulename" name="rulename" required placeholder="Rule Name">
+            <input type="text" class="form-control" id="rulename" name="rulename" required placeholder="Rule Name">
             </div>
             
             <!-- Source Section -->
             <div class="mb-3">
               <label for="src_zone" class="form-label">Source Zone</label>
-              <input type="text" class="form-control form-control-sm" id="src_zone" name="src_zone" placeholder="Source Zone">
+            <input type="text" class="form-control" id="src_zone" name="src_zone" placeholder="Source Zone">
             </div>
             <div class="mb-3">
               <label for="src" class="form-label">Source <span class="text-danger">*</span></label>
-              <input type="text" class="form-control form-control-sm" id="src" name="src" required placeholder="Source IP/Network">
+            <input type="text" class="form-control" id="src" name="src" required placeholder="Source IP/Network">
             </div>
             <div class="mb-3">
               <label for="src_detail" class="form-label">Source Detail</label>
-              <input type="text" class="form-control form-control-sm" id="src_detail" name="src_detail" placeholder="Source Detail">
+            <input type="text" class="form-control" id="src_detail" name="src_detail" placeholder="Source Detail">
             </div>
             
             <!-- Destination Section -->
             <div class="mb-3">
               <label for="dst_zone" class="form-label">Destination Zone</label>
-              <input type="text" class="form-control form-control-sm" id="dst_zone" name="dst_zone" placeholder="Destination Zone">
+            <input type="text" class="form-control" id="dst_zone" name="dst_zone" placeholder="Destination Zone">
             </div>
             <div class="mb-3">
               <label for="dst" class="form-label">Destination <span class="text-danger">*</span></label>
-              <input type="text" class="form-control form-control-sm" id="dst" name="dst" required placeholder="Destination IP/Network">
+            <input type="text" class="form-control" id="dst" name="dst" required placeholder="Destination IP/Network">
             </div>
             <div class="mb-3">
               <label for="dst_detail" class="form-label">Destination Detail</label>
-              <input type="text" class="form-control form-control-sm" id="dst_detail" name="dst_detail" placeholder="Destination Detail">
+            <input type="text" class="form-control" id="dst_detail" name="dst_detail" placeholder="Destination Detail">
             </div>
             
             <!-- Service Section -->
             <div class="mb-3">
               <label for="services" class="form-label">Services</label>
-              <input type="text" class="form-control form-control-sm" id="services" name="services" placeholder="Service/Port">
+            <input type="text" class="form-control" id="services" name="services" placeholder="Service/Port">
             </div>
             <div class="mb-3">
               <label for="application" class="form-label">Application</label>
-              <input type="text" class="form-control form-control-sm" id="application" name="application" placeholder="Application">
+            <input type="text" class="form-control" id="application" name="application" placeholder="Application">
             </div>
             <div class="mb-3">
               <label for="url" class="form-label">URL</label>
-              <input type="text" class="form-control form-control-sm" id="url" name="url" placeholder="URL">
+            <input type="text" class="form-control" id="url" name="url" placeholder="URL">
             </div>
             <div class="mb-3">
               <label for="action" class="form-label">Action <span class="text-danger">*</span></label>
-              <select class="form-select form-select-sm" id="action" name="action" required>
+            <select class="form-control" id="action" name="action" required style="width:100%">
                 <option value="">-- Select Action --</option>
                 <% (actionsOptions || []).forEach(function(act) { %>
                   <option value="<%= act.value %>"><%= act.label %></option>
@@ -432,7 +399,7 @@ function buildExportUrl() {
             <!-- Violation Type -->
             <div class="mb-3">
               <label for="violation_type" class="form-label">Violation Type</label>
-              <select class="form-select form-select-sm" id="violation_type" name="violation_type">
+            <select class="form-control" id="violation_type" name="violation_type" style="width:100%">
                 <option value="">-- No violation --</option>
                 <% (violationTypeOptions || []).forEach(function(vt) { %>
                   <option value="<%= vt.value %>"><%= vt.label %></option>
@@ -443,13 +410,13 @@ function buildExportUrl() {
             <!-- Violation Detail -->
             <div class="mb-3">
               <label for="violation_detail" class="form-label">Violation Detail</label>
-              <textarea class="form-control form-control-sm" id="violation_detail" name="violation_detail" rows="2" placeholder="Violation Detail"></textarea>
+            <textarea class="form-control" id="violation_detail" name="violation_detail" rows="2" placeholder="Violation Detail"></textarea>
             </div>
             
             <!-- OU (Organizational Unit) -->
             <div class="mb-3">
               <label for="ou_id" class="form-label">OU (Organizational Unit)</label>
-              <select class="form-select form-select-sm" id="ou_id" name="ou_id">
+            <select class="form-control" id="ou_id" name="ou_id" style="width:100%">
                 <option value="">-- Select OU --</option>
               </select>
             </div>
@@ -457,7 +424,7 @@ function buildExportUrl() {
             <!-- Contacts -->
             <div class="mb-3">
               <label for="add-contact-select" class="form-label">Contacts</label>
-              <select id="add-contact-select" name="contacts[]" class="form-control" multiple>
+              <select id="add-contact-select" name="contacts[]" class="form-control" multiple style="width:100%">
                 <!-- Selected contacts will be populated here -->
               </select>
               <div class="form-text">Select contacts responsible for this rule</div>
@@ -466,25 +433,25 @@ function buildExportUrl() {
             <!-- Solution Proposal -->
             <div class="mb-3">
               <label for="solution_proposal" class="form-label">Solution Proposal</label>
-              <textarea class="form-control form-control-sm" id="solution_proposal" name="solution_proposal" rows="2" placeholder="Solution Proposal"></textarea>
+            <textarea class="form-control" id="solution_proposal" name="solution_proposal" rows="2" placeholder="Solution Proposal"></textarea>
             </div>
             
             <!-- Solution Confirm -->
             <div class="mb-3">
               <label for="solution_confirm" class="form-label">Solution Confirm</label>
-              <textarea class="form-control form-control-sm" id="solution_confirm" name="solution_confirm" rows="2" placeholder="Solution Confirm"></textarea>
+            <textarea class="form-control" id="solution_confirm" name="solution_confirm" rows="2" placeholder="Solution Confirm"></textarea>
             </div>
             
             <!-- Work Order -->
             <div class="mb-3">
               <label for="work_order" class="form-label">Work Order</label>
-              <input type="text" class="form-control form-control-sm" id="work_order" name="work_order" placeholder="Work Order">
+            <input type="text" class="form-control" id="work_order" name="work_order" placeholder="Work Order">
             </div>
             
             <!-- Status -->
             <div class="mb-3">
               <label for="status" class="form-label">Status</label>
-              <select class="form-select form-select-sm" id="status" name="status">
+            <select class="form-control" id="status" name="status" style="width:100%">
                 <option value="">-- No status --</option>
                 <% (statusOptions || []).forEach(function(st) { %>
                   <option value="<%= st.value %>"><%= st.label %></option>
@@ -495,14 +462,20 @@ function buildExportUrl() {
             <!-- Description -->
             <div class="mb-3">
               <label for="description" class="form-label">Description</label>
-              <textarea class="form-control form-control-sm" id="description" name="description" rows="2" placeholder="Description"></textarea>
+            <textarea class="form-control" id="description" name="description" rows="2" placeholder="Description"></textarea>
             </div>
             
-            <div class="modal-footer d-flex justify-content-end">
-              <button type="submit" class="btn btn-primary btn-sm">Add Rule</button>
-              <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
+            <!-- Raw Data -->
+            <div class="mb-3">
+              <label for="raw_data" class="form-label">Raw Data</label>
+            <textarea class="form-control" id="raw_data" name="raw_data" rows="3" placeholder="Raw data from firewall device"></textarea>
+              <div class="form-text">Original raw data from firewall device (optional)</div>
             </div>
           </form>
+        </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button type="submit" class="btn btn-primary btn-sm" form="addRuleForm">Add Rule</button>
         </div>
       </div>
     </div>
@@ -517,18 +490,18 @@ function buildExportUrl() {
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <form id="editRuleForm" action="/firewall/rule" method="POST" onsubmit="return validateEditRuleForm()">
+        <form id="editRuleForm" method="POST" onsubmit="return validateEditRuleForm()">
             <input type="hidden" name="_method" value="PUT">
             <input type="hidden" id="editRuleId" name="id">
             
             <div class="mb-3">
               <label for="edit_audit_batch" class="form-label">Audit Batch <span class="text-danger">*</span></label>
-              <input type="text" class="form-control form-control-sm" id="edit_audit_batch" name="audit_batch" required placeholder="YYYY-MM" pattern="^\d{4}-\d{2}$">
-              <div class="form-text">Format: YYYY-MM (e.g., 2024-01)</div>
+            <input type="text" class="form-control" id="edit_audit_batch" name="audit_batch" required placeholder="Audit Batch">
+              <div class="form-text">Enter audit batch name</div>
             </div>
             <div class="mb-3">
               <label for="edit_firewall_name" class="form-label">Firewall Name <span class="text-danger">*</span></label>
-              <select class="form-select form-select-sm" id="edit_firewall_name" name="firewall_name" required>
+            <select class="form-control" id="edit_firewall_name" name="firewall_name" required style="width:100%">
                 <option value="">-- Select Firewall Name --</option>
                 <% (firewallNameOptions || []).forEach(function(fw) { %>
                   <option value="<%= fw.value %>"><%= fw.label %></option>
@@ -537,53 +510,53 @@ function buildExportUrl() {
             </div>
             <div class="mb-3">
               <label for="edit_rulename" class="form-label">Rule Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control form-control-sm" id="edit_rulename" name="rulename" required placeholder="Rule Name">
+            <input type="text" class="form-control" id="edit_rulename" name="rulename" required placeholder="Rule Name">
             </div>
             
             <!-- Source Section -->
             <div class="mb-3">
               <label for="edit_src_zone" class="form-label">Source Zone</label>
-              <input type="text" class="form-control form-control-sm" id="edit_src_zone" name="src_zone" placeholder="Source Zone">
+            <input type="text" class="form-control" id="edit_src_zone" name="src_zone" placeholder="Source Zone">
             </div>
             <div class="mb-3">
               <label for="edit_src" class="form-label">Source <span class="text-danger">*</span></label>
-              <input type="text" class="form-control form-control-sm" id="edit_src" name="src" required placeholder="Source IP/Network">
+            <input type="text" class="form-control" id="edit_src" name="src" required placeholder="Source IP/Network">
             </div>
             <div class="mb-3">
               <label for="edit_src_detail" class="form-label">Source Detail</label>
-              <input type="text" class="form-control form-control-sm" id="edit_src_detail" name="src_detail" placeholder="Source Detail">
+            <input type="text" class="form-control" id="edit_src_detail" name="src_detail" placeholder="Source Detail">
             </div>
             
             <!-- Destination Section -->
             <div class="mb-3">
               <label for="edit_dst_zone" class="form-label">Destination Zone</label>
-              <input type="text" class="form-control form-control-sm" id="edit_dst_zone" name="dst_zone" placeholder="Destination Zone">
+            <input type="text" class="form-control" id="edit_dst_zone" name="dst_zone" placeholder="Destination Zone">
             </div>
             <div class="mb-3">
               <label for="edit_dst" class="form-label">Destination <span class="text-danger">*</span></label>
-              <input type="text" class="form-control form-control-sm" id="edit_dst" name="dst" required placeholder="Destination IP/Network">
+            <input type="text" class="form-control" id="edit_dst" name="dst" required placeholder="Destination IP/Network">
             </div>
             <div class="mb-3">
               <label for="edit_dst_detail" class="form-label">Destination Detail</label>
-              <input type="text" class="form-control form-control-sm" id="edit_dst_detail" name="dst_detail" placeholder="Destination Detail">
+            <input type="text" class="form-control" id="edit_dst_detail" name="dst_detail" placeholder="Destination Detail">
             </div>
             
             <!-- Service Section -->
             <div class="mb-3">
               <label for="edit_services" class="form-label">Services</label>
-              <input type="text" class="form-control form-control-sm" id="edit_services" name="services" placeholder="Service/Port">
+            <input type="text" class="form-control" id="edit_services" name="services" placeholder="Service/Port">
             </div>
             <div class="mb-3">
               <label for="edit_application" class="form-label">Application</label>
-              <input type="text" class="form-control form-control-sm" id="edit_application" name="application" placeholder="Application">
+            <input type="text" class="form-control" id="edit_application" name="application" placeholder="Application">
             </div>
             <div class="mb-3">
               <label for="edit_url" class="form-label">URL</label>
-              <input type="text" class="form-control form-control-sm" id="edit_url" name="url" placeholder="URL">
+            <input type="text" class="form-control" id="edit_url" name="url" placeholder="URL">
             </div>
             <div class="mb-3">
               <label for="edit_action" class="form-label">Action <span class="text-danger">*</span></label>
-              <select class="form-select form-select-sm" id="edit_action" name="action" required>
+            <select class="form-control" id="edit_action" name="action" required style="width:100%">
                 <option value="">-- Select Action --</option>
                 <% (actionsOptions || []).forEach(function(act) { %>
                   <option value="<%= act.value %>"><%= act.label %></option>
@@ -594,7 +567,7 @@ function buildExportUrl() {
             <!-- Violation Type -->
             <div class="mb-3">
               <label for="edit_violation_type" class="form-label">Violation Type</label>
-              <select class="form-select form-select-sm" id="edit_violation_type" name="violation_type">
+            <select class="form-control" id="edit_violation_type" name="violation_type" style="width:100%">
                 <option value="">-- No violation --</option>
                 <% (violationTypeOptions || []).forEach(function(vt) { %>
                   <option value="<%= vt.value %>"><%= vt.label %></option>
@@ -605,13 +578,13 @@ function buildExportUrl() {
             <!-- Violation Detail -->
             <div class="mb-3">
               <label for="edit_violation_detail" class="form-label">Violation Detail</label>
-              <textarea class="form-control form-control-sm" id="edit_violation_detail" name="violation_detail" rows="2" placeholder="Violation Detail"></textarea>
+            <textarea class="form-control" id="edit_violation_detail" name="violation_detail" rows="2" placeholder="Violation Detail"></textarea>
             </div>
             
             <!-- OU (Organizational Unit) -->
             <div class="mb-3">
               <label for="edit_ou_id" class="form-label">OU (Organizational Unit)</label>
-              <select class="form-select form-select-sm" id="edit_ou_id" name="ou_id">
+            <select class="form-control" id="edit_ou_id" name="ou_id" style="width:100%">
                 <option value="">-- Select OU --</option>
               </select>
             </div>
@@ -619,7 +592,7 @@ function buildExportUrl() {
             <!-- Contacts -->
             <div class="mb-3">
               <label for="edit-contact-select" class="form-label">Contacts</label>
-              <select id="edit-contact-select" name="contacts[]" class="form-control" multiple>
+              <select id="edit-contact-select" name="contacts[]" class="form-control" multiple style="width:100%">
                 <!-- Selected contacts will be populated here -->
               </select>
               <div class="form-text">Select contacts responsible for this rule</div>
@@ -628,23 +601,23 @@ function buildExportUrl() {
             <!-- Solution Section -->
             <div class="mb-3">
               <label for="edit_solution_proposal" class="form-label">Solution Proposal</label>
-              <textarea class="form-control form-control-sm" id="edit_solution_proposal" name="solution_proposal" rows="2" placeholder="Solution Proposal"></textarea>
+            <textarea class="form-control" id="edit_solution_proposal" name="solution_proposal" rows="2" placeholder="Solution Proposal"></textarea>
             </div>
             <div class="mb-3">
               <label for="edit_solution_confirm" class="form-label">Solution Confirm</label>
-              <textarea class="form-control form-control-sm" id="edit_solution_confirm" name="solution_confirm" rows="2" placeholder="Solution Confirm"></textarea>
+            <textarea class="form-control" id="edit_solution_confirm" name="solution_confirm" rows="2" placeholder="Solution Confirm"></textarea>
             </div>
             
             <!-- Work Order -->
             <div class="mb-3">
               <label for="edit_work_order" class="form-label">Work Order</label>
-              <input type="text" class="form-control form-control-sm" id="edit_work_order" name="work_order" placeholder="Work Order">
+            <input type="text" class="form-control" id="edit_work_order" name="work_order" placeholder="Work Order">
             </div>
             
             <!-- Status -->
             <div class="mb-3">
               <label for="edit_status" class="form-label">Status</label>
-              <select class="form-select form-select-sm" id="edit_status" name="status">
+            <select class="form-control" id="edit_status" name="status" style="width:100%">
                 <option value="">-- No status --</option>
                 <% (statusOptions || []).forEach(function(st) { %>
                   <option value="<%= st.value %>"><%= st.label %></option>
@@ -655,126 +628,26 @@ function buildExportUrl() {
             <!-- Description -->
             <div class="mb-3">
               <label for="edit_description" class="form-label">Description</label>
-              <textarea class="form-control form-control-sm" id="edit_description" name="description" rows="2" placeholder="Description"></textarea>
+            <textarea class="form-control" id="edit_description" name="description" rows="2" placeholder="Description"></textarea>
             </div>
-            <div class="modal-footer d-flex justify-content-end">
-              <button type="submit" class="btn btn-primary btn-sm">Update Rule</button>
-              <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
+            
+            <!-- Raw Data -->
+            <div class="mb-3">
+              <label for="edit_raw_data" class="form-label">Raw Data</label>
+            <textarea class="form-control" id="edit_raw_data" name="raw_data" rows="3" placeholder="Raw data from firewall device"></textarea>
+              <div class="form-text">Original raw data from firewall device (optional)</div>
             </div>
           </form>
-        </div>
-      </div>
-    </div>
-  </div>
-        
-  <!-- Rule Detail Modals -->
-  <% if (ruleList && ruleList.length > 0) { ruleList.forEach(function(rule) { %>
-    <div class="modal fade" id="ruleDetailModal-<%= rule.id %>" tabindex="-1" aria-labelledby="ruleDetailModalLabel-<%= rule.id %>" aria-hidden="true">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content firewall-detail-modal">
-          <div class="modal-header">
-            <h5 class="modal-title" id="ruleDetailModalLabel-<%= rule.id %>">Firewall Rule Detail</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <dl class="row mb-0">
-              <dt class="col-sm-4">Audit Batch</dt>
-              <dd class="col-sm-8"><%= rule.audit_batch || '' %></dd>
-              <dt class="col-sm-4">Firewall Name</dt>
-              <dd class="col-sm-8"><%= rule.firewall_name || '' %></dd>
-              <dt class="col-sm-4">Rule Name</dt>
-              <dd class="col-sm-8"><%= rule.rulename %></dd>
-              
-              <!-- Source Section -->
-              <dt class="col-sm-4">Source Zone</dt>
-              <dd class="col-sm-8"><%= rule.src_zone || '' %></dd>
-              <dt class="col-sm-4">Source</dt>
-              <dd class="col-sm-8"><%= rule.src %></dd>
-              <dt class="col-sm-4">Source Detail</dt>
-              <dd class="col-sm-8"><%= rule.src_detail || '' %></dd>
-              
-              <!-- Destination Section -->
-              <dt class="col-sm-4">Destination Zone</dt>
-              <dd class="col-sm-8"><%= rule.dst_zone || '' %></dd>
-              <dt class="col-sm-4">Destination</dt>
-              <dd class="col-sm-8"><%= rule.dst %></dd>
-              <dt class="col-sm-4">Destination Detail</dt>
-              <dd class="col-sm-8"><%= rule.dst_detail || '' %></dd>
-              
-              <!-- Service Section -->
-              <dt class="col-sm-4">Services</dt>
-              <dd class="col-sm-8"><%= rule.services || '' %></dd>
-              <dt class="col-sm-4">Application</dt>
-              <dd class="col-sm-8"><%= rule.application || '' %></dd>
-              <dt class="col-sm-4">URL</dt>
-              <dd class="col-sm-8"><%= rule.url || '' %></dd>
-              
-              <dt class="col-sm-4">Action</dt>
-              <dd class="col-sm-8"><%= rule.action %></dd>
-              
-              <!-- Violation Section -->
-              <dt class="col-sm-4">Violation Type</dt>
-              <dd class="col-sm-8"><%= rule.violation_type || '' %></dd>
-              <dt class="col-sm-4">Violation Detail</dt>
-              <dd class="col-sm-8"><%= rule.violation_detail || '' %></dd>
-              
-              <!-- OU Section -->
-              <dt class="col-sm-4">OU (Organizational Unit)</dt>
-              <dd class="col-sm-8"><%= rule.ou_name || '' %></dd>
-              
-              <!-- Contacts Section -->
-              <dt class="col-sm-4">Contacts</dt>
-              <dd class="col-sm-8">
-                <% if (rule.contacts && rule.contacts.length > 0) { %>
-                  <ul class="list-unstyled mb-0">
-                    <% rule.contacts.forEach(function(contact) { %>
-                      <li>
-                        <a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>&pageSize=10" class="text-decoration-none">
-                          <%= contact.name %> (<%= contact.email %>)
-                        </a>
-                      </li>
-                    <% }) %>
-                  </ul>
-                <% } else { %>
-                  <span class="text-muted">No contacts assigned</span>
-                <% } %>
-              </dd>
-              
-              <!-- Solution Section -->
-              <dt class="col-sm-4">Solution Proposal</dt>
-              <dd class="col-sm-8"><%= rule.solution_proposal || '' %></dd>
-              <dt class="col-sm-4">Solution Confirm</dt>
-              <dd class="col-sm-8"><%= rule.solution_confirm || '' %></dd>
-              
-              <!-- Work Order -->
-              <dt class="col-sm-4">Work Order</dt>
-              <dd class="col-sm-8"><%= rule.work_order || '' %></dd>
-              
-              <!-- Status -->
-              <dt class="col-sm-4">Status</dt>
-              <dd class="col-sm-8">
-                <% if (rule.status) { %>
-                  <span class="badge bg-<%= rule.status === 'active' ? 'success' : rule.status === 'inactive' ? 'secondary' : 'warning' %>">
-                    <%= rule.status.charAt(0).toUpperCase() + rule.status.slice(1) %>
-                  </span>
-                <% } else { %>
-                  <span class="text-muted">No status</span>
-                <% } %>
-              </dd>
-              
-              <!-- Description -->
-              <dt class="col-sm-4">Description</dt>
-              <dd class="col-sm-8"><%= rule.description || '' %></dd>
-            </dl>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button type="submit" class="btn btn-primary btn-sm" form="editRuleForm">Update Rule</button>
           </div>
         </div>
       </div>
     </div>
-  <% }) } %>
-              <!-- Filter Rule Modal -->
+
+<!-- Filter Modal -->
   <div class="modal fade" id="filterRuleModal" tabindex="-1" aria-labelledby="filterRuleModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
@@ -783,12 +656,10 @@ function buildExportUrl() {
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <form method="get" action="/firewall/rule">
-          <input type="hidden" name="pageSize" value="<%= typeof pageSize !== 'undefined' ? pageSize : 10 %>">
-          <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
           <div class="modal-body">
             <div class="mb-3">
               <label for="filterRuleFirewallName" class="form-label">Firewall Name</label>
-              <select class="form-select form-select-sm" id="filterRuleFirewallName" name="firewall_name">
+            <select class="form-control" id="filterRuleFirewallName" name="firewall_name" style="width:100%">
                 <option value="">-- All --</option>
                 <% (firewallNameOptions || []).forEach(function(fw) { %>
                   <option value="<%= fw.value %>" <%= typeof firewall_name !== 'undefined' && firewall_name === fw.value ? 'selected' : '' %>><%= fw.label %></option>
@@ -797,7 +668,7 @@ function buildExportUrl() {
             </div>
             <div class="mb-3">
               <label for="filterRuleStatus" class="form-label">Status</label>
-              <select class="form-select form-select-sm" id="filterRuleStatus" name="status">
+            <select class="form-control" id="filterRuleStatus" name="status" style="width:100%">
                 <option value="">-- All --</option>
                 <% (statusOptions || []).forEach(function(st) { %>
                   <option value="<%= st.value %>" <%= typeof status !== 'undefined' && status === st.value ? 'selected' : '' %>><%= st.label %></option>
@@ -805,20 +676,27 @@ function buildExportUrl() {
               </select>
             </div>
             <div class="mb-3">
-              <label for="filterRuleContacts" class="form-label">Contacts</label>
-              <select id="filterRuleContacts" name="contacts[]" class="form-control" multiple>
-                <% if (typeof filterContactIds !== 'undefined' && Array.isArray(filterContactIds) && filterContactIds.length > 0) { %>
-                  <% filterContactIds.forEach(function(contactId, idx) { %>
-                    <option value="<%= contactId %>" selected><%= selectedContacts[idx] || '' %></option>
-                  <% }) %>
-                <% } %>
+            <label for="filterRuleProtocol" class="form-label">Protocol</label>
+            <select class="form-control" id="filterRuleProtocol" name="protocol" style="width:100%">
+              <option value="">-- All --</option>
+              <option value="TCP" <%= typeof protocol !== 'undefined' && protocol === 'TCP' ? 'selected' : '' %>>TCP</option>
+              <option value="UDP" <%= typeof protocol !== 'undefined' && protocol === 'UDP' ? 'selected' : '' %>>UDP</option>
+              <option value="ICMP" <%= typeof protocol !== 'undefined' && protocol === 'ICMP' ? 'selected' : '' %>>ICMP</option>
               </select>
             </div>
+          <div class="mb-3">
+            <label for="filterRuleAction" class="form-label">Action</label>
+            <select class="form-control" id="filterRuleAction" name="action" style="width:100%">
+              <option value="">-- All --</option>
+              <option value="allow" <%= typeof action !== 'undefined' && action === 'allow' ? 'selected' : '' %>>Allow</option>
+              <option value="deny" <%= typeof action !== 'undefined' && action === 'deny' ? 'selected' : '' %>>Deny</option>
+            </select>
           </div>
-          <div class="modal-footer d-flex justify-content-end">
+        </div>
+        <div class="modal-footer d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-warning btn-sm" id="clearRuleFilterBtn">Clear Filter</button>
             <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
-            <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
-            <button type="button" class="btn btn-warning btn-sm ms-2" id="clearAllFilterBtn">Clear All Filter</button>
           </div>
         </form>
       </div>
@@ -836,8 +714,15 @@ function buildExportUrl() {
         <div class="modal-body">
           <form id="importRuleForm" enctype="multipart/form-data">
             <div class="mb-3">
-              <label for="ruleFile" class="form-label">Select File to Import</label>
-              <input type="file" class="form-control" id="ruleFile" name="file" accept=".csv,.xlsx,.xls" required>
+              <label for="ruleFile" class="form-label">Select File <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <input type="file" class="form-control" id="ruleFile" name="file" accept=".csv,.xlsx,.xls" required>
+                <% if (hasPermission('rule.read')) { %>
+                  <a href="/firewall/rule/template" class="btn btn-outline-info" download>
+                    <i class="bi bi-download"></i> Download Template
+                  </a>
+                <% } %>
+              </div>
               <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
             </div>
           </form>
@@ -862,9 +747,9 @@ function buildExportUrl() {
             <i class="bi bi-info-circle"></i>
             <strong>Instructions:</strong>
             <ol class="mb-0 mt-2">
-              <li>Download the template file using the "Download Template" button above</li>
-              <li>Fill in your firewall rule data following the template format</li>
-              <li>Upload the file to validate before importing</li>
+              <li>Click "Download Template" to get the Excel template with correct format</li>
+              <li>Fill the template with your firewall rule data</li>
+              <li>Select your filled template file and validate before importing</li>
               <li>Only import if all validations pass</li>
             </ol>
           </div>
@@ -881,907 +766,491 @@ function buildExportUrl() {
       </div>
     </div>
   </div>
-        
-<style>
-/* Fix Select2 dropdown z-index in modal */
-  .select2-dropdown {
-  z-index: 9999 !important;
-}
-
-.select2-container--bootstrap-5 .select2-dropdown {
-  z-index: 9999 !important;
-}
-
-.modal .select2-dropdown {
-  z-index: 9999 !important;
-}
-
-/* Ensure dropdown is visible above modal backdrop */
-.select2-container--open .select2-dropdown {
-  z-index: 9999 !important;
-  }
-</style>
 
 <script>
-  $(function() {
-  console.log('Initializing Select2...');
+function showToast(msg, type) {
+  const toast = document.createElement('div');
+  toast.className = `alert alert-${type}`;
+  toast.style.position = 'fixed';
+  toast.style.top = '16px';
+  toast.style.right = '16px';
+  toast.style.zIndex = 9999;
+  toast.style.minWidth = '200px';
+  toast.innerText = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function showRuleDetail(ruleId) {
+  console.log('showRuleDetail called with ruleId:', ruleId);
   
-  // Tags select2 AJAX - Bootstrap 5 theme (clone from system_add.ejs)
-  console.log('Setting up Tags Select2...');
-    $('#ipTags').select2({
-      theme: 'bootstrap-5',
-    placeholder: 'Select tags (optional)',
-      allowClear: true,
-      width: '100%',
-    multiple: true,
-    dropdownParent: $('#addIpModal'),
-      ajax: {
-        url: '/organize/api/tag',
-        dataType: 'json',
-        delay: 250,
-      data: params => {
-        console.log('Tags AJAX request:', params.term);
-        return { search: params.term };
-      },
-      processResults: data => {
-        console.log('Tags API response:', data);
-        return { results: data };
-      },
-        cache: true
-      }
-    });
-
-  // Systems select2 AJAX - Bootstrap 5 theme (clone from system_add.ejs)
-  console.log('Setting up Systems Select2...');
-  $('#ipSystems').select2({
-      theme: 'bootstrap-5',
-    placeholder: 'Select systems (optional)',
-      allowClear: true,
-      width: '100%',
-    multiple: true,
-    dropdownParent: $('#addIpModal'),
-      ajax: {
-      url: '/system/api/system',
-        dataType: 'json',
-        delay: 250,
-      data: params => {
-        console.log('Systems AJAX request:', params.term);
-        return { search: params.term };
-      },
-      processResults: data => {
-        console.log('Systems API response:', data);
-        return { results: data };
-      },
-        cache: true
-      }
-    });
-
-  // Contacts select2 AJAX - Bootstrap 5 theme (clone from system_add.ejs)
-  console.log('Setting up Contacts Select2...');
-  $('#ipContacts').select2({
-      theme: 'bootstrap-5',
-    placeholder: 'Select contacts (optional)',
-      allowClear: true,
-      width: '100%',
-    multiple: true,
-    dropdownParent: $('#addIpModal'),
-      ajax: {
-      url: '/organize/api/contact',
-        dataType: 'json',
-        delay: 250,
-      data: params => {
-        console.log('Contacts AJAX request:', params.term);
-        return { search: params.term };
-      },
-      processResults: data => {
-        console.log('Contacts API response:', data);
-        return { results: data };
-      },
-        cache: true
-      }
-    });
-  
-  console.log('All Select2 initialized!');
-
-  // Debug: Select2 events
-  $('#ipTags').on('select2:open', function() {
-    console.log('Tags dropdown opened');
-  });
-  
-  $('#ipSystems').on('select2:open', function() {
-    console.log('Systems dropdown opened');
-  });
-  
-  $('#ipContacts').on('select2:open', function() {
-    console.log('Contacts dropdown opened');
-  });
-
-  // Debug: Modal events
-  $('#addRuleModal').on('shown.bs.modal', function() {
-    console.log('Add Rule Modal shown');
-    console.log('Select2 elements in modal:');
-    console.log('ipTags:', $('#addIpModal #ipTags').length);
-    console.log('ipSystems:', $('#addIpModal #ipSystems').length);
-    console.log('ipContacts:', $('#addIpModal #ipContacts').length);
-  });
-
-  // Reset form when modal is hidden
-  $('#addRuleModal').on('hidden.bs.modal', function() {
-    console.log('Add Rule Modal hidden, resetting form');
-    $('#addRuleForm')[0].reset();
-    $('#add-contact-select').val(null).trigger('change');
-    // Clear validation states
-    $('#rulename').removeClass('is-invalid is-valid');
-    // Clear any validation states
-  });
-
-
-  // Rule validation - Check immediately on blur
-  $('#rulename').on('blur', function() {
-    console.log('Rule name input blurred - starting validation...');
-    const ruleInput = $(this).val().trim();
-    const errorDiv = $('#rulenameError');
-    
-    console.log('Input value:', ruleInput);
-    
-    if (!ruleInput) {
-      console.log('No input - clearing validation');
-      $(this).removeClass('is-invalid is-valid');
-      errorDiv.text('');
-      // Clear any validation states
+  // Get rule data from button (specifically the show button)
+  const button = document.querySelector(`button[data-rule-id="${ruleId}"][title="Show"]`);
+  if (!button) {
+    console.error('Button not found for ruleId:', ruleId);
       return;
     }
     
-    // Split by comma and check each IP
-    const ipList = ipInput.split(',').map(ip => ip.trim()).filter(ip => ip.length > 0);
-    console.log('IP list to check:', ipList);
+  console.log('Button found:', button);
+  
+  const ruleData = button.getAttribute('data-rule');
+  if (!ruleData) {
+    console.error('No rule data found for ruleId:', ruleId);
+      return;
+    }
     
-    // Validate format for each IP
-    const invalidIPs = ipList.filter(ip => !isValidIP(ip));
-    if (invalidIPs.length > 0) {
-      console.log('Invalid IPs found:', invalidIPs);
-      $(this).removeClass('is-valid').addClass('is-invalid');
-      errorDiv.text(`Invalid IP format: ${invalidIPs.join(', ')}`);
-      // Clear any validation states
+  let rule;
+  try {
+    rule = JSON.parse(ruleData);
+  } catch (e) {
+    console.error('Error parsing rule data:', e);
         return;
       }
       
-    console.log('All IPs format valid - checking existence...');
-    // Check if any IP already exists
-    checkMultipleIPsExist(ipList, $(this), errorDiv);
-  });
-
-  // Form submission
-  $('#addIpForm').on('submit', function(e) {
-    const ipInput = $('#ipAddress').val().trim();
-    if (!ipInput) {
-      e.preventDefault();
-      $('#ipAddress').addClass('is-invalid');
-      $('#ipAddressError').text('Please enter at least one IP address');
-      return;
-    }
-    
-    // Split and validate all IPs
-    const ipList = ipInput.split(',').map(ip => ip.trim()).filter(ip => ip.length > 0);
-    const invalidIPs = ipList.filter(ip => !isValidIP(ip));
-    
-    if (invalidIPs.length > 0) {
-        e.preventDefault();
-        $('#ipAddress').addClass('is-invalid');
-      $('#ipAddressError').text(`Invalid IP format: ${invalidIPs.join(', ')}`);
-      return;
-    }
-    
-    // Check if any IP already exists before submitting
-    if ($('#ipAddress').hasClass('is-invalid')) {
-          e.preventDefault();
-      return; // Don't submit if IP is invalid or exists
-    }
-    
-    // If validation passes, allow normal form submission
-    // Backend will handle redirect and flash messages
-    const submitBtn = $(this).find('button[type="submit"]');
-    submitBtn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Adding...');
-  });
-
-  // Edit IP Modal - Initialize Select2
-  $('#editIpTags').select2({
-            theme: 'bootstrap-5',
-    multiple: true,
-            allowClear: true,
-            width: '100%',
-    dropdownParent: $('#editIpModal'),
-            ajax: {
-              url: '/organize/api/tag',
-              dataType: 'json',
-      processResults: function(data) {
-        return { results: data };
-      }
-    }
-  });
-
-  $('#editIpSystems').select2({
-            theme: 'bootstrap-5',
-    multiple: true,
-            allowClear: true,
-            width: '100%',
-    dropdownParent: $('#editIpModal'),
-            ajax: {
-      url: '/system/api/system',
-              dataType: 'json',
-      processResults: function(data) {
-        return { results: data };
-      }
-    }
-  });
-
-  $('#editIpContacts').select2({
-            theme: 'bootstrap-5',
-    multiple: true,
-            allowClear: true,
-            width: '100%',
-    dropdownParent: $('#editIpModal'),
-            ajax: {
-              url: '/organize/api/contact',
-              dataType: 'json',
-      processResults: function(data) {
-        return { results: data };
-      }
-    }
-  });
-
-  // Edit IP Modal - Load data when opened
-  $('#editIpModal').on('show.bs.modal', function(event) {
-    const button = $(event.relatedTarget);
-    const ipId = button.data('ip-id');
-    const ipAddress = button.data('ip-address');
-    const description = button.data('description') || '';
-    const status = button.data('status') || 'active';
-    const tags = button.data('tags') || [];
-    const systems = button.data('systems') || [];
-    const contacts = button.data('contacts') || [];
-
-    console.log('Edit IP Modal opened with data:', {
-      ipId, ipAddress, description, status, tags, systems, contacts
-    });
-
-    // Set form action URL
-    const actionUrl = `/network/ip-address/${ipId}`;
-    $('#editIpForm').attr('action', actionUrl);
-    console.log('Form action set to:', actionUrl);
-
-    // Populate form fields
-    $('#editIpAddress').val(ipAddress);
-    $('#editIpDescription').val(description);
-    $('#editIpStatus').val(status);
-
-    // Load existing values for Select2 fields after a short delay
-        setTimeout(() => {
-      loadEditExistingValues(tags, systems, contacts);
-    }, 100);
-  });
-
-  // Edit IP Modal - Reset form when hidden
-  $('#editIpModal').on('hidden.bs.modal', function() {
-    $('#editIpForm')[0].reset();
-    $('#editIpTags, #editIpSystems, #editIpContacts').val(null).trigger('change');
-  });
-
-  // Edit IP Form submission
-  $('#editIpForm').on('submit', function(e) {
-    console.log('Edit IP Form submitting...');
-    
-    // Get IP ID from form action or data attribute
-    const currentAction = $(this).attr('action');
-    const ipId = currentAction.split('/').pop();
-    
-    // Set the correct form action URL with method indicator
-    const correctAction = `/network/ip-address/${ipId}?_method=PUT`;
-    $(this).attr('action', correctAction);
-    
-    console.log('Form action set to:', correctAction);
-    console.log('Form method:', $(this).attr('method'));
-    console.log('Method override in URL: ?_method=PUT');
-    console.log('Note: Browser will show POST, but server will receive PUT due to method override');
-
-    // Allow normal form submission - backend handles redirect
-    const submitBtn = $(this).find('button[type="submit"]');
-    submitBtn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Updating...');
-  });
-
-  // Filter IP Modal - Initialize Select2
-  $('#filterIpTags').select2({
-            theme: 'bootstrap-5',
-            placeholder: 'Select tag(s)',
-            allowClear: true,
-            width: '100%',
-    dropdownParent: $('#filterIpModal'),
-            ajax: {
-              url: '/organize/api/tag',
-              dataType: 'json',
-              delay: 250,
-      data: function(params) {
-        return { search: params.term };
-      },
-      processResults: function(data) {
-        return { results: data };
-      },
-              cache: true
-            }
-          });
-
-  $('#filterIpSystems').select2({
-            theme: 'bootstrap-5',
-    placeholder: 'Select system(s)',
-            allowClear: true,
-            width: '100%',
-    dropdownParent: $('#filterIpModal'),
-            ajax: {
-      url: '/system/api/system',
-              dataType: 'json',
-              delay: 250,
-      data: function(params) {
-        return { search: params.term };
-      },
-      processResults: function(data) {
-        return { results: data };
-      },
-              cache: true
-            }
-          });
-
-  $('#filterIpContacts').select2({
-            theme: 'bootstrap-5',
-    placeholder: 'Select contact(s)',
-            allowClear: true,
-            width: '100%',
-    dropdownParent: $('#filterIpModal'),
-            ajax: {
-              url: '/organize/api/contact',
-              dataType: 'json',
-              delay: 250,
-      data: function(params) {
-        return { search: params.term };
-      },
-      processResults: function(data) {
-        return { results: data };
-      },
-              cache: true
-            }
-          });
-
-  // Filter IP Modal - Load existing filter values when opened
-  $('#filterIpModal').on('show.bs.modal', function() {
-    console.log('Filter IP Modal opened');
-    
-    // Load existing filter values
-    setTimeout(() => {
-      loadFilterExistingValues();
-    }, 100);
-  });
-
-  // Filter IP Modal - Reset form when hidden
-  $('#filterIpModal').on('hidden.bs.modal', function() {
-    console.log('Filter IP Modal hidden, resetting form');
-    $('#filterIpForm')[0].reset();
-    $('#filterIpTags, #filterIpSystems, #filterIpContacts').val(null).trigger('change');
-  });
-
-  // Clear All Filters button
-  $('#clearFilterBtnIp').on('click', function() {
-    // Clear all select2 values
-    $('#filterIpTags').val(null).trigger('change');
-    $('#filterIpSystems').val(null).trigger('change');
-    $('#filterIpContacts').val(null).trigger('change');
-    $('#filterIpStatus').val('');
-    
-    // Close modal
-    $('#filterIpModal').modal('hide');
-    
-    // Redirect to clean URL but preserve pageSize and search
-    const currentPageSize = $('select[name="pageSize"]').val() || '10';
-    const currentSearch = $('input[name="search"]').val() || '';
-    let cleanUrl = '/network/ip-address';
-    const params = [];
-    if (currentPageSize && currentPageSize !== '10') params.push('pageSize=' + encodeURIComponent(currentPageSize));
-    if (currentSearch) params.push('search=' + encodeURIComponent(currentSearch));
-    if (params.length > 0) cleanUrl += '?' + params.join('&');
-    window.location.href = cleanUrl;
-  });
-});
-
-function loadFilterExistingValues() {
-  console.log('Loading existing filter values...');
+  // Create modal HTML
+  const modalId = `ruleDetailModal-${ruleId}`;
+  const modalHtml = `
+    <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="${modalId}Label">Firewall Rule Detail</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <dl class="row mb-0">
+              <dt class="col-sm-4">Audit Batch</dt>
+              <dd class="col-sm-8">${rule.audit_batch || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Firewall Name</dt>
+              <dd class="col-sm-8">${rule.firewall_name || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Rule Name</dt>
+              <dd class="col-sm-8">${rule.rulename || '<span class="text-muted">No data</span>'}</dd>
+              
+              <!-- Source Section -->
+              <dt class="col-sm-4">Source Zone</dt>
+              <dd class="col-sm-8">${rule.src_zone || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Source</dt>
+              <dd class="col-sm-8">${rule.src || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Source Detail</dt>
+              <dd class="col-sm-8">${rule.src_detail || '<span class="text-muted">No data</span>'}</dd>
+              
+              <!-- Destination Section -->
+              <dt class="col-sm-4">Destination Zone</dt>
+              <dd class="col-sm-8">${rule.dst_zone || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Destination</dt>
+              <dd class="col-sm-8">${rule.dst || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Destination Detail</dt>
+              <dd class="col-sm-8">${rule.dst_detail || '<span class="text-muted">No data</span>'}</dd>
+              
+              <!-- Service Section -->
+              <dt class="col-sm-4">Services</dt>
+              <dd class="col-sm-8">${rule.services || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Application</dt>
+              <dd class="col-sm-8">${rule.application || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">URL</dt>
+              <dd class="col-sm-8">${rule.url || '<span class="text-muted">No data</span>'}</dd>
+              
+              <dt class="col-sm-4">Action</dt>
+              <dd class="col-sm-8">${rule.action || '<span class="text-muted">No data</span>'}</dd>
+              
+              <!-- Violation Section -->
+              <dt class="col-sm-4">Violation Type</dt>
+              <dd class="col-sm-8">${rule.violation_type || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Violation Detail</dt>
+              <dd class="col-sm-8">${rule.violation_detail || '<span class="text-muted">No data</span>'}</dd>
+              
+              <!-- OU Section -->
+              <dt class="col-sm-4">OU (Organizational Unit)</dt>
+              <dd class="col-sm-8">${rule.ou_name || '<span class="text-muted">No data</span>'}</dd>
+              
+              <!-- Contacts Section -->
+              <dt class="col-sm-4">Contacts</dt>
+              <dd class="col-sm-8">
+                ${rule.contacts && rule.contacts.length > 0 
+                  ? rule.contacts.map(contact => {
+                      const name = contact.name || '';
+                      const email = contact.email || '';
+                      if (email) {
+                        const shortEmail = email.split('@')[0];
+                        return `${name} (${shortEmail})`;
+                      }
+                      return name;
+                    }).join('<br>')
+                  : '<span class="text-muted">No contacts assigned</span>'
+                }
+              </dd>
+              
+              <!-- Solution Section -->
+              <dt class="col-sm-4">Solution Proposal</dt>
+              <dd class="col-sm-8">${rule.solution_proposal || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Solution Confirm</dt>
+              <dd class="col-sm-8">${rule.solution_confirm || '<span class="text-muted">No data</span>'}</dd>
+              
+              <!-- Work Order -->
+              <dt class="col-sm-4">Work Order</dt>
+              <dd class="col-sm-8">${rule.work_order || '<span class="text-muted">No data</span>'}</dd>
+              
+              <!-- Status -->
+              <dt class="col-sm-4">Status</dt>
+              <dd class="col-sm-8">
+                ${rule.status 
+                  ? `<span class="badge bg-${rule.status === 'active' ? 'success' : rule.status === 'inactive' ? 'secondary' : 'warning'}">${rule.status.charAt(0).toUpperCase() + rule.status.slice(1)}</span>`
+                  : '<span class="text-muted">No status</span>'
+                }
+              </dd>
+              
+              <!-- Description -->
+              <dt class="col-sm-4">Description</dt>
+              <dd class="col-sm-8">${rule.description || '<span class="text-muted">No data</span>'}</dd>
+              
+              <!-- Raw Data -->
+              <dt class="col-sm-4">Raw Data</dt>
+              <dd class="col-sm-8">
+                ${rule.raw_data 
+                  ? `<pre class="bg-light p-2 rounded" style="white-space: pre-wrap; font-size: 0.875rem;">${rule.raw_data}</pre>`
+                  : '<span class="text-muted">No raw data</span>'
+                }
+              </dd>
+            </dl>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
   
-  // Get filter data from hidden div
-  const filterDataEl = document.getElementById('filter-rule-data');
-  if (!filterDataEl) {
-    console.log('Filter data element not found');
-    return;
+  // Remove existing modal if any
+  const existingModal = document.getElementById(modalId);
+  if (existingModal) {
+    existingModal.remove();
   }
   
-  try {
-    const filterTags = JSON.parse(filterDataEl.dataset.tags || '[]');
-    const filterSystems = JSON.parse(filterDataEl.dataset.systems || '[]');
-    const filterContacts = JSON.parse(filterDataEl.dataset.contacts || '[]');
-    
-    console.log('Filter data:', { filterTags, filterSystems, filterContacts });
-    
-    // Clear existing options first to avoid duplicates
-    $('#filterIpTags').find('option').remove();
-    $('#filterIpSystems').find('option').remove();
-    $('#filterIpContacts').find('option').remove();
-    
-    // Load tags
-    if (filterTags && filterTags.length > 0) {
-      filterTags.forEach(tag => {
-        const option = new Option(tag.name, tag.id, true, true);
-        $('#filterIpTags').append(option);
-      });
-      $('#filterIpTags').trigger('change');
-    }
-    
-    // Load systems
-    if (filterSystems && filterSystems.length > 0) {
-      filterSystems.forEach(system => {
-        const option = new Option(system.name, system.id, true, true);
-        $('#filterIpSystems').append(option);
-      });
-      $('#filterIpSystems').trigger('change');
-    }
-    
-    // Load contacts
-    if (filterContacts && filterContacts.length > 0) {
-      filterContacts.forEach(contact => {
-        const option = new Option(contact.name, contact.id, true, true);
-        $('#filterIpContacts').append(option);
-      });
-      $('#filterIpContacts').trigger('change');
-    }
-    
-  } catch (e) {
-    console.error('Error loading filter values:', e);
-  }
-}
-
-function loadEditExistingValues(tags, systems, contacts) {
-  console.log('Loading existing values:', { tags, systems, contacts });
-
-  // Load existing tags
-  if (tags && tags.length > 0) {
-    try {
-      const tagArray = typeof tags === 'string' ? JSON.parse(tags) : tags;
-      console.log('Parsed tags:', tagArray);
-      
-      // For Select2, we need to create option elements first
-      const tagOptions = tagArray.map(tag => {
-        const id = typeof tag === 'object' ? tag.id : tag;
-        const text = typeof tag === 'object' ? (tag.name || tag.text) : tag;
-        return new Option(text, id, true, true);
-      });
-      
-      $('#editIpTags').append(tagOptions).trigger('change');
-      console.log('Tags loaded successfully');
-    } catch (e) {
-      console.log('Error parsing tags:', e);
-    }
-  }
-
-  // Load existing systems
-  if (systems && systems.length > 0) {
-    try {
-      const systemArray = typeof systems === 'string' ? JSON.parse(systems) : systems;
-      console.log('Parsed systems:', systemArray);
-      
-      const systemOptions = systemArray.map(system => {
-        const id = typeof system === 'object' ? system.id : system;
-        const text = typeof system === 'object' ? (system.name || system.text) : system;
-        return new Option(text, id, true, true);
-      });
-      
-      $('#editIpSystems').append(systemOptions).trigger('change');
-      console.log('Systems loaded successfully');
-    } catch (e) {
-      console.log('Error parsing systems:', e);
-    }
-  }
-
-  // Load existing contacts
-  if (contacts && contacts.length > 0) {
-    try {
-      const contactArray = typeof contacts === 'string' ? JSON.parse(contacts) : contacts;
-      console.log('Parsed contacts:', contactArray);
-      
-      const contactOptions = contactArray.map(contact => {
-        const id = typeof contact === 'object' ? contact.id : contact;
-        const text = typeof contact === 'object' ? (contact.name || contact.email || contact.text) : contact;
-        return new Option(text, id, true, true);
-      });
-      
-      $('#editIpContacts').append(contactOptions).trigger('change');
-      console.log('Contacts loaded successfully');
-    } catch (e) {
-      console.log('Error parsing contacts:', e);
-    }
-  }
-}
-
-function isValidIP(ip) {
-  const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-  return ipRegex.test(ip);
-}
-
-function checkMultipleIPsExist(ipList, inputElement, errorDiv) {
-  console.log('=== Starting IP existence check ===');
-  console.log('IPs to check:', ipList);
+  // Add modal to body
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
   
-  // Check each IP one by one
-  let checkedCount = 0;
-  let existingIPs = [];
-  
-  ipList.forEach((ip, index) => {
-    console.log(`Checking IP ${index + 1}/${ipList.length}: ${ip}`);
-    
-    $.ajax({
-      url: '/network/api/ip-addresses',
-      type: 'GET',
-      data: { search: ip },
-      success: function(data) {
-        console.log(`✓ IP ${ip} check response:`, data);
-        
-        // Debug: Show structure of first item if exists
-        if (data.length > 0) {
-          console.log(`First item structure:`, data[0]);
-          console.log(`Available fields:`, Object.keys(data[0]));
-        }
-        
-        // Check if this specific IP already exists
-        // Backend returns: { id: ..., text: ip_address }
-        const existingIP = data.find(item => item.text === ip);
-        console.log(`Checking if IP ${ip} exists in response:`, existingIP);
-        console.log(`Available items in response:`, data.map(item => ({ id: item.id, text: item.text })));
-        
-        if (existingIP) {
-          console.log(`✗ IP ${ip} already exists!`);
-          existingIPs.push(ip);
-        } else {
-          console.log(`✓ IP ${ip} is available`);
-        }
-        
-        checkedCount++;
-        console.log(`Progress: ${checkedCount}/${ipList.length} IPs checked`);
-        
-        // When all IPs are checked
-        if (checkedCount === ipList.length) {
-          console.log('=== All IPs checked ===');
-          console.log('Existing IPs:', existingIPs);
-          
-          if (existingIPs.length > 0) {
-            console.log('❌ Some IPs already exist - showing error');
-            inputElement.removeClass('is-valid').addClass('is-invalid');
-            errorDiv.text(''); // Clear format error
-            $('#ipValidationIcon').hide();
-            $('#ipAddressSuccess').hide();
-            $('#ipAddressExists').show();
-            $('#ipExistsMessage').text(`IP addresses already exist: ${existingIPs.join(', ')}`);
-    } else {
-            console.log('✅ All IPs are available - showing success');
-            inputElement.removeClass('is-invalid').addClass('is-valid');
-            errorDiv.text(''); // Clear error message
-            $('#ipValidationIcon').show();
-            $('#ipAddressSuccess').show();
-            $('#ipAddressExists').hide();
-          }
-        }
-      },
-      error: function(xhr, status, error) {
-        console.error(`❌ Error checking IP ${ip}:`, error);
-        checkedCount++;
-        
-        // When all IPs are checked (including errors)
-        if (checkedCount === ipList.length) {
-          console.log('=== All IPs checked (with errors) ===');
-          if (existingIPs.length > 0) {
-            inputElement.removeClass('is-valid').addClass('is-invalid');
-            errorDiv.text(''); // Clear format error
-            $('#ipValidationIcon').hide();
-            $('#ipAddressSuccess').hide();
-            $('#ipAddressExists').show();
-            $('#ipExistsMessage').text(`IP addresses already exist: ${existingIPs.join(', ')}`);
-    } else {
-            // Don't show error for API failure, just remove validation
-            inputElement.removeClass('is-invalid is-valid');
-            errorDiv.text(''); // Clear any error message
-            $('#ipValidationIcon').hide();
-            $('#ipAddressSuccess').hide();
-            $('#ipAddressExists').hide();
-          }
-        }
-      }
-            });
-          });
-}
-
-        
-function confirmDeleteIp(form, ip) {
-  if (confirm('Are you sure you want to delete the IP address: ' + ip + '?')) {
-    form._deleting = true;
-    return true;
-  }
-  return false;
-}
-
-// Function removed - no longer finding subnet information for IP detail
-
-// Function to check if an IP is in a subnet (CIDR notation)
-function isIPInSubnet(ipAddress, subnetCIDR) {
-  try {
-    const [subnetIP, prefixLength] = subnetCIDR.split('/');
-    const prefix = parseInt(prefixLength);
-    
-    console.log('Checking IP:', ipAddress, 'in subnet:', subnetCIDR);
-    console.log('Subnet IP:', subnetIP, 'Prefix:', prefix);
-    
-    // Convert IPs to numbers
-    const ipParts = ipAddress.split('.');
-    const subnetParts = subnetIP.split('.');
-    
-    if (ipParts.length !== 4 || subnetParts.length !== 4) {
-      console.log('Invalid IP format');
-      return false;
-    }
-    
-    const ip = (parseInt(ipParts[0]) << 24) + (parseInt(ipParts[1]) << 16) + (parseInt(ipParts[2]) << 8) + parseInt(ipParts[3]);
-    const subnet = (parseInt(subnetParts[0]) << 24) + (parseInt(subnetParts[1]) << 16) + (parseInt(subnetParts[2]) << 8) + parseInt(subnetParts[3]);
-    
-    const mask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
-    
-    const result = (ip & mask) === (subnet & mask);
-    console.log('IP number:', ip, 'Subnet number:', subnet, 'Mask:', mask, 'Result:', result);
-    
-    return result;
-  } catch (error) {
-    console.error('Error in isIPInSubnet:', error);
-    return false;
-  }
-}
-
-// Function to load subnet information for an IP address
-function loadSubnetInfoForIP(ipAddress, contentElement) {
-  console.log('Loading subnet info for IP:', ipAddress);
-  
-  // Make AJAX call to find subnet containing this IP
-  $.ajax({
-    url: '/network/api/subnet-for-ip/' + encodeURIComponent(ipAddress),
-    method: 'GET',
-    dataType: 'json'
-  }).done(function(response) {
-    console.log('Subnet response received:', response);
-    
-    if (response.found && response.subnet) {
-      console.log('Found matching subnet:', response.subnet);
-      updateSubnetInfoInModal(contentElement, response.subnet);
-    } else {
-      console.log('No matching subnet found');
-      updateSubnetInfoInModal(contentElement, null);
-    }
-  }).fail(function(xhr, status, error) {
-    console.error('Error loading subnet information:', status, error);
-    console.error('Response:', xhr.responseText);
-    
-    // Fallback: try with sample data for testing
-    console.log('Trying with sample subnet data...');
-    const sampleSubnets = [
-      { address: '10.1.0.0/16', zone: 'BACKBONE', environment: 'DEV' },
-      { address: '192.168.1.0/24', zone: 'OFFICE', environment: 'PROD' },
-      { address: '172.16.0.0/12', zone: 'DMZ', environment: 'UAT' }
-    ];
-    
-    let matchingSubnet = null;
-    for (let subnet of sampleSubnets) {
-      if (isIPInSubnet(ipAddress, subnet.address)) {
-        console.log('Found matching sample subnet:', subnet);
-        matchingSubnet = subnet;
-        break;
-      }
-    }
-    
-    updateSubnetInfoInModal(contentElement, matchingSubnet);
-  });
-}
-
-// Function to update subnet information in the modal (as plain text, no badges)
-function updateSubnetInfoInModal(contentElement, subnetInfo) {
-  const currentHTML = contentElement.innerHTML;
-  
-  if (subnetInfo) {
-    // Zone as plain text
-    let zoneHTML = '<div class="mb-2"><strong>Zone:</strong> ';
-    if (subnetInfo.zone && subnetInfo.zone.trim()) {
-      zoneHTML += String(subnetInfo.zone).trim();
-    } else {
-      zoneHTML += '<span class="text-muted">N/A</span>';
-    }
-    zoneHTML += '</div>';
-    
-    // Environment as plain text
-    let environmentHTML = '<div class="mb-2"><strong>Environment:</strong> ';
-    if (subnetInfo.environment && subnetInfo.environment.trim()) {
-      environmentHTML += String(subnetInfo.environment).trim();
-    } else {
-      environmentHTML += '<span class="text-muted">N/A</span>';
-    }
-    environmentHTML += '</div>';
-    
-    // Subnet as plain text
-    let subnetHTML = '<div class="mb-2"><strong>Subnet:</strong> ' + String(subnetInfo.address).trim() + '</div>';
-    
-    // Replace loading states with actual data
-    let updatedHTML = currentHTML.replace(
-      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">Loading...</span></div>',
-      zoneHTML
-    );
-    updatedHTML = updatedHTML.replace(
-      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">Loading...</span></div>',
-      environmentHTML
-    );
-    updatedHTML = updatedHTML.replace(
-      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">Loading...</span></div>',
-      subnetHTML
-    );
-    
-    contentElement.innerHTML = updatedHTML;
-  } else {
-    // No matching subnet found
-    let updatedHTML = currentHTML.replace(
-      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">Loading...</span></div>',
-      '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">N/A</span></div>'
-    );
-    updatedHTML = updatedHTML.replace(
-      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">Loading...</span></div>',
-      '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">N/A</span></div>'
-    );
-    updatedHTML = updatedHTML.replace(
-      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">Loading...</span></div>',
-      '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">N/A</span></div>'
-    );
-    
-    contentElement.innerHTML = updatedHTML;
-  }
-}
-
-function showIpDetail(ipId) {
-  const buttons = document.querySelectorAll('button[data-ip]');
-  let targetButton = null;
-  
-  for (let button of buttons) {
-    const data = button.getAttribute('data-ip');
-    if (data) {
-      try {
-        const ip = JSON.parse(data);
-        if (ip.id == ipId) {
-          targetButton = button;
-                break;
-              }
-      } catch (e) {
-        console.error('Error parsing IP data:', e);
-      }
-    }
-  }
-  
-  if (!targetButton) {
-    alert('IP data not found');
-    return;
-  }
-  
-  const ipData = targetButton.getAttribute('data-ip');
-  let ip;
-  try {
-    ip = JSON.parse(ipData);
-  } catch (e) {
-    alert('Error parsing IP data: ' + e.message);
-    return;
-  }
-  
-  const modalElement = document.getElementById('ipDetailModal');
-  const modal = new bootstrap.Modal(modalElement);
-  const content = document.getElementById('ipDetailContent');
-  
-  let html = '<div class="card"><div class="card-body">';
-  html += '<div class="mb-2"><strong>IP Address:</strong> ' + String(ip.ip_address || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>Description:</strong> ' + String(ip.description || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>Status:</strong> ' + String(ip.status || 'N/A').trim() + '</div>';
-  
-  // Find subnet containing this IP and show Zone/Environment as plain text
-  const ipAddress = ip.ip_address;
-  if (ipAddress) {
-    // Add loading state for subnet info
-    html += '<div class="mb-2"><strong>Zone:</strong> <span class="text-muted">Loading...</span></div>';
-    html += '<div class="mb-2"><strong>Environment:</strong> <span class="text-muted">Loading...</span></div>';
-    html += '<div class="mb-2"><strong>Subnet:</strong> <span class="text-muted">Loading...</span></div>';
-  }
-  
-  if (ip.tags && ip.tags.length > 0) {
-    html += '<div class="mb-2"><strong>Tags:</strong><br>';
-    ip.tags.forEach(function(tag) {
-      const tagValue = (typeof tag === 'string' ? tag : tag.name);
-      html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
-    });
-    html += '</div>';
-  }
-  
-  if (ip.systems && ip.systems.length > 0) {
-    html += '<div class="mb-2"><strong>Systems:</strong><ul class="mb-0">';
-    ip.systems.forEach(function(system) {
-      const systemValue = (typeof system === 'string' ? system : system.name);
-      const searchUrl = '/system/system?search=' + encodeURIComponent(systemValue) + '&pageSize=2';
-      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + 
-              String(systemValue).trim() + '</a></li>';
-    });
-    html += '</ul></div>';
-  }
-  
-  if (ip.contacts && ip.contacts.length > 0) {
-    html += '<div class="mb-2"><strong>Contacts:</strong><ul class="mb-0">';
-    ip.contacts.forEach(function(contact) {
-      let contactName = '';
-      let contactEmail = '';
-      
-      if (typeof contact === 'string') {
-        contactName = contact;
-        contactEmail = '';
-      } else {
-        contactName = contact.name || '';
-        contactEmail = contact.email || '';
-      }
-      
-      // Create short email (remove @domain part)
-      let shortEmail = '';
-      if (contactEmail && contactEmail.includes('@')) {
-        shortEmail = contactEmail.split('@')[0];
-      }
-      
-      // Format: name (shortEmail) or just name if no email
-      let displayText = contactName;
-      if (shortEmail) {
-        displayText += ' (' + shortEmail + ')';
-      }
-      
-      // Create searchable link as simple text
-      const searchUrl = '/organize/contact?search=' + encodeURIComponent(contactName);
-      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + 
-              String(displayText).trim() + '</a></li>';
-    });
-    html += '</ul></div>';
-  }
-  
-  html += '</div></div>';
-  content.innerHTML = html;
+  // Show modal
+  const modal = new bootstrap.Modal(document.getElementById(modalId));
   modal.show();
   
-  // Load subnet information if IP address is available
-  if (ipAddress) {
-    loadSubnetInfoForIP(ipAddress, content);
-  }
+  // Remove modal from DOM when hidden
+  document.getElementById(modalId).addEventListener('hidden.bs.modal', function() {
+    this.remove();
+  });
 }
 
-// Import IP functionality
+function confirmDeleteRule(form, ruleName) {
+  return confirm(`Are you sure you want to delete rule "${ruleName}"?`);
+}
+
+function validateAddRuleForm() {
+  // Add validation logic here
+  return true;
+}
+
+function validateEditRuleForm() {
+  // Add validation logic here
+  return true;
+}
+</script>
+
+<% if (success) { %>
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      showToast('<%= success %>', 'success');
+    });
+  </script>
+<% } %>
+<% if (error) { %>
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      showToast('<%= error %>', 'danger');
+    });
+  </script>
+<% } %>
+
+<script>
+$(function() {
+  // Load OU options for Add Rule Modal
+  function loadOUOptions() {
+    $.ajax({
+      url: '/organize/api/unit',
+      dataType: 'json',
+      success: function(data) {
+        const $ouSelect = $('#ou_id');
+        $ouSelect.empty().append('<option value="">-- Select OU --</option>');
+        if (data && data.length > 0) {
+          data.forEach(function(ou) {
+            $ouSelect.append(`<option value="${ou.id}">${ou.text}</option>`);
+          });
+        }
+      },
+      error: function() {
+        console.error('Failed to load OU options');
+      }
+    });
+  }
+
+  // Load Contact options for Add Rule Modal
+  function loadContactOptions() {
+    $.ajax({
+      url: '/organize/api/contact',
+      dataType: 'json',
+      success: function(data) {
+        const $contactSelect = $('#add-contact-select');
+        $contactSelect.empty();
+        if (data && data.length > 0) {
+          data.forEach(function(contact) {
+            const option = new Option(contact.text, contact.id, false, false);
+            $contactSelect.append(option);
+          });
+        }
+        $contactSelect.trigger('change');
+      },
+      error: function() {
+        console.error('Failed to load contact options');
+      }
+    });
+  }
+
+  // Load OU options for Edit Rule Modal
+  function loadEditOUOptions() {
+    $.ajax({
+      url: '/organize/api/unit',
+      dataType: 'json',
+      success: function(data) {
+        const $ouSelect = $('#edit_ou_id');
+        $ouSelect.empty().append('<option value="">-- Select OU --</option>');
+        if (data && data.length > 0) {
+          data.forEach(function(ou) {
+            $ouSelect.append(`<option value="${ou.id}">${ou.text}</option>`);
+          });
+        }
+      },
+      error: function() {
+        console.error('Failed to load OU options for edit');
+      }
+    });
+  }
+
+  // Load Contact options for Edit Rule Modal
+  function loadEditContactOptions() {
+    $.ajax({
+      url: '/organize/api/contact',
+      dataType: 'json',
+      success: function(data) {
+        const $contactSelect = $('#edit-contact-select');
+        $contactSelect.empty();
+        if (data && data.length > 0) {
+          data.forEach(function(contact) {
+            const option = new Option(contact.text, contact.id, false, false);
+            $contactSelect.append(option);
+          });
+        }
+        $contactSelect.trigger('change');
+      },
+      error: function() {
+        console.error('Failed to load contact options for edit');
+      }
+    });
+  }
+
+  // Initialize Select2 for all selects in Add Rule Modal
+  $('#firewall_name').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- Select Firewall Name --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#addRuleModal .modal-body')
+  });
+
+  $('#action').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- Select Action --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#addRuleModal .modal-body')
+  });
+
+  $('#violation_type').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- No violation --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#addRuleModal .modal-body')
+  });
+
+  $('#ou_id').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- Select OU --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#addRuleModal .modal-body')
+  });
+
+  $('#add-contact-select').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- Select contacts --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#addRuleModal .modal-body')
+  });
+
+  $('#status').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- No status --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#addRuleModal .modal-body')
+  });
+
+  // Initialize Select2 for all selects in Edit Rule Modal
+  $('#edit_firewall_name').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- Select Firewall Name --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#editRuleModal .modal-body')
+  });
+
+  $('#edit_action').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- Select Action --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#editRuleModal .modal-body')
+  });
+
+  $('#edit_violation_type').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- No violation --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#editRuleModal .modal-body')
+  });
+
+  $('#edit_ou_id').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- Select OU --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#editRuleModal .modal-body')
+  });
+
+  $('#edit-contact-select').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- Select contacts --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#editRuleModal .modal-body')
+  });
+
+  $('#edit_status').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- No status --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#editRuleModal .modal-body')
+  });
+
+  // Initialize Select2 for Filter Modal
+  $('#filterRuleFirewallName').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- All --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#filterRuleModal .modal-body')
+  });
+
+  $('#filterRuleStatus').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- All --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#filterRuleModal .modal-body')
+  });
+
+  $('#filterRuleProtocol').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- All --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#filterRuleModal .modal-body')
+  });
+
+  $('#filterRuleAction').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- All --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#filterRuleModal .modal-body')
+  });
+
+  // Load data when Add Rule Modal is opened
+  $('#addRuleModal').on('show.bs.modal', function() {
+    loadOUOptions();
+    loadContactOptions();
+  });
+
+  // Load data when Edit Rule Modal is opened
+  $('#editRuleModal').on('show.bs.modal', function() {
+    loadEditOUOptions();
+    loadEditContactOptions();
+  });
+
+  // Edit Rule Modal - Load data when opened
+  $(document).on('click', '[data-bs-target="#editRuleModal"]', function() {
+    const ruleId = $(this).data('rule-id');
+    const ruleName = $(this).data('rule-name');
+    const source = $(this).data('source');
+    const destination = $(this).data('destination');
+    const services = $(this).data('services');
+    const protocol = $(this).data('protocol');
+    const action = $(this).data('action');
+    const status = $(this).data('status');
+    const rawData = $(this).data('raw-data');
+    
+    // Populate form fields
+    $('#editRuleId').val(ruleId);
+    $('#edit_rulename').val(ruleName);
+    $('#edit_src').val(source);
+    $('#edit_dst').val(destination);
+    $('#edit_services').val(services);
+    $('#edit_action').val(action);
+    $('#edit_status').val(status);
+    $('#edit_raw_data').val(rawData);
+    
+    // Set form action
+    $('#editRuleForm').attr('action', '/firewall/rule/' + ruleId + '?_method=PUT');
+    
+    // Load OU and Contact options for edit modal
+    loadEditOUOptions();
+    loadEditContactOptions();
+  });
+
+  // Clear filter button
+  $('#clearRuleFilterBtn').on('click', function() {
+    window.location.href = '/firewall/rule';
+  });
+
+  // Import functionality
 let selectedFile = null;
 
 // Handle file selection
-$(document).on('change', '#ipImportFile', function() {
+  $(document).on('change', '#ruleFile', function() {
   selectedFile = this.files[0];
   if (selectedFile) {
     console.log('File selected:', selectedFile.name);
-    $('#validateIpBtn').prop('disabled', false);
+      $('#validateBtn').prop('disabled', false);
         } else {
-    $('#validateIpBtn').prop('disabled', true);
-    $('#importIpBtn').hide();
+      $('#validateBtn').prop('disabled', true);
+      $('#importBtn').hide();
   }
 });
 
 // Handle validate button click
-$(document).on('click', '#validateIpBtn', function() {
+  $(document).on('click', '#validateBtn', function() {
   if (!selectedFile) {
     alert('Please select a file first');
     return;
@@ -1791,103 +1260,39 @@ $(document).on('click', '#validateIpBtn', function() {
   formData.append('file', selectedFile);
   
   // Show progress
-  $('#ipImportProgress').show();
-  $('#ipImportResults').text('Validating file...');
+    $('#importProgress').show();
+    $('#importStatus').text('Validating file...');
   $('.progress-bar').css('width', '30%');
   
   $.ajax({
-    url: '/network/ip-address/validate-import',
+      url: '/firewall/rule/validate-import',
     type: 'POST',
     data: formData,
     processData: false,
     contentType: false,
-    xhr: function() {
-      const xhr = new window.XMLHttpRequest();
-      xhr.responseType = 'blob'; // Important for file download
-      return xhr;
-    },
-    success: function(data, status, xhr) {
+      success: function(data) {
       $('.progress-bar').css('width', '100%');
-      $('#ipImportResults').text('Validation complete! Downloading results...');
-      
-      // Handle file download
-      const contentType = xhr.getResponseHeader('Content-Type');
-      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
-      
-      if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
-        // Create blob and download file
-        const blob = new Blob([data], { type: contentType });
-        const url = window.URL.createObjectURL(blob);
-        
-        // Extract filename from Content-Disposition header
-        let filename = 'validation_results.xlsx';
-        if (contentDisposition) {
-          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-          if (filenameMatch) {
-            filename = filenameMatch[1];
-          }
-        }
-        
-        // Create download link
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
-        // Clean up
-        window.URL.revokeObjectURL(url);
-      }
-      
-      // Check validation results from header
-      const validationSummary = xhr.getResponseHeader('X-Validation-Summary');
-      if (validationSummary) {
-        try {
-          const summary = JSON.parse(validationSummary);
-          const resultsDiv = $('#ipImportResults');
-          resultsDiv.removeClass('alert-danger').addClass('alert-success')
-            .html(`<strong>Validation Complete!</strong><br>
-                   <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
-                   <small>Validation file downloaded. Review results before importing.</small>`);
-          resultsDiv.show();
-          
-          // Show import button if validation passed
-          if (summary.allPassed) {
-            $('#importIpBtn').show();
-          }
-        } catch (e) {
-          // Fallback if header parsing fails
-          const resultsDiv = $('#ipImportResults');
-          resultsDiv.removeClass('alert-danger').addClass('alert-success')
-            .html(`<strong>Validation Complete!</strong><br>
-                   <small>Validation file downloaded. Review results before importing.</small>`);
-          resultsDiv.show();
-          $('#importIpBtn').show();
-        }
-      }
+        $('#importStatus').text('Validation complete!');
+        $('#importResults').show();
+        $('#importMessage').html('<strong>Validation Complete!</strong><br>File is ready for import.');
+        $('#importBtn').show();
     },
     error: function(xhr, status, error) {
-      console.error('Validation error:', xhr.responseText);
-      console.error('Status:', xhr.status);
-      console.error('Error:', error);
-      
       $('.progress-bar').css('width', '100%').text('Validation Failed');
-      $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
-        .html('<strong>Validation Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
-        .show();
+        $('#importResults').show();
+        $('#importMessage').html('<strong>Validation Error!</strong><br>' + (xhr.responseJSON?.error || 'Unknown error occurred'));
       },
       complete: function() {
-      $('#validateIpBtn').prop('disabled', false);
+        $('#validateBtn').prop('disabled', false);
       setTimeout(() => {
-        $('#ipImportProgress').hide();
+          $('#importProgress').hide();
       }, 2000);
     }
   });
 });
 
 // Handle import button click
-$(document).on('click', '#importIpBtn', function() {
+  $(document).on('click', '#importBtn', function() {
   if (!selectedFile) {
     alert('Please select a file first');
     return;
@@ -1897,64 +1302,24 @@ $(document).on('click', '#importIpBtn', function() {
   formData.append('file', selectedFile);
   
   // Show progress
-  $('#ipImportProgress').show();
-  $('#ipImportResults').text('Importing IP addresses...');
+    $('#importProgress').show();
+    $('#importStatus').text('Importing rules...');
   $('.progress-bar').css('width', '30%').text('Importing...');
-  $('#importIpBtn').prop('disabled', true);
+    $('#importBtn').prop('disabled', true);
   
   $.ajax({
-    url: '/network/ip-address/import',
+      url: '/firewall/rule/import',
     type: 'POST',
     data: formData,
     processData: false,
     contentType: false,
-    xhr: function() {
-      const xhr = new window.XMLHttpRequest();
-      xhr.responseType = 'blob'; // Important for file download
-      return xhr;
-    },
-    success: function(data, status, xhr) {
-      $('#ipImportProgress .progress-bar').css('width', '100%').text('Import Complete');
-      
-      // Handle file download
-      const contentType = xhr.getResponseHeader('Content-Type');
-      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
-      
-      if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
-        // Create blob and download file
-        const blob = new Blob([data], { type: contentType });
-        const url = window.URL.createObjectURL(blob);
-        
-        // Extract filename from Content-Disposition header
-        let filename = 'import_results.xlsx';
-        if (contentDisposition) {
-          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-          if (filenameMatch) {
-            filename = filenameMatch[1];
-          }
-        }
-        
-        // Create download link
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
-        // Clean up
-        window.URL.revokeObjectURL(url);
-      }
-      
-      // Show results
-      const resultsDiv = $('#ipImportResults');
-      resultsDiv.removeClass('alert-danger').addClass('alert-success')
-        .html(`<strong>Import Completed!</strong><br>
-               <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
-      resultsDiv.show();
+      success: function(data) {
+        $('#importProgress .progress-bar').css('width', '100%').text('Import Complete');
+        $('#importResults').show();
+        $('#importMessage').html('<strong>Import Completed!</strong><br>Rules imported successfully. Page will refresh.');
       
       // Hide import button
-      $('#importIpBtn').hide();
+        $('#importBtn').hide();
       
       // Refresh page after 2 seconds
       setTimeout(() => {
@@ -1962,37 +1327,236 @@ $(document).on('click', '#importIpBtn', function() {
       }, 2000);
     },
     error: function(xhr, status, error) {
-      console.error('Import error:', xhr.responseText);
-      console.error('Status:', xhr.status);
-      console.error('Error:', error);
-      
-      $('#ipImportProgress .progress-bar').css('width', '100%').text('Import Failed');
-      $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
-        .html('<strong>Import Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
-        .show();
+        $('#importProgress .progress-bar').css('width', '100%').text('Import Failed');
+        $('#importResults').show();
+        $('#importMessage').html('<strong>Import Error!</strong><br>' + (xhr.responseJSON?.error || 'Unknown error occurred'));
     },
     complete: function() {
-      $('#importIpBtn').prop('disabled', false);
+        $('#importBtn').prop('disabled', false);
       setTimeout(() => {
-        $('#ipImportProgress').hide();
+          $('#importProgress').hide();
       }, 2000);
     }
   });
 });
 
 // Reset import modal when closed
-$('#importIpModal').on('hidden.bs.modal', function() {
+  $('#importRuleModal').on('hidden.bs.modal', function() {
   // Reset form
-  $('#importIpForm')[0].reset();
+    $('#importRuleForm')[0].reset();
   selectedFile = null;
   
   // Reset UI elements
-  $('#validateIpBtn').prop('disabled', true);
-  $('#importIpBtn').hide();
-  $('#ipImportProgress').hide();
-  $('#ipImportResults').hide();
+    $('#validateBtn').prop('disabled', true);
+    $('#importBtn').hide();
+    $('#importProgress').hide();
+    $('#importResults').hide();
   
   // Reset progress bar
   $('.progress-bar').css('width', '0%').text('');
+  });
 });
 </script>
+
+<!-- Responsive Tables CSS -->
+<style>
+/* Select2 dropdown positioning fixes */
+.select2-container {
+  z-index: 9999 !important;
+}
+
+.select2-dropdown {
+  z-index: 9999 !important;
+}
+
+/* Modal Select2 fixes */
+.modal .select2-container {
+  z-index: 1055 !important;
+}
+
+.modal .select2-dropdown {
+  z-index: 1055 !important;
+}
+
+/* Ensure Select2 dropdown appears above modal */
+#addRuleModal .select2-dropdown,
+#editRuleModal .select2-dropdown {
+  z-index: 1060 !important;
+}
+/* Mobile responsive styles for Firewall Rules List */
+@media (max-width: 768px) {
+  .table-responsive {
+    display: block !important;
+    overflow-x: scroll !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .table {
+    display: table !important;
+    min-width: 800px !important;
+    width: 100% !important;
+  }
+  
+  .card-body,
+  .card,
+  .col-12,
+  .container-fluid,
+  .row {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  .col-12 {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    padding: 0 15px !important;
+  }
+  
+  /* Button responsive */
+  .btn-sm {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+  }
+  
+  /* Search form responsive */
+  .input-group {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  
+  .input-group .form-control {
+    font-size: 0.875rem !important;
+  }
+  
+  .input-group .form-select {
+    font-size: 0.75rem !important;
+    width: 80px !important;
+  }
+}
+
+/* Force override for Add Rule modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #addRuleModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #addRuleModal .modal-footer .btn,
+  #addRuleModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #addRuleModal .modal-footer .btn:first-child,
+  #addRuleModal .modal-footer button:first-child {
+    order: 2 !important;
+  }
+  
+  #addRuleModal .modal-footer .btn:last-child,
+  #addRuleModal .modal-footer button:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #addRuleModal .modal-footer .btn.btn-secondary,
+  #addRuleModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+
+/* Force override for Edit Rule modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #editRuleModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #editRuleModal .modal-footer .btn,
+  #editRuleModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #editRuleModal .modal-footer .btn:first-child,
+  #editRuleModal .modal-footer button:first-child {
+    order: 2 !important;
+  }
+  
+  #editRuleModal .modal-footer .btn:last-child,
+  #editRuleModal .modal-footer button:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #editRuleModal .modal-footer .btn.btn-secondary,
+  #editRuleModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+
+/* Force override for Filter Rule modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #filterRuleModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #filterRuleModal .modal-footer .btn,
+  #filterRuleModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #filterRuleModal .modal-footer .btn:first-child {
+    order: 2 !important;
+  }
+  
+  #filterRuleModal .modal-footer .btn:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #filterRuleModal .modal-footer .btn.btn-outline-danger,
+  #filterRuleModal .modal-footer .btn.btn-secondary,
+  #filterRuleModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+</style>

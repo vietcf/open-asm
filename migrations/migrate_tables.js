@@ -107,6 +107,16 @@ async function addIsActiveToUsers() {
   }
 }
 
+// Thêm cột raw_data vào bảng rulefirewall
+async function addRawDataToRulefirewall() {
+  try {
+    await pool.query(`ALTER TABLE rulefirewall ADD COLUMN IF NOT EXISTS raw_data TEXT DEFAULT NULL;`);
+    console.log('Added raw_data column to rulefirewall table!');
+  } catch (err) {
+    console.error('Add raw_data column to rulefirewall failed:', err);
+  }
+}
+
 (async () => {
   try {
     await addFqdnToSystems();
@@ -116,6 +126,7 @@ async function addIsActiveToUsers() {
     await addDeviceRoleToDevices();
     await addZoneEnvironmentToSubnets();
     await addIsActiveToUsers();
+    await addRawDataToRulefirewall();
   } catch (err) {
     console.error('Error running alter statements:', err);
   } finally {

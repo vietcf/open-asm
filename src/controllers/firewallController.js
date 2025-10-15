@@ -256,6 +256,7 @@ firewallController.addRule = async (req, res) => {
     const normFirewallName = firewall_name ? firewall_name.trim() : '';
     const normWorkOrder = work_order ? work_order.trim() : '';
     const normAuditBatch = audit_batch ? audit_batch.trim() : '';
+    const normRawData = raw_data ? raw_data.trim() : '';
 
     // Validate required fields
     if (!normRulename || !normSrc || !normDst || !normAction || !normAuditBatch) {
@@ -263,21 +264,7 @@ firewallController.addRule = async (req, res) => {
       return res.redirect('/firewall/rule');
     }
 
-    // Validate audit batch format (YYYY-MM)
-    const auditBatchPattern = /^\d{4}-\d{2}$/;
-    if (!auditBatchPattern.test(normAuditBatch)) {
-      req.flash('error', 'Audit Batch must be in format YYYY-MM (e.g., 2024-01)');
-      return res.redirect('/firewall/rule');
-    }
-
-    // Additional validation for valid month (01-12)
-    const parts = normAuditBatch.split('-');
-    const year = parseInt(parts[0]);
-    const month = parseInt(parts[1]);
-    if (month < 1 || month > 12) {
-      req.flash('error', 'Audit Batch month must be between 01 and 12');
-      return res.redirect('/firewall/rule');
-    }
+    // Audit batch is just a simple string, no format validation needed
 
     // Normalize ou_id
     const normOuId = ou_id && ou_id !== '' ? parseInt(ou_id, 10) : null;
@@ -321,17 +308,8 @@ firewallController.addRule = async (req, res) => {
       return res.redirect('/firewall/rule');
     }
 
-    // Process audit_batch: normalize and validate format
-    let auditBatchStr = '';
-    if (normAuditBatch && normAuditBatch.length > 0) {
-      const batches = normAuditBatch.split(',').map(v => v.trim()).filter(v => v.length > 0);
-      const valid = batches.every(batch => /^\d{4}-0[12]$/.test(batch));
-      if (!valid) {
-        req.flash('error', 'Each audit batch must be in the format yyyy-01 or yyyy-02, separated by commas.');
-        return res.redirect('/firewall/rule');
-      }
-      auditBatchStr = batches.join(',');
-    }
+    // Process audit_batch: simple string
+    let auditBatchStr = normAuditBatch || '';
 
     // Compose base rule data (only basic fields, not relations)
     let baseRuleData = {
@@ -356,6 +334,7 @@ firewallController.addRule = async (req, res) => {
       firewall_name: normFirewallName,
       work_order: normWorkOrder || null,
       audit_batch: auditBatchStr,
+      raw_data: normRawData || null,
       updated_by: req.session && req.session.user ? req.session.user.username : null
     };
     // Data already normalized above, no need to normalize again
@@ -420,24 +399,11 @@ firewallController.editRule = async (req, res) => {
     let description = ('description' in req.body) ? (typeof req.body.description === 'string' ? req.body.description.trim() : current.description) : current.description;
     let work_order = ('work_order' in req.body) ? (typeof req.body.work_order === 'string' ? req.body.work_order.trim() : current.work_order) : current.work_order;
     let audit_batch = ('audit_batch' in req.body) ? req.body.audit_batch : current.audit_batch;
-    // Normalize and validate audit_batch
+    let raw_data = ('raw_data' in req.body) ? (typeof req.body.raw_data === 'string' ? req.body.raw_data.trim() : current.raw_data) : current.raw_data;
+    // Normalize audit_batch as simple string
     let auditBatchStr = '';
     if (typeof audit_batch === 'string' && audit_batch.length > 0) {
       auditBatchStr = audit_batch.trim();
-      // Validate audit batch format (YYYY-MM)
-      const auditBatchPattern = /^\d{4}-\d{2}$/;
-      if (!auditBatchPattern.test(auditBatchStr)) {
-        req.flash('error', 'Audit Batch must be in format YYYY-MM (e.g., 2024-01)');
-        return res.redirect('/firewall/rule');
-      }
-      // Additional validation for valid month (01-12)
-      const parts = auditBatchStr.split('-');
-      const year = parseInt(parts[0]);
-      const month = parseInt(parts[1]);
-      if (month < 1 || month > 12) {
-        req.flash('error', 'Audit Batch month must be between 01 and 12');
-        return res.redirect('/firewall/rule');
-      }
     } else {
       auditBatchStr = current.audit_batch;
     }
@@ -491,7 +457,7 @@ firewallController.editRule = async (req, res) => {
         firewall_name, rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
         services, application, url, action, ou_id, status, violation_type,
         violation_detail, solution_proposal, solution_confirm, description,
-        work_order, audit_batch: auditBatchStr,
+        work_order, audit_batch: auditBatchStr, raw_data,
         updated_by: req.session && req.session.user ? req.session.user.username : current.updated_by
       }, client);
       await RuleFirewall.setContacts(id, contacts, client);
@@ -667,139 +633,139 @@ firewallController.downloadRuleTemplate = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Firewall Rule Template');
     
-    // Add headers with descriptions
+    // Add headers based on Add Rule modal fields
     worksheet.addRow([
-      'Audit Batch (Required)',
-      'Firewall Name (Required)',
-      'Rule Name (Required)',
-      'Source Zone',
-      'Source (Required)',
-      'Source Detail',
-      'Destination Zone',
-      'Destination (Required)',
-      'Destination Detail',
-      'Services',
-      'Application',
-      'URL',
-      'Action (Required)',
-      'Violation Type',
-      'Violation Detail',
-      'OU Name',
-      'Contacts (comma-separated emails)',
-      'Solution Proposal',
-      'Solution Confirm',
-      'Work Order',
-      'Status',
-      'Description',
-      'Tags (comma-separated IDs)'
+      'audit_batch',
+      'firewall_name',
+      'rulename',
+      'src_zone',
+      'src',
+      'src_detail',
+      'dst_zone',
+      'dst',
+      'dst_detail',
+      'services',
+      'application',
+      'url',
+      'action',
+      'violation_type',
+      'violation_detail',
+      'ou_name',
+      'contacts',
+      'solution_proposal',
+      'solution_confirm',
+      'work_order',
+      'status',
+      'description',
+      'raw_data'
     ]);
     
-    // Add sample data
+    // Add sample data based on Add Rule modal fields
     worksheet.addRow([
       '2024-01',
-      'FW-001',
-      'Rule-001',
+      'Firewall-A',
+      'Allow-HTTP-Web-Server',
       'DMZ',
       '192.168.1.0/24',
-      'DMZ Network',
-      'LAN',
-      '10.0.0.0/8',
-      'Internal Network',
-      'HTTP,HTTPS',
-      'Web Browser',
-      'https://company.com',
-      'ALLOW',
-      'POLICY',
-      'Standard web traffic',
+      'DMZ Web Servers',
+      'Internal',
+      '10.0.1.100',
+      'Internal Web Server',
+      'TCP/80',
+      'HTTP',
+      'https://example.com',
+      'allow',
+      '',
+      '',
       'IT Department',
-      'admin@company.com, support@company.com',
-      'Allow web traffic from DMZ to LAN',
-      'Approved by IT Manager',
-      'WO-001',
-      'Active',
-      'Allow DMZ to LAN HTTP/HTTPS traffic for web applications',
-      'web, dmz, lan'
+      'admin@company.com,webadmin@company.com',
+      'Allow HTTP traffic from DMZ to web server',
+      'Solution confirmed by security team',
+      'WO-2024-001',
+      'active',
+      'Allow HTTP traffic from DMZ to internal web server',
+      'config firewall policy\n  edit 1\n    set srcintf "dmz"\n    set dstintf "internal"\n    set srcaddr "192.168.1.0/24"\n    set dstaddr "10.0.1.100"\n    set action accept\n    set service "HTTP"\n  next\nend'
     ]);
     
     // Add another sample
     worksheet.addRow([
-      '2024-02',
-      'FW-002',
-      'Rule-002',
-      'LAN',
+      '2024-01',
+      'Firewall-B',
+      'Deny-SSH-External',
+      'External',
+      '0.0.0.0/0',
+      'External Internet',
+      'Internal',
       '10.0.0.0/8',
       'Internal Network',
-      'DMZ',
-      '192.168.1.0/24',
-      'DMZ Network',
-      'HTTPS',
-      'Web Browser',
-      'https://secure.company.com',
-      'ALLOW',
-      'CONFIG',
-      'Secure web access',
+      'TCP/22',
+      'SSH',
+      '',
+      'deny',
+      'security_violation',
+      'SSH access from external networks is not allowed',
       'Security Team',
-      'security@company.com, admin',
-      'Allow secure web access from LAN to DMZ',
-      'Approved by Security Team',
-      'WO-002',
-      'Active',
-      'Allow LAN to DMZ HTTPS traffic for secure web applications',
-      'secure, lan, dmz'
+      'security@company.com',
+      'Block SSH access from external networks',
+      'Security team confirmed blocking',
+      'WO-2024-002',
+      'active',
+      'Block SSH access from external networks to internal systems',
+      'config firewall policy\n  edit 2\n    set srcintf "wan1"\n    set dstintf "internal"\n    set srcaddr "all"\n    set dstaddr "10.0.0.0/8"\n    set action deny\n    set service "SSH"\n  next\nend'
     ]);
     
     // Add sample with violation
     worksheet.addRow([
-      '2024-03',
-      'FW-003',
-      'Rule-003',
-      'Internet',
-      '0.0.0.0/0',
-      'Public Internet',
+      '2024-01',
+      'Firewall-C',
+      'Allow-DNS-Query',
+      'Internal',
+      '10.0.0.0/8',
+      'Internal Network',
       'DMZ',
-      '192.168.1.100',
-      'DMZ Server',
-      'SSH',
-      'SSH Client',
+      '192.168.1.10',
+      'DMZ DNS Server',
+      'UDP/53',
+      'DNS',
       '',
-      'DENY',
-      'POLICY',
-      'Direct SSH access from Internet',
-      'Network Security Team',
-      'security@company.com, network@company.com',
-      'Block direct SSH access from Internet',
-      'Security policy violation - direct SSH access',
-      'WO-003',
-      'Inactive',
-      'Block direct SSH access from Internet to DMZ server',
-      'security, internet, ssh'
+      'allow',
+      'compliance_violation',
+      'DNS queries need to be logged for compliance',
+      'Network Team',
+      'network@company.com',
+      'Allow DNS queries from internal to DNS server',
+      'Network team confirmed DNS access',
+      'WO-2024-003',
+      'active',
+      'Allow DNS queries from internal network to DNS server',
+      'config firewall policy\n  edit 3\n    set srcintf "internal"\n    set dstintf "dmz"\n    set srcaddr "10.0.0.0/8"\n    set dstaddr "192.168.1.10"\n    set action accept\n    set service "DNS"\n    set logtraffic all\n  next\nend'
     ]);
     
-    // Set column widths
+    // Set column widths for Add Rule modal fields
     worksheet.columns = [
-      { width: 12 },  // Audit Batch
-      { width: 18 },  // Firewall Name
-      { width: 25 },  // Rule Name
-      { width: 15 },  // Source Zone
-      { width: 18 },  // Source
-      { width: 18 },  // Source Detail
-      { width: 15 },  // Destination Zone
-      { width: 18 },  // Destination
-      { width: 18 },  // Destination Detail
-      { width: 15 },  // Services
-      { width: 15 },  // Application
-      { width: 20 },  // URL
-      { width: 10 },  // Action
-      { width: 15 },  // Violation Type
-      { width: 25 },  // Violation Detail
-      { width: 20 },  // OU Name
-      { width: 30 },  // Contacts
-      { width: 25 },  // Solution Proposal
-      { width: 25 },  // Solution Confirm
-      { width: 15 },  // Work Order
-      { width: 10 },  // Status
-      { width: 30 },  // Description
-      { width: 20 }   // Tags
+      { width: 12 },  // audit_batch
+      { width: 15 },  // firewall_name
+      { width: 25 },  // rulename
+      { width: 12 },  // src_zone
+      { width: 20 },  // src
+      { width: 20 },  // src_detail
+      { width: 12 },  // dst_zone
+      { width: 20 },  // dst
+      { width: 20 },  // dst_detail
+      { width: 15 },  // services
+      { width: 15 },  // application
+      { width: 25 },  // url
+      { width: 10 },  // action
+      { width: 15 },  // violation_type
+      { width: 30 },  // violation_detail
+      { width: 15 },  // ou_name
+      { width: 30 },  // contacts
+      { width: 30 },  // solution_proposal
+      { width: 30 },  // solution_confirm
+      { width: 15 },  // work_order
+      { width: 10 },  // status
+      { width: 30 },  // description
+      { width: 40 }   // raw_data
     ];
     
     // Style the header row
@@ -988,6 +954,7 @@ firewallController.validateImportRules = async (req, res) => {
       'Work Order': 'work_order',
       'Status': 'status',
       'Description': 'description',
+      'Raw Data': 'raw_data',
       'Tags (comma-separated IDs)': 'tags'
     };
     
@@ -1028,6 +995,7 @@ firewallController.validateImportRules = async (req, res) => {
       'Work Order',
       'Status',
       'Description',
+      'Raw Data',
       'Tags (comma-separated IDs)'
     ];
     
@@ -1107,6 +1075,7 @@ firewallController.validateImportRules = async (req, res) => {
         violation_type: row['Violation Type'] || '',
         ou_name: row['OU Name'] || '',
         contacts: row['Contacts (comma-separated emails)'] || '',
+        raw_data: row['Raw Data'] || '',
         validation_status: 'PASS',
         validation_reason: ''
       };
@@ -1116,21 +1085,7 @@ firewallController.validateImportRules = async (req, res) => {
         result.validation_status = 'FAIL';
         result.validation_reason = 'Audit Batch is required';
       } else {
-        // Validate audit batch format (YYYY-MM)
-        const auditBatchPattern = /^\d{4}-\d{2}$/;
-        if (!auditBatchPattern.test(result.audit_batch)) {
-          result.validation_status = 'FAIL';
-          result.validation_reason = `Invalid Audit Batch: ${result.audit_batch}`;
-        } else {
-          // Additional validation for valid month (01-12)
-          const parts = result.audit_batch.split('-');
-          const year = parseInt(parts[0]);
-          const month = parseInt(parts[1]);
-          if (month < 1 || month > 12) {
-            result.validation_status = 'FAIL';
-            result.validation_reason = `Invalid Audit Batch: ${result.audit_batch}`;
-          }
-        }
+        // Audit batch is just a simple string, no validation needed
       }
 
       // Validate all required fields regardless of previous validation status
@@ -1499,6 +1454,7 @@ firewallController.importRules = async (req, res) => {
       'Work Order': 'work_order',
       'Status': 'status',
       'Description': 'description',
+      'Raw Data': 'raw_data',
       'Tags (comma-separated IDs)': 'tags'
     };
     
@@ -1539,6 +1495,7 @@ firewallController.importRules = async (req, res) => {
       'Work Order',
       'Status',
       'Description',
+      'Raw Data',
       'Tags (comma-separated IDs)'
     ];
     
@@ -1596,6 +1553,7 @@ firewallController.importRules = async (req, res) => {
         description: sanitizeString(row.description || ''),
         audit_batch: sanitizeString(row.audit_batch || ''),
         work_order: sanitizeString(row.work_order || ''),
+        raw_data: sanitizeString(row.raw_data || ''),
         contacts: sanitizeString(row.contacts || ''),
         tags: sanitizeString(row.tags || ''),
         import_status: 'SUCCESS',
@@ -1608,18 +1566,7 @@ firewallController.importRules = async (req, res) => {
           throw new Error('Missing required fields: audit_batch, firewall_name, rulename, src, dst, action');
         }
 
-        // Validate audit batch format (YYYY-MM)
-        const auditBatchPattern = /^\d{4}-\d{2}$/;
-        if (!auditBatchPattern.test(result.audit_batch)) {
-          throw new Error('Audit Batch must be in format YYYY-MM (e.g., 2024-01)');
-        } else {
-          // Additional validation for valid month (01-12)
-          const parts = result.audit_batch.split('-');
-          const month = parseInt(parts[1]);
-          if (month < 1 || month > 12) {
-            throw new Error('Audit Batch month must be between 01 and 12');
-          }
-        }
+        // Audit batch is just a simple string, no format validation needed
 
         // Check if rule already exists in the same audit batch
         const auditBatch = result.audit_batch || 'default';
@@ -1663,6 +1610,7 @@ firewallController.importRules = async (req, res) => {
             description: result.description || null,
             audit_batch: auditBatch, // Use the audit batch we determined above
             work_order: result.work_order || null,
+            raw_data: result.raw_data || null,
             updated_by: username
           };
 

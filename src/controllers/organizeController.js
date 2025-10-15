@@ -269,7 +269,10 @@ organizeController.apiContactSearch = async (req, res) => {
   try {
     const search = req.query.search ? req.query.search.trim() : '';
     const contacts = await Contact.contactSearchSelect2(search);
-    const data = contacts.map(row => ({ id: row.id, text: row.name + (row.email ? ` (${row.email})` : '') }));
+    const data = contacts.map(row => ({ 
+      id: row.id, 
+      text: row.name + (row.email ? ` (${row.email.split('@')[0]})` : '') 
+    }));
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: 'Error loading contacts', detail: err.message });
