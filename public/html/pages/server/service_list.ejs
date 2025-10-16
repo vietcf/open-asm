@@ -305,6 +305,24 @@ function buildPaginationUrl(targetPage) {
       </div>
     </div>
 
+    <!-- Service Detail Modal -->
+    <div class="modal fade" id="serviceDetailModal" tabindex="-1" aria-labelledby="serviceDetailModalLabel">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="serviceDetailModalLabel">Service Detail</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="serviceDetailContent">
+            <!-- Content will be loaded here -->
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
 <script>
 $(document).ready(function() {
   // Edit Service Modal - Load data when opened
@@ -319,7 +337,7 @@ $(document).ready(function() {
     });
 
     // Set form action URL
-    const actionUrl = `/server/service/${serviceId}/edit`;
+    const actionUrl = `/server/service/${serviceId}?_method=PUT`;
     $('#editServiceForm').attr('action', actionUrl);
     console.log('Form action set to:', actionUrl);
 
@@ -351,10 +369,43 @@ $(document).ready(function() {
   });
 });
 
-// Function to show service detail (if needed)
+// Function to show service detail
 function showServiceDetail(serviceId) {
-  console.log('Show service detail for ID:', serviceId);
-  // Implement service detail modal if needed
+  const button = document.querySelector(`[data-service='${JSON.stringify({id: serviceId})}']`) || 
+                 document.querySelector(`button[onclick="showServiceDetail('${serviceId}')"]`);
+  
+  if (!button || !button.dataset.service) {
+    alert('Service data not found');
+    return;
+  }
+  
+  let service;
+  try {
+    service = JSON.parse(button.dataset.service);
+  } catch (error) {
+    console.error('Error parsing service data:', error);
+    alert('Error loading service details');
+    return;
+  }
+  
+  const modalElement = document.getElementById('serviceDetailModal');
+  const modal = new bootstrap.Modal(modalElement);
+  const content = document.getElementById('serviceDetailContent');
+  
+  let html = '<div class="mb-2"><strong>Service ID:</strong> ' + String(service.id || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>Service Name:</strong> ' + String(service.name || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>Created At:</strong> ' + (service.created_at ? new Date(service.created_at).toLocaleString() : 'N/A') + '</div>';
+  html += '<div class="mb-2"><strong>Updated At:</strong> ' + (service.updated_at ? new Date(service.updated_at).toLocaleString() : 'N/A') + '</div>';
+  html += '<div class="mb-2"><strong>Updated By:</strong> ' + String(service.updated_by || 'N/A').trim() + '</div>';
+  
+  if (service.description && service.description.trim() !== '') {
+    html += '<div class="mb-2"><strong>Description:</strong><br><div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + String(service.description).trim() + '</div></div>';
+  } else {
+    html += '<div class="mb-2"><strong>Description:</strong> N/A</div>';
+  }
+  
+  content.innerHTML = html;
+  modal.show();
 }
 
 // Function to confirm delete service

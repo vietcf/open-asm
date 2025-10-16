@@ -90,16 +90,6 @@ function buildPaginationUrl(targetPage) {
               <i class="bi bi-plus"></i> Add Contact
             </button>
           <% } %>
-          <% if (hasPermission && hasPermission('contact.read')) { %>
-            <a href="/organize/contact/export" class="btn btn-info btn-sm">
-              <i class="bi bi-download"></i> Export
-            </a>
-          <% } %>
-          <% if (hasPermission && hasPermission('contact.create')) { %>
-            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importContactModal">
-              <i class="bi bi-upload"></i> Import Contact
-            </button>
-          <% } %>
         </div>
       </div>
     </div>
@@ -162,6 +152,7 @@ function buildPaginationUrl(targetPage) {
                   <th>Name</th>
                   <th>Email</th>
                   <th>Phone</th>
+                  <th>Position</th>
                   <th>Organization</th>
                   <th class="text-end">Actions</th>
                 </tr>
@@ -174,11 +165,12 @@ function buildPaginationUrl(targetPage) {
                       <td><%= contact.name %></td>
                       <td><%= contact.email || '-' %></td>
                       <td><%= contact.phone || '-' %></td>
+                      <td><%= contact.position || '-' %></td>
                       <td><%= contact.organization || '-' %></td>
                       <td class="text-end">
                         <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showContactDetail('<%= contact.id %>')" data-contact='<%= JSON.stringify(contact) %>'><i class="bi bi-eye"></i></button>
                         <% if (hasPermission('contact.update')) { %>
-                          <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editContactModal" data-contact-id="<%= contact.id %>" data-contact-name="<%= contact.name %>" data-contact-email="<%= contact.email || '' %>" data-contact-position="<%= contact.position || '' %>" data-contact-phone="<%= contact.phone || '' %>" data-contact-unit-id="<%= contact.unit_id || '' %>" title="Edit">
+                          <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editContactModal" data-contact-id="<%= contact.id %>" data-contact-name="<%= contact.name %>" data-contact-email="<%= contact.email || '' %>" data-contact-position="<%= contact.position || '' %>" data-contact-phone="<%= contact.phone || '' %>" data-contact-unit-id="<%= contact.unit_id || '' %>" data-contact-description="<%= contact.description || '' %>" title="Edit">
                             <i class="bi bi-pencil"></i>
                           </button>
                         <% } %>
@@ -193,7 +185,7 @@ function buildPaginationUrl(targetPage) {
                     </tr>
                   <% }) %>
                 <% } else { %>
-                  <tr><td colspan="6" class="text-center">No contacts found</td></tr>
+                  <tr><td colspan="7" class="text-center">No contacts found</td></tr>
                 <% } %>
               </tbody>
             </table>
@@ -322,7 +314,6 @@ function buildPaginationUrl(targetPage) {
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form id="editContactForm" action="" method="POST">
-        <input type="hidden" name="_method" value="PUT">
         <div class="modal-body">
           <div class="mb-3">
             <label for="editContactName" class="form-label">Name <span class="text-danger">*</span></label>
@@ -348,6 +339,10 @@ function buildPaginationUrl(targetPage) {
             <input type="text" class="form-control" id="editContactPhone" name="phone">
           </div>
           <div class="mb-3">
+            <label for="editContactDescription" class="form-label">Description</label>
+            <textarea class="form-control" id="editContactDescription" name="description" rows="3"></textarea>
+          </div>
+          <div class="mb-3">
             <label for="editContactUnit" class="form-label">Organization</label>
             <select class="form-select" id="editContactUnit" name="unit_id">
               <option value="">Select Organization</option>
@@ -368,57 +363,6 @@ function buildPaginationUrl(targetPage) {
   </div>
 </div>
 
-<!-- Import Contact Modal -->
-<div class="modal fade" id="importContactModal" tabindex="-1" aria-labelledby="importContactModalLabel">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="importContactModalLabel">Import Contacts</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="importContactForm" enctype="multipart/form-data">
-          <div class="mb-3">
-            <label for="contactImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
-            <div class="input-group">
-              <input type="file" class="form-control" id="contactImportFile" name="file" accept=".csv,.xlsx,.xls" required>
-              <a href="/organize/contact/template" class="btn btn-outline-info" download>
-                <i class="bi bi-download"></i> Download Template
-              </a>
-            </div>
-            <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
-          </div>
-          
-          <div class="mb-3">
-            <div class="alert alert-info">
-              <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
-              <ul class="mb-0">
-                <li>Click "Download Template" to get the Excel template with correct format</li>
-                <li>Fill the template with your contact data</li>
-                <li>Name (Required) is required</li>
-                <li>Email, Phone, Organization are optional</li>
-                <li>Select your filled template file and validate before importing</li>
-              </ul>
-            </div>
-          </div>
-          
-          <!-- Progress bar -->
-          <div id="contactImportProgress" class="progress mb-3" style="display: none;">
-            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-          </div>
-          
-          <!-- Results display -->
-          <div id="contactImportResults" class="alert" style="display: none;"></div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-warning" id="validateContactBtn">Validate File</button>
-        <button type="button" class="btn btn-success" id="importContactBtn" style="display: none;">Import Contacts</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <script>
 // ==========================================
@@ -426,12 +370,13 @@ function buildPaginationUrl(targetPage) {
 // ==========================================
 
 // Edit contact function
-function editContact(id, name, email, position, phone, unitId) {
-  document.getElementById('editContactForm').action = '/organize/contact/' + id;
+function editContact(id, name, email, position, phone, unitId, description) {
+  document.getElementById('editContactForm').action = '/organize/contact/' + id + '?_method=PUT';
   document.getElementById('editContactName').value = name;
   document.getElementById('editContactEmail').value = email;
   document.getElementById('editContactPosition').value = position;
   document.getElementById('editContactPhone').value = phone;
+  document.getElementById('editContactDescription').value = description || '';
   document.getElementById('editContactUnit').value = unitId || '';
 }
 
@@ -443,7 +388,8 @@ $(document).on('click', 'button[data-bs-target="#editContactModal"]', function()
   const position = $(this).data('contact-position');
   const phone = $(this).data('contact-phone');
   const unitId = $(this).data('contact-unit-id');
-  editContact(id, name, email, position, phone, unitId);
+  const description = $(this).data('contact-description');
+  editContact(id, name, email, position, phone, unitId, description);
 });
 
 // Show contact detail
@@ -455,14 +401,16 @@ function showContactDetail(contactId) {
   const content = document.getElementById('contactDetailContent');
   
   let html = '<div class="row">';
+  html += '<div class="col-md-6"><strong>Contact ID:</strong> ' + (contactData.id || '-') + '</div>';
   html += '<div class="col-md-6"><strong>Name:</strong> ' + (contactData.name || '-') + '</div>';
   html += '<div class="col-md-6"><strong>Email:</strong> ' + (contactData.email || '-') + '</div>';
   html += '<div class="col-md-6"><strong>Phone:</strong> ' + (contactData.phone || '-') + '</div>';
   html += '<div class="col-md-6"><strong>Position:</strong> ' + (contactData.position || '-') + '</div>';
   html += '<div class="col-md-6"><strong>Organization:</strong> ' + (contactData.organization || '-') + '</div>';
   html += '<div class="col-md-6"><strong>Created:</strong> ' + (contactData.created_at ? new Date(contactData.created_at).toLocaleDateString() : '-') + '</div>';
+  html += '<div class="col-md-6"><strong>Updated:</strong> ' + (contactData.updated_at ? new Date(contactData.updated_at).toLocaleDateString() : '-') + '</div>';
   if (contactData.description) {
-    html += '<div class="col-12 mt-3"><strong>Description:</strong><br>' + contactData.description + '</div>';
+    html += '<div class="col-12 mt-3"><strong>Description:</strong><br><div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + contactData.description + '</div></div>';
   }
   html += '</div>';
   

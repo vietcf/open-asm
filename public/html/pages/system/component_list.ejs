@@ -700,9 +700,8 @@
     });
     const content = document.getElementById('componentDetailContent');
     
-    // Build HTML content - Exact same style as System Detail
-    let html = '<div class="card">';
-    html += '<div class="card-body">';
+    // Build HTML content - Simple field: value layout
+    let html = '';
     
     // Component Name
     html += '<div class="mb-2">';
@@ -842,8 +841,6 @@
       html += '</div>';
     }
     
-    html += '</div>'; // card-body
-    html += '</div>'; // card
     
     content.innerHTML = html;
     

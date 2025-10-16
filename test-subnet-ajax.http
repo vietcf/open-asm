@@ -1,0 +1,10 @@
+### Test Subnet AJAX API
+
+### 1. Test Subnet IP Addresses AJAX
+GET https://localhost:8443/network/api/subnet/78/ips
+
+### 2. Test with different subnet ID
+GET https://localhost:8443/network/api/subnet/1/ips
+
+### 3. Test with invalid subnet ID
+GET https://localhost:8443/network/api/subnet/999/ips

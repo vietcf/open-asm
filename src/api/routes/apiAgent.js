@@ -62,12 +62,16 @@ const router = express.Router();
  *             schema:
  *               type: object
  *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Agent'
- *                 total:
+ *                 count:
  *                   type: integer
+ *                   example: 5
  */
 router.get('/', listAgents);
 

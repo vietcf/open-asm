@@ -117,6 +117,38 @@ async function addRawDataToRulefirewall() {
   }
 }
 
+// Thêm unique constraint cho bảng rulefirewall (rulename, firewall_name, audit_batch)
+async function addUniqueConstraintToRulefirewall() {
+  try {
+    // Check if constraint already exists
+    const checkResult = await pool.query(`
+      SELECT constraint_name 
+      FROM information_schema.table_constraints 
+      WHERE table_name = 'rulefirewall' 
+      AND constraint_name = 'unique_rule_firewall_audit'
+    `);
+    
+    if (checkResult.rows.length > 0) {
+      console.log('Unique constraint unique_rule_firewall_audit already exists on rulefirewall table!');
+      return;
+    }
+    
+    // Add the constraint
+    await pool.query(`
+      ALTER TABLE rulefirewall 
+      ADD CONSTRAINT unique_rule_firewall_audit 
+      UNIQUE (rulename, firewall_name, audit_batch);
+    `);
+    console.log('Added unique constraint (rulename, firewall_name, audit_batch) to rulefirewall table!');
+  } catch (err) {
+    if (err.code === '23505') {
+      console.log('Unique constraint already exists on rulefirewall table!');
+    } else {
+      console.error('Add unique constraint to rulefirewall failed:', err);
+    }
+  }
+}
+
 (async () => {
   try {
     await addFqdnToSystems();
@@ -127,6 +159,7 @@ async function addRawDataToRulefirewall() {
     await addZoneEnvironmentToSubnets();
     await addIsActiveToUsers();
     await addRawDataToRulefirewall();
+    await addUniqueConstraintToRulefirewall();
   } catch (err) {
     console.error('Error running alter statements:', err);
   } finally {

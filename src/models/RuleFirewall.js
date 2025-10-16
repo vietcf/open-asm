@@ -79,10 +79,8 @@ class RuleFirewall {
     const executor = client || pool;
     let shouldManageTransaction = !client;
     // Data is already normalized in controller
-    // Validate required fields
-    if (!data.rulename || !data.src || !data.dst || !data.action) {
-      throw new Error('Missing required fields: Rule Name, Source, Destination, Action');
-    }
+    // For partial updates, we don't validate required fields here
+    // Required fields validation should be done in controller
     if (shouldManageTransaction) {
       const transactionClient = await pool.connect();
       try {
@@ -97,19 +95,112 @@ class RuleFirewall {
         transactionClient.release();
       }
     }
-    // Update rule
-    const updateSql = `UPDATE rulefirewall SET
-      rulename=$1, firewall_name=$2, src_zone=$3, src=$4, src_detail=$5, dst_zone=$6, dst=$7, dst_detail=$8,
-      services=$9, application=$10, url=$11, action=$12, ou_id=$13, status=$14, violation_type=$15,
-      violation_detail=$16, solution_proposal=$17, solution_confirm=$18, description=$19, audit_batch=$20, work_order=$21, raw_data=$22,
-      updated_at=NOW(), updated_by=$23
-      WHERE id=$24 RETURNING *`;
-    const values = [
-      data.rulename, data.firewall_name, data.src_zone, data.src, data.src_detail, data.dst_zone, data.dst, data.dst_detail,
-      data.services, data.application, data.url, data.action, data.ou_id || null, data.status || null,
-      data.violation_type, data.violation_detail, data.solution_proposal, data.solution_confirm, data.description,
-      data.audit_batch || null, data.work_order || null, data.raw_data || null, data.updated_by || null, id
-    ];
+    // Build dynamic update query with only provided fields
+    const updateFields = [];
+    const values = [];
+    let paramIndex = 1;
+    
+    // Add fields that exist in data object
+    if ('rulename' in data) {
+      updateFields.push(`rulename=$${paramIndex++}`);
+      values.push(data.rulename);
+    }
+    if ('firewall_name' in data) {
+      updateFields.push(`firewall_name=$${paramIndex++}`);
+      values.push(data.firewall_name);
+    }
+    if ('src_zone' in data) {
+      updateFields.push(`src_zone=$${paramIndex++}`);
+      values.push(data.src_zone);
+    }
+    if ('src' in data) {
+      updateFields.push(`src=$${paramIndex++}`);
+      values.push(data.src);
+    }
+    if ('src_detail' in data) {
+      updateFields.push(`src_detail=$${paramIndex++}`);
+      values.push(data.src_detail);
+    }
+    if ('dst_zone' in data) {
+      updateFields.push(`dst_zone=$${paramIndex++}`);
+      values.push(data.dst_zone);
+    }
+    if ('dst' in data) {
+      updateFields.push(`dst=$${paramIndex++}`);
+      values.push(data.dst);
+    }
+    if ('dst_detail' in data) {
+      updateFields.push(`dst_detail=$${paramIndex++}`);
+      values.push(data.dst_detail);
+    }
+    if ('services' in data) {
+      updateFields.push(`services=$${paramIndex++}`);
+      values.push(data.services);
+    }
+    if ('application' in data) {
+      updateFields.push(`application=$${paramIndex++}`);
+      values.push(data.application);
+    }
+    if ('url' in data) {
+      updateFields.push(`url=$${paramIndex++}`);
+      values.push(data.url);
+    }
+    if ('action' in data) {
+      updateFields.push(`action=$${paramIndex++}`);
+      values.push(data.action);
+    }
+    if ('ou_id' in data) {
+      updateFields.push(`ou_id=$${paramIndex++}`);
+      values.push(data.ou_id);
+    }
+    if ('status' in data) {
+      updateFields.push(`status=$${paramIndex++}`);
+      values.push(data.status);
+    }
+    if ('violation_type' in data) {
+      updateFields.push(`violation_type=$${paramIndex++}`);
+      values.push(data.violation_type);
+    }
+    if ('violation_detail' in data) {
+      updateFields.push(`violation_detail=$${paramIndex++}`);
+      values.push(data.violation_detail);
+    }
+    if ('solution_proposal' in data) {
+      updateFields.push(`solution_proposal=$${paramIndex++}`);
+      values.push(data.solution_proposal);
+    }
+    if ('solution_confirm' in data) {
+      updateFields.push(`solution_confirm=$${paramIndex++}`);
+      values.push(data.solution_confirm);
+    }
+    if ('description' in data) {
+      updateFields.push(`description=$${paramIndex++}`);
+      values.push(data.description);
+    }
+    if ('audit_batch' in data) {
+      updateFields.push(`audit_batch=$${paramIndex++}`);
+      values.push(data.audit_batch);
+    }
+    if ('work_order' in data) {
+      updateFields.push(`work_order=$${paramIndex++}`);
+      values.push(data.work_order);
+    }
+    if ('raw_data' in data) {
+      updateFields.push(`raw_data=$${paramIndex++}`);
+      values.push(data.raw_data);
+    }
+    if ('updated_by' in data) {
+      updateFields.push(`updated_by=$${paramIndex++}`);
+      values.push(data.updated_by);
+    }
+    
+    // Always update updated_at
+    updateFields.push('updated_at=NOW()');
+    
+    // Add WHERE clause
+    values.push(id);
+    
+    const updateSql = `UPDATE rulefirewall SET ${updateFields.join(', ')} WHERE id=$${paramIndex} RETURNING *`;
     const result = await executor.query(updateSql, values);
     // ...existing code...
     return result.rows[0];
@@ -142,7 +233,7 @@ class RuleFirewall {
   }
 
   // ===== FILTERED LIST & PAGINATION =====
-  static async findFilteredList({ search = '', page = 1, pageSize = 10, ou_id, contacts, tags, violation_type, status, firewall_name, audit_batch }) {
+  static async findFilteredList({ search = '', page = 1, pageSize = 10, ou_id, contacts, tags, violation_type, status, firewall_name, audit_batch, work_order }) {
     const offset = (page - 1) * pageSize;
     const q = `%${search}%`;
     
@@ -172,6 +263,7 @@ class RuleFirewall {
         rf.status ILIKE $${paramIdx} OR
         rf.description ILIKE $${paramIdx} OR
         rf.updated_by ILIKE $${paramIdx} OR
+        rf.work_order ILIKE $${paramIdx} OR
         t.name ILIKE $${paramIdx} OR
         c.name ILIKE $${paramIdx} OR
         u.name ILIKE $${paramIdx}
@@ -245,6 +337,13 @@ class RuleFirewall {
         params.push(...batches.map(b => `%${b}%`));
         paramIdx += batches.length;
       }
+    }
+    
+    // Filter by work_order (partial match)
+    if (work_order) {
+      whereClauses.push(`rf.work_order ILIKE $${paramIdx}`);
+      params.push(`%${work_order}%`);
+      paramIdx++;
     }
     
     const where = whereClauses.length > 0 ? 'WHERE ' + whereClauses.join(' AND ') : '';
@@ -279,7 +378,7 @@ class RuleFirewall {
     return rules;
   }
 
-  static async countFiltered({ search = '', ou_id, contacts, tags, violation_type, status, firewall_name, audit_batch }) {
+  static async countFiltered({ search = '', ou_id, contacts, tags, violation_type, status, firewall_name, audit_batch, work_order }) {
     const q = `%${search}%`;
     
     let whereClauses = [];
@@ -308,6 +407,7 @@ class RuleFirewall {
         rf.status ILIKE $${paramIdx} OR
         rf.description ILIKE $${paramIdx} OR
         rf.updated_by ILIKE $${paramIdx} OR
+        rf.work_order ILIKE $${paramIdx} OR
         t.name ILIKE $${paramIdx} OR
         c.name ILIKE $${paramIdx} OR
         u.name ILIKE $${paramIdx}
@@ -383,6 +483,13 @@ class RuleFirewall {
       }
     }
     
+    // Filter by work_order (partial match)
+    if (work_order) {
+      whereClauses.push(`rf.work_order ILIKE $${paramIdx}`);
+      params.push(`%${work_order}%`);
+      paramIdx++;
+    }
+
     const where = whereClauses.length > 0 ? 'WHERE ' + whereClauses.join(' AND ') : '';
     
     const result = await pool.query(`

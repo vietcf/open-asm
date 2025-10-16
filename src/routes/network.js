@@ -68,9 +68,10 @@ router.get('/domain/export', requirePermission('domain.read'), networkController
 
 
 // // ====== AJAX API ======
-router.get('/api/subnet-address/:id', requirePermission('subnet.read'), networkController.detailSubnet); //Get detail of subnet
+router.get('/api/subnet-address/:id', networkController.detailSubnet); //Get detail of subnet
 router.get('/api/subnet-addresses', networkController.apiSearchSubnets); // Search subnets for existence check
 router.get('/api/subnet-for-ip/:ip', networkController.apiFindSubnetForIP); // Find subnet containing IP
+router.get('/api/subnet/:id/ips', networkController.apiGetSubnetIpAddresses); // Get IP addresses in subnet
 router.get('/api/ip-addresses', networkController.apiSearchIPAddresses); // Search IP addresses
 router.get('/api/ip-addresses/detail', networkController.apiGetIPDetail); // Get detailed IP information
 router.get('/api/domain', networkController.apiDomainSearch); // Search domains

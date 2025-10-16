@@ -12,6 +12,124 @@ const apiRuleRouter = express.Router();
 
 /**
  * @swagger
+ * components:
+ *   schemas:
+ *     ConfigSystem:
+ *       type: object
+ *       description: |
+ *         Configuration System for Enum Values
+ *         
+ *         The API uses a dynamic configuration system where enum values for certain fields 
+ *         are loaded from the database configuration table. This allows administrators to 
+ *         modify available options without code changes.
+ *         
+ *         Configuration Table Structure:
+ *         - Table: `configuration`
+ *         - Key Fields: `config_name`, `value` (JSON array)
+ *         
+ *         Enum Fields and their Config Names:
+ *         - `firewall_name`: config_name = 'firewall_name'
+ *         - `action`: config_name = 'firewall_rule_action'  
+ *         - `status`: config_name = 'firewall_rule_status'
+ *         - `violation_type`: config_name = 'firewall_rule_violation_type'
+ *         
+ *         Example Config Entry:
+ *         ```json
+ *         {
+ *           "config_name": "firewall_rule_action",
+ *           "value": "[{\"value\":\"ALLOW\",\"label\":\"Allow\"},{\"value\":\"DENY\",\"label\":\"Deny\"}]"
+ *         }
+ *         ```
+ *         
+ *         To get current enum values, use the configuration API endpoints or check 
+ *         the system configuration in the admin panel.
+ */
+
+/**
+ * @swagger
+ * /api/v1/rules/config:
+ *   get:
+ *     summary: Get configuration values for enum fields
+ *     description: |
+ *       Retrieve current configuration values for enum fields used in firewall rules.
+ *       This endpoint returns the dynamic enum values loaded from the database configuration table.
+ *     tags: [Rule]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Configuration values retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     firewall_name:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                           label:
+ *                             type: string
+ *                       example: [{"value": "USER", "label": "User Network"}, {"value": "SERVER", "label": "Server Network"}]
+ *                     action:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                           label:
+ *                             type: string
+ *                       example: [{"value": "ALLOW", "label": "Allow"}, {"value": "DENY", "label": "Deny"}]
+ *                     status:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                           label:
+ *                             type: string
+ *                       example: [{"value": "ENABLE", "label": "Enable"}, {"value": "DISABLE", "label": "Disable"}]
+ *                     violation_type:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                           label:
+ *                             type: string
+ *                       example: [{"value": "ANY", "label": "Any"}, {"value": "CDE-TO-OUT-OF-SCOPE", "label": "CDE to Out of Scope"}]
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Internal server error"
+ *                 error:
+ *                   type: string
+ *                   example: "Failed to load configuration"
+ */
+
+/**
+ * @swagger
  * /api/v1/rules:
  *   get:
  *     summary: Search firewall rules with pagination
@@ -38,6 +156,58 @@ const apiRuleRouter = express.Router();
  *           type: integer
  *         required: false
  *         description: Page size (default 20, max 100)
+ *       - in: query
+ *         name: ou_id
+ *         schema:
+ *           type: integer
+ *         required: false
+ *         description: Filter by Organization Unit ID
+ *       - in: query
+ *         name: contacts
+ *         schema:
+ *           type: array
+ *           items:
+ *             type: integer
+ *         required: false
+ *         description: Filter by Contact IDs (array)
+ *       - in: query
+ *         name: tags
+ *         schema:
+ *           type: array
+ *           items:
+ *             type: integer
+ *         required: false
+ *         description: Filter by Tag IDs (array)
+ *       - in: query
+ *         name: violation_type
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Filter by Violation Type
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Filter by Status
+ *       - in: query
+ *         name: firewall_name
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Filter by Firewall Name
+ *       - in: query
+ *         name: audit_batch
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Filter by Audit Batch
+ *       - in: query
+ *         name: work_order
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Filter by Work Order
  *     responses:
  *       200:
  *         description: Search results
@@ -91,6 +261,38 @@ apiRuleRouter.get('/', authorizePermissionJWT('rule.read'), apiRuleController.li
  *       500:
  *         description: Server error
  */
+// Get configuration values for enum fields
+apiRuleRouter.get('/config', authorizePermissionJWT('rule.read'), async (req, res) => {
+  try {
+    // Import helper functions from controller
+    const controllerModule = await import('../controllers/apiRuleController.js');
+    
+    // Get all config options
+    const [actions, status, violationTypes, firewallNames] = await Promise.all([
+      controllerModule.getActionsOptionsFromConfig(),
+      controllerModule.getStatusOptionsFromConfig(), 
+      controllerModule.getViolationTypeOptionsFromConfig(),
+      controllerModule.getFirewallNameOptionsFromConfig()
+    ]);
+    
+    res.json({
+      success: true,
+      data: {
+        action: actions,
+        status: status,
+        violation_type: violationTypes,
+        firewall_name: firewallNames
+      }
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
+  }
+});
+
 // Get rule by ID
 apiRuleRouter.get('/:id', authorizePermissionJWT('rule.read'), apiRuleController.getRule);
 
@@ -114,19 +316,24 @@ apiRuleRouter.get('/:id', authorizePermissionJWT('rule.read'), apiRuleController
  *               - dst
  *               - action
  *               - firewall_name
+ *               - audit_batch
  *             properties:
  *               firewall_name:
  *                 type: string
- *                 enum: [USER, SERVER, INTERNET-IN, INTERNET-OUT, BACKBOND, DMZ, PARTNER, DIGI]
- *                 description: Firewall name (must select from list in config) *
+ *                 description: |
+ *                   Firewall name (required). Values are dynamically loaded from database config table 
+ *                   with config_name = 'firewall_name'. Example values: USER, SERVER, INTERNET-IN, etc.
+ *                   Must select from the configured list in the system. *
  *               rulename:
  *                 type: string
+ *                 maxLength: 255
  *                 description: Rule name *
  *               src_zone:
  *                 type: string
  *                 description: Source zone
  *               src:
  *                 type: string
+ *                 maxLength: 255
  *                 description: Source *
  *               src_detail:
  *                 type: string
@@ -136,31 +343,43 @@ apiRuleRouter.get('/:id', authorizePermissionJWT('rule.read'), apiRuleController
  *                 description: Destination zone
  *               dst:
  *                 type: string
+ *                 maxLength: 255
  *                 description: Destination *
  *               dst_detail:
  *                 type: string
  *                 description: Destination detail
  *               services:
  *                 type: string
- *                 description: Service/Port
+ *                 maxLength: 255
+ *                 description: Service
  *               application:
  *                 type: string
+ *                 maxLength: 255
  *                 description: Application
  *               url:
  *                 type: string
+ *                 maxLength: 500
+ *                 format: uri
  *                 description: URL
  *               action:
  *                 type: string
- *                 enum: [ALLOW, DENY, DROP, REJECT]
- *                 description: Action to take (must select from list) *
+ *                 description: |
+ *                   Action to take (required). Values are dynamically loaded from database config table 
+ *                   with config_name = 'firewall_rule_action'. Example values: ALLOW, DENY, DROP, REJECT.
+ *                   Must select from the configured list in the system. *
  *               status:
  *                 type: string
- *                 enum: [ENABLE, DISABLE]
- *                 description: Status of the rule (must select from list)
+ *                 description: |
+ *                   Status of the rule (optional). Values are dynamically loaded from database config table 
+ *                   with config_name = 'firewall_rule_status'. Example values: ENABLE, DISABLE.
+ *                   Must select from the configured list in the system.
  *               violation_type:
  *                 type: string
- *                 enum: [CDE-TO-OUT-OF-SCOPE, OUT-OF-SCOPE-TO-CDE, IN-CDE-NONE-SECURE-PORTS, OUT-CDE-NONE-SECURE-PORTS, ANY, TEST/DEV/UAT-PRODUCTION, USER-SERVER-MGMT-PORTS]
- *                 description: Violation type (must select from list)
+ *                 description: |
+ *                   Violation type (optional). Values are dynamically loaded from database config table 
+ *                   with config_name = 'firewall_rule_violation_type'. Example values: CDE-TO-OUT-OF-SCOPE, 
+ *                   OUT-OF-SCOPE-TO-CDE, IN-CDE-NONE-SECURE-PORTS, ANY, etc.
+ *                   Must select from the configured list in the system.
  *               violation_detail:
  *                 type: string
  *                 description: Violation detail
@@ -185,13 +404,17 @@ apiRuleRouter.get('/:id', authorizePermissionJWT('rule.read'), apiRuleController
  *                 description: List of tag IDs (must select from list, all IDs must exist)
  *               audit_batch:
  *                 type: string
- *                 description: Audit batch (comma-separated, each in format yyyy-01 or yyyy-02)
+ *                 description: Audit batch
  *               work_order:
  *                 type: string
+ *                 maxLength: 255
  *                 description: Work order
  *               description:
  *                 type: string
  *                 description: Description
+ *               raw_data:
+ *                 type: string
+ *                 description: Raw data
  *     responses:
  *       201:
  *         description: Rule created
@@ -213,7 +436,11 @@ apiRuleRouter.post('/', authorizePermissionJWT('rule.create'), apiRuleController
  * @swagger
  * /api/v1/rules/{id}:
  *   put:
- *     summary: Update a firewall rule
+ *     summary: Update a firewall rule (partial update supported)
+ *     description: |
+ *       Update a firewall rule. Only fields provided in the request body will be updated.
+ *       Fields not included in the request will retain their current values.
+ *       If no changes are detected, the rule will not be updated in the database.
  *     tags: [Rule]
  *     security:
  *       - bearerAuth: []
@@ -230,19 +457,26 @@ apiRuleRouter.post('/', authorizePermissionJWT('rule.create'), apiRuleController
  *         application/json:
  *           schema:
  *             type: object
+ *             description: |
+ *               All fields are optional. Only provided fields will be updated.
+ *               Fields not included will retain their current values.
  *             properties:
  *               firewall_name:
  *                 type: string
- *                 enum: [USER, SERVER, INTERNET-IN, INTERNET-OUT, BACKBOND, DMZ, PARTNER, DIGI]
- *                 description: Firewall name (must select from list in config) *
+ *                 description: |
+ *                   Firewall name (required). Values are dynamically loaded from database config table 
+ *                   with config_name = 'firewall_name'. Example values: USER, SERVER, INTERNET-IN, etc.
+ *                   Must select from the configured list in the system. *
  *               rulename:
  *                 type: string
+ *                 maxLength: 255
  *                 description: Rule name *
  *               src_zone:
  *                 type: string
  *                 description: Source zone
  *               src:
  *                 type: string
+ *                 maxLength: 255
  *                 description: Source *
  *               src_detail:
  *                 type: string
@@ -252,31 +486,43 @@ apiRuleRouter.post('/', authorizePermissionJWT('rule.create'), apiRuleController
  *                 description: Destination zone
  *               dst:
  *                 type: string
+ *                 maxLength: 255
  *                 description: Destination *
  *               dst_detail:
  *                 type: string
  *                 description: Destination detail
  *               services:
  *                 type: string
- *                 description: Service/Port
+ *                 maxLength: 255
+ *                 description: Service
  *               application:
  *                 type: string
+ *                 maxLength: 255
  *                 description: Application
  *               url:
  *                 type: string
+ *                 maxLength: 500
+ *                 format: uri
  *                 description: URL
  *               action:
  *                 type: string
- *                 enum: [ALLOW, DENY, DROP, REJECT]
- *                 description: Action to take (must select from list) *
+ *                 description: |
+ *                   Action to take (required). Values are dynamically loaded from database config table 
+ *                   with config_name = 'firewall_rule_action'. Example values: ALLOW, DENY, DROP, REJECT.
+ *                   Must select from the configured list in the system. *
  *               status:
  *                 type: string
- *                 enum: [ENABLE, DISABLE]
- *                 description: Status of the rule (must select from list)
+ *                 description: |
+ *                   Status of the rule (optional). Values are dynamically loaded from database config table 
+ *                   with config_name = 'firewall_rule_status'. Example values: ENABLE, DISABLE.
+ *                   Must select from the configured list in the system.
  *               violation_type:
  *                 type: string
- *                 enum: [CDE-TO-OUT-OF-SCOPE, OUT-OF-SCOPE-TO-CDE, IN-CDE-NONE-SECURE-PORTS, OUT-CDE-NONE-SECURE-PORTS, ANY, TEST/DEV/UAT-PRODUCTION, USER-SERVER-MGMT-PORTS]
- *                 description: Violation type (must select from list)
+ *                 description: |
+ *                   Violation type (optional). Values are dynamically loaded from database config table 
+ *                   with config_name = 'firewall_rule_violation_type'. Example values: CDE-TO-OUT-OF-SCOPE, 
+ *                   OUT-OF-SCOPE-TO-CDE, IN-CDE-NONE-SECURE-PORTS, ANY, etc.
+ *                   Must select from the configured list in the system.
  *               violation_detail:
  *                 type: string
  *                 description: Violation detail
@@ -301,28 +547,117 @@ apiRuleRouter.post('/', authorizePermissionJWT('rule.create'), apiRuleController
  *                 description: List of tag IDs (must select from list, all IDs must exist)
  *               audit_batch:
  *                 type: string
- *                 description: Audit batch (comma-separated, each in format yyyy-01 or yyyy-02)
+ *                 description: Audit batch
  *               work_order:
  *                 type: string
+ *                 maxLength: 255
  *                 description: Work order
  *               description:
  *                 type: string
  *                 description: Description
+ *               raw_data:
+ *                 type: string
+ *                 description: Raw data
+ *           examples:
+ *             partial_update:
+ *               summary: Partial update example
+ *               description: Only update specific fields
+ *               value:
+ *                 rulename: "updated-rule-name"
+ *                 status: "DISABLE"
+ *                 description: "Updated description"
+ *             full_update:
+ *               summary: Full update example
+ *               description: Update all fields
+ *               value:
+ *                 rulename: "test-rule-001"
+ *                 firewall_name: "USER"
+ *                 src: "192.168.1.0/24"
+ *                 dst: "10.0.0.0/8"
+ *                 action: "ALLOW"
+ *                 audit_batch: "2024-01"
+ *                 status: "ENABLE"
+ *                 description: "Full update example"
+ *             no_changes:
+ *               summary: No changes example
+ *               description: Send same values as current rule
+ *               value:
+ *                 rulename: "existing-rule-name"
+ *                 firewall_name: "USER"
+ *                 src: "192.168.1.0/24"
+ *                 dst: "10.0.0.0/8"
+ *                 action: "ALLOW"
+ *                 audit_batch: "2024-01"
  *     responses:
  *       200:
- *         description: Rule updated
+ *         description: Rule updated successfully (or no changes detected)
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Rule'
+ *             examples:
+ *               updated:
+ *                 summary: Rule with changes
+ *                 value:
+ *                   id: 1
+ *                   rulename: "updated-rule-name"
+ *                   firewall_name: "USER"
+ *                   src: "192.168.1.0/24"
+ *                   dst: "10.0.0.0/8"
+ *                   action: "ALLOW"
+ *                   audit_batch: "2024-01"
+ *                   updated_at: "2024-01-15T10:30:00Z"
+ *               no_changes:
+ *                 summary: No changes detected
+ *                 value:
+ *                   id: 1
+ *                   rulename: "original-rule-name"
+ *                   firewall_name: "USER"
+ *                   src: "192.168.1.0/24"
+ *                   dst: "10.0.0.0/8"
+ *                   action: "ALLOW"
+ *                   audit_batch: "2024-01"
+ *                   updated_at: "2024-01-15T09:00:00Z"
  *       400:
- *         description: Invalid input
+ *         description: Invalid input (validation errors)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Missing required fields: rulename, src, dst, action, firewall_name"
  *       404:
  *         description: Rule not found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Rule not found"
  *       409:
- *         description: Rule already exists with this name
+ *         description: Rule already exists with this name (unique constraint violation)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Rule already exists: USER - test-rule in audit batch 2024-01"
  *       500:
  *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Internal server error"
  */
 // Update rule
 apiRuleRouter.put('/:id', authorizePermissionJWT('rule.update'), apiRuleController.updateRule);

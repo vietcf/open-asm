@@ -90,16 +90,6 @@ function buildPaginationUrl(targetPage) {
               <i class="bi bi-plus"></i> Add Unit
             </button>
           <% } %>
-          <% if (hasPermission && hasPermission('unit.read')) { %>
-            <a href="/organize/unit/export" class="btn btn-info btn-sm">
-              <i class="bi bi-download"></i> Export
-            </a>
-          <% } %>
-          <% if (hasPermission && hasPermission('unit.create')) { %>
-            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importUnitModal">
-              <i class="bi bi-upload"></i> Import Unit
-            </button>
-          <% } %>
         </div>
       </div>
     </div>
@@ -303,7 +293,6 @@ function buildPaginationUrl(targetPage) {
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form id="editUnitForm" action="" method="POST">
-        <input type="hidden" name="_method" value="PUT">
         <div class="modal-body">
           <div class="mb-3">
             <label for="editUnitName" class="form-label">Unit Name <span class="text-danger">*</span></label>
@@ -323,57 +312,6 @@ function buildPaginationUrl(targetPage) {
   </div>
 </div>
 
-<!-- Import Unit Modal -->
-<div class="modal fade" id="importUnitModal" tabindex="-1" aria-labelledby="importUnitModalLabel">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="importUnitModalLabel">Import Units</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="importUnitForm" enctype="multipart/form-data">
-          <div class="mb-3">
-            <label for="unitImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
-            <div class="input-group">
-              <input type="file" class="form-control" id="unitImportFile" name="file" accept=".csv,.xlsx,.xls" required>
-              <a href="/organize/unit/template" class="btn btn-outline-info" download>
-                <i class="bi bi-download"></i> Download Template
-              </a>
-            </div>
-            <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
-          </div>
-          
-          <div class="mb-3">
-            <div class="alert alert-info">
-              <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
-              <ul class="mb-0">
-                <li>Click "Download Template" to get the Excel template with correct format</li>
-                <li>Fill the template with your unit data</li>
-                <li>Unit Name (Required) is required</li>
-                <li>Description and Parent Unit are optional</li>
-                <li>Select your filled template file and validate before importing</li>
-              </ul>
-            </div>
-          </div>
-          
-          <!-- Progress bar -->
-          <div id="unitImportProgress" class="progress mb-3" style="display: none;">
-            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-          </div>
-          
-          <!-- Results display -->
-          <div id="unitImportResults" class="alert" style="display: none;"></div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-warning" id="validateUnitBtn">Validate File</button>
-        <button type="button" class="btn btn-success" id="importUnitBtn" style="display: none;">Import Units</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <script>
 // ==========================================
@@ -412,7 +350,7 @@ $(document).on('click', 'button[data-bs-target="#editUnitModal"]', function() {
 
 // Edit unit function
 function editUnit(id, name, description) {
-  document.getElementById('editUnitForm').action = '/organize/unit/' + id;
+  document.getElementById('editUnitForm').action = '/organize/unit/' + id + '?_method=PUT';
   document.getElementById('editUnitName').value = name;
   document.getElementById('editUnitDescription').value = description;
 }

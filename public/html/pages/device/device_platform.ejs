@@ -275,7 +275,6 @@ function buildPaginationUrl(targetPage) {
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <form id="editPlatformForm" method="POST" action="">
-            <input type="hidden" name="_method" value="PUT">
             <div class="modal-header">
               <h5 class="modal-title" id="editPlatformModalLabel">Edit Platform</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -303,14 +302,14 @@ function buildPaginationUrl(targetPage) {
 
     <!-- Platform Detail Modal -->
     <div class="modal fade" id="platformDetailModal" tabindex="-1" aria-labelledby="platformDetailModalLabel">
-      <div class="modal-dialog">
+      <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="platformDetailModalLabel">Platform Information</h5>
+            <h5 class="modal-title" id="platformDetailModalLabel">Platform Detail</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body" id="platformDetailContent">
-            <!-- Content will be populated by JavaScript -->
+            <!-- Content will be loaded here -->
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -326,42 +325,23 @@ function buildPaginationUrl(targetPage) {
 <script>
 // Platform Detail Modal Handler
 function showPlatformDetail(platformId) {
-  const buttons = document.querySelectorAll('button[data-platform]');
-  let targetButton = null;
-  for (let button of buttons) {
-    const data = button.getAttribute('data-platform');
-    if (data) {
-      try {
-        const platform = JSON.parse(data);
-        if (platform.id == platformId) {
-          targetButton = button;
-          break;
-        }
-      } catch (e) {
-        console.error('Error parsing platform data:', e);
-      }
-    }
-  }
-  if (!targetButton) {
-    alert('Platform data not found');
-    return;
-  }
-  const platformData = targetButton.getAttribute('data-platform');
-  let platform;
-  try {
-    platform = JSON.parse(platformData);
-  } catch (e) {
-    alert('Error parsing platform data: ' + e.message);
-    return;
-  }
+  const button = document.querySelector(`button[onclick="showPlatformDetail('${platformId}')"]`);
+  const platformData = JSON.parse(button.getAttribute('data-platform'));
+  
   const modalElement = document.getElementById('platformDetailModal');
-  const modal = new bootstrap.Modal(modalElement);
   const content = document.getElementById('platformDetailContent');
-  let html = '<div class="card"><div class="card-body">';
-  html += '<div class="mb-2"><strong>Platform Name:</strong> ' + String(platform.name || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>Description:</strong> ' + String(platform.description || 'N/A').trim() + '</div>';
-  html += '</div></div>';
+  
+  let html = '<div class="row">';
+  html += '<div class="col-12 mb-2"><strong>Platform ID:</strong> ' + (platformData.id || '-') + '</div>';
+  html += '<div class="col-12 mb-2"><strong>Platform Name:</strong> ' + (platformData.name || '-') + '</div>';
+  html += '<div class="col-12 mb-2"><strong>Created:</strong> ' + (platformData.created_at ? new Date(platformData.created_at).toLocaleDateString() : '-') + '</div>';
+  if (platformData.description) {
+    html += '<div class="col-12 mt-3"><strong>Description:</strong><br><div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + platformData.description + '</div></div>';
+  }
+  html += '</div>';
+  
   content.innerHTML = html;
+  const modal = new bootstrap.Modal(modalElement);
   modal.show();
 }
 
@@ -371,7 +351,7 @@ $(document).on('click', 'button[data-bs-target="#editPlatformModal"]', function(
   const name = $(this).data('platform-name');
   const description = $(this).data('platform-description');
   
-  $('#editPlatformForm').attr('action', '/device/platform/' + id);
+  $('#editPlatformForm').attr('action', '/device/platform/' + id + '?_method=PUT');
   $('#editPlatformName').val(name);
   $('#editPlatformDescription').val(description);
 });

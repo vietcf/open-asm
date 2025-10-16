@@ -43,7 +43,7 @@ Authorization: Bearer {{platformAuth.response.body.token}}
 }
 
 ### 4. Update Platform (Complete Update)
-PUT {{baseUrl}}/{{apiVersion}}/platforms/{{createPlatform.response.body.id}}
+PUT {{baseUrl}}/{{apiVersion}}/platforms/{{createPlatform.response.body.data.id}}
 Content-Type: application/json
 Accept: application/json
 Authorization: Bearer {{platformAuth.response.body.token}}
@@ -54,7 +54,7 @@ Authorization: Bearer {{platformAuth.response.body.token}}
 }
 
 ### 5. Update Platform (Name Only)
-PUT {{baseUrl}}/{{apiVersion}}/platforms/{{createPlatform.response.body.id}}
+PUT {{baseUrl}}/{{apiVersion}}/platforms/{{createPlatform.response.body.data.id}}
 Content-Type: application/json
 Accept: application/json
 Authorization: Bearer {{platformAuth.response.body.token}}
@@ -64,7 +64,7 @@ Authorization: Bearer {{platformAuth.response.body.token}}
 }
 
 ### 6. Update Platform (Description Only)
-PUT {{baseUrl}}/{{apiVersion}}/platforms/{{createPlatform.response.body.id}}
+PUT {{baseUrl}}/{{apiVersion}}/platforms/{{createPlatform.response.body.data.id}}
 Content-Type: application/json
 Accept: application/json
 Authorization: Bearer {{platformAuth.response.body.token}}
@@ -74,7 +74,7 @@ Authorization: Bearer {{platformAuth.response.body.token}}
 }
 
 ### 7. Delete Platform
-DELETE {{baseUrl}}/{{apiVersion}}/platforms/{{createPlatform.response.body.id}}
+DELETE {{baseUrl}}/{{apiVersion}}/platforms/{{createPlatform.response.body.data.id}}
 Accept: application/json
 Authorization: Bearer {{platformAuth.response.body.token}}
 
@@ -83,7 +83,7 @@ Authorization: Bearer {{platformAuth.response.body.token}}
 # ========================================
 
 ### 8. Find Platform by Exact Name
-GET {{baseUrl}}/{{apiVersion}}/platforms/find?name=windows1
+GET {{baseUrl}}/{{apiVersion}}/platforms/find?name=windows
 Accept: application/json
 Authorization: Bearer {{platformAuth.response.body.token}}
 

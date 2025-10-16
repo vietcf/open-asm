@@ -154,8 +154,8 @@ function buildPaginationUrl(targetPage) {
                           </button>
                         <% } %>
                         <% if (user && (user.role_name === 'superadmin' || user.role_name === 'admin')) { %>
-                          <form action="/server/agent/<%= agent.id %>/delete" method="POST" style="display:inline" onsubmit="return confirmDeleteAgent(this, '<%= agent.name %>')">
-                            <button type="submit" class="btn btn-danger btn-sm" title="Delete" style="display: inline-block !important; visibility: visible !important;">
+                          <form action="/server/agent/<%= agent.id %>?_method=DELETE" method="POST" style="display:inline !important;" onsubmit="return confirmDeleteAgent(this, '<%= agent.name %>')">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Delete" style="display: inline-block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 9999 !important;">
                               <i class="bi bi-trash"></i>
                             </button>
                           </form>
@@ -291,7 +291,65 @@ function buildPaginationUrl(targetPage) {
       </div>
     </div>
 
+    <!-- Agent Detail Modal -->
+    <div class="modal fade" id="agentDetailModal" tabindex="-1" aria-labelledby="agentDetailModalLabel">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="agentDetailModalLabel">Agent Detail</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="agentDetailContent">
+            <!-- Content will be loaded here -->
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
 <script>
+// Function to show agent detail
+function showAgentDetail(agentId) {
+  const button = document.querySelector(`[data-agent='${JSON.stringify({id: agentId})}']`) || 
+                 document.querySelector(`button[onclick="showAgentDetail('${agentId}')"]`);
+  
+  if (!button || !button.dataset.agent) {
+    alert('Agent data not found');
+    return;
+  }
+  
+  let agent;
+  try {
+    agent = JSON.parse(button.dataset.agent);
+  } catch (error) {
+    console.error('Error parsing agent data:', error);
+    alert('Error loading agent details');
+    return;
+  }
+  
+  const modalElement = document.getElementById('agentDetailModal');
+  const modal = new bootstrap.Modal(modalElement);
+  const content = document.getElementById('agentDetailContent');
+  
+  let html = '<div class="mb-2"><strong>Agent ID:</strong> ' + String(agent.id || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>Agent Name:</strong> ' + String(agent.name || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>Version:</strong> ' + String(agent.version || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>Created At:</strong> ' + (agent.created_at ? new Date(agent.created_at).toLocaleString() : 'N/A') + '</div>';
+  html += '<div class="mb-2"><strong>Updated At:</strong> ' + (agent.updated_at ? new Date(agent.updated_at).toLocaleString() : 'N/A') + '</div>';
+  html += '<div class="mb-2"><strong>Updated By:</strong> ' + String(agent.updated_by || 'N/A').trim() + '</div>';
+  
+  if (agent.description && agent.description.trim() !== '') {
+    html += '<div class="mb-2"><strong>Description:</strong><br><div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + String(agent.description).trim() + '</div></div>';
+  } else {
+    html += '<div class="mb-2"><strong>Description:</strong> N/A</div>';
+  }
+  
+  content.innerHTML = html;
+  modal.show();
+}
+
 // Confirm delete agent function
 function confirmDeleteAgent(form, agentName) {
   if (confirm(`Are you sure you want to delete agent "${agentName}"?`)) {
@@ -316,7 +374,7 @@ $(document).ready(function() {
         agentId, agentName, agentVersion, agentDescription
       });
 
-      const actionUrl = `/server/agent/${agentId}/edit`;
+      const actionUrl = `/server/agent/${agentId}?_method=PUT`;
       $('#editAgentForm').attr('action', actionUrl);
       console.log('Form action set to:', actionUrl);
 

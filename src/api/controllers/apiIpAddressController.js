@@ -22,6 +22,26 @@ async function getIpStatusOptionsFromConfig() {
 
 // List all IP addresses (with optional filters)
 const apiIpAddressController = {};
+
+// Get IP address configuration options
+apiIpAddressController.getConfig = async (req, res) => {
+  try {
+    const statusOptions = await getIpStatusOptionsFromConfig();
+    
+    res.json({
+      success: true,
+      data: {
+        status: statusOptions
+      }
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
+  }
+};
 apiIpAddressController.listIpAddresses = async (req, res) => {
   try {
     const { search, tags, status, systems, contacts, page = 1, pageSize = 10 } = req.query;

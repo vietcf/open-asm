@@ -25,12 +25,17 @@ GET {{baseUrl}}/{{apiVersion}}/contacts/search?page=1&pageSize=20
 Accept: application/json
 Authorization: Bearer {{contactAuth.response.body.token}}
 
-### 2. Get Contact by ID
-GET {{baseUrl}}/{{apiVersion}}/contacts/768
+### 2. Get Contact Configuration Options
+GET {{baseUrl}}/{{apiVersion}}/contacts/config
 Accept: application/json
 Authorization: Bearer {{contactAuth.response.body.token}}
 
-### 3. Create New Contact
+### 3. Get Contact by ID
+GET {{baseUrl}}/{{apiVersion}}/contacts/971
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+### 4. Create New Contact
 # @name createContact
 POST {{baseUrl}}/{{apiVersion}}/contacts
 Content-Type: application/json
@@ -46,7 +51,7 @@ Authorization: Bearer {{contactAuth.response.body.token}}
   "description": "Test contact for API testing"
 }
 
-### 4. Update Contact (Complete Update)
+### 5. Update Contact (Complete Update)
 PUT {{baseUrl}}/{{apiVersion}}/contacts/{{createContact.response.body.id}}
 Content-Type: application/json
 Accept: application/json
@@ -61,7 +66,7 @@ Authorization: Bearer {{contactAuth.response.body.token}}
   "description": "Updated test contact"
 }
 
-### 5. Update Contact (Name Only)
+### 6. Update Contact (Name Only)
 PUT {{baseUrl}}/{{apiVersion}}/contacts/{{createContact.response.body.id}}
 Content-Type: application/json
 Accept: application/json
@@ -71,7 +76,7 @@ Authorization: Bearer {{contactAuth.response.body.token}}
   "name": "Test Contact Name Only"
 }
 
-### 6. Update Contact (Email Only)
+### 7. Update Contact (Email Only)
 PUT {{baseUrl}}/{{apiVersion}}/contacts/{{createContact.response.body.id}}
 Content-Type: application/json
 Accept: application/json
@@ -81,7 +86,7 @@ Authorization: Bearer {{contactAuth.response.body.token}}
   "email": "test.email.only@example.com"
 }
 
-### 7. Update Contact (Phone Only)
+### 8. Update Contact (Phone Only)
 PUT {{baseUrl}}/{{apiVersion}}/contacts/{{createContact.response.body.id}}
 Content-Type: application/json
 Accept: application/json
@@ -91,7 +96,7 @@ Authorization: Bearer {{contactAuth.response.body.token}}
   "phone": "0111222333"
 }
 
-### 8. Update Contact (Position Only)
+### 9. Update Contact (Position Only)
 PUT {{baseUrl}}/{{apiVersion}}/contacts/{{createContact.response.body.id}}
 Content-Type: application/json
 Accept: application/json
@@ -101,7 +106,7 @@ Authorization: Bearer {{contactAuth.response.body.token}}
   "position": "MANAGER"
 }
 
-### 9. Delete Contact
+### 10. Delete Contact
 DELETE {{baseUrl}}/{{apiVersion}}/contacts/{{createContact.response.body.id}}
 Accept: application/json
 Authorization: Bearer {{contactAuth.response.body.token}}
@@ -110,27 +115,27 @@ Authorization: Bearer {{contactAuth.response.body.token}}
 # 🔍 SEARCH & FIND OPERATIONS
 # ========================================
 
-### 10. Search Contacts with Pagination
+### 11. Search Contacts with Pagination
 GET {{baseUrl}}/{{apiVersion}}/contacts/search?query=Toan&page=1&pageSize=5
 Accept: application/json
 Authorization: Bearer {{contactAuth.response.body.token}}
 
-### 11. Search Contacts by Name
+### 12. Search Contacts by Name
 GET {{baseUrl}}/{{apiVersion}}/contacts/search?query=toannn1.ho
 Accept: application/json
 Authorization: Bearer {{contactAuth.response.body.token}}
 
-### 12. Search Contacts by Email
+### 13. Search Contacts by Email
 GET {{baseUrl}}/{{apiVersion}}/contacts/search?query=toannn1.ho@vietcombank.com.vn
 Accept: application/json
 Authorization: Bearer {{contactAuth.response.body.token}}
 
-### 13. Find Contact by Email
+### 14. Find Contact by Email
 GET {{baseUrl}}/{{apiVersion}}/contacts/find?email=toannn1.ho@vietcombank.com.vn
 Accept: application/json
 Authorization: Bearer {{contactAuth.response.body.token}}
 
-### 14. Find Contact by Email Prefix
+### 15. Find Contact by Email Prefix
 GET {{baseUrl}}/{{apiVersion}}/contacts/find?email=toannn1.ho
 Accept: application/json
 Authorization: Bearer {{contactAuth.response.body.token}}
@@ -139,27 +144,27 @@ Authorization: Bearer {{contactAuth.response.body.token}}
 # ❌ ERROR HANDLING TESTS
 # ========================================
 
-### 15. Get Non-existent Contact (404)
+### 16. Get Non-existent Contact (404)
 GET {{baseUrl}}/{{apiVersion}}/contacts/99999
 Accept: application/json
 Authorization: Bearer {{contactAuth.response.body.token}}
 
-### 16. Search without Query Parameter (Required according to Swagger)
+### 17. Search without Query Parameter (Required according to Swagger)
 GET {{baseUrl}}/{{apiVersion}}/contacts/search
 Accept: application/json
 Authorization: Bearer {{contactAuth.response.body.token}}
 
-### 17. Find without Email Parameter (400)
+### 18. Find without Email Parameter (400)
 GET {{baseUrl}}/{{apiVersion}}/contacts/find
 Accept: application/json
 Authorization: Bearer {{contactAuth.response.body.token}}
 
-### 18. Find with Empty Email (400)
+### 19. Find with Empty Email (400)
 GET {{baseUrl}}/{{apiVersion}}/contacts/find?email=
 Accept: application/json
 Authorization: Bearer {{contactAuth.response.body.token}}
 
-### 19. Create Contact with Invalid Data (400)
+### 20. Create Contact with Invalid Data (400)
 POST {{baseUrl}}/{{apiVersion}}/contacts
 Content-Type: application/json
 Accept: application/json
@@ -170,7 +175,7 @@ Authorization: Bearer {{contactAuth.response.body.token}}
   "description": "Missing required name and email fields"
 }
 
-### 20. Create Contact with Empty Name (400)
+### 21. Create Contact with Empty Name (400)
 POST {{baseUrl}}/{{apiVersion}}/contacts
 Content-Type: application/json
 Accept: application/json
@@ -182,7 +187,7 @@ Authorization: Bearer {{contactAuth.response.body.token}}
   "description": "Empty name should fail"
 }
 
-### 21. Create Contact with Empty Email (400)
+### 22. Create Contact with Empty Email (400)
 POST {{baseUrl}}/{{apiVersion}}/contacts
 Content-Type: application/json
 Accept: application/json
@@ -194,7 +199,7 @@ Authorization: Bearer {{contactAuth.response.body.token}}
   "description": "Empty email should fail"
 }
 
-### 22. Create Contact with Invalid Email Format (400)
+### 23. Create Contact with Invalid Email Format (400)
 POST {{baseUrl}}/{{apiVersion}}/contacts
 Content-Type: application/json
 Accept: application/json
@@ -206,7 +211,7 @@ Authorization: Bearer {{contactAuth.response.body.token}}
   "description": "Invalid email format"
 }
 
-### 23. Create Contact with Invalid Position (400)
+### 24. Create Contact with Invalid Position (400)
 POST {{baseUrl}}/{{apiVersion}}/contacts
 Content-Type: application/json
 Accept: application/json
@@ -219,7 +224,7 @@ Authorization: Bearer {{contactAuth.response.body.token}}
   "description": "Invalid position value"
 }
 
-### 24. Create Contact with Duplicate Email (409)
+### 25. Create Contact with Duplicate Email (409)
 POST {{baseUrl}}/{{apiVersion}}/contacts
 Content-Type: application/json
 Accept: application/json
@@ -231,7 +236,7 @@ Authorization: Bearer {{contactAuth.response.body.token}}
   "description": "Duplicate email test"
 }
 
-### 25. Update Non-existent Contact (404)
+### 26. Update Non-existent Contact (404)
 PUT {{baseUrl}}/{{apiVersion}}/contacts/99999
 Content-Type: application/json
 Accept: application/json
@@ -241,7 +246,7 @@ Authorization: Bearer {{contactAuth.response.body.token}}
   "name": "non-existent-contact"
 }
 
-### 26. Update Contact with Duplicate Email (409)
+### 27. Update Contact with Duplicate Email (409)
 PUT {{baseUrl}}/{{apiVersion}}/contacts/1
 Content-Type: application/json
 Accept: application/json
@@ -251,7 +256,7 @@ Authorization: Bearer {{contactAuth.response.body.token}}
   "email": "admin@example.com"
 }
 
-### 27. Delete Non-existent Contact (404)
+### 28. Delete Non-existent Contact (404)
 DELETE {{baseUrl}}/{{apiVersion}}/contacts/99999
 Accept: application/json
 Authorization: Bearer {{contactAuth.response.body.token}}

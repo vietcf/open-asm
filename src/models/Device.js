@@ -31,6 +31,35 @@ class Device {
     return result.rows[0];
   }
 
+  // Partial update method - only update provided fields
+  static async updatePartial(id, updateData, client = null) {
+    const allowedFields = [
+      'name', 'manufacturer', 'device_role', 'platform_id', 'device_type_id', 
+      'location', 'serial_number', 'management_address', 'description', 'updated_by'
+    ];
+    
+    // Filter only allowed fields that are provided
+    const fieldsToUpdate = Object.keys(updateData).filter(key => 
+      allowedFields.includes(key) && updateData[key] !== undefined
+    );
+    
+    if (fieldsToUpdate.length === 0) {
+      throw new Error('No valid fields to update');
+    }
+    
+    // Build dynamic query
+    const setClause = fieldsToUpdate.map((field, index) => `${field} = $${index + 1}`).join(', ');
+    const query = `UPDATE devices SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldsToUpdate.length + 1} RETURNING *`;
+    
+    // Build parameters array
+    const params = fieldsToUpdate.map(field => updateData[field]);
+    params.push(id);
+    
+    const exec = client ? client.query.bind(client) : pool.query.bind(pool);
+    const result = await exec(query, params);
+    return result.rows[0];
+  }
+
   static async remove(id, client = pool) {
     await client.query('DELETE FROM device_contact WHERE device_id = $1', [id]);
     await client.query('DELETE FROM tag_object WHERE object_type = $1 AND object_id = $2', ['device', id]);

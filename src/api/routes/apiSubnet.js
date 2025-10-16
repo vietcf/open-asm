@@ -90,65 +90,55 @@ apiSubnetRouter.get('/find', apiSubnetController.findSubnet);
 
 /**
  * @swagger
- * /api/v1/subnets/zones:
+ * /api/v1/subnets/config:
  *   get:
- *     summary: Get distinct zones from subnets
+ *     summary: Get subnet configuration options
+ *     description: Retrieve all subnet configuration options including zones and environments
  *     tags: [Subnet]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         description: Search zones by name
  *     responses:
  *       200:
- *         description: List of distinct zones
+ *         description: Configuration options retrieved successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: string
- *                   text:
- *                     type: string
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     zones:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "DMZ"
+ *                           label:
+ *                             type: string
+ *                             example: "DMZ"
+ *                       description: Distinct zones from subnets table
+ *                     environments:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "PROD"
+ *                           label:
+ *                             type: string
+ *                             example: "PROD"
+ *                       description: Distinct environments from subnets table
+ *       500:
+ *         description: Server error
  */
-apiSubnetRouter.get('/zones', apiSubnetController.getZones);
-
-/**
- * @swagger
- * /api/v1/subnets/environments:
- *   get:
- *     summary: Get distinct environments from subnets
- *     tags: [Subnet]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         description: Search environments by name
- *     responses:
- *       200:
- *         description: List of distinct environments
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: string
- *                   text:
- *                     type: string
- */
-apiSubnetRouter.get('/environments', apiSubnetController.getEnvironments);
+apiSubnetRouter.get('/config', apiSubnetController.getConfig);
 
 /**
  * @swagger

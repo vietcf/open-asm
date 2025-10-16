@@ -246,26 +246,57 @@ apiSubnetController.deleteSubnet = async (req, res) => {
   }
 };
 
-apiSubnetController.getZones = async (req, res) => {
+
+// API endpoint to get all subnet configuration options
+apiSubnetController.getConfig = async (req, res) => {
   try {
-    const { search } = req.query;
-    const zones = await Subnet.getDistinctZones(search);
-    res.json(zones);
+    const [zones, environments] = await Promise.all([
+      getZonesFromDB(),
+      getEnvironmentsFromDB()
+    ]);
+    
+    res.json({
+      success: true,
+      data: {
+        zones: zones,
+        environments: environments
+      }
+    });
   } catch (err) {
-    console.error('Error fetching zones:', err);
-    res.status(500).json({ error: 'Error fetching zones: ' + err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
   }
 };
 
-apiSubnetController.getEnvironments = async (req, res) => {
+// Helper: Get zones from database
+async function getZonesFromDB() {
   try {
-    const { search } = req.query;
-    const environments = await Subnet.getDistinctEnvironments(search);
-    res.json(environments);
+    const zones = await Subnet.getDistinctZones();
+    return zones.map(zone => ({
+      value: zone.id,
+      label: zone.text
+    }));
+  } catch (err) {
+    console.error('Error fetching zones:', err);
+    return [];
+  }
+}
+
+// Helper: Get environments from database
+async function getEnvironmentsFromDB() {
+  try {
+    const environments = await Subnet.getDistinctEnvironments();
+    return environments.map(env => ({
+      value: env.id,
+      label: env.text
+    }));
   } catch (err) {
     console.error('Error fetching environments:', err);
-    res.status(500).json({ error: 'Error fetching environments: ' + err.message });
+    return [];
   }
-};
+}
 
 export default apiSubnetController;

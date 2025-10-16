@@ -90,16 +90,6 @@ function buildPaginationUrl(targetPage) {
               <i class="bi bi-plus"></i> Add Tag
             </button>
           <% } %>
-          <% if (hasPermission && hasPermission('tag.read')) { %>
-            <a href="/organize/tag/export" class="btn btn-info btn-sm">
-              <i class="bi bi-download"></i> Export
-            </a>
-          <% } %>
-          <% if (hasPermission && hasPermission('tag.create')) { %>
-            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importTagModal">
-              <i class="bi bi-upload"></i> Import Tag
-            </button>
-          <% } %>
         </div>
       </div>
     </div>
@@ -161,7 +151,6 @@ function buildPaginationUrl(targetPage) {
                   <th>No.</th>
                   <th>Tag Name</th>
                   <th>Description</th>
-                  <th>Color</th>
                   <th class="text-end">Actions</th>
                 </tr>
               </thead>
@@ -172,22 +161,16 @@ function buildPaginationUrl(targetPage) {
                       <td><%= (page - 1) * pageSize + idx + 1 %></td>
                       <td><%= tag.name %></td>
                       <td><%= tag.description || '-' %></td>
-                      <td>
-                        <% if (tag.color) { %>
-                          <span class="badge" style="background-color: <%= tag.color %>; color: white;"><%= tag.color %></span>
-                        <% } else { %>
-                          <span class="badge bg-secondary">Default</span>
-                        <% } %>
-                      </td>
                       <td class="text-end">
+                        <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showTagDetail('<%= tag.id %>')" data-tag='<%= JSON.stringify(tag) %>'><i class="bi bi-eye"></i></button>
                         <% if (hasPermission('tag.update')) { %>
-                          <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editTagModal" data-tag-id="<%= tag.id %>" data-tag-name="<%= tag.name %>" data-tag-description="<%= tag.description || '' %>" data-tag-color="<%= tag.color || '' %>" title="Edit">
+                          <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editTagModal" data-tag-id="<%= tag.id %>" data-tag-name="<%= tag.name %>" data-tag-description="<%= tag.description || '' %>" title="Edit">
                             <i class="bi bi-pencil"></i>
                           </button>
                         <% } %>
                         <% if (hasPermission('tag.delete')) { %>
-                          <form action="/organize/tag/<%= tag.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteTag(this, '<%= tag.name %>')">
-                            <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                          <form action="/organize/tag/<%= tag.id %>?_method=DELETE" method="POST" style="display:inline !important;" onsubmit="return confirmDeleteTag(this, '<%= tag.name %>')">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Delete" style="display: inline-block !important; visibility: visible !important; position: relative !important;">
                               <i class="bi bi-trash"></i>
                             </button>
                           </form>
@@ -196,7 +179,7 @@ function buildPaginationUrl(targetPage) {
                     </tr>
                   <% }) %>
                 <% } else { %>
-                  <tr><td colspan="5" class="text-center">No tags found</td></tr>
+                  <tr><td colspan="4" class="text-center">No tags found</td></tr>
                 <% } %>
               </tbody>
             </table>
@@ -255,6 +238,24 @@ function buildPaginationUrl(targetPage) {
 <!-- MODALS SECTION -->
 <!-- ========================================== -->
 
+<!-- Tag Detail Modal -->
+<div class="modal fade" id="tagDetailModal" tabindex="-1" aria-labelledby="tagDetailModalLabel">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="tagDetailModalLabel">Tag Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="tagDetailContent">
+        <!-- Content will be loaded here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Add Tag Modal -->
 <div class="modal fade" id="addTagModal" tabindex="-1" aria-labelledby="addTagModalLabel">
   <div class="modal-dialog">
@@ -272,10 +273,6 @@ function buildPaginationUrl(targetPage) {
           <div class="mb-3">
             <label for="tagDescription" class="form-label">Description</label>
             <textarea class="form-control" id="tagDescription" name="description" rows="3"></textarea>
-          </div>
-          <div class="mb-3">
-            <label for="tagColor" class="form-label">Color</label>
-            <input type="color" class="form-control form-control-color" id="tagColor" name="color" value="#007bff">
           </div>
         </div>
         <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
@@ -296,7 +293,6 @@ function buildPaginationUrl(targetPage) {
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form id="editTagForm" action="" method="POST">
-        <input type="hidden" name="_method" value="PUT">
         <div class="modal-body">
           <div class="mb-3">
             <label for="editTagName" class="form-label">Tag Name <span class="text-danger">*</span></label>
@@ -305,10 +301,6 @@ function buildPaginationUrl(targetPage) {
           <div class="mb-3">
             <label for="editTagDescription" class="form-label">Description</label>
             <textarea class="form-control" id="editTagDescription" name="description" rows="3"></textarea>
-          </div>
-          <div class="mb-3">
-            <label for="editTagColor" class="form-label">Color</label>
-            <input type="color" class="form-control form-control-color" id="editTagColor" name="color">
           </div>
         </div>
         <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
@@ -320,78 +312,47 @@ function buildPaginationUrl(targetPage) {
   </div>
 </div>
 
-<!-- Import Tag Modal -->
-<div class="modal fade" id="importTagModal" tabindex="-1" aria-labelledby="importTagModalLabel">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="importTagModalLabel">Import Tags</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="importTagForm" enctype="multipart/form-data">
-          <div class="mb-3">
-            <label for="tagImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
-            <div class="input-group">
-              <input type="file" class="form-control" id="tagImportFile" name="file" accept=".csv,.xlsx,.xls" required>
-              <a href="/organize/tag/template" class="btn btn-outline-info" download>
-                <i class="bi bi-download"></i> Download Template
-              </a>
-            </div>
-            <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
-          </div>
-          
-          <div class="mb-3">
-            <div class="alert alert-info">
-              <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
-              <ul class="mb-0">
-                <li>Click "Download Template" to get the Excel template with correct format</li>
-                <li>Fill the template with your tag data</li>
-                <li>Tag Name (Required) is required</li>
-                <li>Description and Color are optional</li>
-                <li>Select your filled template file and validate before importing</li>
-              </ul>
-            </div>
-          </div>
-          
-          <!-- Progress bar -->
-          <div id="tagImportProgress" class="progress mb-3" style="display: none;">
-            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-          </div>
-          
-          <!-- Results display -->
-          <div id="tagImportResults" class="alert" style="display: none;"></div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-warning" id="validateTagBtn">Validate File</button>
-        <button type="button" class="btn btn-success" id="importTagBtn" style="display: none;">Import Tags</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <script>
 // ==========================================
 // JAVASCRIPT FUNCTIONS
 // ==========================================
 
+// Show tag detail
+function showTagDetail(tagId) {
+  const button = document.querySelector(`button[onclick="showTagDetail('${tagId}')"]`);
+  const tagData = JSON.parse(button.getAttribute('data-tag'));
+  
+  const modalElement = document.getElementById('tagDetailModal');
+  const content = document.getElementById('tagDetailContent');
+  
+  let html = '<div class="row">';
+  html += '<div class="col-md-6"><strong>Tag ID:</strong> ' + (tagData.id || '-') + '</div>';
+  html += '<div class="col-md-6"><strong>Tag Name:</strong> ' + (tagData.name || '-') + '</div>';
+  if (tagData.description) {
+    html += '<div class="col-12 mt-3"><strong>Description:</strong><br>' + tagData.description + '</div>';
+  }
+  html += '</div>';
+  
+  content.innerHTML = html;
+  
+  const modal = new bootstrap.Modal(modalElement);
+  modal.show();
+}
+
 // Handle edit button click with data attributes
 $(document).on('click', 'button[data-bs-target="#editTagModal"]', function() {
   const id = $(this).data('tag-id');
   const name = $(this).data('tag-name');
   const description = $(this).data('tag-description');
-  const color = $(this).data('tag-color');
-  editTag(id, name, description, color);
+  editTag(id, name, description);
 });
 
 // Edit tag function
-function editTag(id, name, description, color) {
-  document.getElementById('editTagForm').action = '/organize/tag/' + id;
+function editTag(id, name, description) {
+  document.getElementById('editTagForm').action = '/organize/tag/' + id + '?_method=PUT';
   document.getElementById('editTagName').value = name;
   document.getElementById('editTagDescription').value = description;
-  document.getElementById('editTagColor').value = color || '#007bff';
 }
 
 // Confirm delete tag

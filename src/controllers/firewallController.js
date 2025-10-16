@@ -154,14 +154,17 @@ firewallController.ruleList = async (req, res) => {
     // Parse audit_batch filter
     let filterAuditBatch = req.query.audit_batch || '';
     if (filterAuditBatch === '') filterAuditBatch = undefined;
+    // Parse work_order filter
+    let filterWorkOrder = req.query.work_order || '';
+    if (filterWorkOrder === '') filterWorkOrder = undefined;
 
 
     // --- Call model with filters (optimized aggregation) ---
     const ruleList = await RuleFirewall.findFilteredList({
-      search, page, pageSize, ou_id: filterUnitId, contacts: filterContactIds, tags: filterTagIds, violation_type: filterViolationType, status: filterStatus, firewall_name: filterFirewallName, audit_batch: filterAuditBatch
+      search, page, pageSize, ou_id: filterUnitId, contacts: filterContactIds, tags: filterTagIds, violation_type: filterViolationType, status: filterStatus, firewall_name: filterFirewallName, audit_batch: filterAuditBatch, work_order: filterWorkOrder
     });
     const totalCount = await RuleFirewall.countFiltered({
-      search, ou_id: filterUnitId, contacts: filterContactIds, tags: filterTagIds, violation_type: filterViolationType, status: filterStatus, firewall_name: filterFirewallName, audit_batch: filterAuditBatch
+      search, ou_id: filterUnitId, contacts: filterContactIds, tags: filterTagIds, violation_type: filterViolationType, status: filterStatus, firewall_name: filterFirewallName, audit_batch: filterAuditBatch, work_order: filterWorkOrder
     });
     const totalPages = Math.ceil(totalCount / pageSize) || 1;
 
@@ -216,6 +219,7 @@ firewallController.ruleList = async (req, res) => {
       violation_type: filterViolationType,
       status: filterStatus,
       audit_batch: filterAuditBatch,
+      work_order: filterWorkOrder,
       title: 'Firewall Rule',
       activeMenu: 'firewall-rule'
     });
@@ -286,6 +290,13 @@ firewallController.addRule = async (req, res) => {
     normTags = normTags
       .map(t => parseInt(t, 10))
       .filter(t => !isNaN(t));
+    // Check if rule already exists (unique constraint: rulename, firewall_name, audit_batch)
+    const existingRule = await RuleFirewall.findByFirewallRuleNameAndAuditBatch(normFirewallName, normRulename, normAuditBatch);
+    if (existingRule) {
+      req.flash('error', `Rule already exists: ${normFirewallName} - ${normRulename} in audit batch ${normAuditBatch}`);
+      return res.redirect('/firewall/rule');
+    }
+
     // Validate action, status, violation_type against config
   const allowedActions = (await getActionsOptionsFromConfig()).map(a => a.value);
     if (!allowedActions.includes(normAction)) {
@@ -428,6 +439,15 @@ firewallController.editRule = async (req, res) => {
       req.flash('error', 'Missing required fields: Rule Name, Source, Destination, Action, Firewall Name');
       return res.redirect('/firewall/rule');
     }
+    
+    // Check if rule already exists (unique constraint: rulename, firewall_name, audit_batch)
+    // But exclude current rule from check
+    const existingRule = await RuleFirewall.findByFirewallRuleNameAndAuditBatch(firewall_name, rulename, auditBatchStr);
+    if (existingRule && existingRule.id !== parseInt(id)) {
+      req.flash('error', `Rule already exists: ${firewall_name} - ${rulename} in audit batch ${auditBatchStr}`);
+      return res.redirect('/firewall/rule');
+    }
+    
     // Validate enums
   const allowedActions = (await getActionsOptionsFromConfig()).map(a => a.value);
     if (!allowedActions.includes(action)) {
@@ -514,15 +534,17 @@ firewallController.exportRuleList = async (req, res) => {
     contacts = contacts.map(c => parseInt(c, 10)).filter(c => !isNaN(c));
     if (contacts.length === 0) contacts = undefined;
     
-    // Parse firewall_name and audit_batch filters
+    // Parse firewall_name, audit_batch, and work_order filters
     let firewall_name = req.query.firewall_name || '';
     if (firewall_name === '') firewall_name = undefined;
     let audit_batch = req.query.audit_batch || '';
     if (audit_batch === '') audit_batch = undefined;
+    let work_order = req.query.work_order || '';
+    if (work_order === '') work_order = undefined;
 
     // Get all filtered rules (no pagination)
     const ruleList = await RuleFirewall.findFilteredList({
-      search, page: 1, pageSize: 10000, ou_id, contacts, tags, violation_type, status, firewall_name, audit_batch
+      search, page: 1, pageSize: 10000, ou_id, contacts, tags, violation_type, status, firewall_name, audit_batch, work_order
     });
 
     // Create Excel workbook
@@ -530,8 +552,10 @@ firewallController.exportRuleList = async (req, res) => {
     const worksheet = workbook.addWorksheet('Firewall Rules');
     worksheet.columns = [
       { header: '#', key: 'idx', width: 6 },
+      { header: 'Rule ID', key: 'id', width: 10 },
       { header: 'Firewall Name', key: 'firewall_name', width: 18 },
       { header: 'Rule Name', key: 'rulename', width: 25 },
+      { header: 'Audit Batch', key: 'audit_batch', width: 15 },
       { header: 'Source Zone', key: 'src_zone', width: 18 },
       { header: 'Source', key: 'src', width: 18 },
       { header: 'Source Detail', key: 'src_detail', width: 22 },
@@ -559,8 +583,10 @@ firewallController.exportRuleList = async (req, res) => {
     ruleList.forEach((rule, idx) => {
       worksheet.addRow({
         idx: idx + 1,
+        id: rule.id,
         firewall_name: rule.firewall_name || '',
         rulename: rule.rulename,
+        audit_batch: rule.audit_batch || '',
         src_zone: rule.src_zone || '',
         src: rule.src,
         src_detail: rule.src_detail || '',
@@ -573,7 +599,10 @@ firewallController.exportRuleList = async (req, res) => {
         action: rule.action || '',
         ou_name: rule.ou_name || '',
         contacts: Array.isArray(rule.contacts) && rule.contacts.length > 0
-          ? rule.contacts.map(c => c.name + (c.email ? ' (' + c.email + ')' : '')).join(', ') : '',
+          ? rule.contacts.map(c => {
+              const emailShort = c.email ? c.email.split('@')[0] : '';
+              return c.name + (emailShort ? ' (' + emailShort + ')' : '');
+            }).join(', ') : '',
         violation_type: rule.violation_type || '',
         violation_detail: rule.violation_detail || '',
         solution_proposal: rule.solution_proposal || '',
@@ -1681,9 +1710,25 @@ firewallController.importRules = async (req, res) => {
       };
 
       try {
-        // Validate required fields
-        if (!result.audit_batch || !result.firewall_name || !result.rulename || !result.src || !result.dst || !result.action) {
-          throw new Error('Missing required fields: audit_batch, firewall_name, rulename, src, dst, action');
+        // Validate required fields (check for empty strings too)
+        const requiredFields = {
+          'audit_batch': result.audit_batch,
+          'firewall_name': result.firewall_name,
+          'rulename': result.rulename,
+          'src': result.src,
+          'dst': result.dst,
+          'action': result.action
+        };
+        
+        const missingFields = [];
+        for (const [field, value] of Object.entries(requiredFields)) {
+          if (!value || value.toString().trim() === '') {
+            missingFields.push(field);
+          }
+        }
+        
+        if (missingFields.length > 0) {
+          throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
         }
 
         // Validate Audit Batch format (YYYY-MM)
@@ -1701,12 +1746,13 @@ firewallController.importRules = async (req, res) => {
           }
         }
 
+
         // Validate Action enum (case insensitive)
         if (result.action) {
           const actionValue = result.action.toString().trim();
           const actionMatch = allowedActions.find(action => action.toLowerCase() === actionValue.toLowerCase());
           if (!actionMatch) {
-            throw new Error(`Invalid Action: ${actionValue}`);
+            throw new Error(`Invalid Action: ${actionValue}. Allowed values: ${allowedActions.join(', ')}`);
           }
         }
 
@@ -1715,7 +1761,7 @@ firewallController.importRules = async (req, res) => {
           const statusValue = result.status.toString().trim();
           const statusMatch = allowedStatus.find(status => status.toLowerCase() === statusValue.toLowerCase());
           if (!statusMatch) {
-            throw new Error(`Invalid Status: ${statusValue}`);
+            throw new Error(`Invalid Status: ${statusValue}. Allowed values: ${allowedStatus.join(', ')}`);
           }
         }
 
@@ -1724,18 +1770,35 @@ firewallController.importRules = async (req, res) => {
           const violationTypeValue = result.violation_type.toString().trim();
           const violationTypeMatch = allowedViolationTypes.find(violationType => violationType.toLowerCase() === violationTypeValue.toLowerCase());
           if (!violationTypeMatch) {
-            throw new Error(`Invalid Violation Type: ${violationTypeValue}`);
+            throw new Error(`Invalid Violation Type: ${violationTypeValue}. Allowed values: ${allowedViolationTypes.join(', ')}`);
           }
         }
 
-        // Validate Firewall Name enum (case insensitive)
-        if (result.firewall_name) {
-          const firewallNameValue = result.firewall_name.toString().trim();
-          const firewallNameMatch = allowedFirewallNames.find(firewallName => firewallName.toLowerCase() === firewallNameValue.toLowerCase());
-          if (!firewallNameMatch) {
-            throw new Error(`Invalid Firewall Name: ${firewallNameValue}`);
-          }
+        // Validate data format and length
+        if (result.rulename && result.rulename.length > 255) {
+          throw new Error(`Rule Name too long: ${result.rulename.length} characters (max 255)`);
         }
+        
+        if (result.src && result.src.length > 1000) {
+          throw new Error(`Source too long: ${result.src.length} characters (max 1000)`);
+        }
+        
+        if (result.dst && result.dst.length > 1000) {
+          throw new Error(`Destination too long: ${result.dst.length} characters (max 1000)`);
+        }
+        
+        if (result.services && result.services.length > 255) {
+          throw new Error(`Services too long: ${result.services.length} characters (max 255)`);
+        }
+        
+        if (result.application && result.application.length > 255) {
+          throw new Error(`Application too long: ${result.application.length} characters (max 255)`);
+        }
+        
+        if (result.url && result.url.length > 255) {
+          throw new Error(`URL too long: ${result.url.length} characters (max 255)`);
+        }
+
 
         // Check if rule already exists in the same audit batch
         const auditBatch = result.audit_batch || 'default';

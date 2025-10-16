@@ -46,7 +46,18 @@ class Service {
 
   // Delete a service
   static async delete(id) {
-    await pool.query('DELETE FROM services WHERE id = $1', [id]);
+    try {
+      const res = await pool.query('DELETE FROM services WHERE id = $1 RETURNING *', [id]);
+      if (res.rowCount === 0) {
+        throw new Error('Service not found.');
+      }
+      return res.rows[0];
+    } catch (err) {
+      if (err.message && err.message.includes('foreign key constraint')) {
+        throw new Error('Cannot delete: This service is in use.');
+      }
+      throw err;
+    }
   }
 
   // Check if a service exists by id

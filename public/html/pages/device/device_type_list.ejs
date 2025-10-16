@@ -162,6 +162,9 @@ function buildPaginationUrl(targetPage) {
                       <td><%= deviceType.name %></td>
                       <td><%= deviceType.description || '-' %></td>
                       <td class="text-end">
+                        <button type="button" class="btn btn-info btn-sm me-1" title="Show" onclick="showDeviceTypeDetail('<%= deviceType.id %>')" data-device-type='<%= JSON.stringify(deviceType) %>'>
+                          <i class="bi bi-eye"></i>
+                        </button>
                         <% if (hasPermission('device_type.update')) { %>
                           <button type="button" class="btn btn-warning btn-sm me-1" data-bs-toggle="modal" data-bs-target="#editDeviceTypeModal" data-device-type-id="<%= deviceType.id %>" data-device-type-name="<%= deviceType.name %>" data-device-type-description="<%= deviceType.description || '' %>" title="Edit">
                             <i class="bi bi-pencil"></i>
@@ -274,7 +277,6 @@ function buildPaginationUrl(targetPage) {
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <form id="editDeviceTypeForm" action="" method="POST">
-        <input type="hidden" name="_method" value="PUT">
         <div class="modal-body">
           <div class="mb-3">
             <label for="editDeviceTypeName" class="form-label">Device Type Name <span class="text-danger">*</span></label>
@@ -294,15 +296,56 @@ function buildPaginationUrl(targetPage) {
   </div>
 </div>
 
+<!-- Device Type Detail Modal -->
+<div class="modal fade" id="deviceTypeDetailModal" tabindex="-1" aria-labelledby="deviceTypeDetailModalLabel">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deviceTypeDetailModalLabel">Device Type Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="deviceTypeDetailContent">
+        <!-- Content will be loaded here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <script>
 // ==========================================
 // JAVASCRIPT FUNCTIONS
 // ==========================================
 
+// Device Type Detail Modal Handler
+function showDeviceTypeDetail(deviceTypeId) {
+  const button = document.querySelector(`button[onclick="showDeviceTypeDetail('${deviceTypeId}')"]`);
+  const deviceTypeData = JSON.parse(button.getAttribute('data-device-type'));
+  
+  const modalElement = document.getElementById('deviceTypeDetailModal');
+  const content = document.getElementById('deviceTypeDetailContent');
+  
+  let html = '<div class="row">';
+  html += '<div class="col-12 mb-2"><strong>Device Type ID:</strong> ' + (deviceTypeData.id || '-') + '</div>';
+  html += '<div class="col-12 mb-2"><strong>Device Type Name:</strong> ' + (deviceTypeData.name || '-') + '</div>';
+  html += '<div class="col-12 mb-2"><strong>Created:</strong> ' + (deviceTypeData.created_at ? new Date(deviceTypeData.created_at).toLocaleDateString() : '-') + '</div>';
+  html += '<div class="col-12 mb-2"><strong>Updated:</strong> ' + (deviceTypeData.updated_at ? new Date(deviceTypeData.updated_at).toLocaleDateString() : '-') + '</div>';
+  if (deviceTypeData.description) {
+    html += '<div class="col-12 mt-3"><strong>Description:</strong><br><div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + deviceTypeData.description + '</div></div>';
+  }
+  html += '</div>';
+  
+  content.innerHTML = html;
+  const modal = new bootstrap.Modal(modalElement);
+  modal.show();
+}
+
 // Edit device type function
 function editDeviceType(id, name, description) {
-  document.getElementById('editDeviceTypeForm').action = '/device/type/' + id;
+  document.getElementById('editDeviceTypeForm').action = '/device/type/' + id + '?_method=PUT';
   document.getElementById('editDeviceTypeName').value = name;
   document.getElementById('editDeviceTypeDescription').value = description;
 }

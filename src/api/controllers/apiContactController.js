@@ -1,9 +1,28 @@
 // Controller for Contact API
 import Contact from '../../models/Contact.js';
 import Unit from '../../models/Unit.js';
-
+import Configuration from '../../models/Configuration.js';
 
 const apiContactController = {};
+
+// Helper: Load position options from DB config
+async function getPositionOptionsFromConfig() {
+  let positionOptions = [];
+  try {
+    const config = await Configuration.findById('contact_position');
+    if (config && config.value) {
+      let parsed;
+      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
+      if (Array.isArray(parsed)) {
+        positionOptions = parsed.map(item => typeof item === 'object' ? item.value : String(item));
+      }
+    }
+  } catch (e) { 
+    // Nếu không load được từ DB thì dùng default
+    positionOptions = ['MANAGER', 'STAFF']; 
+  }
+  return positionOptions;
+}
 
 apiContactController.createContact = async (req, res) => {
   try {
@@ -16,7 +35,7 @@ apiContactController.createContact = async (req, res) => {
     if (!emailRegex.test(email)) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
-    const allowedPositions = ['MANAGER', 'STAFF'];
+    const allowedPositions = await getPositionOptionsFromConfig();
     if (!allowedPositions.includes(position)) {
       return res.status(400).json({ error: 'Invalid position value' });
     }
@@ -57,8 +76,11 @@ apiContactController.updateContact = async (req, res) => {
     if ('position' in req.body && !position) {
       return res.status(400).json({ error: 'Position must not be empty if provided' });
     }
-    if (position && !['MANAGER', 'STAFF'].includes(position)) {
-      return res.status(400).json({ error: 'Invalid position value' });
+    if (position) {
+      const allowedPositions = await getPositionOptionsFromConfig();
+      if (!allowedPositions.includes(position)) {
+        return res.status(400).json({ error: 'Invalid position value' });
+      }
     }
     if ('unit_id' in req.body && unit_id !== undefined && unit_id !== null && unit_id !== '') {
       unit_id = parseInt(unit_id, 10);
@@ -166,4 +188,26 @@ apiContactController.findContacts = async (req, res) => {
   }
 };
 
+// Config endpoint to get dynamic enum values
+apiContactController.getConfig = async (req, res) => {
+  try {
+    const positionOptions = await getPositionOptionsFromConfig();
+    
+    res.json({
+      success: true,
+      data: {
+        position: positionOptions
+      }
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
+  }
+};
+
+// Export helper functions for use in routes
+export { getPositionOptionsFromConfig };
 export default apiContactController;

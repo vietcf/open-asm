@@ -679,10 +679,7 @@ function buildExportUrl() {
 
 <script>
   $(function() {
-  console.log('Initializing Select2...');
-  
   // Tags select2 AJAX - Bootstrap 5 theme (clone from system_add.ejs)
-  console.log('Setting up Tags Select2...');
     $('#ipTags').select2({
       theme: 'bootstrap-5',
     placeholder: 'Select tags (optional)',
@@ -695,11 +692,9 @@ function buildExportUrl() {
         dataType: 'json',
         delay: 250,
       data: params => {
-        console.log('Tags AJAX request:', params.term);
         return { search: params.term };
       },
       processResults: data => {
-        console.log('Tags API response:', data);
         return { results: data };
       },
         cache: true
@@ -707,7 +702,6 @@ function buildExportUrl() {
     });
 
   // Systems select2 AJAX - Bootstrap 5 theme (clone from system_add.ejs)
-  console.log('Setting up Systems Select2...');
   $('#ipSystems').select2({
       theme: 'bootstrap-5',
     placeholder: 'Select systems (optional)',
@@ -720,11 +714,9 @@ function buildExportUrl() {
         dataType: 'json',
         delay: 250,
       data: params => {
-        console.log('Systems AJAX request:', params.term);
         return { search: params.term };
       },
       processResults: data => {
-        console.log('Systems API response:', data);
         return { results: data };
       },
         cache: true
@@ -732,7 +724,6 @@ function buildExportUrl() {
     });
 
   // Contacts select2 AJAX - Bootstrap 5 theme (clone from system_add.ejs)
-  console.log('Setting up Contacts Select2...');
   $('#ipContacts').select2({
       theme: 'bootstrap-5',
     placeholder: 'Select contacts (optional)',
@@ -745,44 +736,17 @@ function buildExportUrl() {
         dataType: 'json',
         delay: 250,
       data: params => {
-        console.log('Contacts AJAX request:', params.term);
         return { search: params.term };
       },
       processResults: data => {
-        console.log('Contacts API response:', data);
         return { results: data };
       },
         cache: true
       }
     });
   
-  console.log('All Select2 initialized!');
-
-  // Debug: Select2 events
-  $('#ipTags').on('select2:open', function() {
-    console.log('Tags dropdown opened');
-  });
-  
-  $('#ipSystems').on('select2:open', function() {
-    console.log('Systems dropdown opened');
-  });
-  
-  $('#ipContacts').on('select2:open', function() {
-    console.log('Contacts dropdown opened');
-  });
-
-  // Debug: Modal events
-  $('#addIpModal').on('shown.bs.modal', function() {
-    console.log('Add IP Modal shown');
-    console.log('Select2 elements in modal:');
-    console.log('ipTags:', $('#addIpModal #ipTags').length);
-    console.log('ipSystems:', $('#addIpModal #ipSystems').length);
-    console.log('ipContacts:', $('#addIpModal #ipContacts').length);
-  });
-
   // Reset form when modal is hidden
   $('#addIpModal').on('hidden.bs.modal', function() {
-    console.log('Add IP Modal hidden, resetting form');
     $('#addIpForm')[0].reset();
     $('#ipTags, #ipSystems, #ipContacts').val(null).trigger('change');
     // Clear validation states
@@ -796,14 +760,10 @@ function buildExportUrl() {
 
   // IP Address validation - Check immediately on blur
   $('#ipAddress').on('blur', function() {
-    console.log('IP input blurred - starting validation...');
     const ipInput = $(this).val().trim();
     const errorDiv = $('#ipAddressError');
     
-    console.log('Input value:', ipInput);
-    
     if (!ipInput) {
-      console.log('No input - clearing validation');
       $(this).removeClass('is-invalid is-valid');
       errorDiv.text('');
       $('#ipValidationIcon').hide();
@@ -1469,8 +1429,7 @@ function showIpDetail(ipId) {
   const modal = new bootstrap.Modal(modalElement);
   const content = document.getElementById('ipDetailContent');
   
-  let html = '<div class="card"><div class="card-body">';
-  html += '<div class="mb-2"><strong>IP Address:</strong> ' + String(ip.ip_address || 'N/A').trim() + '</div>';
+  let html = '<div class="mb-2"><strong>IP Address:</strong> ' + String(ip.ip_address || 'N/A').trim() + '</div>';
   html += '<div class="mb-2"><strong>Description:</strong><br><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + String(ip.description || 'N/A').trim() + '</pre></div>';
   html += '<div class="mb-2"><strong>Status:</strong> ' + String(ip.status || 'N/A').trim() + '</div>';
   
@@ -1560,7 +1519,6 @@ function showIpDetail(ipId) {
     html += '</ul></div>';
   }
   
-  html += '</div></div>';
   content.innerHTML = html;
   modal.show();
   

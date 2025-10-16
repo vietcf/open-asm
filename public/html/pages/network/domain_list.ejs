@@ -1470,9 +1470,8 @@ function showDomainDetail(domainId) {
   const modal = new bootstrap.Modal(modalElement);
   const content = document.getElementById('domainDetailContent');
   
-  let html = '<div class="card"><div class="card-body">';
-  html += '<div class="mb-2"><strong>Domain:</strong> ' + String(domain.domain || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>Description:</strong> ' + String(domain.description || 'N/A').trim() + '</div>';
+  let html = '<div class="mb-2"><strong>Domain:</strong> ' + String(domain.domain || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>Description:</strong><br><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + String(domain.description || 'N/A').trim() + '</pre></div>';
   html += '<div class="mb-2"><strong>Record Type:</strong> ' + String(domain.record_type || 'A').trim() + '</div>';
   
   if (domain.ip && domain.ip.ip_address) {
@@ -1533,7 +1532,6 @@ function showDomainDetail(domainId) {
     html += '</ul></div>';
   }
   
-  html += '</div></div>';
   content.innerHTML = html;
   modal.show();
 }

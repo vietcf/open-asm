@@ -740,8 +740,10 @@ function buildExportUrl() {
 <!-- ==========================================
      JAVASCRIPT
      ========================================== -->
+<script src="/js/xlsx.full.min.js"></script>
 <script>
 $(function() {
+  
   
   // ==========================================
   // SELECT2 INITIALIZATION
@@ -1549,9 +1551,8 @@ function showSubnetDetail(subnetId) {
   const modal = new bootstrap.Modal(modalElement);
   const content = document.getElementById('subnetDetailContent');
   
-  let html = '<div class="card"><div class="card-body">';
-  html += '<div class="mb-2"><strong>Subnet Address:</strong> ' + String(subnet.address || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>Description:</strong> ' + String(subnet.description || 'N/A').trim() + '</div>';
+  let html = '<div class="mb-2"><strong>Subnet Address:</strong> ' + String(subnet.address || 'N/A').trim() + '</div>';
+  html += '<div class="mb-2"><strong>Description:</strong><br><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + String(subnet.description || 'N/A').trim() + '</pre></div>';
   html += '<div class="mb-2"><strong>Zone:</strong> ' + String(subnet.zone || 'N/A').trim() + '</div>';
   html += '<div class="mb-2"><strong>Environment:</strong> ' + String(subnet.environment || 'N/A').trim() + '</div>';
   
@@ -1564,10 +1565,219 @@ function showSubnetDetail(subnetId) {
     html += '</div>';
   }
   
+  // Add IP Addresses section
+  html += '<div class="mb-3"><strong>IP Addresses in this Subnet:</strong></div>';
+  html += '<div id="subnetIpList" class="mb-3">';
+  html += '<div class="text-muted">Loading IP addresses...</div>';
+  html += '</div>';
   
-  html += '</div></div>';
+  // Add download button
+  html += '<div class="mb-3">';
+  html += '<button type="button" class="btn btn-outline-primary btn-sm" id="downloadSubnetIps" onclick="downloadSubnetIps(' + subnet.id + ')">';
+  html += '<i class="bi bi-download"></i> Download IP List';
+  html += '</button>';
+  html += '</div>';
+  
   content.innerHTML = html;
   modal.show();
+  
+  // Load IP addresses for this subnet
+  loadSubnetIpAddresses(subnet.id);
+}
+
+// Global variables for IP pagination
+let currentSubnetId = null;
+let allIpAddresses = [];
+let currentPage = 1;
+const IP_PER_PAGE = 20;
+
+// Function to load IP addresses for a subnet
+function loadSubnetIpAddresses(subnetId, page = 1) {
+  currentSubnetId = subnetId;
+  currentPage = page;
+  
+  fetch(`/network/api/subnet/${subnetId}/ips`)
+    .then(response => response.json())
+    .then(data => {
+      const ipListElement = document.getElementById('subnetIpList');
+      if (data.success && data.data && data.data.length > 0) {
+        allIpAddresses = data.data;
+        displayIpAddresses(page);
+      } else {
+        ipListElement.innerHTML = '<div class="text-muted">No IP addresses found in this subnet.</div>';
+      }
+    })
+    .catch(error => {
+      console.error('Error loading subnet IP addresses:', error);
+      const ipListElement = document.getElementById('subnetIpList');
+      ipListElement.innerHTML = '<div class="text-danger">Error loading IP addresses.</div>';
+    });
+}
+
+// Function to display IP addresses with pagination
+function displayIpAddresses(page = 1) {
+  const ipListElement = document.getElementById('subnetIpList');
+  const startIndex = (page - 1) * IP_PER_PAGE;
+  const endIndex = startIndex + IP_PER_PAGE;
+  const currentPageData = allIpAddresses.slice(startIndex, endIndex);
+  const totalPages = Math.ceil(allIpAddresses.length / IP_PER_PAGE);
+  
+  let html = '<div class="table-responsive"><table class="table table-sm table-striped">';
+  html += '<thead><tr><th>IP Address</th><th>Description</th></tr></thead>';
+  html += '<tbody>';
+  
+  currentPageData.forEach(function(ip, index) {
+    const globalIndex = startIndex + index;
+    const description = String(ip.description || 'N/A').trim();
+    const truncatedDesc = description.length > 20 ? description.substring(0, 20) + '...' : description;
+    const fullDesc = description.length > 20 ? description : '';
+    
+    html += '<tr>';
+    html += '<td><a href="/network/ip-address?search=' + encodeURIComponent(ip.ip_address) + '" class="text-primary text-decoration-underline">' + String(ip.ip_address).trim() + '</a></td>';
+    html += '<td>';
+    html += '<span class="ip-description" data-full="' + fullDesc.replace(/"/g, '&quot;') + '">' + truncatedDesc + '</span>';
+    if (description.length > 20) {
+      html += ' <button type="button" class="btn btn-link btn-sm p-0 ms-1 show-more-btn" onclick="toggleDescription(' + globalIndex + ')" style="font-size: 0.8em;">show more</button>';
+    }
+    html += '</td>';
+    html += '</tr>';
+  });
+  
+  html += '</tbody></table></div>';
+  
+  // Add pagination info and controls
+  html += '<div class="d-flex justify-content-between align-items-center">';
+  html += '<div class="text-muted small">';
+  html += 'Showing ' + (startIndex + 1) + '-' + Math.min(endIndex, allIpAddresses.length) + ' of ' + allIpAddresses.length + ' IP addresses';
+  html += '</div>';
+  
+  if (totalPages > 1) {
+    html += '<div class="btn-group btn-group-sm" role="group">';
+    
+    // Previous button
+    if (page > 1) {
+      html += '<button type="button" class="btn btn-outline-secondary" onclick="loadSubnetIpAddresses(' + currentSubnetId + ', ' + (page - 1) + ')">Previous</button>';
+    }
+    
+    // Page numbers
+    const startPage = Math.max(1, page - 2);
+    const endPage = Math.min(totalPages, page + 2);
+    
+    for (let i = startPage; i <= endPage; i++) {
+      const isActive = i === page ? 'btn-primary' : 'btn-outline-secondary';
+      html += '<button type="button" class="btn ' + isActive + '" onclick="loadSubnetIpAddresses(' + currentSubnetId + ', ' + i + ')">' + i + '</button>';
+    }
+    
+    // Next button
+    if (page < totalPages) {
+      html += '<button type="button" class="btn btn-outline-secondary" onclick="loadSubnetIpAddresses(' + currentSubnetId + ', ' + (page + 1) + ')">Next</button>';
+    }
+    
+    html += '</div>';
+  }
+  
+  html += '</div>';
+  
+  ipListElement.innerHTML = html;
+}
+
+// Function to toggle description display
+function toggleDescription(index) {
+  const descriptions = document.querySelectorAll('.ip-description');
+  const buttons = document.querySelectorAll('.show-more-btn');
+  
+  // Find the correct elements based on current page
+  const startIndex = (currentPage - 1) * IP_PER_PAGE;
+  const localIndex = index - startIndex;
+  
+  if (localIndex >= 0 && localIndex < descriptions.length && localIndex < buttons.length) {
+    const descElement = descriptions[localIndex];
+    const buttonElement = buttons[localIndex];
+    const fullText = descElement.getAttribute('data-full');
+    
+    if (descElement.textContent.includes('...')) {
+      // Show full description
+      descElement.textContent = fullText;
+      buttonElement.textContent = 'show less';
+    } else {
+      // Show truncated description
+      const truncatedText = fullText.substring(0, 20) + '...';
+      descElement.textContent = truncatedText;
+      buttonElement.textContent = 'show more';
+    }
+  }
+}
+
+// Function to download IP addresses list
+function downloadSubnetIps(subnetId) {
+  fetch(`/network/api/subnet/${subnetId}/ips`)
+    .then(response => response.json())
+    .then(data => {
+      if (data.success && data.data && data.data.length > 0) {
+        // Check if XLSX is available for Excel export
+        if (typeof XLSX !== 'undefined') {
+          // Create Excel workbook
+          const workbook = XLSX.utils.book_new();
+          
+          // Prepare data for Excel
+          const excelData = [
+            ['IP Address', 'Description'] // Header row
+          ];
+          
+          data.data.forEach(function(ip) {
+            const ipAddress = String(ip.ip_address || '');
+            const description = String(ip.description || '');
+            
+            excelData.push([ipAddress, description]);
+          });
+          
+          // Create worksheet
+          const worksheet = XLSX.utils.aoa_to_sheet(excelData);
+          
+          // Set column widths
+          worksheet['!cols'] = [
+            { width: 15 }, // IP Address column
+            { width: 50 }  // Description column
+          ];
+          
+          // Add worksheet to workbook
+          XLSX.utils.book_append_sheet(workbook, worksheet, 'IP Addresses');
+          
+          // Generate Excel file and download
+          const fileName = `subnet_ips_${subnetId}_${new Date().toISOString().split('T')[0]}.xlsx`;
+          XLSX.writeFile(workbook, fileName);
+        } else {
+          // Fallback to CSV if XLSX is not available
+          
+          // Create CSV content
+          let csvContent = 'IP Address,Description\n';
+          
+          data.data.forEach(function(ip) {
+            const ipAddress = String(ip.ip_address || '').replace(/,/g, ';');
+            const description = String(ip.description || '').replace(/,/g, ';').replace(/\n/g, ' ');
+            
+            csvContent += `"${ipAddress}","${description}"\n`;
+          });
+          
+          // Create and download CSV file
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const link = document.createElement('a');
+          const url = URL.createObjectURL(blob);
+          link.setAttribute('href', url);
+          link.setAttribute('download', `subnet_ips_${subnetId}_${new Date().toISOString().split('T')[0]}.csv`);
+          link.style.visibility = 'hidden';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      } else {
+        alert('No IP addresses found in this subnet to download.');
+      }
+    })
+    .catch(error => {
+      console.error('Error downloading subnet IP addresses:', error);
+      alert('Error downloading IP addresses list.');
+    });
 }
 
 // Import Subnet functionality

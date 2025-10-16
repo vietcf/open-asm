@@ -6,9 +6,17 @@ const apiServiceController = {};
 apiServiceController.listServices = async (req, res) => {
   try {
     const services = await Service.findAll();
-    res.json({ data: services, total: services.length });
+    res.json({
+      success: true,
+      data: services,
+      count: services.length
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
   }
 };
 
@@ -16,10 +24,22 @@ apiServiceController.listServices = async (req, res) => {
 apiServiceController.getService = async (req, res) => {
   try {
     const service = await Service.findById(req.params.id);
-    if (!service) return res.status(404).json({ error: 'Service not found' });
-    res.json(service);
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found'
+      });
+    }
+    res.json({
+      success: true,
+      data: service
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
   }
 };
 
@@ -28,7 +48,10 @@ apiServiceController.createService = async (req, res) => {
   try {
     const { name, description } = req.body;
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'Service name is required' });
+      return res.status(400).json({
+        success: false,
+        message: 'Service name is required'
+      });
     }
     
     const service = await Service.create({
@@ -36,12 +59,23 @@ apiServiceController.createService = async (req, res) => {
       description: description ? description.trim() : null
     });
     
-    res.status(201).json(service);
+    res.status(201).json({
+      success: true,
+      message: 'Service created successfully',
+      data: service
+    });
   } catch (err) {
     if (err.code === '23505') { // Unique constraint violation
-      return res.status(400).json({ error: 'Service name already exists' });
+      return res.status(400).json({
+        success: false,
+        message: 'Service name already exists'
+      });
     }
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
   }
 };
 
@@ -53,7 +87,10 @@ apiServiceController.updateService = async (req, res) => {
     // Check if service exists first
     const existingService = await Service.findById(req.params.id);
     if (!existingService) {
-      return res.status(404).json({ error: 'Service not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found'
+      });
     }
     
     // Prepare update data - only update fields that are provided
@@ -61,7 +98,10 @@ apiServiceController.updateService = async (req, res) => {
     
     if (name !== undefined) {
       if (!name || !name.trim()) {
-        return res.status(400).json({ error: 'Service name cannot be empty' });
+        return res.status(400).json({
+          success: false,
+          message: 'Service name cannot be empty'
+        });
       }
       updateData.name = name.trim();
     }
@@ -72,16 +112,31 @@ apiServiceController.updateService = async (req, res) => {
     
     // If no fields to update, return current service
     if (Object.keys(updateData).length === 0) {
-      return res.json(existingService);
+      return res.json({
+        success: true,
+        message: 'No changes made',
+        data: existingService
+      });
     }
     
     const service = await Service.update(req.params.id, updateData);
-    res.json(service);
+    res.json({
+      success: true,
+      message: 'Service updated successfully',
+      data: service
+    });
   } catch (err) {
     if (err.code === '23505') { // Unique constraint violation
-      return res.status(400).json({ error: 'Service name already exists' });
+      return res.status(400).json({
+        success: false,
+        message: 'Service name already exists'
+      });
     }
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
   }
 };
 
@@ -90,12 +145,30 @@ apiServiceController.deleteService = async (req, res) => {
   try {
     // Check if service exists
     const service = await Service.findById(req.params.id);
-    if (!service) return res.status(404).json({ error: 'Service not found' });
+    if (!service) {
+      return res.status(404).json({
+        success: false,
+        message: 'Service not found'
+      });
+    }
     
     await Service.delete(req.params.id);
-    res.json({ message: 'Service deleted successfully' });
+    res.json({
+      success: true,
+      message: 'Service deleted successfully'
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    if (err.message && err.message.includes('in use')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete: This service is in use'
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
   }
 };
 

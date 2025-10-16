@@ -21,10 +21,6 @@ function buildPaginationUrl(targetPage) {
     params.set('status', status);
   }
   
-  // Add protocol filter if exists
-  if (typeof protocol !== 'undefined' && protocol) {
-    params.set('protocol', protocol);
-  }
   
   // Add action filter if exists
   if (typeof action !== 'undefined' && action) {
@@ -53,10 +49,6 @@ function buildExportUrl() {
     params.set('status', status);
   }
   
-  // Add protocol filter if exists
-  if (typeof protocol !== 'undefined' && protocol) {
-    params.set('protocol', protocol);
-  }
   
   // Add action filter if exists
   if (typeof action !== 'undefined' && action) {
@@ -99,9 +91,6 @@ function buildExportUrl() {
             <% if (typeof status !== 'undefined' && status) { %>
               <input type="hidden" name="status" value="<%= status %>">
       <% } %>
-            <% if (typeof protocol !== 'undefined' && protocol) { %>
-              <input type="hidden" name="protocol" value="<%= protocol %>">
-          <% } %>
             <% if (typeof action !== 'undefined' && action) { %>
               <input type="hidden" name="action" value="<%= action %>">
           <% } %>
@@ -153,9 +142,14 @@ function buildExportUrl() {
     <!-- Filter values for JS -->
   <div id="filter-rule-data"
           data-status='<%= JSON.stringify(typeof status !== "undefined" ? status : '') %>'
-          data-protocol='<%= JSON.stringify(typeof protocol !== "undefined" ? protocol : '') %>'
           data-action='<%= JSON.stringify(typeof action !== "undefined" ? action : '') %>'
-          data-firewall-name='<%= JSON.stringify(typeof firewall_name !== "undefined" ? firewall_name : '') %>' style="display:none"></div>
+          data-firewall-name='<%= JSON.stringify(typeof firewall_name !== "undefined" ? firewall_name : '') %>'
+          data-audit-batch='<%= JSON.stringify(typeof audit_batch !== "undefined" ? audit_batch : '') %>'
+          data-violation-type='<%= JSON.stringify(typeof violation_type !== "undefined" ? violation_type : '') %>'
+          data-ou-id='<%= JSON.stringify(typeof ou_id !== "undefined" ? ou_id : '') %>'
+          data-contacts='<%= JSON.stringify(typeof contacts !== "undefined" ? contacts : []) %>'
+          data-tags='<%= JSON.stringify(typeof filterTagIds !== "undefined" ? filterTagIds : []) %>'
+          data-work-order='<%= JSON.stringify(typeof work_order !== "undefined" ? work_order : '') %>' style="display:none"></div>
 
   <!-- Flash Messages -->
   <% if (typeof successMessage !== 'undefined' && successMessage) { %>
@@ -217,11 +211,11 @@ function buildExportUrl() {
             <thead>
               <tr id="detailedHeader">
                 <th>No.</th>
+                <th>Audit Batch</th>
+                <th>Firewall Name</th>
                 <th>Rule Name</th>
                 <th>Source</th>
                 <th>Destination</th>
-                <th>Port</th>
-                <th>Protocol</th>
                 <th>Action</th>
                 <th>Status</th>
                 <th class="text-end">Actions</th>
@@ -243,11 +237,12 @@ function buildExportUrl() {
                 <% ruleList.forEach(function(rule, idx) { %>
                   <tr>
                     <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                    <td><%= rule.audit_batch || '-' %> <small class="text-muted">(<%= typeof rule.audit_batch %>)</small></td>
+                    <td><%= rule.firewall_name || '-' %></td>
                     <td><%= rule.rulename %></td>
                     <td><%= rule.src || '-' %></td>
                     <td><%= rule.dst || '-' %></td>
                     <td><%= rule.services || '-' %></td>
-                    <td><span class="badge bg-primary"><%= rule.protocol || '-' %></span></td>
                     <td><span class="badge bg-<%= rule.action === 'allow' ? 'success' : 'danger' %>"><%= rule.action %></span></td>
                     <td><span class="badge bg-<%= rule.status === 'active' ? 'success' : 'secondary' %>"><%= rule.status %></span></td>
                     <td class="text-end">
@@ -393,7 +388,7 @@ function buildExportUrl() {
             <!-- Service Section -->
             <div class="mb-3">
               <label for="services" class="form-label">Services</label>
-            <input type="text" class="form-control" id="services" name="services" placeholder="Service/Port">
+            <input type="text" class="form-control" id="services" name="services" placeholder="Service">
             </div>
             <div class="mb-3">
               <label for="application" class="form-label">Application</label>
@@ -570,7 +565,7 @@ function buildExportUrl() {
             <!-- Service Section -->
             <div class="mb-3">
               <label for="edit_services" class="form-label">Services</label>
-            <input type="text" class="form-control" id="edit_services" name="services" placeholder="Service/Port">
+            <input type="text" class="form-control" id="edit_services" name="services" placeholder="Service">
             </div>
             <div class="mb-3">
               <label for="edit_application" class="form-label">Application</label>
@@ -693,6 +688,10 @@ function buildExportUrl() {
         <form method="get" action="/firewall/rule">
           <div class="modal-body">
             <div class="mb-3">
+              <label for="filterRuleAuditBatch" class="form-label">Audit Batch</label>
+              <input type="text" class="form-control" id="filterRuleAuditBatch" name="audit_batch" placeholder="Enter audit batch" value="<%= typeof audit_batch !== 'undefined' ? audit_batch : '' %>">
+            </div>
+            <div class="mb-3">
               <label for="filterRuleFirewallName" class="form-label">Firewall Name</label>
             <select class="form-control" id="filterRuleFirewallName" name="firewall_name" style="width:100%">
                 <option value="">-- All --</option>
@@ -702,21 +701,41 @@ function buildExportUrl() {
               </select>
             </div>
             <div class="mb-3">
+              <label for="filterRuleViolationType" class="form-label">Violation Type</label>
+            <select class="form-control" id="filterRuleViolationType" name="violation_type" style="width:100%">
+                <option value="">-- All --</option>
+                <% (violationTypeOptions || []).forEach(function(vt) { %>
+                  <option value="<%= vt.value %>" <%= typeof violation_type !== 'undefined' && violation_type === vt.value ? 'selected' : '' %>><%= vt.label %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="filterRuleOU" class="form-label">OU (Organizational Unit)</label>
+            <select class="form-control" id="filterRuleOU" name="ou_id" style="width:100%">
+                <option value="">-- All --</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="filterRuleContacts" class="form-label">Contacts</label>
+            <select class="form-control" id="filterRuleContacts" name="contacts[]" multiple style="width:100%">
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="filterRuleTags" class="form-label">Tags</label>
+            <select class="form-control" id="filterRuleTags" name="tags[]" multiple style="width:100%">
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="filterRuleWorkOrder" class="form-label">Work Order</label>
+              <input type="text" class="form-control" id="filterRuleWorkOrder" name="work_order" placeholder="Enter work order" value="<%= typeof work_order !== 'undefined' ? work_order : '' %>">
+            </div>
+            <div class="mb-3">
               <label for="filterRuleStatus" class="form-label">Status</label>
             <select class="form-control" id="filterRuleStatus" name="status" style="width:100%">
                 <option value="">-- All --</option>
                 <% (statusOptions || []).forEach(function(st) { %>
                   <option value="<%= st.value %>" <%= typeof status !== 'undefined' && status === st.value ? 'selected' : '' %>><%= st.label %></option>
                 <% }) %>
-              </select>
-            </div>
-            <div class="mb-3">
-            <label for="filterRuleProtocol" class="form-label">Protocol</label>
-            <select class="form-control" id="filterRuleProtocol" name="protocol" style="width:100%">
-              <option value="">-- All --</option>
-              <option value="TCP" <%= typeof protocol !== 'undefined' && protocol === 'TCP' ? 'selected' : '' %>>TCP</option>
-              <option value="UDP" <%= typeof protocol !== 'undefined' && protocol === 'UDP' ? 'selected' : '' %>>UDP</option>
-              <option value="ICMP" <%= typeof protocol !== 'undefined' && protocol === 'ICMP' ? 'selected' : '' %>>ICMP</option>
               </select>
             </div>
           <div class="mb-3">
@@ -837,11 +856,24 @@ function showRuleDetail(ruleId) {
   let rule;
   try {
     rule = JSON.parse(ruleData);
+    console.log('Parsed rule data:', rule);
   } catch (e) {
     console.error('Error parsing rule data:', e);
         return;
       }
       
+  // Debug: Log specific fields
+  console.log('Rule fields debug:');
+  console.log('- audit_batch:', rule.audit_batch);
+  console.log('- firewall_name:', rule.firewall_name);
+  console.log('- rulename:', rule.rulename);
+  console.log('- src:', rule.src);
+  console.log('- dst:', rule.dst);
+  console.log('- action:', rule.action);
+  console.log('- status:', rule.status);
+  console.log('- tags:', rule.tags);
+  console.log('- contacts:', rule.contacts);
+  
   // Create modal HTML
   const modalId = `ruleDetailModal-${ruleId}`;
   const modalHtml = `
@@ -854,6 +886,8 @@ function showRuleDetail(ruleId) {
           </div>
           <div class="modal-body">
             <dl class="row mb-0">
+              <dt class="col-sm-4">Rule ID</dt>
+              <dd class="col-sm-8"><strong>${rule.id || '<span class="text-muted">No data</span>'}</strong></dd>
               <dt class="col-sm-4">Audit Batch</dt>
               <dd class="col-sm-8">${rule.audit_batch || '<span class="text-muted">No data</span>'}</dd>
               <dt class="col-sm-4">Firewall Name</dt>
@@ -934,6 +968,27 @@ function showRuleDetail(ruleId) {
                 }
               </dd>
               
+              <!-- Tags Section -->
+              <dt class="col-sm-4">Tags</dt>
+              <dd class="col-sm-8">
+                ${rule.tags && rule.tags.length > 0 
+                  ? rule.tags.map(tag => `<span class="badge bg-secondary me-1">${tag.name}</span>`).join('')
+                  : '<span class="text-muted">No tags assigned</span>'
+                }
+              </dd>
+              
+              <!-- Updated By -->
+              <dt class="col-sm-4">Updated By</dt>
+              <dd class="col-sm-8">${rule.updated_by || '<span class="text-muted">No data</span>'}</dd>
+              
+              <!-- Created At -->
+              <dt class="col-sm-4">Created At</dt>
+              <dd class="col-sm-8">${rule.created_at ? new Date(rule.created_at).toLocaleString() : '<span class="text-muted">No data</span>'}</dd>
+              
+              <!-- Updated At -->
+              <dt class="col-sm-4">Updated At</dt>
+              <dd class="col-sm-8">${rule.updated_at ? new Date(rule.updated_at).toLocaleString() : '<span class="text-muted">No data</span>'}</dd>
+              
               <!-- Description -->
               <dt class="col-sm-4">Description</dt>
               <dd class="col-sm-8">${rule.description || '<span class="text-muted">No data</span>'}</dd>
@@ -968,6 +1023,33 @@ function showRuleDetail(ruleId) {
   // Show modal
   const modal = new bootstrap.Modal(document.getElementById(modalId));
   modal.show();
+  
+  // Debug: Log modal creation
+  console.log('Modal created and shown for rule:', ruleId);
+  
+  // Debug: Check if modal is properly created
+  setTimeout(() => {
+    const modalElement = document.getElementById(modalId);
+    if (modalElement) {
+      console.log('Modal element found:', modalElement);
+      console.log('Modal content:', modalElement.innerHTML.substring(0, 200) + '...');
+      
+      // Check if data is properly displayed
+      const auditBatchElement = modalElement.querySelector('dd');
+      if (auditBatchElement) {
+        console.log('First dd element text:', auditBatchElement.textContent);
+      }
+      
+      // Check all dd elements
+      const allDdElements = modalElement.querySelectorAll('dd');
+      console.log('All dd elements count:', allDdElements.length);
+      allDdElements.forEach((dd, index) => {
+        console.log(`DD ${index}:`, dd.textContent.trim());
+      });
+    } else {
+      console.error('Modal element not found after creation');
+    }
+  }, 100);
   
   // Remove modal from DOM when hidden
   document.getElementById(modalId).addEventListener('hidden.bs.modal', function() {
@@ -1045,6 +1127,109 @@ $(function() {
       },
       error: function() {
         console.error('Failed to load contact options');
+      }
+    });
+  }
+
+  // Load OU options for Filter Modal
+  function loadFilterOUOptions() {
+    $.ajax({
+      url: '/organize/api/unit',
+      dataType: 'json',
+      success: function(data) {
+        const $ouSelect = $('#filterRuleOU');
+        $ouSelect.empty().append('<option value="">-- All --</option>');
+        if (data && data.length > 0) {
+          data.forEach(function(ou) {
+            $ouSelect.append(`<option value="${ou.id}">${ou.text}</option>`);
+          });
+        }
+        // Set selected value if exists
+        const filterData = document.getElementById('filter-rule-data');
+        const selectedOU = filterData.getAttribute('data-ou-id');
+        if (selectedOU && selectedOU !== '') {
+          $ouSelect.val(selectedOU);
+        }
+        $ouSelect.trigger('change');
+      },
+      error: function() {
+        console.error('Failed to load OU options for filter');
+      }
+    });
+  }
+
+  // Load Contact options for Filter Modal
+  function loadFilterContactOptions() {
+    $.ajax({
+      url: '/organize/api/contact',
+      dataType: 'json',
+      success: function(data) {
+        const $contactSelect = $('#filterRuleContacts');
+        $contactSelect.empty();
+        if (data && data.length > 0) {
+          data.forEach(function(contact) {
+            const option = new Option(contact.text, contact.id, false, false);
+            $contactSelect.append(option);
+          });
+        }
+        // Set selected values if exist
+        const filterData = document.getElementById('filter-rule-data');
+        const selectedContacts = filterData.getAttribute('data-contacts');
+        if (selectedContacts && selectedContacts !== '[]') {
+          try {
+            const contacts = JSON.parse(selectedContacts);
+            if (Array.isArray(contacts) && contacts.length > 0) {
+              $contactSelect.val(contacts);
+            }
+          } catch (e) {
+            console.error('Error parsing selected contacts:', e);
+          }
+        }
+        $contactSelect.trigger('change');
+      },
+      error: function() {
+        console.error('Failed to load contact options for filter');
+      }
+    });
+  }
+
+  // Load Tag options for Filter Modal
+  function loadFilterTagOptions() {
+    $.ajax({
+      url: '/organize/api/tag',
+      dataType: 'json',
+      success: function(data) {
+        const $tagSelect = $('#filterRuleTags');
+        $tagSelect.empty();
+        if (data && data.length > 0) {
+          data.forEach(function(tag) {
+            const option = new Option(tag.text, tag.id, false, false);
+            $tagSelect.append(option);
+          });
+        }
+        // Set selected values if exist
+        const filterData = document.getElementById('filter-rule-data');
+        const selectedTags = filterData.getAttribute('data-tags');
+        console.log('Raw tags data:', selectedTags);
+        
+        if (selectedTags && selectedTags !== '[]') {
+          try {
+            const tags = JSON.parse(selectedTags);
+            console.log('Parsed tags:', tags);
+            if (Array.isArray(tags) && tags.length > 0) {
+              $tagSelect.val(tags);
+              console.log('Set tags value:', tags);
+            }
+          } catch (e) {
+            console.error('Error parsing tags data:', e);
+          }
+        } else {
+          console.log('Tags data is empty or invalid');
+        }
+        $tagSelect.trigger('change');
+      },
+      error: function() {
+        console.error('Failed to load tag options for filter');
       }
     });
   }
@@ -1266,7 +1451,8 @@ $(function() {
     dropdownParent: $('#filterRuleModal .modal-body')
   });
 
-  $('#filterRuleProtocol').select2({
+
+  $('#filterRuleAction').select2({
     theme: 'bootstrap-5',
     placeholder: '-- All --',
     width: '100%',
@@ -1274,7 +1460,31 @@ $(function() {
     dropdownParent: $('#filterRuleModal .modal-body')
   });
 
-  $('#filterRuleAction').select2({
+  $('#filterRuleViolationType').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- All --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#filterRuleModal .modal-body')
+  });
+
+  $('#filterRuleOU').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- All --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#filterRuleModal .modal-body')
+  });
+
+  $('#filterRuleContacts').select2({
+    theme: 'bootstrap-5',
+    placeholder: '-- All --',
+    width: '100%',
+    allowClear: true,
+    dropdownParent: $('#filterRuleModal .modal-body')
+  });
+
+  $('#filterRuleTags').select2({
     theme: 'bootstrap-5',
     placeholder: '-- All --',
     width: '100%',
@@ -1294,6 +1504,37 @@ $(function() {
     loadEditOUOptions();
     loadEditContactOptions();
     loadEditTagOptions();
+  });
+
+  // Load data when Filter Rule Modal is opened
+  $('#filterRuleModal').on('show.bs.modal', function() {
+    loadFilterOUOptions();
+    loadFilterContactOptions();
+    loadFilterTagOptions();
+    
+    // Set Work Order value from data attribute
+    const filterData = document.getElementById('filter-rule-data');
+    const selectedWorkOrder = filterData.getAttribute('data-work-order');
+    console.log('Raw work order data:', selectedWorkOrder);
+    
+    if (selectedWorkOrder && selectedWorkOrder !== '' && selectedWorkOrder !== '""') {
+      try {
+        // Check if it's a JSON string (starts with quote)
+        let workOrderValue;
+        if (selectedWorkOrder.startsWith('"') && selectedWorkOrder.endsWith('"')) {
+          workOrderValue = JSON.parse(selectedWorkOrder);
+        } else {
+          workOrderValue = selectedWorkOrder;
+        }
+        $('#filterRuleWorkOrder').val(workOrderValue);
+        console.log('Set Work Order value:', workOrderValue);
+      } catch (e) {
+        console.error('Error parsing work order data:', e);
+        $('#filterRuleWorkOrder').val(selectedWorkOrder);
+      }
+    } else {
+      console.log('Work order data is empty or invalid');
+    }
   });
   
   // Additional event to handle modal opening
@@ -1626,6 +1867,13 @@ $(function() {
   var originalRules = <%- JSON.stringify(ruleList || []) %>;
   var currentView = 'grouped';
   
+  // Debug: Log first rule to check audit_batch
+  if (originalRules && originalRules.length > 0) {
+    console.log('First rule data:', originalRules[0]);
+    console.log('First rule audit_batch:', originalRules[0].audit_batch);
+    console.log('First rule audit_batch type:', typeof originalRules[0].audit_batch);
+  }
+  
   // Permissions
   var hasUpdatePermission = <%= hasPermission('firewall.update') %>;
   var hasDeletePermission = <%= hasPermission('firewall.delete') %>;
@@ -1681,7 +1929,7 @@ $(function() {
     groups.forEach(function(group, idx) {
       var row = $('<tr class="group-row" data-group-key="' + group.rulename + '|' + group.firewall_name + '">');
       row.append('<td>' + (idx + 1) + '</td>');
-      row.append('<td style="font-size: 0.75rem; color: #6c757d;">' + (group.latestAudit || '') + '</td>');
+      row.append('<td style="font-size: 0.75rem; color: #6c757d;">' + (group.latestAudit || '') + ' <small class="text-muted">(' + typeof group.latestAudit + ')</small></td>');
       row.append('<td><span class="badge bg-info">' + group.firewall_name + '</span></td>');
       row.append('<td><strong>' + group.rulename + '</strong></td>');
 
@@ -1717,7 +1965,7 @@ $(function() {
       group.rules.forEach(function(rule, ruleIdx) {
         var detailRow = $('<tr class="group-detail-row" style="display: none;" data-group-key="' + group.rulename + '|' + group.firewall_name + '">');
         detailRow.append('<td></td>'); // Empty for No.
-        detailRow.append('<td class="text-muted">' + (rule.audit_batch || '') + '</td>'); // Audit Batch
+        detailRow.append('<td class="text-muted">' + (rule.audit_batch || '') + ' <small class="text-muted">(' + typeof rule.audit_batch + ')</small></td>'); // Audit Batch
         detailRow.append('<td class="text-muted">' + (rule.firewall_name || '') + '</td>'); // Firewall Name
         detailRow.append('<td class="text-muted">' + (rule.rulename || '') + '</td>'); // Rule Name
         detailRow.append('<td class="text-muted">' + (rule.src || '') + '</td>'); // Source
@@ -1748,7 +1996,7 @@ $(function() {
   // Render detailed view (original)
   function renderDetailedView() {
     if (!originalRules || originalRules.length === 0) {
-      $('#rulesTableBody').html('<tr><td colspan="9" class="text-center">No rules found</td></tr>');
+      $('#rulesTableBody').html('<tr><td colspan="11" class="text-center">No rules found</td></tr>');
       return;
     }
 
@@ -1756,18 +2004,19 @@ $(function() {
     tbody.empty();
 
     if (originalRules.length === 0) {
-      tbody.append('<tr><td colspan="9" class="text-center">No rules found</td></tr>');
+      tbody.append('<tr><td colspan="11" class="text-center">No rules found</td></tr>');
       return;
     }
 
     originalRules.forEach(function(rule, idx) {
       var row = $('<tr>');
       row.append('<td>' + (idx + 1) + '</td>');
+      row.append('<td>' + (rule.audit_batch || '-') + ' <small class="text-muted">(' + typeof rule.audit_batch + ')</small></td>');
+      row.append('<td>' + (rule.firewall_name || '-') + '</td>');
       row.append('<td>' + rule.rulename + '</td>');
       row.append('<td>' + (rule.src || '-') + '</td>');
       row.append('<td>' + (rule.dst || '-') + '</td>');
       row.append('<td>' + (rule.services || '-') + '</td>');
-      row.append('<td><span class="badge bg-primary">' + (rule.protocol || '-') + '</span></td>');
       row.append('<td><span class="badge bg-' + (rule.action === 'allow' ? 'success' : 'danger') + '">' + rule.action + '</span></td>');
       row.append('<td><span class="badge bg-' + (rule.status === 'active' ? 'success' : 'secondary') + '">' + rule.status + '</span></td>');
 

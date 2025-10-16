@@ -64,18 +64,24 @@
  *             schema:
  *               type: object
  *               properties:
- *                 totalCount:
- *                   type: integer
- *                 page:
- *                   type: integer
- *                 pageSize:
- *                   type: integer
- *                 totalPages:
- *                   type: integer
- *                 devices:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Device'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     totalCount:
+ *                       type: integer
+ *                     page:
+ *                       type: integer
+ *                     pageSize:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
  *   post:
  *     summary: Create a new device
  *     tags: [Device]
@@ -140,7 +146,16 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Device'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Device created successfully"
+ *                 data:
+ *                   $ref: '#/components/schemas/Device'
  *       400:
  *         description: Validation error
  *       409:
@@ -171,6 +186,9 @@
  *             schema:
  *               type: object
  *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: array
  *                   items:
@@ -222,7 +240,13 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Device'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/Device'
  *       404:
  *         description: Not found
  *   put:
@@ -295,7 +319,16 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Device'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Device updated successfully"
+ *                 data:
+ *                   $ref: '#/components/schemas/Device'
  *       400:
  *         description: Validation error
  *       404:
@@ -315,8 +348,19 @@
  *           type: integer
  *         description: Device ID
  *     responses:
- *       204:
+ *       200:
  *         description: Deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Device deleted successfully"
  *       404:
  *         description: Not found
  * components:
@@ -388,12 +432,70 @@ const apiDeviceRouter = express.Router();
 apiDeviceRouter.get('/', apiDeviceController.listDevices);
 // Find devices
 apiDeviceRouter.get('/find', apiDeviceController.findDevices);
-// Get manufacturers for autocomplete
-apiDeviceRouter.get('/manufacturers', apiDeviceController.getManufacturers);
-// Get device roles for autocomplete
-apiDeviceRouter.get('/device-roles', apiDeviceController.getDeviceRoles);
-// Get location options
-apiDeviceRouter.get('/location-options', apiDeviceController.getLocationOptions);
+/**
+ * @swagger
+ * /api/v1/devices/config:
+ *   get:
+ *     summary: Get device configuration options
+ *     description: Retrieve all device configuration options including location, manufacturers, and device roles
+ *     tags: [Device]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Configuration options retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     location:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "DC"
+ *                           label:
+ *                             type: string
+ *                             example: "Data Center"
+ *                       description: Location options from database configuration
+ *                     manufacturers:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "Cisco"
+ *                           label:
+ *                             type: string
+ *                             example: "Cisco"
+ *                       description: Unique manufacturers from devices table
+ *                     device_roles:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "Router"
+ *                           label:
+ *                             type: string
+ *                             example: "Router"
+ *                       description: Unique device roles from devices table
+ *       500:
+ *         description: Server error
+ */
+apiDeviceRouter.get('/config', apiDeviceController.getConfig);
+
 // Get device by ID
 apiDeviceRouter.get('/:id', apiDeviceController.getDevice);
 // Create device

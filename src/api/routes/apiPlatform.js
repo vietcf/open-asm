@@ -28,7 +28,7 @@ const router = express.Router();
  *         updated_at:
  *           type: string
  *           format: date-time
- *           description: The date and time the platform was last updated
+ *           description: The date and time the platform was last updated (may be null if not updated)
  *       example:
  *         id: 1
  *         name: "Windows Server 2019"

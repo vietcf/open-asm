@@ -1471,15 +1471,13 @@ networkController.exportIpAddressList = async (req, res) => {
     });
     // Định nghĩa các cột xuất Excel
     const headers = [
-      'ID', 'IP Address', 'Description', 'Status', 'Zone', 'Environment', 'Tags', 'Created At', 'Updated At', 'Updated By', 'Systems', 'Contacts'
+      'ID', 'IP Address', 'Description', 'Status', 'Tags', 'Created At', 'Updated At', 'Updated By', 'Systems', 'Contacts'
     ];
     const rows = ipList.map(ip => [
       ip.id,
       ip.ip_address || '',
       ip.description ? ip.description.replace(/\r?\n|\r/g, ' ') : '',
       ip.status || '',
-      ip.zone || '',
-      ip.environment || '',
       (ip.tags && ip.tags.length ? ip.tags.map(t => t.name).join(', ') : ''),
       ip.created_at ? new Date(ip.created_at).toLocaleString('en-GB') : '',
       ip.updated_at ? new Date(ip.updated_at).toLocaleString('en-GB') : '',
@@ -2088,20 +2086,12 @@ networkController.validateImportSubnets = async (req, res) => {
       allPassed: allPassed
     }));
 
-    const responseData = {
-      success: true,
-      message: `Validation completed. ${passCount} passed, ${failCount} failed.`,
-      validation_summary: {
-        total: validationResults.length,
-        passed: passCount,
-        failed: failCount,
-        all_passed: allPassed
-      },
-      validation_file: validationFileName
-    };
+    // Send file download response
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${validationFileName}"`);
     
-    console.log('Sending response:', responseData);
-    res.json(responseData);
+    console.log('Sending file:', validationFileName);
+    res.sendFile(validationFilePath);
     console.log('=== SUBNET VALIDATION COMPLETED ===');
 
   } catch (err) {
@@ -2363,16 +2353,19 @@ networkController.importSubnets = async (req, res) => {
       }
     }, 10000);
 
-    res.json({
-      success: true,
-      message: `Import completed. ${successCount} imported successfully, ${failCount} failed.`,
-      import_summary: {
-        total: importResults.length,
-        success: successCount,
-        failed: failCount
-      },
-      import_file: importFileName
-    });
+    // Set header for frontend to know import results
+    res.set('X-Import-Summary', JSON.stringify({
+      total: importResults.length,
+      success: successCount,
+      failed: failCount
+    }));
+
+    // Send file download response
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${importFileName}"`);
+    
+    console.log('Sending import results file:', importFileName);
+    res.sendFile(importFilePath);
 
   } catch (err) {
     console.error('=== SUBNET IMPORT ERROR ===');
@@ -2652,6 +2645,60 @@ networkController.apiFindSubnetForIP = async (req, res) => {
   } catch (err) {
     console.error('Error finding subnet for IP:', err);
     res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// API: Get IP addresses in a subnet
+networkController.apiGetSubnetIpAddresses = async (req, res) => {
+  try {
+    const subnetId = req.params.id;
+    
+    // Check if subnet exists
+    const subnet = await Subnet.findById(subnetId);
+    
+    if (!subnet) {
+      return res.status(404).json({
+        success: false,
+        message: 'Subnet not found'
+      });
+    }
+    
+    // Get IP addresses in this subnet
+    const query = `
+      SELECT 
+        ip.id,
+        ip.ip_address,
+        ip.description,
+        ip.status,
+        s.name as server_name,
+        d.name as device_name
+      FROM ip_addresses ip
+      LEFT JOIN servers s ON ip.server_id = s.id
+      LEFT JOIN devices d ON ip.device_id = d.id
+      WHERE ip.ip_address::inet <<= (SELECT address FROM subnets WHERE id = $1)
+      ORDER BY ip.ip_address::inet
+    `;
+    
+    const result = await pool.query(query, [subnetId]);
+    
+    const response = {
+      success: true,
+      data: result.rows,
+      count: result.rows.length
+    };
+    
+    res.json(response);
+    
+  } catch (err) {
+    console.error('Error getting subnet IP addresses:', err);
+    
+    const errorResponse = {
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    };
+    
+    res.status(500).json(errorResponse);
   }
 };
 

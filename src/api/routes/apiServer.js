@@ -27,20 +27,26 @@ const apiServerRouter = express.Router();
  *         name: status
  *         schema:
  *           type: string
- *           enum: [ONLINE, OFFLINE, MAINTENANCE]
- *         description: Filter by status (ONLINE, OFFLINE, MAINTENANCE)
+ *         description: |
+ *           Filter by status. Values are dynamically loaded from database config table 
+ *           with config_name = 'server_status'. Example values: ONLINE, OFFLINE, MAINTENANCE.
+ *           Must select from the configured list in the system.
  *       - in: query
  *         name: type
  *         schema:
  *           type: string
- *           enum: [PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE]
- *         description: Filter by type (PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE)
+ *         description: |
+ *           Filter by type. Values are dynamically loaded from database config table 
+ *           with config_name = 'server_type'. Example values: PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE.
+ *           Must select from the configured list in the system.
  *       - in: query
  *         name: location
  *         schema:
  *           type: string
- *           enum: [DC, DR, CMC, BRANCH, CLOUD]
- *         description: Filter by location (DC, DR, CMC, BRANCH, CLOUD)
+ *         description: |
+ *           Filter by location. Values are dynamically loaded from database config table 
+ *           with config_name = 'server_location'. Example values: DC, DR, CMC, BRANCH, CLOUD.
+ *           Must select from the configured list in the system.
  *       - in: query
  *         name: tags
  *         schema:
@@ -166,6 +172,80 @@ apiServerRouter.get('/find', apiServerController.findServers);
 
 /**
  * @swagger
+ * /api/v1/servers/config:
+ *   get:
+ *     summary: Get configuration values for enum fields
+ *     description: |
+ *       Retrieve current configuration values for enum fields used in server management.
+ *       This endpoint returns the dynamic enum values loaded from the database configuration table.
+ *     tags: [Server]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Configuration values retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     status:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                           label:
+ *                             type: string
+ *                       example: [{"value": "ONLINE", "label": "Online"}, {"value": "OFFLINE", "label": "Offline"}]
+ *                     type:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                           label:
+ *                             type: string
+ *                       example: [{"value": "PHYSICAL", "label": "Physical"}, {"value": "VIRTUAL-MACHINE", "label": "Virtual Machine"}]
+ *                     location:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                           label:
+ *                             type: string
+ *                       example: [{"value": "DC", "label": "Data Center"}, {"value": "DR", "label": "Disaster Recovery"}]
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Internal server error"
+ *                 error:
+ *                   type: string
+ *                   example: "Failed to load configuration"
+ */
+apiServerRouter.get('/config', apiServerController.getConfig);
+
+/**
+ * @swagger
  * /api/v1/servers:
  *   post:
  *     summary: Create a new server
@@ -186,16 +266,22 @@ apiServerRouter.get('/find', apiServerController.findServers);
  *                 description: Platform (OS) ID
  *               status:
  *                 type: string
- *                 enum: [ONLINE, OFFLINE, MAINTENANCE]
- *                 description: Server status (ONLINE, OFFLINE, MAINTENANCE)
+ *                 description: |
+ *                   Server status. Values are dynamically loaded from database config table 
+ *                   with config_name = 'server_status'. Example values: ONLINE, OFFLINE, MAINTENANCE.
+ *                   Must select from the configured list in the system.
  *               location:
  *                 type: string
- *                 enum: [DC, DR, CMC, BRANCH, CLOUD]
- *                 description: Server location (DC, DR, CMC, BRANCH, CLOUD)
+ *                 description: |
+ *                   Server location. Values are dynamically loaded from database config table 
+ *                   with config_name = 'server_location'. Example values: DC, DR, CMC, BRANCH, CLOUD.
+ *                   Must select from the configured list in the system.
  *               type:
  *                 type: string
- *                 enum: [PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE]
- *                 description: Server type (PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE)
+ *                 description: |
+ *                   Server type. Values are dynamically loaded from database config table 
+ *                   with config_name = 'server_type'. Example values: PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE.
+ *                   Must select from the configured list in the system.
  *               managers:
  *                 type: array
  *                 items:
@@ -310,16 +396,22 @@ apiServerRouter.get('/:id', apiServerController.getServer);
  *                 description: Platform (OS) ID
  *               status:
  *                 type: string
- *                 enum: [ONLINE, OFFLINE, MAINTENANCE]
- *                 description: Server status
+ *                 description: |
+ *                   Server status. Values are dynamically loaded from database config table 
+ *                   with config_name = 'server_status'. Example values: ONLINE, OFFLINE, MAINTENANCE.
+ *                   Must select from the configured list in the system.
  *               location:
  *                 type: string
- *                 enum: [DC, DR, CMC, BRANCH, CLOUD]
- *                 description: Server location
+ *                 description: |
+ *                   Server location. Values are dynamically loaded from database config table 
+ *                   with config_name = 'server_location'. Example values: DC, DR, CMC, BRANCH, CLOUD.
+ *                   Must select from the configured list in the system.
  *               type:
  *                 type: string
- *                 enum: [PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE]
- *                 description: Server type
+ *                 description: |
+ *                   Server type. Values are dynamically loaded from database config table 
+ *                   with config_name = 'server_type'. Example values: PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE.
+ *                   Must select from the configured list in the system.
  *               managers:
  *                 type: array
  *                 items:
@@ -420,13 +512,22 @@ apiServerRouter.delete('/:id', apiServerController.deleteServer);
  *           type: integer
  *         status:
  *           type: string
- *           enum: [ONLINE, OFFLINE, MAINTENANCE]
+ *           description: |
+ *             Server status. Values are dynamically loaded from database config table 
+ *             with config_name = 'server_status'. Example values: ONLINE, OFFLINE, MAINTENANCE.
+ *             Must select from the configured list in the system.
  *         location:
  *           type: string
- *           enum: [DC, DR, CMC, BRANCH, CLOUD]
+ *           description: |
+ *             Server location. Values are dynamically loaded from database config table 
+ *             with config_name = 'server_location'. Example values: DC, DR, CMC, BRANCH, CLOUD.
+ *             Must select from the configured list in the system.
  *         type:
  *           type: string
- *           enum: [PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE]
+ *           description: |
+ *             Server type. Values are dynamically loaded from database config table 
+ *             with config_name = 'server_type'. Example values: PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE.
+ *             Must select from the configured list in the system.
  *         managers:
  *           type: array
  *           items:
@@ -462,13 +563,22 @@ apiServerRouter.delete('/:id', apiServerController.deleteServer);
  *           type: string
  *         status:
  *           type: string
- *           enum: [ONLINE, OFFLINE, MAINTENANCE]
+ *           description: |
+ *             Server status. Values are dynamically loaded from database config table 
+ *             with config_name = 'server_status'. Example values: ONLINE, OFFLINE, MAINTENANCE.
+ *             Must select from the configured list in the system.
  *         location:
  *           type: string
- *           enum: [DC, DR, CMC, BRANCH, CLOUD]
+ *           description: |
+ *             Server location. Values are dynamically loaded from database config table 
+ *             with config_name = 'server_location'. Example values: DC, DR, CMC, BRANCH, CLOUD.
+ *             Must select from the configured list in the system.
  *         type:
  *           type: string
- *           enum: [PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE]
+ *           description: |
+ *             Server type. Values are dynamically loaded from database config table 
+ *             with config_name = 'server_type'. Example values: PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE.
+ *             Must select from the configured list in the system.
  *         description:
  *           type: string
  *         created_at:

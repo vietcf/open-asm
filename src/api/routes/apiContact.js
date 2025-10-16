@@ -196,6 +196,39 @@ apiContactRouter.get('/find', authorizePermissionJWT('contact.read'), apiContact
  *       500:
  *         description: Server error
  */
+/**
+ * @swagger
+ * /api/v1/contacts/config:
+ *   get:
+ *     summary: Get contact configuration options
+ *     description: Retrieve dynamic enum values for contact fields from database configuration
+ *     tags: [Contact]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Configuration options retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     position:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       description: Available position options loaded from database configuration (config_name contact_position)
+ *       500:
+ *         description: Server error
+ */
+apiContactRouter.get('/config', authorizePermissionJWT('contact.read'), apiContactController.getConfig);
+
 apiContactRouter.get('/:id', authorizePermissionJWT('contact.read'), apiContactController.getContactById);
 
 // ============================
@@ -215,25 +248,7 @@ apiContactRouter.get('/:id', authorizePermissionJWT('contact.read'), apiContactC
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - name
- *               - email
- *             properties:
- *               name:
- *                 type: string
- *               email:
- *                 type: string
- *               phone:
- *                 type: string
- *               position:
- *                 type: string
- *                 enum: [MANAGER, STAFF]
- *               unit_id:
- *                 type: integer
- *               description:
- *                 type: string
- *                 description: Additional description for the contact
+ *             $ref: '#/components/schemas/ContactInput'
  *     responses:
  *       201:
  *         description: Contact created
@@ -274,22 +289,7 @@ apiContactRouter.post('/', authorizePermissionJWT('contact.create'), apiContactC
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               name:
- *                 type: string
- *               email:
- *                 type: string
- *               phone:
- *                 type: string
- *               position:
- *                 type: string
- *                 enum: [MANAGER, STAFF]
- *               unit_id:
- *                 type: integer
- *               description:
- *                 type: string
- *                 description: Additional description for the contact
+ *             $ref: '#/components/schemas/ContactUpdateInput'
  *     responses:
  *       200:
  *         description: Contact updated
@@ -336,5 +336,107 @@ apiContactRouter.put('/:id', authorizePermissionJWT('contact.update'), apiContac
  *         description: Server error
  */
 apiContactRouter.delete('/:id', authorizePermissionJWT('contact.delete'), apiContactController.deleteContact);
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Contact:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: Contact ID
+ *         name:
+ *           type: string
+ *           description: Contact name
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: Contact email address
+ *         phone:
+ *           type: string
+ *           description: Contact phone number
+ *         position:
+ *           type: string
+ *           description: Contact position (values loaded dynamically from database configuration, config_name contact_position)
+ *         unit_id:
+ *           type: integer
+ *           nullable: true
+ *           description: Organization unit ID
+ *         unit_name:
+ *           type: string
+ *           nullable: true
+ *           description: Organization unit name
+ *         description:
+ *           type: string
+ *           nullable: true
+ *           description: Additional description for the contact
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *           description: Creation timestamp
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *           description: Last update timestamp
+ *       required:
+ *         - id
+ *         - name
+ *         - email
+ *         - position
+ *     ContactInput:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: Contact name
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: Contact email address
+ *         phone:
+ *           type: string
+ *           description: Contact phone number
+ *         position:
+ *           type: string
+ *           description: Contact position (values loaded dynamically from database configuration, config_name contact_position)
+ *         unit_id:
+ *           type: integer
+ *           nullable: true
+ *           description: Organization unit ID
+ *         description:
+ *           type: string
+ *           nullable: true
+ *           description: Additional description for the contact
+ *       required:
+ *         - name
+ *         - email
+ *     ContactUpdateInput:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: Contact name
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: Contact email address
+ *         phone:
+ *           type: string
+ *           description: Contact phone number
+ *         position:
+ *           type: string
+ *           description: Contact position (values loaded dynamically from database configuration, config_name contact_position)
+ *         unit_id:
+ *           type: integer
+ *           nullable: true
+ *           description: Organization unit ID
+ *         description:
+ *           type: string
+ *           nullable: true
+ *           description: Additional description for the contact
+ *       description: All fields are optional for partial updates
+ */
 
 export default apiContactRouter;

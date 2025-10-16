@@ -534,8 +534,7 @@
         const content = document.getElementById('systemDetailContent');
         
         // Build HTML content - Simple field: value layout
-        let html = '<div class="card">';
-        html += '<div class="card-body">';
+        let html = '';
         
         // Debug: Show all system properties
         console.log('All system properties:', Object.keys(system));
@@ -725,8 +724,6 @@
           html += '</div>';
         }
         
-        html += '</div>'; // card-body
-        html += '</div>'; // card
         
         // Components - will be loaded via AJAX (moved to bottom)
         html += '<div class="mb-2 mt-3" id="components-section-' + systemId + '">';
