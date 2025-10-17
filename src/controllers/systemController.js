@@ -567,10 +567,27 @@ systemController.listSystem = async (req, res) => {
         }
       }
     }
+    // Fetch files for all systems in this page
+    let filesBySystem = {};
+    if (systemIds.length > 0) {
+      for (const sysId of systemIds) {
+        const files = await FileUpload.findByObject('system', sysId);
+        if (files && files.length > 0) {
+          filesBySystem[sysId] = files.map(f => ({
+            id: f.id,
+            name: f.original_name || f.name,
+            url: FileUpload.getUrl(f)
+          }));
+        }
+      }
+    }
+
     // Attach to each system
     systemList.forEach(s => {
       // Only attach components if there are any; otherwise, leave as empty array
       s.components = Array.isArray(componentsBySystem[s.id]) && componentsBySystem[s.id].length > 0 ? componentsBySystem[s.id] : [];
+      // Attach files if there are any; otherwise, leave as empty array
+      s.docs = Array.isArray(filesBySystem[s.id]) && filesBySystem[s.id].length > 0 ? filesBySystem[s.id] : [];
     });
 
     // Flash messages

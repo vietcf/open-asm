@@ -137,7 +137,15 @@ class System {
     const executor = client || pool;
     if (ip_addresses && ip_addresses.length > 0) {
       for (const ipId of ip_addresses) {
-        await executor.query('INSERT INTO system_ip (system_id, ip_id) VALUES ($1, $2)', [systemId, ipId]);
+        try {
+          await executor.query('INSERT INTO system_ip (system_id, ip_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [systemId, ipId]);
+        } catch (error) {
+          // Ignore duplicate key errors, but log other errors
+          if (error.code !== '23505') {
+            console.error('Error adding IP to system:', error);
+            throw error;
+          }
+        }
       }
     }
   }

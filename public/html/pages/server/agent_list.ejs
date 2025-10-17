@@ -1,6 +1,21 @@
 <!-- Modal Buttons Custom CSS -->
 <link rel="stylesheet" href="/css/modal-buttons.css">
 
+<!-- Custom CSS for disabled buttons -->
+<style>
+.btn-disabled-modal {
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+  cursor: not-allowed !important;
+  filter: grayscale(50%) !important;
+}
+
+.btn-disabled-modal:hover {
+  opacity: 0.5 !important;
+  transform: none !important;
+}
+</style>
+
 <%
 // ==========================================
 // HELPER FUNCTIONS
@@ -224,7 +239,7 @@ function buildPaginationUrl(targetPage) {
     <!-- ========================================== -->
     
     <!-- Add Agent Modal -->
-    <div class="modal fade" id="addAgentModal" tabindex="-1" aria-labelledby="addAgentModalLabel">
+    <div class="modal fade" id="addAgentModal" tabindex="-1" aria-labelledby="addAgentModalLabel" data-bs-backdrop="static" data-bs-keyboard="false">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <form id="addAgentForm" method="POST" action="/server/agent/add">
@@ -258,7 +273,7 @@ function buildPaginationUrl(targetPage) {
     </div>
 
     <!-- Edit Agent Modal -->
-    <div class="modal fade" id="editAgentModal" tabindex="-1" aria-labelledby="editAgentModalLabel">
+    <div class="modal fade" id="editAgentModal" tabindex="-1" aria-labelledby="editAgentModalLabel" data-bs-backdrop="static" data-bs-keyboard="false">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <form id="editAgentForm" method="POST" action="">
@@ -292,7 +307,7 @@ function buildPaginationUrl(targetPage) {
     </div>
 
     <!-- Agent Detail Modal -->
-    <div class="modal fade" id="agentDetailModal" tabindex="-1" aria-labelledby="agentDetailModalLabel">
+    <div class="modal fade" id="agentDetailModal" tabindex="-1" aria-labelledby="agentDetailModalLabel" data-bs-backdrop="static" data-bs-keyboard="false">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
@@ -362,8 +377,36 @@ function confirmDeleteAgent(form, agentName) {
 $(document).ready(function() {
   // Wait for Bootstrap to be fully loaded
   setTimeout(function() {
+    // Function to disable all action buttons
+    function disableActionButtons() {
+      console.log('Disabling action buttons...');
+      $('#agentTable .btn').prop('disabled', true).addClass('disabled btn-disabled-modal');
+      console.log('Action buttons disabled');
+    }
+    
+    // Function to enable all action buttons
+    function enableActionButtons() {
+      console.log('Enabling action buttons...');
+      $('#agentTable .btn').prop('disabled', false).removeClass('disabled btn-disabled-modal');
+      console.log('Action buttons enabled');
+    }
+
+    // Add Agent Modal
+    $('#addAgentModal').on('show.bs.modal', function() {
+      console.log('Add Agent Modal opening...');
+      disableActionButtons();
+    });
+    
+    $('#addAgentModal').on('hidden.bs.modal', function() {
+      console.log('Add Agent Modal closing...');
+      enableActionButtons();
+    });
+
     // Edit Agent Modal
     $('#editAgentModal').on('show.bs.modal', function(event) {
+      console.log('Edit Agent Modal opening...');
+      disableActionButtons();
+      
       const button = $(event.relatedTarget);
       const agentId = button.data('agent-id');
       const agentName = button.data('agent-name');
@@ -384,13 +427,36 @@ $(document).ready(function() {
     });
 
     $('#editAgentModal').on('hidden.bs.modal', function() {
+      console.log('Edit Agent Modal closing...');
+      enableActionButtons();
       $('#editAgentForm')[0].reset();
+    });
+
+    // Agent Detail Modal
+    $('#agentDetailModal').on('show.bs.modal', function() {
+      console.log('Agent Detail Modal opening...');
+      disableActionButtons();
+    });
+    
+    $('#agentDetailModal').on('hidden.bs.modal', function() {
+      console.log('Agent Detail Modal closing...');
+      enableActionButtons();
     });
 
     $('#editAgentForm').on('submit', function(e) {
       console.log('Edit Agent Form submitting...');
       const submitBtn = $(this).find('button[type="submit"]');
       submitBtn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Updating...');
+    });
+
+    // Additional event delegation to ensure buttons are disabled
+    $(document).on('click', '#agentTable .btn', function(e) {
+      if ($(this).hasClass('btn-disabled-modal')) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Button click prevented - modal is open');
+        return false;
+      }
     });
   }, 100);
 });

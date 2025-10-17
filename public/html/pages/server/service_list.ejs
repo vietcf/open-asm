@@ -1,6 +1,21 @@
 <!-- Modal Buttons Custom CSS -->
 <link rel="stylesheet" href="/css/modal-buttons.css">
 
+<!-- Custom CSS for disabled buttons -->
+<style>
+.btn-disabled-modal {
+  opacity: 0.5 !important;
+  pointer-events: none !important;
+  cursor: not-allowed !important;
+  filter: grayscale(50%) !important;
+}
+
+.btn-disabled-modal:hover {
+  opacity: 0.5 !important;
+  transform: none !important;
+}
+</style>
+
 
 <%
 // ==========================================
@@ -246,7 +261,7 @@ function buildPaginationUrl(targetPage) {
     <!-- ========================================== -->
     
     <!-- Add Service Modal -->
-    <div class="modal fade" id="addServiceModal" tabindex="-1" aria-labelledby="addServiceModalLabel">
+    <div class="modal fade" id="addServiceModal" tabindex="-1" aria-labelledby="addServiceModalLabel" data-bs-backdrop="static" data-bs-keyboard="false">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <form id="addServiceForm" method="POST" action="/server/service/add">
@@ -276,7 +291,7 @@ function buildPaginationUrl(targetPage) {
     </div>
 
     <!-- Edit Service Modal -->
-    <div class="modal fade" id="editServiceModal" tabindex="-1" aria-labelledby="editServiceModalLabel">
+    <div class="modal fade" id="editServiceModal" tabindex="-1" aria-labelledby="editServiceModalLabel" data-bs-backdrop="static" data-bs-keyboard="false">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <form id="editServiceForm" method="POST" action="">
@@ -306,7 +321,7 @@ function buildPaginationUrl(targetPage) {
     </div>
 
     <!-- Service Detail Modal -->
-    <div class="modal fade" id="serviceDetailModal" tabindex="-1" aria-labelledby="serviceDetailModalLabel">
+    <div class="modal fade" id="serviceDetailModal" tabindex="-1" aria-labelledby="serviceDetailModalLabel" data-bs-backdrop="static" data-bs-keyboard="false">
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
@@ -325,8 +340,36 @@ function buildPaginationUrl(targetPage) {
 
 <script>
 $(document).ready(function() {
+  // Function to disable all action buttons
+  function disableActionButtons() {
+    console.log('Disabling action buttons...');
+    $('#serviceTable .btn').prop('disabled', true).addClass('disabled btn-disabled-modal');
+    console.log('Action buttons disabled');
+  }
+  
+  // Function to enable all action buttons
+  function enableActionButtons() {
+    console.log('Enabling action buttons...');
+    $('#serviceTable .btn').prop('disabled', false).removeClass('disabled btn-disabled-modal');
+    console.log('Action buttons enabled');
+  }
+
+  // Add Service Modal
+  $('#addServiceModal').on('show.bs.modal', function() {
+    console.log('Add Service Modal opening...');
+    disableActionButtons();
+  });
+  
+  $('#addServiceModal').on('hidden.bs.modal', function() {
+    console.log('Add Service Modal closing...');
+    enableActionButtons();
+  });
+
   // Edit Service Modal - Load data when opened
   $('#editServiceModal').on('show.bs.modal', function(event) {
+    console.log('Edit Service Modal opening...');
+    disableActionButtons();
+    
     const button = $(event.relatedTarget);
     const serviceId = button.data('service-id');
     const serviceName = button.data('service-name');
@@ -348,7 +391,20 @@ $(document).ready(function() {
 
   // Edit Service Modal - Reset form when hidden
   $('#editServiceModal').on('hidden.bs.modal', function() {
+    console.log('Edit Service Modal closing...');
+    enableActionButtons();
     $('#editServiceForm')[0].reset();
+  });
+
+  // Service Detail Modal
+  $('#serviceDetailModal').on('show.bs.modal', function() {
+    console.log('Service Detail Modal opening...');
+    disableActionButtons();
+  });
+  
+  $('#serviceDetailModal').on('hidden.bs.modal', function() {
+    console.log('Service Detail Modal closing...');
+    enableActionButtons();
   });
 
   // Edit Service Form submission
@@ -366,6 +422,16 @@ $(document).ready(function() {
     // Allow normal form submission - backend handles redirect
     const submitBtn = $(this).find('button[type="submit"]');
     submitBtn.prop('disabled', true).html('<i class="spinner-border spinner-border-sm me-1"></i>Updating...');
+  });
+
+  // Additional event delegation to ensure buttons are disabled
+  $(document).on('click', '#serviceTable .btn', function(e) {
+    if ($(this).hasClass('btn-disabled-modal')) {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('Button click prevented - modal is open');
+      return false;
+    }
   });
 });
 

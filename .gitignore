@@ -74,3 +74,39 @@ ssl
 
 #backup directory
 backups/
+
+#upload directory
+uploads/
+public/uploads/
+
+#log directory
+logs/
+
+#temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+#test files
+test_*.xlsx
+test_*.js
+test_*.http
+*test*.xlsx
+*test*.js
+*test*.http
+
+#debug files
+debug*.js
+*debug*.js
+
+#example and sample files
+*example*
+*sample*
+*demo*
+
+#layout and diagram files
+*layout*.txt
+*diagram*.txt
+*guide*.txt
+*description*.txt

@@ -237,9 +237,9 @@ function buildExportUrl() {
                   <th>No.</th>
                   <th>Device Name</th>
                   <th>Description</th>
-                  <th>Type</th>
-                  <th>Status</th>
+                  <th>Device Type</th>
                   <th>Location</th>
+                  <th>IP Address(es)</th>
                   <th class="text-end">Actions</th>
                 </tr>
               </thead>
@@ -250,9 +250,20 @@ function buildExportUrl() {
                       <td><%= (page - 1) * pageSize + idx + 1 %></td>
                       <td><%= device.name %></td>
                       <td><%= device.description || '-' %></td>
-                      <td><%= device.type || '-' %></td>
-                      <td><%= device.status || '-' %></td>
+                      <td><%= device.device_type_name || '-' %></td>
                       <td><%= device.location || '-' %></td>
+                      <td>
+                        <% if (device.ip_addresses && device.ip_addresses.length > 0) { %>
+                          <% device.ip_addresses.slice(0, 3).forEach(function(ip, index) { %>
+                            <%= ip.ip_address %><% if (index < Math.min(device.ip_addresses.length, 3) - 1) { %>, <% } %>
+                          <% }) %>
+                          <% if (device.ip_addresses.length > 3) { %>
+                            <br><small class="text-muted">+<%= device.ip_addresses.length - 3 %> more</small>
+                          <% } %>
+                        <% } else { %>
+                          -
+                        <% } %>
+                      </td>
                       <td class="text-end">
                         <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showDeviceDetail('<%= device.id %>')" data-device='<%= JSON.stringify(device) %>'>
                           <i class="bi bi-eye"></i>

@@ -62,7 +62,7 @@ router.get('/service/list', requirePermission('service.read'), serverController.
 // Add service
 router.post('/service/add', requirePermission('service.create'), serverController.createService);
 // Edit service
-router.post('/service/:id/edit', requirePermission('service.update'), serverController.updateService);
+router.put('/service/:id', requirePermission('service.update'), serverController.updateService);
 // Delete service
 router.delete('/service/:id', requirePermission('service.delete'), serverController.deleteService);
 
@@ -72,9 +72,9 @@ router.get('/agent/list', requirePermission('agent.read'), serverController.list
 // Add agent
 router.post('/agent/add', requirePermission('agent.create'), serverController.createAgent);
 // Edit agent
-router.post('/agent/:id/edit', requirePermission('agent.update'), serverController.updateAgent);
+router.put('/agent/:id', requirePermission('agent.update'), serverController.updateAgent);
 // Delete agent
-router.post('/agent/:id/delete', requirePermission('agent.delete'), serverController.deleteAgent);
+router.delete('/agent/:id', requirePermission('agent.delete'), serverController.deleteAgent);
 
 
 // ====== AJAX MENU ======

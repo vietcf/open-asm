@@ -725,6 +725,21 @@
         }
         
         
+        // Files/Documents
+        if (system.docs && system.docs.length > 0) {
+          html += '<div class="mb-2">';
+          html += '<strong>Attached Files:</strong><br>';
+          system.docs.forEach(function(file) {
+            const fileName = file.name || file.originalname || 'Unknown file';
+            const fileUrl = file.url || '#';
+            html += '<div class="mt-1">';
+            html += '<a href="' + fileUrl + '" target="_blank" class="text-decoration-none text-primary me-2">' + String(fileName).trim() + '</a>';
+            html += '<span class="badge bg-light text-dark border" style="border-radius: 3px;">[View]</span>';
+            html += '</div>';
+          });
+          html += '</div>';
+        }
+        
         // Components - will be loaded via AJAX (moved to bottom)
         html += '<div class="mb-2 mt-3" id="components-section-' + systemId + '">';
         html += '<strong>Components:</strong> <span class="text-muted">Loading...</span>';
