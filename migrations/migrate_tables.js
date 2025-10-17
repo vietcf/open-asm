@@ -55,12 +55,111 @@ async function addUpdatedFieldsToSubnets() {
   }
 }
 
+// Thêm cột device_role vào bảng devices
+async function addDeviceRoleToDevices() {
+  try {
+    await pool.query(`ALTER TABLE devices ADD COLUMN IF NOT EXISTS device_role VARCHAR(255) DEFAULT NULL;`);
+    console.log('Added device_role column to devices table!');
+    
+    // Tạo index cho device_role để tối ưu filtering
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_devices_device_role ON devices (device_role);`);
+    console.log('Created index on device_role column!');
+  } catch (err) {
+    console.error('Add device_role column to devices failed:', err);
+  }
+}
+
+// Thêm cột zone và environment vào bảng subnets
+async function addZoneEnvironmentToSubnets() {
+  try {
+    await pool.query(`ALTER TABLE subnets ADD COLUMN IF NOT EXISTS zone VARCHAR(255) DEFAULT NULL;`);
+    console.log('Added zone column to subnets table!');
+    
+    await pool.query(`ALTER TABLE subnets ADD COLUMN IF NOT EXISTS environment VARCHAR(255) DEFAULT NULL;`);
+    console.log('Added environment column to subnets table!');
+    
+    // Tạo index cho zone và environment để tối ưu filtering
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_subnets_zone ON subnets (zone);`);
+    console.log('Created index on zone column!');
+    
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_subnets_environment ON subnets (environment);`);
+    console.log('Created index on environment column!');
+  } catch (err) {
+    console.error('Add zone and environment columns to subnets failed:', err);
+  }
+}
+
+// Thêm cột is_active vào bảng users
+async function addIsActiveToUsers() {
+  try {
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;`);
+    console.log('Added is_active column to users table!');
+    
+    // Update existing users to be active by default
+    await pool.query(`UPDATE users SET is_active = TRUE WHERE is_active IS NULL;`);
+    console.log('Updated existing users to be active!');
+    
+    // Tạo index cho is_active để tối ưu filtering
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_is_active ON users (is_active);`);
+    console.log('Created index on is_active column!');
+  } catch (err) {
+    console.error('Add is_active column to users failed:', err);
+  }
+}
+
+// Thêm cột raw_data vào bảng rulefirewall
+async function addRawDataToRulefirewall() {
+  try {
+    await pool.query(`ALTER TABLE rulefirewall ADD COLUMN IF NOT EXISTS raw_data TEXT DEFAULT NULL;`);
+    console.log('Added raw_data column to rulefirewall table!');
+  } catch (err) {
+    console.error('Add raw_data column to rulefirewall failed:', err);
+  }
+}
+
+// Thêm unique constraint cho bảng rulefirewall (rulename, firewall_name, audit_batch)
+async function addUniqueConstraintToRulefirewall() {
+  try {
+    // Check if constraint already exists
+    const checkResult = await pool.query(`
+      SELECT constraint_name 
+      FROM information_schema.table_constraints 
+      WHERE table_name = 'rulefirewall' 
+      AND constraint_name = 'unique_rule_firewall_audit'
+    `);
+    
+    if (checkResult.rows.length > 0) {
+      console.log('Unique constraint unique_rule_firewall_audit already exists on rulefirewall table!');
+      return;
+    }
+    
+    // Add the constraint
+    await pool.query(`
+      ALTER TABLE rulefirewall 
+      ADD CONSTRAINT unique_rule_firewall_audit 
+      UNIQUE (rulename, firewall_name, audit_batch);
+    `);
+    console.log('Added unique constraint (rulename, firewall_name, audit_batch) to rulefirewall table!');
+  } catch (err) {
+    if (err.code === '23505') {
+      console.log('Unique constraint already exists on rulefirewall table!');
+    } else {
+      console.error('Add unique constraint to rulefirewall failed:', err);
+    }
+  }
+}
+
 (async () => {
   try {
     await addFqdnToSystems();
     await addScopesToSystems();
     await addArchitectureToSystems();
     await addUpdatedFieldsToSubnets();
+    await addDeviceRoleToDevices();
+    await addZoneEnvironmentToSubnets();
+    await addIsActiveToUsers();
+    await addRawDataToRulefirewall();
+    await addUniqueConstraintToRulefirewall();
   } catch (err) {
     console.error('Error running alter statements:', err);
   } finally {

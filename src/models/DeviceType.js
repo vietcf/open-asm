@@ -64,6 +64,12 @@ class DeviceType {
     return result.rows.length > 0;
   }
 
+  // Check if a device type exists by id
+  static async exists(id) {
+    const result = await pool.query('SELECT 1 FROM device_types WHERE id = $1', [id]);
+    return result.rowCount > 0;
+  }
+
   // Find device types by exact name match
   static async findByNameExact(name) {
     const sql = 'SELECT * FROM device_types WHERE LOWER(name) = LOWER($1) ORDER BY id';

@@ -195,8 +195,11 @@ apiComponentController.create = async (req, res) => {
         const ipsToAdd = ips.filter(ip => !systemIpIds.includes(ip));
         if (ipsToAdd.length > 0) {
           try {
-            await System.addIPs(system_id, ipsToAdd);
-          } catch (e) {}
+            await System.addIPs(system_id, ipsToAdd, client);
+          } catch (e) {
+            console.error('Error syncing IPs to parent system:', e);
+            // Don't fail the component creation if IP sync fails
+          }
         }
       }
     }
@@ -259,11 +262,19 @@ apiComponentController.update = async (req, res) => {
       }
     }
     
-    // Parse and validate fields
-    contacts = contacts !== undefined ? parseArrayField(contacts) : undefined;
-    ips = ips !== undefined ? parseArrayField(ips) : undefined;
-    tags = tags !== undefined ? parseArrayField(tags) : undefined;
-    fqdn = fqdn !== undefined ? parseArrayField(fqdn) : undefined;
+    // Parse and validate fields - only if provided
+    if (contacts !== undefined) {
+      contacts = parseArrayField(contacts);
+    }
+    if (ips !== undefined) {
+      ips = parseArrayField(ips);
+    }
+    if (tags !== undefined) {
+      tags = parseArrayField(tags);
+    }
+    if (fqdn !== undefined) {
+      fqdn = parseArrayField(fqdn);
+    }
     
     // Validate tags
     if (tags !== undefined && tags.length > 0) {
@@ -337,8 +348,11 @@ apiComponentController.update = async (req, res) => {
         const ipsToAdd = ips.filter(ip => !systemIpIds.includes(ip));
         if (ipsToAdd.length > 0) {
           try {
-            await System.addIPs(system_id, ipsToAdd);
-          } catch (e) {}
+            await System.addIPs(system_id, ipsToAdd, client);
+          } catch (e) {
+            console.error('Error syncing IPs to parent system during update:', e);
+            // Don't fail the component update if IP sync fails
+          }
         }
       }
     }

@@ -12,35 +12,47 @@ const administratorController = {};
 
 administratorController.listUsers = async (req, res) => {
   try {
-    let page = parseInt(req.query.page, 10) || 1;
-    let pageSize = parseInt(req.query.pageSize, 10);
-    // Use global pageSizeOptions from res.locals (set in app.js)
-    if (!pageSize || !res.locals.pageSizeOptions.includes(pageSize)) {
-      pageSize = res.locals.defaultPageSize;
+    // Get query parameters
+    const search = req.query.search ? req.query.search.trim() : '';
+    const page = parseInt(req.query.page, 10) || 1;
+    const pageSize = parseInt(req.query.pageSize, 10) || res.locals.defaultPageSize || 20;
+    
+    // Build search filters
+    const filters = {};
+    if (search) {
+      filters.search = search;
     }
-
-    // Chuẩn hóa: dùng filter/search nếu có (có thể mở rộng sau)
-    const filters = {}; // Hiện tại chưa có filter, có thể lấy từ req.query nếu cần
+    
     const totalCount = await User.countFiltered(filters);
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    
+    // If requested page > totalPages, redirect to last page
     if (page > totalPages) {
-      return res.redirect(`/administrator/users?page=${totalPages}&pageSize=${pageSize}`);
+      return res.redirect(`/administrator/users?page=${totalPages}&pageSize=${pageSize}&search=${encodeURIComponent(search)}`);
     }
+    
     const userList = await User.findFilteredList({ ...filters, page, pageSize });
     const roles = await Role.findAll();
-
+    
+    // Get page size options from configuration
+    const pageSizeConfig = await Configuration.findById('page_size');
+    const pageSizeOptions = pageSizeConfig ? 
+      pageSizeConfig.value.split(',').map(size => parseInt(size.trim(), 10)) : 
+      [10, 20, 50, 100];
+    
     res.render('pages/administrator/user_list', {
       userList,
       roles,
+      search,
       page,
       totalPages,
       pageSize,
       totalCount,
+      pageSizeOptions,
       success: (req.flash('success') || [])[0],
       error: (req.flash('error') || [])[0],
       title: 'User Management',
       activeMenu: 'user-management'
-      // pageSizeOptions, defaultPageSize, siteName, cssPath, jsPath, imgPath, permissions đã có trong res.locals
     });
   } catch (err) {
     res.status(500).send('Error loading user list: ' + err.message);
@@ -65,7 +77,7 @@ administratorController.createUser = async (req, res) => {
       req.flash('error', 'Role is required!');
       return res.redirect('/administrator/users');
     }
-    // Kiểm tra role_id có tồn tại trong DB không
+    // Check if role_id exists in DB
     const validRole = await Role.findById(normRole);
     if (!validRole) {
       req.flash('error', 'Invalid role!');
@@ -75,7 +87,7 @@ administratorController.createUser = async (req, res) => {
       req.flash('error', 'Password must be at least 4 characters!');
       return res.redirect('/administrator/users');
     }
-    // Lấy role_id trực tiếp từ form
+    // Get role_id directly from form
     const role_id = normRole;
     // Check duplicate username/email
     const existedUser = await User.findByUsername(normUsername);
@@ -162,7 +174,7 @@ administratorController.updateUser = async (req, res) => {
     // Handle must_change_password from edit form
     const mustChangePasswordRaw = req.body.must_change_password;
     const must_change_password = mustChangePasswordRaw === 'on' ? true : false;
-    // Lấy số ngày hết hạn setup OTP từ configuration
+    // Get OTP expiration days from configuration
     let otpDeadlineDays = 3;
     const otpDeadlineConfig = await Configuration.findByKey('otp_deadline_time');
     if (otpDeadlineConfig && otpDeadlineConfig.value && !isNaN(parseInt(otpDeadlineConfig.value))) {
@@ -190,7 +202,11 @@ administratorController.updateUser = async (req, res) => {
       }
       passwordHash = await bcrypt.hash(normPassword, 10);
     }
-    await User.update(id, { username: newUsername, email: normEmail, fullname: normFullname, role: newRole, require_twofa, must_change_password, passwordHash });
+    // Handle is_active from edit form
+    const isActiveRaw = req.body.is_active;
+    const is_active = isActiveRaw === 'on' ? true : false;
+    
+    await User.update(id, { username: newUsername, email: normEmail, fullname: normFullname, role: newRole, require_twofa, must_change_password, passwordHash, is_active });
     req.flash('success', 'User updated successfully!');
     res.redirect('/administrator/users');
   } catch (err) {
@@ -212,7 +228,18 @@ administratorController.deleteUser = async (req, res) => {
     req.flash('success', 'User deleted successfully!');
     res.redirect('/administrator/users');
   } catch (err) {
-    req.flash('error', 'Failed to delete user: ' + err.message);
+    // Handle specific database constraint errors with user-friendly messages
+    let errorMessage = 'Failed to delete user';
+    
+    if (err.code === '23503') { // foreign_key_violation
+      errorMessage = 'Cannot delete this user because they have associated records. Please remove all related data first.';
+    } else if (err.message && err.message.includes('foreign key constraint')) {
+      errorMessage = 'Cannot delete this user because they are referenced by other records. Please clean up all references first.';
+    } else {
+      errorMessage = 'Failed to delete user: ' + err.message;
+    }
+    
+    req.flash('error', errorMessage);
     res.redirect('/administrator/users');
   }
 };
@@ -225,26 +252,26 @@ const getAllPermissions = async () => {
 
 administratorController.listRoles = async (req, res) => {
   try {
-    // Pagination and page size
-    let page = parseInt(req.query.page, 10) || 1;
-    let pageSize = parseInt(req.query.pageSize, 10);
+    // Get query parameters
+    const search = req.query.search ? req.query.search.trim() : '';
+    const page = parseInt(req.query.page, 10) || 1;
+    const pageSize = parseInt(req.query.pageSize, 10) || res.locals.defaultPageSize || 20;
     
-    // Use global pageSizeOptions from res.locals (set in app.js)
-    if (!pageSize || !res.locals.pageSizeOptions.includes(pageSize)) {
-      pageSize = res.locals.defaultPageSize;
+    // Build search filters
+    const filters = {};
+    if (search) {
+      filters.search = search;
     }
-
-    // Get total count of roles
-    const totalCountResult = await pool.query('SELECT COUNT(*) FROM roles');
-    const totalCount = parseInt(totalCountResult.rows[0].count, 10);
+    
+    const totalCount = await Role.countFiltered(filters);
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    
     // If requested page > totalPages, redirect to last page
     if (page > totalPages) {
-      return res.redirect(`/administrator/roles?page=${totalPages}&pageSize=${pageSize}`);
+      return res.redirect(`/administrator/roles?page=${totalPages}&pageSize=${pageSize}&search=${encodeURIComponent(search)}`);
     }
-    const offset = (page - 1) * pageSize;
-    // Get roles for current page
-    const roles = (await pool.query('SELECT id, name, description FROM roles ORDER BY id LIMIT $1 OFFSET $2', [pageSize, offset])).rows;
+    
+    const roles = await Role.findFilteredList({ ...filters, page, pageSize });
     const allPermissions = await getAllPermissions();
     const roleList = await Promise.all(
       roles.map(async (r) => ({
@@ -253,18 +280,25 @@ administratorController.listRoles = async (req, res) => {
       }))
     );
     
+    // Get page size options from configuration
+    const pageSizeConfig = await Configuration.findById('page_size');
+    const pageSizeOptions = pageSizeConfig ? 
+      pageSizeConfig.value.split(',').map(size => parseInt(size.trim(), 10)) : 
+      [10, 20, 50, 100];
+    
     res.render('pages/administrator/role_list', {
       roleList,
       allPermissions,
+      search,
       page,
       totalPages,
       pageSize,
       totalCount,
+      pageSizeOptions,
       success: (req.flash('success') || [])[0],
       error: (req.flash('error') || [])[0],
       title: 'Role Management',
       activeMenu: 'role-management'
-      // pageSizeOptions, cssPath, jsPath, imgPath, permissions đã có trong res.locals
     });
   } catch (err) {
     res.status(500).send('Error loading role list: ' + err.message);
@@ -363,7 +397,22 @@ administratorController.deleteRole = async (req, res) => {
     req.flash('success', 'Role deleted successfully!');
     res.redirect('/administrator/roles');
   } catch (err) {
-    req.flash('error', 'Failed to delete role: ' + err.message);
+    // Handle specific database constraint errors with user-friendly messages
+    let errorMessage = 'Failed to delete role';
+    
+    if (err.code === '23503') { // foreign_key_violation
+      if (err.constraint === 'users_role_id_fkey') {
+        errorMessage = 'Cannot delete this role because it is currently assigned to one or more users. Please reassign or remove those users first.';
+      } else {
+        errorMessage = 'Cannot delete this role because it is being used by other records. Please remove all references first.';
+      }
+    } else if (err.message && err.message.includes('foreign key constraint')) {
+      errorMessage = 'Cannot delete this role because it is currently in use. Please remove all users assigned to this role first.';
+    } else {
+      errorMessage = 'Failed to delete role: ' + err.message;
+    }
+    
+    req.flash('error', errorMessage);
     res.redirect('/administrator/roles');
   }
 };
@@ -371,36 +420,45 @@ administratorController.deleteRole = async (req, res) => {
 // ===== PERMISSION MANAGEMENT =====
 administratorController.listPermissions = async (req, res) => {
   try {
-    // Pagination and page size
-    let page = parseInt(req.query.page, 10) || 1;
-    let pageSize = parseInt(req.query.pageSize, 10);
+    // Get query parameters
+    const search = req.query.search ? req.query.search.trim() : '';
+    const page = parseInt(req.query.page, 10) || 1;
+    const pageSize = parseInt(req.query.pageSize, 10) || res.locals.defaultPageSize || 20;
     
-    // Use global pageSizeOptions from res.locals (set in app.js)
-    if (!pageSize || !res.locals.pageSizeOptions.includes(pageSize)) {
-      pageSize = res.locals.defaultPageSize;
+    // Build search filters
+    const filters = {};
+    if (search) {
+      filters.search = search;
     }
-
-    // Chuẩn hóa: dùng filter/search nếu có (có thể mở rộng sau)
-    const filters = {}; // Hiện tại chưa có filter, có thể lấy từ req.query nếu cần
+    
     const totalCount = await Permission.countFiltered(filters);
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    
     // If requested page > totalPages, redirect to last page
     if (page > totalPages) {
-      return res.redirect(`/administrator/permissions?page=${totalPages}&pageSize=${pageSize}`);
+      return res.redirect(`/administrator/permissions?page=${totalPages}&pageSize=${pageSize}&search=${encodeURIComponent(search)}`);
     }
+    
     const permissionList = await Permission.findFilteredList({ ...filters, page, pageSize });
+    
+    // Get page size options from configuration
+    const pageSizeConfig = await Configuration.findById('page_size');
+    const pageSizeOptions = pageSizeConfig ? 
+      pageSizeConfig.value.split(',').map(size => parseInt(size.trim(), 10)) : 
+      [10, 20, 50, 100];
     
     res.render('pages/administrator/permission_list', {
       permissionList,
+      search,
       page,
       totalPages,
       pageSize,
       totalCount,
+      pageSizeOptions,
       success: (req.flash('success') || [])[0],
       error: (req.flash('error') || [])[0],
       title: 'Permission Management',
       activeMenu: 'permission-management'
-      // pageSizeOptions, cssPath, jsPath, imgPath, permissions đã có trong res.locals
     });
   } catch (err) {
     res.status(500).send('Error loading permission list: ' + err.message);
@@ -422,11 +480,11 @@ administratorController.createPermission = async (req, res) => {
       return res.redirect('/administrator/permissions');
     }
     const newPerm = await Permission.create({ name, description });
-    // Tự động gán permission này cho superadmin
+    // Automatically assign this permission to superadmin
     const superadminRole = await Role.findAll();
     const superadmin = superadminRole.find(r => r.name === 'superadmin');
     if (superadmin && newPerm && newPerm.id) {
-      // Lấy lại tất cả permission id của superadmin (bao gồm cái mới)
+      // Get all permission ids of superadmin (including the new one)
       const allPerms = await Permission.findAll();
       const allPermIds = allPerms.map(p => p.id);
       await Role.updatePermissions(superadmin.id, allPermIds);
@@ -473,15 +531,34 @@ administratorController.deletePermission = async (req, res) => {
 // ===== SYSTEM CONFIGURATION CRUD =====
 administratorController.listConfigurations = async (req, res) => {
   try {
-    const configList = await Configuration.findAll();
-    // Fetch site_name from Configuration// Sử dụng layout mặc định
+    // Get query parameters
+    const search = req.query.search ? req.query.search.trim() : '';
+    const page = parseInt(req.query.page, 10) || 1;
+    const pageSize = parseInt(req.query.pageSize, 10) || res.locals.defaultPageSize || 20;
+    
+    // Get filtered configurations with pagination
+    const filteredConfigs = await Configuration.findFilteredList({ search, page, pageSize });
+    const totalCount = await Configuration.countFiltered({ search });
+    const totalPages = Math.ceil(totalCount / pageSize);
+    
+    // Get page size options from configuration
+    const pageSizeConfig = await Configuration.findById('page_size');
+    const pageSizeOptions = pageSizeConfig ? 
+      pageSizeConfig.value.split(',').map(size => parseInt(size.trim(), 10)) : 
+      [10, 20, 50, 100];
+    
     res.render('pages/administrator/configuration_list', {
-      configList, 
+      configList: filteredConfigs,
+      search,
+      page,
+      pageSize,
+      totalCount,
+      totalPages,
+      pageSizeOptions,
       success: (req.flash('success') || [])[0], 
       error: (req.flash('error') || [])[0],
       title: 'System Configuration',
       activeMenu: 'system-configuration'
-      // cssPath, jsPath, imgPath, permissions đã có sẵn trong res.locals từ app.js
     });
   } catch (err) {
     res.status(500).send('Error loading configuration: ' + err.message);
@@ -545,7 +622,6 @@ administratorController.createConfiguration = async (req, res) => {
     }
 
     const user = req.session.user ? req.session.user.username : null;
-    console.log('Creating configuration:', { key, value, description });
     await Configuration.create({ key, value, description, updatedBy: user });
     req.flash('success', 'Configuration added successfully!');
     res.redirect('/administrator/configuration');
@@ -628,7 +704,7 @@ administratorController.updateConfiguration = async (req, res) => {
 
 administratorController.deleteConfiguration = async (req, res) => {
   try {
-    // Hỗ trợ cả DELETE (RESTful) và POST truyền thống
+    // Support both DELETE (RESTful) and traditional POST
     const key = req.params.key || req.body.key;
     if (!key) {
       req.flash('error', 'Key is required.');
@@ -643,34 +719,157 @@ administratorController.deleteConfiguration = async (req, res) => {
   }
 };
 
+// Export Configuration
+administratorController.exportConfiguration = async (req, res) => {
+  try {
+    const configList = await Configuration.findAll();
+    const dataStr = JSON.stringify(configList, null, 2);
+    
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename=system-configuration.json');
+    res.send(dataStr);
+  } catch (err) {
+    req.flash('error', 'Failed to export configuration: ' + err.message);
+    res.redirect('/administrator/configuration');
+  }
+};
+
+// Import Configuration
+administratorController.importConfiguration = async (req, res) => {
+  try {
+    if (!req.file) {
+      req.flash('error', 'No file uploaded.');
+      return res.redirect('/administrator/configuration');
+    }
+    
+    const configData = JSON.parse(req.file.buffer.toString());
+    let imported = 0;
+    let updated = 0;
+    
+    for (const config of configData) {
+      if (config.key && config.value) {
+        const existing = await Configuration.findById(config.key);
+        if (existing) {
+          await Configuration.update(config.key, { 
+            value: config.value, 
+            description: config.description || existing.description,
+            updatedBy: req.session.user?.username 
+          });
+          updated++;
+        } else {
+          await Configuration.create({ 
+            key: config.key, 
+            value: config.value, 
+            description: config.description || '',
+            updatedBy: req.session.user?.username 
+          });
+          imported++;
+        }
+      }
+    }
+    
+    req.flash('success', `Configuration imported successfully! ${imported} new, ${updated} updated.`);
+    res.redirect('/administrator/configuration');
+  } catch (err) {
+    req.flash('error', 'Failed to import configuration: ' + err.message);
+    res.redirect('/administrator/configuration');
+  }
+};
+
+// Delete configuration
+administratorController.deleteConfiguration = async (req, res) => {
+  try {
+    const { key } = req.params;
+    
+    if (!key) {
+      req.flash('error', 'Configuration key is required.');
+      return res.redirect('/administrator/configuration');
+    }
+
+    // Check if configuration exists
+    const existingConfig = await Configuration.findById(key);
+    if (!existingConfig) {
+      req.flash('error', 'Configuration not found.');
+      return res.redirect('/administrator/configuration');
+    }
+
+    // Delete the configuration
+    await Configuration.remove(key);
+    
+    req.flash('success', `Configuration '${key}' deleted successfully.`);
+    res.redirect('/administrator/configuration');
+  } catch (err) {
+    req.flash('error', 'Failed to delete configuration: ' + err.message);
+    res.redirect('/administrator/configuration');
+  }
+};
+
 // ===== SYSTEM LOG =====
 administratorController.listSystemLogs = async (req, res) => {
   try {
-    // Use global pageSizeOptions from res.locals (set in app.js)
+    // Get query parameters
+    const search = req.query.search ? req.query.search.trim() : '';
+    const dateFrom = req.query.dateFrom ? req.query.dateFrom.trim() : '';
+    const dateTo = req.query.dateTo ? req.query.dateTo.trim() : '';
     const page = parseInt(req.query.page, 10) || 1;
-    const pageSize = parseInt(req.query.pageSize, 10) || res.locals.defaultPageSize;
-    const offset = (page - 1) * pageSize;
+    const pageSize = parseInt(req.query.pageSize, 10) || res.locals.defaultPageSize || 20;
     
-    // Get total count
-    const countResult = await pool.query('SELECT COUNT(*) FROM system_log');
+    // Build search conditions
+    let whereConditions = [];
+    let queryParams = [];
+    let paramCount = 0;
+    
+    if (search) {
+      whereConditions.push(`(username ILIKE $${++paramCount} OR action ILIKE $${++paramCount} OR description ILIKE $${++paramCount} OR status ILIKE $${++paramCount})`);
+      const searchPattern = `%${search}%`;
+      queryParams.push(searchPattern, searchPattern, searchPattern, searchPattern);
+    }
+    
+    if (dateFrom) {
+      whereConditions.push(`created_at >= $${++paramCount}`);
+      queryParams.push(dateFrom + ' 00:00:00');
+    }
+    
+    if (dateTo) {
+      whereConditions.push(`created_at <= $${++paramCount}`);
+      queryParams.push(dateTo + ' 23:59:59');
+    }
+    
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    
+    // Get total count with search
+    const countQuery = `SELECT COUNT(*) FROM system_log ${whereClause}`;
+    const countResult = await pool.query(countQuery, queryParams);
     const totalCount = parseInt(countResult.rows[0].count, 10);
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     
-    // Get logs for current page (newest first)
-    const logsResult = await pool.query('SELECT * FROM system_log ORDER BY created_at DESC LIMIT $1 OFFSET $2', [pageSize, offset]);
+    // Get logs for current page with search
+    const offset = (page - 1) * pageSize;
+    const logsQuery = `SELECT * FROM system_log ${whereClause} ORDER BY created_at DESC LIMIT $${++paramCount} OFFSET $${++paramCount}`;
+    const logsParams = [...queryParams, pageSize, offset];
+    const logsResult = await pool.query(logsQuery, logsParams);
     const logs = logsResult.rows;
+    
+    // Get page size options from configuration
+    const pageSizeConfig = await Configuration.findById('page_size');
+    const pageSizeOptions = pageSizeConfig ? 
+      pageSizeConfig.value.split(',').map(size => parseInt(size.trim(), 10)) : 
+      [10, 20, 50, 100];
     
     res.render('pages/administrator/system_log', {
       logs,
+      search,
+      dateFrom,
+      dateTo,
       page,
       pageSize,
       totalPages,
       totalCount,
+      pageSizeOptions,
       success: (req.flash('success') || [])[0],
       error: (req.flash('error') || [])[0],
       title: 'System Log',
       activeMenu: 'system-log'
-      // pageSizeOptions (as allowedPageSizes), cssPath, jsPath, imgPath, permissions đã có trong res.locals
     });
   } catch (err) {
     res.status(500).send('Error loading system log: ' + err.message);

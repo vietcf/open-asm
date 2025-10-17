@@ -38,6 +38,32 @@ async function getServerTypeOptions() {
 
 const apiServerController = {};
 
+// Get server configuration options
+apiServerController.getConfig = async (req, res) => {
+  try {
+    const [statusOptions, typeOptions, locationOptions] = await Promise.all([
+      getServerStatusOptions(),
+      getServerTypeOptions(),
+      getServerLocationOptions()
+    ]);
+    
+    res.json({
+      success: true,
+      data: {
+        status: statusOptions,
+        type: typeOptions,
+        location: locationOptions
+      }
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
+  }
+};
+
 // List all servers (with filter and pagination)
 apiServerController.listServers = async (req, res) => {
   try {
@@ -60,9 +86,18 @@ apiServerController.listServers = async (req, res) => {
     };
     const serverList = await Server.findFilteredList(filterParams);
     const total = await Server.countFiltered(filterParams);
-    res.json({ data: serverList, total });
+    res.json({
+      success: true,
+      data: serverList,
+      count: serverList.length,
+      total: total
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
   }
 };
 
@@ -73,7 +108,10 @@ apiServerController.findServers = async (req, res) => {
     
     // Validate that at least one search criteria is provided
     if (!name && !ip_address) {
-      return res.status(400).json({ error: 'At least one search criteria must be provided (name or ip_address)' });
+      return res.status(400).json({
+        success: false,
+        message: 'At least one search criteria must be provided (name or ip_address)'
+      });
     }
     
     // Build search criteria
@@ -85,19 +123,25 @@ apiServerController.findServers = async (req, res) => {
     const servers = await Server.findByCriteria(criteria);
     
     if (!servers || servers.length === 0) {
-      return res.status(404).json({ 
-        error: 'No servers found matching the specified criteria',
-        criteria 
+      return res.status(404).json({
+        success: false,
+        message: 'No servers found matching the specified criteria',
+        criteria
       });
     }
     
-    res.json({ 
-      data: servers, 
-      total: servers.length,
-      criteria 
+    res.json({
+      success: true,
+      data: servers,
+      count: servers.length,
+      criteria
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
   }
 };
 
@@ -105,10 +149,22 @@ apiServerController.findServers = async (req, res) => {
 apiServerController.getServer = async (req, res) => {
   try {
     const server = await Server.findByIdWithDetails(req.params.id);
-    if (!server) return res.status(404).json({ error: 'Server not found' });
-    res.json(server);
+    if (!server) {
+      return res.status(404).json({
+        success: false,
+        message: 'Server not found'
+      });
+    }
+    res.json({
+      success: true,
+      data: server
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
   }
 };
 
@@ -127,18 +183,32 @@ apiServerController.createServer = async (req, res) => {
     type = typeof type === 'string' ? type.trim() : '';
     os = typeof os === 'string' ? os.trim() : os;
     // Validate required fields
-    if (!name) return res.status(400).json({ error: 'Server name is required' });
+    if (!name) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        message: 'Server name is required'
+      });
+    }
     
     // Check if server name already exists
     const existingServer = await Server.findByName(name);
     if (existingServer) {
-      return res.status(400).json({ error: 'Server name already exists' });
+      await client.query('ROLLBACK');
+      return res.status(400).json({
+        success: false,
+        message: 'Server name already exists'
+      });
     }
     
     if (location) {
       const locationOptions = await getServerLocationOptions();
       if (!locationOptions.some(opt => opt.value === location)) {
-        return res.status(400).json({ error: `Invalid location: ${location}` });
+        await client.query('ROLLBACK');
+        return res.status(400).json({
+          success: false,
+          message: `Invalid location: ${location}`
+        });
       }
     }
     if (status) {
@@ -258,7 +328,10 @@ apiServerController.updateServer = async (req, res) => {
     const current = await Server.findById(id);
     if (!current) {
       await client.query('ROLLBACK');
-      return res.status(404).json({ error: 'Server not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Server not found'
+      });
     }
 
     // Helper
@@ -274,7 +347,10 @@ apiServerController.updateServer = async (req, res) => {
     const invalidFields = Object.keys(body).filter(k => !allowedFields.includes(k));
     if (invalidFields.length > 0) {
       await client.query('ROLLBACK');
-      return res.status(400).json({ error: `Invalid field(s): ${invalidFields.join(', ')}` });
+      return res.status(400).json({
+        success: false,
+        message: `Invalid field(s): ${invalidFields.join(', ')}`
+      });
     }
 
     // Prepare the fields to update
@@ -292,7 +368,10 @@ apiServerController.updateServer = async (req, res) => {
       const existingServer = await Server.findByName(updateFields.name);
       if (existingServer && existingServer.id !== parseInt(id)) {
         await client.query('ROLLBACK');
-        return res.status(400).json({ error: 'Server name already exists' });
+        return res.status(400).json({
+          success: false,
+          message: 'Server name already exists'
+        });
       }
     }
 
@@ -301,19 +380,28 @@ apiServerController.updateServer = async (req, res) => {
       const locationOptions = await getServerLocationOptions();
       if (!locationOptions.some(opt => opt.value === updateFields.location)) {
         await client.query('ROLLBACK');
-        return res.status(400).json({ error: `Invalid location: ${updateFields.location}` });
+        return res.status(400).json({
+          success: false,
+          message: `Invalid location: ${updateFields.location}`
+        });
       }
     }
     if (has('status') && updateFields.status) {
       const statusOptions = await getServerStatusOptions();
       if (!statusOptions.some(opt => opt.value === updateFields.status)) {
         await client.query('ROLLBACK');
-        return res.status(400).json({ error: `Invalid status: ${updateFields.status}` });
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status: ${updateFields.status}`
+        });
       }
     }
     if (has('os') && updateFields.os && !(await Platform.exists(updateFields.os))) {
       await client.query('ROLLBACK');
-      return res.status(400).json({ error: `Invalid platform (os) ID: ${updateFields.os}` });
+      return res.status(400).json({
+        success: false,
+        message: `Invalid platform (os) ID: ${updateFields.os}`
+      });
     }
 
     // Configure array fields
@@ -355,12 +443,18 @@ apiServerController.updateServer = async (req, res) => {
           
           if (invalid.length > 0) {
             await client.query('ROLLBACK');
-            return res.status(400).json({ error: `Invalid ${key.replace('_', ' ')} IDs: ${invalid.join(', ')}` });
+            return res.status(400).json({
+              success: false,
+              message: `Invalid ${key.replace('_', ' ')} IDs: ${invalid.join(', ')}`
+            });
           }
           
           if (assignedIps.length > 0) {
             await client.query('ROLLBACK');
-            return res.status(400).json({ error: `Cannot use already assigned IP addresses: ${assignedIps.join(', ')}` });
+            return res.status(400).json({
+              success: false,
+              message: `Cannot use already assigned IP addresses: ${assignedIps.join(', ')}`
+            });
           }
         }
         normalizedArrays[key] = arr;
@@ -381,11 +475,19 @@ apiServerController.updateServer = async (req, res) => {
     await client.query('COMMIT');
     const updatedServer = await Server.findByIdWithDetails(id);
     console.info(`[Server Update] id=${id} by user=${username} fields=[${Object.keys(body).join(', ')}] at ${new Date().toISOString()}`);
-    res.json(updatedServer);
+    res.json({
+      success: true,
+      message: 'Server updated successfully',
+      data: updatedServer
+    });
   } catch (err) {
     await client.query('ROLLBACK');
     console.error(`[Server Update Error] id=${req.params.id}:`, err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
   } finally {
     client.release();
   }
@@ -398,12 +500,30 @@ apiServerController.deleteServer = async (req, res) => {
   try {
     await client.query('BEGIN');
     const id = req.params.id;
+    
+    // Check if server exists first
+    const server = await Server.findById(id);
+    if (!server) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({
+        success: false,
+        message: 'Server not found'
+      });
+    }
+    
     await Server.remove(id, client);
     await client.query('COMMIT');
-    res.status(204).send();
+    res.json({
+      success: true,
+      message: 'Server deleted successfully'
+    });
   } catch (err) {
     await client.query('ROLLBACK');
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
   } finally {
     client.release();
   }

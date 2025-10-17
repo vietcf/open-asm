@@ -61,6 +61,87 @@ apiSubnetRouter.get('/', apiSubnetController.listSubnets);
 
 /**
  * @swagger
+ * /api/v1/subnets/find:
+ *   get:
+ *     summary: Find subnet by exact address
+ *     tags: [Subnet]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: address
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Exact subnet address (e.g. 192.168.1.0/24)
+ *     responses:
+ *       200:
+ *         description: Subnet object
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Subnet'
+ *       400:
+ *         description: Missing address parameter
+ *       404:
+ *         description: Subnet not found
+ */
+apiSubnetRouter.get('/find', apiSubnetController.findSubnet);
+
+/**
+ * @swagger
+ * /api/v1/subnets/config:
+ *   get:
+ *     summary: Get subnet configuration options
+ *     description: Retrieve all subnet configuration options including zones and environments
+ *     tags: [Subnet]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Configuration options retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     zones:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "DMZ"
+ *                           label:
+ *                             type: string
+ *                             example: "DMZ"
+ *                       description: Distinct zones from subnets table
+ *                     environments:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "PROD"
+ *                           label:
+ *                             type: string
+ *                             example: "PROD"
+ *                       description: Distinct environments from subnets table
+ *       500:
+ *         description: Server error
+ */
+apiSubnetRouter.get('/config', apiSubnetController.getConfig);
+
+/**
+ * @swagger
  * /api/v1/subnets/{id}:
  *   get:
  *     summary: Get a single subnet by ID
@@ -109,6 +190,12 @@ apiSubnetRouter.get('/:id', apiSubnetController.getSubnet);
  *               description:
  *                 type: string
  *                 description: Description (optional)
+ *               zone:
+ *                 type: string
+ *                 description: Zone (optional, e.g. DMZ, SERVER FARM, USER, BACKBOND, CLOUD)
+ *               environment:
+ *                 type: string
+ *                 description: Environment (optional, e.g. TEST, DEV, UAT, PROD)
  *               tags:
  *                 type: array
  *                 items:
@@ -153,6 +240,12 @@ apiSubnetRouter.post('/', apiSubnetController.createSubnet);
  *               description:
  *                 type: string
  *                 description: Description (optional)
+ *               zone:
+ *                 type: string
+ *                 description: Zone (optional, e.g. DMZ, SERVER FARM, USER, BACKBOND, CLOUD)
+ *               environment:
+ *                 type: string
+ *                 description: Environment (optional, e.g. TEST, DEV, UAT, PROD)
  *               tags:
  *                 type: array
  *                 items:
@@ -207,6 +300,10 @@ apiSubnetRouter.delete('/:id', apiSubnetController.deleteSubnet);
  *         address:
  *           type: string
  *         description:
+ *           type: string
+ *         zone:
+ *           type: string
+ *         environment:
  *           type: string
  *         tags:
  *           type: array

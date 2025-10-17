@@ -38,7 +38,10 @@ const apiIpAddressRouter = express.Router();
  *         name: status
  *         schema:
  *           type: string
- *           enum: [reserved, assigned, inactved]
+ *           description: |
+ *             IP address status. Values are dynamically loaded from database config table 
+ *             with config_name = 'ip_address_status'. Example values: reserved, assigned, inactived.
+ *             Must select from the configured list in the system.
  *         description: "Filter by status (reserved, assigned, inactved)"
  *       - in: query
  *         name: systems
@@ -116,6 +119,60 @@ apiIpAddressRouter.get('/find', apiIpAddressController.findIpAddressByAddress);
 
 /**
  * @swagger
+ * /api/v1/ip-addresses/config:
+ *   get:
+ *     summary: Get configuration values for enum fields
+ *     description: |
+ *       Retrieve current configuration values for enum fields used in IP address management.
+ *       This endpoint returns the dynamic enum values loaded from the database configuration table.
+ *     tags: [IPAddress]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Configuration values retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     status:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                           label:
+ *                             type: string
+ *                       example: [{"value": "reserved", "label": "Reserved"}, {"value": "assigned", "label": "Assigned"}, {"value": "inactived", "label": "Inactived"}]
+ *       500:
+ *         description: Server error
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: false
+ *                 message:
+ *                   type: string
+ *                   example: "Internal server error"
+ *                 error:
+ *                   type: string
+ *                   example: "Failed to load configuration"
+ */
+apiIpAddressRouter.get('/config', apiIpAddressController.getConfig);
+
+/**
+ * @swagger
  * /api/v1/ip-addresses/{id}:
  *   get:
  *     summary: Get a single IP address by ID
@@ -166,8 +223,10 @@ apiIpAddressRouter.get('/:id', apiIpAddressController.getIpAddress);
  *                 type: string
  *               status:
  *                 type: string
- *                 description: "Status value. Must be one of: reserved, assigned, inactved"
- *                 enum: [reserved, assigned, inactved]
+ *                 description: |
+ *                   IP address status. Values are dynamically loaded from database config table 
+ *                   with config_name = 'ip_address_status'. Example values: reserved, assigned, inactived.
+ *                   Must select from the configured list in the system.
  *               tags:
  *                 type: array
  *                 items:
@@ -221,8 +280,10 @@ apiIpAddressRouter.post('/', apiIpAddressController.createIpAddress);
  *                 type: string
  *               status:
  *                 type: string
- *                 description: "Status value. Must be one of: reserved, assigned, inactved"
- *                 enum: [reserved, assigned, inactved]
+ *                 description: |
+ *                   IP address status. Values are dynamically loaded from database config table 
+ *                   with config_name = 'ip_address_status'. Example values: reserved, assigned, inactived.
+ *                   Must select from the configured list in the system.
  *               tags:
  *                 type: array
  *                 items:

@@ -1,6 +1,26 @@
-<div class="container-fluid">
-  <div class="row justify-content-center">
-    <div class="col-lg-7 col-md-9">
+<!-- Modal Buttons Custom CSS -->
+<link rel="stylesheet" href="/css/modal-buttons.css">
+
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item"><a href="/server/server/list">Server List</a></li>
+          <li class="breadcrumb-item active">Add Server</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main content -->
+<section class="app-content">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 col-md-10 col-sm-12">
       <div class="card mt-4">
         <div class="card-header d-flex justify-content-between align-items-center">
           <h5 class="mb-0">Add Server</h5>
@@ -8,43 +28,32 @@
         <form action="/server/server/add" method="POST">
           <div class="card-body">
             <div class="mb-3">
-              <label class="form-label">IP Address(es) <span class="text-danger">*</span></label>
+              <label class="form-label">Server Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" placeholder="Enter server name" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Description</label>
+              <textarea name="description" class="form-control" rows="3" placeholder="Enter server description and details"></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">IP Address(es)</label>
               <div class="d-flex align-items-center gap-2">
-                <select id="ip-select" name="ip_addresses[]" class="form-control flex-grow-1" multiple required></select>
+                <select id="ip-select" name="ip_addresses[]" class="form-control flex-grow-1" multiple></select>
                 <button type="button" class="btn btn-outline-success btn-sm" id="add-ip-btn" title="Add new IP"><i class="bi bi-plus-circle"></i> Add IP</button>
               </div>
             </div>
             <div class="mb-3">
-              <label class="form-label">Managers</label>
-              <select id="manager-select" name="managers[]" class="form-control" multiple></select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Systems</label>
-              <select id="system-select" name="systems[]" class="form-control" multiple></select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Agents</label>
-              <select id="agent-select" name="agents[]" class="form-control" multiple></select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Services</label>
-              <select id="service-select" name="services[]" class="form-control" multiple></select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Tags</label>
-              <select id="tag-select" name="tags[]" class="form-control" multiple></select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Platform (OS)</label>
-              <select id="platform-select" name="os" class="form-select form-select-sm"></select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Server Name <span class="text-danger">*</span></label>
-              <input type="text" name="name" class="form-control form-control-sm" placeholder="Enter server name" required>
+              <label class="form-label">Type</label>
+              <select name="type" class="form-select" data-placeholder="Select type">
+                <option value="">-- Select type --</option>
+                <% (typesOptions || []).forEach(function(tp) { %>
+                  <option value="<%= tp.value %>"><%= tp.label %></option>
+                <% }) %>
+              </select>
             </div>
             <div class="mb-3">
               <label class="form-label">Status</label>
-              <select name="status" class="form-select form-select-sm">
+              <select name="status" class="form-select" data-placeholder="Select status">
                 <option value="">-- Select Status --</option>
                 <% (statusOptions || []).forEach(function(st) { %>
                   <option value="<%= st.value %>"><%= st.label %></option>
@@ -53,7 +62,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Location</label>
-              <select name="location" class="form-select form-select-sm">
+              <select name="location" class="form-select" data-placeholder="Select location">
                 <option value="">-- Select location --</option>
                 <% (locations || []).forEach(function(loc) { %>
                   <option value="<%= loc.value %>"><%= loc.label %></option>
@@ -61,31 +70,42 @@
               </select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Type</label>
-              <select name="type" class="form-select form-select-sm">
-                <option value="">-- Select type --</option>
-                <% (typesOptions || []).forEach(function(tp) { %>
-                  <option value="<%= tp.value %>"><%= tp.label %></option>
-                <% }) %>
-              </select>
+              <label class="form-label">Platform (OS)</label>
+              <select id="platform-select" name="os" class="form-select" data-placeholder="Select platform"></select>
             </div>
             <div class="mb-3">
-              <label for="serverDescription" class="form-label">Description</label>
-              <textarea class="form-control form-control-sm" id="serverDescription" name="description" placeholder="Description" rows="2"></textarea>
+              <label class="form-label">Managers</label>
+              <select id="manager-select" name="managers[]" class="form-select" multiple data-placeholder="Select managers"></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Systems</label>
+              <select id="system-select" name="systems[]" class="form-select" multiple data-placeholder="Select systems"></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Agents</label>
+              <select id="agent-select" name="agents[]" class="form-select" multiple data-placeholder="Select agents"></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Services</label>
+              <select id="service-select" name="services[]" class="form-select" multiple data-placeholder="Select services"></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Tags</label>
+              <select id="tag-select" name="tags[]" class="form-select" multiple data-placeholder="Select tags"></select>
             </div>
           </div>
-          <div class="card-footer text-end">
-            <button type="submit" class="btn btn-primary btn-sm">Add Server</button>
-            <a href="/server/server/list" class="btn btn-outline-secondary btn-sm ms-2">Cancel</a>
+          <div class="card-footer d-flex flex-column flex-lg-row justify-content-lg-end gap-2">
+            <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Add Server</button>
+            <a href="/server/server/list" class="btn btn-secondary w-100 order-2 order-lg-1">Cancel</a>
           </div>
         </form>
       </div>
     </div>
   </div>
-</div>
+</section>
 
 <script src="/vendor/jquery-3.6.0.min.js"></script>
-<link href="/vendor/select2.min.css" rel="stylesheet" />
+<link href="/css/select2.min.css" rel="stylesheet" />
 <link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 <script src="/vendor/select2.min.js"></script>
 <script src="/vendor/bootstrap.min.js"></script>
@@ -93,10 +113,12 @@
 
 <script>
   $(function() {
+    // IP Address select2 AJAX - Bootstrap 5 theme
     $('#ip-select').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select IP address(es)',
       allowClear: true,
+      width: '100%',
       ajax: {
         url: '/network/api/ip-addresses/unassigned',
         dataType: 'json',
@@ -107,11 +129,13 @@
       },
       minimumInputLength: 0
     });
+
+    // Manager select2 AJAX - Bootstrap 5 theme
     $('#manager-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select manager(s)',
-      width: '100%',
+      placeholder: $('#manager-select').data('placeholder'),
       allowClear: true,
+      width: '100%',
       ajax: {
         url: '/organize/api/contact',
         dataType: 'json',
@@ -119,14 +143,15 @@
         data: params => ({ search: params.term }),
         processResults: data => ({ results: data }),
         cache: true
-      },
-      minimumInputLength: 0
+      }
     });
+
+    // System select2 AJAX - Bootstrap 5 theme
     $('#system-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select system(s)',
-      width: '100%',
+      placeholder: $('#system-select').data('placeholder'),
       allowClear: true,
+      width: '100%',
       ajax: {
         url: '/system/api/system',
         dataType: 'json',
@@ -134,14 +159,15 @@
         data: params => ({ search: params.term }),
         processResults: data => ({ results: data }),
         cache: true
-      },
-      minimumInputLength: 0
+      }
     });
+
+    // Agent select2 AJAX - Bootstrap 5 theme
     $('#agent-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select agent(s)',
-      width: '100%',
+      placeholder: $('#agent-select').data('placeholder'),
       allowClear: true,
+      width: '100%',
       ajax: {
         url: '/server/api/agent',
         dataType: 'json',
@@ -149,14 +175,15 @@
         data: params => ({ search: params.term }),
         processResults: data => ({ results: data }),
         cache: true
-      },
-      minimumInputLength: 0
+      }
     });
+
+    // Service select2 AJAX - Bootstrap 5 theme
     $('#service-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select service(s)',
-      width: '100%',
+      placeholder: $('#service-select').data('placeholder'),
       allowClear: true,
+      width: '100%',
       ajax: {
         url: '/server/api/service',
         dataType: 'json',
@@ -164,13 +191,39 @@
         data: params => ({ search: params.term }),
         processResults: data => ({ results: data }),
         cache: true
-      },
-      minimumInputLength: 0
+      }
     });
+
+    // Type select2 - Bootstrap 5 theme
+    $('select[name="type"]').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select type',
+      allowClear: true,
+      width: '100%'
+    });
+
+    // Status select2 - Bootstrap 5 theme
+    $('select[name="status"]').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select status',
+      allowClear: true,
+      width: '100%'
+    });
+
+    // Location select2 - Bootstrap 5 theme
+    $('select[name="location"]').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select location',
+      allowClear: true,
+      width: '100%'
+    });
+
+    // Platform (OS) select2 AJAX - Bootstrap 5 theme
     $('#platform-select').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select platform (OS)',
       allowClear: true,
+      width: '100%',
       ajax: {
         url: '/device/api/platform',
         dataType: 'json',
@@ -180,10 +233,13 @@
         cache: true
       }
     });
+
+    // Tag select2 AJAX - Bootstrap 5 theme
     $('#tag-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select tag(s)',
+      placeholder: $('#tag-select').data('placeholder'),
       allowClear: true,
+      width: '100%',
       ajax: {
         url: '/organize/api/tag',
         dataType: 'json',
@@ -201,8 +257,9 @@
       var ipData = $('#ip-select').select2('data');
       var firstIp = ipData && ipData.length > 0 ? ipData[0].text : '';
       if (nameInput.val().trim() === '' && osText && firstIp) {
-        var firstWord = osText.split(/\s+/)[0];
-        var autoName = (firstWord + '_' + firstIp).toLowerCase();
+        // Clean platform: lowercase, replace spaces with underscores
+        var cleanPlatform = osText.toLowerCase().replace(/\s+/g, '_');
+        var autoName = cleanPlatform + '_' + firstIp;
         nameInput.val(autoName);
       }
     }
@@ -214,10 +271,10 @@
       $(this).val(val.toLowerCase());
     });
 
-    // Thêm nút Add IP: mở tab mới tới trang quản lý IP và tự động bật popup Add IP
+    // Add IP button: open new tab to IP management page
     $('#add-ip-btn').off('click').on('click', function(e) {
-  e.preventDefault();
-  window.open('/network/ip-address?add=1', '_blank');
+      e.preventDefault();
+      window.open('/network/ip-address?add=1', '_blank');
     });
 
     // Fix: Remove blank <option> after select2 is initialized to avoid select2 placeholder bug

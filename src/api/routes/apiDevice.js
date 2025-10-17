@@ -28,6 +28,16 @@
  *           type: string
  *         description: Filter by location
  *       - in: query
+ *         name: manufacturer
+ *         schema:
+ *           type: string
+ *         description: Filter by manufacturer
+ *       - in: query
+ *         name: device_role
+ *         schema:
+ *           type: string
+ *         description: Filter by device role
+ *       - in: query
  *         name: tags
  *         schema:
  *           type: array
@@ -54,18 +64,24 @@
  *             schema:
  *               type: object
  *               properties:
- *                 totalCount:
- *                   type: integer
- *                 page:
- *                   type: integer
- *                 pageSize:
- *                   type: integer
- *                 totalPages:
- *                   type: integer
- *                 devices:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Device'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     totalCount:
+ *                       type: integer
+ *                     page:
+ *                       type: integer
+ *                     pageSize:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
  *   post:
  *     summary: Create a new device
  *     tags: [Device]
@@ -108,6 +124,9 @@
  *               manufacturer:
  *                 type: string
  *                 description: Manufacturer (optional)
+ *               device_role:
+ *                 type: string
+ *                 description: Device role (optional)
  *               description:
  *                 type: string
  *                 description: Description (optional)
@@ -127,7 +146,16 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Device'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Device created successfully"
+ *                 data:
+ *                   $ref: '#/components/schemas/Device'
  *       400:
  *         description: Validation error
  *       409:
@@ -158,6 +186,9 @@
  *             schema:
  *               type: object
  *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
  *                 data:
  *                   type: array
  *                   items:
@@ -209,7 +240,13 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Device'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/Device'
  *       404:
  *         description: Not found
  *   put:
@@ -260,6 +297,9 @@
  *               manufacturer:
  *                 type: string
  *                 description: Manufacturer (optional)
+ *               device_role:
+ *                 type: string
+ *                 description: Device role (optional)
  *               description:
  *                 type: string
  *                 description: Description (optional)
@@ -279,7 +319,16 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Device'
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Device updated successfully"
+ *                 data:
+ *                   $ref: '#/components/schemas/Device'
  *       400:
  *         description: Validation error
  *       404:
@@ -299,8 +348,19 @@
  *           type: integer
  *         description: Device ID
  *     responses:
- *       204:
+ *       200:
  *         description: Deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Device deleted successfully"
  *       404:
  *         description: Not found
  * components:
@@ -327,6 +387,8 @@
  *         management_address:
  *           type: string
  *         manufacturer:
+ *           type: string
+ *         device_role:
  *           type: string
  *         description:
  *           type: string
@@ -370,6 +432,70 @@ const apiDeviceRouter = express.Router();
 apiDeviceRouter.get('/', apiDeviceController.listDevices);
 // Find devices
 apiDeviceRouter.get('/find', apiDeviceController.findDevices);
+/**
+ * @swagger
+ * /api/v1/devices/config:
+ *   get:
+ *     summary: Get device configuration options
+ *     description: Retrieve all device configuration options including location, manufacturers, and device roles
+ *     tags: [Device]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Configuration options retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     location:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "DC"
+ *                           label:
+ *                             type: string
+ *                             example: "Data Center"
+ *                       description: Location options from database configuration
+ *                     manufacturers:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "Cisco"
+ *                           label:
+ *                             type: string
+ *                             example: "Cisco"
+ *                       description: Unique manufacturers from devices table
+ *                     device_roles:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                             example: "Router"
+ *                           label:
+ *                             type: string
+ *                             example: "Router"
+ *                       description: Unique device roles from devices table
+ *       500:
+ *         description: Server error
+ */
+apiDeviceRouter.get('/config', apiDeviceController.getConfig);
+
 // Get device by ID
 apiDeviceRouter.get('/:id', apiDeviceController.getDevice);
 // Create device

@@ -189,12 +189,12 @@ systemController.listSystemComponent = async (req, res) => {
     const normalizeArray = v => (Array.isArray(v) ? v : (v ? [v] : []));
     let filterTags = req.query['tags[]'] || req.query.tags || [];
     let filterContacts = req.query['contacts[]'] || req.query.contacts || [];
-    let filterSystemId = req.query.system_id || '';
-    let filterAppType = req.query.app_type || '';
+    let filterSystemId = req.query['system_id[]'] || req.query.system_id || [];
+    let filterAppType = req.query['app_type[]'] || req.query.app_type || [];
     filterTags = normalizeArray(filterTags).filter(x => x !== '');
     filterContacts = normalizeArray(filterContacts).filter(x => x !== '');
-    filterSystemId = filterSystemId ? String(filterSystemId).trim() : '';
-    filterAppType = filterAppType ? String(filterAppType).trim() : '';
+    filterSystemId = normalizeArray(filterSystemId).filter(x => x !== '');
+    filterAppType = normalizeArray(filterAppType).filter(x => x !== '');
     // @ts-ignore - filterTags, filterContacts, filterSystemId, and filterAppType are supported by model methods
     const componentList = await SystemComponent.findFilteredList({ search, page, pageSize, filterTags, filterContacts, system_id: filterSystemId, app_type: filterAppType });
     // @ts-ignore - filterTags, filterContacts, filterSystemId, and filterAppType are supported by model methods
@@ -202,7 +202,8 @@ systemController.listSystemComponent = async (req, res) => {
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
-    const [success, error] = [req.flash('success')[0], req.flash('error')[0]];
+    const successMessage = req.flash('success')[0];
+    const errorMessage = req.flash('error')[0];
     // Get app type options for filter
     const appTypeOptions = await getAppTypeOptionsFromConfig();
     
@@ -220,8 +221,8 @@ systemController.listSystemComponent = async (req, res) => {
       filterSystemId,
       filterAppType,
       appTypeOptions,
-      success,
-      error,
+      successMessage,
+      errorMessage,
       title: 'System Component',
       activeMenu: 'system-component',
     });
@@ -566,14 +567,32 @@ systemController.listSystem = async (req, res) => {
         }
       }
     }
+    // Fetch files for all systems in this page
+    let filesBySystem = {};
+    if (systemIds.length > 0) {
+      for (const sysId of systemIds) {
+        const files = await FileUpload.findByObject('system', sysId);
+        if (files && files.length > 0) {
+          filesBySystem[sysId] = files.map(f => ({
+            id: f.id,
+            name: f.original_name || f.name,
+            url: FileUpload.getUrl(f)
+          }));
+        }
+      }
+    }
+
     // Attach to each system
     systemList.forEach(s => {
       // Only attach components if there are any; otherwise, leave as empty array
       s.components = Array.isArray(componentsBySystem[s.id]) && componentsBySystem[s.id].length > 0 ? componentsBySystem[s.id] : [];
+      // Attach files if there are any; otherwise, leave as empty array
+      s.docs = Array.isArray(filesBySystem[s.id]) && filesBySystem[s.id].length > 0 ? filesBySystem[s.id] : [];
     });
 
     // Flash messages
-    const [success, error] = [req.flash('success')[0], req.flash('error')[0]];
+    const successMessage = req.flash('success')[0];
+    const errorMessage = req.flash('error')[0];
 
     // Get scope and architecture options for filter modal
     const scopeOptions = await getScopeOptionsFromConfig();
@@ -588,8 +607,8 @@ systemController.listSystem = async (req, res) => {
       totalCount,
       startItem,
       endItem,
-      success,
-      error,
+      successMessage,
+      errorMessage,
       // Ensure filterTags, filterContacts, filterScopes, and filterArchitecture are always defined for EJS
       filterTags,
       filterContacts,

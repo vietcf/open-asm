@@ -1,0 +1,358 @@
+# ========================================
+# 🌐 DOMAINS API TESTS
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+# Environment: development (change in VS Code status bar)
+# ========================================
+
+### 0. Login to get JWT Token (Run this first!)
+# @name domainAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+# ========================================
+# 📋 BASIC DOMAIN CRUD OPERATIONS
+# ========================================
+
+### 1. Get All Domains
+GET {{baseUrl}}/{{apiVersion}}/domains
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+### 2. Get Domain by ID
+GET {{baseUrl}}/{{apiVersion}}/domains/3
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+### 3. Create New Domain (Minimal)
+# @name createDomainMinimal
+POST {{baseUrl}}/{{apiVersion}}/domains
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+{
+  "domain": "test-minimal.com"
+}
+
+### 4. Create New Domain (Complete)
+# @name createDomainComplete
+POST {{baseUrl}}/{{apiVersion}}/domains
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+{
+  "domain": "test-complete.com",
+  "description": "Complete test domain with all fields",
+  "ip_id": 53,
+  "record_type": "A",
+  "systems": [19, 20]
+}
+
+### 5. Update Domain (Complete Update)
+PUT {{baseUrl}}/{{apiVersion}}/domains/{{createDomainComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+{
+  "domain": "test-complete-updated.com",
+  "description": "Updated complete test domain",
+  "record_type": "AAAA",
+  "systems": [20]
+}
+
+### 6. Update Domain (Name Only)
+PUT {{baseUrl}}/{{apiVersion}}/domains/{{createDomainComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+{
+  "domain": "test-name-only-updated.com"
+}
+
+### 7. Update Domain (Description Only)
+PUT {{baseUrl}}/{{apiVersion}}/domains/{{createDomainComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+{
+  "description": "Updated description only"
+}
+
+### 8. Update Domain (IP Address Only)
+PUT {{baseUrl}}/{{apiVersion}}/domains/{{createDomainComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+{
+  "ip_id": 3
+}
+
+### 9. Update Domain (Record Type Only)
+PUT {{baseUrl}}/{{apiVersion}}/domains/{{createDomainComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+{
+  "record_type": "CNAME"
+}
+
+### 10. Update Domain (Systems Only)
+PUT {{baseUrl}}/{{apiVersion}}/domains/{{createDomainComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+{
+  "systems": [5, 6, 7]
+}
+
+### 11. Update Domain (Clear Systems)
+PUT {{baseUrl}}/{{apiVersion}}/domains/{{createDomainComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+{
+  "systems": []
+}
+
+### 12. Update Domain (Clear IP)
+PUT {{baseUrl}}/{{apiVersion}}/domains/{{createDomainComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+{
+  "ip_id": null
+}
+
+### 13. Get Domain After Updates (Verify Changes)
+GET {{baseUrl}}/{{apiVersion}}/domains/{{createDomainComplete.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+# ========================================
+# 🔍 SEARCH & PAGINATION TESTS
+# ========================================
+
+### 14. Get All Domains with Search
+GET {{baseUrl}}/{{apiVersion}}/domains?search=test
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+### 15. Get All Domains with Pagination
+GET {{baseUrl}}/{{apiVersion}}/domains?page=1&pageSize=5
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+### 16. Get All Domains with Search and Pagination
+GET {{baseUrl}}/{{apiVersion}}/domains?search=com&page=1&pageSize=3
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+### 17. Search Domains by Domain Name
+GET {{baseUrl}}/{{apiVersion}}/domains?search=example
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+### 18. Search Domains by Description
+GET {{baseUrl}}/{{apiVersion}}/domains?search=test
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+### 18a. Find Domain by Exact Name (Existing)
+GET {{baseUrl}}/{{apiVersion}}/domains/find?name=test-complete.com
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+### 18b. Find Domain by Exact Name (Non-existent)
+GET {{baseUrl}}/{{apiVersion}}/domains/find?name=nonexistent-domain.com
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+### 18c. Find Domain without Name Parameter (400)
+GET {{baseUrl}}/{{apiVersion}}/domains/find
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+### 18d. Find Domain with Empty Name (400)
+GET {{baseUrl}}/{{apiVersion}}/domains/find?name=
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+# ========================================
+# ❌ ERROR HANDLING TESTS
+# ========================================
+
+### 19. Get Non-existent Domain (404)
+GET {{baseUrl}}/{{apiVersion}}/domains/99999
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+### 20. Create Domain without Required Field (400)
+POST {{baseUrl}}/{{apiVersion}}/domains
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+{
+  "description": "Missing domain name"
+}
+
+### 21. Create Domain with Empty Name (400)
+POST {{baseUrl}}/{{apiVersion}}/domains
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+{
+  "domain": ""
+}
+
+### 22. Create Domain with Invalid IP ID (400)
+POST {{baseUrl}}/{{apiVersion}}/domains
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+{
+  "domain": "test-invalid-ip.com",
+  "ip_id": 99999
+}
+
+### 23. Create Domain with Invalid System ID (400)
+POST {{baseUrl}}/{{apiVersion}}/domains
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+{
+  "domain": "test-invalid-system.com",
+  "systems": [99999]
+}
+
+### 24. Create Duplicate Domain (409)
+POST {{baseUrl}}/{{apiVersion}}/domains
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+{
+  "domain": "test-minimal.com"
+}
+
+### 25. Update Non-existent Domain (404)
+PUT {{baseUrl}}/{{apiVersion}}/domains/99999
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+{
+  "domain": "non-existent-update.com"
+}
+
+### 26. Update Domain with Empty Name (400)
+PUT {{baseUrl}}/{{apiVersion}}/domains/{{createDomainComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+{
+  "domain": ""
+}
+
+### 27. Delete Non-existent Domain (404)
+DELETE {{baseUrl}}/{{apiVersion}}/domains/99999
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+# ========================================
+# 🧹 CLEANUP TEST DATA
+# ========================================
+
+### 28. Cleanup - Delete Test Domains
+DELETE {{baseUrl}}/{{apiVersion}}/domains/{{createDomainMinimal.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+### 29. Cleanup - Delete Complete Test Domain
+DELETE {{baseUrl}}/{{apiVersion}}/domains/{{createDomainComplete.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+# ========================================
+# 📊 ADVANCED SEARCH & FILTERING
+# ========================================
+
+### 30. Search with Special Characters
+GET {{baseUrl}}/{{apiVersion}}/domains?search=test%20domain
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+### 31. Large Page Size Test
+GET {{baseUrl}}/{{apiVersion}}/domains?page=1&pageSize=100
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+### 32. Search by IP Address
+GET {{baseUrl}}/{{apiVersion}}/domains?search=192.168
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+### 33. Search by System Name
+GET {{baseUrl}}/{{apiVersion}}/domains?search=system
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+# ========================================
+# 📋 DOMAINS API TEST CHECKLIST
+# ========================================
+# 
+# ✅ = Tested & Working
+# ⚠️  = Tested with Issues  
+# ❌ = Failed
+# ⏳ = Not Tested Yet
+#
+# BASIC CRUD:
+# ⏳ GET /api/v1/domains (list all)
+# ⏳ GET /api/v1/domains/:id (get by ID)
+# ⏳ POST /api/v1/domains (create)
+# ⏳ PUT /api/v1/domains/:id (update)
+# ⏳ DELETE /api/v1/domains/:id (delete)
+#
+# SEARCH & FILTERING:
+# ⏳ GET /api/v1/domains?search=keyword
+# ⏳ GET /api/v1/domains?page=1&pageSize=10
+# ⏳ GET /api/v1/domains/find?name=exact_domain_name
+#
+# DATA VALIDATION:
+# ⏳ Required fields: domain
+# ⏳ Unique constraint: domain
+# ⏳ Foreign keys: ip_id, systems array
+# ⏳ Record types: A, AAAA, CNAME, etc.
+#
+# ERROR HANDLING:
+# ⏳ 404 - Domain not found
+# ⏳ 400 - Missing required fields
+# ⏳ 400 - Invalid foreign key references
+# ⏳ 409 - Duplicate domain name
+# ⏳ 409 - Foreign key constraint violations
+#
+# RELATIONSHIPS:
+# ⏳ ip_id (references ip_addresses table)
+# ⏳ systems (many-to-many with systems table)
+#
+# ========================================

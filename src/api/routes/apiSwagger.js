@@ -18,7 +18,10 @@ const apiSwaggerRouter = express.Router();
  *           type: string
  *         action:
  *           type: string
- *           enum: [ALLOW, DENY]
+ *           description: |
+ *             Action to take. Values are dynamically loaded from database config table 
+ *             with config_name = 'firewall_rule_action'. Example values: ALLOW, DENY, DROP, REJECT.
+ *             Must select from the configured list in the system.
  *         description:
  *           type: string
  *         created_at:
@@ -59,6 +62,10 @@ const apiSwaggerRouter = express.Router();
  *     description: Server management
  *   - name: IPAddress
  *     description: API for managing IP addresses
+ *   - name: Device
+ *     description: Device management
+ *   - name: Domain
+ *     description: API for managing domains
  *   - name: Auth
  *     description: Authentication management
  */

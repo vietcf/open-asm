@@ -73,14 +73,14 @@ class User {
    * @param {Object} userData
    * @returns {Promise<Object>}
    */
-  static async update(id, { username, email, fullname, role, require_twofa, must_change_password, passwordHash }) {
+  static async update(id, { username, email, fullname, role, require_twofa, must_change_password, passwordHash, is_active }) {
     let sql, params;
     if (passwordHash) {
-      sql = 'UPDATE users SET username = $1, email = $2, fullname = $3, role_id = $4, require_twofa = $5, must_change_password = $6, password_hash = $7 WHERE id = $8 RETURNING *';
-      params = [username, email, fullname, role, require_twofa, must_change_password, passwordHash, id];
+      sql = 'UPDATE users SET username = $1, email = $2, fullname = $3, role_id = $4, require_twofa = $5, must_change_password = $6, password_hash = $7, is_active = $8 WHERE id = $9 RETURNING *';
+      params = [username, email, fullname, role, require_twofa, must_change_password, passwordHash, is_active, id];
     } else {
-      sql = 'UPDATE users SET username = $1, email = $2, fullname = $3, role_id = $4, require_twofa = $5, must_change_password = $6 WHERE id = $7 RETURNING *';
-      params = [username, email, fullname, role, require_twofa, must_change_password, id];
+      sql = 'UPDATE users SET username = $1, email = $2, fullname = $3, role_id = $4, require_twofa = $5, must_change_password = $6, is_active = $7 WHERE id = $8 RETURNING *';
+      params = [username, email, fullname, role, require_twofa, must_change_password, is_active, id];
     }
     const result = await pool.query(sql, params);
     return result.rows[0];
@@ -101,9 +101,18 @@ class User {
    * @returns {Promise<number>}
    */
   static async countFiltered(filters = {}) {
-    // Hiện tại chỉ hỗ trợ đếm tất cả, có thể mở rộng filter sau
-    const sql = 'SELECT COUNT(*) FROM users';
-    const result = await pool.query(sql);
+    let whereClause = '';
+    let queryParams = [];
+    let paramCount = 0;
+    
+    if (filters.search) {
+      whereClause = `WHERE users.username ILIKE $${++paramCount} OR users.email ILIKE $${++paramCount} OR users.fullname ILIKE $${++paramCount} OR roles.name ILIKE $${++paramCount}`;
+      const searchPattern = `%${filters.search}%`;
+      queryParams = [searchPattern, searchPattern, searchPattern, searchPattern];
+    }
+    
+    const sql = `SELECT COUNT(*) FROM users LEFT JOIN roles ON users.role_id = roles.id ${whereClause}`;
+    const result = await pool.query(sql, queryParams);
     return parseInt(result.rows[0].count, 10);
   }
 
@@ -115,10 +124,19 @@ class User {
    * @returns {Promise<Array>}
    */
   static async findFilteredList({ page, pageSize, ...filters }) {
-    // Hiện tại chỉ hỗ trợ phân trang, có thể mở rộng filter sau
+    let whereClause = '';
+    let queryParams = [];
+    let paramCount = 0;
+    
+    if (filters.search) {
+      whereClause = `WHERE users.username ILIKE $${++paramCount} OR users.email ILIKE $${++paramCount} OR users.fullname ILIKE $${++paramCount} OR roles.name ILIKE $${++paramCount}`;
+      const searchPattern = `%${filters.search}%`;
+      queryParams = [searchPattern, searchPattern, searchPattern, searchPattern];
+    }
+    
     const offset = (page - 1) * pageSize;
-    const sql = `SELECT users.*, roles.name AS role_name FROM users LEFT JOIN roles ON users.role_id = roles.id ORDER BY users.id LIMIT $1 OFFSET $2`;
-    const result = await pool.query(sql, [pageSize, offset]);
+    const sql = `SELECT users.*, roles.name AS role_name FROM users LEFT JOIN roles ON users.role_id = roles.id ${whereClause} ORDER BY users.id LIMIT $${++paramCount} OFFSET $${++paramCount}`;
+    const result = await pool.query(sql, [...queryParams, pageSize, offset]);
     return result.rows;
   }
 

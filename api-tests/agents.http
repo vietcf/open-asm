@@ -1,41 +1,16 @@
-# ========================================
-# 🤖 AGENTS API TESTS (MINIMAL)
-# ========================================
-# ✅ Uses centralized environment variables from .vscode/settings.json
-# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
-# Environment: development (change in VS Code status bar)
-# ========================================
-
-### 0. Login to get JWT Token (Run this first!)
-# @name agentAuth
-POST {{baseUrl}}/{{apiVersion}}/auth/login
-Content-Type: application/json
-
-{
-  "username": "{{username}}",
-  "password": "{{password}}"
-}
-
-# ========================================
-# 📋 BASIC AGENT CRUD OPERATIONS
-# ========================================
+### Agent API Tests
+### Base URL
+@baseUrl = http://localhost:3000/api/v1
+@token = your_jwt_token_here
 
 ### 1. Get All Agents
-GET {{baseUrl}}/{{apiVersion}}/agents
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
+GET {{baseUrl}}/agents
+Authorization: Bearer {{token}}
 
-### 2. Get Agent by ID
-GET {{baseUrl}}/{{apiVersion}}/agents/1
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-### 3. Create New Agent
-# @name createAgent
-POST {{baseUrl}}/{{apiVersion}}/agents
+### 2. Create Agent
+POST {{baseUrl}}/agents
+Authorization: Bearer {{token}}
 Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
 
 {
   "name": "Test Agent",
@@ -43,295 +18,204 @@ Authorization: Bearer {{agentAuth.response.body.token}}
   "description": "Test agent for API testing"
 }
 
-### 4. Update Agent (Complete Update)
-PUT {{baseUrl}}/{{apiVersion}}/agents/{{createAgent.response.body.id}}
+### 3. Create Agent (Minimal)
+POST {{baseUrl}}/agents
+Authorization: Bearer {{token}}
 Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-{
-  "name": "Test Agent Updated",
-  "version": "1.1.0",
-  "description": "Updated test agent description"
-}
-
-### 5. Update Agent (Name Only)
-PUT {{baseUrl}}/{{apiVersion}}/agents/{{createAgent.response.body.id}}
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-{
-  "name": "Test Agent Name Only"
-}
-
-### 6. Update Agent (Version Only)
-PUT {{baseUrl}}/{{apiVersion}}/agents/{{createAgent.response.body.id}}
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-{
-  "version": "1.2.0"
-}
-
-### 7. Update Agent (Description Only)
-PUT {{baseUrl}}/{{apiVersion}}/agents/{{createAgent.response.body.id}}
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-{
-  "description": "Updated description only"
-}
-
-### 8. Delete Agent
-DELETE {{baseUrl}}/{{apiVersion}}/agents/{{createAgent.response.body.id}}
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-# ========================================
-# 🔍 SEARCH & FIND OPERATIONS
-# ========================================
-
-### 9. Find Agent by Exact Name
-GET {{baseUrl}}/{{apiVersion}}/agents/find?name=agent1
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-### 10. Find Agent with Case Sensitivity Test
-GET {{baseUrl}}/{{apiVersion}}/agents/find?name=apache http server
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-### 11. Find Agent - Non-existent Name
-GET {{baseUrl}}/{{apiVersion}}/agents/find?name=Non-existent Agent
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-# ========================================
-# ❌ ERROR HANDLING TESTS
-# ========================================
-
-### 12. Get Non-existent Agent (404)
-GET {{baseUrl}}/{{apiVersion}}/agents/99999
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-### 13. Find without Name Parameter (400)
-GET {{baseUrl}}/{{apiVersion}}/agents/find
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-### 14. Find with Empty Name (400)
-GET {{baseUrl}}/{{apiVersion}}/agents/find?name=
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-### 15. Create Agent with Invalid Data (400)
-POST {{baseUrl}}/{{apiVersion}}/agents
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-{
-  "version": "1.0.0",
-  "description": "Missing required name field"
-}
-
-### 16. Create Agent with Empty Name (400)
-POST {{baseUrl}}/{{apiVersion}}/agents
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-{
-  "name": "",
-  "description": "Empty name should fail"
-}
-
-### 17. Create Agent with Duplicate Name (400)
-POST {{baseUrl}}/{{apiVersion}}/agents
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-{
-  "name": "Apache HTTP Server",
-  "description": "Duplicate name test"
-}
-
-### 18. Update Non-existent Agent (404)
-PUT {{baseUrl}}/{{apiVersion}}/agents/99999
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-{
-  "name": "non-existent-agent"
-}
-
-### 19. Update Agent with Empty Name (400)
-PUT {{baseUrl}}/{{apiVersion}}/agents/1
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-{
-  "name": ""
-}
-
-### 20. Update Agent with Duplicate Name (400)
-PUT {{baseUrl}}/{{apiVersion}}/agents/1
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-{
-  "name": "MySQL Server"
-}
-
-### 21. Delete Non-existent Agent (404)
-DELETE {{baseUrl}}/{{apiVersion}}/agents/99999
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-### 22. Delete Agent in Use (400)
-DELETE {{baseUrl}}/{{apiVersion}}/agents/1
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-# ========================================
-# 🧪 ADVANCED AGENT TESTS
-# ========================================
-
-### 23. Create Agent with Minimal Data
-POST {{baseUrl}}/{{apiVersion}}/agents
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
 
 {
   "name": "Minimal Agent"
 }
 
-### 24. Update Agent with Null Values
-PUT {{baseUrl}}/{{apiVersion}}/agents/2
+### 4. Create Agent (Duplicate Name - Should Fail)
+POST {{baseUrl}}/agents
+Authorization: Bearer {{token}}
 Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
 
 {
-  "name": "Agent With Null Fields",
-  "version": null,
-  "description": null
-}
-
-### 25. Create Agent with Version Only (No Description)
-POST {{baseUrl}}/{{apiVersion}}/agents
-Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
-
-{
-  "name": "Version Only Agent",
+  "name": "Test Agent",
   "version": "2.0.0"
 }
 
-### 26. Create Agent with Description Only (No Version)
-POST {{baseUrl}}/{{apiVersion}}/agents
+### 5. Create Agent (Missing Name - Should Fail)
+POST {{baseUrl}}/agents
+Authorization: Bearer {{token}}
 Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
 
 {
-  "name": "Description Only Agent",
-  "description": "Agent with description but no version"
+  "version": "1.0.0",
+  "description": "Missing name"
 }
 
-### 27. Create Agent with Special Characters
-POST {{baseUrl}}/{{apiVersion}}/agents
+### 6. Create Agent (Empty Name - Should Fail)
+POST {{baseUrl}}/agents
+Authorization: Bearer {{token}}
 Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
 
 {
-  "name": "Node.js Runtime (v18.17.0)",
-  "version": "18.17.0-alpine",
-  "description": "Node.js JavaScript runtime & package manager"
+  "name": "",
+  "version": "1.0.0"
 }
 
-### 28. Find Agent with Special Characters
-GET {{baseUrl}}/{{apiVersion}}/agents/find?name=Node.js Runtime (v18.17.0)
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
+### 7. Get Agent by ID
+GET {{baseUrl}}/agents/1
+Authorization: Bearer {{token}}
 
-### 29. Update Agent - Version Format Variations
-PUT {{baseUrl}}/{{apiVersion}}/agents/3
+### 8. Get Non-existent Agent (Should Fail)
+GET {{baseUrl}}/agents/99999
+Authorization: Bearer {{token}}
+
+### 9. Update Agent (Full Update)
+PUT {{baseUrl}}/agents/1
+Authorization: Bearer {{token}}
 Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
 
 {
-  "version": "2.4.51-ubuntu-20.04"
+  "name": "Updated Test Agent",
+  "version": "2.0.0",
+  "description": "Updated description"
 }
 
-### 30. Update Agent - Clear Optional Fields
-PUT {{baseUrl}}/{{apiVersion}}/agents/3
+### 10. Update Agent (Partial Update - Name Only)
+PUT {{baseUrl}}/agents/1
+Authorization: Bearer {{token}}
 Content-Type: application/json
-Accept: application/json
-Authorization: Bearer {{agentAuth.response.body.token}}
 
 {
-  "name": "Cleared Fields Agent",
-  "version": "",
-  "description": ""
+  "name": "Partially Updated Agent"
 }
 
-# ========================================
-# ✅ BASIC AGENTS API TEST CHECKLIST
-# ========================================
-# 
-# BASIC CRUD OPERATIONS:
-# ⏳ GET /api/v1/agents (get all agents)
-# ⏳ GET /api/v1/agents/:id (get agent by ID)
-# ⏳ POST /api/v1/agents (create new agent)
-# ⏳ PUT /api/v1/agents/:id (update agent)
-# ⏳ DELETE /api/v1/agents/:id (delete agent)
-#
-# SEARCH & FIND:
-# ⏳ GET /api/v1/agents/find?name=exact_name (find by exact name)
-#
-# API STRUCTURE NOTES:
-# ✅ Direct GET /api/v1/agents endpoint exists
-# ✅ Find endpoint requires 'name' parameter
-# ✅ Response uses mixed format (data/total vs success/data/count)
-# ✅ Create response returns direct agent object
-# ⚠️  /find endpoint placement AFTER /:id may cause routing conflicts
-#
-# FIELD VALIDATION:
-# ⏳ Required fields: name (unique)
-# ⏳ Optional fields: version, description (both nullable)
-# ⏳ Unique name constraint
-# ⏳ Partial update support (only provided fields updated)
-#
-# ERROR HANDLING:
-# ⏳ 400 - Invalid data/missing name/duplicate name/agent in use
-# ⏳ 404 - Agent not found
-# ⏳ 500 - Internal server error
-#
-# PARTIAL UPDATE TESTS:
-# ⏳ Update name only
-# ⏳ Update version only
-# ⏳ Update description only
-# ⏳ Update with null values
-#
-# SPECIAL CASES:
-# ⏳ Case sensitivity in find
-# ⏳ Special characters in names/versions
-# ⏳ Version format variations
-# ⏳ Minimal required data (name only)
-# ⏳ Agent in use cannot be deleted
-# ⏳ Empty vs null field handling
-#
-# ========================================
+### 11. Update Agent (Partial Update - Version Only)
+PUT {{baseUrl}}/agents/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "version": "3.0.0"
+}
+
+### 12. Update Agent (Partial Update - Description Only)
+PUT {{baseUrl}}/agents/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "description": "Only description updated"
+}
+
+### 13. Update Agent (Empty Body - Should Return Current Agent)
+PUT {{baseUrl}}/agents/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{}
+
+### 14. Update Agent (Empty Name - Should Fail)
+PUT {{baseUrl}}/agents/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": ""
+}
+
+### 15. Update Non-existent Agent (Should Fail)
+PUT {{baseUrl}}/agents/99999
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Updated Name"
+}
+
+### 16. Find Agents by Exact Name
+GET {{baseUrl}}/agents/find?name=Test Agent
+Authorization: Bearer {{token}}
+
+### 17. Find Agents by Exact Name (Case Insensitive)
+GET {{baseUrl}}/agents/find?name=test agent
+Authorization: Bearer {{token}}
+
+### 18. Find Agents (Missing Name Parameter - Should Fail)
+GET {{baseUrl}}/agents/find
+Authorization: Bearer {{token}}
+
+### 19. Find Agents (Empty Name Parameter - Should Fail)
+GET {{baseUrl}}/agents/find?name=
+Authorization: Bearer {{token}}
+
+### 20. Find Non-existent Agent
+GET {{baseUrl}}/agents/find?name=NonExistentAgent
+Authorization: Bearer {{token}}
+
+### 21. Delete Agent
+DELETE {{baseUrl}}/agents/1
+Authorization: Bearer {{token}}
+
+### 22. Delete Non-existent Agent (Should Fail)
+DELETE {{baseUrl}}/agents/99999
+Authorization: Bearer {{token}}
+
+### 23. Delete Agent in Use (Should Fail - if agent is referenced by servers)
+DELETE {{baseUrl}}/agents/2
+Authorization: Bearer {{token}}
+
+### 24. Test Authentication (No Token - Should Fail)
+GET {{baseUrl}}/agents
+
+### 25. Test Authentication (Invalid Token - Should Fail)
+GET {{baseUrl}}/agents
+Authorization: Bearer invalid_token
+
+### 26. Test Content Type (Wrong Content Type - Should Fail)
+POST {{baseUrl}}/agents
+Authorization: Bearer {{token}}
+Content-Type: text/plain
+
+{
+  "name": "Wrong Content Type"
+}
+
+### 27. Test Large Description
+POST {{baseUrl}}/agents
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Agent with Large Description",
+  "version": "1.0.0",
+  "description": "This is a very long description that tests the system's ability to handle large text fields. It contains multiple sentences and should be properly stored and retrieved without any issues. The description field should support long text content and maintain proper formatting when displayed."
+}
+
+### 28. Test Special Characters in Name
+POST {{baseUrl}}/agents
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Agent with Special Chars: @#$%^&*()",
+  "version": "1.0.0",
+  "description": "Testing special characters in agent name"
+}
+
+### 29. Test Unicode Characters
+POST {{baseUrl}}/agents
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Agent with Unicode: 测试代理",
+  "version": "1.0.0",
+  "description": "Testing Unicode characters in agent name and description"
+}
+
+### 30. Test Version Format Variations
+POST {{baseUrl}}/agents
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Version Test Agent",
+  "version": "v1.2.3-beta.1+build.123",
+  "description": "Testing various version formats"
+}

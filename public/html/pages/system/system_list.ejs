@@ -1,28 +1,65 @@
+<!-- Content Header -->
+<div class="app-content-header">
   <div class="container-fluid">
-    <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/system/system" style="max-width: 500px; margin-left: auto; margin-top: 2.5rem;">
-    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search by name, system ID..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-    <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
-      <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
-        <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
-      <% }) %>
-    </select>
-    <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
-  </form>
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">System List</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main content -->
+<div class="app-content">
+  <div class="container-fluid">
+  <!-- Search and Page Size Row -->
   <div class="row mb-3">
-    <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px;">
-      <% if (hasPermission && hasPermission('system.create')) { %>
-        <a href="/system/system/add" class="btn btn-primary btn-sm me-2">
-          <i class="bi bi-plus"></i> Add System
-        </a>
-      <% } %>
-      <button type="button" class="btn btn-secondary btn-sm ms-2" data-bs-toggle="modal" data-bs-target="#filterSystemModal">
-        <i class="bi bi-funnel"></i> Filter
-      </button>
+    <div class="col-12">
+      <div class="d-flex justify-content-end align-items-center gap-2">
+        <form class="d-flex align-items-center gap-2" role="search" method="get" action="/system/system">
+          <div class="input-group input-group-sm" style="width: 250px;">
+            <input class="form-control form-control-sm" type="search" name="search" placeholder="Search by name, system ID..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+            <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
+          </div>
+          <div class="d-flex align-items-center gap-1">
+            <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+            <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
+              <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
+                <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
+              <% }) %>
+            </select>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+    <!-- Action Buttons -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end gap-2">
+          <% if (hasPermission && hasPermission('system.create')) { %>
+            <a href="/system/system/add" class="btn btn-primary btn-sm">
+              <i class="bi bi-plus"></i> Add System
+            </a>
+          <% } %>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterSystemModal">
+            <i class="bi bi-funnel"></i> Filter
+          </button>
+        </div>
+      </div>
+    </div>
       <!-- Filter Modal -->
       <div class="modal fade" id="filterSystemModal" tabindex="-1" aria-labelledby="filterSystemModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
           <div class="modal-content">
             <form id="systemFilterForm" method="get" action="/system/system">
+              <!-- Preserve current pageSize and search -->
+              <input type="hidden" name="pageSize" value="<%= typeof pageSize !== 'undefined' ? pageSize : 10 %>">
+              <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
               <div class="modal-header">
                 <h5 class="modal-title" id="filterSystemModalLabel">Filter System List</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -58,16 +95,32 @@
           </div>
         </div>
       </div>
-      <!-- Filter values for JS (an toàn cho EJS strict, giống IP Address List) -->
-      <div id="filter-system-data"
-        data-tags='<%= JSON.stringify(filterTags || []) %>'
-        data-contacts='<%= JSON.stringify(filterContacts || []) %>'
-        data-scopes='<%= JSON.stringify(filterScopes || []) %>'
-        data-architecture='<%= JSON.stringify(filterArchitecture || []) %>' style="display:none"></div>
-      
 
+    <!-- System Detail Modal -->
+    <div class="modal fade" id="systemDetailModal" tabindex="-1" aria-labelledby="systemDetailModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="systemDetailModalLabel">System Detail</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body" id="systemDetailContent">
+            <!-- Content will be loaded here -->
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
+
+  <!-- Filter values for JS (an toàn cho EJS strict, giống IP Address List) -->
+  <div id="filter-system-data"
+    data-tags='<%= JSON.stringify(filterTags || []) %>'
+    data-contacts='<%= JSON.stringify(filterContacts || []) %>'
+    data-scopes='<%= JSON.stringify(filterScopes || []) %>'
+    data-architecture='<%= JSON.stringify(filterArchitecture || []) %>' style="display:none"></div>
+
   <% // Declare pagination variables ONCE before the table, to avoid duplicate declaration errors and ReferenceError %>
   <% 
     let sysStartItem = (page - 1) * pageSize + 1;
@@ -91,17 +144,56 @@
       }
     }
   %>
+
+  <!-- Flash Messages -->
+  <!-- Debug: successMessage = <%= typeof successMessage !== 'undefined' ? successMessage : 'undefined' %> -->
+  <!-- Debug: errorMessage = <%= typeof errorMessage !== 'undefined' ? errorMessage : 'undefined' %> -->
+  <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+    <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
+      <i class="bi bi-check-circle me-2"></i><%= successMessage %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <script>
+      // Auto-hide success message after 5 seconds
+      setTimeout(function() {
+        const alert = document.getElementById('successAlert');
+        if (alert) {
+          const bsAlert = new bootstrap.Alert(alert);
+          bsAlert.close();
+        }
+      }, 5000);
+    </script>
+  <% } %>
+  
+  <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
+      <i class="bi bi-exclamation-triangle me-2"></i><%= errorMessage %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <script>
+      // Auto-hide error message after 8 seconds (longer for errors)
+      setTimeout(function() {
+        const alert = document.getElementById('errorAlert');
+        if (alert) {
+          const bsAlert = new bootstrap.Alert(alert);
+          bsAlert.close();
+        }
+      }, 8000);
+    </script>
+  <% } %>
+
+  <!-- System List Table -->
   <div class="row">
     <div class="col-12">
       <div class="card">
         <div class="card-header">
           <h3 class="card-title mb-0">System List</h3>
         </div>
-        <div class="card-body table-responsive p-0">
-          <table class="table table-hover text-nowrap">
+        <div class="card-body table-responsive p-0" style="overflow-x: auto;">
+          <table class="table table-hover" id="systemTable">
             <thead>
               <tr>
-                <th>#</th>
+                <th>No.</th>
                 <th>System Code</th>
                 <th>Name</th>
                 <th>Description</th>
@@ -187,7 +279,7 @@
                     </td>
 
                     <td class="text-end">
-                      <button type="button" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#systemDetailModal-<%= system.id %>" data-system='<%= JSON.stringify(system) %>'><i class="bi bi-eye"></i></button>
+                      <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showSystemDetail('<%= system.id %>')" data-system='<%= JSON.stringify(system) %>'><i class="bi bi-eye"></i></button>
                       <% if (hasPermission('system.update')) { %>
                       <a href="/system/system/<%= system.id %>/edit" class="btn btn-warning btn-sm" title="Edit"><i class="bi bi-pencil"></i></a>
                       <% } %>
@@ -200,184 +292,6 @@
                       <% } %>
                     </td>
                   </tr>
-                  <!-- System Detail Modal -->
-                  <div class="modal fade" id="systemDetailModal-<%= system.id %>" tabindex="-1" aria-labelledby="systemDetailModalLabel-<%= system.id %>" aria-hidden="true">
-                    <div class="modal-dialog modal-lg">
-                      <div class="modal-content">
-                        <div class="modal-header">
-                          <h5 class="modal-title" id="systemDetailModalLabel-<%= system.id %>">System Detail</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                          <dl class="row mb-0">
-                            <dt class="col-sm-3">ID (DB)</dt>
-                            <dd class="col-sm-9"><%= typeof system.id !== 'undefined' && system.id !== null ? system.id : 'No data' %></dd>
-                            <dt class="col-sm-3">System Code</dt>
-                            <dd class="col-sm-9"><%= system.system_id || 'No data' %></dd>
-                            <dt class="col-sm-3">System Name</dt>
-                            <dd class="col-sm-9"><%= system.name || 'No data' %></dd>
-                            <dt class="col-sm-3">Level</dt>
-                            <dd class="col-sm-9"><%= system.level || 'No data' %></dd>
-                            <dt class="col-sm-3">Manager(s)</dt>
-                            <dd class="col-sm-9">
-                              <% if (system.contacts && system.contacts.length > 0) { %>
-                                <% system.contacts.forEach(function(contact, idx) { %>
-                                  <% if (contact.email) { %>
-                                    <a href="/organize/contact?search=<%= encodeURIComponent(contact.email) %>" target="_blank"><%= contact.email %></a><%= idx < system.contacts.length - 1 ? ', ' : '' %>
-                                  <% } else { %>
-                                    <span class="text-muted">No email</span><%= idx < system.contacts.length - 1 ? ', ' : '' %>
-                                  <% } %>
-                                <% }) %>
-                              <% } else { %>
-                                No manager
-                              <% } %>
-                            </dd>
-                            <dt class="col-sm-3">Department</dt>
-                            <dd class="col-sm-9">
-                              <% if (system.department_name) { %>
-                                <a href="/organize/unit?search=<%= encodeURIComponent(system.department_name) %>" target="_blank"><%= system.department_name %></a>
-                              <% } else { %>
-                                <span class="text-muted">No data</span>
-                              <% } %>
-                            </dd>
-                            <dt class="col-sm-3">Alias</dt>
-                            <dd class="col-sm-9">
-                              <% if (Array.isArray(system.alias) && system.alias.length > 0) { %>
-                                <%= system.alias.join(', ') %>
-                              <% } else if (system.alias) { %>
-                                <%= system.alias %>
-                              <% } else { %>
-                                <span class="text-muted">No alias</span>
-                              <% } %>
-                            </dd>
-                            <dt class="col-sm-3">FQDN</dt>
-                            <dd class="col-sm-9">
-                              <% if (Array.isArray(system.fqdn) && system.fqdn.length > 0) { %>
-                                <ul class="mb-0 ps-3" style="list-style: disc inside;">
-                                  <% system.fqdn.forEach(function(f) { %>
-                                    <li>
-                                      <% if (/^https?:\/\//.test(f)) { %>
-                                        <a href="<%= f %>" target="_blank" rel="noopener noreferrer"><%= f %></a>
-                                      <% } else { %>
-                                        <code><%= f %></code>
-                                      <% } %>
-                                    </li>
-                                  <% }) %>
-                                </ul>
-                              <% } else { %>
-                                <span class="text-muted">No FQDN</span>
-                              <% } %>
-                            </dd>
-                            <dt class="col-sm-3">Tags</dt>
-                            <dd class="col-sm-9">
-                              <% if (system.tags && system.tags.length > 0) { %>
-                                <% system.tags.forEach(function(tag) { %>
-                                  <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= tag.name %></span>
-                                <% }) %>
-                              <% } else { %>
-                                <span class="text-muted">No tags</span>
-                              <% } %>
-                            </dd>
-                            <dt class="col-sm-3">Scope user access</dt>
-                            <dd class="col-sm-9">
-                              <% if (system.scopes && system.scopes.length > 0) { %>
-                                <% system.scopes.forEach(function(scope) { %>
-                                  <span class="badge bg-info text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= scope %></span>
-                                <% }) %>
-                              <% } else { %>
-                                <span class="text-muted">No specific scope defined</span>
-                              <% } %>
-                            </dd>
-                            <dt class="col-sm-3">Architecture</dt>
-                            <dd class="col-sm-9">
-                              <% if (system.architecture && system.architecture.length > 0) { %>
-                                <% system.architecture.forEach(function(arch) { %>
-                                  <span class="badge bg-warning text-dark" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em;"><%= arch %></span>
-                                <% }) %>
-                              <% } else { %>
-                                <span class="text-muted">No specific architecture defined</span>
-                              <% } %>
-                            </dd>
-                            <dt class="col-sm-3">Created At</dt>
-                            <dd class="col-sm-9"><%= system.created_at ? (system.created_at.toLocaleString ? system.created_at.toLocaleString() : system.created_at) : 'No data' %></dd>
-                            <dt class="col-sm-3">Updated At</dt>
-                            <dd class="col-sm-9"><%= system.updated_at ? (system.updated_at.toLocaleString ? system.updated_at.toLocaleString() : system.updated_at) : '<span class="text-muted">No data</span>' %></dd>
-                            <dt class="col-sm-3">Updated By</dt>
-                            <dd class="col-sm-9"><%= system.updated_by || '<span class="text-muted">No data</span>' %></dd>
-                            <dt class="col-sm-3">Description</dt>
-                            <dd class="col-sm-9">
-                              <% if (system.description) { %>
-                                <span class="desc-text"><%- system.description.replace(/\n/g, '<br>') %></span>
-                              <% } else { %>
-                                <span class="text-muted">No data</span>
-                              <% } %>
-                            </dd>
-                          </dl>
-                          <hr>
-                          <h6>IP Addresses</h6>
-                          <ul>
-                            <% if (system.ip_addresses && system.ip_addresses.length > 0) { %>
-                              <% system.ip_addresses.forEach(function(ipObj) { %>
-                                <li>
-                                  <% if (typeof ipObj === 'object' && ipObj.ip) { %>
-                                    <a href="/network/ip-address?search=<%= encodeURIComponent(ipObj.ip) %>" 
-                                       target="_blank" 
-                                       class="ip-hover-link" 
-                                       data-ip="<%= ipObj.ip %>"
-                                       title="Loading IP info..."><%= ipObj.ip %></a>
-                                  <% } else { %>
-                                    <span class="ip-hover-link" 
-                                          data-ip="<%= ipObj %>"
-                                          title="Loading IP info..."><%= ipObj %></span>
-                                  <% } %>
-                                </li>
-                              <% }) %>
-                            <% } else { %>
-                              <li>No IPs</li>
-                            <% } %>
-                          </ul>
-                          <h6>Domains</h6>
-                          <ul>
-                            <% if (system.domains && system.domains.length > 0) { %>
-                              <% system.domains.forEach(function(domain) { %>
-                                <li>
-                                  <% if (typeof domain === 'object' && domain.domain) { %>
-                                    <a href="/network/domain?search=<%= encodeURIComponent(domain.domain) %>" target="_blank"><%= domain.domain %></a>
-                                  <% } else { %>
-                                    <%= domain %>
-                                  <% } %>
-                                </li>
-                              <% }) %>
-                            <% } else { %>
-                              <li>No domains</li>
-                            <% } %>
-                          </ul>
-                          <h6>System Documents</h6>
-                          <ul class="mb-3">
-                            <% if (system.docs && system.docs.length > 0) { %>
-                              <% system.docs.forEach(function(doc) { %>
-                                <li>
-                                  <a href="<%= doc.url %>" target="_blank">
-                                    <i class="bi bi-file-earmark-text"></i> <%= doc.name %>
-                                  </a>
-                                </li>
-                              <% }) %>
-                            <% } else { %>
-                              <li>No documents</li>
-                            <% } %>
-                          </ul>
-                          <hr>
-                          <h6 class="text-center fw-bold">Component List</h6>
-                          <div id="component-list-<%= system.id %>">
-                            <div class="text-muted">Loading components...</div>
-                          </div>
-                        </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
 
                 <% }) %>
               <% } else { %>
@@ -386,8 +300,102 @@
             </tbody>
           </table>
         </div>
+        
+        <!-- Mobile Cards Layout -->
+        <div class="mobile-cards d-none" id="systemMobileCards">
+          <% if (systemList && systemList.length > 0) { %>
+            <% systemList.forEach(function(system, idx) { %>
+              <div class="mobile-card">
+                <div class="mobile-card-header">
+                  <h6 class="mb-0"><%= system.name %></h6>
+                  <small class="text-muted">#<%= (page - 1) * pageSize + idx + 1 %></small>
+                </div>
+                <div class="mobile-card-body">
+                  <div class="mobile-card-row">
+                    <span class="mobile-card-label">System Code:</span>
+                    <span class="mobile-card-value"><%= system.system_id %></span>
+                  </div>
+                  <% if (system.description && system.description.trim()) { %>
+                    <div class="mobile-card-row">
+                      <span class="mobile-card-label">Description:</span>
+                      <span class="mobile-card-value"><%= system.description.length > 50 ? system.description.substring(0, 50) + '…' : system.description %></span>
+                    </div>
+                  <% } %>
+                  <% if (system.alias && (Array.isArray(system.alias) ? system.alias.length > 0 : system.alias)) { %>
+                    <div class="mobile-card-row">
+                      <span class="mobile-card-label">Alias:</span>
+                      <span class="mobile-card-value"><%= Array.isArray(system.alias) ? system.alias.join(', ') : system.alias %></span>
+                    </div>
+                  <% } %>
+                  <% if (system.tags && system.tags.length > 0) { %>
+                    <div class="mobile-card-row">
+                      <span class="mobile-card-label">Tags:</span>
+                      <span class="mobile-card-value">
+                        <% system.tags.slice(0, 2).forEach(function(tag) { %>
+                          <span class="badge bg-primary text-white me-1" style="font-size:0.8rem;"><%= tag.name %></span>
+                        <% }) %>
+                        <% if (system.tags.length > 2) { %>
+                          <span class="text-muted">+<%= system.tags.length - 2 %> more</span>
+                        <% } %>
+                      </span>
+                    </div>
+                  <% } %>
+                  <% if (system.scopes && system.scopes.length > 0) { %>
+                    <div class="mobile-card-row">
+                      <span class="mobile-card-label">Scope:</span>
+                      <span class="mobile-card-value">
+                        <% system.scopes.slice(0, 1).forEach(function(scope) { %>
+                          <span class="badge bg-info text-white me-1" style="font-size:0.8rem;"><%= scope %></span>
+                        <% }) %>
+                        <% if (system.scopes.length > 1) { %>
+                          <span class="text-muted">+<%= system.scopes.length - 1 %> more</span>
+                        <% } %>
+                      </span>
+                    </div>
+                  <% } %>
+                  <% if (system.architecture && system.architecture.length > 0) { %>
+                    <div class="mobile-card-row">
+                      <span class="mobile-card-label">Architecture:</span>
+                      <span class="mobile-card-value">
+                        <% system.architecture.slice(0, 1).forEach(function(arch) { %>
+                          <span class="badge bg-warning text-dark me-1" style="font-size:0.8rem;"><%= arch %></span>
+                        <% }) %>
+                        <% if (system.architecture.length > 1) { %>
+                          <span class="text-muted">+<%= system.architecture.length - 1 %> more</span>
+                        <% } %>
+                      </span>
+                    </div>
+                  <% } %>
+                </div>
+                <div class="mobile-card-actions">
+                  <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showSystemDetail('<%= system.id %>')" data-system='<%= JSON.stringify(system) %>'>
+                    <i class="bi bi-eye"></i>
+                  </button>
+                  <% if (hasPermission('system.update')) { %>
+                    <a href="/system/system/<%= system.id %>/edit" class="btn btn-warning btn-sm" title="Edit">
+                      <i class="bi bi-pencil"></i>
+                    </a>
+                  <% } %>
+                  <% if (hasPermission('system.delete')) { %>
+                    <form action="/system/system/<%= system.id %>/delete" method="POST" style="display:inline" onsubmit="return confirmDeleteSystem(this, '<%= system.name %>')">
+                      <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </form>
+                  <% } %>
+                </div>
+              </div>
+            <% }) %>
+          <% } else { %>
+            <div class="mobile-card">
+              <div class="mobile-card-body text-center">
+                <span class="text-muted">No data</span>
+              </div>
+            </div>
+          <% } %>
+        </div>
         <div class="card-footer clearfix">
-          <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
+          <div class="d-flex justify-content-between align-items-center px-3 py-2">
             <div>
               <% 
                 // Only declare these variables ONCE at the top of the file or before the table, not here again
@@ -434,37 +442,7 @@
       </div>
     </div>
   </div>
-<!-- Load jQuery and Select2 first -->
-<script src="/vendor/jquery-3.6.0.min.js"></script>
-<link href="/vendor/select2.min.css" rel="stylesheet" />
-<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-<script src="/vendor/select2.min.js"></script>
-<script src="/vendor/bootstrap.min.js"></script>
-<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
-
-<style>
-  /* IP hover tooltip styling */
-  .ip-hover-link {
-    cursor: pointer;
-    border-bottom: 1px dotted #007bff;
-    text-decoration: none;
-  }
-  
-  .ip-hover-link:hover {
-    text-decoration: none;
-    border-bottom: 1px dotted #0056b3;
-  }
-  
-  /* Custom tooltip styling for better readability */
-  .ip-hover-link[title] {
-    position: relative;
-  }
-  
-  /* Ensure tooltips are visible above modals */
-  .modal .ip-hover-link[title] {
-    z-index: 1060;
-  }
-</style>
+</div>
 
 
 
@@ -480,6 +458,7 @@
     window.scopeOptionsData = JSON.parse(systemDataEl.dataset.scopeOptions || '[]');
     window.architectureOptionsData = JSON.parse(systemDataEl.dataset.architectureOptions || '[]');
     
+    
 
     
     function confirmDeleteSystem(form, name) {
@@ -490,205 +469,320 @@
       return false;
     }
 
-    function showToast(msg, type) {
-      const toast = document.createElement('div');
-      toast.className = `alert alert-${type}`;
-      toast.style.position = 'fixed';
-      toast.style.top = '16px';
-      toast.style.right = '16px';
-      toast.style.zIndex = 9999;
-      toast.style.minWidth = '200px';
-      toast.innerText = msg;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
-    }
-
-    // Filter modal select2 logic
-    function restoreSelect2Value($el, values, url) {
-      if (!values || !values.length) return;
-      $.ajax({
-        url: url,
-        data: { ids: values },
-        dataType: 'json',
-        traditional: true,
-        success: function(data) {
-          data.forEach(function(item) {
-            if ($el.find('option[value="' + item.id + '"]').length === 0) {
-              var option = new Option(item.text || item.name, item.id, true, true);
-              $el.append(option);
+    // Simple function to show system detail modal
+    function showSystemDetail(systemId) {
+      console.log('showSystemDetail called with ID:', systemId);
+      
+      try {
+        // Find the button that was clicked
+        const buttons = document.querySelectorAll('button[data-system]');
+        let targetButton = null;
+        
+        for (let button of buttons) {
+          const data = button.getAttribute('data-system');
+          if (data) {
+            try {
+              const system = JSON.parse(data);
+              if (system.id == systemId) {
+                targetButton = button;
+                break;
+              }
+            } catch (e) {
+              console.error('Error parsing system data:', e);
+            }
+          }
+        }
+        
+        if (!targetButton) {
+          console.error('Button not found for system ID:', systemId);
+          alert('Button not found for system ID: ' + systemId);
+          return;
+        }
+        
+        const systemData = targetButton.getAttribute('data-system');
+        console.log('Raw system data:', systemData);
+        
+        let system;
+        try {
+          system = JSON.parse(systemData);
+          console.log('Parsed system data:', system);
+        } catch (e) {
+          console.error('Error parsing system data:', e);
+          alert('Error parsing system data: ' + e.message);
+          return;
+        }
+        
+        // Check if Bootstrap is available
+        if (typeof bootstrap === 'undefined') {
+          console.error('Bootstrap is not loaded');
+          alert('Bootstrap is not loaded');
+          return;
+        }
+        
+        const modalElement = document.getElementById('systemDetailModal');
+        if (!modalElement) {
+          console.error('Modal element not found');
+          alert('Modal element not found');
+          return;
+        }
+        
+        const modal = new bootstrap.Modal(modalElement, {
+          backdrop: true,
+          keyboard: true,
+          focus: true
+        });
+        const content = document.getElementById('systemDetailContent');
+        
+        // Build HTML content - Simple field: value layout
+        let html = '';
+        
+        // Debug: Show all system properties
+        console.log('All system properties:', Object.keys(system));
+        
+        // System Name
+        html += '<div class="mb-2">';
+        const systemName = (system.name || system.system_name || 'N/A');
+        console.log('System Name:', systemName, 'System Code:', system.system_id || system.code);
+        html += '<strong>System Name:</strong> ' + String(systemName).trim();
+        html += '</div>';
+        
+        // System Code
+        html += '<div class="mb-2">';
+        const systemCode = (system.system_id || system.code || 'N/A');
+        console.log('System Code raw:', systemCode, 'Type:', typeof systemCode);
+        html += '<strong>System Code:</strong> ' + String(systemCode).trim();
+        html += '</div>';
+        
+        // ID
+        html += '<div class="mb-2">';
+        const systemIdValue = (system.id || 'N/A');
+        html += '<strong>ID:</strong> ' + String(systemIdValue).trim();
+        html += '</div>';
+        
+        // Description
+        if (system.description && system.description.trim()) {
+          html += '<div class="mb-2">';
+          html += '<strong>Description:</strong> ' + String(system.description).trim();
+          html += '</div>';
+        }
+        
+        // Level
+        html += '<div class="mb-2">';
+        const level = (system.level || 'N/A');
+        html += '<strong>Level:</strong> ' + String(level).trim();
+        html += '</div>';
+        
+        // Department
+        html += '<div class="mb-2">';
+        const department = (system.department_name || system.department || 'N/A');
+        html += '<strong>Department:</strong> ' + String(department).trim();
+        html += '</div>';
+        
+        // Alias
+        if (system.alias && (Array.isArray(system.alias) ? system.alias.length > 0 : system.alias)) {
+          html += '<div class="mb-2">';
+          const alias = Array.isArray(system.alias) ? system.alias.join(', ') : system.alias;
+          html += '<strong>Alias:</strong> ' + String(alias).trim();
+          html += '</div>';
+        }
+        
+        // FQDN
+        if (system.fqdn && (Array.isArray(system.fqdn) ? system.fqdn.length > 0 : system.fqdn)) {
+          html += '<div class="mb-2">';
+          html += '<strong>FQDN:</strong>';
+          const fqdnList = Array.isArray(system.fqdn) ? system.fqdn : [system.fqdn];
+          html += '<ul class="mb-0 mt-1">';
+          fqdnList.forEach(function(fqdn) {
+            const fqdnStr = String(fqdn).trim();
+            // Check if FQDN contains brackets - extract domain and comment separately
+            if (fqdnStr.includes('[') && fqdnStr.includes(']')) {
+              const bracketMatch = fqdnStr.match(/^(.+?)\s*\[(.+?)\]$/);
+              if (bracketMatch) {
+                const domain = bracketMatch[1].trim();
+                const comment = bracketMatch[2].trim();
+                html += '<li><a href="http://' + domain + '" target="_blank" class="text-decoration-none">' + domain + '</a> <span class="badge bg-secondary ms-1">' + comment + '</span></li>';
+              } else {
+                html += '<li><span class="text-muted">' + fqdnStr + '</span></li>';
+              }
+            } else {
+              html += '<li><a href="http://' + fqdnStr + '" target="_blank" class="text-decoration-none">' + fqdnStr + '</a></li>';
             }
           });
-          $el.val(values).trigger('change');
+          html += '</ul>';
+          html += '</div>';
         }
-      });
-    }
-
-    $(function() {
-      var $filterModal = $('#filterSystemModal');
-      var $modalContent = $filterModal.find('.modal-content');
-      
-      var filterValues = {
-        tags: JSON.parse(document.getElementById('filter-system-data').dataset.tags || '[]'),
-        contacts: JSON.parse(document.getElementById('filter-system-data').dataset.contacts || '[]'),
-        scopes: JSON.parse(document.getElementById('filter-system-data').dataset.scopes || '[]'),
-        architecture: JSON.parse(document.getElementById('filter-system-data').dataset.architecture || '[]')
-      };
-      $('#filterSystemTags').select2({
-        theme: 'bootstrap-5',
-        placeholder: 'Select tag(s)',
-        allowClear: true,
-        width: '100%',
-        dropdownParent: $modalContent,
-        ajax: {
-          url: '/organize/api/tag',
-          dataType: 'json',
-          delay: 250,
-          data: params => ({ search: params.term }),
-          processResults: data => ({ results: data })
-        }
-      });
-      $('#filterSystemContacts').select2({
-        theme: 'bootstrap-5',
-        placeholder: 'Select contact(s)',
-        allowClear: true,
-        width: '100%',
-        dropdownParent: $modalContent,
-        ajax: {
-          url: '/organize/api/contact',
-          dataType: 'json',
-          delay: 250,
-          data: params => ({ search: params.term }),
-          processResults: data => ({ results: data })
-        }
-      });
-      console.log('🚀 Select2 for Contacts created');
-      // Tạo Select2 trực tiếp với data từ backend
-      $('#filterSystemScopes').select2({
-        theme: 'bootstrap-5',
-        placeholder: 'Select scope(s)',
-        allowClear: true,
-        width: '100%',
-        dropdownParent: $modalContent,
-        data: window.scopeOptionsData || [],
-        // Sử dụng format {id, text} mặc định của Select2
-      });
-      
-      // Tạo Select2 trực tiếp với data từ backend
-      $('#filterSystemArchitecture').select2({
-        theme: 'bootstrap-5',
-        placeholder: 'Select architecture(s)',
-        allowClear: true,
-        width: '100%',
-        dropdownParent: $modalContent,
-        data: window.architectureOptionsData || [],
-        // Sử dụng format {id, text} mặc định của Select2
-      });
-      
-
-      restoreSelect2Value($('#filterSystemTags'), filterValues.tags, '/organize/api/tag');
-      restoreSelect2Value($('#filterSystemContacts'), filterValues.contacts, '/organize/api/contact');
-      // Restore scope and architecture values
-      if (filterValues.scopes && filterValues.scopes.length > 0) {
-        $('#filterSystemScopes').val(filterValues.scopes).trigger('change');
-      }
-      if (filterValues.architecture && filterValues.architecture.length > 0) {
-        $('#filterSystemArchitecture').val(filterValues.architecture).trigger('change');
-      }
-      
-
-      // Clear Filter button
-      $('#clearFilterBtnSystem').on('click', function() {
-        // Clear all select2 values
-        $('#filterSystemTags').val(null).trigger('change');
-        $('#filterSystemContacts').val(null).trigger('change');
-        $('#filterSystemScopes').val(null).trigger('change');
-        $('#filterSystemArchitecture').val(null).trigger('change');
-        // Close modal
-        $filterModal.modal('hide');
-        // Redirect to clean URL
-        window.location.href = '/system/system';
-      });
-      
-
-    });
-    // AJAX load component list for system detail modal
-    document.addEventListener('DOMContentLoaded', function() {
-      // Attach event for all show system detail buttons
-      document.querySelectorAll('button[data-bs-target^="#systemDetailModal-"]').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          let system = null;
-          try {
-            system = JSON.parse(this.getAttribute('data-system'));
-          } catch (e) {}
-          const systemId = system && system.id ? system.id : this.getAttribute('data-bs-target').replace('#systemDetailModal-', '');
-          const container = document.getElementById('component-list-' + systemId);
-          if (!container) return;
-          container.innerHTML = '<div class="text-muted">Loading components...</div>';
-          fetch(`/system/api/system/${systemId}/components`)
-            .then(res => res.json())
-            .then(data => {
-              if (!data.components || !Array.isArray(data.components) || data.components.length === 0) {
-                container.innerHTML = '<div class="text-muted">No components</div>';
-                return;
-              }
-              let html = '';
-              data.components.forEach((c, idx) => {
-                if (idx > 0) html += '<hr class="my-2">';
-                html += `<div style='font-size: 0.93em;'>`;
-                if (c.name) {
-                  html += `<div>Name: <a href='/system/component?search=${encodeURIComponent(c.name)}&pageSize=10' target='_blank'>${c.name}</a></div>`;
-                } else {
-                  html += `<div>Name: (no name)</div>`;
-                }
-                html += `<div>App type: ${c.app_type ? `<span class='badge bg-secondary ms-2'>${c.app_type}</span>` : '-'}</div>`;
-                html += `<div>Description: <span class='text-muted small'>${c.description ? c.description.replace(/</g,'&lt;').replace(/>/g,'&gt;') : '-'}</span></div>`;
-                if (c.tags && c.tags.length > 0) {
-                  html += `<div>Tags: ` + c.tags.map(tag => `<span class='badge bg-primary text-white me-1' style='font-size:0.93em; padding:0.15em 0.5em;'>${tag.name}</span>`).join('') + `</div>`;
-                } else {
-                  html += `<div>Tags: <span class='text-muted'>no tags</span></div>`;
-                }
-                if (c.fqdn && Array.isArray(c.fqdn) && c.fqdn.length > 0) {
-                  html += `<div>FQDN: ${c.fqdn.map(f=>`<code>${f}</code>`).join(', ')}</div>`;
-                }
-                if (c.ips && Array.isArray(c.ips) && c.ips.length > 0) {
-                  html += `<div>IP: ` + c.ips.map(ipObj => {
-                    if (typeof ipObj === 'object' && ipObj.ip) {
-                      return `<a href='/network/ip-address?search=${encodeURIComponent(ipObj.ip)}' target='_blank' class='ip-hover-link' data-ip='${ipObj.ip}' title='Loading IP info...'>${ipObj.ip}</a>`;
-                    } else {
-                      return `<span class='ip-hover-link' data-ip='${ipObj}' title='Loading IP info...'>${ipObj}</span>`;
-                    }
-                  }).join(', ') + `</div>`;
-                }
-                html += '</div>';
-              });
-              container.innerHTML = html;
-              
-              // Attach IP hover events to the newly loaded content
-              attachIPHoverEvents();
-            })
-            .catch(() => {
-              container.innerHTML = '<div class="text-danger">Error loading components</div>';
-            });
-        });
-      });
-      
-      // Attach IP hover events to existing content
-      attachIPHoverEvents();
-    });
-    
-    // Function to attach IP hover events
-    function attachIPHoverEvents() {
-      document.querySelectorAll('.ip-hover-link').forEach(function(element) {
-        // Remove existing event listeners to avoid duplicates
-        element.removeEventListener('mouseenter', handleIPHover);
-        element.removeEventListener('mouseleave', handleIPLeave);
         
-        // Add new event listeners
-        element.addEventListener('mouseenter', handleIPHover);
-        element.addEventListener('mouseleave', handleIPLeave);
+        // Tags
+        if (system.tags && system.tags.length > 0) {
+          html += '<div class="mb-2">';
+          html += '<strong>Tags:</strong><br>';
+          system.tags.forEach(function(tag) {
+            const tagValue = (typeof tag === 'string' ? tag : tag.name);
+            html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
+          });
+          html += '</div>';
+        }
+        
+        // Scopes
+        if (system.scopes && system.scopes.length > 0) {
+          html += '<div class="mb-2">';
+          html += '<strong>Scope:</strong><br>';
+          system.scopes.forEach(function(scope) {
+            html += '<span class="badge bg-info me-1 mb-1">' + String(scope).trim() + '</span>';
+          });
+          html += '</div>';
+        }
+        
+        // Architecture
+        if (system.architecture && system.architecture.length > 0) {
+          html += '<div class="mb-2">';
+          html += '<strong>Architecture:</strong><br>';
+          system.architecture.forEach(function(arch) {
+            html += '<span class="badge bg-warning me-1 mb-1">' + String(arch).trim() + '</span>';
+          });
+          html += '</div>';
+        }
+        
+        // IP Addresses
+        if (system.ip_addresses && system.ip_addresses.length > 0) {
+          html += '<div class="mb-2">';
+          html += '<strong>IP Addresses:</strong>';
+          system.ip_addresses.forEach(function(ipObj) {
+            const ipAddress = ipObj.ip || ipObj.ip_address || ipObj;
+            const zone = ipObj.subnet_zone || '';
+            const environment = ipObj.subnet_environment || '';
+            const serverName = ipObj.server_name || '';
+            
+            html += '<div class="mt-1 d-flex align-items-center flex-wrap">';
+            html += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary me-2 ip-hover-link" data-ip="' + ipAddress + '" title="Loading IP info...">' + String(ipAddress).trim() + '</a>';
+            
+            // Add server/device name if available
+            if (serverName) {
+              html += '<span class="badge bg-light text-dark border me-2" style="border-radius: 3px;">[' + serverName + ']</span>';
+            }
+            
+            // Add zone and environment info if available
+            if (zone || environment) {
+              const zoneEnvText = (zone && environment) ? zone + '-' + environment : (zone || environment);
+              html += '<span class="badge bg-light text-dark border me-2" style="border-radius: 3px;">[' + zoneEnvText + ']</span>';
+            }
+            
+            html += '</div>';
+          });
+          html += '</div>';
+        }
+        
+        // Domains
+        if (system.domains && system.domains.length > 0) {
+          html += '<div class="mb-2">';
+          html += '<strong>Domains:</strong><br>';
+          system.domains.forEach(function(domainObj) {
+            const domain = domainObj.domain || domainObj;
+            html += '<a href="/network/domain?search=' + encodeURIComponent(domain) + '" target="_blank" class="badge bg-secondary me-1 mb-1 text-decoration-none" title="Click to view domain details">' + String(domain).trim() + '</a>';
+          });
+          html += '</div>';
+        }
+        
+        // Contacts
+        if (system.contacts && system.contacts.length > 0) {
+          html += '<div class="mb-2">';
+          html += '<strong>Contacts:</strong><ul class="mb-0">';
+          system.contacts.forEach(function(contactObj) {
+            const contactName = contactObj.name || contactObj;
+            const contactEmail = contactObj.email || '';
+            let displayText = contactName;
+            let searchTerm = contactName;
+            
+            if (contactEmail) {
+              // Extract username part before @
+              const emailUsername = contactEmail.split('@')[0];
+              displayText = `${contactName} (${emailUsername})`;
+              searchTerm = contactEmail; // Still use full email for search
+            }
+            
+            html += '<li><a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary">' + String(displayText).trim() + '</a></li>';
+          });
+          html += '</ul></div>';
+        }
+        
+        // Created
+        html += '<div class="mb-2">';
+        const created = (system.created_at || system.createdAt || 'N/A');
+        html += '<strong>Created:</strong> ' + String(created).trim();
+        html += '</div>';
+        
+        // Updated
+        html += '<div class="mb-2">';
+        const updated = (system.updated_at || system.updatedAt || 'N/A');
+        html += '<strong>Updated:</strong> ' + String(updated).trim();
+        html += '</div>';
+        
+        // Updated By
+        if (system.updated_by) {
+          html += '<div class="mb-2">';
+          html += '<strong>Updated By:</strong> ' + String(system.updated_by).trim();
+          html += '</div>';
+        }
+        
+        
+        // Files/Documents
+        if (system.docs && system.docs.length > 0) {
+          html += '<div class="mb-2">';
+          html += '<strong>Attached Files:</strong><br>';
+          system.docs.forEach(function(file) {
+            const fileName = file.name || file.originalname || 'Unknown file';
+            const fileUrl = file.url || '#';
+            html += '<div class="mt-1">';
+            html += '<a href="' + fileUrl + '" target="_blank" class="text-decoration-none text-primary me-2">' + String(fileName).trim() + '</a>';
+            html += '<span class="badge bg-light text-dark border" style="border-radius: 3px;">[View]</span>';
+            html += '</div>';
+          });
+          html += '</div>';
+        }
+        
+        // Components - will be loaded via AJAX (moved to bottom)
+        html += '<div class="mb-2 mt-3" id="components-section-' + systemId + '">';
+        html += '<strong>Components:</strong> <span class="text-muted">Loading...</span>';
+        html += '</div>';
+        
+        
+        content.innerHTML = html;
+        
+        // Show modal with proper event handling
+        modal.show();
+        
+        // Load components data via AJAX
+        loadSystemComponents(systemId);
+        
+        // Add IP hover functionality
+        setupIPHover();
+        
+        // Handle modal events
+        modalElement.addEventListener('shown.bs.modal', function() {
+          console.log('Modal shown successfully');
+        });
+        
+        modalElement.addEventListener('hidden.bs.modal', function() {
+          console.log('Modal hidden');
+          // Clear content when modal is hidden
+          content.innerHTML = '';
+        });
+        
+      } catch (error) {
+        console.error('Error showing system detail:', error);
+        alert('Error loading system details: ' + error.message);
+      }
+    }
+
+    // Function to setup IP hover functionality
+    function setupIPHover() {
+      // Add event listeners to all IP hover links
+      const ipLinks = document.querySelectorAll('.ip-hover-link');
+      ipLinks.forEach(link => {
+        link.addEventListener('mouseenter', handleIPHover);
       });
     }
-    
+
     // IP hover handler
     function handleIPHover(event) {
       const element = event.target;
@@ -728,19 +822,33 @@
             
             // Add tags information
             if (ipInfo.tags && ipInfo.tags.length > 0) {
-              const tagNames = ipInfo.tags.map(tag => tag.name).join(', ');
+              const tagNames = ipInfo.tags.map(tag => typeof tag === 'string' ? tag : tag.name).join(', ');
               tooltipText += `\nTags: ${tagNames}`;
             }
             
             // Add contacts information
             if (ipInfo.contacts && ipInfo.contacts.length > 0) {
-              const contactEmails = ipInfo.contacts.map(contact => contact.email || contact.name).join(', ');
+              const contactEmails = ipInfo.contacts.map(contact => {
+                if (typeof contact === 'string') {
+                  // If it's a string, check if it's an email or name
+                  if (contact.includes('@')) {
+                    return contact.split('@')[0]; // Extract username part
+                  }
+                  return contact;
+                }
+                // If it's an object, handle email and name like in System Detail
+                if (contact.email) {
+                  const emailUsername = contact.email.split('@')[0];
+                  return contact.name ? `${contact.name} (${emailUsername})` : emailUsername;
+                }
+                return contact.name || contact;
+              }).join(', ');
               tooltipText += `\nContacts: ${contactEmails}`;
             }
             
             // Add systems information
             if (ipInfo.systems && ipInfo.systems.length > 0) {
-              const systemNames = ipInfo.systems.map(system => system.name).join(', ');
+              const systemNames = ipInfo.systems.map(system => typeof system === 'string' ? system : system.name).join(', ');
               tooltipText += `\nSystems: ${systemNames}`;
             }
             
@@ -750,30 +858,393 @@
           }
         })
         .catch(error => {
-          console.error('Error fetching IP info:', error);
+          console.error('Error loading IP info:', error);
           element.setAttribute('title', `IP: ${ipAddress}\nError loading information`);
         })
         .finally(() => {
           element.removeAttribute('data-loading');
         });
     }
-    
-    // IP leave handler
-    function handleIPLeave(event) {
-      // Optional: Reset tooltip or do cleanup
+
+    // Function to load system components via AJAX
+    function loadSystemComponents(systemId) {
+      const componentsSection = document.getElementById('components-section-' + systemId);
+      if (!componentsSection) return;
+      
+      fetch(`/system/api/system/${systemId}/components`)
+        .then(response => response.json())
+        .then(data => {
+          if (data.components && data.components.length > 0) {
+            let componentsHtml = '<div class="components-section">';
+            componentsHtml += '<h6 class="mb-3 text-primary"><i class="bi bi-gear-fill me-2"></i>Components (' + data.components.length + ')</h6>';
+            
+            data.components.forEach(function(component, index) {
+              // Add separator line between components (except for the first one)
+              if (index > 0) {
+                componentsHtml += '<hr class="my-3">';
+              }
+              
+              componentsHtml += '<div class="component-card border rounded p-3 mb-2 bg-light">';
+              
+              // Component Header with Name and App Type
+              componentsHtml += '<div class="d-flex justify-content-between align-items-start mb-2">';
+              componentsHtml += '<h6 class="mb-0 text-dark fw-bold">' + String(component.name || 'N/A').trim() + '</h6>';
+              if (component.app_type) {
+                componentsHtml += '<span class="badge bg-primary">' + String(component.app_type).trim() + '</span>';
+              }
+              componentsHtml += '</div>';
+              
+              // Component Details in smaller font
+              componentsHtml += '<div class="component-details small text-muted">';
+              
+              // Component ID
+              if (component.id) {
+                componentsHtml += '<div class="mb-1">';
+                componentsHtml += '<span class="fw-semibold">ID:</span> ' + String(component.id).trim();
+                componentsHtml += '</div>';
+              }
+              
+              // Description
+              if (component.description && component.description.trim()) {
+                componentsHtml += '<div class="mb-2">';
+                componentsHtml += '<span class="fw-semibold">Description:</span> ' + String(component.description).trim();
+                componentsHtml += '</div>';
+              }
+              
+              // FQDN
+              if (component.fqdn && (Array.isArray(component.fqdn) ? component.fqdn.length > 0 : component.fqdn)) {
+                componentsHtml += '<div class="mb-2">';
+                componentsHtml += '<span class="fw-semibold">FQDN:</span>';
+                const fqdnList = Array.isArray(component.fqdn) ? component.fqdn : [component.fqdn];
+                componentsHtml += '<div class="mt-1">';
+                fqdnList.forEach(function(fqdn) {
+                  const fqdnStr = String(fqdn).trim();
+                  // Check if FQDN contains brackets - extract domain and comment separately
+                  if (fqdnStr.includes('[') && fqdnStr.includes(']')) {
+                    const bracketMatch = fqdnStr.match(/^(.+?)\s*\[(.+?)\]$/);
+                    if (bracketMatch) {
+                      const domain = bracketMatch[1].trim();
+                      const comment = bracketMatch[2].trim();
+                      componentsHtml += '<div class="mb-1"><a href="http://' + domain + '" target="_blank" class="text-decoration-none text-primary">' + domain + '</a> <span class="badge bg-secondary ms-1">' + comment + '</span></div>';
+                    } else {
+                      componentsHtml += '<div class="mb-1 text-muted">' + fqdnStr + '</div>';
+                    }
+                  } else {
+                    componentsHtml += '<div class="mb-1"><a href="http://' + fqdnStr + '" target="_blank" class="text-decoration-none text-primary">' + fqdnStr + '</a></div>';
+                  }
+                });
+                componentsHtml += '</div>';
+                componentsHtml += '</div>';
+              }
+              
+              // IP Addresses
+              if (component.ips && component.ips.length > 0) {
+                componentsHtml += '<div class="mb-2">';
+                componentsHtml += '<span class="fw-semibold">IP Addresses:</span>';
+                componentsHtml += '<div class="mt-1">';
+                component.ips.forEach(function(ipObj, index) {
+                  const ipAddress = ipObj.ip_address || ipObj.ip || ipObj;
+                  componentsHtml += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary ip-hover-link" data-ip="' + ipAddress + '" title="Loading IP info...">' + String(ipAddress).trim() + '</a>';
+                  
+                  // Add comma separator if not the last item
+                  if (index < component.ips.length - 1) {
+                    componentsHtml += ', ';
+                  }
+                });
+                componentsHtml += '</div>';
+                componentsHtml += '</div>';
+              }
+              
+              // Contacts
+              if (component.contacts && component.contacts.length > 0) {
+                componentsHtml += '<div class="mb-2">';
+                componentsHtml += '<span class="fw-semibold">Contacts:</span>';
+                componentsHtml += '<ul class="mb-0 mt-1">';
+                component.contacts.forEach(function(contactObj) {
+                  const contactName = contactObj.name || contactObj;
+                  const contactEmail = contactObj.email || '';
+                  let displayText = contactName;
+                  let searchTerm = contactName;
+                  
+                  if (contactEmail) {
+                    // Extract username part before @
+                    const emailUsername = contactEmail.split('@')[0];
+                    displayText = `${contactName} (${emailUsername})`;
+                    searchTerm = contactEmail; // Still use full email for search
+                  }
+                  
+                  componentsHtml += '<li><a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary">' + String(displayText).trim() + '</a></li>';
+                });
+                componentsHtml += '</ul>';
+                componentsHtml += '</div>';
+              }
+              
+              // Tags
+              if (component.tags && component.tags.length > 0) {
+                componentsHtml += '<div class="mb-2">';
+                componentsHtml += '<span class="fw-semibold">Tags:</span>';
+                componentsHtml += '<div class="mt-1">';
+                component.tags.forEach(function(tag) {
+                  const tagValue = (typeof tag === 'string' ? tag : tag.name);
+                  componentsHtml += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
+                });
+                componentsHtml += '</div>';
+                componentsHtml += '</div>';
+              }
+              
+              // Created/Updated dates
+              if (component.created_at || component.updated_at) {
+                componentsHtml += '<div class="d-flex justify-content-between text-muted">';
+                if (component.created_at) {
+                  componentsHtml += '<small><span class="fw-semibold">Created:</span> ' + String(component.created_at).trim() + '</small>';
+                }
+                if (component.updated_at) {
+                  componentsHtml += '<small><span class="fw-semibold">Updated:</span> ' + String(component.updated_at).trim() + '</small>';
+                }
+                componentsHtml += '</div>';
+              }
+              
+              componentsHtml += '</div>'; // End component-details
+              componentsHtml += '</div>'; // End component-card
+            });
+            
+            componentsHtml += '</div>'; // End components-section
+            componentsSection.innerHTML = componentsHtml;
+            
+            // Setup IP hover for components
+            setupIPHover();
+          } else {
+            componentsSection.innerHTML = '<div class="text-center text-muted py-3"><i class="bi bi-gear me-2"></i>No components found</div>';
+          }
+        })
+        .catch(error => {
+          console.error('Error loading components:', error);
+          componentsSection.innerHTML = '<strong>Components:</strong> <span class="text-danger">Error loading components</span>';
+        });
     }
+
+    function showToast(msg, type) {
+      const toast = document.createElement('div');
+      toast.className = `alert alert-${type}`;
+      toast.style.position = 'fixed';
+      toast.style.top = '16px';
+      toast.style.right = '16px';
+      toast.style.zIndex = 9999;
+      toast.style.minWidth = '200px';
+      toast.innerText = msg;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    // Filter modal select2 logic
+    function restoreSelect2Value($el, values, url) {
+      if (!values || !values.length) {
+        return;
+      }
+      
+      $.ajax({
+        url: url,
+        data: { ids: values },
+        dataType: 'json',
+        traditional: true,
+        xhrFields: {
+          withCredentials: true
+        },
+        success: function(data) {
+          if (!data || !Array.isArray(data)) {
+            return;
+          }
+          
+          data.forEach(function(item) {
+            if ($el.find('option[value="' + item.id + '"]').length === 0) {
+              var option = new Option(item.text || item.name, item.id, true, true);
+              $el.append(option);
+            }
+          });
+          
+          // Use setTimeout to ensure options are added before setting values
+          setTimeout(function() {
+            $el.val(values).trigger('change');
+          }, 100);
+        },
+        error: function(xhr, status, error) {
+          // Silent error handling
+        }
+      });
+    }
+
+
+    $(function() {
+      
+      var $filterModal = $('#filterSystemModal');
+      var $modalContent = $filterModal.find('.modal-content');
+      
+      var filterValues = {
+        tags: JSON.parse(document.getElementById('filter-system-data').dataset.tags || '[]'),
+        contacts: JSON.parse(document.getElementById('filter-system-data').dataset.contacts || '[]'),
+        scopes: JSON.parse(document.getElementById('filter-system-data').dataset.scopes || '[]'),
+        architecture: JSON.parse(document.getElementById('filter-system-data').dataset.architecture || '[]')
+      };
+      
+      $('#filterSystemTags').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Select tag(s)',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $modalContent,
+        ajax: {
+          url: '/organize/api/tag',
+          dataType: 'json',
+          delay: 250,
+          data: params => ({ search: params.term }),
+          processResults: data => ({ results: data })
+        }
+      });
+      $('#filterSystemContacts').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Select contact(s)',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $modalContent,
+        ajax: {
+          url: '/organize/api/contact',
+          dataType: 'json',
+          delay: 250,
+          data: params => ({ search: params.term }),
+          processResults: data => ({ results: data })
+        }
+      });
+      // Tạo Select2 trực tiếp với data từ backend
+      $('#filterSystemScopes').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Select scope(s)',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $modalContent,
+        data: window.scopeOptionsData || [],
+        // Sử dụng format {id, text} mặc định của Select2
+      });
+      
+      // Tạo Select2 trực tiếp với data từ backend
+      $('#filterSystemArchitecture').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Select architecture(s)',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $modalContent,
+        data: window.architectureOptionsData || [],
+        // Sử dụng format {id, text} mặc định của Select2
+      });
+      
+
+      // Restore all filter values with proper timing
+      setTimeout(function() {
+        // Restore tags
+        if (filterValues.tags && filterValues.tags.length > 0) {
+          restoreSelect2Value($('#filterSystemTags'), filterValues.tags, '/organize/api/tag/ids');
+        }
+        
+        // Restore contacts
+        if (filterValues.contacts && filterValues.contacts.length > 0) {
+          restoreSelect2Value($('#filterSystemContacts'), filterValues.contacts, '/organize/api/contact/ids');
+        }
+      }, 500);
+      
+      
+      // Also restore when modal is shown
+      $filterModal.on('shown.bs.modal', function() {
+        setTimeout(function() {
+          // Restore tags
+          if (filterValues.tags && filterValues.tags.length > 0) {
+            restoreSelect2Value($('#filterSystemTags'), filterValues.tags, '/organize/api/tag/ids');
+          }
+          
+          // Restore contacts
+          if (filterValues.contacts && filterValues.contacts.length > 0) {
+            restoreSelect2Value($('#filterSystemContacts'), filterValues.contacts, '/organize/api/contact/ids');
+          }
+        }, 200);
+      });
+      
+      // Restore scope and architecture values - need to add options first
+      if (filterValues.scopes && filterValues.scopes.length > 0) {
+        // Add options to scope select if they don't exist
+        filterValues.scopes.forEach(function(scopeValue) {
+          if ($('#filterSystemScopes').find('option[value="' + scopeValue + '"]').length === 0) {
+            const option = new Option(scopeValue, scopeValue, true, true);
+            $('#filterSystemScopes').append(option);
+          }
+        });
+        // Use setTimeout to ensure Select2 is fully initialized
+        setTimeout(function() {
+          $('#filterSystemScopes').val(filterValues.scopes).trigger('change');
+        }, 100);
+      }
+      
+      if (filterValues.architecture && filterValues.architecture.length > 0) {
+        // Add options to architecture select if they don't exist
+        filterValues.architecture.forEach(function(archValue) {
+          if ($('#filterSystemArchitecture').find('option[value="' + archValue + '"]').length === 0) {
+            const option = new Option(archValue, archValue, true, true);
+            $('#filterSystemArchitecture').append(option);
+          }
+        });
+        // Use setTimeout to ensure Select2 is fully initialized
+        setTimeout(function() {
+          $('#filterSystemArchitecture').val(filterValues.architecture).trigger('change');
+        }, 100);
+      }
+      
+
+      // Clear Filter button
+      $('#clearFilterBtnSystem').on('click', function() {
+        // Clear all select2 values
+        $('#filterSystemTags').val(null).trigger('change');
+        $('#filterSystemContacts').val(null).trigger('change');
+        $('#filterSystemScopes').val(null).trigger('change');
+        $('#filterSystemArchitecture').val(null).trigger('change');
+        // Close modal
+        $filterModal.modal('hide');
+        // Redirect to clean URL but preserve pageSize and search
+        const currentPageSize = $('select[name="pageSize"]').val() || '10';
+        const currentSearch = $('input[name="search"]').val() || '';
+        let cleanUrl = '/system/system';
+        const params = [];
+        if (currentPageSize && currentPageSize !== '10') params.push('pageSize=' + encodeURIComponent(currentPageSize));
+        if (currentSearch) params.push('search=' + encodeURIComponent(currentSearch));
+        if (params.length > 0) cleanUrl += '?' + params.join('&');
+        window.location.href = cleanUrl;
+      });
+      
+
+    });
+    
+    // Responsive layout handler
+    function handleResponsiveLayout() {
+      const width = window.innerWidth;
+      const table = document.getElementById('systemTable');
+      const mobileCards = document.getElementById('systemMobileCards');
+      
+      if (width <= 576) {
+        // Show mobile cards, hide table
+        if (table) table.closest('.table-responsive').style.display = 'none';
+        if (mobileCards) mobileCards.style.display = 'block';
+      } else {
+        // Show table, hide mobile cards
+        if (table) table.closest('.table-responsive').style.display = 'block';
+        if (mobileCards) mobileCards.style.display = 'none';
+      }
+    }
+    
+    // Initialize responsive layout
+    $(document).ready(function() {
+      handleResponsiveLayout();
+      
+      // Handle window resize
+      let resizeTimeout;
+      $(window).on('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(handleResponsiveLayout, 100);
+      });
+    });
 </script>
-<% if (success) { %>
-  <script>
-    window.addEventListener('DOMContentLoaded', function() {
-      showToast('<%= success %>', 'success');
-    });
-  </script>
-<% } %>
-<% if (error) { %>
-  <script>
-    window.addEventListener('DOMContentLoaded', function() {
-      showToast('<%= error %>', 'danger');
-    });
-  </script>
-<% } %>

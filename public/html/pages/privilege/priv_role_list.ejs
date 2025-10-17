@@ -1,240 +1,331 @@
+<%
+// Helper function to build pagination URL with all query parameters
+function buildPaginationUrl(targetPage) {
+  const params = new URLSearchParams();
+  
+  // Add page
+  params.set('page', targetPage);
+  
+  // Add search if exists
+  if (typeof search !== 'undefined' && search) {
+    params.set('search', search);
+  }
+  
+  // Add pageSize if exists
+  if (typeof pageSize !== 'undefined' && pageSize) {
+    params.set('pageSize', pageSize);
+  }
+  
+  // Add system_id filter if exists
+  if (typeof system_id !== 'undefined' && system_id) {
+    params.set('system_id', system_id);
+  }
+  
+  return '?' + params.toString();
+}
+
+// Helper function to build export URL with all query parameters
+function buildExportUrl() {
+  const params = new URLSearchParams();
+  
+  // Add search if exists
+  if (typeof search !== 'undefined' && search) {
+    params.set('search', search);
+  }
+  
+  // Add system_id filter if exists
+  if (typeof system_id !== 'undefined' && system_id) {
+    params.set('system_id', system_id);
+  }
+  
+  return '/priv-account/role/export' + (params.toString() ? '?' + params.toString() : '');
+}
+%>
+
+<!-- Content Header -->
+<div class="app-content-header">
 <div class="container-fluid">
-  <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/priv-account/role" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
-    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search role name or description..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-    <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
-      <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
-        <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
-      <% }) %>
-    </select>
-    <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
-  </form>
-  <div class="row mb-3">
-    <div class="col-12 d-flex justify-content-end align-items-center" style="margin-top: 16px; gap: 8px;">
-      <% if (hasPermission('priv_role.create')) { %>
-      <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addPrivRoleModal">
-        <i class="bi bi-plus"></i> Add Privileged Role
-      </button>
-      <% } %>
-      <form method="GET" action="/priv-account/role/export" style="display:inline;" class="me-2" id="exportPrivRoleForm">
-        <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-        <input type="hidden" name="system_id" value="<%= typeof system_id !== 'undefined' ? system_id : '' %>">
-        <button type="submit" class="btn btn-warning btn-sm">
-          <i class="bi bi-download"></i> Export
-        </button>
-      </form>
-      <button type="button" class="btn btn-secondary btn-sm" id="filterPrivRoleBtn" data-bs-toggle="modal" data-bs-target="#filterPrivRoleModal">
-        <i class="bi bi-funnel"></i> Filter
-      </button>
-      <!-- Add Privileged Role Modal -->
-      <div class="modal fade" id="addPrivRoleModal" tabindex="-1" aria-labelledby="addPrivRoleModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="addPrivRoleModalLabel">Add Privileged Role</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-              <form id="addPrivRoleForm" action="/priv-account/role" method="POST" autocomplete="off">
-                <div class="mb-3">
-                  <label for="privRoleName" class="form-label">Role Name <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control form-control-sm" id="privRoleName" name="name" placeholder="Role Name" required>
-                </div>
-                <div class="mb-3">
-                  <label for="privRoleDescription" class="form-label">Description</label>
-                  <textarea class="form-control form-control-sm" id="privRoleDescription" name="description" placeholder="Description" rows="2"></textarea>
-                </div>
-                <div class="mb-3">
-                  <label for="privRoleSystem" class="form-label">System <span class="text-danger">*</span></label>
-                  <select id="privRoleSystem" name="system_id" class="form-select form-select-sm" required style="width:100%"></select>
-                </div>
-                <div class="mb-3" id="privRolePermissionsWrapper" style="display:none;">
-                  <label class="form-label">Permissions</label>
-                  <div id="privRolePermissions"></div>
-                </div>
-              </form>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-              <button type="submit" class="btn btn-primary btn-sm" form="addPrivRoleForm">Add Role</button>
-            </div>
-          </div>
+    <div class="row">
+    <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">Privileged Role List</li>
+        </ol>
+        </div>
         </div>
       </div>
     </div>
-  </div>
+  
+<!-- Main content -->
+<div class="app-content">
+  <div class="container-fluid">
+  <!-- Search and Page Size Row -->
+  <div class="row mb-3">
+    <div class="col-12">
+      <div class="d-flex justify-content-end align-items-center gap-2">
+          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/priv-account/role">
+          <!-- Hidden inputs to preserve filter values -->
+          <input type="hidden" name="page" value="1">
+            <% if (typeof system_id !== 'undefined' && system_id) { %>
+              <input type="hidden" name="system_id" value="<%= system_id %>">
+          <% } %>
+          
+          <div class="input-group input-group-sm" style="width: 250px;">
+              <input class="form-control form-control-sm" type="search" name="search" placeholder="Search Role or Description..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+            <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
+            </div>
+          <div class="d-flex align-items-center gap-1">
+            <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+            <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
+                <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
+                <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
+                    <% }) %>
+                  </select>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+    <!-- Action Buttons -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end gap-2">
+          <% if (hasPermission('priv_role.create')) { %>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addPrivRoleModal">
+              <i class="bi bi-plus"></i> Add Privileged Role
+              </button>
+        <% } %>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterPrivRoleModal">
+        <i class="bi bi-funnel"></i> Filter
+      </button>
+          <% if (hasPermission('priv_role.read')) { %>
+            <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">
+              <i class="bi bi-download"></i> Export
+            </a>
+          <% } %>
+      </div>
+              </div>
+                  </div>
+
+    <!-- Filter values for JS -->
+  <div id="filter-role-data"
+          data-system-id='<%= JSON.stringify(system_id || '') %>' style="display:none"></div>
+
+  <!-- Flash Messages -->
+  <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+    <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
+      <i class="bi bi-check-circle me-2"></i><%= successMessage %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+      <script>
+      // Auto-hide success message after 5 seconds
+            setTimeout(function() {
+        const alert = document.getElementById('successAlert');
+        if (alert) {
+          const bsAlert = new bootstrap.Alert(alert);
+          bsAlert.close();
+        }
+      }, 5000);
+      </script>
+  <% } %>
+  
+  <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
+      <i class="bi bi-exclamation-triangle me-2"></i><%= errorMessage %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    <script>
+      // Auto-hide error message after 5 seconds
+      setTimeout(function() {
+        const alert = document.getElementById('errorAlert');
+        if (alert) {
+          const bsAlert = new bootstrap.Alert(alert);
+          bsAlert.close();
+        }
+      }, 5000);
+    </script>
+  <% } %>
+
+    <!-- Data Table -->
   <div class="row">
     <div class="col-12">
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title mb-0">Privileged Role List</h3>
+            <h3 class="card-title mb-0">Privileged Role List</h3>
         </div>
-        <div class="card-body table-responsive p-0">
-          <table class="table table-hover text-nowrap">
+          <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
+            <table class="table table-hover" style="table-layout: fixed; min-width: 800px;">
             <thead>
               <tr>
                 <th>No.</th>
                 <th>Role Name</th>
                 <th>Description</th>
-                <th>System</th>
+                  <th>System</th>
                 <th class="text-end">Actions</th>
               </tr>
             </thead>
             <tbody>
-              <% if (privRoleList && privRoleList.length > 0) { %>
-                <% privRoleList.forEach(function(role, idx) { %>
+                <% if (privRoleList && privRoleList.length > 0) { %>
+                  <% privRoleList.forEach(function(role, idx) { %>
                   <tr>
-                    <td><%= (page - 1) * 10 + idx + 1 %></td>
+                    <td><%= (page - 1) * pageSize + idx + 1 %></td>
                     <td><%= role.name %></td>
-                    <td><%= role.description %></td>
-                    <td><%= role.system && role.system.name ? role.system.name : '' %></td>
+                      <td><%= role.description %></td>
+                      <td><%= role.system && role.system.name ? role.system.name : '' %></td>
                     <td class="text-end">
-                      <a href="#" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#privRoleDetailModal-<%= role.id %>"><i class="bi bi-eye"></i></a>
+                      <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showRoleDetail('<%= role.id %>')" data-role-id="<%= role.id %>" data-role='<%= JSON.stringify(role) %>'><i class="bi bi-eye"></i></button>
                       <% if (hasPermission('priv_role.update')) { %>
-                      <a href="#" class="btn btn-warning btn-sm btn-edit-priv-role" title="Edit" data-role-id="<%= role.id %>" data-bs-toggle="modal" data-bs-target="#privRoleEditModal"><i class="bi bi-pencil"></i></a>
+                      <button type="button" class="btn btn-warning btn-sm" title="Edit" 
+                                data-bs-toggle="modal" data-bs-target="#editPrivRoleModal"
+                              data-role-id="<%= role.id %>"
+                              data-role-name="<%= role.name %>"
+                                data-role-description="<%= role.description || '' %>"
+                                data-role-system="<%= JSON.stringify(role.system || {}) %>"
+                                data-role-permissions="<%= JSON.stringify(role.permissions || []) %>">
+                        <i class="bi bi-pencil"></i>
+                      </button>
                       <% } %>
                       <% if (hasPermission('priv_role.delete')) { %>
-                      <form action="/priv-account/role/<%= role.id %>?_method=DELETE" method="POST" style="display:inline">
-                        <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete?')"><i class="bi bi-trash"></i></button>
+                        <form action="/priv-account/role/<%= role.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteRole(this, '<%= role.name %>')">
+                        <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                          <i class="bi bi-trash"></i>
+                        </button>
                       </form>
-                      <% } %>
+                              <% } %>
                     </td>
                   </tr>
-                  <!-- Privileged Role Detail Modal -->
-                  <div class="modal fade" id="privRoleDetailModal-<%= role.id %>" tabindex="-1" aria-labelledby="privRoleDetailModalLabel-<%= role.id %>" aria-hidden="true">
-                    <div class="modal-dialog">
-                      <div class="modal-content">
-                        <div class="modal-header">
-                          <h5 class="modal-title" id="privRoleDetailModalLabel-<%= role.id %>">Privileged Role Information</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                          <dl class="row mb-0">
-                            <dt class="col-sm-4">Role Name</dt>
-                            <dd class="col-sm-8"><%= role.name || '<span class="text-muted">No data</span>' %></dd>
-                            <dt class="col-sm-4">Description</dt>
-                            <dd class="col-sm-8"><%= role.description || '<span class="text-muted">No data</span>' %></dd>
-                            <dt class="col-sm-4">Permissions</dt>
-                            <dd class="col-sm-8">
-                              <% if (role.permissions && role.permissions.length > 0) { %>
-                                <% role.permissions.forEach(function(perm) { %>
-                                  <div class="text-lowercase"><%= perm.name ? perm.name.toLowerCase() : '' %></div>
-                                <% }) %>
-                              <% } else { %>
-                                <span class="text-muted">No permission</span>
-                              <% } %>
-                            </dd>
-                            <dt class="col-sm-4">System</dt>
-                            <dd class="col-sm-8"><%= (role.system && role.system.name) ? role.system.name : (role.system_id || '<span class="text-muted">No data</span>') %></dd>
-                            <dt class="col-sm-4">Created At</dt>
-                            <dd class="col-sm-8"><%= role.created_at ? new Date(role.created_at).toLocaleString() : '<span class="text-muted">No data</span>' %></dd>
-                            <dt class="col-sm-4">Updated At</dt>
-                            <dd class="col-sm-8"><%= role.updated_date ? new Date(role.updated_date).toLocaleString() : '<span class="text-muted">No data</span>' %></dd>
-                            <dt class="col-sm-4">Updated By</dt>
-                            <dd class="col-sm-8"><%= role.updated_by || '<span class="text-muted">No data</span>' %></dd>
-                          </dl>
-                        </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <!-- Privileged Permission Detail Modal -->
-                  <div class="modal fade" id="privPermissionDetailModal-<%= role.id %>" tabindex="-1" aria-labelledby="privPermissionDetailModalLabel-<%= role.id %>" aria-hidden="true">
-                    <div class="modal-dialog">
-                      <div class="modal-content">
-                        <div class="modal-header">
-                          <h5 class="modal-title" id="privPermissionDetailModalLabel-<%= role.id %>">Privileged Permission Information</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                          <dl class="row mb-0">
-                            <dt class="col-sm-4">Permission Name</dt>
-                            <dd class="col-sm-8"><%= role.name || '<span class="text-muted">No data</span>' %></dd>
-                            <dt class="col-sm-4">Description</dt>
-                            <dd class="col-sm-8"><%= role.description || '<span class="text-muted">No data</span>' %></dd>
-                            <dt class="col-sm-4">System</dt>
-                            <dd class="col-sm-8"><%= (role.system && role.system.name) ? role.system.name : (role.system_id || '<span class="text-muted">No data</span>') %></dd>
-                            <dt class="col-sm-4">Created At</dt>
-                            <dd class="col-sm-8"><%= role.created_at ? new Date(role.created_at).toLocaleString() : '<span class="text-muted">No data</span>' %></dd>
-                            <dt class="col-sm-4">Updated At</dt>
-                            <dd class="col-sm-8"><%= role.updated_date ? new Date(role.updated_date).toLocaleString() : '<span class="text-muted">No data</span>' %></dd>
-                            <dt class="col-sm-4">Updated By</dt>
-                            <dd class="col-sm-8"><%= role.updated_by || '<span class="text-muted">No data</span>' %></dd>
-                          </dl>
-                        </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
                 <% }) %>
               <% } else { %>
-                <tr><td colspan="5" class="text-center">No data</td></tr>
+                  <tr><td colspan="5" class="text-center">No data</td></tr>
               <% } %>
             </tbody>
           </table>
-        </div>
+                        </div>
         <div class="card-footer clearfix">
-          <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
+          <div class="d-flex justify-content-between align-items-center px-3 py-2">
             <div>
-              <span>Showing <%= startItem %> - <%= endItem %> of <%= totalCount %> roles</span>
+                <span>Showing <%= startItem %> - <%= endItem %> of <%= totalCount %> roles</span>
             </div>
-            <ul class="pagination pagination-sm m-0 float-end">
-              <% 
-                let startPage = 1;
-                let endPage = totalPages;
-                if (totalPages > 10) {
-                  if (page <= 6) {
-                    startPage = 1;
-                    endPage = 10;
-                  } else if (page + 4 >= totalPages) {
-                    startPage = totalPages - 9;
-                    endPage = totalPages;
-                  } else {
-                    startPage = page - 5;
-                    endPage = page + 4;
+              <ul class="pagination pagination-sm m-0">
+                <% 
+                  let startPage = 1;
+                  let endPage = totalPages;
+                  if (totalPages > 10) {
+                    if (page <= 6) {
+                      startPage = 1;
+                      endPage = 10;
+                    } else if (page + 4 >= totalPages) {
+                      startPage = totalPages - 9;
+                      endPage = totalPages;
+                    } else {
+                      startPage = page - 5;
+                      endPage = page + 4;
+                    }
                   }
-                }
-                // Build filter query string for pagination links
-                function buildPrivRoleFilterQuery() {
-                  let params = [];
-                  if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
-                  if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
-                  if (typeof system_id !== 'undefined' && system_id) params.push('system_id=' + encodeURIComponent(system_id));
-                  return params.join('&');
-                }
-                const privRoleFilterQuery = buildPrivRoleFilterQuery();
               %>
               <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page - 1 %><%= privRoleFilterQuery ? '&' + privRoleFilterQuery : '' %>">Previous</a>
+                  <a class="page-link" href="<%= buildPaginationUrl(page - 1) %>">Previous</a>
               </li>
-              <% if (startPage > 1) { %>
-                <li class="page-item"><a class="page-link" href="?page=1<%= privRoleFilterQuery ? '&' + privRoleFilterQuery : '' %>">1</a></li>
-                <% if (startPage > 2) { %>
+                <% if (startPage > 1) { %>
+                  <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(1) %>">1</a></li>
+                  <% if (startPage > 2) { %>
                   <li class="page-item disabled"><span class="page-link">...</span></li>
                 <% } %>
               <% } %>
-              <% for (let i = startPage; i <= endPage; i++) { %>
-                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= privRoleFilterQuery ? '&' + privRoleFilterQuery : '' %>"><%= i %></a></li>
+                <% for (let i = startPage; i <= endPage; i++) { %>
+                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="<%= buildPaginationUrl(i) %>"><%= i %></a></li>
               <% } %>
-              <% if (endPage < totalPages) { %>
+                <% if (endPage < totalPages) { %>
                 <li class="page-item disabled"><span class="page-link">...</span></li>
-                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= privRoleFilterQuery ? '&' + privRoleFilterQuery : '' %>"><%= totalPages %></a></li>
+                  <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(totalPages) %>"><%= totalPages %></a></li>
               <% } %>
               <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page + 1 %><%= privRoleFilterQuery ? '&' + privRoleFilterQuery : '' %>">Next</a>
+                  <a class="page-link" href="<%= buildPaginationUrl(page + 1) %>">Next</a>
               </li>
             </ul>
+            </div>
           </div>
         </div>
-      </div>
+                  </div>
     </div>
   </div>
 </div>
-<!-- XÓA các nút export/filter bên dưới bảng (nếu có) -->
-<!-- Filter Privileged Role Modal -->
+
+<!-- Add Privileged Role Modal -->
+<div class="modal fade" id="addPrivRoleModal" tabindex="-1" aria-labelledby="addPrivRoleModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+        <h5 class="modal-title" id="addPrivRoleModalLabel">Add Privileged Role</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+        <form id="addPrivRoleForm" action="/priv-account/role" method="POST" autocomplete="off">
+          <div class="mb-3">
+            <label for="privRoleName" class="form-label">Role Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="privRoleName" name="name" placeholder="Role Name" required>
+                                </div>
+          <div class="mb-3">
+            <label for="privRoleDescription" class="form-label">Description</label>
+            <textarea class="form-control" id="privRoleDescription" name="description" placeholder="Description" rows="2"></textarea>
+                            </div>
+          <div class="mb-3">
+            <label for="privRoleSystem" class="form-label">System <span class="text-danger">*</span></label>
+            <select id="privRoleSystem" name="system_id" class="form-control" required style="width:100%"></select>
+              </div>
+          <div class="mb-3" id="privRolePermissionsWrapper" style="display:none;">
+            <label class="form-label">Permissions</label>
+            <div id="privRolePermissions"></div>
+              </div>
+        </form>
+                        </div>
+                        <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button type="submit" class="btn btn-primary btn-sm" form="addPrivRoleForm">Add Role</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+<!-- Edit Privileged Role Modal -->
+<div class="modal fade" id="editPrivRoleModal" tabindex="-1" aria-labelledby="editPrivRoleModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+                      <div class="modal-content">
+                        <div class="modal-header">
+        <h5 class="modal-title" id="editPrivRoleModalLabel">Edit Privileged Role</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                          <div class="modal-body">
+        <form id="editPrivRoleForm" method="POST" autocomplete="off">
+          <input type="hidden" id="editRoleId" name="id">
+          <div class="mb-3">
+            <label for="editRoleName" class="form-label">Role Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="editRoleName" name="name" required>
+                            </div>
+          <div class="mb-3">
+            <label for="editRoleDescription" class="form-label">Description</label>
+            <textarea class="form-control" id="editRoleDescription" name="description" rows="2"></textarea>
+                            </div>
+          <div class="mb-3">
+            <label for="editRoleSystem" class="form-label">System <span class="text-danger">*</span></label>
+            <select id="editRoleSystem" name="system_id" class="form-control" required style="width:100%"></select>
+                            </div>
+          <div class="mb-3" id="editRolePermissionsWrapper">
+            <label class="form-label">Permissions</label>
+            <div id="editRolePermissions"></div>
+                          </div>
+                        </form>
+                  </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button type="submit" class="btn btn-primary btn-sm" form="editPrivRoleForm">Save Changes</button>
+      </div>
+    </div>
+  </div>
+                  </div>
+                  
+<!-- Filter Modal -->
 <div class="modal fade" id="filterPrivRoleModal" tabindex="-1" aria-labelledby="filterPrivRoleModalLabel" aria-hidden="true">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -246,9 +337,9 @@
         <div class="modal-body">
           <div class="mb-3">
             <label for="filterRoleSystemId" class="form-label">System</label>
-            <select id="filterRoleSystemId" name="system_id" class="form-select form-select-sm" style="width:100%"></select>
-          </div>
-        </div>
+            <select id="filterRoleSystemId" name="system_id" class="form-control" style="width:100%"></select>
+                  </div>
+                  </div>
         <div class="modal-footer d-flex justify-content-end gap-2">
           <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
           <button type="button" class="btn btn-warning btn-sm" id="clearPrivRoleFilterBtn">Clear Filter</button>
@@ -256,13 +347,9 @@
         </div>
       </form>
     </div>
-  </div>
-</div>
-<% if (privRoleList) { %>
-<script>
-  var privRoleList = <%- JSON.stringify(privRoleList) %>;
-</script>
-<% } %>
+          </div>
+        </div>
+        
 <script>
 function showToast(msg, type) {
   const toast = document.createElement('div');
@@ -276,9 +363,100 @@ function showToast(msg, type) {
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
 }
+
+function showRoleDetail(roleId) {
+  console.log('showRoleDetail called with roleId:', roleId);
+  
+  // Get role data from button (specifically the show button)
+  const button = document.querySelector(`button[data-role-id="${roleId}"][title="Show"]`);
+  if (!button) {
+    console.error('Button not found for roleId:', roleId);
+    return;
+  }
+  
+  console.log('Button found:', button);
+  
+  const roleData = button.getAttribute('data-role');
+  if (!roleData) {
+    console.error('No role data found for roleId:', roleId);
+    return;
+  }
+  
+  let role;
+  try {
+    role = JSON.parse(roleData);
+  } catch (e) {
+    console.error('Error parsing role data:', e);
+    return;
+  }
+  
+  // Create modal HTML
+  const modalId = `roleDetailModal-${roleId}`;
+  const modalHtml = `
+    <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="${modalId}Label">Privileged Role Information</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+      <div class="modal-body">
+            <dl class="row mb-0">
+              <dt class="col-sm-4">Role Name</dt>
+              <dd class="col-sm-8">${role.name || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Description</dt>
+              <dd class="col-sm-8">${role.description || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Permissions</dt>
+              <dd class="col-sm-8">
+                ${role.permissions && role.permissions.length > 0 
+                  ? role.permissions.map(perm => `<div class="text-lowercase">${perm.name ? perm.name.toLowerCase() : ''}</div>`).join('')
+                  : '<span class="text-muted">No permission</span>'
+                }
+              </dd>
+              <dt class="col-sm-4">System</dt>
+              <dd class="col-sm-8">${role.system && role.system.name ? role.system.name : '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Created At</dt>
+              <dd class="col-sm-8">${role.created_at ? new Date(role.created_at).toLocaleString() : '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Updated At</dt>
+              <dd class="col-sm-8">${role.updated_date ? new Date(role.updated_date).toLocaleString() : '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Updated By</dt>
+              <dd class="col-sm-8">${role.updated_by || '<span class="text-muted">No data</span>'}</dd>
+            </dl>
+    </div>
+      <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+  </div>
+</div>
+  </div>
+</div>
+  `;
+  
+  // Remove existing modal if any
+  const existingModal = document.getElementById(modalId);
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  // Add modal to body
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  // Show modal
+  const modal = new bootstrap.Modal(document.getElementById(modalId));
+  modal.show();
+  
+  // Remove modal from DOM when hidden
+  document.getElementById(modalId).addEventListener('hidden.bs.modal', function() {
+    this.remove();
+  });
+}
+
+function confirmDeleteRole(form, roleName) {
+  return confirm(`Are you sure you want to delete role "${roleName}"?`);
+}
 </script>
+
 <% if (success) { %>
-  <script>
+<script>
     window.addEventListener('DOMContentLoaded', function() {
       showToast('<%= success %>', 'success');
     });
@@ -291,34 +469,36 @@ function showToast(msg, type) {
     });
   </script>
 <% } %>
+
 <script>
 $(function() {
   // Add Privileged Role Modal: System select2
   $('#privRoleSystem').select2({
-    theme: 'bootstrap-5',
+      theme: 'bootstrap-5',
     placeholder: 'Select system',
-    width: '100%',
+      width: '100%',
     allowClear: true,
     dropdownParent: $('#addPrivRoleModal'),
-    ajax: {
+      ajax: {
       url: '/system/api/system',
-      dataType: 'json',
-      delay: 250,
+        dataType: 'json',
+        delay: 250,
       data: params => ({ search: params.term }),
       processResults: data => ({ results: data }),
-      cache: true
-    }
-  });
-  // Khi chọn system thì load permission theo system
+        cache: true
+      }
+    });
+
+  // When system is selected, load permissions
   $('#privRoleSystem').on('change', function() {
-    var systemId = $(this).val();
+    const systemId = $(this).val();
     if (systemId) {
       $.ajax({
         url: '/priv-account/api/permissions',
         data: { system_id: systemId },
         dataType: 'json',
         success: function(perms) {
-          var html = '';
+          let html = '';
           if (perms && perms.length) {
             perms.forEach(function(perm) {
               html += '<div class="form-check form-check-inline">';
@@ -343,62 +523,68 @@ $(function() {
       $('#privRolePermissionsWrapper').hide();
     }
   });
-  // Ẩn permission khi mở modal add mới
+  
+  // Hide permissions when opening new modal
   $('#addPrivRoleModal').on('show.bs.modal', function() {
     $('#privRolePermissions').html('');
     $('#privRolePermissionsWrapper').hide();
     $('#privRoleSystem').val(null).trigger('change');
   });
-  // ================== EDIT PRIVILEGED ROLE MODAL ==================
-  // Khởi tạo select2 cho system (CHỈ GỌI 1 LẦN)
+  
+  // Edit Privileged Role Modal: System select2
   $('#editRoleSystem').select2({
-    theme: 'bootstrap-5',
+            theme: 'bootstrap-5',
     placeholder: 'Select system',
-    width: '100%',
+            width: '100%',
     allowClear: true,
-    dropdownParent: $('#privRoleEditModal'),
-    ajax: {
+    dropdownParent: $('#editPrivRoleModal'),
+            ajax: {
       url: '/system/api/system',
-      dataType: 'json',
+              dataType: 'json',
       delay: 250,
       data: params => ({ search: params.term }),
       processResults: data => ({ results: data }),
       cache: true
     }
   });
-  // Khi nhấn Edit, fill dữ liệu vào modal
-  $(document).on('click', '.btn-edit-priv-role', function(e) {
-    // Đóng mọi modal đang mở trước khi mở modal Edit
-    $('.modal.show').modal('hide');
-    var roleId = $(this).data('role-id');
-    var role = privRoleList.find(r => r.id == roleId);
-    if (!role) return;
-    $('#editPrivRoleForm').attr('action', '/priv-account/role/' + role.id + '?_method=PUT');
-    $('#editRoleId').val(role.id);
-    $('#editRoleName').val(role.name);
-    $('#editRoleDescription').val(role.description);
-    // System select2: clear và append option nếu có
-    var $systemSelect = $('#editRoleSystem');
+  
+  // When Edit button is clicked, populate the edit modal
+  $(document).on('click', '[data-bs-target="#editPrivRoleModal"]', function() {
+    const roleId = $(this).data('role-id');
+    const roleName = $(this).data('role-name');
+    const roleDescription = $(this).data('role-description');
+    const roleSystem = $(this).data('role-system');
+    const rolePermissions = $(this).data('role-permissions');
+    
+    // Populate form fields
+    $('#editRoleId').val(roleId);
+    $('#editRoleName').val(roleName);
+    $('#editRoleDescription').val(roleDescription);
+    
+    // Set form action
+    $('#editPrivRoleForm').attr('action', '/priv-account/role/' + roleId + '?_method=PUT');
+    
+    // Clear and populate system select
+    const $systemSelect = $('#editRoleSystem');
     $systemSelect.val(null).trigger('change');
     $systemSelect.find('option').remove();
-    if (role.system && role.system.id && role.system.name) {
-      var option = new Option(role.system.name, role.system.id, true, true);
+    if (roleSystem && roleSystem.id && roleSystem.name) {
+      const option = new Option(roleSystem.name, roleSystem.id, true, true);
       $systemSelect.append(option).trigger('change');
     }
+    
     // Load permissions
-    loadEditRolePermissions(role.system ? role.system.id : '', role.permissions ? role.permissions.map(p => p.id) : []);
-    // Đợi modal cũ đóng xong mới mở modal Edit (nếu có modal khác đang mở)
-    setTimeout(function() {
-      $('#privRoleEditModal').modal('show');
-    }, 300);
+    loadEditRolePermissions(roleSystem ? roleSystem.id : '', rolePermissions ? rolePermissions.map(p => p.id) : []);
   });
-  // Khi đổi system thì load lại permission
+  
+  // When system changes in edit modal, reload permissions
   $('#editRoleSystem').on('change', function() {
-    var systemId = $(this).val();
+    const systemId = $(this).val();
     loadEditRolePermissions(systemId, []);
   });
+  
   function loadEditRolePermissions(systemId, checkedIds) {
-    var $permDiv = $('#editRolePermissions');
+    const $permDiv = $('#editRolePermissions');
     $permDiv.html('<span class="text-muted">Loading...</span>');
     if (!systemId) {
       $permDiv.html('<span class="text-muted">Select a system first</span>');
@@ -407,12 +593,12 @@ $(function() {
     $.ajax({
       url: '/priv-account/api/permissions',
       data: { system_id: systemId },
-      dataType: 'json',
+              dataType: 'json',
       success: function(perms) {
-        var html = '';
+        let html = '';
         if (perms && perms.length) {
           perms.forEach(function(perm) {
-            var checked = checkedIds && checkedIds.includes(perm.id) ? 'checked' : '';
+            const checked = checkedIds && checkedIds.includes(perm.id) ? 'checked' : '';
             html += '<div class="form-check form-check-inline">';
             html += '<input class="form-check-input" type="checkbox" name="permissions" value="' + perm.id + '" ' + checked + ' id="editPerm-' + perm.id + '">';
             html += '<label class="form-check-label" for="editPerm-' + perm.id + '">' + perm.name + '</label>';
@@ -428,120 +614,230 @@ $(function() {
       }
     });
   }
-  // Validate trước khi submit
+  
+  // Validate before submit
   $('#editPrivRoleForm').on('submit', function(e) {
-    var checked = $(this).find('input[name="permissions"]:checked');
+    const checked = $(this).find('input[name="permissions"]:checked');
     if (checked.length === 0) {
       alert('Bạn phải chọn ít nhất 1 permission!');
       e.preventDefault();
       return false;
     }
   });
-  // Filter Privileged Role Modal: System and Permission select2
-  $('#filterSystem').select2({
-    theme: 'bootstrap-5',
-    placeholder: 'Select system',
-    width: '100%',
-    allowClear: true,
-    ajax: {
-      url: '/system/api/system',
-      dataType: 'json',
-      delay: 250,
-      data: params => ({ search: params.term }),
-      processResults: data => ({ results: data }),
-      cache: true
-    }
-  });
-  <% (allPermissions || []).forEach(function(perm) { %>
-    $('#filterPermission-<%= perm.id %>').select2({
-      theme: 'bootstrap-5',
-      placeholder: 'Select permission',
-      width: '100%',
-      allowClear: true,
-      ajax: {
-        url: '/permission/api/permission',
-        dataType: 'json',
-        delay: 250,
-        data: params => ({ search: params.term }),
-        processResults: data => ({ results: data }),
-        cache: true
-      }
-    });
-  <% }) %>
+  
   // Filter modal: system select2
   $('#filterRoleSystemId').select2({
-    theme: 'bootstrap-5',
+            theme: 'bootstrap-5',
     placeholder: 'Select system',
-    width: '100%',
+            width: '100%',
     allowClear: true,
     dropdownParent: $('#filterPrivRoleModal'),
-    ajax: {
+            ajax: {
       url: '/system/api/system',
-      dataType: 'json',
-      delay: 250,
+              dataType: 'json',
+              delay: 250,
       data: params => ({ search: params.term }),
       processResults: data => ({ results: data }),
-      cache: true
-    }
-  });
+              cache: true
+            }
+          });
+
   // Persist filter values when opening modal
   $('#filterPrivRoleModal').on('shown.bs.modal', function() {
-    var systemId = '<%= typeof system_id !== 'undefined' ? system_id : '' %>';
-    var systemName = '<%= typeof system_name !== 'undefined' ? system_name : '' %>';
+    const systemId = '<%= typeof system_id !== "undefined" ? system_id : "" %>';
+    const systemName = '<%= typeof system_name !== "undefined" ? system_name : "" %>';
     if (systemId && systemName) {
-      var option = new Option(systemName, systemId, true, true);
+      const option = new Option(systemName, systemId, true, true);
       $('#filterRoleSystemId').empty().append(option).trigger('change');
     } else {
       $('#filterRoleSystemId').val(null).trigger('change');
     }
   });
-  // Open filter modal
-  $('#filterPrivRoleBtn').on('click', function() {
-    $('#filterPrivRoleModal').modal('show');
-  });
+  
   // Clear filter button
   $('#clearPrivRoleFilterBtn').on('click', function() {
-    // Clear select2
     $('#filterRoleSystemId').val(null).trigger('change');
-    // Redirect to unfiltered list
     window.location.href = '/priv-account/role';
   });
 });
 </script>
-<!-- ================== EDIT PRIVILEGED ROLE MODAL (DYNAMIC, ONLY ONE) ================== -->
-<div class="modal fade" id="privRoleEditModal" tabindex="-1" aria-labelledby="privRoleEditModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="privRoleEditModalLabel">Edit Privileged Role</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form id="editPrivRoleForm" method="POST" autocomplete="off">
-        <input type="hidden" id="editRoleId" name="id">
-        <div class="modal-body">
-          <div class="mb-3">
-            <label for="editRoleName" class="form-label">Role Name <span class="text-danger">*</span></label>
-            <input type="text" class="form-control form-control-sm" id="editRoleName" name="name" required>
-          </div>
-          <div class="mb-3">
-            <label for="editRoleDescription" class="form-label">Description</label>
-            <textarea class="form-control form-control-sm" id="editRoleDescription" name="description" rows="2"></textarea>
-          </div>
-          <div class="mb-3">
-            <label for="editRoleSystem" class="form-label">System <span class="text-danger">*</span></label>
-            <select id="editRoleSystem" name="system_id" class="form-select form-select-sm" required style="width:100%"></select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Permissions</label>
-            <div id="editRolePermissions"></div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-          <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-<!-- ================== END EDIT PRIVILEGED ROLE MODAL ================== -->
+
+<!-- Responsive Tables CSS -->
+<style>
+/* Mobile responsive styles for Privileged Role List */
+@media (max-width: 768px) {
+  .table-responsive {
+    display: block !important;
+    overflow-x: scroll !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .table {
+    display: table !important;
+    min-width: 800px !important;
+    width: 100% !important;
+  }
+  
+  .card-body,
+  .card,
+  .col-12,
+  .container-fluid,
+  .row {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  .col-12 {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    padding: 0 15px !important;
+  }
+  
+  /* Button responsive */
+  .btn-sm {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+  }
+  
+  /* Search form responsive */
+  .input-group {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  
+  .input-group .form-control {
+    font-size: 0.875rem !important;
+  }
+  
+  .input-group .form-select {
+    font-size: 0.75rem !important;
+    width: 80px !important;
+  }
+}
+
+/* Force override for Add Privileged Role modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #addPrivRoleModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #addPrivRoleModal .modal-footer .btn,
+  #addPrivRoleModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #addPrivRoleModal .modal-footer .btn:first-child,
+  #addPrivRoleModal .modal-footer button:first-child {
+    order: 2 !important;
+  }
+  
+  #addPrivRoleModal .modal-footer .btn:last-child,
+  #addPrivRoleModal .modal-footer button:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #addPrivRoleModal .modal-footer .btn.btn-secondary,
+  #addPrivRoleModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+
+/* Force override for Edit Privileged Role modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #editPrivRoleModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #editPrivRoleModal .modal-footer .btn,
+  #editPrivRoleModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #editPrivRoleModal .modal-footer .btn:first-child,
+  #editPrivRoleModal .modal-footer button:first-child {
+    order: 2 !important;
+  }
+  
+  #editPrivRoleModal .modal-footer .btn:last-child,
+  #editPrivRoleModal .modal-footer button:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #editPrivRoleModal .modal-footer .btn.btn-secondary,
+  #editPrivRoleModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+
+/* Force override for Filter Privileged Role modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #filterPrivRoleModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #filterPrivRoleModal .modal-footer .btn,
+  #filterPrivRoleModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #filterPrivRoleModal .modal-footer .btn:first-child {
+    order: 2 !important;
+  }
+  
+  #filterPrivRoleModal .modal-footer .btn:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #filterPrivRoleModal .modal-footer .btn.btn-outline-danger,
+  #filterPrivRoleModal .modal-footer .btn.btn-secondary,
+  #filterPrivRoleModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+</style>

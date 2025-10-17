@@ -73,7 +73,7 @@ Authorization: Bearer {{deviceAuth.response.body.token}}
 }
 
 ### 5.1. Verify Created Device Response Structure
-GET {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.id}}
+GET {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.data.id}}
 Accept: application/json
 Authorization: Bearer {{deviceAuth.response.body.token}}
 # This should return the same complete device data as createDeviceComplete response
@@ -94,7 +94,7 @@ Accept: application/json
 Authorization: Bearer {{deviceAuth.response.body.token}}
 
 {
-  "tags": [5, 6]
+  "tags": []
 }
 
 ### 7. Update Device (Name Only)
@@ -114,7 +114,7 @@ Accept: application/json
 Authorization: Bearer {{deviceAuth.response.body.token}}
 
 {
-  "location": "Cloud"
+  "location": "Cloud1"
 }
 
 ### 9. Update Device (Manufacturer Only)
@@ -160,7 +160,7 @@ Authorization: Bearer {{deviceAuth.response.body.token}}
 }
 
 ### 13. Delete Device
-DELETE {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceMinimal.response.body.id}}
+DELETE {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.data.id}}
 Accept: application/json
 Authorization: Bearer {{deviceAuth.response.body.token}}
 # Expected: 204 No Content (no response body)
@@ -478,7 +478,7 @@ Authorization: Bearer {{deviceAuth.response.body.token}}
 }
 
 ### 46. Update Device with Empty Name (400)
-PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceWithName.response.body.id}}
+PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.data.id}}
 Content-Type: application/json
 Accept: application/json
 Authorization: Bearer {{deviceAuth.response.body.token}}
@@ -488,7 +488,7 @@ Authorization: Bearer {{deviceAuth.response.body.token}}
 }
 
 ### 47. Update Device with Whitespace-only Name (400)
-PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceWithName.response.body.id}}
+PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.data.id}}
 Content-Type: application/json
 Accept: application/json
 Authorization: Bearer {{deviceAuth.response.body.token}}
@@ -498,7 +498,7 @@ Authorization: Bearer {{deviceAuth.response.body.token}}
 }
 
 ### 48. Update Device with Empty Device Type ID (400)
-PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceWithName.response.body.id}}
+PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.data.id}}
 Content-Type: application/json
 Accept: application/json
 Authorization: Bearer {{deviceAuth.response.body.token}}
@@ -508,7 +508,7 @@ Authorization: Bearer {{deviceAuth.response.body.token}}
 }
 
 ### 49. Update Device with Empty IP Addresses Array (400)
-PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceWithName.response.body.id}}
+PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.data.id}}
 Content-Type: application/json
 Accept: application/json
 Authorization: Bearer {{deviceAuth.response.body.token}}
@@ -518,7 +518,7 @@ Authorization: Bearer {{deviceAuth.response.body.token}}
 }
 
 ### 50. Update Device with Duplicate Name (409)
-PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.id}}
+PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.data.id}}
 Content-Type: application/json
 Accept: application/json
 Authorization: Bearer {{deviceAuth.response.body.token}}
@@ -528,7 +528,7 @@ Authorization: Bearer {{deviceAuth.response.body.token}}
 }
 
 ### 51. Update Device with Invalid Device Type ID (400)
-PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceWithName.response.body.id}}
+PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.data.id}}
 Content-Type: application/json
 Accept: application/json
 Authorization: Bearer {{deviceAuth.response.body.token}}
@@ -675,7 +675,7 @@ Accept: application/json
 Authorization: Bearer {{deviceAuth.response.body.token}}
 
 ### 66. Update Device - Test Partial Update Preservation
-PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.id}}
+PUT {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.data.id}}
 Content-Type: application/json
 Accept: application/json
 Authorization: Bearer {{deviceAuth.response.body.token}}
@@ -685,7 +685,7 @@ Authorization: Bearer {{deviceAuth.response.body.token}}
 }
 
 ### 67. Get Device After Partial Update (Verify Other Fields Preserved)
-GET {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.id}}
+GET {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.data.id}}
 Accept: application/json
 Authorization: Bearer {{deviceAuth.response.body.token}}
 

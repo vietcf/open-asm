@@ -31,6 +31,7 @@ import { siteConfig } from './utils/siteConfig.js';
 import { loadPermissions } from './middlewares/permissions.middleware.js';
 import requirePasswordChange from './middlewares/requirePasswordChange.middleware.js';
 import require2fa from './middlewares/require2fa.middleware.js';
+import accessLog from './middlewares/accessLog.middleware.js';
 
 // =========================
 // Routers
@@ -42,6 +43,7 @@ import networkRouter from './routes/network.js';
 import systemRouter from './routes/system.js';
 import privAccountRouter from './routes/privAccount.js';
 import serverRouter from './routes/server.js';
+import serverController from './controllers/serverController.js';
 import organizeRouter from './routes/organize.js';
 import administratorRouter from './routes/administrator.js';
 import deviceRoutes from './routes/device.js';
@@ -76,7 +78,7 @@ app.set('trust proxy', 1);
 // 3. Core middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(methodOverride('_method'));
+app.use(methodOverride('_method', { methods: ['POST', 'GET'] }));
 
 // 4. Session and flash
 app.use(session({
@@ -93,6 +95,8 @@ app.use(session({
 // Flash middleware for session messages
 app.use(flash());
 
+// 4.1. Access logging middleware (after session, before other middleware)
+app.use(accessLog);
 
 // 5. Global template variables (res.locals)
 // 5.1. Load permissions for every request (after session, before routes)
@@ -137,12 +141,12 @@ app.use(express.static(path.join(__dirname, '../public')));
 
 // Smart redirect for root URL - handles both authenticated and anonymous users
 app.get(['/', '/index.html'], (req, res) => {
-    // If user is logged in, redirect to dashboard
-    if (req.session.user) {
-        return res.redirect('/dashboard');
-    }
-    // If not logged in, redirect to login
-    res.redirect('/login');
+  // If user is logged in, redirect to dashboard
+  if (req.session.user) {
+    return res.redirect('/dashboard');
+  }
+  // If not logged in, redirect to login
+  res.redirect('/login');
 });
 
 
@@ -150,6 +154,8 @@ app.get(['/', '/index.html'], (req, res) => {
 // PUBLIC ROUTES (No authentication required)
 // ===========================================
 app.use('/', authRouter); // /login, /logout, /login/2fa
+
+
 
 
 // ===========================================
@@ -173,6 +179,8 @@ app.use('/2fa', requireLogin, twofaRouter);
 app.use('/dashboard', requireLogin, require2fa, dashboardRouter);
 app.use('/system', requireLogin, require2fa, systemRouter);
 app.use('/network', requireLogin, require2fa, networkRouter);
+// Public template download route (no auth required)
+app.get('/server/server/template', serverController.downloadServerTemplate);
 app.use('/server', requireLogin, require2fa, serverRouter);
 app.use('/organize', requireLogin, require2fa, organizeRouter);
 app.use('/device', requireLogin, require2fa, deviceRoutes);
@@ -194,14 +202,46 @@ app.use('/api-docs', requireLogin, apiSwaggerRouter);
 app.use('/api/v1', apiRouter);
 
 // Start the server
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT) || 3000;
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on 0.0.0.0:${PORT}`);
     console.log('🔒 App is using reverse proxy (Nginx)');
 });
 
 // Start scheduled cleanup job for system logs
-import * as cleanupLogsJob from './utils/cleanupLogs.js';
-if (typeof cleanupLogsJob.start === 'function') {
-  cleanupLogsJob.start();
+try {
+  const cleanupLogsJob = await import('./utils/cleanupLogs.js');
+  if (cleanupLogsJob.default && typeof cleanupLogsJob.default.start === 'function') {
+    cleanupLogsJob.default.start();
+  }
+} catch (err) {
+  console.log('Cleanup logs job not available:', err.message);
+}
+
+// Start scheduled cleanup job for temp files
+try {
+  const { runCleanup } = await import('./utils/cleanupTempFiles.js');
+  
+  // Run cleanup immediately on startup
+  runCleanup();
+  
+  // Run cleanup every 6 hours
+  setInterval(() => {
+    runCleanup();
+  }, 6 * 60 * 60 * 1000); // 6 hours
+  
+  console.log('✅ Temp files cleanup job started (every 6 hours)');
+} catch (err) {
+  console.log('Temp files cleanup job not available:', err.message);
+}
+
+// Start scheduled backup job for database
+try {
+  const backupJob = await import('./utils/backupJob.js');
+  if (backupJob.default && typeof backupJob.default.start === 'function') {
+    backupJob.default.start();
+    console.log('✅ Database backup job started');
+  }
+} catch (err) {
+  console.log('Database backup job not available:', err.message);
 }

@@ -9,11 +9,13 @@ import apiAuthRouter from './apiAuth.js';
 import apiSubnetRouter from './apiSubnet.js';
 import apiDeviceRouter from './apiDevice.js';
 import apiSystemRouter from './apiSystem.js';
+import apiComponentRouter from './apiComponent.js';
 import apiServiceRouter from './apiService.js';
 import apiAgentRouter from './apiAgent.js';
 import apiPlatformRouter from './apiPlatform.js';
 import apiDeviceTypeRouter from './apiDeviceType.js';
 import apiTagRouter from './apiTag.js';
+import apiDomainRouter from './apiDomain.js';
 
 const apiRouter = express.Router();
 
@@ -29,11 +31,13 @@ apiRouter.use('/ip-addresses', authenticateJWT, apiIpAddressRouter);
 apiRouter.use('/subnets', authenticateJWT, apiSubnetRouter);
 apiRouter.use('/devices', authenticateJWT, apiDeviceRouter);
 apiRouter.use('/systems', authenticateJWT, apiSystemRouter);
+apiRouter.use('/components', authenticateJWT, apiComponentRouter);
 apiRouter.use('/services', authenticateJWT, apiServiceRouter);
 apiRouter.use('/agents', authenticateJWT, apiAgentRouter);
 apiRouter.use('/platforms', authenticateJWT, apiPlatformRouter);
 apiRouter.use('/device-types', authenticateJWT, apiDeviceTypeRouter);
 apiRouter.use('/tags', authenticateJWT, apiTagRouter);
+apiRouter.use('/domains', authenticateJWT, apiDomainRouter);
 
 
 // Handle JSON parse errors for API routes only

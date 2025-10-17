@@ -6,9 +6,17 @@ const apiAgentController = {};
 apiAgentController.listAgents = async (req, res) => {
   try {
     const agents = await Agent.findAll();
-    res.json({ data: agents, total: agents.length });
+    res.json({
+      success: true,
+      data: agents,
+      count: agents.length
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
   }
 };
 
@@ -16,10 +24,22 @@ apiAgentController.listAgents = async (req, res) => {
 apiAgentController.getAgent = async (req, res) => {
   try {
     const agent = await Agent.findById(req.params.id);
-    if (!agent) return res.status(404).json({ error: 'Agent not found' });
-    res.json(agent);
+    if (!agent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Agent not found'
+      });
+    }
+    res.json({
+      success: true,
+      data: agent
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
   }
 };
 
@@ -28,7 +48,10 @@ apiAgentController.createAgent = async (req, res) => {
   try {
     const { name, version, description } = req.body;
     if (!name || !name.trim()) {
-      return res.status(400).json({ error: 'Agent name is required' });
+      return res.status(400).json({
+        success: false,
+        message: 'Agent name is required'
+      });
     }
     
     const agent = await Agent.create({
@@ -37,12 +60,23 @@ apiAgentController.createAgent = async (req, res) => {
       description: description ? description.trim() : null
     });
     
-    res.status(201).json(agent);
+    res.status(201).json({
+      success: true,
+      message: 'Agent created successfully',
+      data: agent
+    });
   } catch (err) {
     if (err.code === '23505') { // Unique constraint violation
-      return res.status(400).json({ error: 'Agent name already exists' });
+      return res.status(400).json({
+        success: false,
+        message: 'Agent name already exists'
+      });
     }
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
   }
 };
 
@@ -54,7 +88,10 @@ apiAgentController.updateAgent = async (req, res) => {
     // Check if agent exists first
     const existingAgent = await Agent.findById(req.params.id);
     if (!existingAgent) {
-      return res.status(404).json({ error: 'Agent not found' });
+      return res.status(404).json({
+        success: false,
+        message: 'Agent not found'
+      });
     }
     
     // Prepare update data - only update fields that are provided
@@ -62,7 +99,10 @@ apiAgentController.updateAgent = async (req, res) => {
     
     if (name !== undefined) {
       if (!name || !name.trim()) {
-        return res.status(400).json({ error: 'Agent name cannot be empty' });
+        return res.status(400).json({
+          success: false,
+          message: 'Agent name cannot be empty'
+        });
       }
       updateData.name = name.trim();
     }
@@ -77,16 +117,31 @@ apiAgentController.updateAgent = async (req, res) => {
     
     // If no fields to update, return current agent
     if (Object.keys(updateData).length === 0) {
-      return res.json(existingAgent);
+      return res.json({
+        success: true,
+        message: 'No changes made',
+        data: existingAgent
+      });
     }
     
     const agent = await Agent.update(req.params.id, updateData);
-    res.json(agent);
+    res.json({
+      success: true,
+      message: 'Agent updated successfully',
+      data: agent
+    });
   } catch (err) {
     if (err.code === '23505') { // Unique constraint violation
-      return res.status(400).json({ error: 'Agent name already exists' });
+      return res.status(400).json({
+        success: false,
+        message: 'Agent name already exists'
+      });
     }
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
   }
 };
 
@@ -95,15 +150,30 @@ apiAgentController.deleteAgent = async (req, res) => {
   try {
     // Check if agent exists
     const agent = await Agent.findById(req.params.id);
-    if (!agent) return res.status(404).json({ error: 'Agent not found' });
+    if (!agent) {
+      return res.status(404).json({
+        success: false,
+        message: 'Agent not found'
+      });
+    }
     
     await Agent.delete(req.params.id);
-    res.json({ message: 'Agent deleted successfully' });
+    res.json({
+      success: true,
+      message: 'Agent deleted successfully'
+    });
   } catch (err) {
     if (err.message && err.message.includes('in use')) {
-      return res.status(400).json({ error: 'Cannot delete: This agent is in use' });
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot delete: This agent is in use'
+      });
     }
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: err.message
+    });
   }
 };
 

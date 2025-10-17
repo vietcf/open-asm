@@ -475,7 +475,6 @@ privAccountController.updateRole = async (req, res) => {
     if (!Array.isArray(permissions)) permissions = [permissions]; // Ensure always array
     const updated_by = req.session.user?.username || '';
     await PrivRole.update(id, { name, description, system_id, updated_by });
-    console.log('Updating permissions for role ID:', id, 'with permissions:', permissions);
     await PrivRole.setPermissions(id, permissions.map(Number));
     
     // Clear permissions cache for all roles since permissions changed
@@ -501,7 +500,18 @@ privAccountController.deleteRole = async (req, res) => {
     req.flash && req.flash('success', 'Privileged role deleted successfully!');
     res.redirect('/priv-account/role');
   } catch (err) {
-    req.flash && req.flash('error', err.message || 'Delete failed.');
+    // Handle specific database constraint errors with user-friendly messages
+    let errorMessage = 'Delete failed';
+    
+    if (err.code === '23503') { // foreign_key_violation
+      errorMessage = 'Cannot delete this role because it is currently assigned to users. Please reassign those users to other roles first.';
+    } else if (err.message && err.message.includes('foreign key constraint')) {
+      errorMessage = 'Cannot delete this role because it is being used. Please remove all users assigned to this role first.';
+    } else {
+      errorMessage = err.message || 'Delete failed';
+    }
+    
+    req.flash && req.flash('error', errorMessage);
     res.redirect('/priv-account/role');
   }
 };
@@ -638,8 +648,6 @@ privAccountController.deletePermission = async (req, res) => {
 // Export privileged permissions to Excel (with filter/search support)
 privAccountController.exportPermissions = async (req, res) => {
   try {
-    // Debug: kiểm tra query param truyền lên
-    // console.log('Export query:', req.query); 
     const search = req.query.search ? req.query.search.trim() : '';
     const system_id = req.query.system_id ? req.query.system_id.trim() : '';
     let where = [];
@@ -788,7 +796,6 @@ privAccountController.apiRoleSearch = async (req, res) => {
 privAccountController.apiRoleBySystem = async (req, res) => {
   try {
     let system_ids = req.body.system_ids || [];
-    console.log(system_ids);
     if (!Array.isArray(system_ids)) system_ids = [];
     system_ids = system_ids.filter(x => x !== undefined && x !== null && x !== '');
     if (!system_ids.length) return res.json([]);

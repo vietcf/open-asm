@@ -8,7 +8,17 @@ import Service from '../models/Service.js';
 import Agent from '../models/Agent.js';
 import Platform from '../models/Platform.js';
 import Configuration from '../models/Configuration.js';
+import Tag from '../models/Tag.js';
+import Contact from '../models/Contact.js';
+import System from '../models/System.js';
 import ExcelJS from 'exceljs';
+import XLSX from 'xlsx';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Helper: Load server options from DB config
 async function getServerLocationsFromConfig() {
@@ -24,10 +34,7 @@ async function getServerLocationsFromConfig() {
     }
   } catch (e) { options = []; }
   if (!Array.isArray(options) || options.length === 0) {
-    options = [
-      { value: 'DC', label: 'DC' },
-      { value: 'DR', label: 'DR' }
-    ];
+    options = [];
   }
   return options;
 }
@@ -45,11 +52,7 @@ async function getServerStatusOptionsFromConfig() {
     }
   } catch (e) { options = []; }
   if (!Array.isArray(options) || options.length === 0) {
-    options = [
-      { value: 'ONLINE', label: 'ONLINE' },
-      { value: 'OFFLINE', label: 'OFFLINE' },
-      { value: 'MAINTENANCE', label: 'MAINTENANCE' }
-    ];
+    options = [];
   }
   return options;
 }
@@ -67,20 +70,16 @@ async function getServerTypeOptionsFromConfig() {
     }
   } catch (e) { options = []; }
   if (!Array.isArray(options) || options.length === 0) {
-    options = [
-      { value: 'PHYSICAL', label: 'PHYSICAL' },
-      { value: 'VIRTUAL-MACHINE', label: 'VIRTUAL-MACHINE' },
-      { value: 'CLOUD-INSTANCE', label: 'CLOUD-INSTANCE' }
-    ];
+    options = [];
   }
   return options;
 }
 
 // Helper: always return array of strings for select2 filters
 function normalizeFilterArray(val) {
-  if (!val) return [];
-  if (Array.isArray(val)) return val.map(String);
-  if (typeof val === 'string') return [val];
+  if (!val || val === 'undefined' || val === undefined) return [];
+  if (Array.isArray(val)) return val.filter(v => v && v !== 'undefined' && v !== undefined).map(String);
+  if (typeof val === 'string' && val !== 'undefined') return [val];
   return [];
 }
 
@@ -92,7 +91,7 @@ serverController.listServer = async (req, res) => {
   try {
     // Use global pageSizeOptions from res.locals
     const pageSizeOptions = res.locals.pageSizeOptions || [10, 20, 50];
-    let pageSize = parseInt(req.query.page_size, 10) || pageSizeOptions[0];
+    let pageSize = parseInt(req.query.pageSize, 10) || pageSizeOptions[0];
     if (!pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
     const page = parseInt(req.query.page, 10) || 1;
 
@@ -103,12 +102,13 @@ serverController.listServer = async (req, res) => {
       type: typeof req.query.type !== 'undefined' ? req.query.type : '',
       status: typeof req.query.status !== 'undefined' ? req.query.status : '',
       tags: normalizeFilterArray(req.query['tags[]'] || req.query.tags),
-      ip: normalizeFilterArray(req.query['ip[]'] || req.query.ip),
-      manager: normalizeFilterArray(req.query['manager[]'] || req.query.manager),
+      manager: normalizeFilterArray(req.query['contacts[]'] || req.query.manager),
       systems: normalizeFilterArray(req.query['systems[]'] || req.query.systems),
       services: normalizeFilterArray(req.query['services[]'] || req.query.services),
       os: normalizeFilterArray(req.query['os[]'] || req.query.os)
     };
+    
+    console.log('Filter params:', filterParams);
 
     // --- Query server list and count ---
     const serverList = await Server.findFilteredList({
@@ -117,7 +117,6 @@ serverController.listServer = async (req, res) => {
       type: filterParams.type,
       location: filterParams.location,
       tags: filterParams.tags,
-      ip: filterParams.ip,
       manager: filterParams.manager,
       systems: filterParams.systems,
       services: filterParams.services,
@@ -131,7 +130,6 @@ serverController.listServer = async (req, res) => {
       type: filterParams.type,
       location: filterParams.location,
       tags: filterParams.tags,
-      ip: filterParams.ip,
       manager: filterParams.manager,
       systems: filterParams.systems,
       services: filterParams.services,
@@ -150,6 +148,48 @@ serverController.listServer = async (req, res) => {
       getServerStatusOptionsFromConfig(),
       getServerTypeOptionsFromConfig()
     ]);
+
+    // Load selected data for filter (if any)
+    let selectedTags = [];
+    let selectedSystems = [];
+    let selectedManagers = [];
+    let selectedServices = [];
+    let selectedOS = null;
+    
+    if (filterParams.tags && filterParams.tags.length > 0) {
+      selectedTags = await Tag.findByIds(filterParams.tags);
+    }
+    
+    if (filterParams.systems && filterParams.systems.length > 0) {
+      selectedSystems = await System.findByIds(filterParams.systems);
+    }
+    
+    if (filterParams.manager && filterParams.manager.length > 0) {
+      console.log('Loading managers with IDs:', filterParams.manager);
+      selectedManagers = await Contact.findByIds(filterParams.manager);
+      console.log('Loaded managers:', selectedManagers);
+    }
+    
+    if (filterParams.services && filterParams.services.length > 0) {
+      selectedServices = await Service.findByIds(filterParams.services);
+    }
+    
+    if (filterParams.os && filterParams.os.length > 0) {
+      // Load OS/Platform info from database
+      console.log('Loading OS with value:', filterParams.os[0]);
+      try {
+        const platform = await Platform.findById(filterParams.os[0]);
+        if (platform) {
+          selectedOS = { id: platform.id, text: platform.name };
+        } else {
+          selectedOS = { id: filterParams.os[0], text: filterParams.os[0] };
+        }
+      } catch (err) {
+        console.error('Error loading platform:', err);
+        selectedOS = { id: filterParams.os[0], text: filterParams.os[0] };
+      }
+      console.log('Selected OS:', selectedOS);
+    }
     res.render('pages/server/server_list', {
       serverList,
       search: filterParams.search,
@@ -168,11 +208,15 @@ serverController.listServer = async (req, res) => {
       filterType: filterParams.type,
       filterStatus: filterParams.status,
       filterTags: filterParams.tags,
-      filterIp: filterParams.ip,
       filterManager: filterParams.manager,
       filterSystems: filterParams.systems,
       filterServices: filterParams.services,
       filterOs: filterParams.os,
+      selectedTags,
+      selectedSystems,
+      selectedManagers,
+      selectedServices,
+      selectedOS,
       title: 'Server List',
       activeMenu: 'server-list'
     });
@@ -186,6 +230,16 @@ serverController.createServer = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    
+    // Check if req.body exists
+    if (!req.body) {
+      throw new Error('Request body is missing. Please check if body parsing middleware is configured correctly.');
+    }
+    
+    // Debug logging
+    console.log('req.body:', req.body);
+    console.log('req.body keys:', Object.keys(req.body));
+    
     let { name, os, status, location, type, managers, systems, agents, services, tags, ip_addresses, description } = req.body;
     // Validation and normalization
     if (!name || !name.trim()) {
@@ -255,7 +309,6 @@ serverController.detailServer = async (req, res) => {
       ...detail,
       description: detail.description || ''
     });
-    console.log(`Server detail loaded for ID ${id}`);
   } catch (err) {
     res.status(500).json({ error: 'Error loading server detail', detail: err.message });
   }
@@ -328,6 +381,16 @@ serverController.updateServer = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    
+    // Check if req.body exists
+    if (!req.body) {
+      throw new Error('Request body is missing. Please check if body parsing middleware is configured correctly.');
+    }
+    
+    // Debug logging
+    console.log('UPDATE - req.body:', req.body);
+    console.log('UPDATE - req.body keys:', Object.keys(req.body));
+    
     const id = req.params.id;
     let { name, os, status, location, type, managers, systems, agents, services, ip, tags, ip_addresses, description } = req.body;
     if (!name || !name.trim()) {
@@ -394,7 +457,7 @@ serverController.listService = async (req, res) => {
   try {
     // pageSizeOptions đã có sẵn qua res.locals.pageSizeOptions
     const pageSizeOptions = res.locals.pageSizeOptions || [10, 20, 50];
-    let pageSize = parseInt(req.query.page_size, 10) || pageSizeOptions[0];
+    let pageSize = parseInt(req.query.pageSize, 10) || pageSizeOptions[0];
     if (!pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
     const search = req.query.search ? req.query.search.trim().toLowerCase() : '';
     const page = parseInt(req.query.page, 10) || 1;
@@ -404,7 +467,10 @@ serverController.listService = async (req, res) => {
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
     const success = req.flash('success')[0];
-    const error = req.flash('error')[0];res.render('pages/server/service_list', {
+    const error = req.flash('error')[0];
+    
+    
+    res.render('pages/server/service_list', {
       serviceList,
       search,
       page,
@@ -476,7 +542,7 @@ serverController.listAgent = async (req, res) => {
   try {
     // pageSizeOptions đã có sẵn qua res.locals.pageSizeOptions
     const pageSizeOptions = res.locals.pageSizeOptions || [10, 20, 50];
-    let pageSize = parseInt(req.query.page_size, 10) || pageSizeOptions[0];
+    let pageSize = parseInt(req.query.pageSize, 10) || pageSizeOptions[0];
     if (!pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
     const page = parseInt(req.query.page, 10) || 1;
     const search = req.query.search ? req.query.search.trim() : '';
@@ -614,9 +680,9 @@ serverController.exportServerList = async (req, res) => {
   try {
     // Chuẩn hóa các tham số filter (giống listServer)
     function normalizeFilterArray(val) {
-      if (!val) return [];
-      if (Array.isArray(val)) return val.map(String);
-      if (typeof val === 'string') return [val];
+      if (!val || val === 'undefined' || val === undefined) return [];
+      if (Array.isArray(val)) return val.filter(v => v && v !== 'undefined' && v !== undefined).map(String);
+      if (typeof val === 'string' && val !== 'undefined') return [val];
       return [];
     }
     const filterParams = {
@@ -625,12 +691,14 @@ serverController.exportServerList = async (req, res) => {
       type: typeof req.query.type !== 'undefined' ? req.query.type : '',
       status: typeof req.query.status !== 'undefined' ? req.query.status : '',
       tags: normalizeFilterArray(req.query['tags[]'] || req.query.tags),
-      ip: normalizeFilterArray(req.query['ip[]'] || req.query.ip),
-      manager: normalizeFilterArray(req.query['manager[]'] || req.query.manager),
+      manager: normalizeFilterArray(req.query['contacts[]'] || req.query.manager),
       systems: normalizeFilterArray(req.query['systems[]'] || req.query.systems),
       services: normalizeFilterArray(req.query['services[]'] || req.query.services),
       os: normalizeFilterArray(req.query['os[]'] || req.query.os)
     };
+    
+    console.log('Export filter params:', filterParams);
+    
     // Lấy toàn bộ danh sách (không phân trang)
     const serverList = await Server.findFilteredList({
       search: filterParams.search,
@@ -638,7 +706,6 @@ serverController.exportServerList = async (req, res) => {
       type: filterParams.type,
       location: filterParams.location,
       tags: filterParams.tags,
-      ip: filterParams.ip,
       manager: filterParams.manager,
       systems: filterParams.systems,
       services: filterParams.services,
@@ -683,6 +750,1102 @@ serverController.exportServerList = async (req, res) => {
   } catch (err) {
     console.error('Error exporting server list:', err);
     res.status(500).send('Error exporting server list: ' + err.message);
+  }
+};
+
+// ====== SERVER IMPORT FUNCTIONS ======
+
+// Helper function to sanitize string data for Excel
+function sanitizeString(str) {
+  if (!str || typeof str !== 'string') return '';
+  
+  // Remove or replace problematic characters that can cause Excel corruption
+  return str
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // Remove control characters
+    .replace(/[\uFEFF]/g, '') // Remove BOM
+    .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove zero-width characters
+    .trim();
+}
+
+// Download server template
+serverController.downloadServerTemplate = async (req, res) => {
+  try {
+    console.log('Starting server template download...');
+    // Create Excel workbook
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Server Template');
+    
+    // Add headers
+    worksheet.addRow([
+      'Name (Optional - auto-generated if empty)',
+      'IPAddress (Require, comma-separated if multiple)',
+      'OS',
+      'Status',
+      'Location',
+      'Type',
+      'Manager (comma-separated if multiple)',
+      'System (comma-separated if multiple)',
+      'Agent (comma-separated if multiple)',
+      'Service (comma-separated if multiple)',
+      'Tag (comma-separated if multiple)',
+      'Description'
+    ]);
+    
+    // Add sample data
+    worksheet.addRow([
+      'Test Server 1',
+      '192.168.1.100,192.168.1.101',
+      'Linux',
+      'ONLINE',
+      'DC',
+      'Physical',
+      'admin@company.com,manager@company.com',
+      'System1,System2',
+      'Agent1,Agent2',
+      'Service1,Service2',
+      'Tag1,Tag2',
+      'Test server description'
+    ]);
+    
+    // Add sample with auto-generated name
+    worksheet.addRow([
+      '', // Empty name - will be auto-generated
+      '192.168.2.3',
+      'Windows',
+      'OFFLINE',
+      'DR',
+      'Virtual',
+      'admin@company.com',
+      'System1',
+      'Agent1',
+      'Service1',
+      'Tag1',
+      'Auto-generated name example'
+    ]);
+    
+    // Set column widths
+    worksheet.columns = [
+      { width: 25 },  // Name
+      { width: 40 },  // IPAddress
+      { width: 15 },  // OS
+      { width: 15 },  // Status
+      { width: 15 },  // Location
+      { width: 15 },  // Type
+      { width: 30 },  // Manager
+      { width: 25 },  // System
+      { width: 25 },  // Agent
+      { width: 25 },  // Service
+      { width: 25 },  // Tag
+      { width: 30 }   // Description
+    ];
+    
+    // Create temp directory if not exists
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
+    try {
+      await fs.promises.mkdir(tempDir, { recursive: true });
+    } catch (err) {
+      // Directory might already exist, ignore error
+      console.log('Temp directory creation:', err.message);
+    }
+    const tempPath = path.join(tempDir, 'temp_server_template.xlsx');
+    console.log('Writing template to:', tempPath);
+    await workbook.xlsx.writeFile(tempPath);
+    console.log('Template file written successfully');
+    
+    // Check if file exists and get size
+    if (fs.existsSync(tempPath)) {
+      const stats = fs.statSync(tempPath);
+      console.log('Template file created successfully, size:', stats.size, 'bytes');
+      
+      // Set headers for file download
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.setHeader('Content-Disposition', 'attachment; filename="server_list_template.xlsx"');
+      res.setHeader('Content-Length', stats.size);
+      
+      // Stream the file
+      const fileStream = fs.createReadStream(tempPath);
+      fileStream.pipe(res);
+      
+      fileStream.on('end', () => {
+        console.log('Template file sent successfully');
+        // Clean up template file after download
+        setTimeout(() => {
+          try {
+            if (fs.existsSync(tempPath)) {
+              fs.unlinkSync(tempPath);
+              console.log('Template file cleaned up:', tempPath);
+            }
+          } catch (cleanupErr) {
+            console.error('Error cleaning up template file:', cleanupErr);
+          }
+        }, 5000); // 5 seconds delay
+      });
+      
+      fileStream.on('error', (err) => {
+        console.error('Error streaming template file:', err);
+        if (!res.headersSent) {
+          res.status(500).json({ error: 'Error streaming template file' });
+        }
+      });
+    } else {
+      throw new Error('Template Excel file was not created');
+    }
+    
+  } catch (err) {
+    console.error('Error creating server template:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Error creating template: ' + err.message });
+    }
+  }
+};
+
+// Validate server import file
+serverController.validateImportServers = async (req, res) => {
+  try {
+    console.log('Starting server validation...');
+    if (!req.file) {
+      console.log('No file uploaded');
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    
+    console.log('File uploaded:', req.file.originalname, 'Size:', req.file.size);
+
+    const filePath = req.file.path;
+    const originalFileName = req.file.originalname;
+    let rows = [];
+
+    // Parse file based on extension
+    const ext = path.extname(originalFileName).toLowerCase();
+    console.log('File extension:', ext);
+    let headers = [];
+    
+    if (ext === '.csv') {
+      const csvContent = fs.readFileSync(filePath, 'utf8');
+      const lines = csvContent.split('\n').filter(line => line.trim());
+      headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index] || '';
+        });
+        rows.push(row);
+      }
+    } else if (ext === '.xlsx' || ext === '.xls') {
+      const workbook = XLSX.readFile(filePath);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      
+      if (jsonData.length < 2) {
+        return res.status(400).json({ error: 'File must contain at least a header row and one data row' });
+      }
+      
+      headers = jsonData[0];
+      for (let i = 1; i < jsonData.length; i++) {
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header] = jsonData[i][index] || '';
+        });
+        rows.push(row);
+      }
+    } else {
+      return res.status(400).json({ error: 'Unsupported file format' });
+    }
+
+    // Validate file format - check required columns
+    const requiredColumns = [
+      'Name (Optional - auto-generated if empty)',
+      'IPAddress (Require, comma-separated if multiple)',
+      'OS',
+      'Status',
+      'Location',
+      'Type',
+      'Manager (comma-separated if multiple)',
+      'System (comma-separated if multiple)',
+      'Agent (comma-separated if multiple)',
+      'Service (comma-separated if multiple)',
+      'Tag (comma-separated if multiple)',
+      'Description'
+    ];
+
+    // Check for missing columns
+    const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+    if (missingColumns.length > 0) {
+      return res.status(400).json({ 
+        error: 'File format validation failed',
+        details: {
+          missingColumns: missingColumns,
+          message: `Missing required columns: ${missingColumns.join(', ')}`
+        }
+      });
+    }
+
+    // Check for extra columns
+    const extraColumns = headers.filter(col => !requiredColumns.includes(col));
+    if (extraColumns.length > 0) {
+      return res.status(400).json({ 
+        error: 'File format validation failed',
+        details: {
+          extraColumns: extraColumns,
+          message: `Extra columns found: ${extraColumns.join(', ')}. Please use the correct template.`
+        }
+      });
+    }
+
+    // Check column order (optional - can be flexible)
+    const columnOrderMismatch = requiredColumns.some((col, index) => headers[index] !== col);
+    if (columnOrderMismatch) {
+      console.warn('Column order mismatch detected, but continuing with validation...');
+    }
+
+    // Get valid options from database
+    const [validLocations, validStatuses] = await Promise.all([
+      getServerLocationsFromConfig(),
+      getServerStatusOptionsFromConfig()
+    ]);
+    
+    // Extract values from config objects
+    const validLocationValues = validLocations.map(loc => loc.value || loc.label || loc);
+    const validStatusValues = validStatuses.map(status => status.value || status.label || status);
+
+    // Validate each row
+    const validationResults = [];
+    const ipRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}$/;
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const result = {
+        row_number: i + 1,
+        name: sanitizeString(row['Name (Optional - auto-generated if empty)'] || ''),
+        ip_addresses: sanitizeString(row['IPAddress (Require, comma-separated if multiple)'] || ''),
+        os: sanitizeString(row['OS'] || ''),
+        status: sanitizeString(row['Status'] || ''),
+        location: sanitizeString(row['Location'] || ''),
+        type: sanitizeString(row['Type'] || ''),
+        manager: sanitizeString(row['Manager (comma-separated if multiple)'] || ''),
+        system: sanitizeString(row['System (comma-separated if multiple)'] || ''),
+        agent: sanitizeString(row['Agent (comma-separated if multiple)'] || ''),
+        service: sanitizeString(row['Service (comma-separated if multiple)'] || ''),
+        tag: sanitizeString(row['Tag (comma-separated if multiple)'] || ''),
+        description: sanitizeString(row['Description'] || ''),
+        validation_status: 'PASS',
+        validation_reason: ''
+      };
+
+      // Server name is not required - will be auto-generated if empty
+
+      if (!result.ip_addresses) {
+        result.validation_status = 'FAIL';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + 'IP addresses are required';
+      } else {
+        // Validate IP addresses format
+        const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
+        for (const ip of ipList) {
+          if (!ipRegex.test(ip)) {
+            result.validation_status = 'FAIL';
+            result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Invalid IP format: ${ip}`;
+          }
+        }
+      }
+
+      // Validate status
+      if (result.status && !validStatusValues.includes(result.status)) {
+        result.validation_status = 'FAIL';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Invalid status: ${result.status}. Valid values: ${validStatusValues.join(', ')}`;
+      }
+
+      // Validate OS/Platform (if provided)
+      if (result.os) {
+        const existingPlatforms = await Platform.findByNameExact(result.os);
+        if (!existingPlatforms || existingPlatforms.length === 0) {
+          result.validation_status = 'FAIL';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `OS/Platform not found: ${result.os}`;
+        }
+      }
+
+      // Validate location
+      if (result.location && !validLocationValues.includes(result.location)) {
+        result.validation_status = 'FAIL';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Invalid location: ${result.location}. Valid values: ${validLocationValues.join(', ')}`;
+      }
+
+      // Check if server already exists (by name OR by assigned IP)
+      let serverExists = false;
+      let serverExistsReason = '';
+
+      // Check by server name
+      if (result.name) {
+        const existingServer = await Server.findByName(result.name);
+        if (existingServer) {
+          serverExists = true;
+          serverExistsReason = 'Server name already exists';
+        }
+      }
+
+      // Check by assigned IP addresses
+      if (result.ip_addresses) {
+        const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
+        const assignedIPs = [];
+        for (const ip of ipList) {
+          const existingIP = await IpAddress.findByAddressWithDetails(ip);
+          if (existingIP && existingIP.status === 'assigned') {
+            assignedIPs.push(ip);
+          }
+        }
+        if (assignedIPs.length > 0) {
+          serverExists = true;
+          if (serverExistsReason) {
+            serverExistsReason += `; IP(s) already assigned to servers: ${assignedIPs.join(', ')}`;
+          } else {
+            serverExistsReason = `IP(s) already assigned to servers: ${assignedIPs.join(', ')}`;
+          }
+        }
+      }
+
+      // If server exists, mark as FAIL
+      if (serverExists) {
+        result.validation_status = 'FAIL';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + serverExistsReason;
+      }
+
+      // Validate Tags
+      if (result.tag) {
+        const tagList = result.tag.split(',').map(t => t.trim()).filter(t => t);
+        const invalidTags = [];
+        for (const tagName of tagList) {
+          const existingTags = await Tag.findByNameExact(tagName);
+          if (!existingTags || existingTags.length === 0) {
+            invalidTags.push(tagName);
+          }
+        }
+        if (invalidTags.length > 0) {
+          result.validation_status = 'FAIL';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Tag(s) not found: ${invalidTags.join(', ')}`;
+        }
+      }
+
+      // Validate Contacts/Managers
+      if (result.manager) {
+        const managerList = result.manager.split(',').map(m => m.trim()).filter(m => m);
+        const invalidManagers = [];
+        for (const managerEmail of managerList) {
+          const existingContacts = await Contact.findByEmailSearch(managerEmail);
+          if (!existingContacts || existingContacts.length === 0) {
+            invalidManagers.push(managerEmail);
+          }
+        }
+        if (invalidManagers.length > 0) {
+          result.validation_status = 'FAIL';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Manager(s) not found: ${invalidManagers.join(', ')}`;
+        }
+      }
+
+      // Validate Systems
+      if (result.system) {
+        const systemList = result.system.split(',').map(s => s.trim()).filter(s => s);
+        const invalidSystems = [];
+        for (const systemName of systemList) {
+          const existingSystems = await System.findByNameExact(systemName);
+          if (!existingSystems || existingSystems.length === 0) {
+            invalidSystems.push(systemName);
+          }
+        }
+        if (invalidSystems.length > 0) {
+          result.validation_status = 'FAIL';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `System(s) not found: ${invalidSystems.join(', ')}`;
+        }
+      }
+
+      // Validate Agents
+      if (result.agent) {
+        const agentList = result.agent.split(',').map(a => a.trim()).filter(a => a);
+        const invalidAgents = [];
+        for (const agentName of agentList) {
+          const existingAgents = await Agent.findByNameExact(agentName);
+          if (!existingAgents || existingAgents.length === 0) {
+            invalidAgents.push(agentName);
+          }
+        }
+        if (invalidAgents.length > 0) {
+          result.validation_status = 'FAIL';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Agent(s) not found: ${invalidAgents.join(', ')}`;
+        }
+      }
+
+      // Validate Services
+      if (result.service) {
+        const serviceList = result.service.split(',').map(s => s.trim()).filter(s => s);
+        const invalidServices = [];
+        for (const serviceName of serviceList) {
+          const existingServices = await Service.findByNameExact(serviceName);
+          if (!existingServices || existingServices.length === 0) {
+            invalidServices.push(serviceName);
+          }
+        }
+        if (invalidServices.length > 0) {
+          result.validation_status = 'FAIL';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Service(s) not found: ${invalidServices.join(', ')}`;
+        }
+      }
+
+      // Check if server already exists (by name or IP)
+      if (result.validation_status === 'PASS') {
+        let serverExists = false;
+        let existingServerInfo = '';
+
+        // Check by server name if provided
+        if (result.name && result.name.trim() !== '') {
+          const existingByName = await Server.findByName(result.name.trim());
+          if (existingByName) {
+            serverExists = true;
+            existingServerInfo = `Server with name "${result.name}" already exists (ID: ${existingByName.id})`;
+          }
+        }
+
+        // Check by IP addresses if server name check passed
+        if (!serverExists && result.ip_addresses) {
+          const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
+          for (const ip of ipList) {
+            // First check if IP exists and its status
+            const ipRecord = await IpAddress.findByAddress(ip);
+            if (ipRecord) {
+              // If IP exists and is assigned, always fail
+              if (ipRecord.status === 'assigned') {
+                serverExists = true;
+                existingServerInfo = `IP "${ip}" is already assigned - server/device already exists`;
+                break;
+              }
+            }
+          }
+        }
+
+        if (serverExists) {
+          result.validation_status = 'FAIL';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + existingServerInfo;
+        }
+      }
+
+      validationResults.push(result);
+    }
+
+    // Create validation results Excel file
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Validation Results');
+    
+    // Add headers
+    worksheet.addRow([
+      'Name (Optional - auto-generated if empty)',
+      'IPAddress (Require, comma-separated if multiple)',
+      'OS',
+      'Status',
+      'Location',
+      'Manager (comma-separated if multiple)',
+      'System (comma-separated if multiple)',
+      'Agent (comma-separated if multiple)',
+      'Service (comma-separated if multiple)',
+      'Tag (comma-separated if multiple)',
+      'Description',
+      'Validation Status',
+      'Validation Reason'
+    ]);
+
+    // Style headers
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+
+    // Add data rows
+    validationResults.forEach(result => {
+      const row = worksheet.addRow([
+        result.name,
+        result.ip_addresses,
+        result.os,
+        result.status,
+        result.location,
+        result.manager,
+        result.system,
+        result.agent,
+        result.service,
+        result.tag,
+        result.description,
+        result.validation_status,
+        result.validation_reason
+      ]);
+
+      // Color code validation status
+      if (result.validation_status === 'FAIL') {
+        row.getCell(12).font = { color: { argb: 'FFFF0000' } }; // Validation Status column
+        row.getCell(13).font = { color: { argb: 'FFFF0000' } }; // Validation Reason column
+      } else {
+        row.getCell(12).font = { color: { argb: 'FF008000' } }; // Validation Status column
+      }
+    });
+
+    // Set column widths
+    worksheet.columns = [
+      { width: 25 },  // Name
+      { width: 40 },  // IPAddress
+      { width: 15 },  // OS
+      { width: 15 },  // Status
+      { width: 15 },  // Location
+      { width: 30 },  // Manager
+      { width: 25 },  // System
+      { width: 25 },  // Agent
+      { width: 25 },  // Service
+      { width: 25 },  // Tag
+      { width: 30 },  // Description
+      { width: 20 },  // Validation Status
+      { width: 50 }   // Validation Reason
+    ];
+
+    // Create temp directory if not exists
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const timestamp = Date.now();
+    const excelFileName = `${timestamp}_${originalFileName}_validation.xlsx`;
+    const excelFilePath = path.join(tempDir, excelFileName);
+    await workbook.xlsx.writeFile(excelFilePath);    // Calculate validation summary
+    const allPassed = validationResults.every(result => result.validation_status === 'PASS');
+    const passCount = validationResults.filter(result => result.validation_status === 'PASS').length;
+    const failCount = validationResults.filter(result => result.validation_status === 'FAIL').length;
+    
+    // Send Excel file directly
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${excelFileName}"`);
+    res.setHeader('Content-Length', fs.statSync(excelFilePath).size);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('X-Validation-Summary', JSON.stringify({
+      allPassed,
+      passCount,
+      failCount,
+      totalCount: validationResults.length
+    }));
+
+    const fileBuffer = fs.readFileSync(excelFilePath);
+    res.send(fileBuffer);
+
+    // Clean up uploaded file
+    fs.unlinkSync(filePath);
+    
+    // Clean up temp Excel file after a delay
+    setTimeout(() => {
+      try {
+        if (fs.existsSync(excelFilePath)) {
+          fs.unlinkSync(excelFilePath);
+          console.log('Validation file cleaned up:', excelFilePath);
+        }
+      } catch (cleanupErr) {
+        console.error('Error cleaning up validation file:', cleanupErr);
+      }
+    }, 10000); // 10 seconds delay
+
+  } catch (err) {
+    console.error('Error validating server import file:', err);
+    console.error('Error stack:', err.stack);
+    console.error('Error message:', err.message);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Error validating import file: ' + err.message });
+    }
+  }
+};
+
+// Import servers
+serverController.importServers = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const filePath = req.file.path;
+    const originalFileName = req.file.originalname;
+    let rows = [];
+
+    // Parse file (same logic as validation)
+    const ext = path.extname(originalFileName).toLowerCase();
+    let headers = [];
+    
+    if (ext === '.csv') {
+      const csvContent = fs.readFileSync(filePath, 'utf8');
+      const lines = csvContent.split('\n').filter(line => line.trim());
+      headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header] = values[index] || '';
+        });
+        rows.push(row);
+      }
+    } else if (ext === '.xlsx' || ext === '.xls') {
+      const workbook = XLSX.readFile(filePath);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      
+      if (jsonData.length < 2) {
+        return res.status(400).json({ error: 'File must contain at least a header row and one data row' });
+      }
+      
+      headers = jsonData[0];
+      for (let i = 1; i < jsonData.length; i++) {
+        const row = {};
+        headers.forEach((header, index) => {
+          row[header] = jsonData[i][index] || '';
+        });
+        rows.push(row);
+      }
+    } else {
+      return res.status(400).json({ error: 'Unsupported file format' });
+    }
+
+    // Validate file format - check required columns
+    const requiredColumns = [
+      'Name (Optional - auto-generated if empty)',
+      'IPAddress (Require, comma-separated if multiple)',
+      'OS',
+      'Status',
+      'Location',
+      'Type',
+      'Manager (comma-separated if multiple)',
+      'System (comma-separated if multiple)',
+      'Agent (comma-separated if multiple)',
+      'Service (comma-separated if multiple)',
+      'Tag (comma-separated if multiple)',
+      'Description'
+    ];
+
+    // Check for missing columns
+    const missingColumns = requiredColumns.filter(col => !headers.includes(col));
+    if (missingColumns.length > 0) {
+      return res.status(400).json({ 
+        error: 'File format validation failed',
+        details: {
+          missingColumns: missingColumns,
+          message: `Missing required columns: ${missingColumns.join(', ')}`
+        }
+      });
+    }
+
+    // Check for extra columns
+    const extraColumns = headers.filter(col => !requiredColumns.includes(col));
+    if (extraColumns.length > 0) {
+      return res.status(400).json({ 
+        error: 'File format validation failed',
+        details: {
+          extraColumns: extraColumns,
+          message: `Extra columns found: ${extraColumns.join(', ')}. Please use the correct template.`
+        }
+      });
+    }
+
+    await client.query('BEGIN');
+
+    const importResults = [];
+    const username = req.session && req.session.user && req.session.user.username ? req.session.user.username : 'admin';
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const result = {
+        row_number: i + 1,
+        name: sanitizeString(row['Name (Optional - auto-generated if empty)'] || ''),
+        ip_addresses: sanitizeString(row['IPAddress (Require, comma-separated if multiple)'] || ''),
+        os: sanitizeString(row['OS'] || ''),
+        status: sanitizeString(row['Status'] || ''),
+        location: sanitizeString(row['Location'] || ''),
+        type: sanitizeString(row['Type'] || ''),
+        manager: sanitizeString(row['Manager (comma-separated if multiple)'] || ''),
+        system: sanitizeString(row['System (comma-separated if multiple)'] || ''),
+        agent: sanitizeString(row['Agent (comma-separated if multiple)'] || ''),
+        service: sanitizeString(row['Service (comma-separated if multiple)'] || ''),
+        tag: sanitizeString(row['Tag (comma-separated if multiple)'] || ''),
+        description: sanitizeString(row['Description'] || ''),
+        import_status: 'SUCCESS',
+        import_reason: ''
+      };
+
+      try {
+        // Double-check server doesn't exist (safety check)
+        let serverExists = false;
+        
+        // Check by server name
+        if (result.name) {
+          const existingServer = await Server.findByName(result.name);
+          if (existingServer) {
+            serverExists = true;
+            result.import_reason = 'Server name already exists';
+          }
+        }
+        
+        // Check by assigned IP addresses
+        if (!serverExists && result.ip_addresses) {
+          const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
+          for (const ip of ipList) {
+            const existingIP = await IpAddress.findByAddressWithDetails(ip);
+            if (existingIP && existingIP.status === 'assigned') {
+              serverExists = true;
+              result.import_reason = `IP ${ip} is already assigned to a server`;
+              break;
+            }
+          }
+        }
+        
+        if (serverExists) {
+          result.import_status = 'FAILED';
+          result.import_reason = result.import_reason || 'Server already exists';
+        } else {
+          // Generate server name if not provided
+          let serverName = result.name;
+          if (!serverName || serverName.trim() === '') {
+            // Get first IP address
+            const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
+            const firstIP = ipList[0] || 'unknown';
+            
+            // Get platform name and replace spaces with dashes
+            let platformName = '';
+            if (result.os && result.os.trim() !== '') {
+              // Use OS string directly
+              platformName = result.os.trim().replace(/\s+/g, '-').toLowerCase();
+            }
+            
+            // Generate server name: server_<platform>_<first-ip>
+            if (platformName) {
+              serverName = `server_${platformName}_${firstIP}`;
+            } else {
+              serverName = `server_${firstIP}`;
+            }
+          }
+          
+          // Convert OS string to ID
+          let osId = null;
+          if (result.os && result.os.trim() !== '') {
+            const platforms = await Platform.findByNameExact(result.os.trim());
+            if (platforms && platforms.length > 0) {
+              osId = platforms[0].id;
+            }
+          }
+
+          // Create server
+          const serverId = await Server.create({
+            name: serverName,
+            os: osId,
+            status: result.status || null,
+            location: result.location || null,
+            type: result.type || null,
+            description: result.description || null,
+            username,
+            client
+          });
+
+        // Set IP addresses
+        if (result.ip_addresses) {
+          const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
+          const ipIds = [];
+          
+          // Create detailed description for IP
+          const ipDescription = [
+            `Note: This IP address was automatically created from server import feature`,
+            `Server: ${serverName}`,
+            `OS: ${result.os || 'N/A'}`,
+            `Status: ${result.status || 'N/A'}`,
+            `Location: ${result.location || 'N/A'}`,
+            `Manager: ${result.manager || 'N/A'}`,
+            `System: ${result.system || 'N/A'}`,
+            `Agent: ${result.agent || 'N/A'}`,
+            `Service: ${result.service || 'N/A'}`,
+            `Tag: ${result.tag || 'N/A'}`,
+            `Description: ${result.description || 'N/A'}`
+          ].join('\n');
+          
+          for (const ip of ipList) {
+            let ipRecord = await IpAddress.findByAddress(ip);
+            
+            if (!ipRecord) {
+              // Create new IP address if not exists
+              ipRecord = await IpAddress.create({
+                address: ip,
+                description: ipDescription,
+                status: 'assigned',
+                updated_by: username
+              }, client);
+            }
+            
+            ipIds.push(ipRecord.id);
+          }
+          
+          if (ipIds.length > 0) {
+            await Server.setIpAddresses(serverId, ipIds, client);
+            
+            // Set contacts for IP addresses (if managers exist)
+            if (result.manager) {
+              const managerList = result.manager.split(',').map(m => m.trim()).filter(m => m);
+              const managerIds = [];
+              for (const managerEmail of managerList) {
+                const existingContacts = await Contact.findByEmailSearch(managerEmail);
+                if (existingContacts && existingContacts.length > 0) {
+                  managerIds.push(existingContacts[0].id);
+                }
+              }
+              
+              // Set contacts for each IP
+              for (const ipId of ipIds) {
+                if (managerIds.length > 0) {
+                  // @ts-ignore - client parameter is supported by model methods
+                  await IpAddress.setContacts(ipId, managerIds, client);
+                }
+              }
+            }
+          }
+        }
+
+        // Set managers
+        if (result.manager) {
+          const managerList = result.manager.split(',').map(m => m.trim()).filter(m => m);
+          const managerIds = [];
+          for (const managerEmail of managerList) {
+            const existingContacts = await Contact.findByEmailSearch(managerEmail);
+            if (existingContacts && existingContacts.length > 0) {
+              managerIds.push(existingContacts[0].id);
+            }
+          }
+          if (managerIds.length > 0) {
+            await Server.setManagers(serverId, managerIds, client);
+          }
+        }
+
+        // Set systems
+        if (result.system) {
+          const systemList = result.system.split(',').map(s => s.trim()).filter(s => s);
+          const systemIds = [];
+          for (const systemName of systemList) {
+            const existingSystems = await System.findByNameExact(systemName);
+            if (existingSystems && existingSystems.length > 0) {
+              systemIds.push(existingSystems[0].id);
+            }
+          }
+          if (systemIds.length > 0) {
+            await Server.setSystems(serverId, systemIds, client);
+          }
+        }
+
+        // Set agents
+        if (result.agent) {
+          const agentList = result.agent.split(',').map(a => a.trim()).filter(a => a);
+          const agentIds = [];
+          for (const agentName of agentList) {
+            const existingAgents = await Agent.findByNameExact(agentName);
+            if (existingAgents && existingAgents.length > 0) {
+              agentIds.push(existingAgents[0].id);
+            }
+          }
+          if (agentIds.length > 0) {
+            await Server.setAgents(serverId, agentIds, client);
+          }
+        }
+
+        // Set services
+        if (result.service) {
+          const serviceList = result.service.split(',').map(s => s.trim()).filter(s => s);
+          const serviceIds = [];
+          for (const serviceName of serviceList) {
+            const existingServices = await Service.findByNameExact(serviceName);
+            if (existingServices && existingServices.length > 0) {
+              serviceIds.push(existingServices[0].id);
+            }
+          }
+          if (serviceIds.length > 0) {
+            await Server.setServices(serverId, serviceIds, client);
+          }
+        }
+
+        // Set tags
+        if (result.tag) {
+          const tagList = result.tag.split(',').map(t => t.trim()).filter(t => t);
+          const tagIds = [];
+          for (const tagName of tagList) {
+            const existingTags = await Tag.findByNameExact(tagName);
+            if (existingTags && existingTags.length > 0) {
+              tagIds.push(existingTags[0].id);
+            }
+          }
+          if (tagIds.length > 0) {
+            await Server.setTags(serverId, tagIds, client);
+          }
+        }
+        } // End of else block for server creation
+
+      } catch (err) {
+        result.import_status = 'FAILED';
+        result.import_reason = err.message;
+      }
+
+      importResults.push(result);
+    }
+
+    await client.query('COMMIT');
+
+    // Create import results Excel file (same as validation)
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Import Results');
+    
+    // Add headers
+    worksheet.addRow([
+      'Name (Optional - auto-generated if empty)',
+      'IPAddress (Require, comma-separated if multiple)',
+      'OS',
+      'Status',
+      'Location',
+      'Manager (comma-separated if multiple)',
+      'System (comma-separated if multiple)',
+      'Agent (comma-separated if multiple)',
+      'Service (comma-separated if multiple)',
+      'Tag (comma-separated if multiple)',
+      'Description',
+      'Import Status',
+      'Import Reason'
+    ]);
+
+    // Style headers
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+
+    // Add data rows
+    importResults.forEach(result => {
+      const row = worksheet.addRow([
+        result.name,
+        result.ip_addresses,
+        result.os,
+        result.status,
+        result.location,
+        result.manager,
+        result.system,
+        result.agent,
+        result.service,
+        result.tag,
+        result.description,
+        result.import_status,
+        result.import_reason
+      ]);
+
+      // Color code import status
+      if (result.import_status === 'FAILED') {
+        row.getCell(12).font = { color: { argb: 'FFFF0000' } }; // Import Status column
+        row.getCell(13).font = { color: { argb: 'FFFF0000' } }; // Import Reason column
+      } else {
+        row.getCell(12).font = { color: { argb: 'FF008000' } }; // Import Status column
+      }
+    });
+
+    // Set column widths
+    worksheet.columns = [
+      { width: 25 },  // Name
+      { width: 40 },  // IPAddress
+      { width: 15 },  // OS
+      { width: 15 },  // Status
+      { width: 15 },  // Location
+      { width: 30 },  // Manager
+      { width: 25 },  // System
+      { width: 25 },  // Agent
+      { width: 25 },  // Service
+      { width: 25 },  // Tag
+      { width: 30 },  // Description
+      { width: 20 },  // Import Status
+      { width: 50 }   // Import Reason
+    ];
+
+    // Create temp directory if not exists
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const timestamp = Date.now();
+    const excelFileName = `${timestamp}_${originalFileName}_imported.xlsx`;
+    const excelFilePath = path.join(tempDir, excelFileName);
+    await workbook.xlsx.writeFile(excelFilePath);
+
+    // Send Excel file directly
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${excelFileName}"`);
+    res.setHeader('Content-Length', fs.statSync(excelFilePath).size);
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+
+    const fileBuffer = fs.readFileSync(excelFilePath);
+    res.send(fileBuffer);
+
+    // Clean up uploaded file
+    fs.unlinkSync(filePath);
+    
+    // Clean up temp Excel file after a delay
+    setTimeout(() => {
+      try {
+        if (fs.existsSync(excelFilePath)) {
+          fs.unlinkSync(excelFilePath);
+          console.log('Validation file cleaned up:', excelFilePath);
+        }
+      } catch (cleanupErr) {
+        console.error('Error cleaning up validation file:', cleanupErr);
+      }
+    }, 10000); // 10 seconds delay
+
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error importing servers:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Error importing servers: ' + err.message });
+    }
+  } finally {
+    client.release();
+  }
+};
+
+// Download server validation file
+serverController.downloadServerValidationFile = async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const filePath = path.join(process.cwd(), uploadsDir, 'temp', filename);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    
+    res.download(filePath, filename, (err) => {
+      if (err) {
+        console.error('Error downloading validation file:', err);
+      }
+      
+      // Clean up file after download
+      setTimeout(() => {
+        try {
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+            console.log('Downloaded validation file cleaned up:', filePath);
+          }
+        } catch (cleanupErr) {
+          console.error('Error cleaning up downloaded file:', cleanupErr);
+        }
+      }, 5000); // 5 seconds delay
+    });
+  } catch (err) {
+    console.error('Error downloading server validation file:', err);
+    res.status(500).json({ error: 'Error downloading file: ' + err.message });
   }
 };
 

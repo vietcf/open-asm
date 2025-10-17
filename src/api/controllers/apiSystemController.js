@@ -242,11 +242,13 @@ apiSystemController.create = async (req, res) => {
       return res.status(409).json({ error: `System name '${name}' already exists` });
     }
     
-    // Validate level field
-    const levelError = await validateLevel(level);
-    if (levelError) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ error: levelError });
+    // Validate level field if provided
+    if (level !== undefined && level !== null && level !== '') {
+      const levelError = await validateLevel(level);
+      if (levelError) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: levelError });
+      }
     }
     
     // Parse array fields (alias is already array from JSON, don't parse it)
@@ -274,7 +276,7 @@ apiSystemController.create = async (req, res) => {
     const validatedArchitecture = await validateArchitecture(architecture);
     
     // Validate relationships after parsing
-    if (department_id && !(await Unit.exists(department_id))) {
+    if (department_id !== undefined && department_id !== null && department_id !== '' && !(await Unit.exists(department_id))) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Invalid department_id' });
     }
@@ -406,10 +408,12 @@ apiSystemController.update = async (req, res) => {
     if (system_id !== undefined && system_id !== system.system_id) {
       // Validate that system_id is not empty
       if (!system_id || system_id.trim() === '') {
+        await client.query('ROLLBACK');
         return res.status(400).json({ error: 'system_id cannot be empty' });
       }
       
       if (await System.existsBySystemIdExcluding(system_id, id)) {
+        await client.query('ROLLBACK');
         return res.status(409).json({ error: `System ID '${system_id}' already exists` });
       }
     }
@@ -418,10 +422,12 @@ apiSystemController.update = async (req, res) => {
     if (name !== undefined && name !== system.name) {
       // Validate that name is not empty
       if (!name || name.trim() === '') {
+        await client.query('ROLLBACK');
         return res.status(400).json({ error: 'name cannot be empty' });
       }
       
       if (await System.existsByNameExcluding(name, id)) {
+        await client.query('ROLLBACK');
         return res.status(409).json({ error: `System name '${name}' already exists` });
       }
     }
@@ -430,13 +436,14 @@ apiSystemController.update = async (req, res) => {
     if (level !== undefined) {
       const levelError = await validateLevel(level);
       if (levelError) {
+        await client.query('ROLLBACK');
         return res.status(400).json({ error: levelError });
       }
     }
     
     // Validate and parse array fields only if they are provided
     // Validate department_id if provided
-    if (department_id !== undefined && department_id && !(await Unit.exists(department_id))) {
+    if (department_id !== undefined && department_id !== null && department_id !== '' && !(await Unit.exists(department_id))) {
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Invalid department_id' });
     }
@@ -452,6 +459,8 @@ apiSystemController.update = async (req, res) => {
           }
         }
       }
+    } else {
+      domains = undefined; // Keep existing if not provided
     }
     
     // Parse and validate managers array if provided
@@ -465,6 +474,8 @@ apiSystemController.update = async (req, res) => {
           }
         }
       }
+    } else {
+      managers = undefined; // Keep existing if not provided
     }
     
     // Parse and validate ip_addresses array if provided
@@ -478,6 +489,8 @@ apiSystemController.update = async (req, res) => {
           }
         }
       }
+    } else {
+      ip_addresses = undefined; // Keep existing if not provided
     }
     
     // Parse and validate tags array if provided
@@ -491,6 +504,8 @@ apiSystemController.update = async (req, res) => {
           }
         }
       }
+    } else {
+      tags = undefined; // Keep existing if not provided
     }
     
     // Parse and validate fqdn, scopes, architecture if provided

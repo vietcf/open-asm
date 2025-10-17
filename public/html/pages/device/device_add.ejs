@@ -1,122 +1,278 @@
-<div class="container-fluid">
-  <div class="row justify-content-center">
-    <div class="col-md-8 col-lg-6">
-      <div class="card mt-4">
-        <div class="card-header d-flex align-items-center justify-content-between">
-          <h5 class="mb-0">Add Device</h5>
-        </div>
-        <div class="card-body">
-          <% if (typeof error !== 'undefined' && error) { %>
-            <div class="alert alert-danger text-center mx-auto" style="max-width: 400px; margin-bottom: 24px;">
-              <%= error %>
-            </div>
-          <% } %>
-          <% if (typeof success !== 'undefined' && success) { %>
-            <div class="alert alert-success text-center mx-auto" style="max-width: 400px; margin-bottom: 24px;">
-              <%= success %>
-            </div>
-          <% } %>
-          <form id="addDeviceForm" action="/device/device" method="POST">
-            <div class="mb-3">
-              <label class="form-label">Device Type <span class="text-danger">*</span></label>
-              <select id="device-type-select" name="device_type_id" class="form-select form-select-sm select2" required></select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">IP Address(es) <span class="text-danger">*</span></label>
-              <div class="d-flex align-items-center gap-2">
-                <select id="ip-select" name="ip_addresses[]" class="form-control flex-grow-1 align-self-stretch" multiple required style="min-width:220px; min-height:38px;"></select>
-                <button type="button" class="btn btn-outline-success btn-sm align-self-stretch" id="add-ip-btn" title="Add new IP" style="min-width:110px; min-height:38px; white-space:nowrap;"><i class="bi bi-plus-circle"></i> Add IP</button>
-              </div>
-              <div id="ipNotFoundMsg" class="form-text text-danger mt-1" style="display:none;">No IP found, please click <b>Add IP</b> to create a new one.</div>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Device Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control form-control-sm" id="deviceName" name="name" placeholder="Device Name" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Platform (OS)</label>
-              <select id="platform-select" name="platform_id" class="form-select form-select-sm select2"></select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Location</label>
-              <select name="location" class="form-select form-select-sm">
-                <option value="">-- Select location --</option>
-                <% if (locationOptions && Array.isArray(locationOptions)) { locationOptions.forEach(function(opt) { %>
-                  <option value="<%= opt.value %>"><%= opt.label %></option>
-                <% }) } %>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Serial</label>
-              <input type="text" class="form-control form-control-sm" name="serial" placeholder="Serial">
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Management <span class="text-muted" style="font-weight:400; font-size:0.95em;">(Management IP address of the device)</span></label>
-              <input type="text" class="form-control form-control-sm" name="management" placeholder="Management">
-              <div class="form-text text-muted">You can enter multiple values separated by commas (e.g., 192.168.1.1, 192.168.1.2)</div>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Manufacturer</label>
-              <input type="text" class="form-control form-control-sm" name="manufacturer" placeholder="Manufacturer">
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Description</label>
-              <textarea class="form-control form-control-sm" name="description" placeholder="Description" rows="3"></textarea>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Tags</label>
-              <select id="tag-select" name="tags[]" class="form-control" multiple></select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Contacts</label>
-              <select id="contact-select" name="contacts[]" class="form-control" multiple></select>
-            </div>
-            <div class="modal-footer d-flex justify-content-end gap-2" style="padding:0; background:none; border:none;">
-              <button type="submit" class="btn btn-primary btn-sm">Add Device</button>
-              <a href="/device/device" class="btn btn-outline-secondary btn-sm">Cancel</a>
-            </div>
-          </form>
-        </div>
+<!-- Modal Buttons Custom CSS -->
+<link rel="stylesheet" href="/css/modal-buttons.css">
+
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item"><a href="/device/device">Device List</a></li>
+          <li class="breadcrumb-item active">Add Device</li>
+        </ol>
       </div>
     </div>
   </div>
 </div>
+
+<!-- Main content -->
+<section class="app-content">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 col-md-10 col-sm-12">
+      <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Add Device</h5>
+        </div>
+        
+        <!-- Flash Messages (for error cases only) -->
+        <% if (typeof error !== 'undefined' && error) { %>
+          <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
+            <i class="bi bi-exclamation-triangle me-2"></i><%= error %>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+          <script>
+            // Auto-hide error message after 8 seconds (longer for errors)
+            setTimeout(function() {
+              const alert = document.getElementById('errorAlert');
+              if (alert) {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+              }
+            }, 8000);
+          </script>
+        <% } %>
+        
+        <form action="/device/device" method="POST">
+          <div class="card-body">
+            <!-- 1. Device Type -->
+            <div class="mb-3">
+              <label class="form-label">Type <span class="text-danger">*</span></label>
+              <select name="type" class="form-select" data-placeholder="Select type" required>
+                <option value="">-- Select type --</option>
+                <% if (typeof typesOptions !== 'undefined' && typesOptions && typesOptions.length > 0) { %>
+                  <% typesOptions.forEach(function(tp) { %>
+                    <option value="<%= tp.value %>"><%= tp.label %></option>
+                  <% }) %>
+                <% } %>
+              </select>
+            </div>
+            
+            <!-- 2. IP Address(es) -->
+            <div class="mb-3">
+              <label class="form-label">IP Address(es) <span class="text-danger">*</span></label>
+              <div class="d-flex align-items-center gap-2">
+                <select id="ip-select" name="ip_addresses[]" class="form-control flex-grow-1" multiple required></select>
+                <button type="button" class="btn btn-outline-success btn-sm" id="add-ip-btn" title="Add new IP"><i class="bi bi-plus-circle"></i> Add IP</button>
+              </div>
+            </div>
+            
+            <!-- 3. Device Name -->
+            <div class="mb-3">
+              <label class="form-label">Device Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" required>
+            </div>
+            
+            <!-- 4. Location -->
+            <div class="mb-3">
+              <label class="form-label">Location</label>
+              <select name="location" class="form-select" data-placeholder="Select location">
+                <option value="">-- Select location --</option>
+                <% if (typeof locationOptions !== 'undefined' && locationOptions && locationOptions.length > 0) { %>
+                  <% locationOptions.forEach(function(loc) { %>
+                    <option value="<%= loc.value %>"><%= loc.label %></option>
+                  <% }) %>
+                <% } %>
+              </select>
+            </div>
+            
+            <!-- 5. Platform (OS) -->
+            <div class="mb-3">
+              <label class="form-label">Platform (OS)</label>
+              <select id="platform-select" name="os" class="form-select" data-placeholder="Select platform"></select>
+            </div>
+            
+            <!-- 6. Serial Number -->
+            <div class="mb-3">
+              <label class="form-label">Serial Number</label>
+              <input type="text" name="serial_number" class="form-control" placeholder="Enter device serial number">
+            </div>
+            
+            <!-- 7. Management Address -->
+            <div class="mb-3">
+              <label class="form-label">Management Address</label>
+              <input type="text" name="management_address" class="form-control" placeholder="Enter management address(es), separated by commas">
+              <small class="form-text text-muted">Multiple addresses can be separated by commas (e.g., 192.168.1.1, 10.0.0.1)</small>
+            </div>
+            
+            <!-- 8. Manufacturer -->
+            <div class="mb-3">
+              <label class="form-label">Manufacturer</label>
+              <select id="manufacturer-select" name="manufacturer" class="form-select" data-placeholder="Select or type manufacturer">
+                <option value="">-- Select Manufacturer --</option>
+              </select>
+            </div>
+            
+            <!-- 9. Device Role -->
+            <div class="mb-3">
+              <label class="form-label">Device Role</label>
+              <select id="device-role-select" name="device_role" class="form-select" data-placeholder="Select or type device role">
+                <option value="">-- Select Device Role --</option>
+              </select>
+            </div>
+            
+            <!-- 10. Managers -->
+            <div class="mb-3">
+              <label class="form-label">Managers</label>
+              <select id="manager-select" name="managers[]" class="form-select" multiple data-placeholder="Select managers"></select>
+            </div>
+            
+            <!-- 11. Tags -->
+            <div class="mb-3">
+              <label class="form-label">Tags</label>
+              <select id="tag-select" name="tags[]" class="form-select" multiple data-placeholder="Select tags"></select>
+            </div>
+            
+            <!-- 12. Description -->
+            <div class="mb-3">
+              <label class="form-label">Description</label>
+              <textarea name="description" class="form-control" rows="3" placeholder="Device description"></textarea>
+            </div>
+          </div>
+          <div class="card-footer d-flex flex-column flex-lg-row justify-content-lg-end gap-2">
+            <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Add Device</button>
+            <a href="/device/device" class="btn btn-secondary w-100 order-2 order-lg-1">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
 <script src="/vendor/jquery-3.6.0.min.js"></script>
-<link href="/vendor/select2.min.css" rel="stylesheet" />
+<link href="/css/select2.min.css" rel="stylesheet" />
 <link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 <script src="/vendor/select2.min.js"></script>
 <script src="/vendor/bootstrap.min.js"></script>
 <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
+
 <script>
   $(function() {
+    // IP Address select2 AJAX - Bootstrap 5 theme
     $('#ip-select').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select IP address(es)',
-      width: '100%',
       allowClear: true,
+      width: '100%',
       ajax: {
         url: '/network/api/ip-addresses/unassigned',
         dataType: 'json',
         delay: 250,
         data: params => ({ search: params.term }),
-        processResults: function(data, params) {
-          // Nếu không có kết quả, show thông báo
-          if (!data || data.length === 0) {
-            $('#ipNotFoundMsg').show();
-          } else {
-            $('#ipNotFoundMsg').hide();
-          }
-          return { results: data };
-        },
+        processResults: data => ({ results: data }),
         cache: true
       },
       minimumInputLength: 0
     });
+
+    // Manager select2 AJAX - Bootstrap 5 theme
+    $('#manager-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: $('#manager-select').data('placeholder'),
+      allowClear: true,
+      width: '100%',
+      ajax: {
+        url: '/organize/api/contact',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      }
+    });
+
+
+
+    // Type select2 - Bootstrap 5 theme
+    $('select[name="type"]').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select type',
+      allowClear: true,
+      width: '100%'
+    });
+
+
+    // Location select2 - Bootstrap 5 theme
+    $('select[name="location"]').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select location',
+      allowClear: true,
+      width: '100%'
+    });
+
+    // Manufacturer select2 AJAX - Bootstrap 5 theme with tag creation
+    $('#manufacturer-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select or type manufacturer',
+      allowClear: true,
+      width: '100%',
+      tags: true,
+      createTag: function (params) {
+        var term = $.trim(params.term);
+        if (term === '') {
+          return null;
+        }
+        return {
+          id: term,
+          text: term,
+          newTag: true
+        };
+      },
+      ajax: {
+        url: '/device/api/manufacturer',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      }
+    });
+
+    // Device Role select2 AJAX - Bootstrap 5 theme with tag creation
+    $('#device-role-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select or type device role',
+      allowClear: true,
+      width: '100%',
+      tags: true,
+      createTag: function (params) {
+        var term = $.trim(params.term);
+        if (term === '') {
+          return null;
+        }
+        return {
+          id: term,
+          text: term,
+          newTag: true
+        };
+      },
+      ajax: {
+        url: '/device/api/device-role',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      }
+    });
+
+    // Platform (OS) select2 AJAX - Bootstrap 5 theme
     $('#platform-select').select2({
       theme: 'bootstrap-5',
       placeholder: 'Select platform (OS)',
-      width: '100%',
       allowClear: true,
+      width: '100%',
       ajax: {
         url: '/device/api/platform',
         dataType: 'json',
@@ -126,9 +282,11 @@
         cache: true
       }
     });
+
+    // Tag select2 AJAX - Bootstrap 5 theme
     $('#tag-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select tag(s)',
+      placeholder: $('#tag-select').data('placeholder'),
       allowClear: true,
       width: '100%',
       ajax: {
@@ -140,76 +298,41 @@
         cache: true
       }
     });
-    $('#device-type-select').select2({
-      theme: 'bootstrap-5',
-      placeholder: 'Select device type',
-      width: '100%',
-      allowClear: true,
-      ajax: {
-        url: '/device/api/device-type',
-        dataType: 'json',
-        delay: 250,
-        data: params => ({ search: params.term }),
-        processResults: data => ({ results: data }),
-        cache: true
-      }
-    });
-    $('#contact-select').select2({
-      theme: 'bootstrap-5',
-      placeholder: 'Select contact(s)',
-      allowClear: true,
-      width: '100%',
-      multiple: true,
-      ajax: {
-        url: '/organize/api/contact',
-        dataType: 'json',
-        delay: 250,
-        data: params => ({ search: params.term }),
-        processResults: data => ({ results: data }),
-        cache: true
-      }
-    });
-    // Thay đổi nút Add IP: mở tab mới tới trang quản lý IP và tự động bật popup Add IP
-    $('#add-ip-btn').off('click').on('click', function(e) {
-      e.preventDefault();
-      window.open('http://localhost:3000/network/ip-address?add=1', '_blank');
-    });
-    // Auto-fill device name if empty when platform and IP are selected, and convert to lowercase
+
+    // Auto-fill device name if empty when device type and IP are selected, and convert to lowercase
     function autoFillDeviceName() {
       var nameInput = $("input[name='name']");
-      var osText = $('#platform-select').find('option:selected').text() || $('#platform-select').select2('data')[0]?.text || '';
+      var deviceType = $('select[name="type"]').find('option:selected').text() || $('select[name="type"]').select2('data')[0]?.text || '';
       var ipData = $('#ip-select').select2('data');
       var firstIp = ipData && ipData.length > 0 ? ipData[0].text : '';
-      if (nameInput.val().trim() === '' && osText && firstIp) {
-        var firstWord = osText.split(/\s+/)[0];
-        var autoName = (firstWord + '_' + firstIp).toLowerCase();
-        nameInput.val(autoName);
+      if (nameInput.val().trim() === '' && deviceType && firstIp) {
+        // Clean device type: remove "-- Select type --" and convert to lowercase
+        var cleanDeviceType = deviceType.replace(/^--\s*/, '').replace(/\s*--$/, '').toLowerCase();
+        if (cleanDeviceType && cleanDeviceType !== 'select type') {
+          var autoName = cleanDeviceType + '_' + firstIp;
+          nameInput.val(autoName);
+        }
       }
     }
-    $('#platform-select').on('change', autoFillDeviceName);
+    $('select[name="type"]').on('change', autoFillDeviceName);
     $('#ip-select').on('change', autoFillDeviceName);
-    $('#device-type-select, #ip-select').on('change', function() {
-      var deviceTypeText = $('#device-type-select').find('option:selected').text() || $('#device-type-select').select2('data')[0]?.text || '';
-      var ipData = $('#ip-select').select2('data');
-      var firstIp = ipData && ipData.length > 0 ? ipData[0].text : '';
-      var nameInput = $("#deviceName");
-      // Only auto-fill if device name is empty or just generated by previous auto-fill
-      var currentVal = nameInput.val();
-      var autoVal = (deviceTypeText && firstIp) ? (deviceTypeText.split(/\s+/)[0] + '_' + firstIp).toLowerCase() : '';
-      if (!currentVal || currentVal === nameInput.data('autofill')) {
-        nameInput.val(autoVal);
-        nameInput.data('autofill', autoVal);
-      }
-    });
-    // Allow user to freely edit device name
-    $("#deviceName").on('input', function() {
-      // Remove autofill marker so user input is always respected
-      $(this).removeData('autofill');
-    });
     $("input[name='name']").on('input', function() {
+      // Always convert to lowercase on manual input
       var val = $(this).val();
       $(this).val(val.toLowerCase());
     });
+
+    // Add IP button: open new tab to IP management page
+    $('#add-ip-btn').off('click').on('click', function(e) {
+      e.preventDefault();
+      window.open('/network/ip-address?add=1', '_blank');
+    });
+
+    // Fix: Remove blank <option> after select2 is initialized to avoid select2 placeholder bug
+    setTimeout(function() {
+      $('#manager-select, #tag-select').each(function() {
+        $(this).find('option').filter(function() { return !$(this).val(); }).remove();
+      });
+    }, 100);
   });
 </script>
-

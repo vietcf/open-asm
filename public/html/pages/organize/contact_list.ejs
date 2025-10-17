@@ -1,304 +1,444 @@
-<div class="container-fluid">
-  <form class="input-group mb-3 justify-content-end align-items-center" role="search" method="get" action="/organize/contact" style="margin-top: 2.5rem; margin-right: 0.5rem; max-width: 500px; margin-left: auto;">
-    <input class="form-control rounded-start me-2" type="search" name="search" placeholder="Search name, email..." aria-label="Search" value="<%= search %>">
-    <select class="form-select form-select-sm me-2" name="pageSize" onchange="this.form.submit()" style="width:90px;max-width:90px;">
-      <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
-        <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %> / page</option>
-      <% }) %>
-    </select>
-    <button class="btn btn-outline-secondary rounded-end" type="submit"><i class="bi bi-search"></i></button>
-  </form>
-  <div class="row mb-3">
-    <div class="col-12 d-flex justify-content-end align-items-center position-relative">
-      <% if (hasPermission('contact.create')) { %>
-        <button type="button" class="btn btn-primary btn-sm me-2" data-bs-toggle="modal" data-bs-target="#addContactModal">
-          <i class="bi bi-plus"></i> Add Contact
-        </button>
-        <!-- Add Contact Modal -->
-        <div class="modal fade" id="addContactModal" tabindex="-1" aria-labelledby="addContactModalLabel" aria-hidden="true">
-          <div class="modal-dialog">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title" id="addContactModalLabel">Add Contact</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-              </div>
-              <form action="/organize/contact" method="POST">
-                <input type="hidden" name="page" value="<%= page %>">
-                <input type="hidden" name="search" value="<%= search %>">
-                <div class="modal-body">
-                  <div class="mb-3">
-                    <label class="form-label">Name <span class="text-danger">*</span></label>
-                    <input type="text" name="name" class="form-control form-control-sm" required>
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">Email</label>
-                    <input type="email" name="email" class="form-control form-control-sm">
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">Phone</label>
-                    <input type="text" name="phone" class="form-control form-control-sm">
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">Org Unit</label>
-                    <select name="unit_id" class="form-select form-select-sm">
-                      <option value="">None</option>
-                      <% units.forEach(u => { %>
-                        <option value="<%= u.id %>"><%= u.name %></option>
-                      <% }) %>
-                    </select>
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">Position <span class="text-danger">*</span></label>
-                    <select name="position" class="form-select form-select-sm" required>
-                      <option value="MANAGER">MANAGER</option>
-                      <option value="STAFF" selected>STAFF</option>
-                    </select>
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">Description</label>
-                    <textarea name="description" class="form-control form-control-sm" rows="2"></textarea>
-                  </div>
-                </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                  <button type="submit" class="btn btn-primary btn-sm">Add Contact</button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      <% } %>
-      <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
-        <div class="alert alert-danger position-absolute top-0 end-0" style="margin-top:4px; z-index:999;">
-          <%= errorMessage %>
-        </div>
-        <script>setTimeout(()=>{document.querySelector('.alert-danger').remove(); window.history.replaceState({}, '', window.location.pathname);},5000);</script>
-      <% } %>
-      <% if (typeof successMessage !== 'undefined' && successMessage) { %>
-        <div class="alert alert-success position-absolute top-0 end-0" style="margin-top:4px; z-index:999;">
-          <%= successMessage %>
-        </div>
-        <script>setTimeout(()=>{document.querySelector('.alert-success').remove(); window.history.replaceState({}, '', window.location.pathname);},5000);</script>
-      <% } %>
+<!-- Modal Buttons Custom CSS -->
+<link rel="stylesheet" href="/css/modal-buttons.css">
+
+<%
+// ==========================================
+// HELPER FUNCTIONS
+// ==========================================
+
+// Helper function to build pagination URL with all query parameters
+function buildPaginationUrl(targetPage) {
+  const params = new URLSearchParams();
+  
+  // Add page
+  params.set('page', targetPage);
+  
+  // Add search if exists
+  if (typeof search !== 'undefined' && search) {
+    params.set('search', search);
+  }
+  
+  // Add pageSize if exists
+  if (typeof pageSize !== 'undefined' && pageSize) {
+    params.set('pageSize', pageSize);
+  }
+  
+  return '?' + params.toString();
+}
+%>
+
+<!-- ========================================== -->
+<!-- MAIN CONTENT -->
+<!-- ========================================== -->
+
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">Contact List</li>
+        </ol>
+      </div>
     </div>
   </div>
-  <div class="row">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title mb-0">Contact List</h3>
-        </div>
-        <div class="card-body table-responsive p-0">
-          <table class="table table-hover text-nowrap">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>Org Unit</th>
-                <th>Position</th>
-                <th class="text-end">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% if (contactList && contactList.length) { %>
-                <% contactList.forEach((c, i) => { %>
-                  <tr>
-                    <td><%= (page - 1) * 10 + i + 1 %></td>
-                    <td><%= c.name %></td>
-                    <td><%= c.email %></td>
-                    <td><%= c.phone %></td>
-                    <td><%= c.unit_name || '' %></td>
-                    <td><%= c.position %></td>
-                    <td class="text-end">
-                      <button class="btn btn-info btn-sm me-1" title="Show Detail" data-bs-toggle="modal" data-bs-target="#showContactModal-<%= c.id %>"><i class="bi bi-eye"></i></button>
-                      <% if (hasPermission('contact.update')) { %>
-                        <button class="btn btn-warning btn-sm me-1" title="Edit" data-bs-toggle="modal" data-bs-target="#editContactModal-<%= c.id %>"><i class="bi bi-pencil"></i></button>
-                      <% } %>
-                      <% if (hasPermission('contact.delete')) { %>
-                        <form action="/organize/contact/<%= c.id %>?_method=DELETE" method="POST" style="display:inline;">
-                          <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure?')"><i class="bi bi-trash"></i></button>
-                        </form>
-                      <% } %>
-                    </td>
-                  </tr>
-                  <!-- Show Contact Detail Modal -->
-                  <div class="modal fade" id="showContactModal-<%= c.id %>" data-phone="<%= c.phone || '' %>" tabindex="-1" aria-labelledby="showContactModalLabel-<%= c.id %>" aria-hidden="true">
-                    <div class="modal-dialog">
-                      <div class="modal-content">
-                        <div class="modal-header">
-                          <h5 class="modal-title" id="showContactModalLabel-<%= c.id %>">Contact Detail</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                          <dl class="row mb-0">
-                            <dt class="col-sm-4">ID</dt>
-                            <dd class="col-sm-8"><%= c.id %></dd>
-                            <dt class="col-sm-4">Name</dt>
-                            <dd class="col-sm-8"><%= c.name %></dd>
-                            <dt class="col-sm-4">Email</dt>
-                            <dd class="col-sm-8"><%= c.email %></dd>
-                            <dt class="col-sm-4">Phone</dt>
-                            <dd class="col-sm-8"><%= c.phone %></dd>
-                            <dt class="col-sm-4">Org Unit</dt>
-                            <dd class="col-sm-8"><%= c.unit_name || '' %></dd>
-                            <dt class="col-sm-4">Position</dt>
-                            <dd class="col-sm-8"><%= c.position %></dd>
-                            <dt class="col-sm-4">Description</dt>
-                            <dd class="col-sm-8">
-                              <% if (c.description && c.description.trim()) { %>
-                                <div style="white-space: pre-wrap; word-wrap: break-word;"><%= c.description %></div>
-                              <% } else { %>
-                                <span class="text-muted">No description</span>
-                              <% } %>
-                            </dd>
-                          </dl>
-                          <div class="text-center mt-3 contact-image-placeholder" id="contact-image-<%= c.id %>"></div>
-                        </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <!-- Edit Contact Modal -->
-                  <% if (hasPermission('contact.update')) { %>
-                  <div class="modal fade" id="editContactModal-<%= c.id %>" tabindex="-1" aria-labelledby="editContactModalLabel-<%= c.id %>" aria-hidden="true">
-                    <div class="modal-dialog">
-                      <div class="modal-content">
-                        <div class="modal-header">
-                          <h5 class="modal-title" id="editContactModalLabel-<%= c.id %>">Edit Contact</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <form action="/organize/contact/<%= c.id %>?_method=PUT" method="POST">
-                          <div class="modal-body">
-                            <div class="mb-3"><label class="form-label">Name</label><input type="text" name="name" class="form-control form-control-sm" value="<%= c.name %>" required></div>
-                            <div class="mb-3"><label class="form-label">Email</label><input type="email" name="email" class="form-control form-control-sm" value="<%= c.email %>"></div>
-                            <div class="mb-3"><label class="form-label">Phone</label><input type="text" name="phone" class="form-control form-control-sm" value="<%= c.phone %>"></div>
-                            <div class="mb-3">
-                              <label class="form-label">Org Unit</label>
-                              <select name="unit_id" class="form-select form-select-sm">
-                                <option value="">None</option>
-                                <% units.forEach(u => { %>
-                                  <option value="<%= u.id %>" <%= u.id === c.unit_id ? 'selected' : '' %>><%= u.name %></option>
-                                <% }) %>
-                              </select>
-                            </div>
-                            <div class="mb-3">
-                              <label class="form-label">Position</label>
-                              <select name="position" class="form-select form-select-sm" required>
-                                <option value="MANAGER" <%= c.position === 'MANAGER' ? 'selected' : '' %>>MANAGER</option>
-                                <option value="STAFF" <%= c.position === 'STAFF' ? 'selected' : '' %>>STAFF</option>
-                              </select>
-                            </div>
-                            <div class="mb-3">
-                              <label class="form-label">Description</label>
-                              <textarea name="description" class="form-control form-control-sm" rows="2"><%= c.description || '' %></textarea>
-                            </div>
-                          </div>
-                          <div class="modal-footer">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                            <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
-                          </div>
-                        </form>
-                      </div>
-                    </div>
-                  </div>
-                  <% } %>
-                <% }) %>
-              <% } else { %>
-                <tr><td colspan="7" class="text-center">No contacts found</td></tr>
-              <% } %>
-            </tbody>
-          </table>
-        </div>
-        <div class="card-footer clearfix">
-          <div class="d-flex justify-content-between align-items-center px-3 pb-2" style="padding-top: 1rem;">
-            <div>
-              <span>Showing <%= startItem %> - <%= endItem %> of <%= totalCount %> contacts</span>
+</div>
+
+<!-- Main content -->
+<div class="app-content">
+  <div class="container-fluid">
+    <!-- ========================================== -->
+    <!-- SEARCH AND FILTER SECTION -->
+    <!-- ========================================== -->
+    
+    <!-- Search and Page Size Row -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end align-items-center gap-2">
+          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/organize/contact">
+            <!-- Hidden inputs to preserve filter values -->
+            <input type="hidden" name="page" value="1">
+            
+            <div class="input-group input-group-sm" style="width: 250px;">
+              <input class="form-control form-control-sm" type="search" name="search" placeholder="Search Contact Name..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+              <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
             </div>
-            <ul class="pagination pagination-sm m-0 float-end">
-              <% 
-                let startPage = 1;
-                let endPage = totalPages;
-                if (totalPages > 10) {
-                  if (page <= 5) {
-                    startPage = 1;
-                    endPage = 10;
-                  } else if (page + 4 >= totalPages) {
-                    startPage = totalPages - 9;
-                    endPage = totalPages;
-                  } else {
-                    startPage = page - 5 + 1;
-                    endPage = page + 4;
-                  }
-                }
-              %>
-              <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= page - 1 %>&pageSize=<%= pageSize %>" tabindex="-1">Previous</a>
-              </li>
-              <% if (startPage > 1) { %>
-                <li class="page-item"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=1&pageSize=<%= pageSize %>">1</a></li>
-                <% if (startPage > 2) { %>
-                  <li class="page-item disabled"><span class="page-link">...</span></li>
+            <div class="d-flex align-items-center gap-1">
+              <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+              <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
+                <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
+                  <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
+                <% }) %>
+              </select>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- ACTION BUTTONS SECTION -->
+    <!-- ========================================== -->
+    
+    <!-- Action Buttons -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end gap-2">
+          <% if (hasPermission && hasPermission('contact.create')) { %>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addContactModal">
+              <i class="bi bi-plus"></i> Add Contact
+            </button>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- FILTER DATA AND FLASH MESSAGES -->
+    <!-- ========================================== -->
+    
+    <!-- Flash Messages -->
+    <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+      <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
+        <i class="bi bi-check-circle me-2"></i><%= successMessage %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <script>
+        // Auto-hide success message after 5 seconds
+        setTimeout(function() {
+          const alert = document.getElementById('successAlert');
+          if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+          }
+        }, 5000);
+      </script>
+    <% } %>
+    
+    <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+      <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
+        <i class="bi bi-exclamation-triangle me-2"></i><%= errorMessage %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <script>
+        // Auto-hide error message after 8 seconds (longer for errors)
+        setTimeout(function() {
+          const alert = document.getElementById('errorAlert');
+          if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+          }
+        }, 8000);
+      </script>
+    <% } %>
+
+    <!-- ========================================== -->
+    <!-- CONTACT LIST TABLE -->
+    <!-- ========================================== -->
+    
+    <!-- Contact List Table -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title mb-0">Contact List</h3>
+          </div>
+          <div class="card-body table-responsive" style="overflow-x: auto;">
+            <table class="table table-hover" id="contactTable">
+              <thead>
+                <tr>
+                  <th>No.</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Position</th>
+                  <th>Organization</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (contactList && contactList.length > 0) { %>
+                  <% contactList.forEach(function(contact, idx) { %>
+                    <tr>
+                      <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                      <td><%= contact.name %></td>
+                      <td><%= contact.email || '-' %></td>
+                      <td><%= contact.phone || '-' %></td>
+                      <td><%= contact.position || '-' %></td>
+                      <td><%= contact.organization || '-' %></td>
+                      <td class="text-end">
+                        <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showContactDetail('<%= contact.id %>')" data-contact='<%= JSON.stringify(contact) %>'><i class="bi bi-eye"></i></button>
+                        <% if (hasPermission('contact.update')) { %>
+                          <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editContactModal" data-contact-id="<%= contact.id %>" data-contact-name="<%= contact.name %>" data-contact-email="<%= contact.email || '' %>" data-contact-position="<%= contact.position || '' %>" data-contact-phone="<%= contact.phone || '' %>" data-contact-unit-id="<%= contact.unit_id || '' %>" data-contact-description="<%= contact.description || '' %>" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                        <% } %>
+                        <% if (hasPermission('contact.delete')) { %>
+                          <form action="/organize/contact/<%= contact.id %>?_method=DELETE" method="POST" style="display:inline !important;" onsubmit="return confirmDeleteContact(this, '<%= contact.name %>')">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Delete" style="display: inline-block !important; visibility: visible !important; position: relative !important;">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </form>
+                        <% } %>
+                      </td>
+                    </tr>
+                  <% }) %>
+                <% } else { %>
+                  <tr><td colspan="7" class="text-center">No contacts found</td></tr>
                 <% } %>
-              <% } %>
-              <% for (let i = startPage; i <= endPage; i++) { %>
-                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= i %>&pageSize=<%= pageSize %>"><%= i %></a></li>
-              <% } %>
-              <% if (endPage < totalPages) { %>
-                <li class="page-item disabled"><span class="page-link">...</span></li>
-                <li class="page-item"><a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= totalPages %>&pageSize=<%= pageSize %>"><%= totalPages %></a></li>
-              <% } %>
-              <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="?search=<%= encodeURIComponent(search || '') %>&page=<%= page + 1 %>&pageSize=<%= pageSize %>">Next</a>
-              </li>
-            </ul>
+              </tbody>
+            </table>
+          </div>
+          <div class="card-footer clearfix">
+            <div class="d-flex justify-content-between align-items-center px-3 py-2">
+              <div>
+                <% 
+                  // Calculate pagination range
+                  const contactStartPage = Math.max(1, page - 2);
+                  const contactEndPage = Math.min(totalPages, page + 2);
+                %>
+                <span>Showing <%= startItem %> - <%= endItem %> of <%= totalCount %> contacts</span>
+              </div>
+              <ul class="pagination pagination-sm m-0 float-end">
+                <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                  <a class="page-link" href="<%= buildPaginationUrl(page - 1) %>" tabindex="-1">Previous</a>
+                </li>
+                <% if (contactStartPage > 1) { %>
+                  <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(1) %>">1</a></li>
+                  <% if (contactStartPage > 2) { %>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <% } %>
+                <% } %>
+                <% for (let i = contactStartPage; i <= contactEndPage; i++) { %>
+                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="<%= buildPaginationUrl(i) %>"><%= i %></a></li>
+                <% } %>
+                <% if (contactEndPage < totalPages) { %>
+                  <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(totalPages) %>"><%= totalPages %></a></li>
+                <% } %>
+                <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                  <a class="page-link" href="<%= buildPaginationUrl(page + 1) %>">Next</a>
+                </li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<!-- ========================================== -->
+<!-- MODALS SECTION -->
+<!-- ========================================== -->
+
+<!-- Contact Detail Modal -->
+<div class="modal fade" id="contactDetailModal" tabindex="-1" aria-labelledby="contactDetailModalLabel">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="contactDetailModalLabel">Contact Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="contactDetailContent">
+        <!-- Content will be loaded here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Contact Modal -->
+<div class="modal fade" id="addContactModal" tabindex="-1" aria-labelledby="addContactModalLabel">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addContactModalLabel">Add Contact</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="/organize/contact" method="POST">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="contactName" class="form-label">Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="contactName" name="name" required>
+          </div>
+          <div class="mb-3">
+            <label for="contactEmail" class="form-label">Email <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" id="contactEmail" name="email" required>
+          </div>
+          <div class="mb-3">
+            <label for="contactPosition" class="form-label">Position <span class="text-danger">*</span></label>
+            <select class="form-select" id="contactPosition" name="position" required>
+              <option value="">Select Position</option>
+              <% if (positionOptions && positionOptions.length > 0) { %>
+                <% positionOptions.forEach(function(position) { %>
+                  <option value="<%= position.value %>"><%= position.label %></option>
+                <% }) %>
+              <% } %>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="contactPhone" class="form-label">Phone</label>
+            <input type="text" class="form-control" id="contactPhone" name="phone">
+          </div>
+          <div class="mb-3">
+            <label for="contactUnit" class="form-label">Organization</label>
+            <select class="form-select" id="contactUnit" name="unit_id">
+              <option value="">Select Organization</option>
+              <% if (units && units.length > 0) { %>
+                <% units.forEach(function(unit) { %>
+                  <option value="<%= unit.id %>"><%= unit.name %></option>
+                <% }) %>
+              <% } %>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
+          <button type="button" class="btn btn-secondary w-100 order-2 order-lg-1" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Add Contact</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Contact Modal -->
+<div class="modal fade" id="editContactModal" tabindex="-1" aria-labelledby="editContactModalLabel">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editContactModalLabel">Edit Contact</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editContactForm" action="" method="POST">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="editContactName" class="form-label">Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="editContactName" name="name" required>
+          </div>
+          <div class="mb-3">
+            <label for="editContactEmail" class="form-label">Email <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" id="editContactEmail" name="email" required>
+          </div>
+          <div class="mb-3">
+            <label for="editContactPosition" class="form-label">Position <span class="text-danger">*</span></label>
+            <select class="form-select" id="editContactPosition" name="position" required>
+              <option value="">Select Position</option>
+              <% if (positionOptions && positionOptions.length > 0) { %>
+                <% positionOptions.forEach(function(position) { %>
+                  <option value="<%= position.value %>"><%= position.label %></option>
+                <% }) %>
+              <% } %>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="editContactPhone" class="form-label">Phone</label>
+            <input type="text" class="form-control" id="editContactPhone" name="phone">
+          </div>
+          <div class="mb-3">
+            <label for="editContactDescription" class="form-label">Description</label>
+            <textarea class="form-control" id="editContactDescription" name="description" rows="3"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="editContactUnit" class="form-label">Organization</label>
+            <select class="form-select" id="editContactUnit" name="unit_id">
+              <option value="">Select Organization</option>
+              <% if (units && units.length > 0) { %>
+                <% units.forEach(function(unit) { %>
+                  <option value="<%= unit.id %>"><%= unit.name %></option>
+                <% }) %>
+              <% } %>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
+          <button type="button" class="btn btn-secondary w-100 order-2 order-lg-1" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Update Contact</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
 <script>
-(function() {
-  document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('[id^="showContactModal-"]').forEach(function(modalEl) {
-      modalEl.addEventListener('show.bs.modal', function (event) {
-        var contactId = this.id.replace('showContactModal-', '');
-        var imgDiv = document.getElementById('contact-image-' + contactId);
-        if (!imgDiv) return;
-        
-        // Get contact phone from data attribute
-        var phoneValue = this.getAttribute('data-phone') || '';
-        
-        // Only show QR if contact has phone number
-        if (!phoneValue || phoneValue.trim() === '') {
-          imgDiv.innerHTML = '';
-          return;
-        }
-        
-        imgDiv.innerHTML = '<div class="spinner-border text-secondary" role="status" style="width:2rem;height:2rem;"></div>';
-        fetch('/organize/api/contact/' + contactId + '/qrcode')
-          .then(function(res) { return res.json(); })
-          .then(function(data) {
-            if (data && data.image && data.mime) {
-              imgDiv.innerHTML = '<img src="data:' + data.mime + ';base64,' + data.image + '" alt="QR vCard" class="img-thumbnail" style="max-width:180px;max-height:180px;">' +
-                '<div class="small text-muted mt-2">Scan to save to phone contacts</div>';
-            } else {
-              imgDiv.innerHTML = '<div class="text-danger small">Unable to generate QR code</div>';
-            }
-          })
-          .catch(function() { imgDiv.innerHTML = '<div class="text-danger small">Unable to generate QR code</div>'; });
-      });
-      // Clear QR when modal is hidden
-      modalEl.addEventListener('hidden.bs.modal', function() {
-        var contactId = this.id.replace('showContactModal-', '');
-        var imgDiv = document.getElementById('contact-image-' + contactId);
-        if (imgDiv) imgDiv.innerHTML = '';
-      });
-    });
-  });
-})();
+// ==========================================
+// JAVASCRIPT FUNCTIONS
+// ==========================================
+
+// Edit contact function
+function editContact(id, name, email, position, phone, unitId, description) {
+  document.getElementById('editContactForm').action = '/organize/contact/' + id + '?_method=PUT';
+  document.getElementById('editContactName').value = name;
+  document.getElementById('editContactEmail').value = email;
+  document.getElementById('editContactPosition').value = position;
+  document.getElementById('editContactPhone').value = phone;
+  document.getElementById('editContactDescription').value = description || '';
+  document.getElementById('editContactUnit').value = unitId || '';
+}
+
+// Handle edit button click
+$(document).on('click', 'button[data-bs-target="#editContactModal"]', function() {
+  const id = $(this).data('contact-id');
+  const name = $(this).data('contact-name');
+  const email = $(this).data('contact-email');
+  const position = $(this).data('contact-position');
+  const phone = $(this).data('contact-phone');
+  const unitId = $(this).data('contact-unit-id');
+  const description = $(this).data('contact-description');
+  editContact(id, name, email, position, phone, unitId, description);
+});
+
+// Show contact detail
+function showContactDetail(contactId) {
+  const button = document.querySelector(`button[onclick="showContactDetail('${contactId}')"]`);
+  const contactData = JSON.parse(button.getAttribute('data-contact'));
+  
+  const modalElement = document.getElementById('contactDetailModal');
+  const content = document.getElementById('contactDetailContent');
+  
+  let html = '<div class="row">';
+  html += '<div class="col-md-6"><strong>Contact ID:</strong> ' + (contactData.id || '-') + '</div>';
+  html += '<div class="col-md-6"><strong>Name:</strong> ' + (contactData.name || '-') + '</div>';
+  html += '<div class="col-md-6"><strong>Email:</strong> ' + (contactData.email || '-') + '</div>';
+  html += '<div class="col-md-6"><strong>Phone:</strong> ' + (contactData.phone || '-') + '</div>';
+  html += '<div class="col-md-6"><strong>Position:</strong> ' + (contactData.position || '-') + '</div>';
+  html += '<div class="col-md-6"><strong>Organization:</strong> ' + (contactData.organization || '-') + '</div>';
+  html += '<div class="col-md-6"><strong>Created:</strong> ' + (contactData.created_at ? new Date(contactData.created_at).toLocaleDateString() : '-') + '</div>';
+  html += '<div class="col-md-6"><strong>Updated:</strong> ' + (contactData.updated_at ? new Date(contactData.updated_at).toLocaleDateString() : '-') + '</div>';
+  if (contactData.description) {
+    html += '<div class="col-12 mt-3"><strong>Description:</strong><br><div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + contactData.description + '</div></div>';
+  }
+  html += '</div>';
+  
+  content.innerHTML = html;
+  
+  const modal = new bootstrap.Modal(modalElement);
+  modal.show();
+}
+
+// Confirm delete contact
+function confirmDeleteContact(form, contactName) {
+  return confirm(`Are you sure you want to delete contact "${contactName}"? This action cannot be undone.`);
+}
+
+// Helper function to build export URL
+function buildExportUrl() {
+  const params = new URLSearchParams();
+  
+  // Add search if exists
+  if (typeof search !== 'undefined' && search) {
+    params.set('search', search);
+  }
+  
+  // Add pageSize if exists
+  if (typeof pageSize !== 'undefined' && pageSize) {
+    params.set('pageSize', pageSize);
+  }
+  
+  return '/organize/contact/export' + (params.toString() ? '?' + params.toString() : '');
+}
 </script>

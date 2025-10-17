@@ -11,7 +11,7 @@ const router = express.Router();
 // User Management
 router.get('/users', requirePermission('user.read'), administratorController.listUsers);
 router.post('/users', requirePermission('user.create'), administratorController.createUser);
-router.put('/users/:id/edit', requirePermission('user.update'), administratorController.updateUser); // dùng _method=PUT
+router.put('/users/:id', requirePermission('user.update'), administratorController.updateUser); // dùng _method=PUT
 router.delete('/users/:id', requirePermission('user.delete'), administratorController.deleteUser); // dùng method DELETE cho đúng RESTful
 
 // Role Management
@@ -29,7 +29,10 @@ router.delete('/permissions/:id', requirePermission('permission.delete'), admini
 // System Configuration
 router.get('/configuration', requirePermission('configuration.read'), administratorController.listConfigurations);
 router.post('/configuration', requirePermission('configuration.create'), administratorController.createConfiguration);
-router.post('/configuration/:key', requirePermission('configuration.update'), administratorController.updateConfiguration);
+router.delete('/configuration/:key', requirePermission('configuration.delete'), administratorController.deleteConfiguration);
+router.put('/configuration/:key', requirePermission('configuration.update'), administratorController.updateConfiguration);
+router.get('/configuration/export', requirePermission('configuration.read'), administratorController.exportConfiguration);
+router.post('/configuration/import', requirePermission('configuration.create'), administratorController.importConfiguration);
 
 // System Log
 router.get('/log', requirePermission('system_log.read'), administratorController.listSystemLogs);

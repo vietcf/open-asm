@@ -137,7 +137,15 @@ class System {
     const executor = client || pool;
     if (ip_addresses && ip_addresses.length > 0) {
       for (const ipId of ip_addresses) {
-        await executor.query('INSERT INTO system_ip (system_id, ip_id) VALUES ($1, $2)', [systemId, ipId]);
+        try {
+          await executor.query('INSERT INTO system_ip (system_id, ip_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [systemId, ipId]);
+        } catch (error) {
+          // Ignore duplicate key errors, but log other errors
+          if (error.code !== '23505') {
+            console.error('Error adding IP to system:', error);
+            throw error;
+          }
+        }
       }
     }
   }
@@ -307,7 +315,7 @@ class System {
         u.name AS department_name,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email)) FILTER (WHERE c.id IS NOT NULL), '[]') AS contacts,
-        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip', ip.ip_address, 'server_name', srv.name)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip', ip.ip_address, 'server_name', srv.name, 'subnet_zone', sub.zone, 'subnet_environment', sub.environment)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', d.id, 'domain', d.domain)) FILTER (WHERE d.id IS NOT NULL), '[]') AS domains,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', f.id, 'name', f.original_name, 'url', f.file_path)) FILTER (WHERE f.id IS NOT NULL), '[]') AS docs
       FROM systems s
@@ -319,6 +327,13 @@ class System {
       LEFT JOIN system_ip sip ON sip.system_id = s.id
       LEFT JOIN ip_addresses ip ON ip.id = sip.ip_id
       LEFT JOIN servers srv ON ip.server_id = srv.id
+      LEFT JOIN LATERAL (
+        SELECT zone, environment
+        FROM subnets sub
+        WHERE sub.address >>= ip.ip_address::inet
+        ORDER BY masklen(sub.address) DESC
+        LIMIT 1
+      ) sub ON true
       LEFT JOIN system_domain sd ON sd.system_id = s.id
       LEFT JOIN domains d ON d.id = sd.domain_id
       LEFT JOIN file_uploads f ON f.object_type = 'system' AND f.object_id = s.id

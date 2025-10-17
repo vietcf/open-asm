@@ -69,6 +69,19 @@ class Contact {
   }
 
   /**
+   * Get a contact by name (case-insensitive)
+   * @param {string} name
+   * @returns {Promise<Object|null>}
+   */
+  static async findByName(name) {
+    const result = await pool.query(
+      'SELECT * FROM contacts WHERE lower(name) = lower($1)',
+      [name]
+    );
+    return result.rows[0];
+  }
+
+  /**
    * Update a contact
    * @param {number} id
    * @param {Object} data

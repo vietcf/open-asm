@@ -1,6 +1,26 @@
-<div class="container-fluid">
-  <div class="row justify-content-center">
-    <div class="col-lg-7 col-md-9">
+<!-- Modal Buttons Custom CSS -->
+<link rel="stylesheet" href="/css/modal-buttons.css">
+
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item"><a href="/system/system">System List</a></li>
+          <li class="breadcrumb-item active">Edit System</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main content -->
+<section class="app-content">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 col-md-10 col-sm-12">
       <div class="card mt-4">
         <div class="card-header d-flex justify-content-between align-items-center">
           <h5 class="mb-0">Edit System</h5>
@@ -25,11 +45,11 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Description</label>
-              <textarea name="description" class="form-control form-control-sm" rows="5" placeholder="Enter system description (optional)"><%= system.description || '' %></textarea>
+              <textarea name="description" class="form-control form-control-sm" rows="5" placeholder="Please provide the following information: 1) What business functions/features does this system provide? 2) What components does the system include? 3) Who are the target users of this system?"><%= system.description || '' %></textarea>
             </div>
             <div class="mb-3">
               <label class="form-label">Level</label>
-              <select name="level" class="form-select form-select-sm">
+              <select name="level" class="form-select">
                 <option value="">-- Select Level --</option>
                 <% if (typeof levelOptions !== 'undefined' && Array.isArray(levelOptions)) { %>
                   <% levelOptions.forEach(function(opt) { %>
@@ -40,7 +60,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Department (Unit)</label>
-              <select id="unit-select" name="department_id" class="form-select form-select-sm">
+              <select id="unit-select" name="department_id" class="form-select">
                 <% if (system.department_id && system.department_name) { %>
                   <option value="<%= system.department_id %>" selected><%= system.department_name %></option>
                 <% } %>
@@ -48,43 +68,23 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Domains</label>
-              <select id="domain-select" name="domains[]" class="form-control" multiple>
-                <% if (typeof selectedDomains !== 'undefined' && Array.isArray(selectedDomains)) { %>
-                  <% selectedDomains.forEach(function(domain) { %>
-                    <option value="<%= domain.id %>" selected><%= domain.name %></option>
-                  <% }) %>
-                <% } %>
-              </select>
+              <select id="domain-select" name="domains[]" class="form-select" multiple data-placeholder="Select domains"></select>
             </div>
             <div class="mb-3">
               <label class="form-label">Managers</label>
-              <select id="manager-select" name="managers[]" class="form-control" multiple>
-                <% if (selectedManagerObjects && selectedManagerObjects.length > 0) { %>
-                  <% selectedManagerObjects.forEach(function(contact) { %>
-                    <option value="<%= contact.id %>" selected><%= contact.name %> (<%= contact.email %>)</option>
-                  <% }) %>
-                <% } %>
-              </select>
+              <select id="manager-select" name="managers[]" class="form-select" multiple data-placeholder="Select contacts"></select>
             </div>
             <div class="mb-3">
               <label class="form-label">IP Addresses</label>
-              <div class="d-flex align-items-center gap-2">
-                <select id="ip-select" name="ip_addresses[]" class="form-control flex-grow-1" multiple>
-                  <% if (ipAddresses && selectedIPs) { %>
-                    <% ipAddresses.forEach(function(ip) { %>
-                      <option value="<%= ip.id %>" <%= selectedIPs.includes(ip.id) ? 'selected' : '' %>><%= ip.ip_address %></option>
-                    <% }) %>
-                  <% } %>
-                </select>
-              </div>
-            </divb
+              <select id="ip-select" name="ip_addresses[]" class="form-select" multiple data-placeholder="Select IP addresses"></select>
+            </div>
             <div class="mb-3">
               <label class="form-label">Tags</label>
-              <select id="tag-select" name="tags[]" class="form-control" multiple></select>
+              <select id="tag-select" name="tags[]" class="form-select" multiple data-placeholder="Select tags"></select>
             </div>
             <div class="mb-3">
               <label class="form-label">Scope user access</label>
-              <select id="scope-select" name="scopes[]" class="form-control" multiple>
+              <select id="scope-select" name="scopes[]" class="form-select" multiple>
                 <% if (scopeOptions && scopeOptions.length > 0) { %>
                   <% scopeOptions.forEach(option => { %>
                     <option value="<%= option.id %>" <%= (system.scopes && system.scopes.includes(option.id)) ? 'selected' : '' %>><%= option.text %></option>
@@ -143,18 +143,18 @@
               </div>
             </div>
           </div>
-          <div class="card-footer text-end">
-            <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
-            <a href="/system/system" class="btn btn-outline-secondary btn-sm ms-2">Cancel</a>
+          <div class="card-footer d-flex flex-column flex-lg-row justify-content-lg-end gap-2">
+            <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Save Changes</button>
+            <a href="/system/system" class="btn btn-secondary w-100 order-2 order-lg-1">Cancel</a>
           </div>
         </form>
       </div>
     </div>
   </div>
-</div>
+</section>
 <!-- jQuery, Select2, Bootstrap, Font Awesome (local) -->
 <script src="/vendor/jquery-3.6.0.min.js"></script>
-<link href="/vendor/select2.min.css" rel="stylesheet" />
+<link href="/css/select2.min.css" rel="stylesheet" />
 <link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 <script src="/vendor/select2.min.js"></script>
 <script src="/vendor/bootstrap.min.js"></script>
@@ -172,7 +172,7 @@
   $(function() {
     $('#manager-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select contacts',
+      placeholder: $('#manager-select').data('placeholder'),
       allowClear: true,
       width: '100%',
       ajax: {
@@ -200,7 +200,7 @@
     });
     $('#ip-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select IP addresses',
+      placeholder: $('#ip-select').data('placeholder'),
       allowClear: true,
       width: '100%',
       ajax: {
@@ -214,7 +214,7 @@
     });
     $('#tag-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select tag(s)',
+      placeholder: $('#tag-select').data('placeholder'),
       allowClear: true,
       width: '100%',
       ajax: {
@@ -228,7 +228,7 @@
     });
     $('#domain-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select domain(s)',
+      placeholder: $('#domain-select').data('placeholder'),
       allowClear: true,
       width: '100%',
       ajax: {
@@ -288,8 +288,29 @@
         }
       });
     }
+    
+    // Load selected IP addresses for edit (nếu có)
+    <% if (typeof ipAddresses !== 'undefined' && ipAddresses && ipAddresses.length > 0) { %>
+      <% ipAddresses.forEach(function(ip) { %>
+        var ipOption = new Option('<%= ip.ip_address || ip.ip %>', '<%= ip.id %>', true, true);
+        $('#ip-select').append(ipOption).trigger('change');
+      <% }); %>
+    <% } %>
+    // Load selected managers (contacts) for edit (nếu có)
+    <% if (typeof selectedManagerObjects !== 'undefined' && selectedManagerObjects && selectedManagerObjects.length > 0) { %>
+      <% selectedManagerObjects.forEach(function(contact) { %>
+        var managerOption = new Option('<%= contact.name %> (<%= contact.email %>)', '<%= contact.id %>', true, true);
+        $('#manager-select').append(managerOption).trigger('change');
+      <% }); %>
+    <% } %>
+    
     // Load selected domains for edit (nếu có)
-    // Đã truyền domain name/id từ backend nên không cần AJAX này nữa
+    <% if (typeof selectedDomains !== 'undefined' && selectedDomains && selectedDomains.length > 0) { %>
+      <% selectedDomains.forEach(function(domain) { %>
+        var domainOption = new Option('<%= domain.name %>', '<%= domain.id %>', true, true);
+        $('#domain-select').append(domainOption).trigger('change');
+      <% }); %>
+    <% } %>
     // Add Manager button click (chỉ chạy nếu tồn tại nút add-manager-btn)
     var addBtn = document.getElementById('add-manager-btn');
     if (addBtn) {

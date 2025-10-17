@@ -11,6 +11,7 @@ export default async (pool) => {
       management_address VARCHAR(255),
       description TEXT,
       manufacturer VARCHAR(255),
+      device_role VARCHAR(255),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_by VARCHAR(64)
