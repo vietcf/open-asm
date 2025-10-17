@@ -110,3 +110,8 @@ debug*.js
 *diagram*.txt
 *guide*.txt
 *description*.txt
+
+#IDE and editor files
+.cursor/
+.cursorrules
+trash/
