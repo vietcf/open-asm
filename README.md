@@ -10,6 +10,7 @@ A comprehensive network and system management platform built with Node.js, Expre
 - **IP Address Management**: Track and manage IP addresses with subnet information
 - **Subnet Management**: Configure network subnets with Zone and Environment classification
 - **Firewall Management**: Create and manage firewall rules and policies
+- **System Management**: Manage systems and their components with full CRUD operations
 - **User Authentication**: Secure login with session management
 - **Two-Factor Authentication (2FA)**: Enhanced security with TOTP support
 - **Role-Based Access Control**: Granular permissions and role management
@@ -32,6 +33,13 @@ A comprehensive network and system management platform built with Node.js, Expre
 - **System Configuration**: Configure application settings
 - **Backup & Migration**: Database migration and seeding tools
 
+### API Features
+- **RESTful API**: Complete REST API for all resources
+- **Partial Update Support**: PATCH operations for efficient updates
+- **JWT Authentication**: Secure API access with JWT tokens
+- **Swagger Documentation**: Interactive API documentation
+- **Error Handling**: Comprehensive error handling and validation
+
 ## 📋 Prerequisites
 
 ### For Docker Compose (Recommended)
@@ -39,8 +47,8 @@ A comprehensive network and system management platform built with Node.js, Expre
 - **Docker Compose** >= 2.0.0
 
 ### For Local Development
-- **Node.js** >= 16.0.0
-- **PostgreSQL** >= 12.0
+- **Node.js** >= 22.0.0
+- **PostgreSQL** >= 15.0
 - **PM2** (for production deployment)
 - **Nginx** (recommended for reverse proxy)
 - **pg_dump** (for database backups)
@@ -48,411 +56,377 @@ A comprehensive network and system management platform built with Node.js, Expre
 
 ## 🛠️ Installation
 
-1. **Clone the repository**
+### Docker Compose Installation (Recommended)
+
+1. **Clone the repository**:
 ```bash
-git clone <repository-url>
+git clone https://github.com/vietcf/open-asm.git
 cd open-asm
 ```
 
-### Option A: Docker Compose (Recommended)
-
-2. **Set up environment variables**
+2. **Create environment file**:
 ```bash
-cp .env.sample .env
-# Edit .env file if needed (default values work for Docker)
+cp .env.sample .env.docker
+# Edit .env.docker with your configuration
 ```
 
-3. **Generate SSL certificates**
+3. **Start the application**:
 ```bash
-./setup-self-signed-ssl.sh
+docker-compose up --build -d
 ```
 
-4. **Start the application**
-```bash
-docker-compose up -d
-```
+4. **Access the application**:
+- Web Interface: https://localhost:8443
+- API Documentation: https://localhost:8443/api-docs
+- PgAdmin: http://localhost:8888
 
-That's it! The application will be available at `https://<your-host>:443`
+### Local Development Installation
 
-### Option B: Local Development
-
-2. **Install dependencies**
+1. **Install dependencies**:
 ```bash
 npm install
 ```
-**Note**: Make sure you run `npm install` (not `node install`) to install the project dependencies.
 
-3. **Set up environment variables**
-Copy the sample environment file and update the values:
+2. **Setup database**:
 ```bash
-cp .env.sample .env
+# Create PostgreSQL database
+createdb open_asm
+
+# Run migrations
+node migrations/init_all_tables.js
+node migrations/init_data.js
 ```
 
-Then edit the `.env` file with your actual values:
+3. **Configure environment**:
+```bash
+cp .env.sample .env
+# Edit .env with your configuration
+```
+
+4. **Start the application**:
+```bash
+# Development
+npm run dev
+
+# Production
+npm start
+```
+
+## 🔧 Configuration
+
+### Environment Variables
+
+Create a `.env` file with the following variables:
+
 ```env
 # Database Configuration
-POSTGRES_HOST=127.0.0.1
-POSTGRES_DB=openasm
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=your-database-password
+POSTGRES_HOST=localhost
 POSTGRES_PORT=5432
-POSTGRES_SSL=false
+POSTGRES_DB=open_asm
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_password
 
 # Application Configuration
-NODE_ENV=development
+NODE_ENV=production
 PORT=3000
-SESSION_SECRET=your-super-secret-session-key-change-this
+SESSION_SECRET=your_session_secret
 
-# Security Configuration
-JWT_SECRET=your-jwt-secret-key-change-this
-JWT_EXPIRES_IN=8h
-
-# File Upload Configuration
-FILE_UPLOAD_DRIVER=local
-UPLOADS_DIR=public/uploads
+# JWT Configuration
+JWT_SECRET=your_jwt_secret
+JWT_EXPIRES_IN=24h
 
 # Backup Configuration
 BACKUP_FREQUENCY=daily
 BACKUP_RETENTION=7
+BACKUP_DIR=./backups
+
+# File Upload Configuration
+UPLOAD_DIR=./public/uploads
+MAX_FILE_SIZE=10485760
+
+# SSL Configuration (for HTTPS)
+SSL_CERT_PATH=./ssl/cert.pem
+SSL_KEY_PATH=./ssl/key.pem
 ```
 
-4. **Database Setup**
+### Docker Configuration
 
-First, create the PostgreSQL database and user:
+For Docker deployment, use `.env.docker`:
 
-```sql
--- 1. Create Database
-CREATE DATABASE openasm;
+```env
+# Database Configuration
+POSTGRES_HOST=db
+POSTGRES_PORT=5432
+POSTGRES_DB=open_asm
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres123
 
--- 2. Create User (if not exists)
--- Note: 'postgres' user usually exists by default
--- If you want to create a custom user:
--- CREATE USER postgres WITH PASSWORD 'your-database-password';
+# Application Configuration
+NODE_ENV=production
+PORT=3000
+SESSION_SECRET=docker_session_secret
 
--- 3. Grant database privileges
-GRANT ALL PRIVILEGES ON DATABASE openasm TO postgres;
-
--- 4. Connect to the database
-\c openasm
-
--- 5. Grant schema privileges
-GRANT ALL ON SCHEMA public TO postgres;
-GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO postgres;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO postgres;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO postgres;
+# JWT Configuration
+JWT_SECRET=docker_jwt_secret
+JWT_EXPIRES_IN=24h
 ```
 
-Then initialize the application tables and data:
+## 🐳 Docker Commands
 
+### Build and Run
 ```bash
-# Initialize database tables (run once for new installation)
-node migrations/init_all_tables.js
+# Build and start all services
+docker-compose up --build -d
 
-# Run migrations (only when database schema changes)
-node migrations/migrate_tables.js
+# Build specific service
+docker-compose build app
 
-# Seed sample data (optional - for testing/demo)
-node migrations/sample/seed.js
-```
-
-## 🚦 Running the Application
-
-### Docker Compose (Recommended)
-The easiest way to run the application:
-
-```bash
-# 1. Generate SSL certificates (one-time setup)
-./setup-self-signed-ssl.sh
-
-# 2. Start all services
+# Start services
 docker-compose up -d
 
-# 3. Check status
+# Stop services
+docker-compose down
+```
+
+### Docker Image Management
+```bash
+# Save Docker images
+./save-docker-images.sh
+
+# Or manually save specific image
+sudo docker save openasm_app:4.0.0 | gzip > openasm_app_4.0.0.tar.gz
+
+# Load Docker image
+sudo docker load < openasm_app_4.0.0.tar.gz
+```
+
+### Logs and Monitoring
+```bash
+# View logs
+docker-compose logs -f app
+docker-compose logs -f db
+docker-compose logs -f nginx
+
+# Check container status
 docker-compose ps
-
-# 4. View logs
-docker-compose logs -f
 ```
 
-The application will be available at:
-- **HTTP**: `http://<your-host>:80`
-- **HTTPS**: `https://<your-host>:443`
+## 📊 API Documentation
 
-### Development Mode (Local)
+### Base URL
+- **Development**: http://localhost:3000/api/v1
+- **Production**: https://localhost:8443/api/v1
+
+### Authentication
+All API endpoints require JWT authentication:
+
 ```bash
-# Using nodemon for auto-restart
-npm run dev
+# Login to get token
+curl -X POST https://localhost:8443/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "admin123"}'
 
-# Or direct node execution
-node src/app.js
+# Use token in requests
+curl -X GET https://localhost:8443/api/v1/systems \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
-### Production Mode (Local)
-```bash
-# Using PM2 process manager
-pm2 start ecosystem.config.json
+### Available Endpoints
 
-# Or using the provided script
-./pm2.sh
-```
+#### Systems API
+- `GET /api/v1/systems` - List all systems
+- `POST /api/v1/systems` - Create new system
+- `GET /api/v1/systems/:id` - Get system by ID
+- `PUT /api/v1/systems/:id` - Update system
+- `DELETE /api/v1/systems/:id` - Delete system
+- `GET /api/v1/systems/find?name=system_name` - Find systems by name
 
-The application will be available at `http://<your-host>:3000` (development only)
+#### Components API
+- `GET /api/v1/components` - List all components
+- `POST /api/v1/components` - Create new component
+- `GET /api/v1/components/:id` - Get component by ID
+- `PUT /api/v1/components/:id` - Update component
+- `DELETE /api/v1/components/:id` - Delete component
+- `GET /api/v1/components/find?name=component_name` - Find components by name
 
-## ⚙️ Dynamic Parameter Configuration (System Configuration UI)
+#### Other APIs
+- **Devices**: `/api/v1/devices`
+- **Servers**: `/api/v1/servers`
+- **IP Addresses**: `/api/v1/ip-addresses`
+- **Subnets**: `/api/v1/subnets`
+- **Domains**: `/api/v1/domains`
+- **Firewall Rules**: `/api/v1/rules`
+- **Contacts**: `/api/v1/contacts`
+- **Users**: `/api/v1/users`
 
-The application supports dynamic configuration of system parameters directly from the web UI (Administrator → System Configuration).
+### API Features
+- **Partial Updates**: Use PATCH or PUT with only changed fields
+- **Pagination**: `?page=1&pageSize=10`
+- **Search**: `?search=keyword`
+- **Filtering**: `?tags[]=1&tags[]=2`
+- **Sorting**: `?sort=name&order=asc`
 
-### How to Use
+## 🔐 Security
 
-1. **Navigate to:** `Administrator` → `System Configuration` in the web interface.
-2. **Add/Edit Configuration:**
-	- Click **Add Configuration** to create a new parameter.
-	- Click the edit (pencil) icon to update an existing parameter.
-3. **Common Parameters:**
-	- `page_size`: Controls allowed page size options for all lists (e.g. `10,20,50,100` or `[10,20,50,100]`).
-	- `device_page_size`: (optional) Override page size options for Device List only.
-	- `system_level`: JSON object/array for system level options (see below).
-	- `device_location`, `server_type`, `ip_address_status`, ...: Option lists for select fields, as JSON array or string.
+### Authentication
+- **Session-based**: For web interface
+- **JWT-based**: For API access
+- **Two-Factor Authentication**: TOTP support
 
-### Example: Configure Page Size
+### Authorization
+- **Role-based Access Control**: Granular permissions
+- **Resource-level Permissions**: Per-resource access control
+- **API Key Management**: Secure API access
 
-| Key              | Value                | Description                        |
-|------------------|----------------------|------------------------------------|
-| `page_size`      | `10,20,50,100`       | Allowed page sizes for all lists   |
-| `device_page_size` | `[10,20,50,100]`   | (Optional) Device List page sizes  |
-
-### Example: Configure System Level
-
-| Key            | Value (JSON)                                                                                 | Description                |
-|----------------|---------------------------------------------------------------------------------------------|----------------------------|
-| `system_level` | `{ "levels": [ { "value": "1", "label": "Level 1" }, { "value": "2", "label": "Level 2" } ] }` | System level options       |
-
-### Notes
-- Most select/multi-select option lists (device type, location, status, etc.) are loaded from the configuration table and can be managed via the UI.
-- Changes take effect immediately after saving.
-- For advanced options, use valid JSON for array/object values.
-
-See also: **Administrator → System Configuration** in the app for a full list of configurable parameters.
+### Data Protection
+- **Password Hashing**: bcrypt with salt
+- **HTTPS**: SSL/TLS encryption
+- **Input Validation**: Comprehensive validation
+- **SQL Injection Protection**: Parameterized queries
 
 ## 📁 Project Structure
 
 ```
 open-asm/
 ├── src/
-│   ├── app.js              # Main application entry point
-│   ├── api/                # API routes and controllers
-│   ├── controllers/        # Business logic controllers
-│   ├── middlewares/        # Custom middleware functions
+│   ├── api/                 # API routes and controllers
+│   ├── controllers/         # Web controllers
 │   ├── models/             # Database models
-│   ├── routes/             # Express route definitions
-│   ├── types/              # TypeScript type definitions
-│   └── utils/              # Utility functions (including backup job)
-├── config/                 # Configuration files
-├── migrations/             # Database migrations and seeds
-├── public/                 # Static assets (CSS, JS, images)
-├── logs/                   # Application logs
-├── backups/                # Database backup files
-├── uploads/                # File uploads directory
-├── .env.sample             # Environment variables template
-├── ecosystem.config.json   # PM2 configuration
-└── docker-compose.yml      # Docker configuration
+│   ├── routes/             # Web routes
+│   ├── middlewares/        # Custom middlewares
+│   └── utils/              # Utility functions
+├── public/
+│   ├── html/               # EJS templates
+│   ├── css/                # Stylesheets
+│   ├── js/                 # Client-side JavaScript
+│   └── uploads/            # File uploads
+├── migrations/             # Database migrations
+├── tests/                  # Test files
+├── docker-compose.yml      # Docker configuration
+├── Dockerfile             # Docker image definition
+└── README.md              # This file
 ```
-
-## 🔧 Configuration
-
-### Database Configuration
-The application uses PostgreSQL with connection pooling. Configure your database settings in the `.env` file.
-
-### Session Configuration
-Sessions are configured with Express session middleware. Update the session secret in your environment variables.
-
-### File Upload Configuration
-File uploads support both local storage and AWS S3. Configure AWS credentials for S3 integration.
-
-## 🛡️ Security
-
-### Authentication
-- Session-based authentication with secure cookies
-- Password hashing using bcrypt
-- Two-factor authentication (2FA) with TOTP
-
-### Authorization
-- Role-based access control (RBAC)
-- Granular permissions system
-- Middleware-based route protection
-
-### SSL/TLS
-Use the provided script to set up self-signed SSL certificates:
-```bash
-./setup-self-signed-ssl.sh
-```
-
-## 🔥 Firewall Setup
-
-Configure system firewall rules using the provided script:
-```bash
-./setup-firewall.sh
-```
-
-## 📊 API Documentation
-
-The application includes Swagger/OpenAPI documentation for API endpoints. Access it at:
-```
-https://<your-host>:443/api-docs
-```
-
-## 🗄️ Database
-
-### Initial Setup
-For new installations, run these commands once:
-```bash
-# Create all database tables
-node migrations/init_all_tables.js
-
-# Seed sample data (optional)
-node migrations/sample/seed.js
-```
-
-### Schema Updates
-When database schema changes (after code updates), run:
-```bash
-# Apply schema changes
-node migrations/migrate_tables.js
-```
-
-**Note**: Only run migrations when you've updated the code and there are database schema changes.
-
-### Available Tables
-- **Users and Authentication**: User accounts, roles, and permissions
-- **Devices and Systems**: Network devices, servers, and system components
-- **Networks and Subnets**: Network infrastructure with Zone and Environment support
-- **IP Addresses**: IP address tracking with subnet relationships
-- **Servers and Services**: Server management and service configurations
-- **Firewall Rules**: Network security rules and policies
-- **Permissions and Roles**: Access control and authorization
-- **System Logs**: Application and system event logging
-- **File Uploads**: File management and storage
-- **Configuration**: Dynamic system parameter configuration
-- **Contacts**: Contact information management
-- **Tags**: Resource tagging system
 
 ## 🚀 Deployment
 
-### Docker Compose (Recommended)
+### Production Deployment
+
+1. **Using Docker Compose**:
 ```bash
-# Start all services
-docker-compose up -d
+# Clone repository
+git clone https://github.com/vietcf/open-asm.git
+cd open-asm
 
-# Monitor services
-docker-compose ps
+# Configure environment
+cp .env.sample .env.docker
+# Edit .env.docker
 
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-
-# Restart services
-docker-compose restart
+# Deploy
+docker-compose up --build -d
 ```
 
-### Using PM2 (Local)
+2. **Using PM2**:
 ```bash
+# Install PM2
+npm install -g pm2
+
 # Start application
 pm2 start ecosystem.config.json
 
-# Monitor application
-pm2 monit
-
-# View logs
-pm2 logs open-asm
+# Save PM2 configuration
+pm2 save
+pm2 startup
 ```
 
-### Nginx Configuration
-Use the provided `nginx.conf` for reverse proxy setup.
+3. **Using Nginx**:
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+    return 301 https://$server_name$request_uri;
+}
 
-## 📝 Logging
-
-The application uses a comprehensive logging system:
-- **Combined logs**: `logs/combined.log`
-- **Error logs**: `logs/error.log`
-- **Output logs**: `logs/out.log`
-
-Logs are automatically rotated and cleaned up using scheduled jobs.
-
-## 💾 Database Backup
-
-The application includes an automated database backup system that creates compressed PostgreSQL dumps on a scheduled basis.
-
-### Backup Configuration
-
-Add these variables to your `.env` file to configure the backup job:
-
-```env
-# Backup Configuration
-# Backup frequency: daily, weekly, monthly
-BACKUP_FREQUENCY=daily
-
-# Number of backups to keep (default: 7)
-BACKUP_RETENTION=7
-
-# Backup directory (default: backups folder in app root)
-# BACKUP_DIR=/path/to/backup/directory
+server {
+    listen 443 ssl;
+    server_name your-domain.com;
+    
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+    
+    location / {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
 ```
 
-### Configuration Options
+## 🔧 Development
 
-#### BACKUP_FREQUENCY
-- **daily**: Backup every day at 2:00 AM
-- **weekly**: Backup every Sunday at 2:00 AM  
-- **monthly**: Backup on the 1st day of each month at 2:00 AM
-- **default**: daily
-
-#### BACKUP_RETENTION
-- Number of backup files to keep
-- Old backups will be automatically deleted
-- **default**: 7
-
-#### BACKUP_DIR
-- Directory to store backup files
-- If not specified, uses `backups/` folder in app root
-- Directory will be created automatically if it doesn't exist
-
-### Backup Files
-
-- **Format**: `backup_YYYY-MM-DDTHH-mm-ss-sssZ.sql.gz`
-- **Compression**: Compressed with gzip for smaller file size
-- **Content**: Contains complete database dump
-
-### Example Configuration
-
-```env
-BACKUP_FREQUENCY=weekly
-BACKUP_RETENTION=30
-BACKUP_DIR=/var/backups/open-asm
-```
-
-This will:
-- Create backup every Sunday at 2:00 AM
-- Keep 30 backup files
-- Store backups in `/var/backups/open-asm/`
-
-### Manual Backup
-
-You can also create manual backups using `pg_dump`:
-
+### Running Tests
 ```bash
-# Create manual backup
-pg_dump -h localhost -U postgres -d openasm | gzip > backup_manual_$(date +%Y%m%d_%H%M%S).sql.gz
+# Run all tests
+npm test
+
+# Run specific test
+npm test -- --grep "API Tests"
+
+# Run with coverage
+npm run test:coverage
 ```
 
-## 🔍 Monitoring
+### Code Quality
+```bash
+# Lint code
+npm run lint
 
-- System status monitoring
-- Device health checks
-- Network connectivity monitoring
-- Performance metrics tracking
+# Fix linting issues
+npm run lint:fix
+
+# Format code
+npm run format
+```
+
+### Database Management
+```bash
+# Run migrations
+node migrations/init_all_tables.js
+
+# Seed data
+node migrations/init_data.js
+
+# Create backup
+pg_dump -h localhost -U postgres -d open_asm | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz
+
+# Restore backup
+gunzip -c backup_20240101_120000.sql.gz | psql -h localhost -U postgres -d open_asm
+```
+
+## 📝 Changelog
+
+### Version 4.0.0 (Latest)
+- ✅ **API Improvements**: Complete REST API with partial update support
+- ✅ **UI/UX Enhancements**: Improved forms, modals, and user experience
+- ✅ **System Management**: Enhanced system and component management
+- ✅ **Device Management**: Improved device list with IP address display
+- ✅ **Modal Behavior**: Fixed button disabling when modals are open
+- ✅ **File Management**: Enhanced file upload and display
+- ✅ **Code Cleanup**: Removed test files and improved project structure
+- ✅ **Docker Support**: Updated Docker configuration and scripts
+
+### Version 3.4.0
+- ✅ **Firewall Management**: Enhanced firewall rule management
+- ✅ **Network Management**: Improved IP address and subnet management
+- ✅ **User Management**: Enhanced user and role management
+- ✅ **Backup System**: Automated database backup system
+
+### Version 3.0.0
+- ✅ **Initial Release**: Core functionality implementation
+- ✅ **Authentication**: User authentication and authorization
+- ✅ **Device Management**: Basic device and server management
+- ✅ **Network Management**: IP address and subnet management
 
 ## 🤝 Contributing
 
@@ -464,22 +438,32 @@ pg_dump -h localhost -U postgres -d openasm | gzip > backup_manual_$(date +%Y%m%
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🆘 Support
 
-For support and questions:
-- Create an issue in the repository
-- Check the documentation
-- Review the API documentation at `/api-docs`
+### Documentation
+- **API Documentation**: https://localhost:8443/api-docs
+- **Swagger UI**: Interactive API documentation
 
-## 📚 Additional Resources
+### Issues
+- **Bug Reports**: [GitHub Issues](https://github.com/vietcf/open-asm/issues)
+- **Feature Requests**: [GitHub Discussions](https://github.com/vietcf/open-asm/discussions)
 
-- [Express.js Documentation](https://expressjs.com/)
-- [PostgreSQL Documentation](https://www.postgresql.org/docs/)
-- [PM2 Documentation](https://pm2.keymetrics.io/)
-- [Nginx Documentation](https://nginx.org/en/docs/)
+### Contact
+- **Email**: support@openasm.com
+- **GitHub**: [@vietcf](https://github.com/vietcf)
+
+## 🙏 Acknowledgments
+
+- **Node.js** - JavaScript runtime
+- **Express.js** - Web framework
+- **PostgreSQL** - Database
+- **Bootstrap** - CSS framework
+- **jQuery** - JavaScript library
+- **Select2** - Enhanced select boxes
+- **Swagger** - API documentation
 
 ---
 
-**Note**: This application is designed for internal network management and should be deployed behind a reverse proxy (Nginx) for production use. The application binds to localhost only for security reasons.
+**Open ASM** - Comprehensive Asset Security Management Platform
