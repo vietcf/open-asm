@@ -32,3 +32,6 @@ debug*.js
 *diagram*.txt
 *guide*.txt
 *description*.txt
+.cursor
+.cursorrules
+trash
