@@ -160,7 +160,13 @@ function buildPaginationUrl(targetPage) {
                     <tr>
                       <td><%= (page - 1) * pageSize + idx + 1 %></td>
                       <td><%= unit.name %></td>
-                      <td><%= unit.description || '-' %></td>
+                      <td>
+                        <%
+                          const cleanDescription = (unit.description || '-').trim();
+                          const shortDescription = cleanDescription.length > 50 ? cleanDescription.substring(0, 50) + '…' : cleanDescription;
+                        %>
+                        <span class="description-hover" data-description="<%= cleanDescription.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>" style="white-space: pre-line; cursor: help; position: relative; word-break: break-word;"><%= shortDescription %></span>
+                      </td>
                       <td class="text-end">
                         <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showUnitDetail('<%= unit.id %>')" data-unit='<%= JSON.stringify(unit) %>'><i class="bi bi-eye"></i></button>
                         <% if (hasPermission('unit.update')) { %>
@@ -330,7 +336,7 @@ function showUnitDetail(unitId) {
   html += '<div class="col-md-6"><strong>Unit Name:</strong> ' + (unitData.name || '-') + '</div>';
   html += '<div class="col-md-6"><strong>Created:</strong> ' + (unitData.created_at ? new Date(unitData.created_at).toLocaleDateString() : '-') + '</div>';
   if (unitData.description) {
-    html += '<div class="col-12 mt-3"><strong>Description:</strong><br>' + unitData.description + '</div>';
+    html += '<div class="col-12 mt-3"><strong>Description:</strong><br><div style="white-space: pre-wrap;">' + unitData.description + '</div></div>';
   }
   html += '</div>';
   
@@ -472,4 +478,65 @@ $(document).ready(function() {
     });
   });
 });
+
+// Initialize tooltips
+$(document).ready(function() {
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+});
 </script>
+
+<style>
+/* Custom tooltip styles for multi-line descriptions */
+.tooltip .tooltip-inner {
+  white-space: pre-wrap;
+  max-width: 400px;
+  text-align: left;
+}
+
+/* Description column alignment */
+#unitTable td:nth-child(3) {
+  text-align: left;
+  vertical-align: top;
+}
+
+/* Description hover popup style */
+.description-hover {
+  position: relative;
+  display: inline-block;
+}
+
+.description-hover:hover::after {
+  content: attr(data-description);
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #333;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  white-space: pre-line;
+  max-width: 400px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  font-size: 14px;
+  line-height: 1.4;
+  word-break: break-word;
+  pointer-events: none;
+}
+
+.description-hover:hover::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 10px;
+  border: 5px solid transparent;
+  border-bottom-color: #333;
+  z-index: 1001;
+  pointer-events: none;
+}
+</style>

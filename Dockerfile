@@ -1,6 +1,9 @@
 # Use official Node.js v22 image
 FROM node:22
 
+# Install PostgreSQL client tools for backup functionality
+RUN apt-get update && apt-get install -y postgresql-client && rm -rf /var/lib/apt/lists/*
+
 # Set working directory
 WORKDIR /app
 

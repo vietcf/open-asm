@@ -213,8 +213,12 @@
                     <td><%= system.name %></td>
                     <td>
                       <% if (system.description && system.description.trim()) { %>
-                        <span title="<%= system.description.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
-                          <%= system.description.length > 60 ? system.description.substring(0, 60) + '…' : system.description %>
+                        <%
+                          const cleanDescription = system.description.trim();
+                          const shortDescription = cleanDescription.length > 100 ? cleanDescription.substring(0, 100) + '…' : cleanDescription;
+                        %>
+                        <span class="description-hover" data-description="<%= cleanDescription.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
+                          <%= shortDescription %>
                         </span>
                       <% } else { %>
                         <span class="text-muted">-</span>
@@ -316,9 +320,13 @@
                     <span class="mobile-card-value"><%= system.system_id %></span>
                   </div>
                   <% if (system.description && system.description.trim()) { %>
+                      <%
+                        const cleanDescription = system.description.trim();
+                        const shortDescription = cleanDescription.length > 80 ? cleanDescription.substring(0, 80) + '…' : cleanDescription;
+                      %>
                     <div class="mobile-card-row">
                       <span class="mobile-card-label">Description:</span>
-                      <span class="mobile-card-value"><%= system.description.length > 50 ? system.description.substring(0, 50) + '…' : system.description %></span>
+                      <span class="mobile-card-value description-hover" data-description="<%= cleanDescription.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>"><%= shortDescription %></span>
                     </div>
                   <% } %>
                   <% if (system.alias && (Array.isArray(system.alias) ? system.alias.length > 0 : system.alias)) { %>
@@ -562,7 +570,7 @@
         // Description
         if (system.description && system.description.trim()) {
           html += '<div class="mb-2">';
-          html += '<strong>Description:</strong> ' + String(system.description).trim();
+          html += '<strong>Description:</strong><br><span>' + String(system.description).trim() + '</span>';
           html += '</div>';
         }
         
@@ -907,7 +915,7 @@
               // Description
               if (component.description && component.description.trim()) {
                 componentsHtml += '<div class="mb-2">';
-                componentsHtml += '<span class="fw-semibold">Description:</span> ' + String(component.description).trim();
+                componentsHtml += '<span class="fw-semibold">Description:</span><br><span>' + String(component.description).trim() + '</span>';
                 componentsHtml += '</div>';
               }
               
@@ -1240,6 +1248,7 @@
     $(document).ready(function() {
       handleResponsiveLayout();
       
+      
       // Handle window resize
       let resizeTimeout;
       $(window).on('resize', function() {
@@ -1248,3 +1257,68 @@
       });
     });
 </script>
+
+<style>
+/* Custom tooltip styles for multi-line descriptions */
+.tooltip .tooltip-inner {
+  white-space: pre-wrap;
+  max-width: 400px;
+  text-align: left;
+}
+
+/* Description column alignment - same as other columns */
+/* DISABLED TO USE DEFAULT TABLE STYLES */
+/*
+#systemTable td:nth-child(4) {
+  text-align: left;
+  vertical-align: top;
+}
+
+#systemTable td:nth-child(4) span {
+  text-align: left;
+  display: inline-block;
+  padding-top: 0;
+  margin-top: 0;
+  line-height: 1;
+}
+*/
+
+/* Description hover popup style */
+.description-hover {
+  position: relative;
+  display: inline-block;
+}
+
+.description-hover:hover::after {
+  content: attr(data-description);
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #333;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  white-space: pre-line;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  font-size: 14px;
+  line-height: 1.4;
+  word-break: break-word;
+  pointer-events: none;
+}
+
+.description-hover:hover::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 10px;
+  border: 5px solid transparent;
+  border-bottom-color: #333;
+  z-index: 1001;
+  pointer-events: none;
+}
+
+</style>
