@@ -211,13 +211,13 @@
                     <td><%= (page - 1) * pageSize + idx + 1 %></td>
                     <td><%= system.system_id %></td>
                     <td><%= system.name %></td>
-                    <td style="text-align: left !important; vertical-align: top !important; padding: 0 !important; line-height: 1 !important;">
+                    <td>
                       <% if (system.description && system.description.trim()) { %>
                         <%
                           const cleanDescription = system.description.trim();
-                          const shortDescription = cleanDescription.length > 60 ? cleanDescription.substring(0, 60) + '…' : cleanDescription;
+                          const shortDescription = cleanDescription.length > 100 ? cleanDescription.substring(0, 100) + '…' : cleanDescription;
                         %>
-                        <span class="description-hover" data-description="<%= cleanDescription.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>" style="white-space: pre-line; cursor: help; position: relative; word-break: break-word; display: inline-block !important; vertical-align: top !important; margin: 0 !important; padding: 0 !important; line-height: 1 !important;">
+                        <span class="description-hover" data-description="<%= cleanDescription.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
                           <%= shortDescription %>
                         </span>
                       <% } else { %>
@@ -320,13 +320,13 @@
                     <span class="mobile-card-value"><%= system.system_id %></span>
                   </div>
                   <% if (system.description && system.description.trim()) { %>
-                    <%
-                      const cleanDescription = system.description.trim();
-                      const shortDescription = cleanDescription.length > 50 ? cleanDescription.substring(0, 50) + '…' : cleanDescription;
-                    %>
+                      <%
+                        const cleanDescription = system.description.trim();
+                        const shortDescription = cleanDescription.length > 80 ? cleanDescription.substring(0, 80) + '…' : cleanDescription;
+                      %>
                     <div class="mobile-card-row">
                       <span class="mobile-card-label">Description:</span>
-                      <span class="mobile-card-value description-hover" data-description="<%= cleanDescription.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>" style="white-space: pre-line; cursor: help; position: relative; word-break: break-word;"><%= shortDescription %></span>
+                      <span class="mobile-card-value description-hover" data-description="<%= cleanDescription.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>"><%= shortDescription %></span>
                     </div>
                   <% } %>
                   <% if (system.alias && (Array.isArray(system.alias) ? system.alias.length > 0 : system.alias)) { %>
@@ -570,7 +570,7 @@
         // Description
         if (system.description && system.description.trim()) {
           html += '<div class="mb-2">';
-          html += '<strong>Description:</strong><br><span style="white-space: pre-wrap;">' + String(system.description).trim() + '</span>';
+          html += '<strong>Description:</strong><br><span>' + String(system.description).trim() + '</span>';
           html += '</div>';
         }
         
@@ -915,7 +915,7 @@
               // Description
               if (component.description && component.description.trim()) {
                 componentsHtml += '<div class="mb-2">';
-                componentsHtml += '<span class="fw-semibold">Description:</span><br><span style="white-space: pre-wrap;">' + String(component.description).trim() + '</span>';
+                componentsHtml += '<span class="fw-semibold">Description:</span><br><span>' + String(component.description).trim() + '</span>';
                 componentsHtml += '</div>';
               }
               
@@ -1266,25 +1266,22 @@
   text-align: left;
 }
 
-/* Description column alignment - strongest CSS override */
-table#systemTable tbody tr td:nth-child(4),
-table#systemTable tbody tr td:nth-child(4) * {
-  text-align: left !important;
-  vertical-align: top !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  line-height: 1 !important;
+/* Description column alignment - same as other columns */
+/* DISABLED TO USE DEFAULT TABLE STYLES */
+/*
+#systemTable td:nth-child(4) {
+  text-align: left;
+  vertical-align: top;
 }
 
-/* Force override any framework */
-.table td:nth-child(4),
-.table td:nth-child(4) * {
-  text-align: left !important;
-  vertical-align: top !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  line-height: 1 !important;
+#systemTable td:nth-child(4) span {
+  text-align: left;
+  display: inline-block;
+  padding-top: 0;
+  margin-top: 0;
+  line-height: 1;
 }
+*/
 
 /* Description hover popup style */
 .description-hover {
@@ -1297,12 +1294,12 @@ table#systemTable tbody tr td:nth-child(4) * {
   position: absolute;
   top: 100%;
   left: 0;
+  right: 0;
   background: #333;
   color: white;
   padding: 8px 12px;
   border-radius: 4px;
   white-space: pre-line;
-  max-width: 400px;
   max-height: 200px;
   overflow-y: auto;
   z-index: 1000;

@@ -176,13 +176,13 @@
                     <td><%= component.system_name || '-' %></td>
                     
                     <!-- Description -->
-                    <td style="text-align: left !important; vertical-align: top !important; padding: 0 !important; line-height: 1 !important;">
+                    <td>
                       <% if (component.description && component.description.trim()) { %>
                         <%
                           const cleanDescription = component.description.trim();
-                          const shortDescription = cleanDescription.length > 60 ? cleanDescription.substring(0, 60) + '…' : cleanDescription;
+                          const shortDescription = cleanDescription.length > 100 ? cleanDescription.substring(0, 100) + '…' : cleanDescription;
                         %>
-                        <span class="description-hover" data-description="<%= cleanDescription.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>" style="white-space: pre-line; cursor: help; position: relative; word-break: break-word; display: inline-block !important; vertical-align: top !important; margin: 0 !important; padding: 0 !important; line-height: 1 !important;">
+                        <span class="description-hover" data-description="<%= cleanDescription.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
                           <%= shortDescription %>
                         </span>
                       <% } else { %>
@@ -728,7 +728,7 @@
     // Description
     if (component.description && component.description.trim()) {
       html += '<div class="mb-2">';
-      html += '<strong>Description:</strong><br><span style="white-space: pre-wrap;">' + String(component.description).trim() + '</span>';
+      html += '<strong>Description:</strong><br><span>' + String(component.description).trim() + '</span>';
       html += '</div>';
     }
     
@@ -949,25 +949,22 @@
   text-align: left;
 }
 
-/* Description column alignment - strongest CSS override */
-table#componentTable tbody tr td:nth-child(4),
-table#componentTable tbody tr td:nth-child(4) * {
-  text-align: left !important;
-  vertical-align: top !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  line-height: 1 !important;
+/* Description column alignment - same as system */
+/* DISABLED TO USE DEFAULT TABLE STYLES */
+/*
+#componentTable td:nth-child(4) {
+  text-align: left;
+  vertical-align: top;
 }
 
-/* Force override any framework */
-.table td:nth-child(4),
-.table td:nth-child(4) * {
-  text-align: left !important;
-  vertical-align: top !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  line-height: 1 !important;
+#componentTable td:nth-child(4) span {
+  text-align: left;
+  display: inline-block;
+  padding-top: 0;
+  margin-top: 0;
+  line-height: 1;
 }
+*/
 
 /* Description hover popup style */
 .description-hover {
@@ -980,12 +977,12 @@ table#componentTable tbody tr td:nth-child(4) * {
   position: absolute;
   top: 100%;
   left: 0;
+  right: 0;
   background: #333;
   color: white;
   padding: 8px 12px;
   border-radius: 4px;
   white-space: pre-line;
-  max-width: 400px;
   max-height: 200px;
   overflow-y: auto;
   z-index: 1000;

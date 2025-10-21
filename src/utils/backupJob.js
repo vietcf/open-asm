@@ -39,6 +39,26 @@ const ensureBackupDir = (backupDir) => {
   }
 };
 
+// Test database connection before backup
+const testDatabaseConnection = async () => {
+  const config = getBackupConfig();
+  
+  const testCommand = `pg_isready -h ${config.dbHost} -p ${config.dbPort} -U ${config.dbUser} -d ${config.dbName}`;
+  
+  return new Promise((resolve, reject) => {
+    const env = { ...process.env, PGPASSWORD: config.dbPassword };
+    
+    exec(testCommand, { env }, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`[BACKUP] Database connection failed: ${error.message}`);
+        reject(new Error(`Database connection failed: ${error.message}`));
+      } else {
+        resolve(true);
+      }
+    });
+  });
+};
+
 // Create database backup
 const createBackup = async () => {
   const config = getBackupConfig();
@@ -49,19 +69,24 @@ const createBackup = async () => {
   // Ensure backup directory exists
   ensureBackupDir(config.backupDir);
   
+  // Test database connection first
+  try {
+    await testDatabaseConnection();
+  } catch (error) {
+    console.error(`[BACKUP] Cannot proceed with backup due to connection failure`);
+    throw error;
+  }
+  
   // Set PGPASSWORD environment variable for pg_dump
   const env = { ...process.env, PGPASSWORD: config.dbPassword };
   
   // Create pg_dump command for Docker container
   const command = `pg_dump -h ${config.dbHost} -p ${config.dbPort} -U ${config.dbUser} -d ${config.dbName} --no-password | gzip > "${backupPath}"`;
   
-  console.log(`[BACKUP] Executing command: ${command}`);
-  
   return new Promise((resolve, reject) => {
     exec(command, { env }, (error, stdout, stderr) => {
       if (error) {
-        console.error(`[BACKUP] Command failed: ${error.message}`);
-        console.error(`[BACKUP] stderr: ${stderr}`);
+        console.error(`[BACKUP] Backup failed: ${error.message}`);
         reject(error);
       } else {
         // Check if backup file was created and has content
@@ -75,9 +100,11 @@ const createBackup = async () => {
               created_at: new Date()
             });
           } else {
+            console.error(`[BACKUP] Backup file is empty`);
             reject(new Error('Backup file is empty'));
           }
         } else {
+          console.error(`[BACKUP] Backup file was not created`);
           reject(new Error('Backup file was not created'));
         }
       }
@@ -152,7 +179,7 @@ const runBackup = async () => {
     await cleanupOldBackups();
     
   } catch (error) {
-    console.error('[BACKUP] Error creating database backup:', error);
+    console.error(`[BACKUP] Database backup failed: ${error.message}`);
   }
 };
 

@@ -31,7 +31,7 @@ import { siteConfig } from './utils/siteConfig.js';
 import { loadPermissions } from './middlewares/permissions.middleware.js';
 import requirePasswordChange from './middlewares/requirePasswordChange.middleware.js';
 import require2fa from './middlewares/require2fa.middleware.js';
-import accessLog from './middlewares/accessLog.middleware.js';
+// import accessLog from './middlewares/accessLog.middleware.js'; // Disabled
 
 // =========================
 // Routers
@@ -96,7 +96,7 @@ app.use(session({
 app.use(flash());
 
 // 4.1. Access logging middleware (after session, before other middleware)
-app.use(accessLog);
+// app.use(accessLog); // Disabled to reduce console output
 
 // 5. Global template variables (res.locals)
 // 5.1. Load permissions for every request (after session, before routes)
