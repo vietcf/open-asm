@@ -176,10 +176,14 @@
                     <td><%= component.system_name || '-' %></td>
                     
                     <!-- Description -->
-                    <td>
+                    <td style="text-align: left !important; vertical-align: top !important; padding: 0 !important; line-height: 1 !important;">
                       <% if (component.description && component.description.trim()) { %>
-                        <span title="<%= component.description.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
-                          <%= component.description.length > 60 ? component.description.substring(0, 60) + '…' : component.description %>
+                        <%
+                          const cleanDescription = component.description.trim();
+                          const shortDescription = cleanDescription.length > 60 ? cleanDescription.substring(0, 60) + '…' : cleanDescription;
+                        %>
+                        <span class="description-hover" data-description="<%= cleanDescription.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>" style="white-space: pre-line; cursor: help; position: relative; word-break: break-word; display: inline-block !important; vertical-align: top !important; margin: 0 !important; padding: 0 !important; line-height: 1 !important;">
+                          <%= shortDescription %>
                         </span>
                       <% } else { %>
                         <span class="text-muted">-</span>
@@ -724,7 +728,7 @@
     // Description
     if (component.description && component.description.trim()) {
       html += '<div class="mb-2">';
-      html += '<strong>Description:</strong> ' + String(component.description).trim();
+      html += '<strong>Description:</strong><br><span style="white-space: pre-wrap;">' + String(component.description).trim() + '</span>';
       html += '</div>';
     }
     
@@ -927,6 +931,81 @@
         element.removeAttribute('data-loading');
       });
   }
+  
+  // Initialize tooltips
+  $(document).ready(function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+      return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+  });
 </script>
+
+<style>
+/* Custom tooltip styles for multi-line descriptions */
+.tooltip .tooltip-inner {
+  white-space: pre-wrap;
+  max-width: 400px;
+  text-align: left;
+}
+
+/* Description column alignment - strongest CSS override */
+table#componentTable tbody tr td:nth-child(4),
+table#componentTable tbody tr td:nth-child(4) * {
+  text-align: left !important;
+  vertical-align: top !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+}
+
+/* Force override any framework */
+.table td:nth-child(4),
+.table td:nth-child(4) * {
+  text-align: left !important;
+  vertical-align: top !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  line-height: 1 !important;
+}
+
+/* Description hover popup style */
+.description-hover {
+  position: relative;
+  display: inline-block;
+}
+
+.description-hover:hover::after {
+  content: attr(data-description);
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: #333;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 4px;
+  white-space: pre-line;
+  max-width: 400px;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  font-size: 14px;
+  line-height: 1.4;
+  word-break: break-word;
+  pointer-events: none;
+}
+
+.description-hover:hover::before {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 10px;
+  border: 5px solid transparent;
+  border-bottom-color: #333;
+  z-index: 1001;
+  pointer-events: none;
+}
+</style>
 
 <!-- Responsive Tables CSS -->

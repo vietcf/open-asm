@@ -5,6 +5,10 @@ import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,8 +22,8 @@ const getBackupConfig = () => {
     retention: parseInt(process.env.BACKUP_RETENTION) || 7,
     // Backup directory (default: backups folder in app root)
     backupDir: process.env.BACKUP_DIR || path.join(__dirname, '../../backups'),
-    // Database connection info
-    dbHost: process.env.POSTGRES_HOST || 'localhost',
+    // Database connection info - use Docker service names
+    dbHost: process.env.POSTGRES_HOST || 'postgres', // Docker service name
     dbUser: process.env.POSTGRES_USER || 'postgres',
     dbName: process.env.POSTGRES_DB || 'open_asm',
     dbPassword: process.env.POSTGRES_PASSWORD || '',
@@ -48,21 +52,34 @@ const createBackup = async () => {
   // Set PGPASSWORD environment variable for pg_dump
   const env = { ...process.env, PGPASSWORD: config.dbPassword };
   
-  // Create pg_dump command
-  const command = `pg_dump -h ${config.dbHost} -p ${config.dbPort} -U ${config.dbUser} -d ${config.dbName} | gzip > "${backupPath}"`;
+  // Create pg_dump command for Docker container
+  const command = `pg_dump -h ${config.dbHost} -p ${config.dbPort} -U ${config.dbUser} -d ${config.dbName} --no-password | gzip > "${backupPath}"`;
+  
+  console.log(`[BACKUP] Executing command: ${command}`);
   
   return new Promise((resolve, reject) => {
     exec(command, { env }, (error, stdout, stderr) => {
       if (error) {
+        console.error(`[BACKUP] Command failed: ${error.message}`);
+        console.error(`[BACKUP] stderr: ${stderr}`);
         reject(error);
       } else {
-        const stats = fs.statSync(backupPath);
-        resolve({
-          filename: backupFileName,
-          path: backupPath,
-          size: stats.size,
-          created_at: new Date()
-        });
+        // Check if backup file was created and has content
+        if (fs.existsSync(backupPath)) {
+          const stats = fs.statSync(backupPath);
+          if (stats.size > 0) {
+            resolve({
+              filename: backupFileName,
+              path: backupPath,
+              size: stats.size,
+              created_at: new Date()
+            });
+          } else {
+            reject(new Error('Backup file is empty'));
+          }
+        } else {
+          reject(new Error('Backup file was not created'));
+        }
       }
     });
   });
@@ -155,5 +172,17 @@ const createBackupJob = () => {
   return job;
 };
 
-// Export the job
-export default createBackupJob();
+// Export the job with start method
+const backupJob = createBackupJob();
+
+export default {
+  start: () => {
+    console.log('[BACKUP] Starting backup job...');
+    // Job is already started when created
+    return backupJob;
+  },
+  stop: () => {
+    console.log('[BACKUP] Stopping backup job...');
+    backupJob.stop();
+  }
+};
