@@ -837,9 +837,14 @@ function buildExportUrl() {
             ajax: {
               url: '/organize/api/tag',
               dataType: 'json',
+              delay: 250,
+      data: function(params) {
+        return { search: params.term };
+      },
       processResults: function(data) {
         return { results: data };
-      }
+      },
+              cache: true
     }
   });
 
@@ -852,9 +857,14 @@ function buildExportUrl() {
             ajax: {
       url: '/system/api/system',
               dataType: 'json',
+              delay: 250,
+      data: function(params) {
+        return { search: params.term };
+      },
       processResults: function(data) {
         return { results: data };
-      }
+      },
+              cache: true
     }
   });
 
@@ -867,9 +877,14 @@ function buildExportUrl() {
             ajax: {
               url: '/organize/api/contact',
               dataType: 'json',
+              delay: 250,
+      data: function(params) {
+        return { search: params.term };
+      },
       processResults: function(data) {
         return { results: data };
-      }
+      },
+              cache: true
     }
   });
 
