@@ -570,7 +570,7 @@
         // Description
         if (system.description && system.description.trim()) {
           html += '<div class="mb-2">';
-          html += '<strong>Description:</strong><br><span>' + String(system.description).trim() + '</span>';
+          html += '<strong>Description:</strong><br><span style="white-space: pre-line;">' + String(system.description).trim() + '</span>';
           html += '</div>';
         }
         
@@ -915,7 +915,7 @@
               // Description
               if (component.description && component.description.trim()) {
                 componentsHtml += '<div class="mb-2">';
-                componentsHtml += '<span class="fw-semibold">Description:</span><br><span>' + String(component.description).trim() + '</span>';
+                componentsHtml += '<span class="fw-semibold">Description:</span><br><span style="white-space: pre-line;">' + String(component.description).trim() + '</span>';
                 componentsHtml += '</div>';
               }
               
