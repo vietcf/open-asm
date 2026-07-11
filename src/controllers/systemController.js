@@ -271,16 +271,18 @@ systemController.exportSystemList = async (req, res) => {
       search, page: 1, pageSize: 10000, filterTags, filterContacts, filterScopes, filterArchitecture
     });
 
-    const headers = ['System Code', 'System Name', 'Tags', 'Contacts'];
+    const headers = ['System Code', 'System Name', 'Alias', 'Tags', 'Contacts', 'Architecture'];
     const rows = systemList.map(s => [
       s.system_id || '',
       s.name || '',
+      (s.alias && s.alias.length ? s.alias.join(', ') : ''),
       (s.tags && s.tags.length ? s.tags.map(t => t.name).join(', ') : ''),
       (s.contacts && s.contacts.length ? s.contacts.map(c => {
         // Extract username from email (part before @), same format as IP Address export
         const emailUsername = c.email ? c.email.split('@')[0] : '';
         return emailUsername || c.name || '';
-      }).join(', ') : '')
+      }).join(', ') : ''),
+      (s.architecture && s.architecture.length ? s.architecture.join(', ') : '')
     ]);
 
     const workbook = new ExcelJS.Workbook();
