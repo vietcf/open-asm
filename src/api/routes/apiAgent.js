@@ -1,12 +1,13 @@
 import express from 'express';
-import { 
+import {
     listAgents,
-    createAgent, 
-    getAgent, 
-    updateAgent, 
+    createAgent,
+    getAgent,
+    updateAgent,
     deleteAgent,
     findAgents
 } from '../controllers/apiAgentController.js';
+import { authorizePermissionJWT } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
@@ -73,7 +74,7 @@ const router = express.Router();
  *                   type: integer
  *                   example: 5
  */
-router.get('/', listAgents);
+router.get('/', authorizePermissionJWT('agent.read'), listAgents);
 
 /**
  * @swagger
@@ -126,7 +127,7 @@ router.get('/', listAgents);
  *       500:
  *         description: Internal server error
  */
-router.post('/', createAgent);
+router.post('/', authorizePermissionJWT('agent.create'), createAgent);
 
 /**
  * @swagger
@@ -192,7 +193,7 @@ router.post('/', createAgent);
  *                   type: string
  *                   description: Detailed error information
  */
-router.get('/find', findAgents);
+router.get('/find', authorizePermissionJWT('agent.read'), findAgents);
 
 /**
  * @swagger
@@ -219,7 +220,7 @@ router.get('/find', findAgents);
  *       404:
  *         description: Agent not found
  */
-router.get('/:id', getAgent);
+router.get('/:id', authorizePermissionJWT('agent.read'), getAgent);
 
 /**
  * @swagger
@@ -291,7 +292,7 @@ router.get('/:id', getAgent);
  *       500:
  *         description: Internal server error
  */
-router.put('/:id', updateAgent);
+router.put('/:id', authorizePermissionJWT('agent.update'), updateAgent);
 
 /**
  * @swagger
@@ -313,9 +314,9 @@ router.put('/:id', updateAgent);
  *         description: Agent deleted successfully
  *       404:
  *         description: Agent not found
- *       400:
- *         description: Cannot delete agent (in use)
+ *       409:
+ *         description: Cannot delete — the agent is still assigned to one or more servers
  */
-router.delete('/:id', deleteAgent);
+router.delete('/:id', authorizePermissionJWT('agent.delete'), deleteAgent);
 
 export default router;

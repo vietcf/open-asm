@@ -1,38 +1,15 @@
 // Device API Controller (ES6 style)
 import Device from '../../models/Device.js';
-import Tag from '../../models/Tag.js';
-import Contact from '../../models/Contact.js';
-import IpAddress from '../../models/IpAddress.js';
-import Platform from '../../models/Platform.js';
-import DeviceType from '../../models/DeviceType.js';
-import Configuration from '../../models/Configuration.js';
 import { pool } from '../../../config/config.js';
-
-
-// Helper: Load device location options from DB config
-async function getLocationOptionsFromConfig() {
-  let locationOptions = [];
-  try {
-    const config = await Configuration.findById('device_location');
-    if (config && config.value) {
-      let parsed;
-      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
-      if (Array.isArray(parsed)) {
-        locationOptions = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
-      }
-    }
-  } catch (e) { locationOptions = []; }
-  if (!Array.isArray(locationOptions) || locationOptions.length === 0) {
-    locationOptions = [
-      { value: 'DC', label: 'DC' },
-      { value: 'DR', label: 'DR' }
-    ];
-  }
-  return locationOptions;
-}
-
-
-
+import {
+  listDevices as listDevicesService,
+  getDevice as getDeviceService,
+  createDevice as createDeviceService,
+  updateDevice as updateDeviceService,
+  deleteDevice as deleteDeviceService,
+  getLocationOptions
+} from '../../services/deviceService.js';
+import { handleServiceError } from '../utils/handleServiceError.js';
 
 const apiDeviceController = {};
 
@@ -52,12 +29,11 @@ apiDeviceController.listDevices = async (req, res) => {
       manufacturer,
       device_role,
       tags: filterTags,
-      page: parseInt(page, 10) || 1,
+      page: Math.max(1, parseInt(page, 10) || 1),
       pageSize: Math.max(1, Math.min(parseInt(pageSize, 10) || 20, 100))
     };
-    const totalCount = await Device.countFiltered(filter);
+    const { items: devices, totalCount } = await listDevicesService(filter);
     const totalPages = Math.max(1, Math.ceil(totalCount / filter.pageSize));
-    const devices = await Device.findFilteredList(filter);
     res.json({
       success: true,
       data: devices,
@@ -69,11 +45,7 @@ apiDeviceController.listDevices = async (req, res) => {
       }
     });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: err.message
-    });
+    handleServiceError(err, res);
   }
 };
 
@@ -124,175 +96,27 @@ apiDeviceController.findDevices = async (req, res) => {
 // Get a single device by id (full detail)
 apiDeviceController.getDevice = async (req, res) => {
   try {
-    const id = req.params.id;
-    const device = await Device.getFullDetail(id);
-    if (!device) return res.status(404).json({
-      success: false,
-      message: 'Device not found'
-    });
+    const device = await getDeviceService(req.params.id);
     res.json({
       success: true,
       data: device
     });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: err.message
-    });
+    handleServiceError(err, res);
   }
 };
 
 // Create a new device
 apiDeviceController.createDevice = async (req, res) => {
   try {
-    let {
-      name, device_type_id, ip_addresses, platform_id, location, serial, management, manufacturer, device_role, description, tags, contacts
-    } = req.body || {};
-    
-    // Required fields validation
-    if (!name || typeof name !== 'string' || name.trim() === '') {
-      return res.status(400).json({
-        success: false,
-        message: 'Device name is required and cannot be empty'
-      });
-    }
-    
-    if (!device_type_id) {
-      return res.status(400).json({
-        success: false,
-        message: 'Device type ID is required'
-      });
-    }
-    
-    if (!ip_addresses || !Array.isArray(ip_addresses) || ip_addresses.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'At least one IP address is required'
-      });
-    }
-    
-    // Normalize name (convert to lowercase)
-    name = name.trim().toLowerCase();
-    
-    // Check for duplicate name (case-insensitive)
-    const duplicate = await Device.findByName(name);
-    if (duplicate) {
-      return res.status(409).json({
-        success: false,
-        message: 'Device already exists with this name'
-      });
-    }
-    
-    // Validate device_type_id exists
-    if (!(await DeviceType.exists(device_type_id))) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid device_type_id'
-      });
-    }
-    
-    // Validate IP address IDs - check both existence and assignment status
-    const invalidIps = [];
-    const assignedIps = [];
-    for (const ipId of ip_addresses) {
-      // eslint-disable-next-line no-await-in-loop
-      const ipDetails = await IpAddress.findById(ipId);
-      if (!ipDetails) {
-        invalidIps.push(ipId);
-      } else if (ipDetails.status === 'assigned') {
-        assignedIps.push(`IP ${ipDetails.ip_address} (ID: ${ipId})`);
-      }
-    }
-    if (invalidIps.length > 0) return res.status(400).json({
-      success: false,
-      message: `Invalid IP address IDs: ${invalidIps.join(', ')}`
-    });
-    if (assignedIps.length > 0) return res.status(400).json({
-      success: false,
-      message: `Cannot use already assigned IP addresses: ${assignedIps.join(', ')}`
-    });
-    
-    // Validate platform_id if provided
-    if (platform_id && Platform && Platform.exists && !(await Platform.exists(platform_id))) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid platform_id'
-      });
-    }
-    
-    // Validate location against config if provided
-    if (location) {
-      const locationOptions = await getLocationOptionsFromConfig();
-      const allowedLocations = locationOptions.map(opt => opt.value);
-      if (!allowedLocations.includes(location)) {
-        return res.status(400).json({
-          success: false,
-          message: `Invalid location. Allowed values: ${allowedLocations.join(', ')}`
-        });
-      }
-    }
-    
-    // Validate tags if provided
-    if (tags && Array.isArray(tags)) {
-      for (const tagId of tags) {
-        if (!(await Tag.exists(tagId))) {
-          return res.status(400).json({
-            success: false,
-            message: `Tag does not exist: ${tagId}`
-          });
-        }
-      }
-    }
-    
-    // Validate contacts if provided
-    if (contacts && Array.isArray(contacts)) {
-      for (const contactId of contacts) {
-        if (!(await Contact.exists(contactId))) {
-          return res.status(400).json({
-            success: false,
-            message: `Contact does not exist: ${contactId}`
-          });
-        }
-      }
-    }
-    
-    // Insert device
-    const device = await Device.create({
-      name,
-      manufacturer,
-      device_role,
-      platform_id,
-      device_type_id,
-      location,
-      serial_number: serial,
-      management_address: management,
-      description
-    });
-    
-    // Set required IP addresses
-    await Device.setIpAddresses(device.id, ip_addresses);
-    
-    // Set optional relationships if provided
-    if (tags && Array.isArray(tags)) {
-      await Device.setTags(device.id, tags);
-    }
-    if (contacts && Array.isArray(contacts)) {
-      await Device.setContacts(device.id, contacts);
-    }
-    
-    const result = await Device.getFullDetail(device.id);
+    const device = await createDeviceService(req.body || {});
     res.status(201).json({
       success: true,
       message: 'Device created successfully',
-      data: result
+      data: device
     });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: err.message
-    });
+    handleServiceError(err, res);
   }
 };
 
@@ -300,222 +124,31 @@ apiDeviceController.createDevice = async (req, res) => {
 apiDeviceController.updateDevice = async (req, res) => {
   try {
     const id = req.params.id;
-    const current = await Device.getFullDetail(id);
-    if (!current) return res.status(404).json({
-      success: false,
-      message: 'Device not found'
-    });
-
-    // Allowed fields for update
-    const allowedFields = [
-      'name', 'manufacturer', 'device_role', 'platform_id', 'device_type_id', 'location',
-      'serial', 'management', 'description', 'tags', 'contacts', 'ip_addresses'
-    ];
-    const has = key => Object.prototype.hasOwnProperty.call(req.body, key);
     const body = req.body && typeof req.body === 'object' ? req.body : {};
+    const input = { ...body };
+    if (req.user) input.updated_by = req.user.username;
 
-    // Validate that all fields sent in the request are allowed
-    const invalidFields = Object.keys(body).filter(k => !allowedFields.includes(k));
-    if (invalidFields.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid field(s): ${invalidFields.join(', ')}`
-      });
-    }
-
-    // Prepare update fields - only include fields that are provided
-    const updateFields = {};
-    if (has('name')) {
-      updateFields.name = typeof body.name === 'string' ? body.name.trim().toLowerCase() : body.name;
-    }
-    if (has('manufacturer')) {
-      updateFields.manufacturer = body.manufacturer;
-    }
-    if (has('device_role')) {
-      updateFields.device_role = body.device_role;
-    }
-    if (has('platform_id')) {
-      updateFields.platform_id = body.platform_id;
-    }
-    if (has('device_type_id')) {
-      updateFields.device_type_id = body.device_type_id;
-    }
-    if (has('location')) {
-      updateFields.location = body.location;
-    }
-    if (has('serial')) {
-      updateFields.serial_number = body.serial;
-    }
-    if (has('management')) {
-      updateFields.management_address = body.management;
-    }
-    if (has('description')) {
-      updateFields.description = body.description;
-    }
-    
-    // Always add updated_by if user is available
-    if (req.user) {
-      updateFields.updated_by = req.user.username;
-    }
-
-    // Validate fields only if provided, but required fields cannot be empty if updated
-    if (has('name')) {
-      if (!updateFields.name || typeof updateFields.name !== 'string' || !updateFields.name.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Device name cannot be empty'
-        });
-      }
-    }
-    if (has('device_type_id')) {
-      if (!updateFields.device_type_id) {
-        return res.status(400).json({
-          success: false,
-          message: 'Device type ID cannot be empty'
-        });
-      }
-    }
-    if (has('ip_addresses')) {
-      if (!Array.isArray(body.ip_addresses) || body.ip_addresses.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'At least one IP address is required'
-        });
-      }
-    }
-
-    // Validate device_type_id
-    if (has('device_type_id') && !(await DeviceType.exists(updateFields.device_type_id))) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid device_type_id'
-      });
-    }
-    // Validate platform_id
-    if (has('platform_id') && updateFields.platform_id && Platform && Platform.exists && !(await Platform.exists(updateFields.platform_id))) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid platform_id'
-      });
-    }
-    
-    // Validate location against config if provided
-    if (has('location') && updateFields.location) {
-      const locationOptions = await getLocationOptionsFromConfig();
-      const allowedLocations = locationOptions.map(opt => opt.value);
-      if (!allowedLocations.includes(updateFields.location)) {
-        return res.status(400).json({
-          success: false,
-          message: `Invalid location. Allowed values: ${allowedLocations.join(', ')}`
-        });
-      }
-    }
-
-    // Validate tags
-    if (has('tags') && Array.isArray(body.tags)) {
-      for (const tagId of body.tags) {
-        if (!(await Tag.exists(tagId))) {
-          return res.status(400).json({
-            success: false,
-            message: `Tag does not exist: ${tagId}`
-          });
-        }
-      }
-    }
-    // Validate contacts
-    if (has('contacts') && Array.isArray(body.contacts)) {
-      for (const contactId of body.contacts) {
-        if (!(await Contact.exists(contactId))) {
-          return res.status(400).json({
-            success: false,
-            message: `Contact does not exist: ${contactId}`
-          });
-        }
-      }
-    }
-
-    // Validate ip_addresses if provided - check both existence and assignment status
-    if (has('ip_addresses') && Array.isArray(body.ip_addresses)) {
-      const invalidIps = [];
-      const assignedIps = [];
-      for (const ipId of body.ip_addresses) {
-        // eslint-disable-next-line no-await-in-loop
-        const ipDetails = await IpAddress.findById(ipId);
-        if (!ipDetails) {
-          invalidIps.push(ipId);
-        } else if (ipDetails.status === 'assigned' && ipDetails.device_id !== parseInt(id)) {
-          // IP is assigned to a different device
-          assignedIps.push(`IP ${ipDetails.ip_address} (ID: ${ipId})`);
-        }
-      }
-      if (invalidIps.length > 0) return res.status(400).json({
-        success: false,
-        message: `Invalid IP address IDs: ${invalidIps.join(', ')}`
-      });
-      if (assignedIps.length > 0) return res.status(400).json({
-        success: false,
-        message: `Cannot use already assigned IP addresses: ${assignedIps.join(', ')}`
-      });
-    }
-
-    // Check for duplicate name (except for this id) - use direct query
-    if (has('name')) {
-      const duplicate = await Device.findByName
-        ? await Device.findByName(updateFields.name)
-        : null;
-      if (duplicate && String(duplicate.id) !== String(id)) {
-        return res.status(409).json({
-          success: false,
-          message: 'Device already exists with this name'
-        });
-      }
-    }
-
-    // Update device (only if there are fields to update)
-    if (Object.keys(updateFields).length > 0) {
-      await Device.updatePartial(id, updateFields);
-    }
-    
-    // Set relationships if provided
-    if (has('ip_addresses')) await Device.setIpAddresses(id, body.ip_addresses);
-    if (has('tags')) await Device.setTags(id, body.tags);
-    if (has('contacts')) await Device.setContacts(id, body.contacts);
-
-    const result = await Device.getFullDetail(id);
+    const device = await updateDeviceService(id, input);
     res.json({
       success: true,
       message: 'Device updated successfully',
-      data: result
+      data: device
     });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: err.message
-    });
+    handleServiceError(err, res);
   }
 };
 
 // Delete a device
 apiDeviceController.deleteDevice = async (req, res) => {
   try {
-    const id = req.params.id;
-    const device = await Device.findById(id);
-    if (!device) return res.status(404).json({
-      success: false,
-      message: 'Device not found'
-    });
-    await Device.remove(id);
+    await deleteDeviceService(req.params.id);
     res.status(200).json({
       success: true,
       message: 'Device deleted successfully'
     });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: err.message
-    });
+    handleServiceError(err, res);
   }
 };
 
@@ -524,7 +157,7 @@ apiDeviceController.deleteDevice = async (req, res) => {
 apiDeviceController.getConfig = async (req, res) => {
   try {
     const [locationOptions, manufacturers, deviceRoles] = await Promise.all([
-      getLocationOptionsFromConfig(),
+      getLocationOptions(),
       getManufacturersFromDB(),
       getDeviceRolesFromDB()
     ]);

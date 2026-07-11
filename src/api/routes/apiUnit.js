@@ -51,7 +51,7 @@ const apiUnitRouter = express.Router();
  *                   items:
  *                     $ref: '#/components/schemas/OrganizationUnit'
  */
-apiUnitRouter.get('/', apiUnitController.listUnits);
+apiUnitRouter.get('/', authorizePermissionJWT('unit.read'), apiUnitController.listUnits);
 
 /**
  * @swagger
@@ -175,6 +175,7 @@ apiUnitRouter.post('/', authorizePermissionJWT('unit.create'), apiUnitController
  * /api/v1/units/{id}:
  *   put:
  *     summary: Update an organization unit
+ *     description: Partial update — only fields present in the request body are changed; name is not required unless you intend to change it.
  *     tags: [OrganizationUnit]
  *     security:
  *       - bearerAuth: []
@@ -191,12 +192,10 @@ apiUnitRouter.post('/', authorizePermissionJWT('unit.create'), apiUnitController
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - name
  *             properties:
  *               name:
  *                 type: string
- *                 description: Unit name (required, unique, case-insensitive)
+ *                 description: Unit name (unique, case-insensitive) — omit to leave unchanged
  *               code:
  *                 type: string
  *                 description: Unit code (optional)
@@ -263,8 +262,14 @@ apiUnitRouter.delete('/:id', authorizePermissionJWT('unit.delete'), apiUnitContr
  *           type: string
  *         code:
  *           type: string
+ *           nullable: true
  *         description:
  *           type: string
+ *           nullable: true
+ *         created_at:
+ *           type: string
+ *           format: date-time
+ *           readOnly: true
  */
 
 export default apiUnitRouter;

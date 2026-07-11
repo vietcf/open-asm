@@ -1,12 +1,36 @@
 import Platform from '../../models/Platform.js';
+import {
+  getPlatform as getPlatformService,
+  findPlatformsByName,
+  createPlatform as createPlatformService,
+  updatePlatform as updatePlatformService,
+  deletePlatform as deletePlatformService
+} from '../../services/platformService.js';
+import { ServiceError, HTTP_STATUS_BY_CODE } from '../../services/errors.js';
+
+function respondServiceError(err, res) {
+  if (err instanceof ServiceError) {
+    return res.status(HTTP_STATUS_BY_CODE[err.code] || 400).json({
+      success: false,
+      message: err.message
+    });
+  }
+  res.status(500).json({
+    success: false,
+    message: 'Internal server error',
+    error: err.message
+  });
+}
 
 class ApiPlatformController {
-  
+
   /**
    * Get all platforms
    */
   static async getAllPlatforms(req, res) {
     try {
+      // Unbounded — no pagination in the original contract, so this stays a
+      // direct model call rather than routing through the paginated service.
       const platforms = await Platform.findAll();
       res.status(200).json({
         success: true,
@@ -15,11 +39,7 @@ class ApiPlatformController {
       });
     } catch (error) {
       console.error('Error fetching platforms:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        error: error.message
-      });
+      respondServiceError(error, res);
     }
   }
 
@@ -29,8 +49,7 @@ class ApiPlatformController {
   static async getPlatform(req, res) {
     try {
       const { id } = req.params;
-      
-      // Validate ID
+
       if (!id || isNaN(parseInt(id))) {
         return res.status(400).json({
           success: false,
@@ -38,14 +57,7 @@ class ApiPlatformController {
         });
       }
 
-      const platform = await Platform.findById(parseInt(id));
-      
-      if (!platform) {
-        return res.status(404).json({
-          success: false,
-          message: 'Platform not found'
-        });
-      }
+      const platform = await getPlatformService(parseInt(id));
 
       res.status(200).json({
         success: true,
@@ -53,11 +65,7 @@ class ApiPlatformController {
       });
     } catch (error) {
       console.error('Error fetching platform:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        error: error.message
-      });
+      respondServiceError(error, res);
     }
   }
 
@@ -66,32 +74,7 @@ class ApiPlatformController {
    */
   static async createPlatform(req, res) {
     try {
-      const { name, description } = req.body;
-
-      // Validate required fields
-      if (!name || !name.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Platform name is required'
-        });
-      }
-
-      // Check if platform name already exists
-      const nameExists = await Platform.checkNameExists(name.trim());
-      if (nameExists) {
-        return res.status(409).json({
-          success: false,
-          message: 'Platform name already exists'
-        });
-      }
-
-      // Create platform
-      const platformData = {
-        name: name.trim(),
-        description: description?.trim() || null
-      };
-
-      const newPlatform = await Platform.create(platformData);
+      const newPlatform = await createPlatformService(req.body || {});
       res.status(201).json({
         success: true,
         message: 'Platform created successfully',
@@ -99,11 +82,7 @@ class ApiPlatformController {
       });
     } catch (error) {
       console.error('Error creating platform:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        error: error.message
-      });
+      respondServiceError(error, res);
     }
   }
 
@@ -113,9 +92,7 @@ class ApiPlatformController {
   static async updatePlatform(req, res) {
     try {
       const { id } = req.params;
-      const updateData = req.body;
 
-      // Validate ID
       if (!id || isNaN(parseInt(id))) {
         return res.status(400).json({
           success: false,
@@ -123,78 +100,15 @@ class ApiPlatformController {
         });
       }
 
-      const platformId = parseInt(id);
-
-      // Check if platform exists
-      const existingPlatform = await Platform.findById(platformId);
-      if (!existingPlatform) {
-        return res.status(404).json({
-          success: false,
-          message: 'Platform not found'
-        });
-      }
-
-      // Validate update data
-      if (!updateData || Object.keys(updateData).length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'No update data provided'
-        });
-      }
-
-      // Trim string values and filter out empty strings
-      const cleanedData = {};
-      for (const [key, value] of Object.entries(updateData)) {
-        if (value !== undefined && value !== null) {
-          if (typeof value === 'string') {
-            const trimmed = value.trim();
-            if (trimmed !== '') {
-              cleanedData[key] = trimmed;
-            }
-          } else {
-            cleanedData[key] = value;
-          }
-        }
-      }
-
-      // Validate name if provided
-      if (cleanedData.name && !cleanedData.name.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Platform name cannot be empty'
-        });
-      }
-
-      if (Object.keys(cleanedData).length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'No valid update data provided'
-        });
-      }
-
-      try {
-        const updatedPlatform = await Platform.update(platformId, cleanedData);
-        res.status(200).json({
-          success: true,
-          message: 'Platform updated successfully',
-          data: updatedPlatform
-        });
-      } catch (updateError) {
-        if (updateError.message === 'Platform name already exists') {
-          return res.status(409).json({
-            success: false,
-            message: 'Platform name already exists'
-          });
-        }
-        throw updateError;
-      }
+      const updatedPlatform = await updatePlatformService(parseInt(id), req.body || {});
+      res.status(200).json({
+        success: true,
+        message: 'Platform updated successfully',
+        data: updatedPlatform
+      });
     } catch (error) {
       console.error('Error updating platform:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        error: error.message
-      });
+      respondServiceError(error, res);
     }
   }
 
@@ -205,7 +119,6 @@ class ApiPlatformController {
     try {
       const { id } = req.params;
 
-      // Validate ID
       if (!id || isNaN(parseInt(id))) {
         return res.status(400).json({
           success: false,
@@ -213,29 +126,14 @@ class ApiPlatformController {
         });
       }
 
-      const platformId = parseInt(id);
-
-      // Check if platform exists
-      const existingPlatform = await Platform.findById(platformId);
-      if (!existingPlatform) {
-        return res.status(404).json({
-          success: false,
-          message: 'Platform not found'
-        });
-      }
-
-      await Platform.remove(platformId);
+      await deletePlatformService(parseInt(id));
       res.status(200).json({
         success: true,
         message: 'Platform deleted successfully'
       });
     } catch (error) {
       console.error('Error deleting platform:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        error: error.message
-      });
+      respondServiceError(error, res);
     }
   }
 
@@ -246,7 +144,6 @@ class ApiPlatformController {
     try {
       const { name } = req.query;
 
-      // Require search term
       if (!name || !name.trim()) {
         return res.status(400).json({
           success: false,
@@ -254,8 +151,7 @@ class ApiPlatformController {
         });
       }
 
-      // Use exact name matching
-      const platforms = await Platform.findByNameExact(name.trim());
+      const platforms = await findPlatformsByName(name.trim());
       res.status(200).json({
         success: true,
         data: platforms,
@@ -263,11 +159,7 @@ class ApiPlatformController {
       });
     } catch (error) {
       console.error('Error finding platforms:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        error: error.message
-      });
+      respondServiceError(error, res);
     }
   }
 }

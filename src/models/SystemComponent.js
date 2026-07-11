@@ -292,6 +292,19 @@ class SystemComponent {
     return result.rowCount > 0;
   }
 
+  // Check if a component name is already used within the same system
+  // (case-insensitive), optionally excluding one component id (for updates).
+  static async existsByName(system_id, name, excludeId) {
+    const params = [system_id, name];
+    let sql = 'SELECT 1 FROM system_components WHERE system_id = $1 AND LOWER(name) = LOWER($2)';
+    if (excludeId != null) {
+      params.push(excludeId);
+      sql += ' AND id != $3';
+    }
+    const result = await pool.query(sql, params);
+    return result.rowCount > 0;
+  }
+
   // Lấy 1 component kèm đầy đủ tags, contacts, ip_addresses
   static async findByIdWithRelations(id) {
     const sql = `

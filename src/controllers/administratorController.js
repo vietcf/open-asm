@@ -10,6 +10,11 @@ import { clearPermissionsCache } from '../middlewares/permissions.middleware.js'
 // ===== USER MANAGEMENT =====
 const administratorController = {};
 
+// No spaces or special characters — avoids usernames that are impossible to type
+// consistently (leading/trailing spaces, unicode lookalikes, etc.) and cause
+// confusing "Invalid username or password" login failures.
+const USERNAME_REGEX = /^[a-zA-Z0-9_.-]{3,50}$/;
+
 administratorController.listUsers = async (req, res) => {
   try {
     // Get query parameters
@@ -71,6 +76,10 @@ administratorController.createUser = async (req, res) => {
     // Validate required fields
     if (!normUsername || !normEmail || !normPassword) {
       req.flash('error', 'Username, email, and password are required!');
+      return res.redirect('/administrator/users');
+    }
+    if (!USERNAME_REGEX.test(normUsername)) {
+      req.flash('error', 'Username must be 3-50 characters and contain only letters, numbers, dots, hyphens, and underscores (no spaces).');
       return res.redirect('/administrator/users');
     }
     if (!normRole || isNaN(normRole)) {
@@ -142,6 +151,9 @@ administratorController.updateUser = async (req, res) => {
       newUsername = currentUser.username;
       newRole = currentUser.role_id;
     } else {
+      if (!USERNAME_REGEX.test(newUsername)) {
+        throw new Error('Username must be 3-50 characters and contain only letters, numbers, dots, hyphens, and underscores (no spaces).');
+      }
       if (!normRole || isNaN(normRole)) {
         throw new Error('Role is required');
       }
@@ -149,7 +161,7 @@ administratorController.updateUser = async (req, res) => {
       if (!validRole) throw new Error('Invalid role');
       newRole = normRole;
     }
-    
+
     // Check for duplicate username (excluding current user)
     if (newUsername !== currentUser.username) {
       const existingUsernameUser = await User.findByUsername(newUsername);

@@ -20,8 +20,8 @@
   <!-- Search & Filter -->
   <div class="row mb-3">
     <div class="col-12">
-      <div class="d-flex justify-content-end align-items-center gap-2">
-        <form class="d-flex align-items-center gap-2" role="search" method="get" action="/administrator/log">
+      <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
+        <form class="d-flex flex-wrap justify-content-end align-items-center gap-2" role="search" method="get" action="/administrator/log">
           <!-- Date Range Picker -->
           <div class="d-flex align-items-center gap-1">
             <label class="form-label form-label-sm mb-0 text-muted">From:</label>
@@ -90,7 +90,7 @@
           <h3 class="card-title mb-0">Recent System Logs</h3>
         </div>
         <div class="card-body table-responsive" style="overflow-x: auto;">
-          <table class="table table-hover">
+          <table class="table table-hover" id="logTable">
             <thead>
               <tr>
                 <th>Time</th>
@@ -123,7 +123,7 @@
                           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
-                          <dl class="row mb-0">
+                          <dl class="row detail-dl">
                             <dt class="col-sm-4">ID</dt><dd class="col-sm-8"><%= log.id %></dd>
                             <dt class="col-sm-4">Time</dt><dd class="col-sm-8"><%= log.created_at ? log.created_at.toLocaleString ? log.created_at.toLocaleString() : log.created_at : '' %></dd>
                             <dt class="col-sm-4">User</dt><dd class="col-sm-8"><%= log.username || '' %></dd>
@@ -213,9 +213,34 @@
       showToast('<%= error %>', 'danger');
     });
   </script>
+<% } %>
 
 <!-- Responsive Tables CSS -->
-<% } %>
+<style>
+/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
+#logTable {
+  table-layout: fixed;
+  min-width: 900px;
+}
+#logTable thead th {
+  white-space: nowrap;
+}
+#logTable th:nth-child(1), #logTable td:nth-child(1) { width: 16%; }
+#logTable th:nth-child(2), #logTable td:nth-child(2) { width: 10%; }
+#logTable th:nth-child(3), #logTable td:nth-child(3) { width: 10%; }
+#logTable th:nth-child(4), #logTable td:nth-child(4) { width: 10%; }
+#logTable th:nth-child(5), #logTable td:nth-child(5) { width: 44%; }
+#logTable th:nth-child(6), #logTable td:nth-child(6) { width: 10%; }
+
+#logTable td:nth-child(5) {
+  overflow-wrap: break-word;
+  vertical-align: top;
+}
+#logTable td:nth-child(6) {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+</style>
 
 <script>
 $(document).ready(function() {
@@ -263,7 +288,7 @@ $(document).ready(function() {
   function addQuickDateButtons() {
     const form = $('form[action="/administrator/log"]');
     const quickButtons = $(`
-      <div class="d-flex align-items-center gap-1 ms-2">
+      <div class="d-flex flex-wrap align-items-center gap-1 ms-2">
         <button type="button" class="btn btn-outline-secondary btn-sm" data-range="today">Today</button>
         <button type="button" class="btn btn-outline-secondary btn-sm" data-range="yesterday">Yesterday</button>
         <button type="button" class="btn btn-outline-secondary btn-sm" data-range="week">This Week</button>

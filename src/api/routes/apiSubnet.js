@@ -1,6 +1,7 @@
 // Subnet API routes (ES6)
 import express from 'express';
 import apiSubnetController from '../controllers/apiSubnetController.js';
+import { authorizePermissionJWT } from '../middlewares/auth.middleware.js';
 const apiSubnetRouter = express.Router();
 
 /**
@@ -57,7 +58,7 @@ const apiSubnetRouter = express.Router();
  *                   items:
  *                     $ref: '#/components/schemas/Subnet'
  */
-apiSubnetRouter.get('/', apiSubnetController.listSubnets);
+apiSubnetRouter.get('/', authorizePermissionJWT('subnet.read'), apiSubnetController.listSubnets);
 
 /**
  * @swagger
@@ -86,7 +87,7 @@ apiSubnetRouter.get('/', apiSubnetController.listSubnets);
  *       404:
  *         description: Subnet not found
  */
-apiSubnetRouter.get('/find', apiSubnetController.findSubnet);
+apiSubnetRouter.get('/find', authorizePermissionJWT('subnet.read'), apiSubnetController.findSubnet);
 
 /**
  * @swagger
@@ -138,7 +139,7 @@ apiSubnetRouter.get('/find', apiSubnetController.findSubnet);
  *       500:
  *         description: Server error
  */
-apiSubnetRouter.get('/config', apiSubnetController.getConfig);
+apiSubnetRouter.get('/config', authorizePermissionJWT('subnet.read'), apiSubnetController.getConfig);
 
 /**
  * @swagger
@@ -165,7 +166,7 @@ apiSubnetRouter.get('/config', apiSubnetController.getConfig);
  *       404:
  *         description: Not found
  */
-apiSubnetRouter.get('/:id', apiSubnetController.getSubnet);
+apiSubnetRouter.get('/:id', authorizePermissionJWT('subnet.read'), apiSubnetController.getSubnet);
 
 /**
  * @swagger
@@ -213,13 +214,13 @@ apiSubnetRouter.get('/:id', apiSubnetController.getSubnet);
  *       409:
  *         description: Duplicate subnet address
  */
-apiSubnetRouter.post('/', apiSubnetController.createSubnet);
+apiSubnetRouter.post('/', authorizePermissionJWT('subnet.create'), apiSubnetController.createSubnet);
 
 /**
  * @swagger
  * /api/v1/subnets/{id}:
  *   put:
- *     summary: Update a subnet (chỉ cho phép cập nhật description và tags)
+ *     summary: Update a subnet (partial update — description, zone, environment, tags; address is immutable)
  *     tags: [Subnet]
  *     security:
  *       - bearerAuth: []
@@ -263,7 +264,7 @@ apiSubnetRouter.post('/', apiSubnetController.createSubnet);
  *       404:
  *         description: Not found
  */
-apiSubnetRouter.put('/:id', apiSubnetController.updateSubnet);
+apiSubnetRouter.put('/:id', authorizePermissionJWT('subnet.update'), apiSubnetController.updateSubnet);
 
 /**
  * @swagger
@@ -286,7 +287,7 @@ apiSubnetRouter.put('/:id', apiSubnetController.updateSubnet);
  *       404:
  *         description: Not found
  */
-apiSubnetRouter.delete('/:id', apiSubnetController.deleteSubnet);
+apiSubnetRouter.delete('/:id', authorizePermissionJWT('subnet.delete'), apiSubnetController.deleteSubnet);
 
 /**
  * @swagger

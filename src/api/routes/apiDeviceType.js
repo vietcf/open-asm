@@ -1,5 +1,6 @@
 import express from 'express';
 import apiDeviceTypeController from '../controllers/apiDeviceTypeController.js';
+import { authorizePermissionJWT } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
@@ -190,7 +191,7 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/', apiDeviceTypeController.getAllDeviceTypes);
+router.get('/', authorizePermissionJWT('device_type.read'), apiDeviceTypeController.getAllDeviceTypes);
 
 /**
  * @swagger
@@ -228,7 +229,7 @@ router.get('/', apiDeviceTypeController.getAllDeviceTypes);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/find', apiDeviceTypeController.findDeviceTypes);
+router.get('/find', authorizePermissionJWT('device_type.read'), apiDeviceTypeController.findDeviceTypes);
 
 /**
  * @swagger
@@ -272,7 +273,7 @@ router.get('/find', apiDeviceTypeController.findDeviceTypes);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:id', apiDeviceTypeController.getDeviceTypeById);
+router.get('/:id', authorizePermissionJWT('device_type.read'), apiDeviceTypeController.getDeviceTypeById);
 
 /**
  * @swagger
@@ -315,7 +316,7 @@ router.get('/:id', apiDeviceTypeController.getDeviceTypeById);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/', apiDeviceTypeController.createDeviceType);
+router.post('/', authorizePermissionJWT('device_type.create'), apiDeviceTypeController.createDeviceType);
 
 /**
  * @swagger
@@ -385,7 +386,7 @@ router.post('/', apiDeviceTypeController.createDeviceType);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.put('/:id', apiDeviceTypeController.updateDeviceType);
+router.put('/:id', authorizePermissionJWT('device_type.update'), apiDeviceTypeController.updateDeviceType);
 
 /**
  * @swagger
@@ -442,6 +443,6 @@ router.put('/:id', apiDeviceTypeController.updateDeviceType);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete('/:id', apiDeviceTypeController.deleteDeviceType);
+router.delete('/:id', authorizePermissionJWT('device_type.delete'), apiDeviceTypeController.deleteDeviceType);
 
 export default router;

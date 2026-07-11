@@ -42,6 +42,7 @@ public/dist/
 pgdata/
 .env.*
 !.env.sample
+!.env.docker.sample
 
 # Optional npm cache directory
 .npm
@@ -58,13 +59,8 @@ pgdata/
 # Yarn Integrity file
 yarn.lock
 
-# dotenv environment variables file
-.env.* 
-
 # VS Code settings
 .vscode/
-
-# Do NOT ignore .env.sample, allow it to be pushed to repo
 
 #docker images
 docker-images
@@ -85,31 +81,8 @@ logs/
 #temporary files
 *.tmp
 *.temp
-temp/
-tmp/
-
-#test files
-test_*.xlsx
-test_*.js
-test_*.http
-*test*.xlsx
-*test*.js
-*test*.http
-
-#debug files
-debug*.js
-*debug*.js
-
-#example and sample files
-*example*
-*sample*
-*demo*
-
-#layout and diagram files
-*layout*.txt
-*diagram*.txt
-*guide*.txt
-*description*.txt
+public/uploads/temp/
+public/uploads/tmp/
 
 #IDE and editor files
 .cursor/

@@ -14,6 +14,12 @@ export default async (db) => {
     );
   `);
 
+  // A component name only needs to be unique within its own system.
+  await db.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_system_component_name
+    ON system_components (system_id, LOWER(name));
+  `);
+
   // system_component_contact: many-to-many between system_components and contacts
   await db.query(`
     CREATE TABLE IF NOT EXISTS system_component_contact (

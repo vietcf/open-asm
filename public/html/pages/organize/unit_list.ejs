@@ -1,5 +1,3 @@
-<!-- Modal Buttons Custom CSS -->
-<link rel="stylesheet" href="/css/modal-buttons.css">
 
 <%
 // ==========================================
@@ -165,7 +163,7 @@ function buildPaginationUrl(targetPage) {
                           const cleanDescription = (unit.description || '-').trim();
                           const shortDescription = cleanDescription.length > 50 ? cleanDescription.substring(0, 50) + '…' : cleanDescription;
                         %>
-                        <span class="description-hover" data-description="<%= cleanDescription.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>" style="white-space: pre-line; cursor: help; position: relative; word-break: break-word;"><%= shortDescription %></span>
+                        <span data-bs-toggle="tooltip" data-bs-placement="top" title="<%= cleanDescription %>" style="cursor: help; word-break: break-word;"><%= shortDescription %></span>
                       </td>
                       <td class="text-end">
                         <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showUnitDetail('<%= unit.id %>')" data-unit='<%= JSON.stringify(unit) %>'><i class="bi bi-eye"></i></button>
@@ -256,7 +254,7 @@ function buildPaginationUrl(targetPage) {
         <!-- Content will be loaded here -->
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -281,9 +279,9 @@ function buildPaginationUrl(targetPage) {
             <textarea class="form-control" id="unitDescription" name="description" rows="3"></textarea>
           </div>
         </div>
-        <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
-          <button type="button" class="btn btn-secondary w-100 order-2 order-lg-1" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Add Unit</button>
+        <div class="modal-footer d-flex justify-content-end">
+          <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Add Unit</button>
         </div>
       </form>
     </div>
@@ -309,9 +307,9 @@ function buildPaginationUrl(targetPage) {
             <textarea class="form-control" id="editUnitDescription" name="description" rows="3"></textarea>
           </div>
         </div>
-        <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
-          <button type="button" class="btn btn-secondary w-100 order-2 order-lg-1" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Update Unit</button>
+        <div class="modal-footer d-flex justify-content-end">
+          <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Update Unit</button>
         </div>
       </form>
     </div>
@@ -332,13 +330,12 @@ function showUnitDetail(unitId) {
   const modalElement = document.getElementById('unitDetailModal');
   const content = document.getElementById('unitDetailContent');
   
-  let html = '<div class="row">';
-  html += '<div class="col-md-6"><strong>Unit Name:</strong> ' + (unitData.name || '-') + '</div>';
-  html += '<div class="col-md-6"><strong>Created:</strong> ' + (unitData.created_at ? new Date(unitData.created_at).toLocaleDateString() : '-') + '</div>';
-  if (unitData.description) {
-    html += '<div class="col-12 mt-3"><strong>Description:</strong><br><div style="white-space: pre-wrap;">' + unitData.description + '</div></div>';
-  }
-  html += '</div>';
+  let html = '<dl class="row detail-dl">';
+  html += '<dt class="col-sm-4">Unit ID</dt><dd class="col-sm-8">' + (unitData.id || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Unit Name</dt><dd class="col-sm-8">' + (unitData.name || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + (unitData.created_at ? new Date(unitData.created_at).toLocaleDateString() : '-') + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (unitData.description ? '<div style="white-space: pre-wrap;">' + unitData.description + '</div>' : '-') + '</dd>';
+  html += '</dl>';
   
   content.innerHTML = html;
   
@@ -496,47 +493,23 @@ $(document).ready(function() {
   text-align: left;
 }
 
+/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
+#unitTable {
+  table-layout: fixed;
+  min-width: 600px;
+}
+#unitTable thead th {
+  white-space: nowrap;
+}
+#unitTable th:nth-child(1), #unitTable td:nth-child(1) { width: 8%; }
+#unitTable th:nth-child(2), #unitTable td:nth-child(2) { width: 22%; }
+#unitTable th:nth-child(3), #unitTable td:nth-child(3) { width: 43%; }
+#unitTable th:nth-child(4), #unitTable td:nth-child(4) { width: 27%; }
+
 /* Description column alignment */
 #unitTable td:nth-child(3) {
   text-align: left;
   vertical-align: top;
-}
-
-/* Description hover popup style */
-.description-hover {
-  position: relative;
-  display: inline-block;
-}
-
-.description-hover:hover::after {
-  content: attr(data-description);
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background: #333;
-  color: white;
-  padding: 8px 12px;
-  border-radius: 4px;
-  white-space: pre-line;
-  max-width: 400px;
-  max-height: 200px;
-  overflow-y: auto;
-  z-index: 1000;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  font-size: 14px;
-  line-height: 1.4;
-  word-break: break-word;
-  pointer-events: none;
-}
-
-.description-hover:hover::before {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 10px;
-  border: 5px solid transparent;
-  border-bottom-color: #333;
-  z-index: 1001;
-  pointer-events: none;
+  overflow-wrap: break-word;
 }
 </style>

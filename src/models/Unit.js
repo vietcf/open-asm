@@ -12,10 +12,10 @@ class Unit {
    * @param {string} data.description
    * @returns {Promise<Object>} The created unit
    */
-  static async create({ name, description }) {
+  static async create({ name, code, description }) {
     const result = await pool.query(
-      `INSERT INTO units (name, description) VALUES ($1, $2) RETURNING *`,
-      [name, description]
+      `INSERT INTO units (name, code, description) VALUES ($1, $2, $3) RETURNING *`,
+      [name, code || null, description]
     );
     return result.rows[0];
   }
@@ -61,10 +61,10 @@ class Unit {
    * @param {string} data.description
    * @returns {Promise<Object>} The updated unit
    */
-  static async update(id, { name, description }) {
+  static async update(id, { name, code, description }) {
     const result = await pool.query(
-      `UPDATE units SET name=$1, description=$2 WHERE id=$3 RETURNING *`,
-      [name, description, id]
+      `UPDATE units SET name=$1, code=$2, description=$3 WHERE id=$4 RETURNING *`,
+      [name, code || null, description, id]
     );
     return result.rows[0];
   }

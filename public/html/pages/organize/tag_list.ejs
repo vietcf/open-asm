@@ -1,5 +1,3 @@
-<!-- Modal Buttons Custom CSS -->
-<link rel="stylesheet" href="/css/modal-buttons.css">
 
 <%
 // ==========================================
@@ -165,7 +163,7 @@ function buildPaginationUrl(targetPage) {
                           const cleanDescription = (tag.description || '-').trim();
                           const shortDescription = cleanDescription.length > 50 ? cleanDescription.substring(0, 50) + '…' : cleanDescription;
                         %>
-                        <span class="description-hover" data-description="<%= cleanDescription.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>" style="white-space: pre-line; cursor: help; position: relative; word-break: break-word;"><%= shortDescription %></span>
+                        <span data-bs-toggle="tooltip" data-bs-placement="top" title="<%= cleanDescription %>" style="cursor: help; word-break: break-word;"><%= shortDescription %></span>
                       </td>
                       <td class="text-end">
                         <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showTagDetail('<%= tag.id %>')" data-tag='<%= JSON.stringify(tag) %>'><i class="bi bi-eye"></i></button>
@@ -256,7 +254,7 @@ function buildPaginationUrl(targetPage) {
         <!-- Content will be loaded here -->
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -281,9 +279,9 @@ function buildPaginationUrl(targetPage) {
             <textarea class="form-control" id="tagDescription" name="description" rows="3"></textarea>
           </div>
         </div>
-        <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
-          <button type="button" class="btn btn-secondary w-100 order-2 order-lg-1" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Add Tag</button>
+        <div class="modal-footer d-flex justify-content-end">
+          <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Add Tag</button>
         </div>
       </form>
     </div>
@@ -309,9 +307,9 @@ function buildPaginationUrl(targetPage) {
             <textarea class="form-control" id="editTagDescription" name="description" rows="3"></textarea>
           </div>
         </div>
-        <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
-          <button type="button" class="btn btn-secondary w-100 order-2 order-lg-1" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Update Tag</button>
+        <div class="modal-footer d-flex justify-content-end">
+          <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Update Tag</button>
         </div>
       </form>
     </div>
@@ -332,13 +330,11 @@ function showTagDetail(tagId) {
   const modalElement = document.getElementById('tagDetailModal');
   const content = document.getElementById('tagDetailContent');
   
-  let html = '<div class="row">';
-  html += '<div class="col-md-6"><strong>Tag ID:</strong> ' + (tagData.id || '-') + '</div>';
-  html += '<div class="col-md-6"><strong>Tag Name:</strong> ' + (tagData.name || '-') + '</div>';
-  if (tagData.description) {
-    html += '<div class="col-12 mt-3"><strong>Description:</strong><br><div style="white-space: pre-wrap;">' + tagData.description + '</div></div>';
-  }
-  html += '</div>';
+  let html = '<dl class="row detail-dl">';
+  html += '<dt class="col-sm-4">Tag ID</dt><dd class="col-sm-8">' + (tagData.id || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Tag Name</dt><dd class="col-sm-8">' + (tagData.name || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (tagData.description ? '<div style="white-space: pre-wrap;">' + tagData.description + '</div>' : '-') + '</dd>';
+  html += '</dl>';
   
   content.innerHTML = html;
   
@@ -400,47 +396,23 @@ $(document).ready(function() {
   text-align: left;
 }
 
+/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
+#tagTable {
+  table-layout: fixed;
+  min-width: 600px;
+}
+#tagTable thead th {
+  white-space: nowrap;
+}
+#tagTable th:nth-child(1), #tagTable td:nth-child(1) { width: 8%; }
+#tagTable th:nth-child(2), #tagTable td:nth-child(2) { width: 22%; }
+#tagTable th:nth-child(3), #tagTable td:nth-child(3) { width: 43%; }
+#tagTable th:nth-child(4), #tagTable td:nth-child(4) { width: 27%; }
+
 /* Description column alignment */
 #tagTable td:nth-child(3) {
   text-align: left;
   vertical-align: top;
-}
-
-/* Description hover popup style */
-.description-hover {
-  position: relative;
-  display: inline-block;
-}
-
-.description-hover:hover::after {
-  content: attr(data-description);
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background: #333;
-  color: white;
-  padding: 8px 12px;
-  border-radius: 4px;
-  white-space: pre-line;
-  max-width: 400px;
-  max-height: 200px;
-  overflow-y: auto;
-  z-index: 1000;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  font-size: 14px;
-  line-height: 1.4;
-  word-break: break-word;
-  pointer-events: none;
-}
-
-.description-hover:hover::before {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 10px;
-  border: 5px solid transparent;
-  border-bottom-color: #333;
-  z-index: 1001;
-  pointer-events: none;
+  overflow-wrap: break-word;
 }
 </style>

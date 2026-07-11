@@ -8,27 +8,28 @@ import XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
 import fs from 'fs';
 import path from 'path';
+import { ServiceError } from '../services/errors.js';
+import {
+  listContacts as listContactsService,
+  createContact as createContactService,
+  updateContact as updateContactService,
+  deleteContact as deleteContactService,
+  getPositionOptions as getPositionOptionsFromConfig
+} from '../services/contactService.js';
+import {
+  listUnits as listUnitsService,
+  createUnit as createUnitService,
+  updateUnit as updateUnitService,
+  deleteUnit as deleteUnitService
+} from '../services/unitService.js';
+import {
+  listTags as listTagsService,
+  createTag as createTagService,
+  updateTag as updateTagService,
+  deleteTag as deleteTagService
+} from '../services/tagService.js';
 
 const organizeController = {};
-
-// Helper: Load position options from DB config
-async function getPositionOptionsFromConfig() {
-  let positionOptions = [];
-  try {
-    const config = await Configuration.findById('contact_position');
-    if (config && config.value) {
-      let parsed;
-      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
-      if (Array.isArray(parsed)) {
-        positionOptions = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
-      }
-    }
-  } catch (e) { 
-    // Nếu không load được từ DB thì để rỗng
-    positionOptions = []; 
-  }
-  return positionOptions;
-}
 
 // Contact List page handler
 organizeController.contactList = async (req, res) => {
@@ -40,14 +41,7 @@ organizeController.contactList = async (req, res) => {
     if (!res.locals.pageSizeOptions.includes(pageSize)) {
       pageSize = res.locals.defaultPageSize;
     }
-    let contactList, totalCount;
-    if (search) {
-      totalCount = await Contact.countSearch(search);
-      contactList = await Contact.findSearchPage(search, page, pageSize);
-    } else {
-      totalCount = await Contact.countAll();
-      contactList = await Contact.findPage(page, pageSize);
-    }
+    const { items: contactList, totalCount } = await listContactsService({ search, page, pageSize });
     const totalPages = Math.ceil(totalCount / pageSize);
     // fetch units for Org Unit select options
     const units = await Unit.findAll();
@@ -81,57 +75,35 @@ organizeController.contactList = async (req, res) => {
 // Create new contact
 organizeController.createContact = async (req, res) => {
   try {
-    let { name, email, position, unit_id, phone, description } = req.body;
-    name = (name || '').trim();
-    email = (email || '').trim();
-    position = (position || '').trim();
-    phone = (phone || '').trim();
-    description = (description || '').trim();
-    // Validate required fields
-    if (!name || !email || !position) {
-      return res.redirect('/organize/contact?error=Name, Email, and Position are required');
-    }
-    // Check if email already exists
-    const existing = await Contact.findByEmail(email);
-    if (existing) {
-      console.warn(`Duplicate email: ${email}`);
-      return res.redirect('/organize/contact?error=Email already exists');
-    }
-    // Insert new contact
-    await Contact.create({ name, email, position, unit_id, phone, description });
+    const { name, email, position, unit_id, phone, description } = req.body;
+    await createContactService({ name, email, position, unit_id, phone, description });
     res.redirect('/organize/contact?success=Contact added successfully');
   } catch (err) {
-    console.error('Add contact error:', err);
-    res.redirect('/organize/contact?error=Unable to add contact');
+    const message = err instanceof ServiceError ? err.message : 'Unable to add contact';
+    if (!(err instanceof ServiceError)) console.error('Add contact error:', err);
+    res.redirect('/organize/contact?error=' + encodeURIComponent(message));
   }
 };
 
 // Update existing contact
 organizeController.updateContact = async (req, res) => {
   try {
-    let { name, email, position, unit_id, phone, description } = req.body;
-    name = (name || '').trim();
-    email = (email || '').trim();
-    position = (position || '').trim();
-    phone = (phone || '').trim();
-    description = (description || '').trim();
-    if (!name || !email || !position) {
-      return res.redirect('/organize/contact?error=Name, Email, and Position are required');
-    }
-    await Contact.update(req.params.id, { name, email, position, unit_id, phone, description });
+    const { name, email, position, unit_id, phone, description } = req.body;
+    await updateContactService(req.params.id, { name, email, position, unit_id, phone, description });
     res.redirect('/organize/contact?success=Contact updated successfully');
-  } catch(err) {
-    console.error(err);
-    res.redirect('/organize/contact?error=Unable to update contact');
+  } catch (err) {
+    const message = err instanceof ServiceError ? err.message : 'Unable to update contact';
+    if (!(err instanceof ServiceError)) console.error(err);
+    res.redirect('/organize/contact?error=' + encodeURIComponent(message));
   }
 };
 
 // Delete contact
 organizeController.deleteContact = async (req, res) => {
   try {
-    await Contact.delete(req.params.id);
+    await deleteContactService(req.params.id);
     res.redirect('/organize/contact?success=Contact deleted successfully');
-  } catch(err) {
+  } catch (err) {
     console.error(err);
     res.redirect('/organize/contact?error=Unable to delete contact');
   }
@@ -147,14 +119,7 @@ organizeController.unitList = async (req, res) => {
     if (!res.locals.pageSizeOptions.includes(pageSize)) {
       pageSize = res.locals.defaultPageSize;
     }
-    let totalCount, unitList;
-    if (search) {
-      totalCount = await Unit.countSearch(search);
-      unitList = await Unit.findSearchPage(search, page, pageSize);
-    } else {
-      totalCount = await Unit.countAll();
-      unitList = await Unit.findPage(page, pageSize);
-    }
+    const { items: unitList, totalCount } = await listUnitsService({ search, page, pageSize });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const errorMessage = req.query.error || null;
     const successMessage = req.query.success || null;
@@ -181,36 +146,15 @@ organizeController.unitList = async (req, res) => {
 
 // Create new unit
 organizeController.createUnit = async (req, res) => {
-  let { name, description, page, search } = req.body;
-  name = (name || '').trim();
-  description = (description || '').trim();
-  
-  if (!name) {
-    const pageNum = page || 1;
-    const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
-    return res.redirect(`/organize/unit?page=${pageNum}${searchQuery}&error=Unit Name is required`);
-  }
+  const { name, code, description, page, search } = req.body;
+  const pageNum = page || 1;
+  const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
   try {
-    await Unit.create({ name, description });
-    const pageNum = page || 1;
-    const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
+    await createUnitService({ name, code, description });
     return res.redirect(`/organize/unit?page=${pageNum}${searchQuery}&success=Unit added successfully`);
   } catch (err) {
-    let errorMsg = 'Unable to add unit';
-    const errStr = (err && (err.detail || err.message)) ? (err.detail || err.message) : '';
-    if (
-      (errStr && errStr.toLowerCase().includes('already exists') && errStr.toLowerCase().includes('(name)')) ||
-      (errStr && errStr.toLowerCase().includes('duplicate key') && errStr.toLowerCase().includes('name')) ||
-      (err && String(err.detail).includes('units_name_unique'))
-    ) {
-      errorMsg = 'Unit Name already exists. Please choose a different name.';
-    } else if (err && err.detail) {
-      errorMsg = err.detail;
-    } else if (err && err.message) {
-      errorMsg = err.message;
-    }
-    const pageNum = page || 1;
-    const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
+    const errorMsg = err instanceof ServiceError ? err.message : 'Unable to add unit';
+    if (!(err instanceof ServiceError)) console.error('Add unit error:', err);
     return res.redirect(`/organize/unit?page=${pageNum}${searchQuery}&error=${encodeURIComponent(errorMsg)}`);
   }
 };
@@ -218,36 +162,15 @@ organizeController.createUnit = async (req, res) => {
 // Update existing unit
 organizeController.updateUnit = async (req, res) => {
   const { id } = req.params;
-  let { name, description, page, search } = req.body;
-  name = (name || '').trim();
-  description = (description || '').trim();
-  
-  if (!name) {
-    const pageNum = page || 1;
-    const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
-    return res.redirect(`/organize/unit?page=${pageNum}${searchQuery}&error=Unit Name is required`);
-  }
+  const { name, code, description, page, search } = req.body;
+  const pageNum = page || 1;
+  const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
   try {
-    await Unit.update(id, { name, description });
-    const pageNum = page || 1;
-    const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
+    await updateUnitService(id, { name, code, description });
     return res.redirect(`/organize/unit?page=${pageNum}${searchQuery}&success=Unit updated successfully`);
   } catch (err) {
-    let errorMsg = 'Unable to update unit';
-    const errStr = (err && (err.detail || err.message)) ? (err.detail || err.message) : '';
-    if (
-      (errStr && errStr.toLowerCase().includes('already exists') && errStr.toLowerCase().includes('(name)')) ||
-      (errStr && errStr.toLowerCase().includes('duplicate key') && errStr.toLowerCase().includes('name')) ||
-      (err && String(err.detail).includes('units_name_unique'))
-    ) {
-      errorMsg = 'Unit Name already exists. Please choose a different name.';
-    } else if (err && err.detail) {
-      errorMsg = err.detail;
-    } else if (err && err.message) {
-      errorMsg = err.message;
-    }
-    const pageNum = page || 1;
-    const searchQuery = search ? `&search=${encodeURIComponent(search)}` : '';
+    const errorMsg = err instanceof ServiceError ? err.message : 'Unable to update unit';
+    if (!(err instanceof ServiceError)) console.error('Update unit error:', err);
     return res.redirect(`/organize/unit?page=${pageNum}${searchQuery}&error=${encodeURIComponent(errorMsg)}`);
   }
 };
@@ -256,7 +179,7 @@ organizeController.updateUnit = async (req, res) => {
 organizeController.deleteUnit = async (req, res) => {
   const { id } = req.params;
   try {
-    await Unit.delete(id);
+    await deleteUnitService(id);
     res.redirect('/organize/unit?success=Unit deleted successfully');
   } catch (err) {
     console.error('Delete unit error:', err);
@@ -340,14 +263,7 @@ organizeController.tagList = async (req, res) => {
     if (!res.locals.pageSizeOptions.includes(pageSize)) {
       pageSize = res.locals.defaultPageSize;
     }
-    let tagList, totalCount;
-    if (search) {
-      totalCount = await Tag.countAll(search);
-      tagList = await Tag.findPage(page, pageSize, search);
-    } else {
-      totalCount = await Tag.countAll();
-      tagList = await Tag.findPage(page, pageSize);
-    }
+    const { items: tagList, totalCount } = await listTagsService({ search, page, pageSize });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
@@ -375,20 +291,12 @@ organizeController.tagList = async (req, res) => {
 // Create a new tag
 organizeController.createTag = async (req, res) => {
   try {
-    let { name, description } = req.body;
-    name = (name || '').trim();
-    description = (description || '').trim();
-    if (!name) {
-      return res.redirect('/organize/tag?error=Tag Name is required');
-    }
-    await Tag.create({ name, description });
+    const { name, description } = req.body;
+    await createTagService({ name, description });
     res.redirect('/organize/tag?success=Tag added successfully');
   } catch (err) {
-    let errorMsg = 'Unable to add tag';
-    if (err && err.message && err.message.includes('duplicate key value') && err.message.includes('tags_name_key')) {
-      errorMsg = 'Tag name already exists. Please choose a different name.';
-    }
-    res.redirect('/organize/tag?error=' + errorMsg);
+    const errorMsg = err instanceof ServiceError ? err.message : 'Unable to add tag';
+    res.redirect('/organize/tag?error=' + encodeURIComponent(errorMsg));
   }
 };
 
@@ -396,20 +304,15 @@ organizeController.createTag = async (req, res) => {
 organizeController.updateTag = async (req, res) => {
   try {
     const id = req.params.id;
-    let { name, description } = req.body;
-    name = (name || '').trim();
-    description = (description || '').trim();
-    if (!name) {
-      return res.redirect('/organize/tag?error=Tag Name is required');
-    }
-    await Tag.update(id, { name, description });
+    const { name, description } = req.body;
+    // Frontend edit form always submits a name, so this stays effectively
+    // "name required" in practice even though the service allows a
+    // description-only partial update for API callers.
+    await updateTagService(id, { name, description });
     res.redirect('/organize/tag?success=Tag updated successfully');
   } catch (err) {
-    let errorMsg = 'Unable to update tag';
-    if (err && err.message && err.message.includes('duplicate key value') && err.message.includes('tags_name_key')) {
-      errorMsg = 'Tag name already exists. Please choose a different name.';
-    }
-    res.redirect('/organize/tag?error=' + errorMsg);
+    const errorMsg = err instanceof ServiceError ? err.message : 'Unable to update tag';
+    res.redirect('/organize/tag?error=' + encodeURIComponent(errorMsg));
   }
 };
 
@@ -417,7 +320,7 @@ organizeController.updateTag = async (req, res) => {
 organizeController.deleteTag = async (req, res) => {
   try {
     const id = req.params.id;
-    await Tag.delete(id);
+    await deleteTagService(id);
     res.redirect('/organize/tag?success=Tag deleted successfully');
   } catch (err) {
     res.redirect('/organize/tag?error=Unable to delete tag');

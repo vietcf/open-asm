@@ -81,6 +81,14 @@ class DeviceType {
     await pool.query('DELETE FROM device_types WHERE id = $1', [id]);
   }
 
+  // devices.device_type_id is ON DELETE SET NULL, so the DB itself never
+  // blocks this — callers that want to prevent deleting an in-use device type
+  // must check this first.
+  static async countDevicesUsing(id) {
+    const result = await pool.query('SELECT COUNT(*) FROM devices WHERE device_type_id = $1', [id]);
+    return parseInt(result.rows[0].count, 10);
+  }
+
   static async select2Search(search = '', limit = 20) {
     let sql = 'SELECT id, name FROM device_types';
     let params = [];

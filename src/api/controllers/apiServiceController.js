@@ -1,10 +1,20 @@
 import Service from '../../models/Service.js';
+import {
+  getService as getServiceService,
+  findServicesByName,
+  createService as createServiceService,
+  updateService as updateServiceService,
+  deleteService as deleteServiceService
+} from '../../services/serviceService.js';
+import { handleServiceError } from '../utils/handleServiceError.js';
 
 const apiServiceController = {};
 
 // List all services
 apiServiceController.listServices = async (req, res) => {
   try {
+    // Unbounded — no pagination in the original contract, so this stays a
+    // direct model call rather than routing through the paginated service.
     const services = await Service.findAll();
     res.json({
       success: true,
@@ -23,152 +33,54 @@ apiServiceController.listServices = async (req, res) => {
 // Get a single service by id
 apiServiceController.getService = async (req, res) => {
   try {
-    const service = await Service.findById(req.params.id);
-    if (!service) {
-      return res.status(404).json({
-        success: false,
-        message: 'Service not found'
-      });
-    }
+    const service = await getServiceService(req.params.id);
     res.json({
       success: true,
       data: service
     });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: err.message
-    });
+    handleServiceError(err, res);
   }
 };
 
 // Create a new service
 apiServiceController.createService = async (req, res) => {
   try {
-    const { name, description } = req.body;
-    if (!name || !name.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Service name is required'
-      });
-    }
-    
-    const service = await Service.create({
-      name: name.trim(),
-      description: description ? description.trim() : null
-    });
-    
+    const service = await createServiceService(req.body || {});
     res.status(201).json({
       success: true,
       message: 'Service created successfully',
       data: service
     });
   } catch (err) {
-    if (err.code === '23505') { // Unique constraint violation
-      return res.status(400).json({
-        success: false,
-        message: 'Service name already exists'
-      });
-    }
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: err.message
-    });
+    handleServiceError(err, res);
   }
 };
 
 // Update a service
 apiServiceController.updateService = async (req, res) => {
   try {
-    const { name, description } = req.body;
-    
-    // Check if service exists first
-    const existingService = await Service.findById(req.params.id);
-    if (!existingService) {
-      return res.status(404).json({
-        success: false,
-        message: 'Service not found'
-      });
-    }
-    
-    // Prepare update data - only update fields that are provided
-    const updateData = {};
-    
-    if (name !== undefined) {
-      if (!name || !name.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Service name cannot be empty'
-        });
-      }
-      updateData.name = name.trim();
-    }
-    
-    if (description !== undefined) {
-      updateData.description = description ? description.trim() : null;
-    }
-    
-    // If no fields to update, return current service
-    if (Object.keys(updateData).length === 0) {
-      return res.json({
-        success: true,
-        message: 'No changes made',
-        data: existingService
-      });
-    }
-    
-    const service = await Service.update(req.params.id, updateData);
+    const service = await updateServiceService(req.params.id, req.body || {});
     res.json({
       success: true,
       message: 'Service updated successfully',
       data: service
     });
   } catch (err) {
-    if (err.code === '23505') { // Unique constraint violation
-      return res.status(400).json({
-        success: false,
-        message: 'Service name already exists'
-      });
-    }
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: err.message
-    });
+    handleServiceError(err, res);
   }
 };
 
 // Delete a service
 apiServiceController.deleteService = async (req, res) => {
   try {
-    // Check if service exists
-    const service = await Service.findById(req.params.id);
-    if (!service) {
-      return res.status(404).json({
-        success: false,
-        message: 'Service not found'
-      });
-    }
-    
-    await Service.delete(req.params.id);
+    await deleteServiceService(req.params.id);
     res.json({
       success: true,
       message: 'Service deleted successfully'
     });
   } catch (err) {
-    if (err.message && err.message.includes('in use')) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot delete: This service is in use'
-      });
-    }
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: err.message
-    });
+    handleServiceError(err, res);
   }
 };
 
@@ -177,7 +89,6 @@ apiServiceController.findServices = async (req, res) => {
   try {
     const { name } = req.query;
 
-    // Require search term
     if (!name || !name.trim()) {
       return res.status(400).json({
         success: false,
@@ -185,8 +96,7 @@ apiServiceController.findServices = async (req, res) => {
       });
     }
 
-    // Use exact name matching
-    const services = await Service.findByNameExact(name.trim());
+    const services = await findServicesByName(name.trim());
 
     res.json({
       success: true,

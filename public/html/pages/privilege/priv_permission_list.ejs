@@ -155,7 +155,7 @@ function buildExportUrl() {
             <h3 class="card-title mb-0">Privileged Permission List</h3>
         </div>
           <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
-            <table class="table table-hover" style="table-layout: fixed; min-width: 800px;">
+            <table class="table table-hover" id="privPermissionTable" style="table-layout: fixed; min-width: 800px;">
             <thead>
               <tr>
                 <th>No.</th>
@@ -392,7 +392,7 @@ function showPermissionDetail(permissionId) {
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
       <div class="modal-body">
-            <dl class="row mb-0">
+            <dl class="row detail-dl">
               <dt class="col-sm-4">Permission Name</dt>
               <dd class="col-sm-8">${permission.name || '<span class="text-muted">No data</span>'}</dd>
               <dt class="col-sm-4">Description</dt>
@@ -555,6 +555,16 @@ $(function() {
 
 <!-- Responsive Tables CSS -->
 <style>
+#privPermissionTable thead th {
+  white-space: nowrap;
+}
+/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
+#privPermissionTable th:nth-child(1), #privPermissionTable td:nth-child(1) { width: 4%; }
+#privPermissionTable th:nth-child(2), #privPermissionTable td:nth-child(2) { width: 18%; }
+#privPermissionTable th:nth-child(3), #privPermissionTable td:nth-child(3) { width: 38%; }
+#privPermissionTable th:nth-child(4), #privPermissionTable td:nth-child(4) { width: 20%; }
+#privPermissionTable th:nth-child(5), #privPermissionTable td:nth-child(5) { width: 20%; }
+
 /* Mobile responsive styles for Privileged Permission List */
 @media (max-width: 768px) {
   .table-responsive {

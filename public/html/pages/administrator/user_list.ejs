@@ -1,16 +1,21 @@
-<div class="container-fluid">
-  <!-- Breadcrumb -->
-  <div class="row mb-3">
-    <div class="col-12">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
           <li class="breadcrumb-item"><a href="/">Home</a></li>
           <li class="breadcrumb-item"><a href="/administrator">Administrator</a></li>
-          <li class="breadcrumb-item active" aria-current="page">User List</li>
+          <li class="breadcrumb-item active">User List</li>
         </ol>
-      </nav>
+      </div>
     </div>
   </div>
+</div>
+
+<!-- Main content -->
+<div class="app-content">
+<div class="container-fluid">
   <!-- Search and Page Size Row -->
   <div class="row mb-3">
     <div class="col-12">
@@ -38,7 +43,7 @@
       <div class="col-12">
         <div class="d-flex justify-content-end gap-2">
           <% if (hasPermission('user.create')) { %>
-          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+          <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addUserModal">
             <i class="bi bi-plus"></i> Add User
           </button>
           <% } %>
@@ -88,7 +93,7 @@
             <h3 class="card-title mb-0">User List</h3>
           </div>
           <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
-            <table class="table table-hover">
+            <table class="table table-hover" id="userTable">
               <thead>
                 <tr>
                   <th>No.</th>
@@ -192,6 +197,7 @@
       </div>
     </div>
   </div>
+  </div>
   <!-- Add User Modal -->
   <% if (hasPermission('user.create')) { %>
   <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
@@ -207,7 +213,7 @@
           <form id="addUserForm" action="/administrator/users" method="POST">
             <div class="mb-3">
               <label class="form-label">Username <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" name="username" required>
+              <input type="text" class="form-control" name="username" required pattern="^[a-zA-Z0-9_.-]{3,50}$" title="3-50 characters: letters, numbers, dots, hyphens, and underscores only (no spaces)" maxlength="50">
             </div>
             <div class="mb-3">
               <label class="form-label">Email <span class="text-danger">*</span></label>
@@ -271,7 +277,7 @@
               <form id="editUserForm-<%= user.id %>" action="/administrator/users/<%= user.id %>?_method=PUT" method="POST">
                 <div class="mb-3">
                   <label class="form-label">Username <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" name="username" value="<%= user.username %>" required>
+                  <input type="text" class="form-control" name="username" value="<%= user.username %>" required pattern="^[a-zA-Z0-9_.-]{3,50}$" title="3-50 characters: letters, numbers, dots, hyphens, and underscores only (no spaces)" maxlength="50">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Email <span class="text-danger">*</span></label>
@@ -352,3 +358,46 @@
       </div>
     <% }) %>
   <% } %>
+</div>
+
+<script>
+// When an admin sets a new password for a user, nudge them to also force a
+// change on next login — otherwise the admin-chosen password can persist
+// indefinitely if they forget to tick the box separately.
+$(document).on('input', '[id^="userEditModal-"] form input[name="password"]', function() {
+  const $checkbox = $(this).closest('form').find('input[name="must_change_password"]');
+  if (this.value.length > 0) {
+    $checkbox.prop('checked', true);
+  }
+});
+</script>
+
+<!-- Responsive Tables CSS -->
+<style>
+/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
+#userTable {
+  table-layout: fixed;
+  min-width: 1000px;
+}
+#userTable thead th {
+  white-space: nowrap;
+}
+#userTable th:nth-child(1), #userTable td:nth-child(1) { width: 5%; }
+#userTable th:nth-child(2), #userTable td:nth-child(2) { width: 13%; }
+#userTable th:nth-child(3), #userTable td:nth-child(3) { width: 20%; }
+#userTable th:nth-child(4), #userTable td:nth-child(4) { width: 15%; }
+#userTable th:nth-child(5), #userTable td:nth-child(5) { width: 12%; }
+#userTable th:nth-child(6), #userTable td:nth-child(6) { width: 10%; }
+#userTable th:nth-child(7), #userTable td:nth-child(7) { width: 10%; }
+#userTable th:nth-child(8), #userTable td:nth-child(8) { width: 15%; }
+
+#userTable td:nth-child(2),
+#userTable td:nth-child(3),
+#userTable td:nth-child(4) {
+  overflow-wrap: break-word;
+}
+#userTable td:nth-child(8) {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+</style>

@@ -478,7 +478,7 @@ function buildExportUrl() {
           <form id="addSubnetForm" action="/network/subnet-address" method="POST">
             <div class="mb-3">
               <label for="subnetAddress" class="form-label">Subnet Address <span class="text-danger">*</span></label>
-              <input type="text" class="form-control form-control-sm" id="subnetAddress" name="address" placeholder="Subnet Address (e.g. 192.168.1.0/24)" required>
+              <input type="text" class="form-control" id="subnetAddress" name="address" placeholder="Subnet Address (e.g. 192.168.1.0/24)" required>
               <div class="invalid-feedback" id="subnetAddressError"></div>
               <div class="valid-feedback" id="subnetAddressSuccess"></div>
             </div>
@@ -567,8 +567,8 @@ function buildExportUrl() {
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Update Subnet</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Update Subnet</button>
         </div>
       </form>
     </div>
@@ -589,7 +589,7 @@ function buildExportUrl() {
         <!-- Content will be loaded here -->
                   </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -642,8 +642,8 @@ function buildExportUrl() {
         <div class="modal-footer d-flex justify-content-between">
           <button type="button" class="btn btn-outline-danger" id="clearFilterBtnSubnet">Clear All Filters</button>
           <div>
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Apply Filters</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
               </div>
         </div>
       </form>
@@ -706,9 +706,9 @@ function buildExportUrl() {
         </form>
     </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-warning" id="validateSubnetBtn">Validate File</button>
-        <button type="button" class="btn btn-success" id="importSubnetBtn" style="display: none;">Import Subnets</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning btn-sm" id="validateSubnetBtn">Validate File</button>
+        <button type="button" class="btn btn-success btn-sm" id="importSubnetBtn" style="display: none;">Import Subnets</button>
   </div>
 </div>
   </div>
@@ -749,28 +749,6 @@ $(function() {
   // SELECT2 INITIALIZATION
   // ==========================================
   
-  // Tags Select2 - Add Subnet Modal
-  $('#subnetTags').select2({
-    theme: 'bootstrap-5',
-    placeholder: 'Select tags (optional)',
-    allowClear: true,
-    width: '100%',
-    multiple: true,
-    dropdownParent: $('#addSubnetModal'),
-    ajax: {
-      url: '/organize/api/tag',
-      dataType: 'json',
-      delay: 250,
-      data: params => {
-        return { search: params.term };
-      },
-      processResults: data => {
-        return { results: data };
-      },
-      cache: true
-    }
-  });
-
   // Tags select2 AJAX - Bootstrap 5 theme
   $('#addSubnetTags').select2({
     theme: 'bootstrap-5',
@@ -1551,20 +1529,22 @@ function showSubnetDetail(subnetId) {
   const modal = new bootstrap.Modal(modalElement);
   const content = document.getElementById('subnetDetailContent');
   
-  let html = '<div class="mb-2"><strong>Subnet Address:</strong> ' + String(subnet.address || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>Description:</strong><br><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + String(subnet.description || 'N/A').trim() + '</pre></div>';
-  html += '<div class="mb-2"><strong>Zone:</strong> ' + String(subnet.zone || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>Environment:</strong> ' + String(subnet.environment || 'N/A').trim() + '</div>';
-  
+  let html = '<dl class="row detail-dl">';
+  html += '<dt class="col-sm-4">Subnet Address</dt><dd class="col-sm-8">' + String(subnet.address || 'N/A').trim() + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + String(subnet.description || 'N/A').trim() + '</pre></dd>';
+  html += '<dt class="col-sm-4">Zone</dt><dd class="col-sm-8">' + String(subnet.zone || 'N/A').trim() + '</dd>';
+  html += '<dt class="col-sm-4">Environment</dt><dd class="col-sm-8">' + String(subnet.environment || 'N/A').trim() + '</dd>';
+
   if (subnet.tags && subnet.tags.length > 0) {
-    html += '<div class="mb-2"><strong>Tags:</strong><br>';
+    html += '<dt class="col-sm-4">Tags</dt><dd class="col-sm-8">';
     subnet.tags.forEach(function(tag) {
       const tagValue = (typeof tag === 'string' ? tag : tag.name);
       html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
     });
-    html += '</div>';
+    html += '</dd>';
   }
-  
+  html += '</dl>';
+
   // Add IP Addresses section
   html += '<div class="mb-3"><strong>IP Addresses in this Subnet:</strong></div>';
   html += '<div id="subnetIpList" class="mb-3">';
@@ -1656,7 +1636,7 @@ function displayIpAddresses(page = 1) {
     
     // Previous button
     if (page > 1) {
-      html += '<button type="button" class="btn btn-outline-secondary" onclick="loadSubnetIpAddresses(' + currentSubnetId + ', ' + (page - 1) + ')">Previous</button>';
+      html += '<button type="button" class="btn btn-outline-secondary btn-sm" onclick="loadSubnetIpAddresses(' + currentSubnetId + ', ' + (page - 1) + ')">Previous</button>';
     }
     
     // Page numbers
@@ -1670,7 +1650,7 @@ function displayIpAddresses(page = 1) {
     
     // Next button
     if (page < totalPages) {
-      html += '<button type="button" class="btn btn-outline-secondary" onclick="loadSubnetIpAddresses(' + currentSubnetId + ', ' + (page + 1) + ')">Next</button>';
+      html += '<button type="button" class="btn btn-outline-secondary btn-sm" onclick="loadSubnetIpAddresses(' + currentSubnetId + ', ' + (page + 1) + ')">Next</button>';
     }
     
     html += '</div>';
@@ -2004,6 +1984,35 @@ $('#importSubnetModal').on('hidden.bs.modal', function() {
   $('.progress-bar').css('width', '0%').text('');
 });
 </script>
+
+<style>
+/* Fixed proportional column widths — table-layout: fixed makes each column's
+   width depend only on these percentages, not on cell content, so a long
+   Description value can never shift the other columns or the row's layout.
+   On narrow viewports the .table-responsive wrapper scrolls horizontally
+   instead of squeezing columns out of proportion. */
+#subnetTable {
+  table-layout: fixed;
+  min-width: 900px;
+}
+#subnetTable thead th {
+  white-space: nowrap;
+}
+#subnetTable th:nth-child(1), #subnetTable td:nth-child(1) { width: 5%; }
+#subnetTable th:nth-child(2), #subnetTable td:nth-child(2) { width: 15%; }
+#subnetTable th:nth-child(3), #subnetTable td:nth-child(3) { width: 22%; }
+#subnetTable th:nth-child(4), #subnetTable td:nth-child(4) { width: 13%; }
+#subnetTable th:nth-child(5), #subnetTable td:nth-child(5) { width: 13%; }
+#subnetTable th:nth-child(6), #subnetTable td:nth-child(6) { width: 14%; }
+#subnetTable th:nth-child(7), #subnetTable td:nth-child(7) { width: 18%; }
+
+/* Description column alignment */
+#subnetTable td:nth-child(3) {
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+</style>
 
 <style>
 /* Force override for Add Subnet modal buttons on mobile */

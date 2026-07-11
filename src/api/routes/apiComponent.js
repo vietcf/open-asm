@@ -1,5 +1,6 @@
 import express from 'express';
 import apiComponentController from '../controllers/apiComponentController.js';
+import { authorizePermissionJWT } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
@@ -117,11 +118,14 @@ const router = express.Router();
  *             type: object
  *             required:
  *               - name
+ *               - system_id
  *             properties:
  *               system_id:
  *                 type: integer
+ *                 description: Parent system ID (required — a component must always belong to a system)
  *               name:
  *                 type: string
+ *                 description: Component name (required, must be unique within the parent system)
  *               app_type:
  *                 type: string
  *               description:
@@ -147,6 +151,8 @@ const router = express.Router();
  *         description: Component created
  *       400:
  *         description: Validation error
+ *       409:
+ *         description: A component with this name already exists in the parent system
  *
  * /api/v1/components/{id}:
  *   get:
@@ -187,8 +193,10 @@ const router = express.Router();
  *             properties:
  *               system_id:
  *                 type: integer
+ *                 description: Parent system ID. Not required in the request (has-key partial update), but the component must always end up with a system — clearing it to empty is rejected.
  *               name:
  *                 type: string
+ *                 description: Component name. If provided, must not be empty and must be unique within the parent system.
  *               app_type:
  *                 type: string
  *               description:
@@ -216,6 +224,8 @@ const router = express.Router();
  *         description: Validation error
  *       404:
  *         description: Component not found
+ *       409:
+ *         description: A component with this name already exists in the parent system
  *   delete:
  *     summary: Delete a component
  *     tags: [Component]
@@ -235,7 +245,7 @@ const router = express.Router();
  *         description: Component not found
  */
 
-router.get('/', apiComponentController.getAll);
+router.get('/', authorizePermissionJWT('system.read'), apiComponentController.getAll);
 
 /**
  * @swagger
@@ -299,10 +309,10 @@ router.get('/', apiComponentController.getAll);
  *                   type: string
  *                   description: Detailed error information
  */
-router.get('/find', apiComponentController.findComponents);
-router.get('/:id', apiComponentController.getById);
-router.post('/', apiComponentController.create);
-router.put('/:id', apiComponentController.update);
-router.delete('/:id', apiComponentController.remove);
+router.get('/find', authorizePermissionJWT('system.read'), apiComponentController.findComponents);
+router.get('/:id', authorizePermissionJWT('system.read'), apiComponentController.getById);
+router.post('/', authorizePermissionJWT('system.create'), apiComponentController.create);
+router.put('/:id', authorizePermissionJWT('system.update'), apiComponentController.update);
+router.delete('/:id', authorizePermissionJWT('system.delete'), apiComponentController.remove);
 
 export default router;

@@ -19,8 +19,8 @@ const apiContactRouter = express.Router();
  * @swagger
  * /api/v1/contacts/search:
  *   get:
- *     summary: Search contacts with pagination
- *     description: Search contacts by name, email, phone, position, or unit_name (case-insensitive partial matching)
+ *     summary: List/search contacts with pagination
+ *     description: Search contacts by name, email, phone, position, or unit_name (case-insensitive partial matching). There is no separate "list all contacts" endpoint — omit `query` to get all contacts, paginated.
  *     tags: [Contact]
  *     security:
  *       - bearerAuth: []
@@ -29,8 +29,8 @@ const apiContactRouter = express.Router();
  *         name: query
  *         schema:
  *           type: string
- *         required: true
- *         description: Search keyword (searches in name, email, phone, position, unit_name fields)
+ *         required: false
+ *         description: Search keyword (searches in name, email, phone, position, unit_name fields). Omit to list all contacts.
  *       - in: query
  *         name: page
  *         schema:
@@ -367,7 +367,7 @@ apiContactRouter.delete('/:id', authorizePermissionJWT('contact.delete'), apiCon
  *         unit_name:
  *           type: string
  *           nullable: true
- *           description: Organization unit name
+ *           description: Organization unit name. Only present on GET /contacts/{id} and the search/find endpoints — create and update responses do not include it.
  *         description:
  *           type: string
  *           nullable: true

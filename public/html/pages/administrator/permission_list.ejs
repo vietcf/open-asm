@@ -1,17 +1,21 @@
-<div class="container-fluid">
-  <!-- Breadcrumb -->
-  <div class="row mb-3">
-    <div class="col-12">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
           <li class="breadcrumb-item"><a href="/">Home</a></li>
           <li class="breadcrumb-item"><a href="/administrator">Administrator</a></li>
-          <li class="breadcrumb-item active" aria-current="page">Permission List</li>
+          <li class="breadcrumb-item active">Permission List</li>
         </ol>
-      </nav>
+      </div>
     </div>
   </div>
+</div>
 
+<!-- Main content -->
+<div class="app-content">
+<div class="container-fluid">
   <!-- Search & Filter -->
   <div class="row mb-3">
     <div class="col-12">
@@ -39,7 +43,7 @@
     <div class="col-12">
       <div class="d-flex justify-content-end gap-2">
         <% if (hasPermission('permission.create')) { %>
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPermissionModal">
+        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addPermissionModal">
           <i class="bi bi-plus"></i> Add Permission
         </button>
         <% } %>
@@ -89,7 +93,7 @@
           <h3 class="card-title mb-0">Permission List</h3>
         </div>
         <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
-          <table class="table table-hover">
+          <table class="table table-hover" id="permissionTable">
             <thead>
               <tr>
                 <th>No.</th>
@@ -144,11 +148,11 @@
                             <div class="modal-body">
                               <div class="mb-3">
                                 <label class="form-label">Name <span class="text-danger">*</span></label>
-                                <input type="text" name="name" class="form-control form-control-sm" value="<%= permission.name %>" readonly>
+                                <input type="text" name="name" class="form-control" value="<%= permission.name %>" readonly>
                               </div>
                               <div class="mb-3">
                                 <label class="form-label">Description</label>
-                                <input type="text" name="description" class="form-control form-control-sm" value="<%= permission.description %>">
+                                <input type="text" name="description" class="form-control" value="<%= permission.description %>">
                               </div>
                             </div>
                             <div class="modal-footer">
@@ -215,6 +219,7 @@
       </div>
     </div>
   </div>
+  </div>
   <!-- Add Permission Modal -->
   <% if (hasPermission('permission.create')) { %>
   <div class="modal fade" id="addPermissionModal" tabindex="-1" aria-labelledby="addPermissionModalLabel" aria-hidden="true">
@@ -247,3 +252,27 @@
   </div>
   <% } %>
 </div>
+
+<!-- Responsive Tables CSS -->
+<style>
+/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
+#permissionTable {
+  table-layout: fixed;
+  min-width: 800px;
+}
+#permissionTable thead th {
+  white-space: nowrap;
+}
+#permissionTable th:nth-child(1), #permissionTable td:nth-child(1) { width: 5%; }
+#permissionTable th:nth-child(2), #permissionTable td:nth-child(2) { width: 30%; }
+#permissionTable th:nth-child(3), #permissionTable td:nth-child(3) { width: 45%; }
+#permissionTable th:nth-child(4), #permissionTable td:nth-child(4) { width: 20%; }
+
+#permissionTable td:nth-child(3) {
+  overflow-wrap: break-word;
+}
+#permissionTable td:nth-child(4) {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+</style>

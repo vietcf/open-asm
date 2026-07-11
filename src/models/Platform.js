@@ -86,6 +86,14 @@ class Platform {
     await pool.query('DELETE FROM platforms WHERE id = $1', [id]);
   }
 
+  // devices.platform_id is ON DELETE SET NULL, so the DB itself never blocks
+  // this — callers that want to prevent deleting an in-use platform must
+  // check this first.
+  static async countDevicesUsing(id) {
+    const result = await pool.query('SELECT COUNT(*) FROM devices WHERE platform_id = $1', [id]);
+    return parseInt(result.rows[0].count, 10);
+  }
+
   static async countAll() {
     const result = await pool.query('SELECT COUNT(*) FROM platforms');
     return parseInt(result.rows[0].count, 10);

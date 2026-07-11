@@ -1,5 +1,3 @@
-<!-- Modal Buttons Custom CSS -->
-<link rel="stylesheet" href="/css/modal-buttons.css">
 
 <!-- Content Header -->
 <div class="app-content-header">
@@ -29,23 +27,23 @@
           <div class="card-body">
             <div class="mb-3">
               <label class="form-label">System ID <span class="text-danger">*</span></label>
-              <input type="text" name="system_id" class="form-control form-control-sm" required>
+              <input type="text" name="system_id" class="form-control" required>
             </div>
             <div class="mb-3">
               <label class="form-label">System Name <span class="text-danger">*</span></label>
-              <input type="text" name="name" class="form-control form-control-sm" required>
+              <input type="text" name="name" class="form-control" required>
             </div>
             <div class="mb-3">
               <label class="form-label">Alias (comma separated)</label>
-              <input type="text" name="alias" class="form-control form-control-sm">
+              <input type="text" name="alias" class="form-control">
             </div>
             <div class="mb-3">
               <label class="form-label">FQDN (comma separated, optional)</label>
-              <input type="text" name="fqdn" class="form-control form-control-sm" placeholder="e.g. host1.example.com, host2.example.com">
+              <input type="text" name="fqdn" class="form-control" placeholder="e.g. host1.example.com, host2.example.com">
             </div>
             <div class="mb-3">
               <label class="form-label">Description</label>
-              <textarea name="description" class="form-control form-control-sm" rows="5" placeholder="Please provide the following information: 1) What business functions/features does this system provide? 2) What components does the system include? 3) Who are the target users of this system?"></textarea>
+              <textarea name="description" class="form-control" rows="5" placeholder="Please provide the following information: 1) What business functions/features does this system provide? 2) What components does the system include? 3) Who are the target users of this system?"></textarea>
             </div>
             <div class="mb-4">
               <label class="form-label">Level</label>
@@ -102,14 +100,14 @@
             </div>
             <div class="mb-3">
               <label class="form-label">System Documents</label>
-              <input type="file" id="docs-upload" class="form-control form-control-sm" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.zip,.rar">
+              <input type="file" id="docs-upload" class="form-control" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.zip,.rar">
               <div id="selected-docs-list" class="form-text"></div>
               <input type="hidden" name="uploaded_docs" id="uploaded-docs-hidden">
             </div>
           </div>
-          <div class="card-footer d-flex flex-column flex-lg-row justify-content-lg-end gap-2">
-            <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Add System</button>
-            <a href="/system/system" class="btn btn-secondary w-100 order-2 order-lg-1">Cancel</a>
+          <div class="card-footer d-flex justify-content-end">
+            <a href="/system/system" class="btn btn-outline-secondary btn-sm me-2">Cancel</a>
+            <button type="submit" class="btn btn-primary btn-sm">Add System</button>
           </div>
         </form>
       </div>

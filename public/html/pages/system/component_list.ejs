@@ -147,7 +147,7 @@
           <h3 class="card-title mb-0">Component List</h3>
         </div>
         <div class="card-body table-responsive p-0" style="overflow-x: auto;">
-          <table class="table table-hover">
+          <table class="table table-hover" id="componentTable">
             <!-- Table Header -->
             <thead>
               <tr>
@@ -182,7 +182,7 @@
                           const cleanDescription = component.description.trim();
                           const shortDescription = cleanDescription.length > 100 ? cleanDescription.substring(0, 100) + '…' : cleanDescription;
                         %>
-                        <span class="description-hover" data-description="<%= cleanDescription.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
+                        <span data-bs-toggle="tooltip" data-bs-placement="top" title="<%= cleanDescription %>" style="cursor: help; word-break: break-word;">
                           <%= shortDescription %>
                         </span>
                       <% } else { %>
@@ -389,7 +389,7 @@
         <!-- Content will be loaded here -->
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -704,46 +704,35 @@
     });
     const content = document.getElementById('componentDetailContent');
     
-    // Build HTML content - Simple field: value layout
-    let html = '';
-    
+    // Build HTML content - definition-list field:value layout
+    let html = '<dl class="row detail-dl">';
+
     // Component Name
-    html += '<div class="mb-2">';
     const componentName = (component.name || 'N/A');
-    html += '<strong>Component Name:</strong> ' + String(componentName).trim();
-    html += '</div>';
-    
+    html += '<dt class="col-sm-4">Component Name</dt><dd class="col-sm-8">' + String(componentName).trim() + '</dd>';
+
     // ID
-    html += '<div class="mb-2">';
     const componentIdValue = (component.id || 'N/A');
-    html += '<strong>ID:</strong> ' + String(componentIdValue).trim();
-    html += '</div>';
-    
+    html += '<dt class="col-sm-4">ID</dt><dd class="col-sm-8">' + String(componentIdValue).trim() + '</dd>';
+
     // System
-    html += '<div class="mb-2">';
     const system = (component.system_name || 'N/A');
-    html += '<strong>System:</strong> ' + String(system).trim();
-    html += '</div>';
-    
+    html += '<dt class="col-sm-4">System</dt><dd class="col-sm-8">' + String(system).trim() + '</dd>';
+
     // Description
     if (component.description && component.description.trim()) {
-      html += '<div class="mb-2">';
-      html += '<strong>Description:</strong><br><span style="white-space: pre-line;">' + String(component.description).trim() + '</span>';
-      html += '</div>';
+      html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><span style="white-space: pre-line;">' + String(component.description).trim() + '</span></dd>';
     }
-    
+
     // App Type
-    html += '<div class="mb-2">';
     const appType = (component.app_type || 'N/A');
-    html += '<strong>App Type:</strong> ' + String(appType).trim();
-    html += '</div>';
-    
+    html += '<dt class="col-sm-4">App Type</dt><dd class="col-sm-8">' + String(appType).trim() + '</dd>';
+
     // FQDN
     if (component.fqdn && (Array.isArray(component.fqdn) ? component.fqdn.length > 0 : component.fqdn)) {
-      html += '<div class="mb-2">';
-      html += '<strong>FQDN:</strong>';
+      html += '<dt class="col-sm-4">FQDN</dt><dd class="col-sm-8">';
       const fqdnList = Array.isArray(component.fqdn) ? component.fqdn : [component.fqdn];
-      html += '<ul class="mb-0 mt-1">';
+      html += '<ul class="mb-0 ps-3">';
       fqdnList.forEach(function(fqdn) {
         const fqdnStr = String(fqdn).trim();
         // Check if FQDN contains brackets - extract domain and comment separately
@@ -761,24 +750,22 @@
         }
       });
       html += '</ul>';
-      html += '</div>';
+      html += '</dd>';
     }
-    
+
     // Tags
     if (component.tags && component.tags.length > 0) {
-      html += '<div class="mb-2">';
-      html += '<strong>Tags:</strong><br>';
+      html += '<dt class="col-sm-4">Tags</dt><dd class="col-sm-8">';
       component.tags.forEach(function(tag) {
         const tagValue = (typeof tag === 'string' ? tag : tag.name);
         html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
       });
-      html += '</div>';
+      html += '</dd>';
     }
-    
+
     // IP Addresses
     if (component.ips && component.ips.length > 0) {
-      html += '<div class="mb-2">';
-      html += '<strong>IP Addresses:</strong>';
+      html += '<dt class="col-sm-4">IP Addresses</dt><dd class="col-sm-8">';
       component.ips.forEach(function(ipObj) {
         const ipAddress = ipObj.ip || ipObj.ip_address || ipObj;
         const zone = ipObj.subnet_zone || '';
@@ -801,51 +788,44 @@
         
         html += '</div>';
       });
-      html += '</div>';
+      html += '</dd>';
     }
-    
+
     // Contacts
     if (component.contacts && component.contacts.length > 0) {
-      html += '<div class="mb-2">';
-      html += '<strong>Contacts:</strong><ul class="mb-0">';
+      html += '<dt class="col-sm-4">Contacts</dt><dd class="col-sm-8"><ul class="mb-0 ps-3">';
       component.contacts.forEach(function(contactObj) {
         const contactName = contactObj.name || contactObj;
         const contactEmail = contactObj.email || '';
         let displayText = contactName;
         let searchTerm = contactName;
-        
+
         if (contactEmail) {
           // Extract username part before @
           const emailUsername = contactEmail.split('@')[0];
           displayText = `${contactName} (${emailUsername})`;
           searchTerm = contactEmail; // Still use full email for search
         }
-        
+
         html += '<li><a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary">' + String(displayText).trim() + '</a></li>';
       });
-      html += '</ul></div>';
+      html += '</ul></dd>';
     }
-    
+
     // Created
-    html += '<div class="mb-2">';
     const created = (component.created_at || component.createdAt || 'N/A');
-    html += '<strong>Created:</strong> ' + String(created).trim();
-    html += '</div>';
-    
+    html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + String(created).trim() + '</dd>';
+
     // Updated
-    html += '<div class="mb-2">';
     const updated = (component.updated_at || component.updatedAt || 'N/A');
-    html += '<strong>Updated:</strong> ' + String(updated).trim();
-    html += '</div>';
-    
+    html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + String(updated).trim() + '</dd>';
+
     // Updated By
     if (component.updated_by) {
-      html += '<div class="mb-2">';
-      html += '<strong>Updated By:</strong> ' + String(component.updated_by).trim();
-      html += '</div>';
+      html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + String(component.updated_by).trim() + '</dd>';
     }
-    
-    
+
+    html += '</dl>';
     content.innerHTML = html;
     
     // Setup IP hover functionality
@@ -966,43 +946,29 @@
 }
 */
 
-/* Description hover popup style */
-.description-hover {
-  position: relative;
-  display: inline-block;
+/* Fixed proportional column widths — see network/ip_address_list.ejs for
+   rationale. Description is column 4 here (Name, System precede it). */
+#componentTable {
+  table-layout: fixed;
+  min-width: 900px;
+}
+#componentTable thead th {
+  white-space: nowrap;
+}
+#componentTable th:nth-child(1), #componentTable td:nth-child(1) { width: 5%; }
+#componentTable th:nth-child(2), #componentTable td:nth-child(2) { width: 15%; }
+#componentTable th:nth-child(3), #componentTable td:nth-child(3) { width: 13%; }
+#componentTable th:nth-child(4), #componentTable td:nth-child(4) { width: 22%; }
+#componentTable th:nth-child(5), #componentTable td:nth-child(5) { width: 15%; }
+#componentTable th:nth-child(6), #componentTable td:nth-child(6) { width: 12%; }
+/* Wide enough that the 3 action icons stay on one line even near min-width. */
+#componentTable th:nth-child(7), #componentTable td:nth-child(7) { width: 18%; }
+#componentTable td:nth-child(4) {
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: break-word;
 }
 
-.description-hover:hover::after {
-  content: attr(data-description);
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: #333;
-  color: white;
-  padding: 8px 12px;
-  border-radius: 4px;
-  white-space: pre-line;
-  max-height: 200px;
-  overflow-y: auto;
-  z-index: 1000;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  font-size: 14px;
-  line-height: 1.4;
-  word-break: break-word;
-  pointer-events: none;
-}
-
-.description-hover:hover::before {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 10px;
-  border: 5px solid transparent;
-  border-bottom-color: #333;
-  z-index: 1001;
-  pointer-events: none;
-}
 </style>
 
 <!-- Responsive Tables CSS -->

@@ -1,6 +1,32 @@
 /* ========== MINIMAL CUSTOM CSS - AdminLTE 4 Compatible ========== */
 /* Cache buster: 2025-01-20 10:45:00 - Minimal custom styles for AdminLTE 4 */
 
+/* ========== DETAIL MODAL STYLES ========== */
+/* Canonical layout for every "Show/Detail" modal's body: a definition list
+   with label/value pairs, one pair per row, consistent spacing and a
+   subtle divider so long lists of fields stay readable. */
+.detail-dl {
+  margin-bottom: 0;
+}
+.detail-dl > dt,
+.detail-dl > dd {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 0;
+}
+.detail-dl > dt {
+  font-weight: 600;
+  color: #495057;
+}
+.detail-dl > dd {
+  word-break: break-word;
+}
+.detail-dl > dt:last-of-type,
+.detail-dl > dd:last-of-type {
+  border-bottom: none;
+}
+
 /* ========== SYSTEM LIST STYLES ========== */
 /* IP hover tooltip styling */
 .ip-hover-link {
@@ -424,6 +450,18 @@
   height: auto !important;
   min-height: 24px !important;
   flex: 1 !important;
+}
+
+/* ========================================
+   SIDEBAR SCROLL FIX
+   ======================================== */
+/* AdminLTE constrains .sidebar-wrapper to a fixed height
+   (100vh minus header height) via .layout-fixed but never sets
+   overflow-y, so on short viewports the menu content silently
+   spills out below the sidebar instead of scrolling. */
+.app-sidebar .sidebar-wrapper {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
 }
 
 /* ========================================

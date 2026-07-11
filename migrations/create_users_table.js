@@ -12,7 +12,11 @@ export default async (pool) => {
       twofa_enabled BOOLEAN DEFAULT FALSE,
       require_twofa BOOLEAN DEFAULT FALSE,
       twofa_setup_deadline TIMESTAMP,
-      must_change_password BOOLEAN DEFAULT FALSE
+      must_change_password BOOLEAN DEFAULT FALSE,
+      is_active BOOLEAN DEFAULT TRUE
     );
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_users_is_active ON users (is_active);
   `);
 };
