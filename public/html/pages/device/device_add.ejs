@@ -320,10 +320,10 @@
       $(this).val(val.toLowerCase());
     });
 
-    // Add IP button: open new tab to IP management page
+    // Add IP button: navigate to the Add IP Address page (same tab)
     $('#add-ip-btn').off('click').on('click', function(e) {
       e.preventDefault();
-      window.open('/network/ip-address?add=1', '_blank');
+      window.location.href = '/network/ip-address?add=1';
     });
 
     // Fix: Remove blank <option> after select2 is initialized to avoid select2 placeholder bug

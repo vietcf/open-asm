@@ -185,7 +185,12 @@ $(document).ready(function() {
     allowClear: true,
     width: '100%',
     ajax: {
-      url: '/network/api/ip-addresses',
+      // /unassigned excludes IPs already assigned to another device/server
+      // (an IP can only be assigned to one of either). This device's own
+      // currently-assigned IPs are still shown because they're preloaded
+      // directly as selected <option> elements by loadDeviceExistingValues()
+      // below, bypassing this search entirely.
+      url: '/network/api/ip-addresses/unassigned',
       dataType: 'json',
       delay: 250,
       data: function (params) {
@@ -392,9 +397,10 @@ $(document).ready(function() {
     }
   });
 
-  // Add IP button: open new tab to IP management page
-  $('#add-ip-btn').click(function() {
-    window.open('/network/ip_address', '_blank');
+  // Add IP button: navigate to the Add IP Address page (same tab)
+  $('#add-ip-btn').off('click').on('click', function(e) {
+    e.preventDefault();
+    window.location.href = '/network/ip-address?add=1';
   });
 
   // Load existing values with delay to ensure Select2 is ready
