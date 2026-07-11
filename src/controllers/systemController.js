@@ -276,7 +276,11 @@ systemController.exportSystemList = async (req, res) => {
       s.system_id || '',
       s.name || '',
       (s.tags && s.tags.length ? s.tags.map(t => t.name).join(', ') : ''),
-      (s.contacts && s.contacts.length ? s.contacts.map(c => c.name).join(', ') : '')
+      (s.contacts && s.contacts.length ? s.contacts.map(c => {
+        // Extract username from email (part before @), same format as IP Address export
+        const emailUsername = c.email ? c.email.split('@')[0] : '';
+        return emailUsername || c.name || '';
+      }).join(', ') : '')
     ]);
 
     const workbook = new ExcelJS.Workbook();
