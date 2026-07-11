@@ -76,10 +76,12 @@ export async function updateTag(id, input) {
 export async function deleteTag(id) {
   const exists = await Tag.exists(id);
   if (!exists) throw new NotFoundError('Tag not found');
-  try {
-    await Tag.delete(id);
-  } catch (err) {
-    if (err.code === '23503') throw new ConflictError('Cannot delete tag as it is being used by other objects');
-    throw err;
+  // tag_object.tag_id is ON DELETE CASCADE, so a plain DELETE would never
+  // raise a FK violation here — it would silently strip the tag off every
+  // object using it instead of blocking the delete. Check usage explicitly.
+  const inUseCount = await Tag.countUsage(id);
+  if (inUseCount > 0) {
+    throw new ConflictError(`Cannot delete: this tag is used by ${inUseCount} object(s)`);
   }
+  await Tag.delete(id);
 }

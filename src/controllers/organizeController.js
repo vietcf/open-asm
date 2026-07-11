@@ -182,8 +182,9 @@ organizeController.deleteUnit = async (req, res) => {
     await deleteUnitService(id);
     res.redirect('/organize/unit?success=Unit deleted successfully');
   } catch (err) {
-    console.error('Delete unit error:', err);
-    res.redirect('/organize/unit?error=Unable to delete unit');
+    const errorMsg = err instanceof ServiceError ? err.message : 'Unable to delete unit';
+    if (!(err instanceof ServiceError)) console.error('Delete unit error:', err);
+    res.redirect('/organize/unit?error=' + encodeURIComponent(errorMsg));
   }
 };
 
@@ -323,7 +324,9 @@ organizeController.deleteTag = async (req, res) => {
     await deleteTagService(id);
     res.redirect('/organize/tag?success=Tag deleted successfully');
   } catch (err) {
-    res.redirect('/organize/tag?error=Unable to delete tag');
+    const errorMsg = err instanceof ServiceError ? err.message : 'Unable to delete tag';
+    if (!(err instanceof ServiceError)) console.error('Delete tag error:', err);
+    res.redirect('/organize/tag?error=' + encodeURIComponent(errorMsg));
   }
 };
 

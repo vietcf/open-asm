@@ -67,5 +67,13 @@ export async function updateUnit(id, input) {
 export async function deleteUnit(id) {
   const exists = await Unit.exists(id);
   if (!exists) throw new NotFoundError('Unit not found');
+  // contacts.unit_id has no FK constraint at all (silent dangling reference
+  // on delete) and rulefirewall.ou_id is ON DELETE SET NULL (silent data
+  // loss) — neither would surface an error, so check usage explicitly
+  // instead of relying on the DB to block the delete.
+  const inUseCount = await Unit.countUsage(id);
+  if (inUseCount > 0) {
+    throw new ConflictError(`Cannot delete: this unit is used by ${inUseCount} record(s)`);
+  }
   await Unit.delete(id);
 }
