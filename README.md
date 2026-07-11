@@ -97,11 +97,13 @@ npm install
 # Create PostgreSQL database
 createdb open_asm
 
-# Run migrations (see Database Management below for details)
+# Fresh install: create the schema (already includes every change from
+# migrations/alters/, so alters/run.js is not needed here) and seed data
 node migrations/init_all_tables.js
-node migrations/alters/run.js
 node migrations/init_data.js
 ```
+> `migrations/alters/run.js` is only for updating an **existing** database
+> after pulling new code — see Database Management below.
 
 3. **Configure environment**:
 ```bash
@@ -188,11 +190,11 @@ docker-compose down
 ./save-docker-images.sh
 
 # Or manually save specific image (tag must match the `image:` value
-# in docker-compose.yml, currently openasm_app:4.0.1)
-sudo docker save openasm_app:4.0.1 | gzip > openasm_app_4.0.1.tar.gz
+# in docker-compose.yml, currently openasm_app:1.1.0)
+sudo docker save openasm_app:1.1.0 | gzip > openasm_app_1.1.0.tar.gz
 
 # Load Docker image
-sudo docker load < openasm_app_4.0.1.tar.gz
+sudo docker load < openasm_app_1.1.0.tar.gz
 ```
 
 ### Logs and Monitoring
@@ -413,24 +415,34 @@ script yet.
 The `migrations/` folder has two parts:
 
 - **`create_*.js`** — the baseline schema (one file per table, `CREATE TABLE IF NOT EXISTS`). Run once via `init_all_tables.js` to set up a brand-new database with the full, up-to-date schema.
-- **`alters/`** — incremental schema changes made after the baseline, one numbered file per change (`000N_description.js`, exporting `default async (pool) => {...}`). A `schema_migrations` table tracks which ones have already run, so `run.js` only applies files it hasn't seen yet.
+- **`alters/`** — incremental schema changes made *after* the baseline, one numbered file per change (`000N_description.js`, exporting `default async (pool) => {...}`). A `schema_migrations` table tracks which ones have already run, so `run.js` only applies files it hasn't seen yet. As of **v1.1.0**, every prior alter has been folded into the baseline `create_*.js` files and removed, so `alters/` currently only contains `run.js` — an empty skeleton, ready for the next schema change. This is verified by an actual fresh-database test (create DB → `init_all_tables.js` → `init_data.js` → `alters/run.js` reports "No new migrations to run").
 
 ```bash
-# Fresh database: create all tables, then seed initial data (roles, admin user, config)
+# Fresh database: create all tables (baseline already includes every
+# migrations/alters/ change up to the current version), then seed initial
+# data (roles, admin user, config)
 node migrations/init_all_tables.js
 node migrations/init_data.js
 
-# After a fresh install, or whenever you add a new file under migrations/alters/,
-# apply any not-yet-run schema changes (safe to re-run — it skips what's already applied)
+# Existing/older database: apply any not-yet-run schema changes from
+# migrations/alters/ (safe to re-run — it skips what's already applied,
+# and is a no-op on a database that was just created fresh above)
 node migrations/alters/run.js
 ```
 
-**Making a schema change:**
-1. Add a new file `migrations/alters/000N_description.js` (next number after the last one), exporting `default async (pool) => { await pool.query('ALTER TABLE ...'); }`.
+In Docker, run these inside the app/migration container, e.g. `docker-compose run --rm migration node migrations/alters/run.js`. The `migration` service in `docker-compose.yml` already runs all three in sequence on every `docker-compose up`, so this is normally automatic — see "Updating an existing deployment" above.
+
+**Making a schema change (between releases):**
+1. Add a new file `migrations/alters/000N_description.js` (start at `0001` again, since the folder was just emptied — next number after the last one once more files accumulate), exporting `default async (pool) => { await pool.query('ALTER TABLE ...'); }`. Use `IF NOT EXISTS`/`IF EXISTS` guards so it's safe to re-run.
 2. Run `node migrations/alters/run.js` — it applies only the new file and records it in `schema_migrations`.
 3. Also update the matching `create_*.js` baseline with the same change, so a brand-new database created via `init_all_tables.js` already has it (the `alters/` file then only matters for databases created before your change).
 
-In Docker, run these inside the app/migration container, e.g. `docker-compose run --rm migration node migrations/alters/run.js`.
+**Releasing a new version:**
+1. Bump the version in **both** places, together — they must always match:
+   - `package.json` → `"version"` field (also drives the API doc version shown at `/api-docs`, read dynamically — no separate place to update there).
+   - `docker-compose.yml` → the `image: openasm_app:X.Y.Z` tag (appears twice, on the `app` and `migration` services).
+2. Add a new `### Version X.Y.Z (Latest)` entry at the top of the Changelog below, and relabel the previous "(Latest)" entry.
+3. Optional cleanup (do this occasionally, not every release): once accumulated `migrations/alters/*.js` files are safely folded into every baseline `create_*.js` (verify with a fresh-database test like the one described above), delete the numbered alter files and keep just `run.js` — same reset done for v1.1.0.
 
 ```bash
 # Create backup
@@ -446,7 +458,7 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 4.0.1 (Latest)
+### Version 1.1.0 (Latest)
 - ✅ **Shared Service Layer**: Frontend and API now share one in-process
   `src/services/` layer instead of duplicating business logic per transport
 - ✅ **UI Consistency Sweep**: Unified table, button, form-field, and detail
@@ -460,28 +472,6 @@ when cutting a release.
 - ✅ **Deployment/Ops**: Docker log-size caps on every container, nginx logs
   to stdout instead of an unrotated host file, corrected `.gitignore`/
   `.dockerignore` overly-broad patterns, dedicated `.env.docker.sample`
-
-### Version 4.0.0
-- ✅ **API Improvements**: Complete REST API with partial update support
-- ✅ **UI/UX Enhancements**: Improved forms, modals, and user experience
-- ✅ **System Management**: Enhanced system and component management
-- ✅ **Device Management**: Improved device list with IP address display
-- ✅ **Modal Behavior**: Fixed button disabling when modals are open
-- ✅ **File Management**: Enhanced file upload and display
-- ✅ **Code Cleanup**: Removed test files and improved project structure
-- ✅ **Docker Support**: Updated Docker configuration and scripts
-
-### Version 3.4.0
-- ✅ **Firewall Management**: Enhanced firewall rule management
-- ✅ **Network Management**: Improved IP address and subnet management
-- ✅ **User Management**: Enhanced user and role management
-- ✅ **Backup System**: Automated database backup system
-
-### Version 3.0.0
-- ✅ **Initial Release**: Core functionality implementation
-- ✅ **Authentication**: User authentication and authorization
-- ✅ **Device Management**: Basic device and server management
-- ✅ **Network Management**: IP address and subnet management
 
 ## 🤝 Contributing
 

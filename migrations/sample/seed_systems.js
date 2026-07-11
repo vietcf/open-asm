@@ -57,7 +57,9 @@ export default async (db) => {
   ];
   for (const [system_id, server_id] of systemServerData) {
     if (system_id && server_id) {
-      await db.query('INSERT INTO system_server (system_id, server_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [system_id, server_id]);
+      // server_system (not system_server — that table is dead/unused;
+      // Server.js and the UI only ever read from server_system)
+      await db.query('INSERT INTO server_system (server_id, system_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [server_id, system_id]);
     }
   }
 
