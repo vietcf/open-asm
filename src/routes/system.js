@@ -9,6 +9,8 @@ const router = express.Router();
 // ====== SYSTEM MENU ======
 // System list page (DB)
 router.get('/system', requirePermission('system.read'), systemController.listSystem);
+// Export system list as Excel (filtered)
+router.get('/system/export', requirePermission('system.read'), systemController.exportSystemList);
 
 // Add system
 router.get('/system/add', requirePermission('system.create'), systemController.addSystemForm); //Load form add system

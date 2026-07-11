@@ -1,3 +1,26 @@
+<%
+// Helper function to build export URL with all current filter query parameters
+function buildSystemExportUrl() {
+  const params = new URLSearchParams();
+  if (typeof search !== 'undefined' && search) {
+    params.set('search', search);
+  }
+  if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
+    filterTags.forEach(id => params.append('tags[]', id));
+  }
+  if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) {
+    filterContacts.forEach(id => params.append('contacts[]', id));
+  }
+  if (typeof filterScopes !== 'undefined' && filterScopes && filterScopes.length > 0) {
+    filterScopes.forEach(v => params.append('scopes[]', v));
+  }
+  if (typeof filterArchitecture !== 'undefined' && filterArchitecture && filterArchitecture.length > 0) {
+    filterArchitecture.forEach(v => params.append('architectures[]', v));
+  }
+  return '/system/system/export' + (params.toString() ? '?' + params.toString() : '');
+}
+%>
+
 <!-- Content Header -->
 <div class="app-content-header">
   <div class="container-fluid">
@@ -49,6 +72,11 @@
           <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterSystemModal">
             <i class="bi bi-funnel"></i> Filter
           </button>
+          <% if (hasPermission && hasPermission('system.read')) { %>
+            <a href="<%= buildSystemExportUrl() %>" class="btn btn-info btn-sm">
+              <i class="bi bi-download"></i> Export
+            </a>
+          <% } %>
         </div>
       </div>
     </div>

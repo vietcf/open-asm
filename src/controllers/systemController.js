@@ -1,3 +1,4 @@
+import ExcelJS from 'exceljs';
 import System from '../models/System.js';
 import Contact from '../models/Contact.js';
 import FileUpload from '../models/FileUpload.js';
@@ -248,6 +249,47 @@ systemController.listSystem = async (req, res) => {
     });
   } catch (err) {
     res.status(500).send('Error loading systems: ' + err.message);
+  }
+};
+
+// Export System List as Excel (filtered, same filters as listSystem)
+systemController.exportSystemList = async (req, res) => {
+  try {
+    const normalizeArray = v => (Array.isArray(v) ? v : (v ? [v] : []));
+    const search = req.query.search?.trim() || '';
+    let filterTags = req.query['tags[]'] || req.query.tags || [];
+    let filterContacts = req.query['contacts[]'] || req.query.contacts || [];
+    let filterScopes = req.query['scopes[]'] || req.query.scopes || [];
+    let filterArchitecture = req.query['architectures[]'] || req.query.architectures || [];
+    filterTags = normalizeArray(filterTags).filter(x => x !== '');
+    filterContacts = normalizeArray(filterContacts).filter(x => x !== '');
+    filterScopes = normalizeArray(filterScopes).filter(x => x !== '');
+    filterArchitecture = normalizeArray(filterArchitecture).filter(x => x !== '');
+
+    // Lấy toàn bộ danh sách phù hợp filter (không phân trang)
+    const { items: systemList } = await systemService.listSystems({
+      search, page: 1, pageSize: 10000, filterTags, filterContacts, filterScopes, filterArchitecture
+    });
+
+    const headers = ['System Code', 'System Name', 'Tags', 'Contacts'];
+    const rows = systemList.map(s => [
+      s.system_id || '',
+      s.name || '',
+      (s.tags && s.tags.length ? s.tags.map(t => t.name).join(', ') : ''),
+      (s.contacts && s.contacts.length ? s.contacts.map(c => c.name).join(', ') : '')
+    ]);
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('System List');
+    worksheet.addRow(headers);
+    rows.forEach(row => worksheet.addRow(row));
+    worksheet.columns.forEach(col => { col.width = 30; });
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="system_list.xlsx"');
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    res.status(500).send('Error exporting system list: ' + err.message);
   }
 };
 
