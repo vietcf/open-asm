@@ -64,7 +64,7 @@ const options = {
     openapi: '3.0.0',
     info: {
       title: 'Open ASM API',
-      version: pkg.version || '4.0.1',
+      version: pkg.version || '1.1.0',
       description: 'API documentation for Open ASM (Asset Security Management)',
     },
     servers: [
