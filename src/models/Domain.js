@@ -56,6 +56,15 @@ class Domain {
     await client.query('DELETE FROM domains WHERE id = $1', [id]);
   }
 
+  // This delete() unconditionally clears system_domain links itself rather
+  // than relying on the FK (which is ON DELETE CASCADE anyway), so it never
+  // fails on its own — callers that want to prevent deleting an in-use domain
+  // must check this first.
+  static async countSystemsUsing(id) {
+    const result = await pool.query('SELECT COUNT(*) FROM system_domain WHERE domain_id = $1', [id]);
+    return parseInt(result.rows[0].count, 10);
+  }
+
   /**
    * Count all domains
    */

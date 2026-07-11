@@ -1,5 +1,6 @@
 import express from 'express';
 import apiDomainController from '../controllers/apiDomainController.js';
+import { authorizePermissionJWT } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
@@ -107,11 +108,18 @@ const router = express.Router();
  *                 type: array
  *                 items:
  *                   type: integer
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 description: List of tag IDs (optional, all IDs must exist)
  *     responses:
  *       201:
  *         description: Domain created
  *       400:
  *         description: Validation error
+ *       409:
+ *         description: Domain already exists
  *
  * /api/v1/domains/{id}:
  *   get:
@@ -132,7 +140,7 @@ const router = express.Router();
  *       404:
  *         description: Domain not found
  *   put:
- *     summary: Update a domain
+ *     summary: Update a domain (domain name is immutable — the `domain` field, if sent, is silently ignored)
  *     tags: [Domain]
  *     security:
  *       - bearerAuth: []
@@ -150,8 +158,6 @@ const router = express.Router();
  *           schema:
  *             type: object
  *             properties:
- *               domain:
- *                 type: string
  *               description:
  *                 type: string
  *               ip_id:
@@ -162,6 +168,11 @@ const router = express.Router();
  *                 type: array
  *                 items:
  *                   type: integer
+ *               tags:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 description: List of tag IDs (optional, all IDs must exist)
  *     responses:
  *       200:
  *         description: Domain updated
@@ -186,6 +197,8 @@ const router = express.Router();
  *         description: Domain deleted
  *       404:
  *         description: Domain not found
+ *       409:
+ *         description: Cannot delete domain — it is referenced by other records
  *
  * /api/v1/domains/find:
  *   get:
@@ -251,21 +264,21 @@ const router = express.Router();
  */
 
 // List all domains
-router.get('/', apiDomainController.getAll);
+router.get('/', authorizePermissionJWT('domain.read'), apiDomainController.getAll);
 
 // Find domains by exact name match
-router.get('/find', apiDomainController.findDomains);
+router.get('/find', authorizePermissionJWT('domain.read'), apiDomainController.findDomains);
 
 // Get domain by id
-router.get('/:id', apiDomainController.getById);
+router.get('/:id', authorizePermissionJWT('domain.read'), apiDomainController.getById);
 
 // Create domain
-router.post('/', apiDomainController.create);
+router.post('/', authorizePermissionJWT('domain.create'), apiDomainController.create);
 
 // Update domain
-router.put('/:id', apiDomainController.update);
+router.put('/:id', authorizePermissionJWT('domain.update'), apiDomainController.update);
 
 // Delete domain
-router.delete('/:id', apiDomainController.remove);
+router.delete('/:id', authorizePermissionJWT('domain.delete'), apiDomainController.remove);
 
 export default router;

@@ -1,5 +1,3 @@
-<!-- Modal Buttons Custom CSS -->
-<link rel="stylesheet" href="/css/modal-buttons.css">
 
 <!-- Content Header -->
 <div class="app-content-header">
@@ -140,9 +138,9 @@
               <textarea name="description" class="form-control" rows="3" placeholder="Device description"><%= device.description || '' %></textarea>
             </div>
           </div>
-          <div class="card-footer d-flex flex-column flex-lg-row justify-content-lg-end gap-2">
-            <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Update Device</button>
-            <a href="/device/device" class="btn btn-secondary w-100 order-2 order-lg-1">Cancel</a>
+          <div class="card-footer d-flex justify-content-end">
+            <a href="/device/device" class="btn btn-outline-secondary btn-sm me-2">Cancel</a>
+            <button type="submit" class="btn btn-primary btn-sm">Update Device</button>
           </div>
         </form>
       </div>

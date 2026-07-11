@@ -1,5 +1,6 @@
 import express from 'express';
 import ApiTagController from '../controllers/apiTagController.js';
+import { authorizePermissionJWT } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
@@ -191,7 +192,7 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/', ApiTagController.getAllTags);
+router.get('/', authorizePermissionJWT('tag.read'), ApiTagController.getAllTags);
 
 /**
  * @swagger
@@ -237,7 +238,7 @@ router.get('/', ApiTagController.getAllTags);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/search', ApiTagController.searchTags);
+router.get('/search', authorizePermissionJWT('tag.read'), ApiTagController.searchTags);
 
 /**
  * @swagger
@@ -275,7 +276,7 @@ router.get('/search', ApiTagController.searchTags);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/find', ApiTagController.findTags);
+router.get('/find', authorizePermissionJWT('tag.read'), ApiTagController.findTags);
 
 /**
  * @swagger
@@ -319,7 +320,7 @@ router.get('/find', ApiTagController.findTags);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/:id', ApiTagController.getTagById);
+router.get('/:id', authorizePermissionJWT('tag.read'), ApiTagController.getTagById);
 
 // ============================
 // POST Routes
@@ -366,7 +367,7 @@ router.get('/:id', ApiTagController.getTagById);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/', ApiTagController.createTag);
+router.post('/', authorizePermissionJWT('tag.create'), ApiTagController.createTag);
 
 // ============================
 // PUT Routes
@@ -440,7 +441,7 @@ router.post('/', ApiTagController.createTag);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.put('/:id', ApiTagController.updateTag);
+router.put('/:id', authorizePermissionJWT('tag.update'), ApiTagController.updateTag);
 
 // ============================
 // DELETE Routes
@@ -451,7 +452,7 @@ router.put('/:id', ApiTagController.updateTag);
  * /api/v1/tags/{id}:
  *   delete:
  *     summary: Delete tag
- *     description: Delete a tag by its ID. Cannot delete if it's being used by other objects.
+ *     description: Delete a tag by its ID. This also removes the tag from every object it's currently attached to (device, system, component, rule, etc.) — there is no "in use" protection.
  *     tags: [Tags]
  *     security:
  *       - bearerAuth: []
@@ -488,12 +489,6 @@ router.put('/:id', ApiTagController.updateTag);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
- *       409:
- *         description: Cannot delete tag as it is being used by other objects
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         description: Internal server error
  *         content:
@@ -501,6 +496,6 @@ router.put('/:id', ApiTagController.updateTag);
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete('/:id', ApiTagController.deleteTag);
+router.delete('/:id', authorizePermissionJWT('tag.delete'), ApiTagController.deleteTag);
 
 export default router;

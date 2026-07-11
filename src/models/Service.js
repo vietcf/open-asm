@@ -19,6 +19,15 @@ class Service {
     return result.rows[0];
   }
 
+  // server_services.service_id is ON DELETE CASCADE, so the DB itself never
+  // blocks delete() (the "foreign key constraint" catch there can never
+  // fire) — callers that want to prevent deleting an in-use service must
+  // check this first.
+  static async countServersUsing(id) {
+    const result = await pool.query('SELECT COUNT(*) FROM server_services WHERE service_id = $1', [id]);
+    return parseInt(result.rows[0].count, 10);
+  }
+
   // Get services by array of ids
   static async findByIds(ids) {
     if (!ids || ids.length === 0) return [];

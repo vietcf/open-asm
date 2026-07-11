@@ -44,7 +44,9 @@ const apiAuthRouter = express.Router();
  *       400:
  *         description: Username and password required
  *       401:
- *         description: Invalid credentials
+ *         description: Invalid credentials, or account is inactive
+ *       403:
+ *         description: Password change required — user must log in via the web UI and change their password before the API can be used
  *       500:
  *         description: Server error
  */

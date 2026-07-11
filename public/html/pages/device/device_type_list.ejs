@@ -1,5 +1,3 @@
-<!-- Modal Buttons Custom CSS -->
-<link rel="stylesheet" href="/css/modal-buttons.css">
 
 <%
 // ==========================================
@@ -259,9 +257,9 @@ function buildPaginationUrl(targetPage) {
             <textarea class="form-control" id="deviceTypeDescription" name="description" rows="3"></textarea>
           </div>
         </div>
-        <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
-          <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Add Device Type</button>
-          <button type="button" class="btn btn-secondary w-100 order-2 order-lg-1" data-bs-dismiss="modal">Cancel</button>
+        <div class="modal-footer d-flex justify-content-end">
+          <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Add Device Type</button>
         </div>
       </form>
     </div>
@@ -287,9 +285,9 @@ function buildPaginationUrl(targetPage) {
             <textarea class="form-control" id="editDeviceTypeDescription" name="description" rows="3"></textarea>
           </div>
         </div>
-        <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
-          <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Update Device Type</button>
-          <button type="button" class="btn btn-secondary w-100 order-2 order-lg-1" data-bs-dismiss="modal">Cancel</button>
+        <div class="modal-footer d-flex justify-content-end">
+          <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Update Device Type</button>
         </div>
       </form>
     </div>
@@ -308,7 +306,7 @@ function buildPaginationUrl(targetPage) {
         <!-- Content will be loaded here -->
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -328,15 +326,13 @@ function showDeviceTypeDetail(deviceTypeId) {
   const modalElement = document.getElementById('deviceTypeDetailModal');
   const content = document.getElementById('deviceTypeDetailContent');
   
-  let html = '<div class="row">';
-  html += '<div class="col-12 mb-2"><strong>Device Type ID:</strong> ' + (deviceTypeData.id || '-') + '</div>';
-  html += '<div class="col-12 mb-2"><strong>Device Type Name:</strong> ' + (deviceTypeData.name || '-') + '</div>';
-  html += '<div class="col-12 mb-2"><strong>Created:</strong> ' + (deviceTypeData.created_at ? new Date(deviceTypeData.created_at).toLocaleDateString() : '-') + '</div>';
-  html += '<div class="col-12 mb-2"><strong>Updated:</strong> ' + (deviceTypeData.updated_at ? new Date(deviceTypeData.updated_at).toLocaleDateString() : '-') + '</div>';
-  if (deviceTypeData.description) {
-    html += '<div class="col-12 mt-3"><strong>Description:</strong><br><div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + deviceTypeData.description + '</div></div>';
-  }
-  html += '</div>';
+  let html = '<dl class="row detail-dl">';
+  html += '<dt class="col-sm-4">Device Type ID</dt><dd class="col-sm-8">' + (deviceTypeData.id || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Device Type Name</dt><dd class="col-sm-8">' + (deviceTypeData.name || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + (deviceTypeData.created_at ? new Date(deviceTypeData.created_at).toLocaleDateString() : '-') + '</dd>';
+  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + (deviceTypeData.updated_at ? new Date(deviceTypeData.updated_at).toLocaleDateString() : '-') + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (deviceTypeData.description ? '<div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + deviceTypeData.description + '</div>' : '-') + '</dd>';
+  html += '</dl>';
   
   content.innerHTML = html;
   const modal = new bootstrap.Modal(modalElement);
@@ -380,3 +376,27 @@ function buildExportUrl() {
   return '/device/type/export' + (params.toString() ? '?' + params.toString() : '');
 }
 </script>
+
+<!-- Responsive Tables CSS -->
+<style>
+/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
+#deviceTypeTable {
+  table-layout: fixed;
+  min-width: 700px;
+}
+#deviceTypeTable thead th {
+  white-space: nowrap;
+}
+#deviceTypeTable th:nth-child(1), #deviceTypeTable td:nth-child(1) { width: 8%; }
+#deviceTypeTable th:nth-child(2), #deviceTypeTable td:nth-child(2) { width: 27%; }
+#deviceTypeTable th:nth-child(3), #deviceTypeTable td:nth-child(3) { width: 40%; }
+#deviceTypeTable th:nth-child(4), #deviceTypeTable td:nth-child(4) { width: 25%; }
+
+#deviceTypeTable td:nth-child(3) {
+  overflow-wrap: break-word;
+}
+#deviceTypeTable td:nth-child(4) {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+</style>

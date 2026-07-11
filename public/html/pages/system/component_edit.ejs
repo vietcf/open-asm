@@ -26,11 +26,11 @@
           <div class="card-body">
             <div class="mb-3">
               <label class="form-label">Component Name <span class="text-danger">*</span></label>
-              <input type="text" name="name" class="form-control form-control-sm" value="<%= component.name %>" required>
+              <input type="text" name="name" class="form-control" value="<%= component.name %>" required>
             </div>
             <div class="mb-3">
               <label class="form-label">Description</label>
-              <textarea name="description" class="form-control form-control-sm" rows="4" placeholder="Please provide the following information: 1) What business functions/features does this component provide? 2) What components does it include? 3) Who are the target users of this component?"><%= component.description || '' %></textarea>
+              <textarea name="description" class="form-control" rows="4" placeholder="Please provide the following information: 1) What business functions/features does this component provide? 2) What components does it include? 3) Who are the target users of this component?"><%= component.description || '' %></textarea>
             </div>
             <div class="mb-3">
               <label class="form-label">System <span class="text-danger">*</span></label>
@@ -59,7 +59,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">FQDN / Domain / IP / URL (comma separated)</label>
-              <textarea name="fqdn" class="form-control form-control-sm" rows="3"><%= Array.isArray(component.fqdn) ? component.fqdn.join(', ') : (component.fqdn || '') %></textarea>
+              <textarea name="fqdn" class="form-control" rows="3"><%= Array.isArray(component.fqdn) ? component.fqdn.join(', ') : (component.fqdn || '') %></textarea>
             </div>
             <div class="mb-3">
               <label class="form-label">Contacts</label>
@@ -98,9 +98,9 @@
               </select>
             </div>
           </div>
-          <div class="card-footer text-end">
-            <button type="submit" class="btn btn-primary">Save</button>
-            <a href="/system/component" class="btn btn-secondary ms-2">Cancel</a>
+          <div class="card-footer d-flex justify-content-end">
+            <a href="/system/component" class="btn btn-outline-secondary btn-sm me-2">Cancel</a>
+            <button type="submit" class="btn btn-primary btn-sm">Update Component</button>
           </div>
         </form>
       </div>

@@ -93,22 +93,22 @@
  *         application/json:
  *           schema:
  *             type: object
- *             required: []
+ *             required:
+ *               - name
+ *               - device_type_id
+ *               - ip_addresses
  *             properties:
  *               name:
  *                 type: string
- *                 description: >
- *                   Device name (optional, lowercase). If provided, must not be empty.
+ *                 description: Device name (required, case preserved as submitted — not lowercased). Must be unique.
  *               device_type_id:
  *                 type: integer
- *                 description: >
- *                   Device type ID (optional). If provided, must not be empty.
+ *                 description: Device type ID (required, must reference an existing device type).
  *               ip_addresses:
  *                 type: array
  *                 items:
  *                   type: integer
- *                 description: >
- *                   List of IP address IDs (optional, at least one if provided). If provided, must not be empty.
+ *                 description: List of IP address IDs (required, at least one). Each ID must exist and not already be assigned to another device.
  *               platform_id:
  *                 type: integer
  *                 description: Platform (OS) ID (optional)
@@ -271,7 +271,7 @@
  *               name:
  *                 type: string
  *                 description: |
- *                   Device name (lowercase). Not required, but if provided, must not be empty.
+ *                   Device name (case preserved as submitted — not lowercased). Not required, but if provided, must not be empty. Must remain unique.
  *               device_type_id:
  *                 type: integer
  *                 description: |
@@ -425,13 +425,14 @@
 
 import express from 'express';
 import apiDeviceController from '../controllers/apiDeviceController.js';
+import { authorizePermissionJWT } from '../middlewares/auth.middleware.js';
 
 const apiDeviceRouter = express.Router();
 
 // List devices
-apiDeviceRouter.get('/', apiDeviceController.listDevices);
+apiDeviceRouter.get('/', authorizePermissionJWT('device.read'), apiDeviceController.listDevices);
 // Find devices
-apiDeviceRouter.get('/find', apiDeviceController.findDevices);
+apiDeviceRouter.get('/find', authorizePermissionJWT('device.read'), apiDeviceController.findDevices);
 /**
  * @swagger
  * /api/v1/devices/config:
@@ -494,15 +495,15 @@ apiDeviceRouter.get('/find', apiDeviceController.findDevices);
  *       500:
  *         description: Server error
  */
-apiDeviceRouter.get('/config', apiDeviceController.getConfig);
+apiDeviceRouter.get('/config', authorizePermissionJWT('device.read'), apiDeviceController.getConfig);
 
 // Get device by ID
-apiDeviceRouter.get('/:id', apiDeviceController.getDevice);
+apiDeviceRouter.get('/:id', authorizePermissionJWT('device.read'), apiDeviceController.getDevice);
 // Create device
-apiDeviceRouter.post('/', apiDeviceController.createDevice);
+apiDeviceRouter.post('/', authorizePermissionJWT('device.create'), apiDeviceController.createDevice);
 // Update device
-apiDeviceRouter.put('/:id', apiDeviceController.updateDevice);
+apiDeviceRouter.put('/:id', authorizePermissionJWT('device.update'), apiDeviceController.updateDevice);
 // Delete device
-apiDeviceRouter.delete('/:id', apiDeviceController.deleteDevice);
+apiDeviceRouter.delete('/:id', authorizePermissionJWT('device.delete'), apiDeviceController.deleteDevice);
 
 export default apiDeviceRouter;

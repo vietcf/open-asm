@@ -1,5 +1,6 @@
 import express from 'express';
 import apiServerController from '../controllers/apiServerController.js';
+import { authorizePermissionJWT } from '../middlewares/auth.middleware.js';
 const apiServerRouter = express.Router();
 
 /**
@@ -128,7 +129,7 @@ const apiServerRouter = express.Router();
  *                 total:
  *                   type: integer
  */
-apiServerRouter.get('/', apiServerController.listServers);
+apiServerRouter.get('/', authorizePermissionJWT('server.read'), apiServerController.listServers);
 
 /**
  * @swagger
@@ -168,7 +169,7 @@ apiServerRouter.get('/', apiServerController.listServers);
  *       404:
  *         description: No servers found
  */
-apiServerRouter.get('/find', apiServerController.findServers);
+apiServerRouter.get('/find', authorizePermissionJWT('server.read'), apiServerController.findServers);
 
 /**
  * @swagger
@@ -242,7 +243,7 @@ apiServerRouter.get('/find', apiServerController.findServers);
  *                   type: string
  *                   example: "Failed to load configuration"
  */
-apiServerRouter.get('/config', apiServerController.getConfig);
+apiServerRouter.get('/config', authorizePermissionJWT('server.read'), apiServerController.getConfig);
 
 /**
  * @swagger
@@ -258,9 +259,13 @@ apiServerRouter.get('/config', apiServerController.getConfig);
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - name
+ *               - ip_addresses
  *             properties:
  *               name:
  *                 type: string
+ *                 description: Server name (required, must be unique)
  *               os:
  *                 type: integer
  *                 description: Platform (OS) ID
@@ -332,12 +337,13 @@ apiServerRouter.get('/config', apiServerController.getConfig);
  *                   type: string
  *                   examples:
  *                     - "Server name is required"
- *                     - "Server name already exists"
- *                     - "IP address ID 5 is already assigned to another server"
+ *                     - "Cannot use already assigned IP addresses: IP 10.1.1.4 (ID: 5)"
  *                     - "At least one IP address is required"
  *                     - "Invalid platform (os) ID: 999"
+ *       409:
+ *         description: Server name already exists
  */
-apiServerRouter.post('/', apiServerController.createServer);
+apiServerRouter.post('/', authorizePermissionJWT('server.create'), apiServerController.createServer);
 
 /**
  * @swagger
@@ -364,7 +370,7 @@ apiServerRouter.post('/', apiServerController.createServer);
  *       404:
  *         description: Not found
  */
-apiServerRouter.get('/:id', apiServerController.getServer);
+apiServerRouter.get('/:id', authorizePermissionJWT('server.read'), apiServerController.getServer);
 
 /**
  * @swagger
@@ -441,7 +447,7 @@ apiServerRouter.get('/:id', apiServerController.getServer);
  *                 type: array
  *                 items:
  *                   type: integer
- *                 description: List of IP address IDs
+ *                 description: List of IP address IDs. If provided, must be non-empty — a server must always have at least one IP address.
  *               description:
  *                 type: string
  *                 description: Server description
@@ -465,13 +471,14 @@ apiServerRouter.get('/:id', apiServerController.getServer);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ServerDetails'
-
  *       400:
  *         description: Validation error
  *       404:
  *         description: Not found
+ *       409:
+ *         description: Server name already exists
  */
-apiServerRouter.put('/:id', apiServerController.updateServer);
+apiServerRouter.put('/:id', authorizePermissionJWT('server.update'), apiServerController.updateServer);
 
 /**
  * @swagger
@@ -494,7 +501,7 @@ apiServerRouter.put('/:id', apiServerController.updateServer);
  *       404:
  *         description: Not found
  */
-apiServerRouter.delete('/:id', apiServerController.deleteServer);
+apiServerRouter.delete('/:id', authorizePermissionJWT('server.delete'), apiServerController.deleteServer);
 
 
 /**

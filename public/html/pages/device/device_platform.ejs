@@ -261,9 +261,9 @@ function buildPaginationUrl(targetPage) {
                 </div>
               </div>
             </div>
-            <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
-              <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Add Platform</button>
-              <button type="button" class="btn btn-secondary w-100 order-2 order-lg-1" data-bs-dismiss="modal">Cancel</button>
+            <div class="modal-footer d-flex justify-content-end">
+              <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary btn-sm">Add Platform</button>
             </div>
           </form>
         </div>
@@ -291,9 +291,9 @@ function buildPaginationUrl(targetPage) {
                 </div>
               </div>
             </div>
-            <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
-              <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Update Platform</button>
-              <button type="button" class="btn btn-secondary w-100 order-2 order-lg-1" data-bs-dismiss="modal">Cancel</button>
+            <div class="modal-footer d-flex justify-content-end">
+              <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary btn-sm">Update Platform</button>
             </div>
           </form>
         </div>
@@ -312,15 +312,13 @@ function buildPaginationUrl(targetPage) {
             <!-- Content will be loaded here -->
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
           </div>
         </div>
       </div>
     </div>
 
 
-<!-- Modal Buttons Custom CSS -->
-<link rel="stylesheet" href="/css/modal-buttons.css">
 
 <script>
 // Platform Detail Modal Handler
@@ -331,14 +329,12 @@ function showPlatformDetail(platformId) {
   const modalElement = document.getElementById('platformDetailModal');
   const content = document.getElementById('platformDetailContent');
   
-  let html = '<div class="row">';
-  html += '<div class="col-12 mb-2"><strong>Platform ID:</strong> ' + (platformData.id || '-') + '</div>';
-  html += '<div class="col-12 mb-2"><strong>Platform Name:</strong> ' + (platformData.name || '-') + '</div>';
-  html += '<div class="col-12 mb-2"><strong>Created:</strong> ' + (platformData.created_at ? new Date(platformData.created_at).toLocaleDateString() : '-') + '</div>';
-  if (platformData.description) {
-    html += '<div class="col-12 mt-3"><strong>Description:</strong><br><div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + platformData.description + '</div></div>';
-  }
-  html += '</div>';
+  let html = '<dl class="row detail-dl">';
+  html += '<dt class="col-sm-4">Platform ID</dt><dd class="col-sm-8">' + (platformData.id || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Platform Name</dt><dd class="col-sm-8">' + (platformData.name || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + (platformData.created_at ? new Date(platformData.created_at).toLocaleDateString() : '-') + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (platformData.description ? '<div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + platformData.description + '</div>' : '-') + '</dd>';
+  html += '</dl>';
   
   content.innerHTML = html;
   const modal = new bootstrap.Modal(modalElement);
@@ -365,3 +361,27 @@ function confirmDeletePlatform(form, platformName) {
   }
 }
 </script>
+
+<!-- Responsive Tables CSS -->
+<style>
+/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
+#platformTable {
+  table-layout: fixed;
+  min-width: 700px;
+}
+#platformTable thead th {
+  white-space: nowrap;
+}
+#platformTable th:nth-child(1), #platformTable td:nth-child(1) { width: 8%; }
+#platformTable th:nth-child(2), #platformTable td:nth-child(2) { width: 27%; }
+#platformTable th:nth-child(3), #platformTable td:nth-child(3) { width: 40%; }
+#platformTable th:nth-child(4), #platformTable td:nth-child(4) { width: 25%; }
+
+#platformTable td:nth-child(3) {
+  overflow-wrap: break-word;
+}
+#platformTable td:nth-child(4) {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+</style>

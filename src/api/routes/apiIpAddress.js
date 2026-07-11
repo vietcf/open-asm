@@ -2,6 +2,7 @@
 // IP Address API routes (ES6)
 import express from 'express';
 import apiIpAddressController from '../controllers/apiIpAddressController.js';
+import { authorizePermissionJWT } from '../middlewares/auth.middleware.js';
 const apiIpAddressRouter = express.Router();
 
 /**
@@ -88,7 +89,7 @@ const apiIpAddressRouter = express.Router();
  *                 total:
  *                   type: integer
  */
-apiIpAddressRouter.get('/', apiIpAddressController.listIpAddresses);
+apiIpAddressRouter.get('/', authorizePermissionJWT('ip_address.read'), apiIpAddressController.listIpAddresses);
 
 /**
  * @swagger
@@ -115,7 +116,7 @@ apiIpAddressRouter.get('/', apiIpAddressController.listIpAddresses);
  *       404:
  *         description: Not found
  */
-apiIpAddressRouter.get('/find', apiIpAddressController.findIpAddressByAddress);
+apiIpAddressRouter.get('/find', authorizePermissionJWT('ip_address.read'), apiIpAddressController.findIpAddressByAddress);
 
 /**
  * @swagger
@@ -169,7 +170,7 @@ apiIpAddressRouter.get('/find', apiIpAddressController.findIpAddressByAddress);
  *                   type: string
  *                   example: "Failed to load configuration"
  */
-apiIpAddressRouter.get('/config', apiIpAddressController.getConfig);
+apiIpAddressRouter.get('/config', authorizePermissionJWT('ip_address.read'), apiIpAddressController.getConfig);
 
 /**
  * @swagger
@@ -197,7 +198,7 @@ apiIpAddressRouter.get('/config', apiIpAddressController.getConfig);
  *         description: Not found
  */
 
-apiIpAddressRouter.get('/:id', apiIpAddressController.getIpAddress);
+apiIpAddressRouter.get('/:id', authorizePermissionJWT('ip_address.read'), apiIpAddressController.getIpAddress);
 
 /**
  * @swagger
@@ -251,8 +252,10 @@ apiIpAddressRouter.get('/:id', apiIpAddressController.getIpAddress);
  *               $ref: '#/components/schemas/IpAddress'
  *       400:
  *         description: Validation error
+ *       409:
+ *         description: IP address already exists
  */
-apiIpAddressRouter.post('/', apiIpAddressController.createIpAddress);
+apiIpAddressRouter.post('/', authorizePermissionJWT('ip_address.create'), apiIpAddressController.createIpAddress);
 
 /**
  * @swagger
@@ -309,7 +312,7 @@ apiIpAddressRouter.post('/', apiIpAddressController.createIpAddress);
  *       404:
  *         description: Not found
  */
-apiIpAddressRouter.put('/:id', apiIpAddressController.updateIpAddress);
+apiIpAddressRouter.put('/:id', authorizePermissionJWT('ip_address.update'), apiIpAddressController.updateIpAddress);
 
 /**
  * @swagger
@@ -331,8 +334,10 @@ apiIpAddressRouter.put('/:id', apiIpAddressController.updateIpAddress);
  *         description: Deleted
  *       404:
  *         description: Not found
+ *       409:
+ *         description: Cannot delete — the IP address is still assigned to a device or server
  */
-apiIpAddressRouter.delete('/:id', apiIpAddressController.deleteIpAddress);
+apiIpAddressRouter.delete('/:id', authorizePermissionJWT('ip_address.delete'), apiIpAddressController.deleteIpAddress);
 
 
 // Swagger schema for IP address

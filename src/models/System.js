@@ -33,8 +33,9 @@ class System {
     return result.rows;
   }
 
-  static async findById(id) {
-    const result = await pool.query(
+  static async findById(id, client) {
+    const executor = client || pool;
+    const result = await executor.query(
       `SELECT s.*, u.name AS department_name
        FROM systems s
        LEFT JOIN units u ON s.department_id = u.id

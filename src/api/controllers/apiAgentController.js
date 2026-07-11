@@ -1,10 +1,20 @@
 import Agent from '../../models/Agent.js';
+import {
+  getAgent as getAgentService,
+  findAgentsByName,
+  createAgent as createAgentService,
+  updateAgent as updateAgentService,
+  deleteAgent as deleteAgentService
+} from '../../services/agentService.js';
+import { handleServiceError } from '../utils/handleServiceError.js';
 
 const apiAgentController = {};
 
 // List all agents
 apiAgentController.listAgents = async (req, res) => {
   try {
+    // Unbounded — no pagination in the original contract, so this stays a
+    // direct model call rather than routing through the paginated service.
     const agents = await Agent.findAll();
     res.json({
       success: true,
@@ -23,157 +33,54 @@ apiAgentController.listAgents = async (req, res) => {
 // Get a single agent by id
 apiAgentController.getAgent = async (req, res) => {
   try {
-    const agent = await Agent.findById(req.params.id);
-    if (!agent) {
-      return res.status(404).json({
-        success: false,
-        message: 'Agent not found'
-      });
-    }
+    const agent = await getAgentService(req.params.id);
     res.json({
       success: true,
       data: agent
     });
   } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: err.message
-    });
+    handleServiceError(err, res);
   }
 };
 
 // Create a new agent
 apiAgentController.createAgent = async (req, res) => {
   try {
-    const { name, version, description } = req.body;
-    if (!name || !name.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Agent name is required'
-      });
-    }
-    
-    const agent = await Agent.create({
-      name: name.trim(),
-      version: version ? version.trim() : null,
-      description: description ? description.trim() : null
-    });
-    
+    const agent = await createAgentService(req.body || {});
     res.status(201).json({
       success: true,
       message: 'Agent created successfully',
       data: agent
     });
   } catch (err) {
-    if (err.code === '23505') { // Unique constraint violation
-      return res.status(400).json({
-        success: false,
-        message: 'Agent name already exists'
-      });
-    }
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: err.message
-    });
+    handleServiceError(err, res);
   }
 };
 
 // Update an agent
 apiAgentController.updateAgent = async (req, res) => {
   try {
-    const { name, version, description } = req.body;
-    
-    // Check if agent exists first
-    const existingAgent = await Agent.findById(req.params.id);
-    if (!existingAgent) {
-      return res.status(404).json({
-        success: false,
-        message: 'Agent not found'
-      });
-    }
-    
-    // Prepare update data - only update fields that are provided
-    const updateData = {};
-    
-    if (name !== undefined) {
-      if (!name || !name.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Agent name cannot be empty'
-        });
-      }
-      updateData.name = name.trim();
-    }
-    
-    if (version !== undefined) {
-      updateData.version = version ? version.trim() : null;
-    }
-    
-    if (description !== undefined) {
-      updateData.description = description ? description.trim() : null;
-    }
-    
-    // If no fields to update, return current agent
-    if (Object.keys(updateData).length === 0) {
-      return res.json({
-        success: true,
-        message: 'No changes made',
-        data: existingAgent
-      });
-    }
-    
-    const agent = await Agent.update(req.params.id, updateData);
+    const agent = await updateAgentService(req.params.id, req.body || {});
     res.json({
       success: true,
       message: 'Agent updated successfully',
       data: agent
     });
   } catch (err) {
-    if (err.code === '23505') { // Unique constraint violation
-      return res.status(400).json({
-        success: false,
-        message: 'Agent name already exists'
-      });
-    }
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: err.message
-    });
+    handleServiceError(err, res);
   }
 };
 
 // Delete an agent
 apiAgentController.deleteAgent = async (req, res) => {
   try {
-    // Check if agent exists
-    const agent = await Agent.findById(req.params.id);
-    if (!agent) {
-      return res.status(404).json({
-        success: false,
-        message: 'Agent not found'
-      });
-    }
-    
-    await Agent.delete(req.params.id);
+    await deleteAgentService(req.params.id);
     res.json({
       success: true,
       message: 'Agent deleted successfully'
     });
   } catch (err) {
-    if (err.message && err.message.includes('in use')) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cannot delete: This agent is in use'
-      });
-    }
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: err.message
-    });
+    handleServiceError(err, res);
   }
 };
 
@@ -182,7 +89,6 @@ apiAgentController.findAgents = async (req, res) => {
   try {
     const { name } = req.query;
 
-    // Require search term
     if (!name || !name.trim()) {
       return res.status(400).json({
         success: false,
@@ -190,8 +96,7 @@ apiAgentController.findAgents = async (req, res) => {
       });
     }
 
-    // Use exact name matching
-    const agents = await Agent.findByNameExact(name.trim());
+    const agents = await findAgentsByName(name.trim());
 
     res.json({
       success: true,

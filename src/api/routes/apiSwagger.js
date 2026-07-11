@@ -2,6 +2,12 @@
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
+import { createRequire } from 'module';
+
+// Read name/version from package.json so the API doc never drifts out of
+// sync with the app's actual released version.
+const require = createRequire(import.meta.url);
+const pkg = require('../../../package.json');
 
 const apiSwaggerRouter = express.Router();
 
@@ -27,23 +33,6 @@ const apiSwaggerRouter = express.Router();
  *         created_at:
  *           type: string
  *           format: date-time
- *     Contact:
- *       type: object
- *       properties:
- *         id:
- *           type: integer
- *         name:
- *           type: string
- *         email:
- *           type: string
- *         phone:
- *           type: string
- *         position:
- *           type: string
- *         unit_id:
- *           type: integer
- *         description:
- *           type: string
  *   securitySchemes:
  *     bearerAuth:
  *       type: http
@@ -74,9 +63,9 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'ASG Project API',
-      version: '1.0.0',
-      description: 'API documentation for ASG Project',
+      title: 'Open ASM API',
+      version: pkg.version || '4.0.1',
+      description: 'API documentation for Open ASM (Asset Security Management)',
     },
     servers: [
       {

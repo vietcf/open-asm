@@ -207,7 +207,7 @@ function buildExportUrl() {
           </div>
         </div>
           <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
-            <table class="table table-hover" style="table-layout: fixed; min-width: 800px;">
+            <table class="table table-hover" id="ruleTable" style="table-layout: fixed; min-width: 800px;">
             <thead>
               <tr id="detailedHeader">
                 <th>No.</th>
@@ -808,11 +808,11 @@ function buildExportUrl() {
             </ol>
           </div>
           <div class="d-flex gap-2 justify-content-end">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            <button type="button" class="btn btn-warning" id="validateBtn" disabled>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-warning btn-sm" id="validateBtn" disabled>
               <i class="bi bi-check-circle"></i> Validate File
             </button>
-            <button type="button" class="btn btn-success" id="importBtn" disabled>
+            <button type="button" class="btn btn-success btn-sm" id="importBtn" disabled>
               <i class="bi bi-upload"></i> Import Rules
             </button>
           </div>
@@ -885,7 +885,7 @@ function showRuleDetail(ruleId) {
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <dl class="row mb-0">
+            <dl class="row detail-dl">
               <dt class="col-sm-4">Rule ID</dt>
               <dd class="col-sm-8"><strong>${rule.id || '<span class="text-muted">No data</span>'}</strong></dd>
               <dt class="col-sm-4">Audit Batch</dt>
@@ -1929,7 +1929,7 @@ $(function() {
     groups.forEach(function(group, idx) {
       var row = $('<tr class="group-row" data-group-key="' + group.rulename + '|' + group.firewall_name + '">');
       row.append('<td>' + (idx + 1) + '</td>');
-      row.append('<td style="font-size: 0.75rem; color: #6c757d;">' + (group.latestAudit || '') + ' <small class="text-muted">(' + typeof group.latestAudit + ')</small></td>');
+      row.append('<td style="font-size: 0.75rem; color: #6c757d;">' + (group.latestAudit || '') + '</td>');
       row.append('<td><span class="badge bg-info">' + group.firewall_name + '</span></td>');
       row.append('<td><strong>' + group.rulename + '</strong></td>');
 
@@ -2011,14 +2011,13 @@ $(function() {
     originalRules.forEach(function(rule, idx) {
       var row = $('<tr>');
       row.append('<td>' + (idx + 1) + '</td>');
-      row.append('<td>' + (rule.audit_batch || '-') + ' <small class="text-muted">(' + typeof rule.audit_batch + ')</small></td>');
+      row.append('<td>' + (rule.audit_batch || '-') + '</td>');
       row.append('<td>' + (rule.firewall_name || '-') + '</td>');
       row.append('<td>' + rule.rulename + '</td>');
       row.append('<td>' + (rule.src || '-') + '</td>');
       row.append('<td>' + (rule.dst || '-') + '</td>');
-      row.append('<td>' + (rule.services || '-') + '</td>');
-      row.append('<td><span class="badge bg-' + (rule.action === 'allow' ? 'success' : 'danger') + '">' + rule.action + '</span></td>');
-      row.append('<td><span class="badge bg-' + (rule.status === 'active' ? 'success' : 'secondary') + '">' + rule.status + '</span></td>');
+      row.append('<td><span class="badge bg-' + (rule.action === 'allow' ? 'success' : 'danger') + '">' + (rule.action || '-') + '</span></td>');
+      row.append('<td><span class="badge bg-' + (rule.status === 'active' ? 'success' : 'secondary') + '">' + (rule.status || '-') + '</span></td>');
 
       var actionsHtml = '<div class="btn-group btn-group-sm">';
       actionsHtml += '<button type="button" class="btn btn-info btn-sm" title="Show" onclick="showRuleDetail(\'' + rule.id + '\')" data-rule-id="' + rule.id + '" data-rule=\'' + JSON.stringify(rule) + '\'><i class="bi bi-eye"></i></button>';
@@ -2301,6 +2300,22 @@ let selectedFile = null;
 
 <!-- Responsive Tables CSS -->
 <style>
+#ruleTable thead th {
+  white-space: nowrap;
+}
+/* Fixed proportional column widths — see network/ip_address_list.ejs for
+   rationale. Applies to both the detailedHeader and groupedHeader rows,
+   which share the same 9-column layout. */
+#ruleTable th:nth-child(1), #ruleTable td:nth-child(1) { width: 4%; }
+#ruleTable th:nth-child(2), #ruleTable td:nth-child(2) { width: 10%; }
+#ruleTable th:nth-child(3), #ruleTable td:nth-child(3) { width: 12%; }
+#ruleTable th:nth-child(4), #ruleTable td:nth-child(4) { width: 11%; }
+#ruleTable th:nth-child(5), #ruleTable td:nth-child(5) { width: 10%; }
+#ruleTable th:nth-child(6), #ruleTable td:nth-child(6) { width: 13%; }
+#ruleTable th:nth-child(7), #ruleTable td:nth-child(7) { width: 10%; }
+#ruleTable th:nth-child(8), #ruleTable td:nth-child(8) { width: 10%; }
+#ruleTable th:nth-child(9), #ruleTable td:nth-child(9) { width: 20%; }
+
 /* Select2 dropdown positioning fixes */
 .select2-container {
   z-index: 9999 !important;

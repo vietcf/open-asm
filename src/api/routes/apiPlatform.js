@@ -1,5 +1,6 @@
 import express from 'express';
 import { apiPlatformController } from '../controllers/apiPlatformController.js';
+import { authorizePermissionJWT } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
@@ -103,7 +104,7 @@ const router = express.Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/', apiPlatformController.getAllPlatforms);
+router.get('/', authorizePermissionJWT('platform.read'), apiPlatformController.getAllPlatforms);
 
 /**
  * @swagger
@@ -148,7 +149,7 @@ router.get('/', apiPlatformController.getAllPlatforms);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/find', apiPlatformController.findPlatforms);
+router.get('/find', authorizePermissionJWT('platform.read'), apiPlatformController.findPlatforms);
 
 /**
  * @swagger
@@ -191,7 +192,7 @@ router.get('/find', apiPlatformController.findPlatforms);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/:id', apiPlatformController.getPlatform);
+router.get('/:id', authorizePermissionJWT('platform.read'), apiPlatformController.getPlatform);
 
 /**
  * @swagger
@@ -239,7 +240,7 @@ router.get('/:id', apiPlatformController.getPlatform);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/', apiPlatformController.createPlatform);
+router.post('/', authorizePermissionJWT('platform.create'), apiPlatformController.createPlatform);
 
 /**
  * @swagger
@@ -300,13 +301,14 @@ router.post('/', apiPlatformController.createPlatform);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.put('/:id', apiPlatformController.updatePlatform);
+router.put('/:id', authorizePermissionJWT('platform.update'), apiPlatformController.updatePlatform);
 
 /**
  * @swagger
  * /api/v1/platforms/{id}:
  *   delete:
  *     summary: Delete a platform
+ *     description: Delete a platform by its ID. Cannot delete if it's being used by existing devices.
  *     tags: [Platforms]
  *     security:
  *       - bearerAuth: []
@@ -318,8 +320,19 @@ router.put('/:id', apiPlatformController.updatePlatform);
  *         required: true
  *         description: Numeric ID of the platform to delete
  *     responses:
- *       204:
+ *       200:
  *         description: Platform deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "Platform deleted successfully"
  *       401:
  *         description: Unauthorized
  *         content:
@@ -332,6 +345,12 @@ router.put('/:id', apiPlatformController.updatePlatform);
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Error'
+ *       409:
+ *         description: Cannot delete platform as it is being used by existing devices
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Internal server error
  *         content:
@@ -339,6 +358,6 @@ router.put('/:id', apiPlatformController.updatePlatform);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.delete('/:id', apiPlatformController.deletePlatform);
+router.delete('/:id', authorizePermissionJWT('platform.delete'), apiPlatformController.deletePlatform);
 
 export default router;

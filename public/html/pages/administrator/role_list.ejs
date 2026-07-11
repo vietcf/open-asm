@@ -1,16 +1,21 @@
-<div class="container-fluid">
-  <!-- Breadcrumb -->
-  <div class="row mb-3">
-    <div class="col-12">
-      <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-0">
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
           <li class="breadcrumb-item"><a href="/">Home</a></li>
           <li class="breadcrumb-item"><a href="/administrator">Administrator</a></li>
-          <li class="breadcrumb-item active" aria-current="page">Role List</li>
+          <li class="breadcrumb-item active">Role List</li>
         </ol>
-      </nav>
+      </div>
     </div>
   </div>
+</div>
+
+<!-- Main content -->
+<div class="app-content">
+<div class="container-fluid">
   <!-- Search and Page Size Row -->
   <div class="row mb-3">
     <div class="col-12">
@@ -38,7 +43,7 @@
       <div class="col-12">
         <div class="d-flex justify-content-end gap-2">
           <% if (hasPermission('role.create')) { %>
-          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRoleModal">
+          <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addRoleModal">
             <i class="bi bi-plus"></i> Add Role
           </button>
           <% } %>
@@ -88,7 +93,7 @@
             <h3 class="card-title mb-0">Role List</h3>
           </div>
         <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
-          <table class="table table-hover">
+          <table class="table table-hover" id="roleTable">
             <thead>
               <tr>
                 <th>No.</th>
@@ -167,11 +172,11 @@
                             <div class="modal-body">
                               <div class="mb-3">
                                 <label class="form-label">Name <span class="text-danger">*</span></label>
-                                <input type="text" name="name" class="form-control form-control-sm" value="<%= role.name %>" required>
+                                <input type="text" name="name" class="form-control" value="<%= role.name %>" required>
                               </div>
                               <div class="mb-3">
                                 <label class="form-label">Description</label>
-                                <input type="text" name="description" class="form-control form-control-sm" value="<%= role.description %>">
+                                <input type="text" name="description" class="form-control" value="<%= role.description %>">
                               </div>
                               <div class="mb-3">
                                 <label class="form-label">Permissions</label>
@@ -333,6 +338,7 @@
       </div>
     </div>
   </div>
+  </div>
   <!-- Add Role Modal -->
   <% if (hasPermission('role.create')) { %>
   <div class="modal fade" id="addRoleModal" tabindex="-1" aria-labelledby="addRoleModalLabel" aria-hidden="true">
@@ -474,3 +480,26 @@ editRoleModals.forEach(modal => {
 });
 </script>
 <!-- Responsive Tables CSS -->
+<style>
+/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
+#roleTable {
+  table-layout: fixed;
+  min-width: 900px;
+}
+#roleTable thead th {
+  white-space: nowrap;
+}
+#roleTable th:nth-child(1), #roleTable td:nth-child(1) { width: 5%; }
+#roleTable th:nth-child(2), #roleTable td:nth-child(2) { width: 15%; }
+#roleTable th:nth-child(3), #roleTable td:nth-child(3) { width: 30%; }
+#roleTable th:nth-child(4), #roleTable td:nth-child(4) { width: 35%; }
+#roleTable th:nth-child(5), #roleTable td:nth-child(5) { width: 15%; }
+
+#roleTable td:nth-child(3) {
+  overflow-wrap: break-word;
+}
+#roleTable td:nth-child(5) {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+</style>

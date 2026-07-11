@@ -1,96 +1,62 @@
-import Unit from '../../models/Unit.js';
+import {
+  listUnits as listUnitsService,
+  getUnit as getUnitService,
+  findUnitsByName,
+  createUnit as createUnitService,
+  updateUnit as updateUnitService,
+  deleteUnit as deleteUnitService
+} from '../../services/unitService.js';
+import { handleServiceErrorPlain } from '../utils/handleServiceError.js';
 
 // Controller for Organization Unit (OU) API
 const apiUnitController = {};
 
 apiUnitController.listUnits = async (req, res) => {
   try {
-    // Pagination and search support
-    const page = parseInt(req.query.page, 10) || 1;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const pageSize = Math.max(1, Math.min(parseInt(req.query.pageSize, 10) || 20, 100));
     const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
-    let totalCount, totalPages, units;
-    if (search) {
-      totalCount = await Unit.countSearch(search);
-      totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-      units = await Unit.findSearchPage(search, page, pageSize);
-    } else {
-      totalCount = await Unit.countAll();
-      totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-      units = await Unit.findPage(page, pageSize);
-    }
+    const { items: units, totalCount } = await listUnitsService({ search, page, pageSize });
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     res.json({ totalCount, page, pageSize, totalPages, units });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    handleServiceErrorPlain(err, res);
   }
 };
 
 apiUnitController.getUnit = async (req, res) => {
   try {
-    const id = req.params.id;
-    const unit = await Unit.findById(id);
-    if (!unit) return res.status(404).json({ error: 'Unit not found' });
+    const unit = await getUnitService(req.params.id);
     res.json(unit);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    handleServiceErrorPlain(err, res);
   }
 };
 
 apiUnitController.createUnit = async (req, res) => {
   try {
-    let { name, code, description } = req.body;
-    name = typeof name === 'string' ? name.trim() : '';
-    code = typeof code === 'string' ? code.trim() : '';
-    description = typeof description === 'string' ? description.trim() : '';
-    if (!name) {
-      return res.status(400).json({ error: 'Unit name is required' });
-    }
-    // Check for duplicate name (case-insensitive, trim)
-    const existing = await Unit.findByName(name);
-    if (existing) {
-      return res.status(409).json({ error: 'Unit already exists with this name' });
-    }
-    const unit = await Unit.create({ name, code, description });
+    const unit = await createUnitService(req.body || {});
     res.status(201).json(unit);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    handleServiceErrorPlain(err, res);
   }
 };
 
 apiUnitController.updateUnit = async (req, res) => {
   try {
-    const id = req.params.id;
-    // Lấy dữ liệu hiện tại
-    const current = await Unit.findById(id);
-    if (!current) return res.status(404).json({ error: 'Unit not found' });
-    // Chỉ cập nhật trường nào truyền lên, còn lại giữ nguyên
-    let name = ('name' in req.body) ? (typeof req.body.name === 'string' ? req.body.name.trim() : current.name) : current.name;
-    let code = ('code' in req.body) ? (typeof req.body.code === 'string' ? req.body.code.trim() : current.code) : current.code;
-    let description = ('description' in req.body) ? (typeof req.body.description === 'string' ? req.body.description.trim() : current.description) : current.description;
-    if (!name) {
-      return res.status(400).json({ error: 'Unit name is required' });
-    }
-    // Check for duplicate name (case-insensitive, trim, except for this id)
-    const existing = await Unit.findByName(name);
-    if (existing && String(existing.id) !== String(id)) {
-      return res.status(409).json({ error: 'Unit already exists with this name' });
-    }
-    const updated = await Unit.update(id, { name, code, description });
+    const updated = await updateUnitService(req.params.id, req.body || {});
     res.json(updated);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    handleServiceErrorPlain(err, res);
   }
 };
 
 apiUnitController.deleteUnit = async (req, res) => {
   try {
-    const id = req.params.id;
-    const unit = await Unit.findById(id);
-    if (!unit) return res.status(404).json({ error: 'Unit not found' });
-    await Unit.delete(id);
+    await deleteUnitService(req.params.id);
     res.status(204).send();
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    handleServiceErrorPlain(err, res);
   }
 };
 
@@ -114,9 +80,7 @@ apiUnitController.findUnits = async (req, res) => {
       });
     }
 
-    // Find units by exact name match (case-insensitive)
-    const unit = await Unit.findByName(name.trim());
-    const units = unit ? [unit] : [];
+    const units = await findUnitsByName(name.trim());
 
     res.status(200).json({
       success: true,

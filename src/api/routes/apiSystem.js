@@ -1,5 +1,6 @@
 import express from 'express';
 import apiSystemController from '../controllers/apiSystemController.js';
+import { authorizePermissionJWT } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
@@ -192,15 +193,13 @@ const router = express.Router();
  *                 type: array
  *                 items:
  *                   type: string
- *               docs:
- *                 type: array
- *                 items:
- *                   type: object
  *     responses:
  *       201:
  *         description: System created
  *       400:
  *         description: Validation error
+ *       409:
+ *         description: System ID or name already exists
  *
  * /api/v1/systems/{id}:
  *   get:
@@ -281,10 +280,6 @@ const router = express.Router();
  *                 type: array
  *                 items:
  *                   type: string
- *               docs:
- *                 type: array
- *                 items:
- *                   type: object
  *     responses:
  *       200:
  *         description: System updated
@@ -292,8 +287,11 @@ const router = express.Router();
  *         description: Validation error
  *       404:
  *         description: System not found
+ *       409:
+ *         description: System ID or name already exists
  *   delete:
  *     summary: Delete a system
+ *     description: Fails if the system still has components — remove them first.
  *     tags: [System]
  *     security:
  *       - bearerAuth: []
@@ -309,10 +307,12 @@ const router = express.Router();
  *         description: System deleted
  *       404:
  *         description: System not found
+ *       409:
+ *         description: System still has components — remove them before deleting the system
  */
 
 // List all systems
-router.get('/', apiSystemController.getAll);
+router.get('/', authorizePermissionJWT('system.read'), apiSystemController.getAll);
 
 /**
  * @swagger
@@ -376,15 +376,15 @@ router.get('/', apiSystemController.getAll);
  *                   type: string
  *                   description: Detailed error information
  */
-router.get('/find', apiSystemController.findSystems);
+router.get('/find', authorizePermissionJWT('system.read'), apiSystemController.findSystems);
 
 // Get system by id
-router.get('/:id', apiSystemController.getById);
+router.get('/:id', authorizePermissionJWT('system.read'), apiSystemController.getById);
 // Create system
-router.post('/', apiSystemController.create);
+router.post('/', authorizePermissionJWT('system.create'), apiSystemController.create);
 // Update system
-router.put('/:id', apiSystemController.update);
+router.put('/:id', authorizePermissionJWT('system.update'), apiSystemController.update);
 // Delete system
-router.delete('/:id', apiSystemController.remove);
+router.delete('/:id', authorizePermissionJWT('system.delete'), apiSystemController.remove);
 
 export default router;

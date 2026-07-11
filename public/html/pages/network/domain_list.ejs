@@ -255,7 +255,7 @@ function buildPaginationUrl(targetPage) {
                         const cleanDescription = description.trim();
                         const shortDescription = cleanDescription.length > 50 ? cleanDescription.substring(0, 50) + '…' : cleanDescription;
                       %>
-                      <span class="description-hover" data-description="<%= cleanDescription.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>" style="white-space: pre-line; cursor: help; position: relative; word-break: break-word;"><%= shortDescription %></span>
+                      <span data-bs-toggle="tooltip" data-bs-placement="top" title="<%= cleanDescription %>" style="cursor: help; word-break: break-word;"><%= shortDescription %></span>
                       </td>
                       
                       <!-- IP Address -->
@@ -525,8 +525,8 @@ function buildPaginationUrl(targetPage) {
           </div>
                         </div>
                         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Add Domain</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Add Domain</button>
                         </div>
       </form>
                       </div>
@@ -611,8 +611,8 @@ function buildPaginationUrl(targetPage) {
                             </div>
                           </div>
                           <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Update Domain</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Update Domain</button>
                           </div>
                         </form>
                       </div>
@@ -633,7 +633,7 @@ function buildPaginationUrl(targetPage) {
         <!-- Content will be loaded here -->
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -694,8 +694,8 @@ function buildPaginationUrl(targetPage) {
         <div class="modal-footer d-flex justify-content-between">
           <button type="button" class="btn btn-outline-danger" id="clearFilterBtnDomain">Clear All Filters</button>
             <div>
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Apply Filters</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
             </div>
         </div>
       </form>
@@ -1471,36 +1471,37 @@ function showDomainDetail(domainId) {
   const modal = new bootstrap.Modal(modalElement);
   const content = document.getElementById('domainDetailContent');
   
-  let html = '<div class="mb-2"><strong>Domain:</strong> ' + String(domain.domain || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>Description:</strong><br><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + String(domain.description || 'N/A').trim() + '</pre></div>';
-  html += '<div class="mb-2"><strong>Record Type:</strong> ' + String(domain.record_type || 'A').trim() + '</div>';
-  
+  let html = '<dl class="row detail-dl">';
+  html += '<dt class="col-sm-4">Domain</dt><dd class="col-sm-8">' + String(domain.domain || 'N/A').trim() + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + String(domain.description || 'N/A').trim() + '</pre></dd>';
+  html += '<dt class="col-sm-4">Record Type</dt><dd class="col-sm-8">' + String(domain.record_type || 'A').trim() + '</dd>';
+
   if (domain.ip && domain.ip.ip_address) {
-    html += '<div class="mb-2"><strong>IP Address:</strong> ' + String(domain.ip.ip_address).trim() + '</div>';
+    html += '<dt class="col-sm-4">IP Address</dt><dd class="col-sm-8">' + String(domain.ip.ip_address).trim() + '</dd>';
   }
-  
+
   if (domain.tags && domain.tags.length > 0) {
-    html += '<div class="mb-2"><strong>Tags:</strong><br>';
+    html += '<dt class="col-sm-4">Tags</dt><dd class="col-sm-8">';
     domain.tags.forEach(function(tag) {
       const tagValue = (typeof tag === 'string' ? tag : tag.name);
       html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
     });
-    html += '</div>';
+    html += '</dd>';
   }
-  
+
   if (domain.systems && domain.systems.length > 0) {
-    html += '<div class="mb-2"><strong>Systems:</strong><ul class="mb-0">';
+    html += '<dt class="col-sm-4">Systems</dt><dd class="col-sm-8"><ul class="mb-0 ps-3">';
     domain.systems.forEach(function(system) {
       const systemValue = (typeof system === 'string' ? system : system.name);
       const searchUrl = '/system/system?search=' + encodeURIComponent(systemValue) + '&pageSize=2';
-      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + 
+      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' +
               String(systemValue).trim() + '</a></li>';
     });
-    html += '</ul></div>';
+    html += '</ul></dd>';
   }
-  
+
   if (domain.contacts && domain.contacts.length > 0) {
-    html += '<div class="mb-2"><strong>Contacts:</strong><ul class="mb-0">';
+    html += '<dt class="col-sm-4">Contacts</dt><dd class="col-sm-8"><ul class="mb-0 ps-3">';
     domain.contacts.forEach(function(contact) {
       let contactName = '';
       let contactEmail = '';
@@ -1527,12 +1528,13 @@ function showDomainDetail(domainId) {
       
       // Create searchable link as simple text
       const searchUrl = '/organize/contact?search=' + encodeURIComponent(contactName);
-      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + 
+      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' +
               String(displayText).trim() + '</a></li>';
     });
-    html += '</ul></div>';
+    html += '</ul></dd>';
   }
-  
+
+  html += '</dl>';
   content.innerHTML = html;
   modal.show();
 }
@@ -1555,48 +1557,29 @@ $(document).ready(function() {
   text-align: left;
 }
 
+/* Fixed proportional column widths — see ip_address_list.ejs for rationale. */
+#domainTable {
+  table-layout: fixed;
+  min-width: 1100px;
+}
+#domainTable thead th {
+  white-space: nowrap;
+}
+#domainTable th:nth-child(1), #domainTable td:nth-child(1) { width: 4%; }
+#domainTable th:nth-child(2), #domainTable td:nth-child(2) { width: 11%; }
+#domainTable th:nth-child(3), #domainTable td:nth-child(3) { width: 13%; }
+#domainTable th:nth-child(4), #domainTable td:nth-child(4) { width: 13%; }
+#domainTable th:nth-child(5), #domainTable td:nth-child(5) { width: 8%; }
+#domainTable th:nth-child(6), #domainTable td:nth-child(6) { width: 12%; }
+#domainTable th:nth-child(7), #domainTable td:nth-child(7) { width: 12%; }
+#domainTable th:nth-child(8), #domainTable td:nth-child(8) { width: 12%; }
+#domainTable th:nth-child(9), #domainTable td:nth-child(9) { width: 15%; }
+
 /* Description column alignment */
 #domainTable td:nth-child(3) {
   text-align: left;
   vertical-align: top;
-}
-
-/* Description hover popup style */
-.description-hover {
-  position: relative;
-  display: inline-block;
-}
-
-.description-hover:hover::after {
-  content: attr(data-description);
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background: #333;
-  color: white;
-  padding: 8px 12px;
-  border-radius: 4px;
-  white-space: pre-line;
-  max-width: 400px;
-  max-height: 200px;
-  overflow-y: auto;
-  z-index: 1000;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  font-size: 14px;
-  line-height: 1.4;
-  word-break: break-word;
-  pointer-events: none;
-}
-
-.description-hover:hover::before {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 10px;
-  border: 5px solid transparent;
-  border-bottom-color: #333;
-  z-index: 1001;
-  pointer-events: none;
+  overflow-wrap: break-word;
 }
 
 /* Force override for Add Domain modal buttons on mobile */

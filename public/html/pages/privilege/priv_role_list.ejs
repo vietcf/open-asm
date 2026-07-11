@@ -155,7 +155,7 @@ function buildExportUrl() {
             <h3 class="card-title mb-0">Privileged Role List</h3>
         </div>
           <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
-            <table class="table table-hover" style="table-layout: fixed; min-width: 800px;">
+            <table class="table table-hover" id="privRoleTable" style="table-layout: fixed; min-width: 800px;">
             <thead>
               <tr>
                 <th>No.</th>
@@ -401,7 +401,7 @@ function showRoleDetail(roleId) {
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
       <div class="modal-body">
-            <dl class="row mb-0">
+            <dl class="row detail-dl">
               <dt class="col-sm-4">Role Name</dt>
               <dd class="col-sm-8">${role.name || '<span class="text-muted">No data</span>'}</dd>
               <dt class="col-sm-4">Description</dt>
@@ -664,6 +664,16 @@ $(function() {
 
 <!-- Responsive Tables CSS -->
 <style>
+#privRoleTable thead th {
+  white-space: nowrap;
+}
+/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
+#privRoleTable th:nth-child(1), #privRoleTable td:nth-child(1) { width: 4%; }
+#privRoleTable th:nth-child(2), #privRoleTable td:nth-child(2) { width: 18%; }
+#privRoleTable th:nth-child(3), #privRoleTable td:nth-child(3) { width: 38%; }
+#privRoleTable th:nth-child(4), #privRoleTable td:nth-child(4) { width: 20%; }
+#privRoleTable th:nth-child(5), #privRoleTable td:nth-child(5) { width: 20%; }
+
 /* Mobile responsive styles for Privileged Role List */
 @media (max-width: 768px) {
   .table-responsive {

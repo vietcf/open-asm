@@ -10,6 +10,17 @@ import XLSX from 'xlsx';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { ServiceError } from '../services/errors.js';
+import {
+  listRules as listRulesService,
+  createRule as createRuleService,
+  updateRule as updateRuleService,
+  deleteRule as deleteRuleService,
+  getActionOptions as getActionsOptionsFromConfig,
+  getStatusOptions as getStatusOptionsFromConfig,
+  getViolationTypeOptions as getViolationTypeOptionsFromConfig,
+  getFirewallNameOptions as getFirewallNameOptionsFromConfig
+} from '../services/ruleService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -19,100 +30,6 @@ function sanitizeString(str) {
   if (typeof str !== 'string') return '';
   return str.trim().replace(/[<>]/g, '');
 }
-
-// Helper: load firewall options from DB config
-async function getActionsOptionsFromConfig() {
-  let options = [];
-  try {
-    const config = await Configuration.findById('firewall_rule_action');
-    if (config && config.value) {
-      let parsed;
-      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
-      if (Array.isArray(parsed)) {
-        options = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
-      }
-    }
-  } catch (e) { options = []; }
-  if (!Array.isArray(options) || options.length === 0) {
-    options = [];
-  }
-  return options;
-}
-
-async function getStatusOptionsFromConfig() {
-  let options = [];
-  try {
-    const config = await Configuration.findById('firewall_rule_status');
-    if (config && config.value) {
-      let parsed;
-      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
-      if (Array.isArray(parsed)) {
-        options = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
-      }
-    }
-  } catch (e) { options = []; }
-  // Fallback options if no config found
-  if (!Array.isArray(options) || options.length === 0) {
-    options = [];
-  }
-  return options;
-}
-
-async function getViolationTypeOptionsFromConfig() {
-  let options = [];
-  try {
-    const config = await Configuration.findById('firewall_rule_violation_type');
-    if (config && config.value) {
-      let parsed;
-      try { 
-        // Fix single quotes to double quotes for valid JSON
-        const fixedValue = config.value.replace(/'/g, '"');
-        parsed = JSON.parse(fixedValue); 
-      } catch { parsed = null; }
-      if (Array.isArray(parsed)) {
-        options = parsed.map(item => {
-          if (typeof item === 'object' && item !== null && item.value && item.label) {
-            return item; // Keep as is if it's already a proper object
-          } else {
-            return { value: String(item), label: String(item) };
-          }
-        });
-      }
-    }
-  } catch (e) { options = []; }
-  // Return empty array if no config found instead of fallback options
-  return options;
-}
-
-async function getFirewallNameOptionsFromConfig() {
-  let options = [];
-  try {
-    const config = await Configuration.findById('firewall_name');
-    if (config && config.value) {
-      let parsed;
-      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
-      if (Array.isArray(parsed)) {
-        options = parsed.map(item => {
-          if (typeof item === 'object') {
-            // Handle both { key, label } and { value, label } formats
-            if (item.key !== undefined) {
-              return { value: item.key, label: item.label };
-            } else if (item.value !== undefined) {
-              return { value: item.value, label: item.label };
-            } else {
-              return { value: String(item), label: String(item) };
-            }
-          } else {
-            return { value: String(item), label: String(item) };
-          }
-        });
-      }
-    }
-  } catch (e) { options = []; }
-  // No fallback data - return empty array if no data from database
-  return options;
-}
-
 
 const firewallController = {};
 
@@ -159,12 +76,9 @@ firewallController.ruleList = async (req, res) => {
     if (filterWorkOrder === '') filterWorkOrder = undefined;
 
 
-    // --- Call model with filters (optimized aggregation) ---
-    const ruleList = await RuleFirewall.findFilteredList({
+    // --- Call service with filters ---
+    const { items: ruleList, totalCount } = await listRulesService({
       search, page, pageSize, ou_id: filterUnitId, contacts: filterContactIds, tags: filterTagIds, violation_type: filterViolationType, status: filterStatus, firewall_name: filterFirewallName, audit_batch: filterAuditBatch, work_order: filterWorkOrder
-    });
-    const totalCount = await RuleFirewall.countFiltered({
-      search, ou_id: filterUnitId, contacts: filterContactIds, tags: filterTagIds, violation_type: filterViolationType, status: filterStatus, firewall_name: filterFirewallName, audit_batch: filterAuditBatch, work_order: filterWorkOrder
     });
     const totalPages = Math.ceil(totalCount / pageSize) || 1;
 
@@ -230,150 +144,29 @@ firewallController.ruleList = async (req, res) => {
 
 firewallController.addRule = async (req, res) => {
   try {
-    // Extract fields from request body (similar to User.create approach)
     const {
       rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
       services, application, url, action, ou_id, status, violation_type,
       violation_detail, solution_proposal, solution_confirm, description,
-      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr, 
+      contacts, tags, 'contacts[]': contactsArr, 'tags[]': tagsArr,
       firewall_name, work_order, audit_batch, raw_data
     } = req.body;
 
-    // Normalize and trim input fields (like User.create)
-    const normRulename = rulename ? rulename.trim() : '';
-    const normSrcZone = src_zone ? src_zone.trim() : '';
-    const normSrc = src ? src.trim() : '';
-    const normSrcDetail = src_detail ? src_detail.trim() : '';
-    const normDstZone = dst_zone ? dst_zone.trim() : '';
-    const normDst = dst ? dst.trim() : '';
-    const normDstDetail = dst_detail ? dst_detail.trim() : '';
-    const normServices = services ? services.trim() : '';
-    const normApplication = application ? application.trim() : '';
-    const normUrl = url ? url.trim() : '';
-    const normAction = action ? action.trim() : '';
-    const normStatus = status ? status.trim() : '';
-    const normViolationType = violation_type ? violation_type.trim() : '';
-    const normViolationDetail = violation_detail ? violation_detail.trim() : '';
-    const normSolutionProposal = solution_proposal ? solution_proposal.trim() : '';
-    const normSolutionConfirm = solution_confirm ? solution_confirm.trim() : '';
-    const normDescription = description ? description.trim() : '';
-    const normFirewallName = firewall_name ? firewall_name.trim() : '';
-    const normWorkOrder = work_order ? work_order.trim() : '';
-    const normAuditBatch = audit_batch ? audit_batch.trim() : '';
-    const normRawData = raw_data ? raw_data.trim() : '';
-
-    // Validate required fields
-    if (!normRulename || !normSrc || !normDst || !normAction || !normAuditBatch) {
-      req.flash('error', 'Missing required fields: Rule Name, Source, Destination, Action, Audit Batch');
-      return res.redirect('/firewall/rule');
-    }
-
-    // Audit batch is just a simple string, no format validation needed
-
-    // Normalize ou_id
-    const normOuId = ou_id && ou_id !== '' ? parseInt(ou_id, 10) : null;
-    if (ou_id && isNaN(normOuId)) {
-      req.flash('error', 'Invalid OU ID');
-      return res.redirect('/firewall/rule');
-    }
-
-    // Normalize array fields
-    let normContacts = Array.isArray(contactsArr) ? contactsArr : (contacts || []);
-    let normTags = Array.isArray(tagsArr) ? tagsArr : (tags || []);
-    
-    if (!Array.isArray(normContacts)) normContacts = [normContacts];
-    normContacts = normContacts
-      .map(c => parseInt(c, 10))
-      .filter(c => !isNaN(c));
-      
-    if (!Array.isArray(normTags)) normTags = [normTags];
-    normTags = normTags
-      .map(t => parseInt(t, 10))
-      .filter(t => !isNaN(t));
-    // Check if rule already exists (unique constraint: rulename, firewall_name, audit_batch)
-    const existingRule = await RuleFirewall.findByFirewallRuleNameAndAuditBatch(normFirewallName, normRulename, normAuditBatch);
-    if (existingRule) {
-      req.flash('error', `Rule already exists: ${normFirewallName} - ${normRulename} in audit batch ${normAuditBatch}`);
-      return res.redirect('/firewall/rule');
-    }
-
-    // Validate action, status, violation_type against config
-  const allowedActions = (await getActionsOptionsFromConfig()).map(a => a.value);
-    if (!allowedActions.includes(normAction)) {
-      req.flash('error', 'Invalid action value.');
-      return res.redirect('/firewall/rule');
-    }
-  const allowedStatus = (await getStatusOptionsFromConfig()).map(s => s.value);
-    if (normStatus && !allowedStatus.includes(normStatus)) {
-      req.flash('error', 'Invalid status value.');
-      return res.redirect('/firewall/rule');
-    }
-  const allowedViolationTypes = (await getViolationTypeOptionsFromConfig()).map(v => v.value);
-    if (normViolationType && !allowedViolationTypes.includes(normViolationType)) {
-      req.flash('error', 'Invalid violation type value.');
-      return res.redirect('/firewall/rule');
-    }
-  const allowedFirewallNames = (await getFirewallNameOptionsFromConfig()).map(f => f.value);
-    if (!normFirewallName || !allowedFirewallNames.includes(normFirewallName)) {
-      req.flash('error', 'Invalid or missing firewall name.');
-      return res.redirect('/firewall/rule');
-    }
-
-    // Process audit_batch: simple string
-    let auditBatchStr = normAuditBatch || '';
-
-    // Compose base rule data (only basic fields, not relations)
-    let baseRuleData = {
-      rulename: normRulename,
-      src_zone: normSrcZone || null,
-      src: normSrc,
-      src_detail: normSrcDetail || null,
-      dst_zone: normDstZone || null,
-      dst: normDst,
-      dst_detail: normDstDetail || null,
-      services: normServices || null,
-      application: normApplication || null,
-      url: normUrl || null,
-      action: normAction,
-      ou_id: normOuId,
-      status: normStatus || null,
-      violation_type: normViolationType || null,
-      violation_detail: normViolationDetail || null,
-      solution_proposal: normSolutionProposal || null,
-      solution_confirm: normSolutionConfirm || null,
-      description: normDescription || null,
-      firewall_name: normFirewallName,
-      work_order: normWorkOrder || null,
-      audit_batch: auditBatchStr,
-      raw_data: normRawData || null,
+    await createRuleService({
+      rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
+      services, application, url, action, ou_id, status, violation_type,
+      violation_detail, solution_proposal, solution_confirm, description,
+      contacts: Array.isArray(contactsArr) ? contactsArr : contacts,
+      tags: Array.isArray(tagsArr) ? tagsArr : tags,
+      firewall_name, work_order, audit_batch, raw_data,
       updated_by: req.session && req.session.user ? req.session.user.username : null
-    };
-    // Data already normalized above, no need to normalize again
-
-
-    // Transactional create and set relations (simple, like systemController)
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      const newRuleId = await RuleFirewall.create(baseRuleData, client);
-      // Always set relations, even if empty (to ensure no stale relations)
-      if (newRuleId) {
-        await RuleFirewall.setContacts(newRuleId, normContacts, client);
-        await RuleFirewall.setTags(newRuleId, normTags, client);
-      }
-      await client.query('COMMIT');
-      req.flash('success', 'Rule added successfully!');
-      return res.redirect('/firewall/rule');
-    } catch (err) {
-      console.error('[ERROR] Exception in addRule:', err);
-      await client.query('ROLLBACK');
-      req.flash('error', 'Error adding rule: ' + err.message);
-      return res.redirect('/firewall/rule');
-    } finally {
-      client.release();
-    }
+    });
+    req.flash('success', 'Rule added successfully!');
+    return res.redirect('/firewall/rule');
   } catch (err) {
-    req.flash('error', 'Error adding rule: ' + err.message);
+    const message = err instanceof ServiceError ? err.message : 'Error adding rule: ' + err.message;
+    if (!(err instanceof ServiceError)) console.error('[ERROR] Exception in addRule:', err);
+    req.flash('error', message);
     res.redirect('/firewall/rule');
   }
 };
@@ -383,117 +176,23 @@ firewallController.addRule = async (req, res) => {
 firewallController.editRule = async (req, res) => {
   const id = req.params.id;
   try {
-    const current = await RuleFirewall.findById(id);
-    if (!current) {
-      req.flash('error', 'Rule not found.');
-      return res.redirect('/firewall/rule');
-    }
-    // Only update fields provided, keep old values for others
-    let firewall_name = ('firewall_name' in req.body) ? (typeof req.body.firewall_name === 'string' ? req.body.firewall_name.trim() : current.firewall_name) : current.firewall_name;
-    let rulename = ('rulename' in req.body) ? (typeof req.body.rulename === 'string' ? req.body.rulename.trim() : current.rulename) : current.rulename;
-    let src_zone = ('src_zone' in req.body) ? (typeof req.body.src_zone === 'string' ? req.body.src_zone.trim() : current.src_zone) : current.src_zone;
-    let src = ('src' in req.body) ? (typeof req.body.src === 'string' ? req.body.src.trim() : current.src) : current.src;
-    let src_detail = ('src_detail' in req.body) ? (typeof req.body.src_detail === 'string' ? req.body.src_detail.trim() : current.src_detail) : current.src_detail;
-    let dst_zone = ('dst_zone' in req.body) ? (typeof req.body.dst_zone === 'string' ? req.body.dst_zone.trim() : current.dst_zone) : current.dst_zone;
-    let dst = ('dst' in req.body) ? (typeof req.body.dst === 'string' ? req.body.dst.trim() : current.dst) : current.dst;
-    let dst_detail = ('dst_detail' in req.body) ? (typeof req.body.dst_detail === 'string' ? req.body.dst_detail.trim() : current.dst_detail) : current.dst_detail;
-    let services = ('services' in req.body) ? (typeof req.body.services === 'string' ? req.body.services.trim() : current.services) : current.services;
-    let application = ('application' in req.body) ? (typeof req.body.application === 'string' ? req.body.application.trim() : current.application) : current.application;
-    let url = ('url' in req.body) ? (typeof req.body.url === 'string' ? req.body.url.trim() : current.url) : current.url;
-    let action = ('action' in req.body) ? (typeof req.body.action === 'string' ? req.body.action.trim() : current.action) : current.action;
-    let ou_id = ('ou_id' in req.body) ? req.body.ou_id : current.ou_id;
-    let status = ('status' in req.body) ? (typeof req.body.status === 'string' ? req.body.status.trim() : current.status) : current.status;
-    let violation_type = ('violation_type' in req.body) ? (typeof req.body.violation_type === 'string' ? req.body.violation_type.trim() : current.violation_type) : current.violation_type;
-    let violation_detail = ('violation_detail' in req.body) ? (typeof req.body.violation_detail === 'string' ? req.body.violation_detail.trim() : current.violation_detail) : current.violation_detail;
-    let solution_proposal = ('solution_proposal' in req.body) ? (typeof req.body.solution_proposal === 'string' ? req.body.solution_proposal.trim() : current.solution_proposal) : current.solution_proposal;
-    let solution_confirm = ('solution_confirm' in req.body) ? (typeof req.body.solution_confirm === 'string' ? req.body.solution_confirm.trim() : current.solution_confirm) : current.solution_confirm;
-    let description = ('description' in req.body) ? (typeof req.body.description === 'string' ? req.body.description.trim() : current.description) : current.description;
-    let work_order = ('work_order' in req.body) ? (typeof req.body.work_order === 'string' ? req.body.work_order.trim() : current.work_order) : current.work_order;
-    let audit_batch = ('audit_batch' in req.body) ? req.body.audit_batch : current.audit_batch;
-    let raw_data = ('raw_data' in req.body) ? (typeof req.body.raw_data === 'string' ? req.body.raw_data.trim() : current.raw_data) : current.raw_data;
-    // Normalize audit_batch as simple string
-    let auditBatchStr = '';
-    if (typeof audit_batch === 'string' && audit_batch.length > 0) {
-      auditBatchStr = audit_batch.trim();
-    } else {
-      auditBatchStr = current.audit_batch;
-    }
-    // Normalize arrays
-    let contacts = ('contacts' in req.body) ? req.body.contacts : current.contacts;
-    if (contacts === undefined || contacts === null) contacts = [];
-    if (!Array.isArray(contacts)) contacts = [contacts];
-    contacts = contacts.map(c => parseInt(c, 10)).filter(c => !isNaN(c));
-    let tags = ('tags' in req.body) ? req.body.tags : current.tags;
-    if (tags === undefined || tags === null) tags = [];
-    if (!Array.isArray(tags)) tags = [tags];
-    tags = tags.map(t => parseInt(t, 10)).filter(t => !isNaN(t));
-    // Normalize ou_id
-    if ('ou_id' in req.body && ou_id !== undefined && ou_id !== null && ou_id !== '') {
-      ou_id = parseInt(ou_id, 10);
-      if (isNaN(ou_id)) ou_id = null;
-    } else if ('ou_id' in req.body) {
-      ou_id = null;
-    }
-    // Validate required fields
-    if (!rulename || !src || !dst || !action || !firewall_name) {
-      req.flash('error', 'Missing required fields: Rule Name, Source, Destination, Action, Firewall Name');
-      return res.redirect('/firewall/rule');
-    }
-    
-    // Check if rule already exists (unique constraint: rulename, firewall_name, audit_batch)
-    // But exclude current rule from check
-    const existingRule = await RuleFirewall.findByFirewallRuleNameAndAuditBatch(firewall_name, rulename, auditBatchStr);
-    if (existingRule && existingRule.id !== parseInt(id)) {
-      req.flash('error', `Rule already exists: ${firewall_name} - ${rulename} in audit batch ${auditBatchStr}`);
-      return res.redirect('/firewall/rule');
-    }
-    
-    // Validate enums
-  const allowedActions = (await getActionsOptionsFromConfig()).map(a => a.value);
-    if (!allowedActions.includes(action)) {
-      req.flash('error', 'Invalid action value.');
-      return res.redirect('/firewall/rule');
-    }
-  const allowedStatus = (await getStatusOptionsFromConfig()).map(s => s.value);
-    if (status && !allowedStatus.includes(status)) {
-      req.flash('error', 'Invalid status value.');
-      return res.redirect('/firewall/rule');
-    }
-  const allowedViolationTypes = (await getViolationTypeOptionsFromConfig()).map(v => v.value);
-    if (violation_type && !allowedViolationTypes.includes(violation_type)) {
-      req.flash('error', 'Invalid violation type value.');
-      return res.redirect('/firewall/rule');
-    }
-  const allowedFirewallNames = (await getFirewallNameOptionsFromConfig()).map(f => f.value);
-    if (!allowedFirewallNames.includes(firewall_name)) {
-      req.flash('error', 'Invalid firewall name value.');
-      return res.redirect('/firewall/rule');
-    }
-    // Transactional update and set relations
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      await RuleFirewall.update(id, {
-        firewall_name, rulename, src_zone, src, src_detail, dst_zone, dst, dst_detail,
-        services, application, url, action, ou_id, status, violation_type,
-        violation_detail, solution_proposal, solution_confirm, description,
-        work_order, audit_batch: auditBatchStr, raw_data,
-        updated_by: req.session && req.session.user ? req.session.user.username : current.updated_by
-      }, client);
-      await RuleFirewall.setContacts(id, contacts, client);
-      await RuleFirewall.setTags(id, tags, client);
-      await client.query('COMMIT');
-      req.flash('success', 'Rule updated successfully!');
-      res.redirect('/firewall/rule');
-    } catch (err) {
-      await client.query('ROLLBACK');
-      req.flash('error', 'Failed to update rule: ' + err.message);
-      res.redirect('/firewall/rule');
-    } finally {
-      client.release();
-    }
+    const body = req.body || {};
+    const has = key => Object.prototype.hasOwnProperty.call(body, key);
+    const input = { ...body };
+    // The edit form always fully replaces tags/contacts on submit (browsers
+    // omit multi-select fields entirely when nothing is checked) — always
+    // include the keys so the service's has-key semantics clear them when
+    // empty rather than leaving stale associations in place.
+    input.contacts = has('contacts') ? body.contacts : [];
+    input.tags = has('tags') ? body.tags : [];
+    input.updated_by = req.session && req.session.user ? req.session.user.username : null;
+
+    await updateRuleService(id, input);
+    req.flash('success', 'Rule updated successfully!');
+    res.redirect('/firewall/rule');
   } catch (err) {
-    req.flash('error', 'Failed to update rule: ' + err.message);
+    const message = err instanceof ServiceError ? err.message : 'Failed to update rule: ' + err.message;
+    req.flash('error', message);
     res.redirect('/firewall/rule');
   }
 };
@@ -501,7 +200,7 @@ firewallController.editRule = async (req, res) => {
 firewallController.deleteRule = async (req, res) => {
   const id = req.params.id;
   try {
-    await RuleFirewall.delete(id);
+    await deleteRuleService(id);
     req.flash('success', 'Rule deleted successfully!');
     res.redirect('/firewall/rule');
   } catch (err) {

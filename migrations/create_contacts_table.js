@@ -8,7 +8,8 @@ export default async (pool) => {
       unit_id INTEGER,
       position VARCHAR(100),
       description TEXT,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
   `);
 };

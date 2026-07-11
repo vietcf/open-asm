@@ -13,6 +13,26 @@ import XLSX from 'xlsx';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import archiver from 'archiver';
+import { ServiceError } from '../services/errors.js';
+import {
+  listIpAddresses as listIpAddressesService,
+  createIpAddress as createIpAddressService,
+  updateIpAddress as updateIpAddressService,
+  deleteIpAddress as deleteIpAddressService,
+  getIpStatusOptions
+} from '../services/ipAddressService.js';
+import {
+  listSubnets as listSubnetsService,
+  createSubnet as createSubnetService,
+  updateSubnet as updateSubnetService,
+  deleteSubnet as deleteSubnetService
+} from '../services/subnetService.js';
+import {
+  listDomains as listDomainsService,
+  createDomain as createDomainService,
+  updateDomain as updateDomainService,
+  deleteDomain as deleteDomainService
+} from '../services/domainService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,19 +53,6 @@ async function getRecordTypeOptionsFromConfig() {
 }
 
 
-// Helper: Load ipStatusOptions from DB (Configuration)
-async function getIpStatusOptionsFromConfig() {
-  let ipStatusOptions = [];
-  try {
-    const config = await Configuration.findById('ip_address_status');
-    if (config && config.value) {
-      ipStatusOptions = JSON.parse(config.value);
-    }
-  } catch (e) {
-    ipStatusOptions = [];
-  }
-  return ipStatusOptions;
-}
 
 //------------------------- IP ADDRESS MENU PROCESSING -------------------------
 // Render the IP address list page with layout
@@ -74,8 +81,8 @@ networkController.listIP = async (req, res) => {
     filterSystems = normalizeArray(filterSystems).filter(x => x !== '');
     filterContacts = normalizeArray(filterContacts).filter(x => x !== '');
 
-    // Gọi model filter
-    const ipList = await IpAddress.findFilteredList({
+    // Gọi service filter
+    const { items: ipList, totalCount } = await listIpAddressesService({
       search,
       tags: filterTags,
       status: filterStatus,
@@ -84,20 +91,12 @@ networkController.listIP = async (req, res) => {
       page,
       pageSize
     });
-
-    const totalCount = await IpAddress.countFiltered({
-      search,
-      tags: filterTags,
-      status: filterStatus,
-      systems: filterSystems,
-      contacts: filterContacts
-    });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const successMessage = req.flash('success')[0];
     const errorMessage = req.flash('error')[0];
 
   // Load ipStatusOptions from DB (Configuration) via helper
-  const ipStatusOptions = await getIpStatusOptionsFromConfig();
+  const ipStatusOptions = await getIpStatusOptions();
 
     // --- Fetch display names for selected filters (for select2 persistence) ---
     let selectedTags = [];
@@ -156,16 +155,14 @@ networkController.createIP = async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    // Extract and normalize form data, ensure arrays are not null
-    let { address, description, status, tags, contacts, systems, page } = req.body;
-    tags = tags ? (Array.isArray(tags) ? tags : [tags]) : [];
-    contacts = contacts ? (Array.isArray(contacts) ? contacts : [contacts]) : [];
-    systems = systems ? (Array.isArray(systems) ? systems : [systems]) : [];
-    
+    const { address, description, status, tags, contacts, systems, page } = req.body;
+
     // Parse multiple IP addresses separated by comma
     const ipAddresses = address ? address.split(',').map(ip => ip.trim()).filter(ip => ip.length > 0) : [];
-    
-    // Validate IP address format for each IP
+
+    // Pre-validate format for all addresses up front (fail fast on the first
+    // bad one, with the specific-IP message) — the service also validates
+    // format per-address, but this keeps the friendlier original message.
     const ipRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}$/;
     for (const ip of ipAddresses) {
       if (!ipRegex.test(ip)) {
@@ -174,43 +171,34 @@ networkController.createIP = async (req, res) => {
         return res.redirect('/network/ip-address');
       }
     }
-    
     if (ipAddresses.length === 0) {
       req.flash('error', 'Please enter at least one valid IP address.');
       await client.query('ROLLBACK');
       return res.redirect('/network/ip-address');
     }
-    
-    const statusValue = status && status.trim() ? status : 'active';
+
     const updated_by = req.session.user?.username || '';
-    
-    // Create IP address records for each IP
+    // One shared client across the whole batch keeps it atomic: all-or-none.
     const createdIPs = [];
     for (const ip of ipAddresses) {
-      const newIp = await IpAddress.create({ address: ip, description, status: statusValue, updated_by }, client);
-      // @ts-ignore - client parameter is supported by model methods
-      await IpAddress.setTags(newIp.id, tags, client);
-      // @ts-ignore - client parameter is supported by model methods
-      await IpAddress.setContacts(newIp.id, contacts, client);
-      // @ts-ignore - client parameter is supported by model methods
-      await IpAddress.setSystems(newIp.id, systems, client);
-      createdIPs.push(newIp);
+      const created = await createIpAddressService({ address: ip, description, status, tags, contacts, systems, updated_by }, client);
+      createdIPs.push(created);
     }
-    
+
     await client.query('COMMIT');
-    const successMessage = createdIPs.length === 1 
-      ? 'IP address added successfully!' 
+    const successMessage = createdIPs.length === 1
+      ? 'IP address added successfully!'
       : `${createdIPs.length} IP addresses added successfully!`;
     req.flash('success', successMessage);
     return res.redirect(`/network/ip-address?page=${page || 1}`);
   } catch (err) {
     await client.query('ROLLBACK');
-    let errorMessage = err.message || 'Add failed.';
-    if (errorMessage.includes('duplicate key value') && errorMessage.includes('unique constraint')) {
+    let errorMessage = err instanceof ServiceError ? err.message : (err.message || 'Add failed.');
+    if (!(err instanceof ServiceError) && errorMessage.includes('duplicate key value') && errorMessage.includes('unique constraint')) {
       errorMessage = 'One or more IP addresses already exist.';
     }
     req.flash('error', errorMessage);
-    return res.redirect(`/network/ip-address?page=${page || 1}`);
+    return res.redirect(`/network/ip-address?page=${req.body.page || 1}`);
   } finally {
     client.release();
   }
@@ -218,91 +206,41 @@ networkController.createIP = async (req, res) => {
 
 // Handle updating an IP address (with transaction)
 networkController.updateIP = async (req, res) => {
-  const client = await pool.connect();
   try {
-    await client.query('BEGIN');
-    // Extract and normalize form data, ensure arrays are not null
-    let { description, status, tags, contacts, systems, page } = req.body;
+    const { description, status, tags, contacts, systems, page } = req.body;
     const id = req.params.id;
-    tags = tags ? (Array.isArray(tags) ? tags : [tags]) : [];
-    contacts = contacts ? (Array.isArray(contacts) ? contacts : [contacts]) : [];
-    systems = systems ? (Array.isArray(systems) ? systems : [systems]) : [];
-    
-    // Validate contact IDs if provided
-    if (contacts && contacts.length > 0) {
-      const invalidContacts = [];
-      for (const cid of contacts) {
-        if (!(await Contact.exists(cid))) invalidContacts.push(cid);
-      }
-      if (invalidContacts.length > 0) {
-        req.flash('error', 'Invalid contact IDs: ' + invalidContacts.join(', '));
-        await client.query('ROLLBACK');
-        return res.redirect(`/network/ip-address?page=${page || 1}`);
-      }
-    }
-    
-    // Validate system IDs if provided
-    if (systems && systems.length > 0) {
-      const invalidSystems = [];
-      for (const sid of systems) {
-        if (!(await System.exists(sid))) invalidSystems.push(sid);
-      }
-      if (invalidSystems.length > 0) {
-        req.flash('error', 'Invalid system IDs: ' + invalidSystems.join(', '));
-        await client.query('ROLLBACK');
-        return res.redirect(`/network/ip-address?page=${page || 1}`);
-      }
-    }
-    
-    const updated_by = req.session.user?.username || '';
-    // Update IP address record (all within transaction)
-    // @ts-ignore - client parameter is supported by model methods
-    await IpAddress.update(id, { description, status, updated_by }, client);
-    // @ts-ignore - client parameter is supported by model methods
-    await IpAddress.setTags(id, tags, client);
-    // @ts-ignore - client parameter is supported by model methods
-    await IpAddress.setContacts(id, contacts, client);
-    // @ts-ignore - client parameter is supported by model methods
-    await IpAddress.setSystems(id, systems, client);
-    await client.query('COMMIT');
+    // tags/contacts/systems always included (even as []) to preserve the
+    // previous "always fully replace these associations" edit-form behavior.
+    await updateIpAddressService(id, {
+      description,
+      status,
+      tags: tags ? (Array.isArray(tags) ? tags : [tags]) : [],
+      contacts: contacts ? (Array.isArray(contacts) ? contacts : [contacts]) : [],
+      systems: systems ? (Array.isArray(systems) ? systems : [systems]) : [],
+      updated_by: req.session.user?.username || ''
+    });
     req.flash('success', 'IP address updated successfully!');
     return res.redirect(`/network/ip-address?page=${page || 1}`);
   } catch (err) {
-    await client.query('ROLLBACK');
-    let errorMessage = err.message || 'Save failed.';
-    if (errorMessage.includes('duplicate key value') && errorMessage.includes('unique constraint')) {
+    let errorMessage = err instanceof ServiceError ? err.message : (err.message || 'Save failed.');
+    if (!(err instanceof ServiceError) && errorMessage.includes('duplicate key value') && errorMessage.includes('unique constraint')) {
       errorMessage = 'IP address already exists.';
     }
     req.flash('error', errorMessage);
     return res.redirect(`/network/ip-address?page=${req.body.page || 1}`);
-  } finally {
-    client.release();
   }
 };
 
-// Handle deleting an IP address (with transaction)
+// Handle deleting an IP address
 networkController.deleteIP = async (req, res) => {
-  const client = await pool.connect();
   try {
-    await client.query('BEGIN');
     const page = req.body.page || req.query.page || 1;
-    // @ts-ignore - client parameter is supported by model methods
-    await IpAddress.setTags(req.params.id, [], client);
-    // @ts-ignore - client parameter is supported by model methods
-    await IpAddress.delete(req.params.id, client);
-    await client.query('COMMIT');
+    await deleteIpAddressService(req.params.id);
     req.flash('success', 'IP address deleted successfully!');
     return res.redirect(`/network/ip-address?page=${page}`);
   } catch (err) {
-    await client.query('ROLLBACK');
-    let errorMessage = err.message || 'Delete failed.';
-    if (errorMessage.includes('foreign key constraint')) {
-      errorMessage = 'Cannot delete: This IP address is in use.';
-    }
-    req.flash('error', errorMessage);
+    req.flash('error', err.message || 'Delete failed.');
     return res.redirect(`/network/ip-address?page=${req.body.page || 1}`);
-  } finally {
-    client.release();
   }
 };
 
@@ -326,16 +264,8 @@ networkController.listSubnet = async (req, res) => {
     const filterZone = req.query.zone ? req.query.zone.trim() : '';
     const filterEnvironment = req.query.environment ? req.query.environment.trim() : '';
 
-    let subnetList = [], totalCount = 0, totalPages = 1;
-    if (search || filterTags.length > 0 || filterZone || filterEnvironment) {
-      totalCount = await Subnet.countFiltered({ search, tags: filterTags, zone: filterZone, environment: filterEnvironment });
-      totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-      subnetList = await Subnet.findFilteredList({ search, tags: filterTags, zone: filterZone, environment: filterEnvironment, page, pageSize });
-    } else {
-      totalCount = await Subnet.countAll();
-      totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-      subnetList = await Subnet.findPage(page, pageSize);
-    }
+    const { items: subnetList, totalCount } = await listSubnetsService({ search, tags: filterTags, zone: filterZone, environment: filterEnvironment, page, pageSize });
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     // Xây dựng cây subnet để hiển thị dạng cha-con
     const subnetTree = Subnet.buildSubnetTree(subnetList);
     
@@ -382,159 +312,73 @@ networkController.listSubnet = async (req, res) => {
 
 // Handle creating a new subnet (with transaction)
 networkController.createSubnet = async (req, res) => {
-  const client = await pool.connect();
   try {
-    await client.query('BEGIN');
-    let { address, description, zone, environment, page, tags } = req.body;
-    tags = tags ? (Array.isArray(tags) ? tags : [tags]) : [];
-    
-    console.log('Create Subnet - Raw tags from request:', tags);
-    console.log('Create Subnet - Tags type:', typeof tags, 'Is Array:', Array.isArray(tags));
-    if (!address || !/\d{1,3}(\.\d{1,3}){3}\/\d{1,2}$/.test(address)) {
-      req.flash('error', 'Invalid subnet address format. Please enter a valid subnet, e.g. 192.168.1.0/24');
-      await client.query('ROLLBACK');
-      return res.redirect('/network/subnet-address');
-    }
-    const updated_by = req.session.user?.username || '';
-    
-    // Validate tags if provided
-    if (tags && tags.length > 0) {
-      // Filter out empty/invalid tag IDs
-      const validTagIds = tags.filter(tagId => tagId && tagId.toString().trim() !== '');
-      
-      if (validTagIds.length !== tags.length) {
-        req.flash('error', 'Some selected tags are invalid. Please refresh the page and try again.');
-        await client.query('ROLLBACK');
-        return res.redirect('/network/subnet-address');
-      }
-      
-      // Check if all tags exist
-      for (const tagId of validTagIds) {
-        const tagExists = await Tag.exists(tagId);
-        if (!tagExists) {
-          console.log(`Tag validation failed: Tag ID ${tagId} does not exist`);
-          req.flash('error', 'One or more selected tags no longer exist. Please refresh the page and select tags again.');
-          await client.query('ROLLBACK');
-          return res.redirect('/network/subnet-address');
-        }
-      }
-      
-      // Use only valid tags
-      tags = validTagIds;
-    }
-    
-    // Create subnet without tags
-    // @ts-ignore - client parameter is supported by model methods
-    const newSubnet = await Subnet.create({ address, description, zone, environment, updated_by }, client);
-    // Assign tags using setTags method
-    // @ts-ignore - client parameter is supported by model methods
-    await Subnet.setTags(newSubnet.id, tags, client);
-    await client.query('COMMIT');
+    const { address, description, zone, environment, tags } = req.body;
+    await createSubnetService({
+      address, description, zone, environment, tags,
+      updated_by: req.session.user?.username || ''
+    });
     req.flash('success', 'Subnet added successfully!');
     return res.redirect('/network/subnet-address');
   } catch (err) {
-    await client.query('ROLLBACK');
-    let errorMessage = err.message || 'Add failed.';
-    if (errorMessage.includes('duplicate key value') && errorMessage.includes('unique constraint')) {
-      errorMessage = 'Subnet address already exists.';
-    } else if (err.code === '23503' && errorMessage.includes('tag_object_tag_id_fkey')) {
-      errorMessage = 'One or more selected tags do not exist. Please select valid tags.';
-    } else if (err.code === '23503') {
-      errorMessage = 'Cannot create subnet due to invalid reference. Please check all selected options.';
+    let errorMessage = err instanceof ServiceError ? err.message : (err.message || 'Add failed.');
+    if (!(err instanceof ServiceError)) {
+      if (errorMessage.includes('duplicate key value') && errorMessage.includes('unique constraint')) {
+        errorMessage = 'Subnet address already exists.';
+      } else if (err.code === '23503' && errorMessage.includes('tag_object_tag_id_fkey')) {
+        errorMessage = 'One or more selected tags do not exist. Please select valid tags.';
+      } else if (err.code === '23503') {
+        errorMessage = 'Cannot create subnet due to invalid reference. Please check all selected options.';
+      }
     }
     req.flash('error', errorMessage);
     return res.redirect('/network/subnet-address');
-  } finally {
-    client.release();
   }
 };
 
 // Handle updating subnet description (with transaction)
 networkController.updateSubnet = async (req, res) => {
-  const client = await pool.connect();
   try {
-    await client.query('BEGIN');
-    let { description, zone, environment, page, tags } = req.body;
-    tags = tags ? (Array.isArray(tags) ? tags : [tags]) : [];
-    
-    console.log('Update Subnet - Raw tags from request:', tags);
-    console.log('Update Subnet - Tags type:', typeof tags, 'Is Array:', Array.isArray(tags));
-    description = description || '';
-    zone = zone || '';
-    environment = environment || '';
-    const updated_by = req.session.user?.username || '';
-    
-    // Validate tags if provided
-    if (tags && tags.length > 0) {
-      // Filter out empty/invalid tag IDs
-      const validTagIds = tags.filter(tagId => tagId && tagId.toString().trim() !== '');
-      
-      if (validTagIds.length !== tags.length) {
-        req.flash('error', 'Some selected tags are invalid. Please refresh the page and try again.');
-        await client.query('ROLLBACK');
-        return res.redirect(`/network/subnet-address?page=${req.body.page || 1}`);
-      }
-      
-      // Check if all tags exist
-      for (const tagId of validTagIds) {
-        const tagExists = await Tag.exists(tagId);
-        if (!tagExists) {
-          console.log(`Tag validation failed: Tag ID ${tagId} does not exist`);
-          req.flash('error', 'One or more selected tags no longer exist. Please refresh the page and select tags again.');
-          await client.query('ROLLBACK');
-          return res.redirect(`/network/subnet-address?page=${req.body.page || 1}`);
-        }
-      }
-      
-      // Use only valid tags
-      tags = validTagIds;
-    }
-    
-    // @ts-ignore - client parameter is supported by model methods
-    await Subnet.update(req.params.id, { description, zone, environment, updated_by }, client);
-    // @ts-ignore - client parameter is supported by model methods
-    await Subnet.setTags(req.params.id, tags, client);
-    await client.query('COMMIT');
+    const { description, zone, environment, page, tags } = req.body;
+    await updateSubnetService(req.params.id, {
+      description: description || '',
+      zone: zone || '',
+      environment: environment || '',
+      tags: tags ? (Array.isArray(tags) ? tags : [tags]) : [],
+      updated_by: req.session.user?.username || ''
+    });
     req.flash('success', 'Subnet updated successfully!');
     return res.redirect(`/network/subnet-address?page=${page || 1}`);
   } catch (err) {
-    await client.query('ROLLBACK');
-    let errorMessage = err.message || 'Save failed.';
-    if (errorMessage.includes('duplicate key value') && errorMessage.includes('unique constraint')) {
-      errorMessage = 'Subnet address already exists.';
-    } else if (err.code === '23503' && errorMessage.includes('tag_object_tag_id_fkey')) {
-      errorMessage = 'One or more selected tags do not exist. Please select valid tags.';
-    } else if (err.code === '23503') {
-      errorMessage = 'Cannot update subnet due to invalid reference. Please check all selected options.';
+    let errorMessage = err instanceof ServiceError ? err.message : (err.message || 'Save failed.');
+    if (!(err instanceof ServiceError)) {
+      if (errorMessage.includes('duplicate key value') && errorMessage.includes('unique constraint')) {
+        errorMessage = 'Subnet address already exists.';
+      } else if (err.code === '23503' && errorMessage.includes('tag_object_tag_id_fkey')) {
+        errorMessage = 'One or more selected tags do not exist. Please select valid tags.';
+      } else if (err.code === '23503') {
+        errorMessage = 'Cannot update subnet due to invalid reference. Please check all selected options.';
+      }
     }
     req.flash('error', errorMessage);
     return res.redirect(`/network/subnet-address?page=${req.body.page || 1}`);
-  } finally {
-    client.release();
   }
 };
 
-// Handle deleting a subnet (with transaction)
+// Handle deleting a subnet
 networkController.deleteSubnet = async (req, res) => {
-  const client = await pool.connect();
   try {
-    await client.query('BEGIN');
     const page = req.body.page || req.query.page || 1;
-    // @ts-ignore - client parameter is supported by model methods
-    await Subnet.delete(req.params.id, client);
-    await client.query('COMMIT');
+    await deleteSubnetService(req.params.id);
     req.flash('success', 'Subnet deleted successfully!');
     return res.redirect(`/network/subnet-address?page=${page}`);
   } catch (err) {
-    await client.query('ROLLBACK');
     let errorMessage = err.message || 'Delete failed.';
-    if (errorMessage.includes('foreign key constraint')) {
+    if (!(err instanceof ServiceError) && errorMessage.includes('foreign key constraint')) {
       errorMessage = 'Cannot delete: This subnet is in use.';
     }
     req.flash('error', errorMessage);
     return res.redirect(`/network/subnet-address?page=${req.body.page || 1}`);
-  } finally {
-    client.release();
   }
 };
 
@@ -558,20 +402,13 @@ networkController.listDomain = async (req, res) => {
       (req.query['systems[]'] ? [req.query['systems[]']] : (Array.isArray(req.query.systems) ? req.query.systems : req.query.systems ? [req.query.systems] : []));
     
     // Tìm kiếm domain với filters
-    const domainList = await Domain.findFilteredList({
+    const { items: domainList, totalCount } = await listDomainsService({
       search,
       tags: filterTags,
       systems: filterSystems,
       status: filterStatus,
       page,
       pageSize
-    });
-    
-    const totalCount = await Domain.countFiltered({
-      search,
-      tags: filterTags,
-      systems: filterSystems,
-      status: filterStatus
     });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const success = req.flash('success')[0];
@@ -618,104 +455,61 @@ networkController.listDomain = async (req, res) => {
   }
 };
 
-// Handle creating a new domain (with transaction)
+// Handle creating a new domain
 networkController.createDomain = async (req, res) => {
-  const client = await pool.connect();
   try {
-    await client.query('BEGIN');
-    // Extract and normalize form data
-    let { domain, description, ip_id, record_type, systems, tags } = req.body;
-    domain = domain ? domain.trim() : '';
-    description = description || '';
-    record_type = record_type ? record_type.trim() : 'A';
-    ip_id = ip_id && String(ip_id).trim() !== '' ? ip_id : null;
-    systems = systems ? (Array.isArray(systems) ? systems : [systems]) : [];
-    tags = tags ? (Array.isArray(tags) ? tags : [tags]) : [];
-    if (!domain) {
-      req.flash('error', 'Domain name is required.');
-      return res.redirect('/network/domain');
-    }
-    // Create domain, then set systems and tags via model
-    // @ts-ignore - client parameter is supported by model methods
-    const newDomain = await Domain.create({ domain, description, ip_id, record_type }, client);
-    // @ts-ignore - client parameter is supported by model methods
-    await Domain.setSystems(newDomain.id, systems, client);
-    // @ts-ignore - client parameter is supported by model methods
-    await Domain.setTags(newDomain.id, tags, client);
-    await client.query('COMMIT');
+    const { domain, description, ip_id, record_type, systems, tags } = req.body;
+    await createDomainService({ domain, description, ip_id, record_type, systems, tags });
     req.flash('success', 'Domain added successfully!');
     res.redirect('/network/domain');
   } catch (err) {
-    await client.query('ROLLBACK');
-    let errorMessage = err.message || 'Add failed.';
-    if (errorMessage.includes('duplicate key value')) {
+    let errorMessage = err instanceof ServiceError ? err.message : (err.message || 'Add failed.');
+    if (!(err instanceof ServiceError) && errorMessage.includes('duplicate key value')) {
       errorMessage = 'Domain already exists.';
     }
     req.flash('error', errorMessage);
     res.redirect('/network/domain');
-  } finally {
-    client.release();
   }
 };
 
-// Handle updating a domain (with transaction)
+// Handle updating a domain
 networkController.updateDomain = async (req, res) => {
-  const client = await pool.connect();
   try {
-    await client.query('BEGIN');
-    // Extract and normalize form data
-    let { description, ip_id, record_type, systems, tags } = req.body;
-    description = description || '';
-    record_type = record_type ? record_type.trim() : 'A';
-    ip_id = ip_id && String(ip_id).trim() !== '' ? ip_id : null;
-    systems = systems ? (Array.isArray(systems) ? systems : [systems]) : [];
-    tags = tags ? (Array.isArray(tags) ? tags : [tags]) : [];
+    const { description, ip_id, record_type, systems, tags } = req.body;
     const id = req.params.id;
-    // Update domain, then set systems and tags via model
-    // @ts-ignore - client parameter is supported by model methods
-    await Domain.update(id, { description, ip_id, record_type }, client);
-    // @ts-ignore - client parameter is supported by model methods
-    await Domain.setSystems(id, systems, client);
-    // @ts-ignore - client parameter is supported by model methods
-    await Domain.setTags(id, tags, client);
-    await client.query('COMMIT');
+    await updateDomainService(id, {
+      description: description || '',
+      ip_id,
+      record_type: record_type ? record_type.trim() : 'A',
+      systems: systems ? (Array.isArray(systems) ? systems : [systems]) : [],
+      tags: tags ? (Array.isArray(tags) ? tags : [tags]) : []
+    });
     req.flash('success', 'Domain updated successfully!');
     res.redirect('/network/domain');
   } catch (err) {
-    await client.query('ROLLBACK');
-    let errorMessage = err.message || 'Update failed.';
-    if (errorMessage.includes('duplicate key value')) {
+    let errorMessage = err instanceof ServiceError ? err.message : (err.message || 'Update failed.');
+    if (!(err instanceof ServiceError) && errorMessage.includes('duplicate key value')) {
       errorMessage = 'Domain already exists.';
     }
     req.flash('error', errorMessage);
     res.redirect('/network/domain');
-  } finally {
-    client.release();
   }
 };
 
-// Handle deleting a domain (with transaction)
+// Handle deleting a domain
 networkController.deleteDomain = async (req, res) => {
-  const client = await pool.connect();
   try {
-    await client.query('BEGIN');
     const id = req.params.id;
-    // Xóa domain và liên kết system qua model
-    // @ts-ignore - client parameter is supported by model methods
-    await Domain.delete(id, client);
-    await client.query('COMMIT');
+    await deleteDomainService(id);
     req.flash('success', 'Domain deleted successfully!');
     res.redirect('/network/domain');
   } catch (err) {
-    await client.query('ROLLBACK');
     let errorMessage = err.message || 'Delete failed.';
-    if (errorMessage.includes('foreign key constraint')) {
+    if (!(err instanceof ServiceError) && errorMessage.includes('foreign key constraint')) {
       errorMessage = 'Cannot delete: This domain is in use.';
     }
     req.flash('error', errorMessage);
     res.redirect('/network/domain');
-  } finally {
-    client.release();
   }
 };
 

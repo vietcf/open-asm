@@ -1,11 +1,8 @@
 
-import bcrypt from 'bcrypt';
-import speakeasy from 'speakeasy';
-import User from '../models/User.js';
 import Role from '../models/Role.js';
-import Permission from '../models/Permission.js';
 import { writeLog } from '../utils/logHelper.js';
 import { config } from '../../config/config.js';
+import { verifyCredentials, verifyTotp } from '../services/authService.js';
 
 // Helper function to build user session object (no permissions)
 function buildSessionUser(user) {
@@ -40,54 +37,48 @@ export const postLogin = async (req, res) => {
   }
   username = username.trim().toLowerCase();
   try {
-    const user = await User.findByUsername(username);
-    if (!user) {
+    const user = await verifyCredentials(username, password);
+
+    req.session.isLoggedIn = true; // Logined username and password successfully
+    req.session.user = buildSessionUser(user); // Only store user info, not permissions
+
+
+    // Set default 2FA state
+    req.session.is2faVerified = true; //Mac dinh da duoc verify 2FA
+    req.session.is2faPending = false; //Mac dinh khong pending 2FA Verify
+
+
+    // If required, check must_change_password
+    if (user.must_change_password) {
+      return res.redirect('/change-password');
+    }
+
+    // 1. 2FA required but not setup
+    if (user.require_twofa && !user.twofa_enabled) {
+      req.session.is2faPending = true;
+      req.session.is2faVerified = false; // Override default
+      return res.redirect('/2fa/setup');
+    }
+
+    // 2. 2FA required and enabled (OTP required)
+    if (user.require_twofa && user.twofa_enabled && user.twofa_secret) {
+      req.session.is2faPending = true;   // Override default
+      req.session.is2faVerified = false; // Override default
+      return res.redirect('/login/2fa');
+    }
+
+    // 3. No 2FA required - permissions loaded by global middleware
+    await writeLog({ action: 'login', description: 'Login successful', status: 'success', req });
+    return res.redirect('/dashboard');
+  } catch (err) {
+    if (err.code === 'UNAUTHORIZED') {
       await writeLog({ action: 'login', description: 'Login failed: invalid username or password', status: 'failed', req });
       return res.redirect('/login?error=Invalid%20username%20or%20password');
     }
-    const match = await bcrypt.compare(password, user.password_hash);
-    if (match) {
-      // Check if user is active
-      if (!user.is_active) {
-        await writeLog({ action: 'login', description: 'Login failed: account is inactive', status: 'failed', req });
-        return res.redirect('/login?error=Account%20is%20inactive');
-      }
-      
-      req.session.isLoggedIn = true; // Logined username and password successfully
-      req.session.user = buildSessionUser(user); // Only store user info, not permissions
-
-
-      // Set default 2FA state
-      req.session.is2faVerified = true; //Mac dinh da duoc verify 2FA
-      req.session.is2faPending = false; //Mac dinh khong pending 2FA Verify
-
-
-      // If required, check must_change_password
-      if (user.must_change_password) {
-        return res.redirect('/change-password');
-      }
-
-      // 1. 2FA required but not setup
-      if (user.require_twofa && !user.twofa_enabled) {
-        req.session.is2faPending = true;
-        req.session.is2faVerified = false; // Override default
-        return res.redirect('/2fa/setup');
-      }
-
-      // 2. 2FA required and enabled (OTP required)
-      if (user.require_twofa && user.twofa_enabled && user.twofa_secret) {
-        req.session.is2faPending = true;   // Override default
-        req.session.is2faVerified = false; // Override default
-        return res.redirect('/login/2fa');
-      }
-
-      // 3. No 2FA required - permissions loaded by global middleware
-      await writeLog({ action: 'login', description: 'Login successful', status: 'success', req });
-      return res.redirect('/dashboard');
+    if (err.code === 'FORBIDDEN') {
+      await writeLog({ action: 'login', description: 'Login failed: account is inactive', status: 'failed', req });
+      return res.redirect('/login?error=Account%20is%20inactive');
     }
-    await writeLog({ action: 'login', description: 'Login failed: invalid username or password', status: 'failed', req });
-    res.redirect('/login?error=Invalid%20username%20or%20password');
-  } catch (err) {
     console.error('Login error:', err);
     await writeLog({ action: 'login', description: 'Login failed: server error', status: 'failed', req });
     res.redirect('/login?error=Server%20error');
@@ -113,11 +104,7 @@ export const post2fa = async (req, res) => {
   }
   const { token } = req.body;
   const secret = req.session.user.twofa_secret;
-  const verified = speakeasy.totp.verify({
-    secret,
-    encoding: 'base32',
-    token
-  });
+  const verified = verifyTotp(secret, token);
   if (!verified) {
     return res.render('pages/2fa_login', { error: 'Invalid code. Please try again.', layout: false }); // Disable layout for 2FA page
   }

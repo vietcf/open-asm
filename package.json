@@ -1,7 +1,10 @@
 {
+  "name": "open-asm",
+  "version": "4.0.1",
   "type": "module",
   "scripts": {
-    "start": "node src/app.js"
+    "start": "node src/app.js",
+    "dev": "node --watch src/app.js"
   },
   "dependencies": {
     "accesscontrol": "^2.2.1",

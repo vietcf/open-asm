@@ -1,12 +1,13 @@
 import express from 'express';
-import { 
+import {
     listServices,
-    createService, 
-    getService, 
-    updateService, 
+    createService,
+    getService,
+    updateService,
     deleteService,
     findServices
 } from '../controllers/apiServiceController.js';
+import { authorizePermissionJWT } from '../middlewares/auth.middleware.js';
 
 const router = express.Router();
 
@@ -64,7 +65,7 @@ const router = express.Router();
  *                 total:
  *                   type: integer
  */
-router.get('/', listServices);
+router.get('/', authorizePermissionJWT('service.read'), listServices);
 
 /**
  * @swagger
@@ -128,7 +129,7 @@ router.get('/', listServices);
  *                   type: string
  *                   example: "Internal server error"
  */
-router.get('/find', findServices);
+router.get('/find', authorizePermissionJWT('service.read'), findServices);
 
 /**
  * @swagger
@@ -177,7 +178,7 @@ router.get('/find', findServices);
  *       500:
  *         description: Internal server error
  */
-router.post('/', createService);
+router.post('/', authorizePermissionJWT('service.create'), createService);
 
 /**
  * @swagger
@@ -204,7 +205,7 @@ router.post('/', createService);
  *       404:
  *         description: Service not found
  */
-router.get('/:id', getService);
+router.get('/:id', authorizePermissionJWT('service.read'), getService);
 
 /**
  * @swagger
@@ -271,7 +272,7 @@ router.get('/:id', getService);
  *       500:
  *         description: Internal server error
  */
-router.put('/:id', updateService);
+router.put('/:id', authorizePermissionJWT('service.update'), updateService);
 
 /**
  * @swagger
@@ -293,7 +294,9 @@ router.put('/:id', updateService);
  *         description: Service deleted successfully
  *       404:
  *         description: Service not found
+ *       409:
+ *         description: Cannot delete — the service is still assigned to one or more servers
  */
-router.delete('/:id', deleteService);
+router.delete('/:id', authorizePermissionJWT('service.delete'), deleteService);
 
 export default router;

@@ -108,7 +108,7 @@
             <!-- Content will be loaded here -->
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
           </div>
         </div>
       </div>
@@ -217,7 +217,7 @@
                           const cleanDescription = system.description.trim();
                           const shortDescription = cleanDescription.length > 100 ? cleanDescription.substring(0, 100) + '…' : cleanDescription;
                         %>
-                        <span class="description-hover" data-description="<%= cleanDescription.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>">
+                        <span data-bs-toggle="tooltip" data-bs-placement="top" title="<%= cleanDescription %>" style="cursor: help; word-break: break-word;">
                           <%= shortDescription %>
                         </span>
                       <% } else { %>
@@ -299,7 +299,7 @@
 
                 <% }) %>
               <% } else { %>
-                <tr><td colspan="8" class="text-center">No data</td></tr>
+                <tr><td colspan="9" class="text-center">No data</td></tr>
               <% } %>
             </tbody>
           </table>
@@ -326,7 +326,7 @@
                       %>
                     <div class="mobile-card-row">
                       <span class="mobile-card-label">Description:</span>
-                      <span class="mobile-card-value description-hover" data-description="<%= cleanDescription.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>"><%= shortDescription %></span>
+                      <span class="mobile-card-value" data-bs-toggle="tooltip" data-bs-placement="top" title="<%= cleanDescription %>" style="cursor: help;"><%= shortDescription %></span>
                     </div>
                   <% } %>
                   <% if (system.alias && (Array.isArray(system.alias) ? system.alias.length > 0 : system.alias)) { %>
@@ -541,65 +541,50 @@
         });
         const content = document.getElementById('systemDetailContent');
         
-        // Build HTML content - Simple field: value layout
-        let html = '';
-        
+        // Build HTML content - definition-list field:value layout
+        let html = '<dl class="row detail-dl">';
+
         // Debug: Show all system properties
         console.log('All system properties:', Object.keys(system));
-        
+
         // System Name
-        html += '<div class="mb-2">';
         const systemName = (system.name || system.system_name || 'N/A');
         console.log('System Name:', systemName, 'System Code:', system.system_id || system.code);
-        html += '<strong>System Name:</strong> ' + String(systemName).trim();
-        html += '</div>';
-        
+        html += '<dt class="col-sm-4">System Name</dt><dd class="col-sm-8">' + String(systemName).trim() + '</dd>';
+
         // System Code
-        html += '<div class="mb-2">';
         const systemCode = (system.system_id || system.code || 'N/A');
         console.log('System Code raw:', systemCode, 'Type:', typeof systemCode);
-        html += '<strong>System Code:</strong> ' + String(systemCode).trim();
-        html += '</div>';
-        
+        html += '<dt class="col-sm-4">System Code</dt><dd class="col-sm-8">' + String(systemCode).trim() + '</dd>';
+
         // ID
-        html += '<div class="mb-2">';
         const systemIdValue = (system.id || 'N/A');
-        html += '<strong>ID:</strong> ' + String(systemIdValue).trim();
-        html += '</div>';
-        
+        html += '<dt class="col-sm-4">ID</dt><dd class="col-sm-8">' + String(systemIdValue).trim() + '</dd>';
+
         // Description
         if (system.description && system.description.trim()) {
-          html += '<div class="mb-2">';
-          html += '<strong>Description:</strong><br><span style="white-space: pre-line;">' + String(system.description).trim() + '</span>';
-          html += '</div>';
+          html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><span style="white-space: pre-line;">' + String(system.description).trim() + '</span></dd>';
         }
-        
+
         // Level
-        html += '<div class="mb-2">';
         const level = (system.level || 'N/A');
-        html += '<strong>Level:</strong> ' + String(level).trim();
-        html += '</div>';
-        
+        html += '<dt class="col-sm-4">Level</dt><dd class="col-sm-8">' + String(level).trim() + '</dd>';
+
         // Department
-        html += '<div class="mb-2">';
         const department = (system.department_name || system.department || 'N/A');
-        html += '<strong>Department:</strong> ' + String(department).trim();
-        html += '</div>';
-        
+        html += '<dt class="col-sm-4">Department</dt><dd class="col-sm-8">' + String(department).trim() + '</dd>';
+
         // Alias
         if (system.alias && (Array.isArray(system.alias) ? system.alias.length > 0 : system.alias)) {
-          html += '<div class="mb-2">';
           const alias = Array.isArray(system.alias) ? system.alias.join(', ') : system.alias;
-          html += '<strong>Alias:</strong> ' + String(alias).trim();
-          html += '</div>';
+          html += '<dt class="col-sm-4">Alias</dt><dd class="col-sm-8">' + String(alias).trim() + '</dd>';
         }
-        
+
         // FQDN
         if (system.fqdn && (Array.isArray(system.fqdn) ? system.fqdn.length > 0 : system.fqdn)) {
-          html += '<div class="mb-2">';
-          html += '<strong>FQDN:</strong>';
+          html += '<dt class="col-sm-4">FQDN</dt><dd class="col-sm-8">';
           const fqdnList = Array.isArray(system.fqdn) ? system.fqdn : [system.fqdn];
-          html += '<ul class="mb-0 mt-1">';
+          html += '<ul class="mb-0 ps-3">';
           fqdnList.forEach(function(fqdn) {
             const fqdnStr = String(fqdn).trim();
             // Check if FQDN contains brackets - extract domain and comment separately
@@ -617,44 +602,40 @@
             }
           });
           html += '</ul>';
-          html += '</div>';
+          html += '</dd>';
         }
-        
+
         // Tags
         if (system.tags && system.tags.length > 0) {
-          html += '<div class="mb-2">';
-          html += '<strong>Tags:</strong><br>';
+          html += '<dt class="col-sm-4">Tags</dt><dd class="col-sm-8">';
           system.tags.forEach(function(tag) {
             const tagValue = (typeof tag === 'string' ? tag : tag.name);
             html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
           });
-          html += '</div>';
+          html += '</dd>';
         }
-        
+
         // Scopes
         if (system.scopes && system.scopes.length > 0) {
-          html += '<div class="mb-2">';
-          html += '<strong>Scope:</strong><br>';
+          html += '<dt class="col-sm-4">Scope</dt><dd class="col-sm-8">';
           system.scopes.forEach(function(scope) {
             html += '<span class="badge bg-info me-1 mb-1">' + String(scope).trim() + '</span>';
           });
-          html += '</div>';
+          html += '</dd>';
         }
-        
+
         // Architecture
         if (system.architecture && system.architecture.length > 0) {
-          html += '<div class="mb-2">';
-          html += '<strong>Architecture:</strong><br>';
+          html += '<dt class="col-sm-4">Architecture</dt><dd class="col-sm-8">';
           system.architecture.forEach(function(arch) {
             html += '<span class="badge bg-warning me-1 mb-1">' + String(arch).trim() + '</span>';
           });
-          html += '</div>';
+          html += '</dd>';
         }
-        
+
         // IP Addresses
         if (system.ip_addresses && system.ip_addresses.length > 0) {
-          html += '<div class="mb-2">';
-          html += '<strong>IP Addresses:</strong>';
+          html += '<dt class="col-sm-4">IP Addresses</dt><dd class="col-sm-8">';
           system.ip_addresses.forEach(function(ipObj) {
             const ipAddress = ipObj.ip || ipObj.ip_address || ipObj;
             const zone = ipObj.subnet_zone || '';
@@ -662,7 +643,7 @@
             const serverName = ipObj.server_name || '';
             
             html += '<div class="mt-1 d-flex align-items-center flex-wrap">';
-            html += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary me-2 ip-hover-link" data-ip="' + ipAddress + '" title="Loading IP info...">' + String(ipAddress).trim() + '</a>';
+            html += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary me-2 ip-hover-link" data-ip="' + ipAddress + '" data-bs-toggle="tooltip" data-bs-placement="top" title="Loading IP info...">' + String(ipAddress).trim() + '</a>';
             
             // Add server/device name if available
             if (serverName) {
@@ -677,66 +658,56 @@
             
             html += '</div>';
           });
-          html += '</div>';
+          html += '</dd>';
         }
-        
+
         // Domains
         if (system.domains && system.domains.length > 0) {
-          html += '<div class="mb-2">';
-          html += '<strong>Domains:</strong><br>';
+          html += '<dt class="col-sm-4">Domains</dt><dd class="col-sm-8">';
           system.domains.forEach(function(domainObj) {
             const domain = domainObj.domain || domainObj;
             html += '<a href="/network/domain?search=' + encodeURIComponent(domain) + '" target="_blank" class="badge bg-secondary me-1 mb-1 text-decoration-none" title="Click to view domain details">' + String(domain).trim() + '</a>';
           });
-          html += '</div>';
+          html += '</dd>';
         }
-        
+
         // Contacts
         if (system.contacts && system.contacts.length > 0) {
-          html += '<div class="mb-2">';
-          html += '<strong>Contacts:</strong><ul class="mb-0">';
+          html += '<dt class="col-sm-4">Contacts</dt><dd class="col-sm-8"><ul class="mb-0 ps-3">';
           system.contacts.forEach(function(contactObj) {
             const contactName = contactObj.name || contactObj;
             const contactEmail = contactObj.email || '';
             let displayText = contactName;
             let searchTerm = contactName;
-            
+
             if (contactEmail) {
               // Extract username part before @
               const emailUsername = contactEmail.split('@')[0];
               displayText = `${contactName} (${emailUsername})`;
               searchTerm = contactEmail; // Still use full email for search
             }
-            
+
             html += '<li><a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary">' + String(displayText).trim() + '</a></li>';
           });
-          html += '</ul></div>';
+          html += '</ul></dd>';
         }
-        
+
         // Created
-        html += '<div class="mb-2">';
         const created = (system.created_at || system.createdAt || 'N/A');
-        html += '<strong>Created:</strong> ' + String(created).trim();
-        html += '</div>';
-        
+        html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + String(created).trim() + '</dd>';
+
         // Updated
-        html += '<div class="mb-2">';
         const updated = (system.updated_at || system.updatedAt || 'N/A');
-        html += '<strong>Updated:</strong> ' + String(updated).trim();
-        html += '</div>';
-        
+        html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + String(updated).trim() + '</dd>';
+
         // Updated By
         if (system.updated_by) {
-          html += '<div class="mb-2">';
-          html += '<strong>Updated By:</strong> ' + String(system.updated_by).trim();
-          html += '</div>';
+          html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + String(system.updated_by).trim() + '</dd>';
         }
-        
-        
+
         // Files/Documents
         if (system.docs && system.docs.length > 0) {
-          html += '<div class="mb-2">';
-          html += '<strong>Attached Files:</strong><br>';
+          html += '<dt class="col-sm-4">Attached Files</dt><dd class="col-sm-8">';
           system.docs.forEach(function(file) {
             const fileName = file.name || file.originalname || 'Unknown file';
             const fileUrl = file.url || '#';
@@ -745,15 +716,13 @@
             html += '<span class="badge bg-light text-dark border" style="border-radius: 3px;">[View]</span>';
             html += '</div>';
           });
-          html += '</div>';
+          html += '</dd>';
         }
-        
+
         // Components - will be loaded via AJAX (moved to bottom)
-        html += '<div class="mb-2 mt-3" id="components-section-' + systemId + '">';
-        html += '<strong>Components:</strong> <span class="text-muted">Loading...</span>';
-        html += '</div>';
-        
-        
+        html += '<dt class="col-sm-4">Components</dt><dd class="col-sm-8" id="components-section-' + systemId + '"><span class="text-muted">Loading...</span></dd>';
+
+        html += '</dl>';
         content.innerHTML = html;
         
         // Show modal with proper event handling
@@ -782,28 +751,33 @@
       }
     }
 
-    // Function to setup IP hover functionality
+    // Function to setup IP hover functionality — uses Bootstrap's Tooltip
+    // component (same as the Description column tooltips) instead of the
+    // native browser title tooltip, so both look and behave the same way.
     function setupIPHover() {
-      // Add event listeners to all IP hover links
       const ipLinks = document.querySelectorAll('.ip-hover-link');
       ipLinks.forEach(link => {
+        if (link.getAttribute('data-tooltip-init') === 'true') return;
+        link.setAttribute('data-tooltip-init', 'true');
+        new bootstrap.Tooltip(link);
         link.addEventListener('mouseenter', handleIPHover);
       });
     }
 
     // IP hover handler
     function handleIPHover(event) {
-      const element = event.target;
+      const element = event.target.closest('.ip-hover-link');
       const ipAddress = element.getAttribute('data-ip');
-      
-      if (!ipAddress || element.getAttribute('data-loading') === 'true') {
+      const tooltip = bootstrap.Tooltip.getInstance(element);
+
+      if (!ipAddress || !tooltip || element.getAttribute('data-loading') === 'true') {
         return;
       }
-      
+
       // Set loading state
       element.setAttribute('data-loading', 'true');
-      element.setAttribute('title', 'Loading IP info...');
-      
+      tooltip.setContent({ '.tooltip-inner': 'Loading IP info...' });
+
       // Fetch IP information
       fetch(`/network/api/ip-addresses/detail?search=${encodeURIComponent(ipAddress)}`)
         .then(response => response.json())
@@ -860,14 +834,14 @@
               tooltipText += `\nSystems: ${systemNames}`;
             }
             
-            element.setAttribute('title', tooltipText);
+            tooltip.setContent({ '.tooltip-inner': tooltipText });
           } else {
-            element.setAttribute('title', `IP: ${ipAddress}\nNo additional information found`);
+            tooltip.setContent({ '.tooltip-inner': `IP: ${ipAddress}\nNo additional information found` });
           }
         })
         .catch(error => {
           console.error('Error loading IP info:', error);
-          element.setAttribute('title', `IP: ${ipAddress}\nError loading information`);
+          tooltip.setContent({ '.tooltip-inner': `IP: ${ipAddress}\nError loading information` });
         })
         .finally(() => {
           element.removeAttribute('data-loading');
@@ -952,7 +926,7 @@
                 componentsHtml += '<div class="mt-1">';
                 component.ips.forEach(function(ipObj, index) {
                   const ipAddress = ipObj.ip_address || ipObj.ip || ipObj;
-                  componentsHtml += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary ip-hover-link" data-ip="' + ipAddress + '" title="Loading IP info...">' + String(ipAddress).trim() + '</a>';
+                  componentsHtml += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary ip-hover-link" data-ip="' + ipAddress + '" data-bs-toggle="tooltip" data-bs-placement="top" title="Loading IP info...">' + String(ipAddress).trim() + '</a>';
                   
                   // Add comma separator if not the last item
                   if (index < component.ips.length - 1) {
@@ -1247,13 +1221,21 @@
     // Initialize responsive layout
     $(document).ready(function() {
       handleResponsiveLayout();
-      
-      
+
+
       // Handle window resize
       let resizeTimeout;
       $(window).on('resize', function() {
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(handleResponsiveLayout, 100);
+      });
+    });
+
+    // Initialize tooltips
+    $(document).ready(function() {
+      var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+      var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
       });
     });
 </script>
@@ -1283,42 +1265,31 @@
 }
 */
 
-/* Description hover popup style */
-.description-hover {
-  position: relative;
-  display: inline-block;
+/* Fixed proportional column widths — see network/ip_address_list.ejs for
+   rationale. Description is column 4 here (No., System Code, Name precede it). */
+#systemTable {
+  table-layout: fixed;
+  min-width: 1200px;
 }
-
-.description-hover:hover::after {
-  content: attr(data-description);
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: #333;
-  color: white;
-  padding: 8px 12px;
-  border-radius: 4px;
-  white-space: pre-line;
-  max-height: 200px;
-  overflow-y: auto;
-  z-index: 1000;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  font-size: 14px;
-  line-height: 1.4;
-  word-break: break-word;
-  pointer-events: none;
+#systemTable thead th {
+  white-space: nowrap;
 }
-
-.description-hover:hover::before {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 10px;
-  border: 5px solid transparent;
-  border-bottom-color: #333;
-  z-index: 1001;
-  pointer-events: none;
+#systemTable th:nth-child(1), #systemTable td:nth-child(1) { width: 4%; }
+#systemTable th:nth-child(2), #systemTable td:nth-child(2) { width: 9%; }
+#systemTable th:nth-child(3), #systemTable td:nth-child(3) { width: 12%; }
+#systemTable th:nth-child(4), #systemTable td:nth-child(4) { width: 15%; }
+#systemTable th:nth-child(5), #systemTable td:nth-child(5) { width: 10%; }
+#systemTable th:nth-child(6), #systemTable td:nth-child(6) { width: 11%; }
+#systemTable th:nth-child(7), #systemTable td:nth-child(7) { width: 12%; }
+#systemTable th:nth-child(8), #systemTable td:nth-child(8) { width: 13%; }
+/* Wide enough that the 3 action icons stay on one line — the table already
+   scrolls horizontally (min-width above), so there's no need to squeeze this
+   column narrow the way IP Address List's Actions column is. */
+#systemTable th:nth-child(9), #systemTable td:nth-child(9) { width: 14%; }
+#systemTable td:nth-child(4) {
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: break-word;
 }
 
 </style>

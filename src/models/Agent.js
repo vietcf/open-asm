@@ -23,6 +23,15 @@ class Agent {
     return result.rows[0];
   }
 
+  // server_agents.agent_id is ON DELETE CASCADE, so the DB itself never
+  // blocks delete() (the "foreign key constraint" catch there can never
+  // fire) — callers that want to prevent deleting an in-use agent must check
+  // this first.
+  static async countServersUsing(id) {
+    const result = await pool.query('SELECT COUNT(*) FROM server_agents WHERE agent_id = $1', [id]);
+    return parseInt(result.rows[0].count, 10);
+  }
+
   // Get agents by array of ids
   static async findByIds(ids) {
     if (!ids || ids.length === 0) return [];

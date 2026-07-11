@@ -1,9 +1,6 @@
 // Controller for API authentication (JWT login)
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
-import { pool } from '../../../config/config.js';
-import User from '../../models/User.js';
-import Permission from '../../models/Permission.js';
+import { verifyCredentials, getUserPermissions } from '../../services/authService.js';
 const JWT_SECRET = process.env.JWT_SECRET || 'VcB_your_jwt_secret';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
 
@@ -14,16 +11,13 @@ const apiAuthController = {
       if (!username || !password) {
         return res.status(400).json({ error: 'Username and password required' });
       }
-      const user = await User.findByUsername(username);
-      if (!user || !(await bcrypt.compare(password, user.password_hash))) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+      // Also enforces is_active, unlike the previous inline check here — an
+      // inactive user's login now correctly fails instead of issuing a token.
+      const user = await verifyCredentials(username, password);
+      if (user.must_change_password) {
+        return res.status(403).json({ error: 'Password change required. Please log in via the web interface to change your password before using the API.' });
       }
-      // Get the actual permissions list for the user (using Permission model)
-      let permissions = [];
-      if (user.role_id) {
-        permissions = await Permission.findByRoleId(user.role_id);
-        permissions = permissions.map(p => p.name);
-      }
+      const permissions = await getUserPermissions(user.role_id);
       // Build JWT payload (include permissions)
       const payload = {
         sub: user.id,
@@ -36,6 +30,9 @@ const apiAuthController = {
       const token = jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
       res.json({ token });
     } catch (err) {
+      if (err.code === 'UNAUTHORIZED' || err.code === 'FORBIDDEN') {
+        return res.status(401).json({ error: err.message });
+      }
       res.status(500).json({ error: err.message });
     }
   }

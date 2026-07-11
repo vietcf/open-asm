@@ -11,29 +11,30 @@ import XLSX from 'xlsx';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import {
+  listDevices as listDevicesService,
+  getDevice as getDeviceService,
+  createDevice as createDeviceService,
+  updateDevice as updateDeviceService,
+  deleteDevice as deleteDeviceService,
+  getLocationOptions
+} from '../services/deviceService.js';
+import { ServiceError } from '../services/errors.js';
+import {
+  listPlatforms as listPlatformsService,
+  createPlatform as createPlatformService,
+  updatePlatform as updatePlatformService,
+  deletePlatform as deletePlatformService
+} from '../services/platformService.js';
+import {
+  listDeviceTypes as listDeviceTypesService,
+  createDeviceType as createDeviceTypeService,
+  updateDeviceType as updateDeviceTypeService,
+  deleteDeviceType as deleteDeviceTypeService
+} from '../services/deviceTypeService.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-
-// Helper: Load device location options from DB config
-async function getLocationOptionsFromConfig() {
-  let locationOptions = [];
-  try {
-    const config = await Configuration.findById('device_location');
-    if (config && config.value) {
-      let parsed;
-      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
-      if (Array.isArray(parsed)) {
-        locationOptions = parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
-      }
-    }
-  } catch (e) { locationOptions = []; }
-  if (!Array.isArray(locationOptions) || locationOptions.length === 0) {
-    locationOptions = [];
-  }
-  return locationOptions;
-}
 
 // Helper: Load device status options from DB config
 async function getDeviceStatusOptionsFromConfig() {
@@ -131,15 +132,14 @@ deviceController.listDevice = async (req, res) => {
     let pageSize = parseInt(req.query.pageSize, 10);
     const allowedPageSizes = await getPageSizeOptionsFromConfig();
     if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = allowedPageSizes[0] || 10;
-    const deviceList = await Device.findFilteredList({ ...filterParams, page, pageSize });
-    const totalCount = await Device.countFiltered({ ...filterParams });
+    const { items: deviceList, totalCount } = await listDevicesService({ ...filterParams, page, pageSize });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
     const errorMessage = req.flash('error')[0] || req.query.error || null;
     const successMessage = req.flash('success')[0] || req.query.success || null;
     // Load location options from DB config (shared helper)
-    const locationOptions = await getLocationOptionsFromConfig();
+    const locationOptions = await getLocationOptions();
     // Đơn giản hóa truyền tags ra view (giống serverController)
     const tagsForView = Array.isArray(req.query['tags[]']) ? req.query['tags[]'] :
       (req.query['tags[]'] ? [req.query['tags[]']] : (Array.isArray(req.query.tags) ? req.query.tags : req.query.tags ? [req.query.tags] : []));
@@ -225,7 +225,7 @@ deviceController.addDeviceForm = async (req, res) => {
     
     // Load options from DB config
     const [locationOptions, statusOptions, typesOptions] = await Promise.all([
-      getLocationOptionsFromConfig(),
+      getLocationOptions(),
       getDeviceStatusOptionsFromConfig(),
       getDeviceTypeOptionsFromConfig()
     ]);
@@ -247,31 +247,28 @@ deviceController.addDeviceForm = async (req, res) => {
 // Render edit device form
 deviceController.editDeviceForm = async (req, res) => {
   try {
-    // Lấy device đủ thông tin chi tiết từ model
-    const device = await Device.getFullDetail(req.params.id);
-    if (!device) return res.status(404).send('Device not found');
-    
-    console.log('=== EDIT DEVICE FORM DEBUG ===');
-    console.log('Device ID:', req.params.id);
-    console.log('Device data:', device);
-    console.log('Device device_type_id:', device.device_type_id);
-    console.log('==============================');
-    
+    // Lấy device đủ thông tin chi tiết từ service
+    let device;
+    try {
+      device = await getDeviceService(req.params.id);
+    } catch (err) {
+      if (err.code === 'NOT_FOUND') return res.status(404).send('Device not found');
+      throw err;
+    }
+
     // Map serial_number và management_address cho view
     device.serial = device.serial_number;
     device.management = device.management_address;
     const error = (req.flash('error') || [])[0];
     const success = (req.flash('success') || [])[0];
-    
+
     // Load options from DB config
     const [locationOptions, statusOptions, typesOptions] = await Promise.all([
-      getLocationOptionsFromConfig(),
+      getLocationOptions(),
       getDeviceStatusOptionsFromConfig(),
       getDeviceTypeOptionsFromConfig()
     ]);
-    
-    console.log('Types options loaded:', typesOptions);
-    
+
     res.render('pages/device/device_edit', {
       device,
       error,
@@ -291,17 +288,7 @@ deviceController.editDeviceForm = async (req, res) => {
 
 // Create a new device (with manufacturer)
 deviceController.createDevice = async (req, res) => {
-  const client = await pool.connect();
-  let clientReleased = false;
   try {
-    await client.query('BEGIN');
-    
-    // Debug log
-    console.log('=== CREATE DEVICE DEBUG ===');
-    console.log('req.body:', req.body);
-    console.log('req.body keys:', Object.keys(req.body));
-    console.log('==========================');
-    
     // Extract all fields from the form
     const {
       name,
@@ -317,224 +304,117 @@ deviceController.createDevice = async (req, res) => {
       type,
       managers
     } = req.body;
-    // Validate & normalize
-    const safe = v => (typeof v === 'undefined' || v === '') ? null : v;
-    const safeStr = v => (typeof v === 'undefined' || v === '') ? null : (typeof v === 'string' ? v.trim() : v);
-    // Convert name to string and validate
-    const nameStr = typeof name === 'string' ? name.trim() : String(name || '').trim();
-    if (!nameStr) {
-      req.flash('error', 'Device name is required!');
-      await client.query('ROLLBACK');
-      client.release();
-      clientReleased = true;
-      return res.redirect('/device/device/add');
-    }
+
     if (!type || type === '' || type === 'null') {
       req.flash('error', 'Device type is required!');
-      await client.query('ROLLBACK');
-      client.release();
-      clientReleased = true;
       return res.redirect('/device/device/add');
     }
-    if (!ip_addresses || (Array.isArray(ip_addresses) ? ip_addresses.length === 0 : !ip_addresses)) {
-      req.flash('error', 'At least one IP address is required!');
-      await client.query('ROLLBACK');
-      client.release();
-      clientReleased = true;
-      return res.redirect('/device/device/add');
-    }
-    // Convert type string to integer ID if needed
+    // The frontend form accepts either a numeric device_type_id or a free-text
+    // type name (auto-creating the type if it doesn't exist yet) — this
+    // convenience behavior is form-specific and deliberately not part of the
+    // shared service, which only accepts an existing device_type_id.
     let deviceTypeId = null;
-    if (type) {
-      // If type is already a number, use it
-      if (!isNaN(type)) {
-        deviceTypeId = parseInt(type);
-      } else {
-        // If type is a string, try to find or create device type
-        try {
-          const DeviceType = (await import('../models/DeviceType.js')).default;
-          let deviceTypes = await DeviceType.findByNameExact(type);
-          let deviceType = deviceTypes.length > 0 ? deviceTypes[0] : null;
-          if (!deviceType) {
-            // Create new device type if not exists
-            deviceType = await DeviceType.create({ name: type });
-          }
-          deviceTypeId = deviceType.id;
-        } catch (err) {
-          console.error('Error handling device type:', err);
-          req.flash('error', 'Invalid device type: ' + type);
-          await client.query('ROLLBACK');
-          client.release();
-          clientReleased = true;
-          return res.redirect('/device/device/add');
+    if (!isNaN(type)) {
+      deviceTypeId = parseInt(type);
+    } else {
+      try {
+        const deviceTypes = await DeviceType.findByNameExact(type);
+        let deviceType = deviceTypes.length > 0 ? deviceTypes[0] : null;
+        if (!deviceType) {
+          deviceType = await DeviceType.create({ name: type });
         }
+        deviceTypeId = deviceType.id;
+      } catch (err) {
+        console.error('Error handling device type:', err);
+        req.flash('error', 'Invalid device type: ' + type);
+        return res.redirect('/device/device/add');
       }
     }
 
-    // Chuẩn hóa các biến truyền vào model
-    const data = {
-      name: nameStr,
-      manufacturer: safeStr(manufacturer),
-      device_role: safeStr(device_role),
-      platform_id: safe(os),
-      location: safeStr(location),
-      serial_number: safeStr(serial_number),
-      management_address: safeStr(management_address),
-      description: safeStr(description),
+    await createDeviceService({
+      name,
+      manufacturer,
+      device_role,
+      platform_id: os,
+      location,
+      serial: serial_number,
+      management: management_address,
+      description,
+      ip_addresses,
+      tags,
+      contacts: managers,
       device_type_id: deviceTypeId,
       updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
-    };
-    // Insert device only
-    // @ts-ignore - client parameter is supported by model methods
-    const device = await Device.create(data, client);
-    // Set IP addresses
-    if (ip_addresses) {
-      const ipList = Array.isArray(ip_addresses) ? ip_addresses : [ip_addresses];
-      // @ts-ignore - client parameter is supported by model methods
-      await Device.setIpAddresses(device.id, ipList, client);
-    }
-    // Set tags
-    if (tags) {
-      const tagList = Array.isArray(tags) ? tags : [tags];
-      // @ts-ignore - client parameter is supported by model methods
-      await Device.setTags(device.id, tagList, client);
-    }
-    // Set managers (contacts)
-    if (managers) {
-      const managerList = Array.isArray(managers) ? managers : [managers];
-      // @ts-ignore - client parameter is supported by model methods
-      await Device.setContacts(device.id, managerList, client);
-    }
-    await client.query('COMMIT');
+    });
     req.flash('success', 'Device added successfully!');
     res.redirect('/device/device');
   } catch (err) {
-    await client.query('ROLLBACK');
-    req.flash('error', 'Error creating device: ' + err.message);
+    req.flash('error', (err.code ? err.message : 'Error creating device: ' + err.message));
     res.redirect('/device/device/add');
-  } finally {
-    if (!clientReleased) {
-      client.release();
-    }
   }
 };
 
 // Update a device (with manufacturer)
 deviceController.updateDevice = async (req, res) => {
-  const client = await pool.connect();
-  let clientReleased = false;
   try {
-    await client.query('BEGIN');
-    // Normalize all fields
-    const safe = v => (typeof v === 'undefined' || v === '') ? null : v;
-    const safeStr = v => (typeof v === 'undefined' || v === '') ? null : (typeof v === 'string' ? v.trim() : v);
     const { name, manufacturer, device_role, os, type, description, tags, ip_addresses, location, serial_number, management_address, managers } = req.body;
-    
-    console.log('=== UPDATE DEVICE DEBUG ===');
-    console.log('req.body:', req.body);
-    console.log('req.body keys:', Object.keys(req.body));
-    console.log('name type:', typeof name);
-    console.log('name value:', name);
-    console.log('name === undefined:', name === undefined);
-    console.log('name === null:', name === null);
-    console.log('name === "":', name === '');
-    console.log('==========================');
-    
-    // Convert name to string and validate
-    const nameStr = typeof name === 'string' ? name.trim() : String(name || '').trim();
-    if (!nameStr) {
-      req.flash('error', 'Device name is required!');
-      await client.query('ROLLBACK');
-      client.release();
-      clientReleased = true;
-      return res.redirect(`/device/device/edit/${req.params.id}`);
-    }
 
-    // Convert type string to integer ID if needed
-    let deviceTypeId = null;
-    if (type) {
-      // If type is already a number, use it
+    // Same free-text-type-name auto-create convenience as createDevice; only
+    // touch device_type_id if a type was actually submitted (leaves the
+    // existing type untouched otherwise, instead of nulling it out).
+    let deviceTypeId;
+    if (type && type !== 'null') {
       if (!isNaN(type)) {
         deviceTypeId = parseInt(type);
       } else {
-        // If type is a string, try to find or create device type
         try {
-          const DeviceType = (await import('../models/DeviceType.js')).default;
-          let deviceTypes = await DeviceType.findByNameExact(type);
+          const deviceTypes = await DeviceType.findByNameExact(type);
           let deviceType = deviceTypes.length > 0 ? deviceTypes[0] : null;
           if (!deviceType) {
-            // Create new device type if not exists
             deviceType = await DeviceType.create({ name: type });
           }
           deviceTypeId = deviceType.id;
         } catch (err) {
           console.error('Error handling device type:', err);
           req.flash('error', 'Invalid device type: ' + type);
-          await client.query('ROLLBACK');
-          client.release();
-          clientReleased = true;
           return res.redirect(`/device/device/edit/${req.params.id}`);
         }
       }
     }
 
-    // Update device with all normalized fields
-    await Device.update(req.params.id, {
-      name: nameStr,
-      manufacturer: safeStr(manufacturer),
-      device_role: safeStr(device_role),
-      platform_id: safe(os),
-      device_type_id: deviceTypeId,
-      description: safeStr(description),
-      location: safeStr(location),
-      serial_number: safeStr(serial_number),
-      management_address: safeStr(management_address),
+    // tags/contacts are always included (even as []) to preserve the previous
+    // "always fully replace" behavior for these two associations.
+    const input = {
+      name,
+      manufacturer,
+      device_role,
+      platform_id: os,
+      description,
+      location,
+      serial: serial_number,
+      management: management_address,
+      tags: Array.isArray(tags) ? tags : (tags ? [tags] : []),
+      contacts: Array.isArray(managers) ? managers : (managers ? [managers] : []),
       updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
-    }, client);
-    // Set tags
-    if (tags) {
-      const tagList = Array.isArray(tags) ? tags : [tags];
-      // @ts-ignore - client parameter is supported by model methods
-      await Device.setTags(req.params.id, tagList, client);
-    } else {
-      // @ts-ignore - client parameter is supported by model methods
-      await Device.setTags(req.params.id, [], client);
-    }
-    // Set IP addresses
+    };
+    if (deviceTypeId !== undefined) input.device_type_id = deviceTypeId;
     if (ip_addresses) {
-      const ipList = Array.isArray(ip_addresses) ? ip_addresses : [ip_addresses];
-      // @ts-ignore - client parameter is supported by model methods
-      await Device.setIpAddresses(req.params.id, ipList, client);
+      input.ip_addresses = Array.isArray(ip_addresses) ? ip_addresses : [ip_addresses];
     }
-    // Set contacts/managers
-    if (managers) {
-      const managerList = Array.isArray(managers) ? managers : [managers];
-      // @ts-ignore - client parameter is supported by model methods
-      await Device.setContacts(req.params.id, managerList, client);
-    } else {
-      // @ts-ignore - client parameter is supported by model methods
-      await Device.setContacts(req.params.id, [], client);
-    }
-    await client.query('COMMIT');
+
+    await updateDeviceService(req.params.id, input);
     req.flash('success', 'Device updated successfully!');
     res.redirect('/device/device');
   } catch (err) {
-    await client.query('ROLLBACK');
-    req.flash('error', 'Error updating device: ' + err.message);
+    req.flash('error', (err.code ? err.message : 'Error updating device: ' + err.message));
     res.redirect(`/device/device/edit/${req.params.id}`);
-  } finally {
-    if (!clientReleased) {
-      client.release();
-    }
   }
 };
 
 // Delete a device
 deviceController.deleteDevice = async (req, res) => {
   try {
-    const id = req.params.id;
-    // Remove related links and cascade delete IPs (similar to server deletion)
-    await Device.remove(id, pool);
+    await deleteDeviceService(req.params.id);
     req.flash('success', 'Device deleted successfully!');
     res.redirect('/device/device');
   } catch (err) {
@@ -545,32 +425,15 @@ deviceController.deleteDevice = async (req, res) => {
 
 // Create a new platform
 deviceController.createPlatform = async (req, res) => {
-  // Normalize and trim input
-  const name = req.body.name ? req.body.name.trim() : '';
-  const description = req.body.description ? req.body.description.trim() : '';
   const page = parseInt(req.body.page, 10) || 1;
   const search = req.body.search ? req.body.search.trim() : '';
   try {
-    // Validate required name
-    if (!name) {
-      const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&error=Platform name is required`;
-      return res.redirect(`/device/platform${query}`);
-    }
-    await Platform.create({ name, description });
+    await createPlatformService({ name: req.body.name, description: req.body.description });
     const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&success=Platform added successfully`;
     return res.redirect(`/device/platform${query}`);
   } catch (err) {
-    let errorMsg = 'Unable to add platform';
-    // Detect unique violation (PostgreSQL: 23505)
-    if (err && (err.code === '23505' || (err.message && err.message.toLowerCase().includes('unique')))) {
-      errorMsg = 'Platform name already exists. Please choose a different name.';
-      // Do not log duplicate key error to console
-    } else {
-      console.error('Error creating platform:', err);
-      if (err && err.message) {
-        errorMsg = 'Unable to add platform: ' + err.message;
-      }
-    }
+    const errorMsg = err instanceof ServiceError ? err.message : 'Unable to add platform: ' + err.message;
+    if (!(err instanceof ServiceError)) console.error('Error creating platform:', err);
     const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&error=${encodeURIComponent(errorMsg)}`;
     return res.redirect(`/device/platform${query}`);
   }
@@ -583,13 +446,14 @@ deviceController.updatePlatform = async (req, res) => {
   const page = parseInt(req.body.page, 10) || 1;
   const search = req.body.search ? req.body.search.trim() : '';
   try {
-    // Only description is editable
-    await Platform.update(id, description);
+    // Only description is editable from this form
+    await updatePlatformService(id, { description });
     const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&success=Platform updated successfully`;
     return res.redirect(`/device/platform${query}`);
   } catch (err) {
-    console.error('Error updating platform:', err);
-    const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&error=Unable to update platform`;
+    const errorMsg = err instanceof ServiceError ? err.message : 'Unable to update platform';
+    if (!(err instanceof ServiceError)) console.error('Error updating platform:', err);
+    const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&error=${encodeURIComponent(errorMsg)}`;
     return res.redirect(`/device/platform${query}`);
   }
 };
@@ -600,12 +464,13 @@ deviceController.deletePlatform = async (req, res) => {
   const page = parseInt(req.body.page, 10) || 1;
   const search = req.body.search ? req.body.search.trim() : '';
   try {
-    await Platform.remove(id);
+    await deletePlatformService(id);
     const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&success=Platform deleted successfully`;
     return res.redirect(`/device/platform${query}`);
   } catch (err) {
-    console.error('Error deleting platform:', err);
-    const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&error=Unable to delete platform`;
+    const errorMsg = err instanceof ServiceError ? err.message : 'Unable to delete platform';
+    if (!(err instanceof ServiceError)) console.error('Error deleting platform:', err);
+    const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&error=${encodeURIComponent(errorMsg)}`;
     return res.redirect(`/device/platform${query}`);
   }
 };
@@ -619,14 +484,7 @@ deviceController.listPlatform = async (req, res) => {
     // Load allowed page sizes from configuration
     let allowedPageSizes = [10, 20, 50];
     if (!pageSize) pageSize = 10;
-    let platformList, totalCount;
-    if (search) {
-      totalCount = await Platform.searchCount(search);
-      platformList = await Platform.searchPage(search, page, pageSize);
-    } else {
-      totalCount = await Platform.countAll();
-      platformList = await Platform.findPage(page, pageSize);
-    }
+    const { items: platformList, totalCount } = await listPlatformsService({ search, page, pageSize });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const errorMessage = req.query.error || null;
     const successMessage = req.flash('success')[0] || req.query.success || null;
@@ -693,8 +551,7 @@ deviceController.listDeviceType = async (req, res) => {
     let pageSize = parseInt(req.query.pageSize, 10);
     let allowedPageSizes = [10, 20, 50];
     if (!pageSize) pageSize = 10;
-    const totalCount = await DeviceType.countFiltered(search);
-    const deviceTypeList = await DeviceType.findFilteredPage({ search, page, pageSize });
+    const { items: deviceTypeList, totalCount } = await listDeviceTypesService({ search, page, pageSize });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
@@ -722,68 +579,48 @@ deviceController.listDeviceType = async (req, res) => {
 };
 
 deviceController.createDeviceType = async (req, res) => {
+  const page = parseInt(req.body.page, 10) || 1;
+  const search = req.body.search ? req.body.search.trim() : '';
   try {
-    const { name, description } = req.body;
-    const page = parseInt(req.body.page, 10) || 1;
-    const search = req.body.search ? req.body.search.trim() : '';
-    if (!name || !name.trim()) {
-      const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&error=Device type name is required`;
-      return res.redirect(`/device/type${query}`);
-    }
-    await DeviceType.create({ name: name.trim(), description });
+    await createDeviceTypeService({ name: req.body.name, description: req.body.description });
     const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&success=Device type added successfully`;
     return res.redirect(`/device/type${query}`);
   } catch (err) {
-    let errorMsg = 'Unable to add device type';
-    if (err && (err.code === '23505' || (err.message && err.message.toLowerCase().includes('unique')))) {
-      errorMsg = 'Device type name already exists. Please choose a different name.';
-    } else {
-      console.error('Error creating device type:', err);
-      if (err && err.message) {
-        errorMsg = 'Unable to add device type: ' + err.message;
-      }
-    }
-    const page = parseInt(req.body.page, 10) || 1;
-    const search = req.body.search ? req.body.search.trim() : '';
+    const errorMsg = err instanceof ServiceError ? err.message : 'Unable to add device type: ' + err.message;
+    if (!(err instanceof ServiceError)) console.error('Error creating device type:', err);
     const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&error=${encodeURIComponent(errorMsg)}`;
     return res.redirect(`/device/type${query}`);
   }
 };
 
 deviceController.updateDeviceType = async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const page = parseInt(req.body.page, 10) || 1;
+  const search = req.body.search ? req.body.search.trim() : '';
   try {
-    const id = parseInt(req.params.id, 10);
-    const { description } = req.body;
-    const page = parseInt(req.body.page, 10) || 1;
-    const search = req.body.search ? req.body.search.trim() : '';
-    // Only description is editable
-    await DeviceType.update(id, { description });
+    // Only description is editable from this form
+    await updateDeviceTypeService(id, { description: req.body.description });
     const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&success=Device type updated successfully`;
     return res.redirect(`/device/type${query}`);
   } catch (err) {
-    console.error('Error updating device type:', err);
-    const page = parseInt(req.body.page, 10) || 1;
-    const search = req.body.search ? req.body.search.trim() : '';
-    const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&error=Unable to update device type`;
+    const errorMsg = err instanceof ServiceError ? err.message : 'Unable to update device type';
+    if (!(err instanceof ServiceError)) console.error('Error updating device type:', err);
+    const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&error=${encodeURIComponent(errorMsg)}`;
     return res.redirect(`/device/type${query}`);
   }
 };
 
 deviceController.deleteDeviceType = async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  const page = parseInt(req.body.page, 10) || 1;
+  const search = req.body.search ? req.body.search.trim() : '';
   try {
-    const id = parseInt(req.params.id, 10);
-    const page = parseInt(req.body.page, 10) || 1;
-    const search = req.body.search ? req.body.search.trim() : '';
-    await DeviceType.remove(id);
+    await deleteDeviceTypeService(id);
     const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&success=Device type deleted successfully`;
     return res.redirect(`/device/type${query}`);
   } catch (err) {
-    let errorMessage = err.message || 'Delete failed.';
-    if (errorMessage.includes('foreign key constraint')) {
-      errorMessage = 'Cannot delete: This device type is in use.';
-    }
-    const page = parseInt(req.body.page, 10) || 1;
-    const search = req.body.search ? req.body.search.trim() : '';
+    const errorMessage = err instanceof ServiceError ? err.message : 'Unable to delete device type';
+    if (!(err instanceof ServiceError)) console.error('Error deleting device type:', err);
     const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&error=${encodeURIComponent(errorMessage)}`;
     return res.redirect(`/device/type${query}`);
   }
@@ -1157,7 +994,7 @@ deviceController.validateImportDevices = async (req, res) => {
     }
 
     // Get valid options from database
-    const validLocations = await getLocationOptionsFromConfig();
+    const validLocations = await getLocationOptions();
     const validLocationValues = validLocations.map(loc => loc.value || loc.label || loc);
 
     // Validate each row

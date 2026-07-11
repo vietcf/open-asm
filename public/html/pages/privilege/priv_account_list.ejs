@@ -195,7 +195,7 @@ function buildExportUrl() {
             <h3 class="card-title mb-0">Privileged Account List</h3>
           </div>
           <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
-            <table class="table table-hover" style="table-layout: fixed; min-width: 800px;">
+            <table class="table table-hover" id="privAccountTable" style="table-layout: fixed; min-width: 800px;">
               <thead>
                 <tr>
                   <th>No.</th>
@@ -330,7 +330,7 @@ function buildExportUrl() {
           </div>
           <div class="mb-3">
             <label for="privUserOrganize" class="form-label">Organize Unit <span class="text-danger">*</span></label>
-            <select id="privUserOrganize" name="organize_id" class="form-select form-select-sm" style="width:100%" required></select>
+            <select id="privUserOrganize" name="organize_id" class="form-select" style="width:100%" required></select>
           </div>
           <div class="mb-3">
             <label for="privUserType" class="form-label">Account Type <span class="text-danger">*</span></label>
@@ -364,7 +364,7 @@ function buildExportUrl() {
           </div>
           <div class="mb-3">
             <label for="privUserRole" class="form-label">Role <span class="text-danger">*</span></label>
-            <select id="privUserRole" name="role_id" class="form-select form-select-sm" required style="width:100%"></select>
+            <select id="privUserRole" name="role_id" class="form-select" required style="width:100%"></select>
           </div>
         </form>
       </div>
@@ -401,7 +401,7 @@ function buildExportUrl() {
           </div>
           <div class="mb-3">
             <label for="editAccountOrganize" class="form-label">Organize Unit <span class="text-danger">*</span></label>
-            <select id="editAccountOrganize" name="organize_id" class="form-select form-select-sm" style="width:100%" required></select>
+            <select id="editAccountOrganize" name="organize_id" class="form-select" style="width:100%" required></select>
           </div>
           <div class="mb-3">
             <label for="editAccountType" class="form-label">Account Type <span class="text-danger">*</span></label>
@@ -435,7 +435,7 @@ function buildExportUrl() {
           </div>
           <div class="mb-3">
             <label for="editAccountRole" class="form-label">Role <span class="text-danger">*</span></label>
-            <select id="editAccountRole" name="role_id" class="form-select form-select-sm" required style="width:100%"></select>
+            <select id="editAccountRole" name="role_id" class="form-select" required style="width:100%"></select>
           </div>
         </form>
       </div>
@@ -463,7 +463,7 @@ function buildExportUrl() {
           </div>
           <div class="mb-3">
             <label for="filterOrganize" class="form-label">Organize Unit</label>
-            <select id="filterOrganize" name="organize_id" class="form-select form-select-sm" style="width:100%">
+            <select id="filterOrganize" name="organize_id" class="form-select" style="width:100%">
               <option value="">All Organize Units</option>
             </select>
           </div>
@@ -533,7 +533,7 @@ function showAccountDetail(accountId) {
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <dl class="row mb-0">
+            <dl class="row detail-dl">
               <dt class="col-sm-4">Account Name</dt>
               <dd class="col-sm-8">${account.username || '<span class="text-muted">No data</span>'}</dd>
               <dt class="col-sm-4">Description</dt>
@@ -1062,6 +1062,17 @@ $(function() {
 
 <!-- Responsive Tables CSS -->
 <style>
+#privAccountTable thead th {
+  white-space: nowrap;
+}
+/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
+#privAccountTable th:nth-child(1), #privAccountTable td:nth-child(1) { width: 4%; }
+#privAccountTable th:nth-child(2), #privAccountTable td:nth-child(2) { width: 15%; }
+#privAccountTable th:nth-child(3), #privAccountTable td:nth-child(3) { width: 25%; }
+#privAccountTable th:nth-child(4), #privAccountTable td:nth-child(4) { width: 20%; }
+#privAccountTable th:nth-child(5), #privAccountTable td:nth-child(5) { width: 16%; }
+#privAccountTable th:nth-child(6), #privAccountTable td:nth-child(6) { width: 20%; }
+
 /* Mobile responsive styles for Privileged Account List */
 @media (max-width: 768px) {
   .table-responsive {

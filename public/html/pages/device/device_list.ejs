@@ -254,7 +254,7 @@ function buildExportUrl() {
                           const cleanDescription = (device.description || '-').trim();
                           const shortDescription = cleanDescription.length > 50 ? cleanDescription.substring(0, 50) + '…' : cleanDescription;
                         %>
-                        <span class="description-hover" data-description="<%= cleanDescription.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') %>" style="white-space: pre-line; cursor: help; position: relative; word-break: break-word;"><%= shortDescription %></span>
+                        <span data-bs-toggle="tooltip" data-bs-placement="top" title="<%= cleanDescription %>" style="cursor: help; word-break: break-word;"><%= shortDescription %></span>
                       </td>
                       <td><%= device.device_type_name || '-' %></td>
                       <td><%= device.location || '-' %></td>
@@ -364,7 +364,7 @@ function buildExportUrl() {
         <!-- Content will be loaded here -->
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -444,8 +444,8 @@ function buildExportUrl() {
         <div class="modal-footer d-flex justify-content-between">
           <button type="button" class="btn btn-outline-danger" id="clearFilterBtnDevice" data-bs-dismiss="modal">Clear All Filters</button>
           <div>
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary">Apply Filters</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
           </div>
         </div>
       </form>
@@ -497,9 +497,9 @@ function buildExportUrl() {
         </form>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-warning" id="validateDeviceBtn">Validate File</button>
-        <button type="button" class="btn btn-success" id="importDeviceBtn" style="display: none;">Import Devices</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning btn-sm" id="validateDeviceBtn">Validate File</button>
+        <button type="button" class="btn btn-success btn-sm" id="importDeviceBtn" style="display: none;">Import Devices</button>
       </div>
     </div>
   </div>
@@ -548,43 +548,48 @@ function showDeviceDetail(deviceId) {
   const modal = new bootstrap.Modal(modalElement);
   const content = document.getElementById('deviceDetailContent');
   
-  let html = '<div class="mb-2"><strong>Device Name:</strong> ' + String(device.name || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>Type:</strong> ' + String(device.device_type_name || device.type || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>Location:</strong> ' + String(device.location || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>Platform (OS):</strong> ' + String(device.platform_name || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>Serial Number:</strong> ' + String(device.serial_number || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>Manufacturer:</strong> ' + String(device.manufacturer || 'N/A').trim() + '</div>';
-  html += '<div class="mb-2"><strong>Device Role:</strong> ' + String(device.device_role || 'N/A').trim() + '</div>';
-  
+  let html = '<dl class="row detail-dl">';
+  html += '<dt class="col-sm-4">Device Name</dt><dd class="col-sm-8">' + String(device.name || 'N/A').trim() + '</dd>';
+  html += '<dt class="col-sm-4">Type</dt><dd class="col-sm-8">' + String(device.device_type_name || device.type || 'N/A').trim() + '</dd>';
+  html += '<dt class="col-sm-4">Location</dt><dd class="col-sm-8">' + String(device.location || 'N/A').trim() + '</dd>';
+  html += '<dt class="col-sm-4">Platform (OS)</dt><dd class="col-sm-8">' + String(device.platform_name || 'N/A').trim() + '</dd>';
+  html += '<dt class="col-sm-4">Serial Number</dt><dd class="col-sm-8">' + String(device.serial_number || 'N/A').trim() + '</dd>';
+  html += '<dt class="col-sm-4">Manufacturer</dt><dd class="col-sm-8">' + String(device.manufacturer || 'N/A').trim() + '</dd>';
+  html += '<dt class="col-sm-4">Device Role</dt><dd class="col-sm-8">' + String(device.device_role || 'N/A').trim() + '</dd>';
+
+  html += '<dt class="col-sm-4">IP Addresses</dt><dd class="col-sm-8">';
   if (device.ip_addresses && device.ip_addresses.length > 0) {
-    html += '<div class="mb-2"><strong>IP Addresses:</strong><ul class="mb-0">';
+    html += '<ul class="mb-0 ps-3">';
     device.ip_addresses.forEach(function(ip) {
       const ipValue = (typeof ip === 'string' ? ip : ip.ip_address);
       const searchUrl = '/network/ip-address?page=1&search=' + encodeURIComponent(ipValue);
       html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + String(ipValue).trim() + '</a></li>';
     });
-    html += '</ul></div>';
+    html += '</ul>';
   } else {
-    html += '<div class="mb-2"><strong>IP Addresses:</strong> N/A</div>';
+    html += 'N/A';
   }
-  
+  html += '</dd>';
+
+  html += '<dt class="col-sm-4">Management Address</dt><dd class="col-sm-8">';
   if (device.management_address && device.management_address.trim() !== '') {
     const managementAddresses = device.management_address.split(',').map(addr => addr.trim()).filter(addr => addr);
     if (managementAddresses.length > 1) {
-      html += '<div class="mb-2"><strong>Management Addresses:</strong><ul class="mb-0">';
+      html += '<ul class="mb-0 ps-3">';
       managementAddresses.forEach(function(addr) {
         html += '<li>' + String(addr).trim() + '</li>';
       });
-      html += '</ul></div>';
+      html += '</ul>';
     } else {
-      html += '<div class="mb-2"><strong>Management Address:</strong> ' + String(device.management_address).trim() + '</div>';
+      html += String(device.management_address).trim();
     }
   } else {
-    html += '<div class="mb-2"><strong>Management Address:</strong> N/A</div>';
+    html += 'N/A';
   }
-  
+  html += '</dd>';
+
   if (device.contacts && device.contacts.length > 0) {
-    html += '<div class="mb-2"><strong>Managers:</strong><ul class="mb-0">';
+    html += '<dt class="col-sm-4">Managers</dt><dd class="col-sm-8"><ul class="mb-0 ps-3">';
     device.contacts.forEach(function(manager) {
       const managerName = (typeof manager === 'string' ? manager : manager.name);
       const managerEmail = (typeof manager === 'string' ? '' : manager.email);
@@ -595,19 +600,20 @@ function showDeviceDetail(deviceId) {
       }
       html += '</a></li>';
     });
-    html += '</ul></div>';
+    html += '</ul></dd>';
   }
-  
+
   if (device.tags && device.tags.length > 0) {
-    html += '<div class="mb-2"><strong>Tags:</strong><br>';
+    html += '<dt class="col-sm-4">Tags</dt><dd class="col-sm-8">';
     device.tags.forEach(function(tag) {
       const tagValue = (typeof tag === 'string' ? tag : tag.name);
       html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
     });
-    html += '</div>';
+    html += '</dd>';
   }
-  
-  html += '<div class="mb-2"><strong>Description:</strong><br><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + String(device.description || 'N/A').trim() + '</pre></div>';
+
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + String(device.description || 'N/A').trim() + '</pre></dd>';
+  html += '</dl>';
   content.innerHTML = html;
   modal.show();
 }
@@ -1217,48 +1223,29 @@ $(document).ready(function() {
   text-align: left;
 }
 
+/* Fixed proportional column widths — see ip_address_list.ejs for rationale:
+   table-layout: fixed makes width depend only on these percentages, not on
+   cell content, so a long Description can never shift other columns. */
+#deviceTable {
+  table-layout: fixed;
+  min-width: 900px;
+}
+#deviceTable thead th {
+  white-space: nowrap;
+}
+#deviceTable th:nth-child(1), #deviceTable td:nth-child(1) { width: 5%; }
+#deviceTable th:nth-child(2), #deviceTable td:nth-child(2) { width: 15%; }
+#deviceTable th:nth-child(3), #deviceTable td:nth-child(3) { width: 19%; }
+#deviceTable th:nth-child(4), #deviceTable td:nth-child(4) { width: 13%; }
+#deviceTable th:nth-child(5), #deviceTable td:nth-child(5) { width: 12%; }
+#deviceTable th:nth-child(6), #deviceTable td:nth-child(6) { width: 18%; }
+#deviceTable th:nth-child(7), #deviceTable td:nth-child(7) { width: 18%; }
+
 /* Description column alignment */
 #deviceTable td:nth-child(3) {
   text-align: left;
   vertical-align: top;
-}
-
-/* Description hover popup style */
-.description-hover {
-  position: relative;
-  display: inline-block;
-}
-
-.description-hover:hover::after {
-  content: attr(data-description);
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background: #333;
-  color: white;
-  padding: 8px 12px;
-  border-radius: 4px;
-  white-space: pre-line;
-  max-width: 400px;
-  max-height: 200px;
-  overflow-y: auto;
-  z-index: 1000;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-  font-size: 14px;
-  line-height: 1.4;
-  word-break: break-word;
-  pointer-events: none;
-}
-
-.description-hover:hover::before {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 10px;
-  border: 5px solid transparent;
-  border-bottom-color: #333;
-  z-index: 1001;
-  pointer-events: none;
+  overflow-wrap: break-word;
 }
 
 /* Force override for Filter Devices modal buttons on mobile */

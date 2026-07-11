@@ -66,7 +66,7 @@ cd open-asm
 
 2. **Create environment file**:
 ```bash
-cp .env.sample .env.docker
+cp .env.docker.sample .env.docker
 # Edit .env.docker with your configuration
 ```
 
@@ -74,6 +74,11 @@ cp .env.sample .env.docker
 ```bash
 docker-compose up --build -d
 ```
+
+> ⚠️ **After any rebuild** (`--build`), also restart nginx: `docker restart openasm_nginx`.
+> Nginx resolves the `app` container's IP once at startup; when `app` is recreated by a
+> rebuild it gets a new IP, and nginx will keep routing to the old one (502 errors) until
+> it's restarted. This is not needed for a plain `docker-compose up -d` with no rebuild.
 
 4. **Access the application**:
 - Web Interface: https://localhost:8443
@@ -92,8 +97,9 @@ npm install
 # Create PostgreSQL database
 createdb open_asm
 
-# Run migrations
+# Run migrations (see Database Management below for details)
 node migrations/init_all_tables.js
+node migrations/alters/run.js
 node migrations/init_data.js
 ```
 
@@ -151,25 +157,10 @@ SSL_KEY_PATH=./ssl/key.pem
 
 ### Docker Configuration
 
-For Docker deployment, use `.env.docker`:
-
-```env
-# Database Configuration
-POSTGRES_HOST=db
-POSTGRES_PORT=5432
-POSTGRES_DB=open_asm
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=postgres123
-
-# Application Configuration
-NODE_ENV=production
-PORT=3000
-SESSION_SECRET=docker_session_secret
-
-# JWT Configuration
-JWT_SECRET=docker_jwt_secret
-JWT_EXPIRES_IN=24h
-```
+For Docker deployment, use `.env.docker` (start from `.env.docker.sample`,
+see Installation above). The key difference from local development's `.env`:
+`POSTGRES_HOST` must be `db` — the Postgres service name in
+`docker-compose.yml` — not `localhost`/`127.0.0.1`.
 
 ## 🐳 Docker Commands
 
@@ -177,6 +168,9 @@ JWT_EXPIRES_IN=24h
 ```bash
 # Build and start all services
 docker-compose up --build -d
+
+# Restart nginx after any rebuild above — see warning in Installation section
+docker restart openasm_nginx
 
 # Build specific service
 docker-compose build app
@@ -193,11 +187,12 @@ docker-compose down
 # Save Docker images
 ./save-docker-images.sh
 
-# Or manually save specific image
-sudo docker save openasm_app:4.0.0 | gzip > openasm_app_4.0.0.tar.gz
+# Or manually save specific image (tag must match the `image:` value
+# in docker-compose.yml, currently openasm_app:4.0.1)
+sudo docker save openasm_app:4.0.1 | gzip > openasm_app_4.0.1.tar.gz
 
 # Load Docker image
-sudo docker load < openasm_app_4.0.0.tar.gz
+sudo docker load < openasm_app_4.0.1.tar.gz
 ```
 
 ### Logs and Monitoring
@@ -210,6 +205,29 @@ docker-compose logs -f nginx
 # Check container status
 docker-compose ps
 ```
+
+All containers use the `json-file` logging driver capped at 10MB × 3 files
+(see the `x-logging` block in `docker-compose.yml`) — Docker rotates them
+automatically, no separate logrotate setup needed. Nginx logs to
+stdout/stderr (the base image's default), so they show up in
+`docker-compose logs -f nginx` like any other container instead of being
+written to a host-mounted file — this is what keeps them under Docker's
+log-size cap. Database backups and old `system_log` DB rows are cleaned up
+separately by the app's own scheduled jobs (see below).
+
+### Scheduled Maintenance Jobs
+
+The `app` container runs three background jobs on startup (`src/app.js`),
+all visible in `docker-compose logs -f app`:
+
+| Job | Schedule | What it does | Config |
+|---|---|---|---|
+| Database backup | Daily 2:00 AM | `pg_dump \| gzip` to `./backups/`, keeps the N most recent | `BACKUP_FREQUENCY`, `BACKUP_RETENTION` in `.env.docker` |
+| System log cleanup | Daily 2:00 AM | Deletes `system_log` DB rows older than the retention window | `log_retention_days` in System Configuration (admin UI), default 30 |
+| Temp file cleanup | Every 6 hours | Removes stale files from `public/uploads/temp` (>24h) and `public/uploads/import` (>2h) | not configurable |
+
+Nginx/container log growth is handled separately by Docker's own logging
+driver (see Logs and Monitoring above), not by an app-level job.
 
 ## 📊 API Documentation
 
@@ -291,6 +309,7 @@ open-asm/
 ├── src/
 │   ├── api/                 # API routes and controllers
 │   ├── controllers/         # Web controllers
+│   ├── services/            # Shared business logic, used by both web and API
 │   ├── models/             # Database models
 │   ├── routes/             # Web routes
 │   ├── middlewares/        # Custom middlewares
@@ -318,11 +337,22 @@ git clone https://github.com/vietcf/open-asm.git
 cd open-asm
 
 # Configure environment
-cp .env.sample .env.docker
+cp .env.docker.sample .env.docker
 # Edit .env.docker
 
 # Deploy
 docker-compose up --build -d
+
+# Restart nginx so it picks up the app container's IP (see warning above)
+docker restart openasm_nginx
+```
+
+**Updating an existing deployment** (after pulling new code):
+```bash
+git pull
+docker-compose up --build -d   # also rebuilds/recreates the migration + app containers;
+                                # migrations run automatically and are safe to re-run
+docker restart openasm_nginx   # required after every rebuild, see warning above
 ```
 
 2. **Using PM2**:
@@ -366,37 +396,43 @@ server {
 ## 🔧 Development
 
 ### Running Tests
-```bash
-# Run all tests
-npm test
 
-# Run specific test
-npm test -- --grep "API Tests"
-
-# Run with coverage
-npm run test:coverage
-```
+⚠️ Not currently wired up: `tests/api.test.js` is written for Jest +
+Supertest using CommonJS `require()`, but neither package is installed and
+the project runs as an ES module (`"type": "module"` in `package.json`), so
+the file cannot run as-is. There is no `npm test` script yet.
 
 ### Code Quality
-```bash
-# Lint code
-npm run lint
 
-# Fix linting issues
-npm run lint:fix
-
-# Format code
-npm run format
-```
+⚠️ Not currently wired up either: no ESLint config or dependency is
+installed (only `.eslintignore` exists), so there is no `npm run lint`
+script yet.
 
 ### Database Management
-```bash
-# Run migrations
-node migrations/init_all_tables.js
 
-# Seed data
+The `migrations/` folder has two parts:
+
+- **`create_*.js`** — the baseline schema (one file per table, `CREATE TABLE IF NOT EXISTS`). Run once via `init_all_tables.js` to set up a brand-new database with the full, up-to-date schema.
+- **`alters/`** — incremental schema changes made after the baseline, one numbered file per change (`000N_description.js`, exporting `default async (pool) => {...}`). A `schema_migrations` table tracks which ones have already run, so `run.js` only applies files it hasn't seen yet.
+
+```bash
+# Fresh database: create all tables, then seed initial data (roles, admin user, config)
+node migrations/init_all_tables.js
 node migrations/init_data.js
 
+# After a fresh install, or whenever you add a new file under migrations/alters/,
+# apply any not-yet-run schema changes (safe to re-run — it skips what's already applied)
+node migrations/alters/run.js
+```
+
+**Making a schema change:**
+1. Add a new file `migrations/alters/000N_description.js` (next number after the last one), exporting `default async (pool) => { await pool.query('ALTER TABLE ...'); }`.
+2. Run `node migrations/alters/run.js` — it applies only the new file and records it in `schema_migrations`.
+3. Also update the matching `create_*.js` baseline with the same change, so a brand-new database created via `init_all_tables.js` already has it (the `alters/` file then only matters for databases created before your change).
+
+In Docker, run these inside the app/migration container, e.g. `docker-compose run --rm migration node migrations/alters/run.js`.
+
+```bash
 # Create backup
 pg_dump -h localhost -U postgres -d open_asm | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz
 
@@ -406,7 +442,26 @@ gunzip -c backup_20240101_120000.sql.gz | psql -h localhost -U postgres -d open_
 
 ## 📝 Changelog
 
-### Version 4.0.0 (Latest)
+See `package.json`'s `version` field and the `image:` tag in
+`docker-compose.yml` for the current released version — bump both together
+when cutting a release.
+
+### Version 4.0.1 (Latest)
+- ✅ **Shared Service Layer**: Frontend and API now share one in-process
+  `src/services/` layer instead of duplicating business logic per transport
+- ✅ **UI Consistency Sweep**: Unified table, button, form-field, and detail
+  modal styling across every menu (fixed-layout tables, consistent
+  `btn-sm` sizing, one `dl`-based detail-modal layout everywhere)
+- ✅ **Swagger/API Audit**: Corrected `required` fields, missing status
+  codes, and stale descriptions across API route docs
+- ✅ **Bug Fixes**: negative-pagination crashes, CASCADE-FK delete-in-use
+  gaps, duplicate-IP creation crash, `System.findById` transaction-isolation
+  bug, username format validation, `must_change_password` bypass on the API
+- ✅ **Deployment/Ops**: Docker log-size caps on every container, nginx logs
+  to stdout instead of an unrotated host file, corrected `.gitignore`/
+  `.dockerignore` overly-broad patterns, dedicated `.env.docker.sample`
+
+### Version 4.0.0
 - ✅ **API Improvements**: Complete REST API with partial update support
 - ✅ **UI/UX Enhancements**: Improved forms, modals, and user experience
 - ✅ **System Management**: Enhanced system and component management

@@ -1,5 +1,3 @@
-<!-- Modal Buttons Custom CSS -->
-<link rel="stylesheet" href="/css/modal-buttons.css">
 
 <%
 // ==========================================
@@ -166,7 +164,7 @@ function buildPaginationUrl(targetPage) {
                       <td><%= contact.email || '-' %></td>
                       <td><%= contact.phone || '-' %></td>
                       <td><%= contact.position || '-' %></td>
-                      <td><%= contact.organization || '-' %></td>
+                      <td><%= contact.unit_name || '-' %></td>
                       <td class="text-end">
                         <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showContactDetail('<%= contact.id %>')" data-contact='<%= JSON.stringify(contact) %>'><i class="bi bi-eye"></i></button>
                         <% if (hasPermission('contact.update')) { %>
@@ -245,7 +243,7 @@ function buildPaginationUrl(targetPage) {
         <!-- Content will be loaded here -->
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -296,9 +294,9 @@ function buildPaginationUrl(targetPage) {
             </select>
           </div>
         </div>
-        <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
-          <button type="button" class="btn btn-secondary w-100 order-2 order-lg-1" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Add Contact</button>
+        <div class="modal-footer d-flex justify-content-end">
+          <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Add Contact</button>
         </div>
       </form>
     </div>
@@ -354,9 +352,9 @@ function buildPaginationUrl(targetPage) {
             </select>
           </div>
         </div>
-        <div class="modal-footer d-flex flex-column flex-lg-row gap-2">
-          <button type="button" class="btn btn-secondary w-100 order-2 order-lg-1" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary w-100 order-1 order-lg-2">Update Contact</button>
+        <div class="modal-footer d-flex justify-content-end">
+          <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Update Contact</button>
         </div>
       </form>
     </div>
@@ -400,22 +398,39 @@ function showContactDetail(contactId) {
   const modalElement = document.getElementById('contactDetailModal');
   const content = document.getElementById('contactDetailContent');
   
-  let html = '<div class="row">';
-  html += '<div class="col-md-6"><strong>Contact ID:</strong> ' + (contactData.id || '-') + '</div>';
-  html += '<div class="col-md-6"><strong>Name:</strong> ' + (contactData.name || '-') + '</div>';
-  html += '<div class="col-md-6"><strong>Email:</strong> ' + (contactData.email || '-') + '</div>';
-  html += '<div class="col-md-6"><strong>Phone:</strong> ' + (contactData.phone || '-') + '</div>';
-  html += '<div class="col-md-6"><strong>Position:</strong> ' + (contactData.position || '-') + '</div>';
-  html += '<div class="col-md-6"><strong>Organization:</strong> ' + (contactData.organization || '-') + '</div>';
-  html += '<div class="col-md-6"><strong>Created:</strong> ' + (contactData.created_at ? new Date(contactData.created_at).toLocaleDateString() : '-') + '</div>';
-  html += '<div class="col-md-6"><strong>Updated:</strong> ' + (contactData.updated_at ? new Date(contactData.updated_at).toLocaleDateString() : '-') + '</div>';
-  if (contactData.description) {
-    html += '<div class="col-12 mt-3"><strong>Description:</strong><br><div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + contactData.description + '</div></div>';
+  let html = '<dl class="row detail-dl">';
+  html += '<dt class="col-sm-4">Contact ID</dt><dd class="col-sm-8">' + (contactData.id || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Name</dt><dd class="col-sm-8">' + (contactData.name || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Email</dt><dd class="col-sm-8">' + (contactData.email || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Phone</dt><dd class="col-sm-8">' + (contactData.phone || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Position</dt><dd class="col-sm-8">' + (contactData.position || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Organization</dt><dd class="col-sm-8">' + (contactData.unit_name || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + (contactData.created_at ? new Date(contactData.created_at).toLocaleDateString() : '-') + '</dd>';
+  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + (contactData.updated_at ? new Date(contactData.updated_at).toLocaleDateString() : '-') + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (contactData.description ? '<div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + contactData.description + '</div>' : '-') + '</dd>';
+  html += '</dl>';
+
+  if (contactData.phone) {
+    html += '<div class="text-center mt-3">';
+    html += '<div class="text-muted small mb-2">Scan to add to your phone contacts</div>';
+    html += '<img id="contactQrImage" alt="Contact QR code" style="width:160px;height:160px;">';
+    html += '</div>';
   }
-  html += '</div>';
-  
+
   content.innerHTML = html;
-  
+
+  if (contactData.phone) {
+    fetch('/organize/api/contact/' + contactId + '/qrcode')
+      .then(response => response.json())
+      .then(data => {
+        const img = document.getElementById('contactQrImage');
+        if (img && data && data.image) {
+          img.src = 'data:' + (data.mime || 'image/png') + ';base64,' + data.image;
+        }
+      })
+      .catch(error => console.error('Error loading contact QR code:', error));
+  }
+
   const modal = new bootstrap.Modal(modalElement);
   modal.show();
 }
@@ -442,3 +457,31 @@ function buildExportUrl() {
   return '/organize/contact/export' + (params.toString() ? '?' + params.toString() : '');
 }
 </script>
+
+<!-- Responsive Tables CSS -->
+<style>
+/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
+#contactTable {
+  table-layout: fixed;
+  min-width: 1050px;
+}
+#contactTable thead th {
+  white-space: nowrap;
+}
+#contactTable th:nth-child(1), #contactTable td:nth-child(1) { width: 5%; }
+#contactTable th:nth-child(2), #contactTable td:nth-child(2) { width: 15%; }
+#contactTable th:nth-child(3), #contactTable td:nth-child(3) { width: 18%; }
+#contactTable th:nth-child(4), #contactTable td:nth-child(4) { width: 12%; }
+#contactTable th:nth-child(5), #contactTable td:nth-child(5) { width: 13%; }
+#contactTable th:nth-child(6), #contactTable td:nth-child(6) { width: 19%; }
+#contactTable th:nth-child(7), #contactTable td:nth-child(7) { width: 18%; }
+
+#contactTable td:nth-child(2),
+#contactTable td:nth-child(6) {
+  overflow-wrap: break-word;
+}
+#contactTable td:nth-child(7) {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+</style>

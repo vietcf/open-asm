@@ -1,4 +1,27 @@
-import Tag from '../../models/Tag.js';
+import {
+  listTags as listTagsService,
+  getAllTags as getAllTagsService,
+  getTag as getTagService,
+  findTagsByName,
+  createTag as createTagService,
+  updateTag as updateTagService,
+  deleteTag as deleteTagService
+} from '../../services/tagService.js';
+import { ServiceError, HTTP_STATUS_BY_CODE } from '../../services/errors.js';
+
+function respondServiceError(err, res) {
+  if (err instanceof ServiceError) {
+    return res.status(HTTP_STATUS_BY_CODE[err.code] || 400).json({
+      success: false,
+      message: err.message
+    });
+  }
+  res.status(500).json({
+    success: false,
+    message: 'Internal server error',
+    error: err.message
+  });
+}
 
 /**
  * Tag API Controller
@@ -11,8 +34,8 @@ class ApiTagController {
    */
   static async getAllTags(req, res) {
     try {
-      const tags = await Tag.findAll();
-      
+      const tags = await getAllTagsService();
+
       res.status(200).json({
         success: true,
         data: tags,
@@ -20,11 +43,7 @@ class ApiTagController {
       });
     } catch (error) {
       console.error('Error fetching all tags:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        error: error.message
-      });
+      respondServiceError(error, res);
     }
   }
 
@@ -43,8 +62,7 @@ class ApiTagController {
         });
       }
 
-      // Use exact name matching
-      const tags = await Tag.findByNameExact(name);
+      const tags = await findTagsByName(name);
 
       res.status(200).json({
         success: true,
@@ -53,11 +71,7 @@ class ApiTagController {
       });
     } catch (error) {
       console.error('Error finding tags:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        error: error.message
-      });
+      respondServiceError(error, res);
     }
   }
 
@@ -68,8 +82,7 @@ class ApiTagController {
   static async getTagById(req, res) {
     try {
       const { id } = req.params;
-      
-      // Validate ID
+
       if (!id || isNaN(parseInt(id))) {
         return res.status(400).json({
           success: false,
@@ -77,14 +90,7 @@ class ApiTagController {
         });
       }
 
-      const tag = await Tag.findById(parseInt(id));
-      
-      if (!tag) {
-        return res.status(404).json({
-          success: false,
-          message: 'Tag not found'
-        });
-      }
+      const tag = await getTagService(parseInt(id));
 
       res.status(200).json({
         success: true,
@@ -93,11 +99,7 @@ class ApiTagController {
       });
     } catch (error) {
       console.error('Error fetching tag by ID:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        error: error.message
-      });
+      respondServiceError(error, res);
     }
   }
 
@@ -107,30 +109,7 @@ class ApiTagController {
    */
   static async createTag(req, res) {
     try {
-      const { name, description } = req.body;
-
-      // Validate required fields
-      if (!name || name.trim() === '') {
-        return res.status(400).json({
-          success: false,
-          message: 'Tag name is required'
-        });
-      }
-
-      // Check for existing tag with same name (case-insensitive)
-      const existingTags = await Tag.findByNameExact(name);
-
-      if (existingTags.length > 0) {
-        return res.status(409).json({
-          success: false,
-          message: 'Tag with this name already exists'
-        });
-      }
-
-      const newTag = await Tag.create({
-        name: name.trim(),
-        description: description?.trim() || null
-      });
+      const newTag = await createTagService(req.body || {});
 
       res.status(201).json({
         success: true,
@@ -139,20 +118,7 @@ class ApiTagController {
       });
     } catch (error) {
       console.error('Error creating tag:', error);
-      
-      // Handle unique constraint violation
-      if (error.code === '23505') {
-        return res.status(409).json({
-          success: false,
-          message: 'Tag with this name already exists'
-        });
-      }
-
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        error: error.message
-      });
+      respondServiceError(error, res);
     }
   }
 
@@ -163,9 +129,7 @@ class ApiTagController {
   static async updateTag(req, res) {
     try {
       const { id } = req.params;
-      const { name, description } = req.body;
 
-      // Validate ID
       if (!id || isNaN(parseInt(id))) {
         return res.status(400).json({
           success: false,
@@ -173,43 +137,7 @@ class ApiTagController {
         });
       }
 
-      // Check if tag exists
-      const existingTag = await Tag.findById(parseInt(id));
-      if (!existingTag) {
-        return res.status(404).json({
-          success: false,
-          message: 'Tag not found'
-        });
-      }
-
-      // Validate that at least one field is provided
-      if (!name && description === undefined) {
-        return res.status(400).json({
-          success: false,
-          message: 'At least one field (name or description) must be provided'
-        });
-      }
-
-      // Prepare update data with existing values as defaults
-      const updateData = {
-        name: name ? name.trim() : existingTag.name,
-        description: description !== undefined ? (description?.trim() || null) : existingTag.description
-      };
-
-      // Check for name conflicts if name is being changed
-      if (name && name.toLowerCase() !== existingTag.name.toLowerCase()) {
-        const existingTags = await Tag.findByNameExact(name);
-        const nameExists = existingTags.some(tag => tag.id !== parseInt(id));
-
-        if (nameExists) {
-          return res.status(409).json({
-            success: false,
-            message: 'Tag with this name already exists'
-          });
-        }
-      }
-
-      const updatedTag = await Tag.update(parseInt(id), updateData);
+      const updatedTag = await updateTagService(parseInt(id), req.body || {});
 
       res.status(200).json({
         success: true,
@@ -218,20 +146,7 @@ class ApiTagController {
       });
     } catch (error) {
       console.error('Error updating tag:', error);
-      
-      // Handle unique constraint violation
-      if (error.code === '23505') {
-        return res.status(409).json({
-          success: false,
-          message: 'Tag with this name already exists'
-        });
-      }
-
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        error: error.message
-      });
+      respondServiceError(error, res);
     }
   }
 
@@ -243,7 +158,6 @@ class ApiTagController {
     try {
       const { id } = req.params;
 
-      // Validate ID
       if (!id || isNaN(parseInt(id))) {
         return res.status(400).json({
           success: false,
@@ -251,16 +165,7 @@ class ApiTagController {
         });
       }
 
-      // Check if tag exists
-      const existingTag = await Tag.findById(parseInt(id));
-      if (!existingTag) {
-        return res.status(404).json({
-          success: false,
-          message: 'Tag not found'
-        });
-      }
-
-      await Tag.delete(parseInt(id));
+      await deleteTagService(parseInt(id));
 
       res.status(200).json({
         success: true,
@@ -268,20 +173,7 @@ class ApiTagController {
       });
     } catch (error) {
       console.error('Error deleting tag:', error);
-
-      // Handle foreign key constraint violations
-      if (error.code === '23503') {
-        return res.status(409).json({
-          success: false,
-          message: 'Cannot delete tag as it is being used by other objects'
-        });
-      }
-
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        error: error.message
-      });
+      respondServiceError(error, res);
     }
   }
 
@@ -291,22 +183,17 @@ class ApiTagController {
    */
   static async searchTags(req, res) {
     try {
-      const { 
-        search = '', 
-        page = 1, 
-        pageSize = 20 
+      const {
+        search = '',
+        page = 1,
+        pageSize = 20
       } = req.query;
 
-      // Validate pagination parameters
       const pageNum = Math.max(1, parseInt(page) || 1);
       const pageSizeNum = Math.min(100, Math.max(1, parseInt(pageSize) || 20));
 
-      // Get total count for pagination
-      const totalCount = await Tag.countAll(search);
+      const { items: tags, totalCount } = await listTagsService({ search, page: pageNum, pageSize: pageSizeNum });
       const totalPages = Math.ceil(totalCount / pageSizeNum);
-
-      // Get tags for current page
-      const tags = await Tag.findPage(pageNum, pageSizeNum, search);
 
       res.status(200).json({
         success: true,
@@ -327,11 +214,7 @@ class ApiTagController {
       });
     } catch (error) {
       console.error('Error searching tags:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Internal server error',
-        error: error.message
-      });
+      respondServiceError(error, res);
     }
   }
 }

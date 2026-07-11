@@ -95,7 +95,7 @@ class Contact {
    */
   static async update(id, { name, email, phone, position, unit_id, description }) {
     const result = await pool.query(
-      `UPDATE contacts SET name=$1, email=$2, phone=$3, position=$4, unit_id=$5, description=$6
+      `UPDATE contacts SET name=$1, email=$2, phone=$3, position=$4, unit_id=$5, description=$6, updated_at=CURRENT_TIMESTAMP
        WHERE id=$7 RETURNING *`,
       [name, email, phone, position, unit_id || null, description || null, id]
     );

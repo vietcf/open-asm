@@ -26,7 +26,9 @@ export default async (pool) => {
       status VARCHAR(64),
       description TEXT,
       audit_batch TEXT,
-      work_order TEXT
+      work_order TEXT,
+      raw_data TEXT,
+      CONSTRAINT unique_rule_firewall_audit UNIQUE (rulename, firewall_name, audit_batch)
     );
 
     CREATE TABLE IF NOT EXISTS rulefirewall_contact (
