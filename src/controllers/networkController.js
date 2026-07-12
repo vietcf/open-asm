@@ -992,13 +992,12 @@ networkController.validateImportIPs = async (req, res) => {
 
 // API: Import IP addresses from validated file
 networkController.importIPs = async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
 
     const filePath = req.file.path;
     const fileExtension = req.file.originalname.split('.').pop().toLowerCase();
@@ -1141,10 +1140,19 @@ networkController.importIPs = async (req, res) => {
     }
     
     await client.query('COMMIT');
-    
+
+    // Set header for frontend to know import results — same shape as
+    // Subnet/Firewall import (total/success/failed) for consistent UI.
+    const successCount = importResults.filter(result => result.import_status === 'Success').length;
+    res.set('X-Import-Summary', JSON.stringify({
+      total: importResults.length,
+      success: successCount,
+      failed: importResults.length - successCount
+    }));
+
     // Create import results Excel file (same as validation)
     try {
-      
+
       // Tạo file Excel với kết quả import
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Import Results');
@@ -1647,14 +1655,40 @@ networkController.validateImportSubnets = async (req, res) => {
     let rows = [];
     
     // Parse file based on extension
+    // Same column order/count import expects — checked here too so a file
+    // can't "pass validation" and then be rejected outright at import time.
+    const expectedHeaders = [
+      'Subnet Address (Require)',
+      'Description',
+      'Zone',
+      'Environment',
+      'Tag (comma-separated if multiple)'
+    ];
+    const validateHeaderOrder = (headerValues) => {
+      if (headerValues.length !== expectedHeaders.length) {
+        return `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headerValues.length}`;
+      }
+      for (let i = 0; i < expectedHeaders.length; i++) {
+        if (headerValues[i] !== expectedHeaders[i]) {
+          return `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headerValues[i]}"`;
+        }
+      }
+      return null;
+    };
+
     if (fileExtension === 'csv') {
       const results = [];
-      
+
       // Simple CSV parsing without csv-parser dependency
       const fileContent = fs.readFileSync(filePath, 'utf8');
       const lines = fileContent.split('\n');
       const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      
+
+      const headerError = validateHeaderOrder(headers);
+      if (headerError) {
+        return res.status(400).json({ error: headerError });
+      }
+
       for (let i = 1; i < lines.length; i++) {
         if (lines[i].trim()) {
           const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
@@ -1673,25 +1707,29 @@ networkController.validateImportSubnets = async (req, res) => {
       
       const worksheet = workbook.worksheets[0];
       const headers = [];
-      
+
       // Get headers from first row
       worksheet.getRow(1).eachCell((cell, colNumber) => {
         headers[colNumber] = cell.value;
       });
-      
-      
+
+      const headerError = validateHeaderOrder(headers.slice(1));
+      if (headerError) {
+        return res.status(400).json({ error: headerError });
+      }
+
       // Get data rows
       for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
         const row = worksheet.getRow(rowNumber);
         const rowData = {};
-        
+
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber];
           if (header) {
             rowData[header] = cell.value;
           }
         });
-        
+
         if (Object.keys(rowData).length > 0) {
           rows.push(rowData);
         }
@@ -1699,7 +1737,7 @@ networkController.validateImportSubnets = async (req, res) => {
     } else {
       return res.status(400).json({ error: 'Unsupported file format' });
     }
-    
+
 
     // Validate each row
     console.log('Starting validation for', rows.length, 'rows');
@@ -1898,6 +1936,11 @@ networkController.validateImportSubnets = async (req, res) => {
 
 // Import subnets
 networkController.importSubnets = async (req, res) => {
+  // Declared outside the try block so the catch below can still reach it
+  // to rollback/release — a client created with `const` inside try is out
+  // of scope in catch, which previously leaked the connection (and left
+  // the transaction open) on any error after pool.connect().
+  let client;
   try {
     console.log('=== SUBNET IMPORT START ===');
     console.log('Request method:', req.method);
@@ -1988,7 +2031,7 @@ networkController.importSubnets = async (req, res) => {
     }
 
     // Start transaction
-    const client = await pool.connect();
+    client = await pool.connect();
     await client.query('BEGIN');
 
     const importResults = [];
@@ -2053,7 +2096,6 @@ networkController.importSubnets = async (req, res) => {
 
     // Commit transaction
     await client.query('COMMIT');
-    client.release();
 
     // Create import results Excel file (same as validation)
     const workbook = new ExcelJS.Workbook();
@@ -2165,8 +2207,19 @@ networkController.importSubnets = async (req, res) => {
     console.error('=== SUBNET IMPORT ERROR ===');
     console.error('Error importing subnets:', err);
     console.error('Error stack:', err.stack);
+    if (client) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackErr) {
+        console.error('Error rolling back subnet import transaction:', rollbackErr);
+      }
+    }
     if (!res.headersSent) {
       res.status(500).json({ error: 'Error importing subnets', detail: err.message });
+    }
+  } finally {
+    if (client) {
+      client.release();
     }
   }
 };

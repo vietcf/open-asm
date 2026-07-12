@@ -1268,13 +1268,13 @@ $(document).on('click', '#importServerBtn', function() {
       // Show results
       const resultsDiv = $('#serverImportResults');
       resultsDiv.removeClass('alert-danger').addClass('alert-success')
-        .html('<strong>Import Complete!</strong><br><small>Import results file downloaded. Page will refresh in 3 seconds...</small>')
+        .html('<strong>Import Complete!</strong><br><small>Import results file downloaded. Page will refresh in 2 seconds...</small>')
         .show();
-      
-      // Refresh page after delay
+
+      // Refresh page after delay (same 2s as IP/Subnet/Device import)
       setTimeout(() => {
         window.location.reload();
-      }, 3000);
+      }, 2000);
     },
     error: function(xhr, status, error) {
       console.error('Server import error:', xhr);
