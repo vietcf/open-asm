@@ -887,23 +887,24 @@ function buildSystemExportUrl() {
           if (data.components && data.components.length > 0) {
             let componentsHtml = '<div class="components-section">';
             componentsHtml += '<h6 class="mb-3 text-primary"><i class="bi bi-gear-fill me-2"></i>Components (' + data.components.length + ')</h6>';
-            
+
             data.components.forEach(function(component, index) {
-              // Add separator line between components (except for the first one)
-              if (index > 0) {
-                componentsHtml += '<hr class="my-3">';
-              }
-              
-              componentsHtml += '<div class="component-card border rounded p-3 mb-2 bg-light">';
-              
-              // Component Header with Name and App Type
-              componentsHtml += '<div class="d-flex justify-content-between align-items-start mb-2">';
-              componentsHtml += '<h6 class="mb-0 text-dark fw-bold">' + String(component.name || 'N/A').trim() + '</h6>';
+              const detailId = 'component-detail-' + systemId + '-' + index;
+
+              // Name row — collapsed by default; click to expand the detail card below
+              componentsHtml += '<div class="component-name-row d-flex justify-content-between align-items-center border rounded px-3 py-2 mb-1 bg-light" style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#' + detailId + '" role="button" aria-expanded="false">';
+              componentsHtml += '<span class="fw-bold text-dark">' + String(component.name || 'N/A').trim() + '</span>';
+              componentsHtml += '<span class="d-flex align-items-center">';
               if (component.app_type) {
-                componentsHtml += '<span class="badge bg-primary">' + String(component.app_type).trim() + '</span>';
+                componentsHtml += '<span class="badge bg-primary me-2">' + String(component.app_type).trim() + '</span>';
               }
+              componentsHtml += '<i class="bi bi-chevron-down component-toggle-icon"></i>';
+              componentsHtml += '</span>';
               componentsHtml += '</div>';
-              
+
+              componentsHtml += '<div class="collapse mb-2" id="' + detailId + '">';
+              componentsHtml += '<div class="component-card border rounded p-3 bg-white">';
+
               // Component Details in smaller font
               componentsHtml += '<div class="component-details small text-muted">';
               
@@ -1016,6 +1017,7 @@ function buildSystemExportUrl() {
               
               componentsHtml += '</div>'; // End component-details
               componentsHtml += '</div>'; // End component-card
+              componentsHtml += '</div>'; // End collapse
             });
             
             componentsHtml += '</div>'; // End components-section
@@ -1274,6 +1276,14 @@ function buildSystemExportUrl() {
   white-space: pre-wrap;
   max-width: 400px;
   text-align: left;
+}
+
+/* Component name row chevron rotates when its detail card is expanded */
+.component-name-row .component-toggle-icon {
+  transition: transform 0.2s ease-in-out;
+}
+.component-name-row[aria-expanded="true"] .component-toggle-icon {
+  transform: rotate(180deg);
 }
 
 /* Description column alignment - same as other columns */
