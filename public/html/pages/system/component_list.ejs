@@ -773,7 +773,7 @@
         const serverName = ipObj.server_name || '';
         
         html += '<div class="mt-1 d-flex align-items-center flex-wrap">';
-        html += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary me-2 ip-hover-link" data-ip="' + ipAddress + '" title="Loading IP info...">' + String(ipAddress).trim() + '</a>';
+        html += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary me-2 ip-hover-link" data-ip="' + ipAddress + '" data-bs-toggle="tooltip" data-bs-placement="top" title="Loading IP info...">' + String(ipAddress).trim() + '</a>';
         
         // Add server/device name if available
         if (serverName) {
@@ -835,25 +835,30 @@
     modal.show();
   }
 
-  // Setup IP hover functionality for component detail
+  // Setup IP hover functionality for component detail — uses Bootstrap's
+  // Tooltip component (same as the Description column tooltips elsewhere)
+  // instead of the native browser title tooltip, so it's actually styled
+  // by the .tooltip .tooltip-inner CSS below (multi-line, max-width).
   function setupComponentIPHover() {
     const ipLinks = document.querySelectorAll('.ip-hover-link');
     ipLinks.forEach(link => {
+      new bootstrap.Tooltip(link);
       link.removeEventListener('mouseenter', handleComponentIPHover); // Prevent duplicate listeners
       link.addEventListener('mouseenter', handleComponentIPHover);
     });
   }
 
   function handleComponentIPHover(event) {
-    const element = event.target;
+    const element = event.target.closest('.ip-hover-link');
     const ipAddress = element.getAttribute('data-ip');
+    const tooltip = bootstrap.Tooltip.getInstance(element);
 
-    if (!ipAddress || element.getAttribute('data-loading') === 'true') {
+    if (!ipAddress || !tooltip || element.getAttribute('data-loading') === 'true') {
       return;
     }
 
     element.setAttribute('data-loading', 'true');
-    element.setAttribute('title', 'Loading IP info...');
+    tooltip.setContent({ '.tooltip-inner': 'Loading IP info...' });
 
     fetch(`/network/api/ip-addresses/detail?search=${encodeURIComponent(ipAddress)}`)
       .then(response => response.json())
@@ -898,14 +903,14 @@
             const systemNames = ipInfo.systems.map(system => typeof system === 'string' ? system : system.name).join(', ');
             tooltipText += `\nSystems: ${systemNames}`;
           }
-          element.setAttribute('title', tooltipText);
+          tooltip.setContent({ '.tooltip-inner': tooltipText });
         } else {
-          element.setAttribute('title', `IP: ${ipAddress}\nNo additional information found`);
+          tooltip.setContent({ '.tooltip-inner': `IP: ${ipAddress}\nNo additional information found` });
         }
       })
       .catch(error => {
         console.error('Error loading IP info:', error);
-        element.setAttribute('title', `IP: ${ipAddress}\nError loading information`);
+        tooltip.setContent({ '.tooltip-inner': `IP: ${ipAddress}\nError loading information` });
       })
       .finally(() => {
         element.removeAttribute('data-loading');
