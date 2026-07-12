@@ -229,6 +229,26 @@ Accept: application/json
 Authorization: Bearer {{deviceTypeAuth.response.body.token}}
 
 # ========================================
+# 🔒 AUTH & CONTENT-TYPE TESTS
+# ========================================
+
+### 26.1. Test Authentication (No Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/device-types
+
+### 26.2. Test Authentication (Invalid Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/device-types
+Authorization: Bearer invalid_token
+
+### 26.3. Test Content Type (Wrong Content Type - Should Fail)
+POST {{baseUrl}}/{{apiVersion}}/device-types
+Authorization: Bearer {{deviceTypeAuth.response.body.token}}
+Content-Type: text/plain
+
+{
+  "name": "Wrong Content Type Device Type"
+}
+
+# ========================================
 # 🧪 ADVANCED DEVICE TYPE TESTS
 # ========================================
 

@@ -641,6 +641,66 @@ DELETE {{baseUrl}}/{{apiVersion}}/systems/2
 Accept: application/json
 Authorization: Bearer {{systemAuth.response.body.token}}
 
+### 55.1. Create System for Delete-Blocked-By-Component Test
+# @name systemWithComponent
+POST {{baseUrl}}/{{apiVersion}}/systems
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "SYS-TEST-HAS-COMPONENT",
+  "name": "System With Component"
+}
+
+### 55.2. Create Component Under That System
+# @name componentBlockingDelete
+POST {{baseUrl}}/{{apiVersion}}/components
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+{
+  "system_id": "{{systemWithComponent.response.body.id}}",
+  "name": "Blocking Component"
+}
+
+### 55.3. Delete System While It Still Has a Component (Should Fail - 409)
+DELETE {{baseUrl}}/{{apiVersion}}/systems/{{systemWithComponent.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 55.4. Cleanup - Delete the Blocking Component
+DELETE {{baseUrl}}/{{apiVersion}}/components/{{componentBlockingDelete.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+### 55.5. Cleanup - Delete System (Should Succeed Now)
+DELETE {{baseUrl}}/{{apiVersion}}/systems/{{systemWithComponent.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{systemAuth.response.body.token}}
+
+# ========================================
+# 🔒 AUTH & CONTENT-TYPE TESTS
+# ========================================
+
+### 55.6. Test Authentication (No Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/systems
+
+### 55.7. Test Authentication (Invalid Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/systems
+Authorization: Bearer invalid_token
+
+### 55.8. Test Content Type (Wrong Content Type - Should Fail)
+POST {{baseUrl}}/{{apiVersion}}/systems
+Authorization: Bearer {{systemAuth.response.body.token}}
+Content-Type: text/plain
+
+{
+  "system_id": "SYS-WRONG-CONTENT-TYPE",
+  "name": "Wrong Content Type System"
+}
+
 ### 47. Search with Invalid Page Number
 GET {{baseUrl}}/{{apiVersion}}/systems?page=-1
 Accept: application/json

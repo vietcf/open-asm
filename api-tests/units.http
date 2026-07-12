@@ -196,6 +196,26 @@ Accept: application/json
 Authorization: Bearer {{unitAuth.response.body.token}}
 
 # ========================================
+# 🔒 AUTH & CONTENT-TYPE TESTS
+# ========================================
+
+### 23. Test Authentication (No Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/units
+
+### 24. Test Authentication (Invalid Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/units
+Authorization: Bearer invalid_token
+
+### 25. Test Content Type (Wrong Content Type - Should Fail)
+POST {{baseUrl}}/{{apiVersion}}/units
+Authorization: Bearer {{unitAuth.response.body.token}}
+Content-Type: text/plain
+
+{
+  "name": "Wrong Content Type Unit"
+}
+
+# ========================================
 # ✅ BASIC UNITS API TEST CHECKLIST
 # ========================================
 # 

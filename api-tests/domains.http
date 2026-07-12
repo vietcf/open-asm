@@ -279,6 +279,38 @@ DELETE {{baseUrl}}/{{apiVersion}}/domains/99999
 Accept: application/json
 Authorization: Bearer {{domainAuth.response.body.token}}
 
+### 27.1. Update Domain - Attempt to Change Immutable "domain" Field (Should Be Silently Ignored)
+PUT {{baseUrl}}/{{apiVersion}}/domains/{{createDomainComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{domainAuth.response.body.token}}
+
+{
+  "domain": "should-not-change.com",
+  "description": "domain field is immutable, only description should update"
+}
+# Expected: response "domain" is unchanged from creation; "description" is updated
+
+# ========================================
+# 🔒 AUTH & CONTENT-TYPE TESTS
+# ========================================
+
+### 27.2. Test Authentication (No Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/domains
+
+### 27.3. Test Authentication (Invalid Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/domains
+Authorization: Bearer invalid_token
+
+### 27.4. Test Content Type (Wrong Content Type - Should Fail)
+POST {{baseUrl}}/{{apiVersion}}/domains
+Authorization: Bearer {{domainAuth.response.body.token}}
+Content-Type: text/plain
+
+{
+  "domain": "wrong-content-type.com"
+}
+
 # ========================================
 # 🧹 CLEANUP TEST DATA
 # ========================================

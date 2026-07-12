@@ -46,8 +46,8 @@ Authorization: Bearer {{contactAuth.response.body.token}}
   "name": "Test Contact",
   "email": "test.contact@example.com",
   "phone": "0123456789",
-  "position": "STAFF",
-  "unit_id": 1,
+  "position": "Staff",
+  "unit_id": 2,
   "description": "Test contact for API testing"
 }
 
@@ -61,7 +61,7 @@ Authorization: Bearer {{contactAuth.response.body.token}}
   "name": "Test Contact Updated",
   "email": "test.contact.updated@example.com",
   "phone": "0987654321",
-  "position": "MANAGER",
+  "position": "Staff",
   "unit_id": 2,
   "description": "Updated test contact"
 }
@@ -121,7 +121,7 @@ Accept: application/json
 Authorization: Bearer {{contactAuth.response.body.token}}
 
 ### 12. Search Contacts by Name
-GET {{baseUrl}}/{{apiVersion}}/contacts/search?query=toannn1.ho
+GET {{baseUrl}}/{{apiVersion}}/contacts/search?query=Nguyen Van A
 Accept: application/json
 Authorization: Bearer {{contactAuth.response.body.token}}
 
@@ -222,6 +222,36 @@ Authorization: Bearer {{contactAuth.response.body.token}}
   "email": "test@example.com",
   "position": "INVALID_POSITION",
   "description": "Invalid position value"
+}
+
+### 24.1. Create Contact with Invalid unit_id (400)
+POST {{baseUrl}}/{{apiVersion}}/contacts
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{contactAuth.response.body.token}}
+
+{
+  "name": "Test Contact",
+  "email": "invalid.unit@example.com",
+  "unit_id": 99999,
+  "description": "Invalid unit_id should fail"
+}
+
+### 24.2. Test Authentication (No Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/contacts/search?page=1&pageSize=20
+
+### 24.3. Test Authentication (Invalid Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/contacts/search?page=1&pageSize=20
+Authorization: Bearer invalid_token
+
+### 24.4. Test Content Type (Wrong Content Type - Should Fail)
+POST {{baseUrl}}/{{apiVersion}}/contacts
+Authorization: Bearer {{contactAuth.response.body.token}}
+Content-Type: text/plain
+
+{
+  "name": "Wrong Content Type Contact",
+  "email": "wrong.content.type@example.com"
 }
 
 ### 25. Create Contact with Duplicate Email (409)

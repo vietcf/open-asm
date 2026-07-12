@@ -1,0 +1,394 @@
+# ========================================
+# 🧩 COMPONENTS API TESTS
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+# Environment: development (change in VS Code status bar)
+# ========================================
+
+### 0. Login to get JWT Token (Run this first!)
+# @name componentAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+# ========================================
+# 📋 BASIC COMPONENT CRUD OPERATIONS
+# ========================================
+
+### 1. Get All Components
+GET {{baseUrl}}/{{apiVersion}}/components
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+### 2. Get All Components (Search + Pagination)
+GET {{baseUrl}}/{{apiVersion}}/components?search=web&page=1&pageSize=5
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+### 3. Get All Components (Filter by system_id)
+GET {{baseUrl}}/{{apiVersion}}/components?system_id=1
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+### 4. Create Component (Minimal - name + system_id only)
+# @name createComponentMinimal
+POST {{baseUrl}}/{{apiVersion}}/components
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "system_id": 1,
+  "name": "Test Component"
+}
+
+### 5. Create Component (Full)
+# @name createComponentComplete
+POST {{baseUrl}}/{{apiVersion}}/components
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "system_id": 1,
+  "name": "Web Frontend Component",
+  "app_type": "web",
+  "description": "Complete test component with all fields",
+  "fqdn": ["frontend.test.local"],
+  "contacts": [1],
+  "ips": [1],
+  "tags": [1]
+}
+
+### 5.1. Verify Created Component Response Structure
+GET {{baseUrl}}/{{apiVersion}}/components/{{createComponentComplete.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+### 6. Get Component by ID
+GET {{baseUrl}}/{{apiVersion}}/components/{{createComponentMinimal.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+### 7. Get Non-existent Component (Should Fail - 404)
+GET {{baseUrl}}/{{apiVersion}}/components/99999
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+### 8. Update Component (Partial - Name Only)
+PUT {{baseUrl}}/{{apiVersion}}/components/{{createComponentMinimal.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "name": "Renamed Test Component"
+}
+
+### 9. Update Component (Partial - Description Only)
+PUT {{baseUrl}}/{{apiVersion}}/components/{{createComponentMinimal.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "description": "Only description updated"
+}
+
+### 10. Update Component (Empty Body - Should Return Current Component)
+PUT {{baseUrl}}/{{apiVersion}}/components/{{createComponentMinimal.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{}
+
+### 11. Update Component (Clear Relationships)
+PUT {{baseUrl}}/{{apiVersion}}/components/{{createComponentComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "contacts": [],
+  "ips": [],
+  "tags": []
+}
+
+### 12. Delete Component
+DELETE {{baseUrl}}/{{apiVersion}}/components/{{createComponentMinimal.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+# Expected: 204 No Content (no response body)
+
+### 13. Delete Non-existent Component (Should Fail - 404)
+DELETE {{baseUrl}}/{{apiVersion}}/components/99999
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+# ========================================
+# 🔍 FIND OPERATIONS
+# ========================================
+
+### 14. Find Components by Exact Name
+GET {{baseUrl}}/{{apiVersion}}/components/find?name=Web Frontend Component
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+### 15. Find Components (Missing Name Parameter - Should Fail - 400)
+GET {{baseUrl}}/{{apiVersion}}/components/find
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+### 16. Find Components (Empty Name Parameter - Should Fail - 400)
+GET {{baseUrl}}/{{apiVersion}}/components/find?name=
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+### 17. Find Non-existent Component (Should Return Empty)
+GET {{baseUrl}}/{{apiVersion}}/components/find?name=NonExistentComponent
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+# ========================================
+# ❌ VALIDATION ERROR TESTS
+# ========================================
+
+### 18. Create Component (Missing Name - Should Fail - 400)
+POST {{baseUrl}}/{{apiVersion}}/components
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "system_id": 1
+}
+
+### 19. Create Component (Empty Name - Should Fail - 400)
+POST {{baseUrl}}/{{apiVersion}}/components
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "system_id": 1,
+  "name": ""
+}
+
+### 20. Create Component (Missing system_id - Should Fail - 400)
+POST {{baseUrl}}/{{apiVersion}}/components
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "name": "Component Without System"
+}
+
+### 21. Create Component (Invalid system_id - Should Fail - 400)
+POST {{baseUrl}}/{{apiVersion}}/components
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "system_id": 99999,
+  "name": "Component Invalid System"
+}
+
+### 22. Create Component (Invalid Contact IDs - Should Fail - 400)
+POST {{baseUrl}}/{{apiVersion}}/components
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "system_id": 1,
+  "name": "Component Invalid Contacts",
+  "contacts": [99999]
+}
+
+### 23. Create Component (Invalid IP Address IDs - Should Fail - 400)
+POST {{baseUrl}}/{{apiVersion}}/components
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "system_id": 1,
+  "name": "Component Invalid IPs",
+  "ips": [99999]
+}
+
+### 24. Create Component (Invalid Tag IDs - Should Fail - 400)
+POST {{baseUrl}}/{{apiVersion}}/components
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "system_id": 1,
+  "name": "Component Invalid Tags",
+  "tags": [99999]
+}
+
+### 25. Create Component (Duplicate Name in Same System - Should Fail - 409)
+POST {{baseUrl}}/{{apiVersion}}/components
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "system_id": 1,
+  "name": "Web Frontend Component"
+}
+
+### 26. Create Component (Same Name, Different System - Should Succeed)
+# Component names only need to be unique within their own system
+POST {{baseUrl}}/{{apiVersion}}/components
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "system_id": 2,
+  "name": "Web Frontend Component"
+}
+
+### 27. Update Component (Invalid Field - Should Fail - 400)
+PUT {{baseUrl}}/{{apiVersion}}/components/{{createComponentComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "invalid_field": "value"
+}
+
+### 28. Update Component (Empty Name - Should Fail - 400)
+PUT {{baseUrl}}/{{apiVersion}}/components/{{createComponentComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "name": ""
+}
+
+### 29. Update Component (Clear system_id - Should Fail - 400)
+PUT {{baseUrl}}/{{apiVersion}}/components/{{createComponentComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "system_id": ""
+}
+
+### 30. Update Component (Invalid system_id - Should Fail - 400)
+PUT {{baseUrl}}/{{apiVersion}}/components/{{createComponentComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "system_id": 99999
+}
+
+### 31. Update Component (Invalid Contact IDs - Should Fail - 400)
+PUT {{baseUrl}}/{{apiVersion}}/components/{{createComponentComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "contacts": [99999]
+}
+
+### 32. Update Component (Duplicate Name in Same System - Should Fail - 409)
+PUT {{baseUrl}}/{{apiVersion}}/components/{{createComponentComplete.response.body.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "name": "Renamed Test Component"
+}
+
+### 33. Update Non-existent Component (Should Fail - 404)
+PUT {{baseUrl}}/{{apiVersion}}/components/99999
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "name": "Updated Name"
+}
+
+# ========================================
+# 🔒 AUTH & CONTENT-TYPE TESTS
+# ========================================
+
+### 34. Test Authentication (No Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/components
+
+### 35. Test Authentication (Invalid Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/components
+Authorization: Bearer invalid_token
+
+### 36. Test Content Type (Wrong Content Type - Should Fail)
+POST {{baseUrl}}/{{apiVersion}}/components
+Authorization: Bearer {{componentAuth.response.body.token}}
+Content-Type: text/plain
+
+{
+  "system_id": 1,
+  "name": "Wrong Content Type"
+}
+
+# ========================================
+# 🧪 EDGE CASE TESTS
+# ========================================
+
+### 37. Create Component with Unicode Characters
+POST {{baseUrl}}/{{apiVersion}}/components
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "system_id": 1,
+  "name": "Component with Unicode: 测试组件",
+  "description": "Testing Unicode characters in component name"
+}
+
+### 38. Create Component with Multiple FQDNs
+POST {{baseUrl}}/{{apiVersion}}/components
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "system_id": 1,
+  "name": "Component with Multiple FQDNs",
+  "fqdn": ["a.test.local", "b.test.local", "c.test.local"]
+}
+
+### 39. Create Component with Empty Relationship Arrays
+POST {{baseUrl}}/{{apiVersion}}/components
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{componentAuth.response.body.token}}
+
+{
+  "system_id": 1,
+  "name": "Component with Empty Arrays",
+  "contacts": [],
+  "ips": [],
+  "tags": []
+}
