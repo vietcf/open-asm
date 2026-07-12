@@ -6,14 +6,16 @@ import fs from 'fs';
 import firewallController from '../controllers/firewallController.js';
 import requirePermission from '../middlewares/requirePermission.middleware.js';
 
-// Configure multer for file uploads
+// Configure multer for file uploads — same public/uploads/import location
+// (and env override) as network.js/server.js/device.js, so uploaded files
+// live under the volume-mounted public/uploads directory instead of a
+// root-level uploads/ folder that isn't persisted across container recreates.
+const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = 'uploads/';
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
+    const dest = path.join(process.cwd(), uploadsDir, 'import');
+    fs.mkdirSync(dest, { recursive: true });
+    cb(null, dest);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -47,7 +49,7 @@ const router = express.Router();
 // List firewall rules
 router.get('/rule', requirePermission('rule.read'), firewallController.ruleList);
 // Download firewall rule template
-router.get('/rule/template', requirePermission('rule.read'), firewallController.downloadRuleTemplate);
+router.get('/rule/template', requirePermission('rule.create'), firewallController.downloadRuleTemplate);
 // Export firewall rule list as Excel (filtered)
 router.get('/rule/export', requirePermission('rule.read'), firewallController.exportRuleList);
 // Add firewall rule

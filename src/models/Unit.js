@@ -143,6 +143,24 @@ class Unit {
     return result.rowCount > 0;
   }
 
+  /**
+   * Count how many records reference this unit (contacts, systems'
+   * department, privileged accounts' organization, and firewall rules' OU).
+   * @param {number} id
+   * @returns {Promise<number>}
+   */
+  static async countUsage(id) {
+    const result = await pool.query(
+      `SELECT
+        (SELECT COUNT(*) FROM contacts WHERE unit_id = $1) +
+        (SELECT COUNT(*) FROM systems WHERE department_id = $1) +
+        (SELECT COUNT(*) FROM priv_users WHERE organize_id = $1) +
+        (SELECT COUNT(*) FROM rulefirewall WHERE ou_id = $1) AS count`,
+      [id]
+    );
+    return parseInt(result.rows[0].count, 10);
+  }
+
 
   /**
    * Search units for select2 (by name, code, or description, limit 20, order by name)

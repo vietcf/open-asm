@@ -505,7 +505,7 @@ firewallController.downloadRuleTemplate = async (req, res) => {
     worksheet.getRow(1).font = { bold: true };
     
     // Create temp directory if not exists
-    const uploadsDir = process.env.UPLOADS_DIR || 'uploads';
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
     const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
@@ -519,20 +519,18 @@ firewallController.downloadRuleTemplate = async (req, res) => {
       return res.status(500).json({ error: 'Error creating template file: ' + writeError.message });
     }
     
-    // Check if file exists and get size
+    // Check if file exists
     if (fs.existsSync(tempPath)) {
-      const stats = fs.statSync(tempPath);
-      console.log('Template file created successfully:', tempPath, 'Size:', stats.size, 'bytes');
-      
-      // Set response headers for Excel file
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', 'attachment; filename="firewall_rule_template.xlsx"');
-      res.setHeader('Content-Length', stats.size);
-      
-      // Send file directly as buffer
-      const fileBuffer = fs.readFileSync(tempPath);
-      res.send(fileBuffer);
-        
+      // Use res.download() for proper file download handling — same
+      // approach as IP/Subnet/Server/Device templates
+      res.download(tempPath, 'firewall_rule_template.xlsx', (err) => {
+        if (err) {
+          console.error('Error downloading template file:', err);
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'Error downloading template file' });
+          }
+        }
+
         // Clean up template file after download
         setTimeout(() => {
           try {
@@ -543,6 +541,7 @@ firewallController.downloadRuleTemplate = async (req, res) => {
             console.error('Error cleaning up template file:', cleanupErr);
           }
         }, 5000); // 5 seconds delay
+      });
     } else {
       res.status(500).json({ error: 'Template file could not be created' });
     }
@@ -1077,8 +1076,9 @@ firewallController.validateImportRules = async (req, res) => {
       { width: 50 }   // Notes
     ];
 
-    // Save validation results to temporary file
-    const tempDir = path.join(process.cwd(), 'uploads', 'temp');
+    // Save validation results to temporary file — same public/uploads/temp
+    // location (and env override) used by IP/Subnet/Server/Device
+    const tempDir = path.join(process.cwd(), process.env.UPLOADS_DIR || 'public/uploads', 'temp');
     if (!fs.existsSync(tempDir)) {
       fs.mkdirSync(tempDir, { recursive: true });
     }
@@ -1088,10 +1088,11 @@ firewallController.validateImportRules = async (req, res) => {
     // Set response headers
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename="firewall_rule_validation_results.xlsx"');
+    // Same key names as IP/Subnet/Server/Device validation summary
     res.setHeader('X-Validation-Summary', JSON.stringify({
-      totalCount: totalRows,
-      passedCount: passedRows,
-      failCount: failedRows,
+      total: totalRows,
+      passed: passedRows,
+      failed: failedRows,
       allPassed: failedRows === 0
     }));
     
@@ -1678,9 +1679,15 @@ firewallController.importRules = async (req, res) => {
       }
     });
 
-    // Save Excel file
+    // Save Excel file — same public/uploads/temp location (and env
+    // override) used by IP/Subnet/Server/Device import
+    const importUploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const importTempDir = path.join(process.cwd(), importUploadsDir, 'temp');
+    if (!fs.existsSync(importTempDir)) {
+      fs.mkdirSync(importTempDir, { recursive: true });
+    }
     const excelFileName = `firewall_rule_import_${Date.now()}.xlsx`;
-    const excelFilePath = path.join(__dirname, '../../uploads', excelFileName);
+    const excelFilePath = path.join(importTempDir, excelFileName);
     await workbook.xlsx.writeFile(excelFilePath);
 
     // Send Excel file with import results
@@ -1688,10 +1695,11 @@ firewallController.importRules = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${excelFileName}"`);
     res.setHeader('Content-Length', fs.statSync(excelFilePath).size);
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    // Same key names as IP/Subnet/Server/Device import summaries
     res.setHeader('X-Import-Summary', JSON.stringify({
-      totalCount: importResults.length,
-      successCount: successCount,
-      errorCount: errorCount
+      total: importResults.length,
+      success: successCount,
+      failed: errorCount
     }));
 
     const fileBuffer = fs.readFileSync(excelFilePath);
@@ -1726,12 +1734,13 @@ firewallController.importRules = async (req, res) => {
 firewallController.downloadRuleValidationFile = async (req, res) => {
   try {
     const filename = req.params.filename;
-    const filePath = path.join(__dirname, '../../uploads', filename);
-    
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const filePath = path.join(process.cwd(), uploadsDir, 'temp', filename);
+
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ error: 'File not found' });
     }
-    
+
     res.download(filePath, filename);
   } catch (err) {
     console.error('Error downloading validation file:', err);

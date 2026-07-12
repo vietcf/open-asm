@@ -699,22 +699,18 @@ serverController.downloadServerTemplate = async (req, res) => {
     await workbook.xlsx.writeFile(tempPath);
     console.log('Template file written successfully');
     
-    // Check if file exists and get size
+    // Check if file exists
     if (fs.existsSync(tempPath)) {
-      const stats = fs.statSync(tempPath);
-      console.log('Template file created successfully, size:', stats.size, 'bytes');
-      
-      // Set headers for file download
-      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      res.setHeader('Content-Disposition', 'attachment; filename="server_list_template.xlsx"');
-      res.setHeader('Content-Length', stats.size);
-      
-      // Stream the file
-      const fileStream = fs.createReadStream(tempPath);
-      fileStream.pipe(res);
-      
-      fileStream.on('end', () => {
-        console.log('Template file sent successfully');
+      // Use res.download() for proper file download handling — same
+      // approach as IP/Subnet/Device templates
+      res.download(tempPath, 'server_list_template.xlsx', (err) => {
+        if (err) {
+          console.error('Error downloading template file:', err);
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'Error downloading template file' });
+          }
+        }
+
         // Clean up template file after download
         setTimeout(() => {
           try {
@@ -726,13 +722,6 @@ serverController.downloadServerTemplate = async (req, res) => {
             console.error('Error cleaning up template file:', cleanupErr);
           }
         }, 5000); // 5 seconds delay
-      });
-      
-      fileStream.on('error', (err) => {
-        console.error('Error streaming template file:', err);
-        if (!res.headersSent) {
-          res.status(500).json({ error: 'Error streaming template file' });
-        }
       });
     } else {
       throw new Error('Template Excel file was not created');
@@ -1088,6 +1077,7 @@ serverController.validateImportServers = async (req, res) => {
       'OS',
       'Status',
       'Location',
+      'Type',
       'Manager (comma-separated if multiple)',
       'System (comma-separated if multiple)',
       'Agent (comma-separated if multiple)',
@@ -1114,6 +1104,7 @@ serverController.validateImportServers = async (req, res) => {
         result.os,
         result.status,
         result.location,
+        result.type,
         result.manager,
         result.system,
         result.agent,
@@ -1126,10 +1117,10 @@ serverController.validateImportServers = async (req, res) => {
 
       // Color code validation status
       if (result.validation_status === 'FAIL') {
-        row.getCell(12).font = { color: { argb: 'FFFF0000' } }; // Validation Status column
-        row.getCell(13).font = { color: { argb: 'FFFF0000' } }; // Validation Reason column
+        row.getCell(13).font = { color: { argb: 'FFFF0000' } }; // Validation Status column
+        row.getCell(14).font = { color: { argb: 'FFFF0000' } }; // Validation Reason column
       } else {
-        row.getCell(12).font = { color: { argb: 'FF008000' } }; // Validation Status column
+        row.getCell(13).font = { color: { argb: 'FF008000' } }; // Validation Status column
       }
     });
 
@@ -1140,6 +1131,7 @@ serverController.validateImportServers = async (req, res) => {
       { width: 15 },  // OS
       { width: 15 },  // Status
       { width: 15 },  // Location
+      { width: 15 },  // Type
       { width: 30 },  // Manager
       { width: 25 },  // System
       { width: 25 },  // Agent
@@ -1170,11 +1162,15 @@ serverController.validateImportServers = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${excelFileName}"`);
     res.setHeader('Content-Length', fs.statSync(excelFilePath).size);
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    // Same key names as IP/Subnet validation summary — the frontend here
+    // already reads summary.total/passed/failed, which this previously
+    // didn't send (totalCount/passCount/failCount instead), so those
+    // fields rendered as "undefined" in the validation results message.
     res.setHeader('X-Validation-Summary', JSON.stringify({
-      allPassed,
-      passCount,
-      failCount,
-      totalCount: validationResults.length
+      total: validationResults.length,
+      passed: passCount,
+      failed: failCount,
+      allPassed
     }));
 
     const fileBuffer = fs.readFileSync(excelFilePath);
@@ -1552,6 +1548,7 @@ serverController.importServers = async (req, res) => {
       'OS',
       'Status',
       'Location',
+      'Type',
       'Manager (comma-separated if multiple)',
       'System (comma-separated if multiple)',
       'Agent (comma-separated if multiple)',
@@ -1578,6 +1575,7 @@ serverController.importServers = async (req, res) => {
         result.os,
         result.status,
         result.location,
+        result.type,
         result.manager,
         result.system,
         result.agent,
@@ -1590,10 +1588,10 @@ serverController.importServers = async (req, res) => {
 
       // Color code import status
       if (result.import_status === 'FAILED') {
-        row.getCell(12).font = { color: { argb: 'FFFF0000' } }; // Import Status column
-        row.getCell(13).font = { color: { argb: 'FFFF0000' } }; // Import Reason column
+        row.getCell(13).font = { color: { argb: 'FFFF0000' } }; // Import Status column
+        row.getCell(14).font = { color: { argb: 'FFFF0000' } }; // Import Reason column
       } else {
-        row.getCell(12).font = { color: { argb: 'FF008000' } }; // Import Status column
+        row.getCell(13).font = { color: { argb: 'FF008000' } }; // Import Status column
       }
     });
 
@@ -1604,6 +1602,7 @@ serverController.importServers = async (req, res) => {
       { width: 15 },  // OS
       { width: 15 },  // Status
       { width: 15 },  // Location
+      { width: 15 },  // Type
       { width: 30 },  // Manager
       { width: 25 },  // System
       { width: 25 },  // Agent
@@ -1626,6 +1625,15 @@ serverController.importServers = async (req, res) => {
     const excelFilePath = path.join(tempDir, excelFileName);
     await workbook.xlsx.writeFile(excelFilePath);
 
+    // Set header for frontend to know import results — same shape as
+    // Subnet/Firewall import (total/success/failed) for consistent UI.
+    const successCount = importResults.filter(result => result.import_status === 'SUCCESS').length;
+    res.setHeader('X-Import-Summary', JSON.stringify({
+      total: importResults.length,
+      success: successCount,
+      failed: importResults.length - successCount
+    }));
+
     // Send Excel file directly
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${excelFileName}"`);
@@ -1637,7 +1645,7 @@ serverController.importServers = async (req, res) => {
 
     // Clean up uploaded file
     fs.unlinkSync(filePath);
-    
+
     // Clean up temp Excel file after a delay
     setTimeout(() => {
       try {

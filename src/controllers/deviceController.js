@@ -1231,11 +1231,12 @@ deviceController.validateImportDevices = async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${excelFileName}"`);
     res.setHeader('Content-Length', fs.statSync(excelFilePath).size);
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    // Same key names as IP/Subnet/Server validation summary
     res.setHeader('X-Validation-Summary', JSON.stringify({
-      allPassed,
-      passCount,
-      failCount,
-      totalCount: validationResults.length
+      total: validationResults.length,
+      passed: passCount,
+      failed: failCount,
+      allPassed
     }));
 
     const fileBuffer = fs.readFileSync(excelFilePath);
@@ -1554,9 +1555,10 @@ deviceController.importDevices = async (req, res) => {
         // If it's a database error, rollback and stop processing
         if (err.code && err.code.startsWith('23')) { // PostgreSQL constraint violations
           await client.query('ROLLBACK');
+          client.release();
           clientReleased = true;
-          return res.status(400).json({ 
-            error: `Database error at row ${i + 1}: ${err.message}` 
+          return res.status(400).json({
+            error: `Database error at row ${i + 1}: ${err.message}`
           });
         }
       }
@@ -1654,6 +1656,15 @@ deviceController.importDevices = async (req, res) => {
     const excelFilePath = path.join(tempDir, excelFileName);
     await workbook.xlsx.writeFile(excelFilePath);
 
+    // Set header for frontend to know import results — same shape as
+    // Subnet/Firewall import (total/success/failed) for consistent UI.
+    const successCount = importResults.filter(result => result.import_status === 'SUCCESS').length;
+    res.setHeader('X-Import-Summary', JSON.stringify({
+      total: importResults.length,
+      success: successCount,
+      failed: importResults.length - successCount
+    }));
+
     // Send Excel file directly
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename="${excelFileName}"`);
@@ -1665,7 +1676,7 @@ deviceController.importDevices = async (req, res) => {
 
     // Clean up uploaded file
     fs.unlinkSync(filePath);
-    
+
     // Clean up temp Excel file after a delay
     setTimeout(() => {
       try {
@@ -1679,9 +1690,12 @@ deviceController.importDevices = async (req, res) => {
     }, 10000); // 10 seconds delay
 
   } catch (err) {
+    // Note: clientReleased is only set true once client.release() has
+    // actually been called (see the per-row constraint-violation branch
+    // above) — not merely after rollback — so the finally block below
+    // still releases the connection on this path.
     if (!clientReleased) {
       await client.query('ROLLBACK');
-      clientReleased = true;
     }
     console.error('Error importing devices:', err);
     if (!res.headersSent) {

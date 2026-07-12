@@ -47,8 +47,25 @@ function buildPaginationUrl(targetPage) {
   if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
     filterSystems.forEach(system => params.append('systems[]', system.id));
   }
-  
+
   return '?' + params.toString();
+}
+
+/**
+ * Build export URL with all current filter query parameters (no pagination)
+ * @returns {string}
+ */
+function buildExportUrl() {
+  const params = new URLSearchParams();
+  if (typeof search !== 'undefined' && search) params.set('search', search);
+  if (typeof filterStatus !== 'undefined' && filterStatus) params.set('status', filterStatus);
+  if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
+    filterTags.forEach(tag => params.append('tags[]', tag.id));
+  }
+  if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
+    filterSystems.forEach(system => params.append('systems[]', system.id));
+  }
+  return '/network/domain/export' + (params.toString() ? '?' + params.toString() : '');
 }
 
 %>
@@ -154,13 +171,20 @@ function buildPaginationUrl(targetPage) {
           <% } %>
           
           <!-- Filter Button -->
-          <button type="button" 
-                  class="btn btn-secondary btn-sm" 
-                  data-bs-toggle="modal" 
+          <button type="button"
+                  class="btn btn-secondary btn-sm"
+                  data-bs-toggle="modal"
                   data-bs-target="#filterDomainModal">
             <i class="bi bi-funnel"></i> Filter
           </button>
-          
+
+          <!-- Export Button -->
+          <% if (hasPermission && hasPermission('domain.read')) { %>
+            <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">
+              <i class="bi bi-download"></i> Export
+            </a>
+          <% } %>
+
       </div>
     </div>
             </div>

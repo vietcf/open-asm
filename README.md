@@ -458,7 +458,12 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.1.0 (Latest)
+### Version 1.2.0 (Latest)
+- ✅ **System List Export**: Added Excel export for System List (System
+  Code, System Name, Tags, Contacts — multi-value fields comma-separated),
+  matching the existing IP Address List export pattern
+
+### Version 1.1.0
 - ✅ **Shared Service Layer**: Frontend and API now share one in-process
   `src/services/` layer instead of duplicating business logic per transport
 - ✅ **UI Consistency Sweep**: Unified table, button, form-field, and detail

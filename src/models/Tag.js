@@ -157,6 +157,17 @@ class Tag {
   }
 
   /**
+   * Count how many objects (systems, servers, devices, IPs, etc.) this tag
+   * is currently attached to, via the polymorphic tag_object table.
+   * @param {number} id
+   * @returns {Promise<number>}
+   */
+  static async countUsage(id) {
+    const result = await pool.query('SELECT COUNT(*) FROM tag_object WHERE tag_id = $1', [id]);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  /**
    * Find tags by exact name match (case-insensitive)
    * @param {string} name - Name to search for (exact match)
    * @returns {Promise<Array>}

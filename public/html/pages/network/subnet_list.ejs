@@ -1602,19 +1602,21 @@ function displayIpAddresses(page = 1) {
   const currentPageData = allIpAddresses.slice(startIndex, endIndex);
   const totalPages = Math.ceil(allIpAddresses.length / IP_PER_PAGE);
   
+  // Description column hidden below the sm breakpoint (~576px) so mobile
+  // shows just the IP Address column instead of squeezing/scrolling.
   let html = '<div class="table-responsive"><table class="table table-sm table-striped">';
-  html += '<thead><tr><th>IP Address</th><th>Description</th></tr></thead>';
+  html += '<thead><tr><th>IP Address</th><th class="d-none d-sm-table-cell">Description</th></tr></thead>';
   html += '<tbody>';
-  
+
   currentPageData.forEach(function(ip, index) {
     const globalIndex = startIndex + index;
     const description = String(ip.description || 'N/A').trim();
     const truncatedDesc = description.length > 20 ? description.substring(0, 20) + '...' : description;
     const fullDesc = description.length > 20 ? description : '';
-    
+
     html += '<tr>';
     html += '<td><a href="/network/ip-address?search=' + encodeURIComponent(ip.ip_address) + '" class="text-primary text-decoration-underline">' + String(ip.ip_address).trim() + '</a></td>';
-    html += '<td>';
+    html += '<td class="d-none d-sm-table-cell">';
     html += '<span class="ip-description" data-full="' + fullDesc.replace(/"/g, '&quot;') + '">' + truncatedDesc + '</span>';
     if (description.length > 20) {
       html += ' <button type="button" class="btn btn-link btn-sm p-0 ms-1 show-more-btn" onclick="toggleDescription(' + globalIndex + ')" style="font-size: 0.8em;">show more</button>';
