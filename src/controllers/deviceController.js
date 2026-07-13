@@ -599,8 +599,7 @@ deviceController.updateDeviceType = async (req, res) => {
   const page = parseInt(req.body.page, 10) || 1;
   const search = req.body.search ? req.body.search.trim() : '';
   try {
-    // Only description is editable from this form
-    await updateDeviceTypeService(id, { description: req.body.description });
+    await updateDeviceTypeService(id, { name: req.body.name, description: req.body.description });
     const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&success=Device type updated successfully`;
     return res.redirect(`/device/type${query}`);
   } catch (err) {
