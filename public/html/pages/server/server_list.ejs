@@ -1086,6 +1086,14 @@ function showServerDetail(serverId) {
     });
     html += '</dd>';
   }
+
+  const serverCreated = (server.created_at || 'N/A');
+  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + String(serverCreated).trim() + '</dd>';
+  const serverUpdated = (server.updated_at || 'N/A');
+  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + String(serverUpdated).trim() + '</dd>';
+  if (server.updated_by) {
+    html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + String(server.updated_by).trim() + '</dd>';
+  }
   html += '</dl>';
   content.innerHTML = html;
   modal.show();

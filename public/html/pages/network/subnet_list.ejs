@@ -1544,6 +1544,14 @@ function showSubnetDetail(subnetId) {
     });
     html += '</dd>';
   }
+
+  const subnetCreated = (subnet.created_at || 'N/A');
+  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + String(subnetCreated).trim() + '</dd>';
+  const subnetUpdated = (subnet.updated_at || 'N/A');
+  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + String(subnetUpdated).trim() + '</dd>';
+  if (subnet.updated_by) {
+    html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + String(subnet.updated_by).trim() + '</dd>';
+  }
   html += '</dl>';
 
   // Add IP Addresses section

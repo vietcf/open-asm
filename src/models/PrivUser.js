@@ -191,10 +191,12 @@ class PrivUser {
     return res.rows[0];
   }
 
-  static async update(id, { username, description, client = pool }) {
+  static async update(id, { username, description, organize_id, role_id, account_type, manage_type, app_url, updated_by, client = pool }) {
     const res = await client.query(
-      'UPDATE priv_users SET username = $1, description = $2, updated_date = NOW() WHERE id = $3 RETURNING *',
-      [username, description, id]
+      `UPDATE priv_users SET username = $1, description = $2, organize_id = $3, role_id = $4,
+       account_type = $5, manage_type = $6, app_url = $7, updated_by = $8, updated_date = NOW()
+       WHERE id = $9 RETURNING *`,
+      [username, description, organize_id || null, role_id || null, account_type, manage_type, app_url || null, updated_by || username, id]
     );
     return res.rows[0];
   }

@@ -1426,7 +1426,8 @@ deviceController.importDevices = async (req, res) => {
             management_address: result.management_address || null,
             manufacturer: result.manufacturer || null,
             device_role: result.device_role || null,
-            description: result.description || null
+            description: result.description || null,
+            updated_by: username
           });
           
           const deviceId = device.id;

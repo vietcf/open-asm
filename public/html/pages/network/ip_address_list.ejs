@@ -1520,6 +1520,14 @@ function showIpDetail(ipId) {
     html += '</ul></dd>';
   }
 
+  const ipCreated = (ip.created_at || 'N/A');
+  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + String(ipCreated).trim() + '</dd>';
+  const ipUpdated = (ip.updated_at || 'N/A');
+  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + String(ipUpdated).trim() + '</dd>';
+  if (ip.updated_by) {
+    html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + String(ip.updated_by).trim() + '</dd>';
+  }
+
   html += '</dl>';
   content.innerHTML = html;
   modal.show();

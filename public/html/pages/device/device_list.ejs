@@ -646,6 +646,14 @@ function showDeviceDetail(deviceId) {
   }
 
   html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + String(device.description || 'N/A').trim() + '</pre></dd>';
+
+  const deviceCreated = (device.created_at || 'N/A');
+  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + String(deviceCreated).trim() + '</dd>';
+  const deviceUpdated = (device.updated_at || 'N/A');
+  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + String(deviceUpdated).trim() + '</dd>';
+  if (device.updated_by) {
+    html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + String(device.updated_by).trim() + '</dd>';
+  }
   html += '</dl>';
   content.innerHTML = html;
   modal.show();

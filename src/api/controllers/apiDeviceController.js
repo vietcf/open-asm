@@ -109,7 +109,7 @@ apiDeviceController.getDevice = async (req, res) => {
 // Create a new device
 apiDeviceController.createDevice = async (req, res) => {
   try {
-    const device = await createDeviceService(req.body || {});
+    const device = await createDeviceService({ ...req.body, updated_by: req.user ? req.user.username : null });
     res.status(201).json({
       success: true,
       message: 'Device created successfully',
