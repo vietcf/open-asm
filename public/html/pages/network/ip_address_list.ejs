@@ -421,12 +421,12 @@ function buildExportUrl() {
               <select class="form-select" id="ipStatus" name="status">
                 <% if (typeof ipStatusOptions !== 'undefined' && ipStatusOptions.length > 0) { %>
                   <% ipStatusOptions.forEach(function(option) { %>
-                    <option value="<%= option.value %>" <%= option.value === 'active' ? 'selected' : '' %>><%= option.label %></option>
+                    <option value="<%= option.value %>" <%= option.value === 'reserved' ? 'selected' : '' %>><%= option.label %></option>
                   <% }); %>
                               <% } else { %>
-                  <option value="active" selected>Active</option>
+                  <option value="reserved" selected>Reserved</option>
+                  <option value="assigned">Assigned</option>
                   <option value="inactive">Inactive</option>
-                  <option value="reserved">Reserved</option>
                               <% } %>
                               </select>
                             </div>
@@ -633,7 +633,7 @@ function buildExportUrl() {
                 <li>Fill the template with your IP addresses data</li>
                 <li>IPAddress (Require, one per row) is required and must be valid IP format</li>
                 <li>Description is optional</li>
-                <li>Status is optional (default: active)</li>
+                <li>Status is optional (default: reserved)</li>
                 <li>Tags, Systems, and Contacts are optional and can be comma-separated if multiple</li>
                 <li>Select your filled template file and validate before importing</li>
             </ul>
