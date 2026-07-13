@@ -166,9 +166,9 @@ function buildPaginationUrl(targetPage) {
                             <i class="bi bi-pencil"></i>
                           </button>
                         <% } %>
-                        <% if (user && (user.role_name === 'superadmin' || user.role_name === 'admin')) { %>
-                          <form action="/server/agent/<%= agent.id %>?_method=DELETE" method="POST" style="display:inline !important;" onsubmit="return confirmDeleteAgent(this, '<%= agent.name %>')">
-                            <button type="submit" class="btn btn-danger btn-sm" title="Delete" style="display: inline-block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 9999 !important;">
+                        <% if (hasPermission('agent.delete')) { %>
+                          <form action="/server/agent/<%= agent.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteAgent(this, '<%= agent.name %>')">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Delete">
                               <i class="bi bi-trash"></i>
                             </button>
                           </form>

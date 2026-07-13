@@ -189,8 +189,8 @@ function buildPaginationUrl(targetPage) {
                           </button>
                         <% } %>
                         <% if (hasPermission('service.delete')) { %>
-                          <form action="/server/service/<%= service.id %>?_method=DELETE" method="POST" style="display:inline !important;" onsubmit="return confirmDeleteService(this, '<%= service.name %>')">
-                            <button type="submit" class="btn btn-danger btn-sm" title="Delete" style="display: inline-block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 9999 !important;">
+                          <form action="/server/service/<%= service.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteService(this, '<%= service.name %>')">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Delete">
                               <i class="bi bi-trash"></i>
                             </button>
                           </form>
