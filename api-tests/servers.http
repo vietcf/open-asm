@@ -511,3 +511,45 @@ Content-Type: application/json
   "ip_addresses": [19],
   "description": "  Description with whitespace  "
 }
+
+# ========================================
+# 🗑️ DELETE SERVER - IP RELEASE VS DELETE FLAG
+# ========================================
+
+### 61. Create Server for Delete-IP Flag Test (default: release)
+# @name createServerForReleaseTest
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "Server for release-ip delete test",
+  "ip_addresses": [20]
+}
+
+### 62. Delete Server - Default Behavior (releases IP to 'reserved', does not delete it)
+DELETE {{baseUrl}}/{{apiVersion}}/servers/{{createServerForReleaseTest.response.body.id}}
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 63. Verify Released IP Still Exists, Status = reserved
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses/20
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 64. Create Server for Delete-IP Flag Test (explicit delete_ip=true)
+# @name createServerForDeleteIpTest
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "Server for delete-ip=true delete test",
+  "ip_addresses": [21]
+}
+
+### 65. Delete Server with delete_ip=true (permanently deletes its IP)
+DELETE {{baseUrl}}/{{apiVersion}}/servers/{{createServerForDeleteIpTest.response.body.id}}?delete_ip=true
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 66. Verify Deleted IP No Longer Exists (Should 404)
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses/21
+Authorization: Bearer {{serverAuth.response.body.token}}

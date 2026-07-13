@@ -163,7 +163,7 @@ Authorization: Bearer {{deviceAuth.response.body.token}}
 DELETE {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceComplete.response.body.data.id}}
 Accept: application/json
 Authorization: Bearer {{deviceAuth.response.body.token}}
-# Expected: 204 No Content (no response body)
+# Expected: 200 OK with { success: true, message: "Device deleted successfully" }
 
 # ========================================
 # 🔍 SEARCH & FIND OPERATIONS
@@ -721,6 +721,56 @@ Authorization: Bearer {{deviceAuth.response.body.token}}
 
 ### 70. Filter by Location with Spaces
 GET {{baseUrl}}/{{apiVersion}}/devices?location=Data Center Room A
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+# ========================================
+# 🗑️ DELETE DEVICE - IP RELEASE VS DELETE FLAG
+# ========================================
+
+### 71. Create Device for Delete-IP Flag Test (default: release)
+# @name createDeviceForReleaseTest
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "device for release-ip delete test",
+  "device_type_id": 1,
+  "ip_addresses": [25]
+}
+
+### 72. Delete Device - Default Behavior (releases IP to 'reserved', does not delete it)
+DELETE {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceForReleaseTest.response.body.data.id}}
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 73. Verify Released IP Still Exists, Status = reserved
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses/25
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 74. Create Device for Delete-IP Flag Test (explicit delete_ip=true)
+# @name createDeviceForDeleteIpTest
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+{
+  "name": "device for delete-ip=true delete test",
+  "device_type_id": 1,
+  "ip_addresses": [26]
+}
+
+### 75. Delete Device with delete_ip=true (permanently deletes its IP)
+DELETE {{baseUrl}}/{{apiVersion}}/devices/{{createDeviceForDeleteIpTest.response.body.data.id}}?delete_ip=true
+Accept: application/json
+Authorization: Bearer {{deviceAuth.response.body.token}}
+
+### 76. Verify Deleted IP No Longer Exists (Should 404)
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses/26
 Accept: application/json
 Authorization: Bearer {{deviceAuth.response.body.token}}
 

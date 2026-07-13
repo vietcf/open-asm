@@ -414,7 +414,8 @@ deviceController.updateDevice = async (req, res) => {
 // Delete a device
 deviceController.deleteDevice = async (req, res) => {
   try {
-    await deleteDeviceService(req.params.id);
+    const deleteIp = ['true', '1'].includes(String(req.body.delete_ip ?? req.query.delete_ip).toLowerCase());
+    await deleteDeviceService(req.params.id, { deleteIp });
     req.flash('success', 'Device deleted successfully!');
     res.redirect('/device/device');
   } catch (err) {

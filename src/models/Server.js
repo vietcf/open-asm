@@ -58,12 +58,16 @@ class Server {
     );
   }
 
-  static async remove(id, client = pool) {
+  static async remove(id, client = pool, { deleteIp = false } = {}) {
     await client.query('DELETE FROM server_contact WHERE server_id = $1', [id]);
     await client.query('DELETE FROM server_system WHERE server_id = $1', [id]);
     await client.query('DELETE FROM server_agents WHERE server_id = $1', [id]);
     await client.query('DELETE FROM server_services WHERE server_id = $1', [id]);
-    await client.query('DELETE FROM ip_addresses WHERE server_id = $1', [id]);
+    if (deleteIp) {
+      await client.query('DELETE FROM ip_addresses WHERE server_id = $1', [id]);
+    } else {
+      await client.query("UPDATE ip_addresses SET server_id = NULL, status = 'reserved' WHERE server_id = $1", [id]);
+    }
     await client.query('DELETE FROM servers WHERE id = $1', [id]);
   }
 

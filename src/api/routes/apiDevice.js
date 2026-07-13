@@ -347,6 +347,13 @@
  *         schema:
  *           type: integer
  *         description: Device ID
+ *       - in: query
+ *         name: delete_ip
+ *         required: false
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: If true, permanently delete the device's IP addresses. Default false releases them (status set to 'reserved').
  *     responses:
  *       200:
  *         description: Deleted

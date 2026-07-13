@@ -142,7 +142,8 @@ apiDeviceController.updateDevice = async (req, res) => {
 // Delete a device
 apiDeviceController.deleteDevice = async (req, res) => {
   try {
-    await deleteDeviceService(req.params.id);
+    const deleteIp = ['true', '1'].includes(String(req.query.delete_ip).toLowerCase());
+    await deleteDeviceService(req.params.id, { deleteIp });
     res.status(200).json({
       success: true,
       message: 'Device deleted successfully'
