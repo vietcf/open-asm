@@ -287,11 +287,12 @@ function buildExportUrl() {
                       
                       <!-- Description -->
                       <td>
-                        <% 
+                        <%
                           const description = subnet.description || '-';
-                          const truncatedDesc = description.length > 50 ? description.substring(0, 50) + '...' : description;
+                          const cleanDescription = description.trim();
+                          const truncatedDesc = cleanDescription.length > 50 ? cleanDescription.substring(0, 50) + '…' : cleanDescription;
                         %>
-                        <span title="<%= description %>"><%= truncatedDesc %></span>
+                        <span data-bs-toggle="tooltip" data-bs-placement="top" title="<%= cleanDescription %>" style="cursor: help; word-break: break-word;"><%= truncatedDesc %></span>
                       </td>
                       
                       <!-- Zone -->
@@ -1985,7 +1986,24 @@ $('#importSubnetModal').on('hidden.bs.modal', function() {
   // Reset progress bar
   $('.progress-bar').css('width', '0%').text('');
 });
+
+// Initialize tooltips (e.g. Description column)
+$(document).ready(function() {
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+});
 </script>
+
+<style>
+/* Custom tooltip styles for multi-line descriptions */
+.tooltip .tooltip-inner {
+  white-space: pre-wrap;
+  max-width: 400px;
+  text-align: left;
+}
+</style>
 
 <style>
 /* Fixed proportional column widths — table-layout: fixed makes each column's
