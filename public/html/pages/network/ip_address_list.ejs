@@ -1807,6 +1807,26 @@ $(document).ready(function() {
   overflow-wrap: break-word;
 }
 
+/* Tags/Systems/Contacts columns: Bootstrap badges default to white-space: nowrap,
+   so a long name would overflow past these fixed-width columns and visually
+   cover the next column instead of wrapping. Force badges to wrap their own
+   text and stack onto new lines within the cell. */
+#ipTable td:nth-child(6),
+#ipTable td:nth-child(7),
+#ipTable td:nth-child(8) {
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+#ipTable td:nth-child(6) .badge,
+#ipTable td:nth-child(7) .badge,
+#ipTable td:nth-child(8) .badge {
+  white-space: normal;
+  word-break: break-word;
+  text-align: left;
+  max-width: 100%;
+  margin-bottom: 2px;
+}
+
 /* Force override for Add IP Address modal buttons on mobile */
 @media (max-width: 991.98px) {
   #addIpModal .modal-footer {
