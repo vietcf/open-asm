@@ -235,8 +235,12 @@ export async function updateDevice(id, input, client) {
   return Device.getFullDetail(id);
 }
 
-export async function deleteDevice(id) {
+// deleteIp: false (default) releases the device's IPs back to 'reserved'
+// instead of deleting them.
+export async function deleteDevice(id, { deleteIp = false } = {}) {
   const exists = await Device.exists(id);
   if (!exists) throw new NotFoundError('Device not found');
-  await Device.remove(id);
+  await withTransaction(null, async (c) => {
+    await Device.remove(id, c, { deleteIp });
+  });
 }

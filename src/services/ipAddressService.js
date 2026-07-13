@@ -10,7 +10,7 @@ import { withTransaction } from './transaction.js';
 // API; the frontend's old `^[0-9]{1,3}(\.[0-9]{1,3}){3}$` allowed octets >255).
 // Adopted for both consumers — rejects a class of addresses that were never
 // actually valid IPv4.
-const IPV4_REGEX = /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/;
+export const IPV4_REGEX = /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/;
 
 const toIdArray = v => {
   if (v === undefined || v === null) return [];

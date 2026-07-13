@@ -401,8 +401,10 @@
 <script src="/vendor/jquery-3.6.0.min.js"></script>
 <script src="/vendor/select2.min.js"></script>
 <script>
-  // App Type options data for Select2
-  window.appTypeOptionsData = <%- JSON.stringify(appTypeOptions || []) %>;
+  // App Type options data for Select2 — appTypeOptions is {value,label} (from
+  // config), but Select2's `data` option requires {id,text}; map here so both
+  // the dropdown labels and the filter-restore .val() matching work.
+  window.appTypeOptionsData = <%- JSON.stringify((appTypeOptions || []).map(o => ({ id: o.value, text: o.label }))) %>;
   
   // Restore Select2 values function
   function restoreSelect2Value($el, values, url) {

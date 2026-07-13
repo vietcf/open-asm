@@ -19,7 +19,8 @@ import {
   createIpAddress as createIpAddressService,
   updateIpAddress as updateIpAddressService,
   deleteIpAddress as deleteIpAddressService,
-  getIpStatusOptions
+  getIpStatusOptions,
+  IPV4_REGEX
 } from '../services/ipAddressService.js';
 import {
   listSubnets as listSubnetsService,
@@ -767,9 +768,11 @@ networkController.validateImportIPs = async (req, res) => {
 
     // Validate each row
     const validationResults = [];
-    const ipRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}$/;
-    const validStatuses = ['active', 'reserved', 'inactive'];
-    
+    // Shared with single/comma-add and the real import step (ipAddressService)
+    // instead of a separately-maintained, drifted regex.
+    const statusOptions = await getIpStatusOptions();
+    const validStatuses = statusOptions.length ? statusOptions.map(s => String(s.value).toLowerCase()) : null;
+
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       const rowNumber = i + 2; // +2 because Excel starts from 1 and we skip header
@@ -784,33 +787,23 @@ networkController.validateImportIPs = async (req, res) => {
         validation_status: 'Pass',
         validation_reason: ''
       };
-      
+
       // Validate IP address
       if (!result.ip_address) {
         result.validation_status = 'Fail';
         result.validation_reason = 'IP Address is required';
-      } else if (!ipRegex.test(result.ip_address)) {
+      } else if (!IPV4_REGEX.test(result.ip_address)) {
         result.validation_status = 'Fail';
         result.validation_reason = 'Invalid IP address format';
-      } else {
-        // Check IP range
-        const parts = result.ip_address.split('.');
-        for (const part of parts) {
-          const num = parseInt(part, 10);
-          if (num < 0 || num > 255) {
-            result.validation_status = 'Fail';
-            result.validation_reason = 'IP address octet must be between 0 and 255';
-            break;
-          }
-        }
       }
-      
-      // Validate status
-      if (result.status && !validStatuses.includes(result.status.toLowerCase())) {
+
+      // Validate status against the actually configured status options — no
+      // options configured means no restriction, matching ipAddressService.
+      if (validStatuses && result.status && !validStatuses.includes(result.status.toLowerCase())) {
         result.validation_status = 'Fail';
-        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + 'Invalid status. Must be: active, reserved, or inactive';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Invalid status. Must be one of: ${validStatuses.join(', ')}`;
       }
-      
+
       // Check if IP already exists
       try {
         const existingIP = await IpAddress.findByAddressWithDetails(result.ip_address);
@@ -881,10 +874,29 @@ networkController.validateImportIPs = async (req, res) => {
           result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `System(s) not found: ${invalidSystems.join(', ')}`;
         }
       }
-      
+
       validationResults.push(result);
     }
-    
+
+    // Detect IP addresses duplicated within the file itself — the per-row
+    // loop above only checks each IP against the DB, so two identical IPs in
+    // the same file both "Pass" individually. That's exactly the case most
+    // likely to hit a duplicate-key error mid-import (see importIPs).
+    const rowsByIp = new Map();
+    for (const result of validationResults) {
+      if (!result.ip_address) continue;
+      const key = result.ip_address.trim();
+      if (!rowsByIp.has(key)) rowsByIp.set(key, []);
+      rowsByIp.get(key).push(result);
+    }
+    for (const dupRows of rowsByIp.values()) {
+      if (dupRows.length <= 1) continue;
+      for (const result of dupRows) {
+        result.validation_status = 'Fail';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + 'Duplicate IP address within this file';
+      }
+    }
+
     // Create validation results Excel file
     try {
       
@@ -1056,13 +1068,18 @@ networkController.importIPs = async (req, res) => {
     
     const importResults = [];
     const updated_by = req.session.user?.username || '';
-    
+    // Tracks IPs already processed earlier in this same file — a second
+    // occurrence is failed immediately instead of being attempted (see
+    // finding #2: two identical rows in one file previously both "succeeded"
+    // right up until the duplicate-key error aborted the transaction).
+    const seenIps = new Set();
+
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       const rowNumber = i + 2;
       const result = {
         row: rowNumber,
-        ip_address: row['IPAddress (Require, one per row)'] || '',
+        ip_address: (row['IPAddress (Require, one per row)'] || '').toString().trim(),
         description: row['Description'] || '',
         status: row['Status'] || 'reserved',
         tags: row['Tag (comma-separated if multiple)'] || row['Tags'] || '',
@@ -1071,74 +1088,74 @@ networkController.importIPs = async (req, res) => {
         import_status: 'Success',
         import_reason: ''
       };
-      
-      try {
-        // Create IP address
-        const newIp = await IpAddress.create({ 
-          address: result.ip_address, 
-          description: result.description, 
-          status: result.status, 
-          updated_by 
-        }, client);
-        
-        // Set tags if provided
-        if (result.tags) {
-          const tagNames = result.tags.split(',').map(t => t.trim()).filter(t => t);
-          const tagIds = [];
-          for (const tagName of tagNames) {
-            const tags = await Tag.findByNameExact(tagName);
-            if (tags && tags.length > 0) {
-              tagIds.push(tags[0].id);
-            }
-          }
-          if (tagIds.length > 0) {
-            // @ts-ignore - client parameter is supported by model methods
-            await IpAddress.setTags(newIp.id, tagIds, client);
-          }
-        }
-        
-        // Set contacts if provided
-        if (result.contacts) {
-          const contactEmails = result.contacts.split(',').map(c => c.trim()).filter(c => c);
-          const contactIds = [];
-          for (const email of contactEmails) {
-            const contacts = await Contact.findByEmailSearch(email);
-            if (contacts && contacts.length > 0) {
-              contactIds.push(contacts[0].id);
-            }
-          }
-          if (contactIds.length > 0) {
-            // @ts-ignore - client parameter is supported by model methods
-            await IpAddress.setContacts(newIp.id, contactIds, client);
-          }
-        }
-        
-        // Set systems if provided
-        if (result.system) {
-          const systemNames = result.system.split(',').map(s => s.trim()).filter(s => s);
-          const systemIds = [];
-          for (const systemName of systemNames) {
-            const systems = await System.findByNameExact(systemName);
-            if (systems && systems.length > 0) {
-              systemIds.push(systems[0].id);
-            }
-          }
-          if (systemIds.length > 0) {
-            // @ts-ignore - client parameter is supported by model methods
-            await IpAddress.setSystems(newIp.id, systemIds, client);
-          }
-        }
-        
-        result.import_reason = 'Successfully created IP address';
-        
-      } catch (err) {
+
+      if (seenIps.has(result.ip_address)) {
         result.import_status = 'Failed';
-        result.import_reason = err.message || 'Unknown error';
+        result.import_reason = 'Duplicate IP address within this file';
+        importResults.push(result);
+        continue;
       }
-      
+      seenIps.add(result.ip_address);
+
+      // Resolve tag/contact/system names to IDs up front. A name that
+      // doesn't resolve fails the whole row (matching validateImportIPs)
+      // instead of being silently dropped from the created IP's associations.
+      const notFound = [];
+      const tagIds = [];
+      for (const tagName of result.tags.split(',').map(t => t.trim()).filter(Boolean)) {
+        const tags = await Tag.findByNameExact(tagName);
+        if (tags && tags.length > 0) tagIds.push(tags[0].id);
+        else notFound.push(`Tag "${tagName}"`);
+      }
+      const contactIds = [];
+      for (const email of result.contacts.split(',').map(c => c.trim()).filter(Boolean)) {
+        const contacts = await Contact.findByEmailSearch(email);
+        if (contacts && contacts.length > 0) contactIds.push(contacts[0].id);
+        else notFound.push(`Contact "${email}"`);
+      }
+      const systemIds = [];
+      for (const systemName of result.system.split(',').map(s => s.trim()).filter(Boolean)) {
+        const systems = await System.findByNameExact(systemName);
+        if (systems && systems.length > 0) systemIds.push(systems[0].id);
+        else notFound.push(`System "${systemName}"`);
+      }
+      if (notFound.length > 0) {
+        result.import_status = 'Failed';
+        result.import_reason = `Not found: ${notFound.join(', ')}`;
+        importResults.push(result);
+        continue;
+      }
+
+      // Each row gets its own savepoint: createIpAddressService runs the same
+      // format/status/duplicate validation as the single-add path, but if it
+      // (or anything else) still hits a raw DB error, that error leaves the
+      // whole shared transaction "aborted" in Postgres until rolled back —
+      // without a savepoint, every row after the first failure would also
+      // fail and the final COMMIT would discard the entire batch, even rows
+      // already reported as Success (see finding #1).
+      const savepoint = `import_row_${i}`;
+      try {
+        await client.query(`SAVEPOINT ${savepoint}`);
+        await createIpAddressService({
+          address: result.ip_address,
+          description: result.description,
+          status: result.status,
+          tags: tagIds,
+          contacts: contactIds,
+          systems: systemIds,
+          updated_by
+        }, client);
+        await client.query(`RELEASE SAVEPOINT ${savepoint}`);
+        result.import_reason = 'Successfully created IP address';
+      } catch (err) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+        result.import_status = 'Failed';
+        result.import_reason = err instanceof ServiceError ? err.message : (err.message || 'Unknown error');
+      }
+
       importResults.push(result);
     }
-    
+
     await client.query('COMMIT');
 
     // Set header for frontend to know import results — same shape as
@@ -1445,7 +1462,7 @@ networkController.downloadTemplate = async (req, res) => {
     worksheet.addRow([
       '192.168.192.101',
       'MGMT: MGMT Network + Firewall',
-      'active',
+      'assigned',
       'REST-Test-Tag,PCI-CDE',
       'toannn1.ho,longhv.ho',
       'Test System Minimal,Quản lý công việc'

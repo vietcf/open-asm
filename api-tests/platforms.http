@@ -181,6 +181,64 @@ DELETE {{baseUrl}}/{{apiVersion}}/platforms/99999
 Accept: application/json
 Authorization: Bearer {{platformAuth.response.body.token}}
 
+### 20.1. Create Platform for Delete-In-Use Test
+# @name platformInUse
+POST {{baseUrl}}/{{apiVersion}}/platforms
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+{
+  "name": "Platform In Use Test"
+}
+
+### 20.2. Create Device Referencing the Platform
+# @name deviceUsingPlatform
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+{
+  "name": "device for platform delete test",
+  "platform_id": {{platformInUse.response.body.data.id}}
+}
+
+### 20.3. Delete Platform In Use (Should Fail - 409)
+DELETE {{baseUrl}}/{{apiVersion}}/platforms/{{platformInUse.response.body.data.id}}
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+### 20.4. Cleanup - Delete the Referencing Device
+DELETE {{baseUrl}}/{{apiVersion}}/devices/{{deviceUsingPlatform.response.body.data.id}}
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+### 20.5. Cleanup - Delete Platform (Should Succeed Now)
+DELETE {{baseUrl}}/{{apiVersion}}/platforms/{{platformInUse.response.body.data.id}}
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+# ========================================
+# 🔒 AUTH & CONTENT-TYPE TESTS
+# ========================================
+
+### 20.6. Test Authentication (No Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/platforms
+
+### 20.7. Test Authentication (Invalid Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/platforms
+Authorization: Bearer invalid_token
+
+### 20.8. Test Content Type (Wrong Content Type - Should Fail)
+POST {{baseUrl}}/{{apiVersion}}/platforms
+Authorization: Bearer {{platformAuth.response.body.token}}
+Content-Type: text/plain
+
+{
+  "name": "Wrong Content Type Platform"
+}
+
 # ========================================
 # 🧪 ADVANCED PLATFORM TESTS
 # ========================================

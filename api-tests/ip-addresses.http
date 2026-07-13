@@ -663,6 +663,26 @@ DELETE {{baseUrl}}/{{apiVersion}}/ip-addresses/99999
 Authorization: Bearer {{ipAuth.response.body.token}}
 
 # ========================================
+# 🔒 AUTH & CONTENT-TYPE TESTS
+# ========================================
+
+### 46.1. Test Authentication (No Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses
+
+### 46.2. Test Authentication (Invalid Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses
+Authorization: Bearer invalid_token
+
+### 46.3. Test Content Type (Wrong Content Type - Should Fail)
+POST {{baseUrl}}/{{apiVersion}}/ip-addresses
+Authorization: Bearer {{ipAuth.response.body.token}}
+Content-Type: text/plain
+
+{
+  "address": "192.168.99.99"
+}
+
+# ========================================
 # 📝 IP DELETION BLOCKING TEST NOTES
 # ========================================
 #

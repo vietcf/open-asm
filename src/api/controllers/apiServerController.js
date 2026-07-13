@@ -157,7 +157,8 @@ apiServerController.updateServer = async (req, res) => {
 // Delete a server
 apiServerController.deleteServer = async (req, res) => {
   try {
-    await deleteServerService(req.params.id);
+    const deleteIp = ['true', '1'].includes(String(req.query.delete_ip).toLowerCase());
+    await deleteServerService(req.params.id, { deleteIp });
     res.json({
       success: true,
       message: 'Server deleted successfully'

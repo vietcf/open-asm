@@ -1,67 +1,80 @@
-### Server API Tests
-### Base URL
-@baseUrl = http://localhost:3000/api/v1
-@token = your_jwt_token_here
+# ========================================
+# 🖥️ SERVERS API TESTS
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+# Environment: development (change in VS Code status bar)
+# ========================================
+
+### 0. Login to get JWT Token (Run this first!)
+# @name serverAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
 
 ### 1. Get All Servers
-GET {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 
 ### 2. Get Servers with Pagination
-GET {{baseUrl}}/servers?page=1&pageSize=5
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/servers?page=1&pageSize=5
+Authorization: Bearer {{serverAuth.response.body.token}}
 
 ### 3. Get Servers with Search
-GET {{baseUrl}}/servers?search=web
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/servers?search=web
+Authorization: Bearer {{serverAuth.response.body.token}}
 
 ### 4. Get Servers with Status Filter
-GET {{baseUrl}}/servers?status=ONLINE
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/servers?status=ONLINE
+Authorization: Bearer {{serverAuth.response.body.token}}
 
 ### 5. Get Servers with Type Filter
-GET {{baseUrl}}/servers?type=PHYSICAL
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/servers?type=PHYSICAL
+Authorization: Bearer {{serverAuth.response.body.token}}
 
 ### 6. Get Servers with Location Filter
-GET {{baseUrl}}/servers?location=DC
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/servers?location=DC
+Authorization: Bearer {{serverAuth.response.body.token}}
 
 ### 7. Get Servers with Multiple Filters
-GET {{baseUrl}}/servers?status=ONLINE&type=PHYSICAL&location=DC
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/servers?status=ONLINE&type=PHYSICAL&location=DC
+Authorization: Bearer {{serverAuth.response.body.token}}
 
 ### 8. Get Server Configuration Options
-GET {{baseUrl}}/servers/config
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/servers/config
+Authorization: Bearer {{serverAuth.response.body.token}}
 
 ### 9. Find Servers by Name
-GET {{baseUrl}}/servers/find?name=Web Server 1
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/servers/find?name=Web Server 1
+Authorization: Bearer {{serverAuth.response.body.token}}
 
 ### 10. Find Servers by IP Address
-GET {{baseUrl}}/servers/find?ip_address=192.168.1.100
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/servers/find?ip_address=192.168.1.100
+Authorization: Bearer {{serverAuth.response.body.token}}
 
 ### 11. Find Servers (No Criteria - Should Fail)
-GET {{baseUrl}}/servers/find
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/servers/find
+Authorization: Bearer {{serverAuth.response.body.token}}
 
 ### 12. Find Servers (Non-existent - Should Return Empty)
-GET {{baseUrl}}/servers/find?name=NonExistentServer
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/servers/find?name=NonExistentServer
+Authorization: Bearer {{serverAuth.response.body.token}}
 
 ### 13. Get Server by ID
-GET {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 
 ### 14. Get Non-existent Server (Should Fail)
-GET {{baseUrl}}/servers/99999
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/servers/99999
+Authorization: Bearer {{serverAuth.response.body.token}}
 
 ### 15. Create Server (Minimal)
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -70,8 +83,8 @@ Content-Type: application/json
 }
 
 ### 16. Create Server (Full)
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -90,8 +103,8 @@ Content-Type: application/json
 }
 
 ### 17. Create Server (Missing Name - Should Fail)
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -99,8 +112,8 @@ Content-Type: application/json
 }
 
 ### 18. Create Server (Duplicate Name - Should Fail)
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -109,8 +122,8 @@ Content-Type: application/json
 }
 
 ### 19. Create Server (No IP Addresses - Should Fail)
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -118,8 +131,8 @@ Content-Type: application/json
 }
 
 ### 20. Create Server (Invalid Platform ID - Should Fail)
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -129,8 +142,8 @@ Content-Type: application/json
 }
 
 ### 21. Create Server (Invalid Status - Should Fail)
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -140,8 +153,8 @@ Content-Type: application/json
 }
 
 ### 22. Create Server (Invalid Location - Should Fail)
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -151,8 +164,8 @@ Content-Type: application/json
 }
 
 ### 23. Create Server (Invalid Manager ID - Should Fail)
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -162,8 +175,8 @@ Content-Type: application/json
 }
 
 ### 24. Create Server (Invalid System ID - Should Fail)
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -173,8 +186,8 @@ Content-Type: application/json
 }
 
 ### 25. Create Server (Invalid Agent ID - Should Fail)
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -184,8 +197,8 @@ Content-Type: application/json
 }
 
 ### 26. Create Server (Invalid Service ID - Should Fail)
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -195,8 +208,8 @@ Content-Type: application/json
 }
 
 ### 27. Create Server (Invalid Tag ID - Should Fail)
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -206,8 +219,8 @@ Content-Type: application/json
 }
 
 ### 28. Create Server (Invalid IP Address ID - Should Fail)
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -216,8 +229,8 @@ Content-Type: application/json
 }
 
 ### 29. Create Server (Already Assigned IP - Should Fail)
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -226,8 +239,8 @@ Content-Type: application/json
 }
 
 ### 30. Update Server (Full Update)
-PUT {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -246,8 +259,8 @@ Content-Type: application/json
 }
 
 ### 31. Update Server (Partial Update - Name Only)
-PUT {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -255,8 +268,8 @@ Content-Type: application/json
 }
 
 ### 32. Update Server (Partial Update - Status Only)
-PUT {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -264,8 +277,8 @@ Content-Type: application/json
 }
 
 ### 33. Update Server (Partial Update - IP Addresses Only)
-PUT {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -273,15 +286,15 @@ Content-Type: application/json
 }
 
 ### 34. Update Server (Empty Body - Should Return Current Server)
-PUT {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {}
 
 ### 35. Update Server (Duplicate Name - Should Fail)
-PUT {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -289,8 +302,8 @@ Content-Type: application/json
 }
 
 ### 36. Update Server (Invalid Field - Should Fail)
-PUT {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -298,8 +311,8 @@ Content-Type: application/json
 }
 
 ### 37. Update Server (Invalid Status - Should Fail)
-PUT {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -307,8 +320,8 @@ Content-Type: application/json
 }
 
 ### 38. Update Server (Invalid Location - Should Fail)
-PUT {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -316,8 +329,8 @@ Content-Type: application/json
 }
 
 ### 39. Update Server (Invalid Platform ID - Should Fail)
-PUT {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -325,8 +338,8 @@ Content-Type: application/json
 }
 
 ### 40. Update Server (Invalid Manager ID - Should Fail)
-PUT {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -334,8 +347,8 @@ Content-Type: application/json
 }
 
 ### 41. Update Server (Invalid System ID - Should Fail)
-PUT {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -343,8 +356,8 @@ Content-Type: application/json
 }
 
 ### 42. Update Server (Invalid Agent ID - Should Fail)
-PUT {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -352,8 +365,8 @@ Content-Type: application/json
 }
 
 ### 43. Update Server (Invalid Service ID - Should Fail)
-PUT {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -361,8 +374,8 @@ Content-Type: application/json
 }
 
 ### 44. Update Server (Invalid Tag ID - Should Fail)
-PUT {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -370,8 +383,8 @@ Content-Type: application/json
 }
 
 ### 45. Update Server (Invalid IP Address ID - Should Fail)
-PUT {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -379,8 +392,8 @@ Content-Type: application/json
 }
 
 ### 46. Update Server (Already Assigned IP - Should Fail)
-PUT {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -388,8 +401,8 @@ Content-Type: application/json
 }
 
 ### 47. Update Non-existent Server (Should Fail)
-PUT {{baseUrl}}/servers/99999
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/servers/99999
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -397,23 +410,23 @@ Content-Type: application/json
 }
 
 ### 48. Delete Server
-DELETE {{baseUrl}}/servers/1
-Authorization: Bearer {{token}}
+DELETE {{baseUrl}}/{{apiVersion}}/servers/1
+Authorization: Bearer {{serverAuth.response.body.token}}
 
 ### 49. Delete Non-existent Server (Should Fail)
-DELETE {{baseUrl}}/servers/99999
-Authorization: Bearer {{token}}
+DELETE {{baseUrl}}/{{apiVersion}}/servers/99999
+Authorization: Bearer {{serverAuth.response.body.token}}
 
 ### 50. Test Authentication (No Token - Should Fail)
-GET {{baseUrl}}/servers
+GET {{baseUrl}}/{{apiVersion}}/servers
 
 ### 51. Test Authentication (Invalid Token - Should Fail)
-GET {{baseUrl}}/servers
+GET {{baseUrl}}/{{apiVersion}}/servers
 Authorization: Bearer invalid_token
 
 ### 52. Test Content Type (Wrong Content Type - Should Fail)
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: text/plain
 
 {
@@ -421,8 +434,8 @@ Content-Type: text/plain
 }
 
 ### 53. Test Large Description
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -432,8 +445,8 @@ Content-Type: application/json
 }
 
 ### 54. Test Special Characters in Name
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -443,8 +456,8 @@ Content-Type: application/json
 }
 
 ### 55. Test Unicode Characters
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -454,16 +467,16 @@ Content-Type: application/json
 }
 
 ### 56. Test Array Parameters in Query
-GET {{baseUrl}}/servers?tags=1&tags=2&ip=1&ip=2&manager=1&manager=2
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/servers?tags=1&tags=2&ip=1&ip=2&manager=1&manager=2
+Authorization: Bearer {{serverAuth.response.body.token}}
 
 ### 57. Test Complex Filtering
-GET {{baseUrl}}/servers?search=test&status=ONLINE&type=PHYSICAL&location=DC&tags=1&ip=1&manager=1&systems=1&services=1&os=1&page=1&pageSize=10
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/servers?search=test&status=ONLINE&type=PHYSICAL&location=DC&tags=1&ip=1&manager=1&systems=1&services=1&os=1&page=1&pageSize=10
+Authorization: Bearer {{serverAuth.response.body.token}}
 
 ### 58. Test Edge Case - Empty Arrays
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -477,8 +490,8 @@ Content-Type: application/json
 }
 
 ### 59. Test Edge Case - Null Values
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -489,8 +502,8 @@ Content-Type: application/json
 }
 
 ### 60. Test Edge Case - Whitespace Handling
-POST {{baseUrl}}/servers
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -498,3 +511,45 @@ Content-Type: application/json
   "ip_addresses": [19],
   "description": "  Description with whitespace  "
 }
+
+# ========================================
+# 🗑️ DELETE SERVER - IP RELEASE VS DELETE FLAG
+# ========================================
+
+### 61. Create Server for Delete-IP Flag Test (default: release)
+# @name createServerForReleaseTest
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "Server for release-ip delete test",
+  "ip_addresses": [20]
+}
+
+### 62. Delete Server - Default Behavior (releases IP to 'reserved', does not delete it)
+DELETE {{baseUrl}}/{{apiVersion}}/servers/{{createServerForReleaseTest.response.body.id}}
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 63. Verify Released IP Still Exists, Status = reserved
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses/20
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 64. Create Server for Delete-IP Flag Test (explicit delete_ip=true)
+# @name createServerForDeleteIpTest
+POST {{baseUrl}}/{{apiVersion}}/servers
+Authorization: Bearer {{serverAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "Server for delete-ip=true delete test",
+  "ip_addresses": [21]
+}
+
+### 65. Delete Server with delete_ip=true (permanently deletes its IP)
+DELETE {{baseUrl}}/{{apiVersion}}/servers/{{createServerForDeleteIpTest.response.body.id}}?delete_ip=true
+Authorization: Bearer {{serverAuth.response.body.token}}
+
+### 66. Verify Deleted IP No Longer Exists (Should 404)
+GET {{baseUrl}}/{{apiVersion}}/ip-addresses/21
+Authorization: Bearer {{serverAuth.response.body.token}}

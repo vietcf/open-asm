@@ -230,10 +230,12 @@ export async function updateServer(id, input, client) {
 // Wrapped in a transaction — the frontend previously called Server.remove()
 // non-transactionally (partial failure across its 5 DELETEs could leave
 // orphaned rows); the API already did this correctly.
-export async function deleteServer(id) {
+// deleteIp: false (default) releases the server's IPs back to 'reserved'
+// instead of deleting them.
+export async function deleteServer(id, { deleteIp = false } = {}) {
   const exists = await Server.exists(id);
   if (!exists) throw new NotFoundError('Server not found');
   await withTransaction(null, async (c) => {
-    await Server.remove(id, c);
+    await Server.remove(id, c, { deleteIp });
   });
 }

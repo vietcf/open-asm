@@ -1,15 +1,28 @@
-### Agent API Tests
-### Base URL
-@baseUrl = http://localhost:3000/api/v1
-@token = your_jwt_token_here
+# ========================================
+# 🤖 AGENTS API TESTS
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+# Environment: development (change in VS Code status bar)
+# ========================================
+
+### 0. Login to get JWT Token (Run this first!)
+# @name agentAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
 
 ### 1. Get All Agents
-GET {{baseUrl}}/agents
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/agents
+Authorization: Bearer {{agentAuth.response.body.token}}
 
 ### 2. Create Agent
-POST {{baseUrl}}/agents
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/agents
+Authorization: Bearer {{agentAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -19,8 +32,8 @@ Content-Type: application/json
 }
 
 ### 3. Create Agent (Minimal)
-POST {{baseUrl}}/agents
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/agents
+Authorization: Bearer {{agentAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -28,8 +41,8 @@ Content-Type: application/json
 }
 
 ### 4. Create Agent (Duplicate Name - Should Fail)
-POST {{baseUrl}}/agents
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/agents
+Authorization: Bearer {{agentAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -38,8 +51,8 @@ Content-Type: application/json
 }
 
 ### 5. Create Agent (Missing Name - Should Fail)
-POST {{baseUrl}}/agents
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/agents
+Authorization: Bearer {{agentAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -48,8 +61,8 @@ Content-Type: application/json
 }
 
 ### 6. Create Agent (Empty Name - Should Fail)
-POST {{baseUrl}}/agents
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/agents
+Authorization: Bearer {{agentAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -58,16 +71,16 @@ Content-Type: application/json
 }
 
 ### 7. Get Agent by ID
-GET {{baseUrl}}/agents/1
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/agents/10
+Authorization: Bearer {{agentAuth.response.body.token}}
 
 ### 8. Get Non-existent Agent (Should Fail)
-GET {{baseUrl}}/agents/99999
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/agents/99999
+Authorization: Bearer {{agentAuth.response.body.token}}
 
 ### 9. Update Agent (Full Update)
-PUT {{baseUrl}}/agents/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/agents/10
+Authorization: Bearer {{agentAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -77,8 +90,8 @@ Content-Type: application/json
 }
 
 ### 10. Update Agent (Partial Update - Name Only)
-PUT {{baseUrl}}/agents/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/agents/10
+Authorization: Bearer {{agentAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -86,8 +99,8 @@ Content-Type: application/json
 }
 
 ### 11. Update Agent (Partial Update - Version Only)
-PUT {{baseUrl}}/agents/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/agents/10
+Authorization: Bearer {{agentAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -95,8 +108,8 @@ Content-Type: application/json
 }
 
 ### 12. Update Agent (Partial Update - Description Only)
-PUT {{baseUrl}}/agents/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/agents/10
+Authorization: Bearer {{agentAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -104,15 +117,15 @@ Content-Type: application/json
 }
 
 ### 13. Update Agent (Empty Body - Should Return Current Agent)
-PUT {{baseUrl}}/agents/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/agents/1
+Authorization: Bearer {{agentAuth.response.body.token}}
 Content-Type: application/json
 
 {}
 
 ### 14. Update Agent (Empty Name - Should Fail)
-PUT {{baseUrl}}/agents/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/agents/10
+Authorization: Bearer {{agentAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -120,8 +133,8 @@ Content-Type: application/json
 }
 
 ### 15. Update Non-existent Agent (Should Fail)
-PUT {{baseUrl}}/agents/99999
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/agents/99999
+Authorization: Bearer {{agentAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -129,47 +142,47 @@ Content-Type: application/json
 }
 
 ### 16. Find Agents by Exact Name
-GET {{baseUrl}}/agents/find?name=Test Agent
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/agents/find?name=Test Agent
+Authorization: Bearer {{agentAuth.response.body.token}}
 
 ### 17. Find Agents by Exact Name (Case Insensitive)
-GET {{baseUrl}}/agents/find?name=test agent
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/agents/find?name=test agent
+Authorization: Bearer {{agentAuth.response.body.token}}
 
 ### 18. Find Agents (Missing Name Parameter - Should Fail)
-GET {{baseUrl}}/agents/find
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/agents/find
+Authorization: Bearer {{agentAuth.response.body.token}}
 
 ### 19. Find Agents (Empty Name Parameter - Should Fail)
-GET {{baseUrl}}/agents/find?name=
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/agents/find?name=
+Authorization: Bearer {{agentAuth.response.body.token}}
 
 ### 20. Find Non-existent Agent
-GET {{baseUrl}}/agents/find?name=NonExistentAgent
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/agents/find?name=NonExistentAgent
+Authorization: Bearer {{agentAuth.response.body.token}}
 
 ### 21. Delete Agent
-DELETE {{baseUrl}}/agents/1
-Authorization: Bearer {{token}}
+DELETE {{baseUrl}}/{{apiVersion}}/agents/1
+Authorization: Bearer {{agentAuth.response.body.token}}
 
 ### 22. Delete Non-existent Agent (Should Fail)
-DELETE {{baseUrl}}/agents/99999
-Authorization: Bearer {{token}}
+DELETE {{baseUrl}}/{{apiVersion}}/agents/99999
+Authorization: Bearer {{agentAuth.response.body.token}}
 
 ### 23. Delete Agent in Use (Should Fail - if agent is referenced by servers)
-DELETE {{baseUrl}}/agents/2
-Authorization: Bearer {{token}}
+DELETE {{baseUrl}}/{{apiVersion}}/agents/2
+Authorization: Bearer {{agentAuth.response.body.token}}
 
 ### 24. Test Authentication (No Token - Should Fail)
-GET {{baseUrl}}/agents
+GET {{baseUrl}}/{{apiVersion}}/agents
 
 ### 25. Test Authentication (Invalid Token - Should Fail)
-GET {{baseUrl}}/agents
+GET {{baseUrl}}/{{apiVersion}}/agents
 Authorization: Bearer invalid_token
 
 ### 26. Test Content Type (Wrong Content Type - Should Fail)
-POST {{baseUrl}}/agents
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/agents
+Authorization: Bearer {{agentAuth.response.body.token}}
 Content-Type: text/plain
 
 {
@@ -177,8 +190,8 @@ Content-Type: text/plain
 }
 
 ### 27. Test Large Description
-POST {{baseUrl}}/agents
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/agents
+Authorization: Bearer {{agentAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -188,8 +201,8 @@ Content-Type: application/json
 }
 
 ### 28. Test Special Characters in Name
-POST {{baseUrl}}/agents
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/agents
+Authorization: Bearer {{agentAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -199,8 +212,8 @@ Content-Type: application/json
 }
 
 ### 29. Test Unicode Characters
-POST {{baseUrl}}/agents
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/agents
+Authorization: Bearer {{agentAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -210,8 +223,8 @@ Content-Type: application/json
 }
 
 ### 30. Test Version Format Variations
-POST {{baseUrl}}/agents
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/agents
+Authorization: Bearer {{agentAuth.response.body.token}}
 Content-Type: application/json
 
 {

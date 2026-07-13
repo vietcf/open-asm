@@ -514,7 +514,8 @@ serverController.apiSearchServer = async (req, res) => {
 serverController.deleteServer = async (req, res) => {
   try {
     const id = req.params.id;
-    await deleteServerService(id);
+    const deleteIp = ['true', '1'].includes(String(req.body.delete_ip ?? req.query.delete_ip).toLowerCase());
+    await deleteServerService(id, { deleteIp });
     res.redirect('/server/server/list?success=Server deleted successfully');
   } catch (err) {
     res.redirect('/server/server/list?error=Unable to delete server');

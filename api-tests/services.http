@@ -1,15 +1,28 @@
-### Service API Tests
-### Base URL
-@baseUrl = http://localhost:3000/api/v1
-@token = your_jwt_token_here
+# ========================================
+# 🔧 SERVICES API TESTS
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+# Environment: development (change in VS Code status bar)
+# ========================================
+
+### 0. Login to get JWT Token (Run this first!)
+# @name serviceAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
 
 ### 1. Get All Services
-GET {{baseUrl}}/services
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
 
 ### 2. Create Service
-POST {{baseUrl}}/services
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -18,8 +31,8 @@ Content-Type: application/json
 }
 
 ### 3. Create Service (Minimal)
-POST {{baseUrl}}/services
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -27,8 +40,8 @@ Content-Type: application/json
 }
 
 ### 4. Create Service (Duplicate Name - Should Fail)
-POST {{baseUrl}}/services
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -37,8 +50,8 @@ Content-Type: application/json
 }
 
 ### 5. Create Service (Missing Name - Should Fail)
-POST {{baseUrl}}/services
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -46,8 +59,8 @@ Content-Type: application/json
 }
 
 ### 6. Create Service (Empty Name - Should Fail)
-POST {{baseUrl}}/services
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -56,16 +69,16 @@ Content-Type: application/json
 }
 
 ### 7. Get Service by ID
-GET {{baseUrl}}/services/1
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/services/1
+Authorization: Bearer {{serviceAuth.response.body.token}}
 
 ### 8. Get Non-existent Service (Should Fail)
-GET {{baseUrl}}/services/99999
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/services/99999
+Authorization: Bearer {{serviceAuth.response.body.token}}
 
 ### 9. Update Service (Full Update)
-PUT {{baseUrl}}/services/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/services/1
+Authorization: Bearer {{serviceAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -74,8 +87,8 @@ Content-Type: application/json
 }
 
 ### 10. Update Service (Partial Update - Name Only)
-PUT {{baseUrl}}/services/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/services/1
+Authorization: Bearer {{serviceAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -83,8 +96,8 @@ Content-Type: application/json
 }
 
 ### 11. Update Service (Partial Update - Description Only)
-PUT {{baseUrl}}/services/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/services/1
+Authorization: Bearer {{serviceAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -92,15 +105,15 @@ Content-Type: application/json
 }
 
 ### 12. Update Service (Empty Body - Should Return Current Service)
-PUT {{baseUrl}}/services/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/services/1
+Authorization: Bearer {{serviceAuth.response.body.token}}
 Content-Type: application/json
 
 {}
 
 ### 13. Update Service (Empty Name - Should Fail)
-PUT {{baseUrl}}/services/1
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/services/1
+Authorization: Bearer {{serviceAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -108,8 +121,8 @@ Content-Type: application/json
 }
 
 ### 14. Update Non-existent Service (Should Fail)
-PUT {{baseUrl}}/services/99999
-Authorization: Bearer {{token}}
+PUT {{baseUrl}}/{{apiVersion}}/services/99999
+Authorization: Bearer {{serviceAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -117,47 +130,47 @@ Content-Type: application/json
 }
 
 ### 15. Find Services by Exact Name
-GET {{baseUrl}}/services/find?name=Test Service
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/services/find?name=Test Service
+Authorization: Bearer {{serviceAuth.response.body.token}}
 
 ### 16. Find Services by Exact Name (Case Insensitive)
-GET {{baseUrl}}/services/find?name=test service
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/services/find?name=test service
+Authorization: Bearer {{serviceAuth.response.body.token}}
 
 ### 17. Find Services (Missing Name Parameter - Should Fail)
-GET {{baseUrl}}/services/find
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/services/find
+Authorization: Bearer {{serviceAuth.response.body.token}}
 
 ### 18. Find Services (Empty Name Parameter - Should Fail)
-GET {{baseUrl}}/services/find?name=
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/services/find?name=
+Authorization: Bearer {{serviceAuth.response.body.token}}
 
 ### 19. Find Non-existent Service
-GET {{baseUrl}}/services/find?name=NonExistentService
-Authorization: Bearer {{token}}
+GET {{baseUrl}}/{{apiVersion}}/services/find?name=NonExistentService
+Authorization: Bearer {{serviceAuth.response.body.token}}
 
 ### 20. Delete Service
-DELETE {{baseUrl}}/services/1
-Authorization: Bearer {{token}}
+DELETE {{baseUrl}}/{{apiVersion}}/services/1
+Authorization: Bearer {{serviceAuth.response.body.token}}
 
 ### 21. Delete Non-existent Service (Should Fail)
-DELETE {{baseUrl}}/services/99999
-Authorization: Bearer {{token}}
+DELETE {{baseUrl}}/{{apiVersion}}/services/99999
+Authorization: Bearer {{serviceAuth.response.body.token}}
 
 ### 22. Delete Service in Use (Should Fail - if service is referenced by servers)
-DELETE {{baseUrl}}/services/2
-Authorization: Bearer {{token}}
+DELETE {{baseUrl}}/{{apiVersion}}/services/2
+Authorization: Bearer {{serviceAuth.response.body.token}}
 
 ### 23. Test Authentication (No Token - Should Fail)
-GET {{baseUrl}}/services
+GET {{baseUrl}}/{{apiVersion}}/services
 
 ### 24. Test Authentication (Invalid Token - Should Fail)
-GET {{baseUrl}}/services
+GET {{baseUrl}}/{{apiVersion}}/services
 Authorization: Bearer invalid_token
 
 ### 25. Test Content Type (Wrong Content Type - Should Fail)
-POST {{baseUrl}}/services
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
 Content-Type: text/plain
 
 {
@@ -165,8 +178,8 @@ Content-Type: text/plain
 }
 
 ### 26. Test Large Description
-POST {{baseUrl}}/services
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -175,8 +188,8 @@ Content-Type: application/json
 }
 
 ### 27. Test Special Characters in Name
-POST {{baseUrl}}/services
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -185,8 +198,8 @@ Content-Type: application/json
 }
 
 ### 28. Test Unicode Characters
-POST {{baseUrl}}/services
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -195,8 +208,8 @@ Content-Type: application/json
 }
 
 ### 29. Test Whitespace Handling
-POST {{baseUrl}}/services
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
 Content-Type: application/json
 
 {
@@ -205,8 +218,8 @@ Content-Type: application/json
 }
 
 ### 30. Test Null Values
-POST {{baseUrl}}/services
-Authorization: Bearer {{token}}
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
 Content-Type: application/json
 
 {

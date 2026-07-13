@@ -495,6 +495,13 @@ apiServerRouter.put('/:id', authorizePermissionJWT('server.update'), apiServerCo
  *         schema:
  *           type: integer
  *         description: Server ID
+ *       - in: query
+ *         name: delete_ip
+ *         required: false
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: If true, permanently delete the server's IP addresses. Default false releases them (status set to 'reserved').
  *     responses:
  *       204:
  *         description: Deleted

@@ -98,6 +98,16 @@ GET {{baseUrl}}/{{apiVersion}}/tags/find?name=produCtion
 Accept: application/json
 Authorization: Bearer {{tagAuth.response.body.token}}
 
+### 10.1. Find Tag (Missing Name Parameter - Should Fail - 400)
+GET {{baseUrl}}/{{apiVersion}}/tags/find
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+### 10.2. Find Tag (Empty Name Parameter - Should Fail - 400)
+GET {{baseUrl}}/{{apiVersion}}/tags/find?name=
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
 # ========================================
 # ❌ ERROR HANDLING TESTS
 # ========================================
@@ -142,6 +152,79 @@ Authorization: Bearer {{tagAuth.response.body.token}}
 DELETE {{baseUrl}}/{{apiVersion}}/tags/99999
 Accept: application/json
 Authorization: Bearer {{tagAuth.response.body.token}}
+
+### 16. Create Tag for Duplicate-Name Test
+# @name dupTagBase
+POST {{baseUrl}}/{{apiVersion}}/tags
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+{
+  "name": "duplicate-test-tag"
+}
+
+### 17. Create Tag with Duplicate Name (409)
+POST {{baseUrl}}/{{apiVersion}}/tags
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+{
+  "name": "duplicate-test-tag",
+  "description": "This should fail - name already exists"
+}
+
+### 18. Create Second Tag for Update-Duplicate Test
+# @name dupTagSecond
+POST {{baseUrl}}/{{apiVersion}}/tags
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+{
+  "name": "duplicate-test-tag-2"
+}
+
+### 19. Update Tag to a Name That Already Exists (409)
+PUT {{baseUrl}}/{{apiVersion}}/tags/{{dupTagSecond.response.body.data.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+{
+  "name": "duplicate-test-tag"
+}
+
+### 20. Cleanup - Delete Duplicate-Test Tags
+DELETE {{baseUrl}}/{{apiVersion}}/tags/{{dupTagBase.response.body.data.id}}
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+### 21. Cleanup - Delete Second Duplicate-Test Tag
+DELETE {{baseUrl}}/{{apiVersion}}/tags/{{dupTagSecond.response.body.data.id}}
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+# ========================================
+# 🔒 AUTH & CONTENT-TYPE TESTS
+# ========================================
+
+### 22. Test Authentication (No Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/tags
+
+### 23. Test Authentication (Invalid Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/tags
+Authorization: Bearer invalid_token
+
+### 24. Test Content Type (Wrong Content Type - Should Fail)
+POST {{baseUrl}}/{{apiVersion}}/tags
+Authorization: Bearer {{tagAuth.response.body.token}}
+Content-Type: text/plain
+
+{
+  "name": "wrong-content-type-tag"
+}
 
 # ========================================
 # ✅ BASIC TAGS API TEST CHECKLIST

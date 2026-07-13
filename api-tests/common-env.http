@@ -17,10 +17,10 @@
 
 # ===== ENVIRONMENTS =====
 # Development
-@devUrl = http://localhost:3000
+@devUrl = https://localhost
 
 # Staging  
-@stagingUrl = http://staging.openasm.com
+@stagingUrl = https://staging.openasm.com
 
 # Production
-@prodUrl = http://api.openasm.com
+@prodUrl = https://api.openasm.com

@@ -234,6 +234,65 @@ DELETE {{baseUrl}}/{{apiVersion}}/subnets/99999
 Accept: application/json
 Authorization: Bearer {{subnetAuth.response.body.token}}
 
+### 29.1. Create Subnet for Duplicate-Address Test
+# @name dupAddressSubnet
+POST {{baseUrl}}/{{apiVersion}}/subnets
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+{
+  "address": "203.0.113.128/25",
+  "description": "Base subnet for duplicate-address test"
+}
+
+### 29.2. Create Subnet with Duplicate Address (409)
+POST {{baseUrl}}/{{apiVersion}}/subnets
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+{
+  "address": "203.0.113.128/25",
+  "description": "This should fail - address already exists"
+}
+
+### 29.3. Cleanup - Delete Duplicate-Address Test Subnet
+DELETE {{baseUrl}}/{{apiVersion}}/subnets/{{dupAddressSubnet.response.body.id}}
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+### 29.4. Create Subnet with Invalid Tag ID (Should Fail - 400)
+POST {{baseUrl}}/{{apiVersion}}/subnets
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{subnetAuth.response.body.token}}
+
+{
+  "address": "203.0.114.0/24",
+  "tags": [99999]
+}
+
+# ========================================
+# 🔒 AUTH & CONTENT-TYPE TESTS
+# ========================================
+
+### 29.5. Test Authentication (No Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/subnets
+
+### 29.6. Test Authentication (Invalid Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/subnets
+Authorization: Bearer invalid_token
+
+### 29.7. Test Content Type (Wrong Content Type - Should Fail)
+POST {{baseUrl}}/{{apiVersion}}/subnets
+Authorization: Bearer {{subnetAuth.response.body.token}}
+Content-Type: text/plain
+
+{
+  "address": "203.0.115.0/24"
+}
+
 # ========================================
 # 🧪 ADVANCED SUBNET TESTS
 # ========================================
