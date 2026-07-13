@@ -1606,6 +1606,25 @@ $(document).ready(function() {
   overflow-wrap: break-word;
 }
 
+/* Tags/Systems/Contacts columns: Bootstrap badges default to white-space:
+   nowrap, so a long name would overflow past these fixed-width columns and
+   visually cover the next column instead of wrapping. */
+#domainTable td:nth-child(6),
+#domainTable td:nth-child(7),
+#domainTable td:nth-child(8) {
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+#domainTable td:nth-child(6) .badge,
+#domainTable td:nth-child(7) .badge,
+#domainTable td:nth-child(8) .badge {
+  white-space: normal;
+  word-break: break-word;
+  text-align: left;
+  max-width: 100%;
+  margin-bottom: 2px;
+}
+
 /* Force override for Add Domain modal buttons on mobile */
 @media (max-width: 991.98px) {
   #addDomainModal .modal-footer {
