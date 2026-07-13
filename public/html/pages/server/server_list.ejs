@@ -1395,4 +1395,21 @@ $(document).ready(function() {
   vertical-align: top;
   overflow-wrap: break-word;
 }
+
+/* Systems/Tags columns: Bootstrap badges default to white-space: nowrap, so a
+   long system/tag name would overflow past these fixed-width columns and
+   visually cover the next column instead of wrapping. */
+#serverTable td:nth-child(5),
+#serverTable td:nth-child(7) {
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+#serverTable td:nth-child(5) .badge,
+#serverTable td:nth-child(7) .badge {
+  white-space: normal;
+  word-break: break-word;
+  text-align: left;
+  max-width: 100%;
+  margin-bottom: 2px;
+}
 </style>
