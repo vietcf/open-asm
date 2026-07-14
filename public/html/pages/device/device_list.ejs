@@ -475,7 +475,7 @@ function buildExportUrl() {
           </div>
         </div>
         <div class="modal-footer d-flex justify-content-between">
-          <button type="button" class="btn btn-outline-danger" id="clearFilterBtnDevice" data-bs-dismiss="modal">Clear All Filters</button>
+          <button type="button" class="btn btn-outline-danger" id="clearFilterBtnDevice">Clear All Filters</button>
           <div>
             <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
             <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
@@ -829,24 +829,37 @@ $(document).ready(function() {
   // Clear all filters - use event delegation
   $(document).on('click', '#clearFilterBtnDevice', function() {
     console.log('Clear All Filters button clicked');
-    
+
     // Clear Select2 fields
     $('#filterDeviceTypeId').val(null).trigger('change');
     $('#filterDeviceTags').val(null).trigger('change');
     $('#filterDevicePlatform').val(null).trigger('change');
     $('#filterDeviceManufacturer').val(null).trigger('change');
     $('#filterDeviceRole').val(null).trigger('change');
-    
+
     // Also try using Select2 API to clear
     $('#filterDeviceTypeId').select2('val', null);
     $('#filterDeviceTags').select2('val', null);
     $('#filterDevicePlatform').select2('val', null);
     $('#filterDeviceManufacturer').select2('val', null);
     $('#filterDeviceRole').select2('val', null);
-    
+
     // Clear regular select field
     $('#filterDeviceLocation').val('');
-    
+
+    // Close modal
+    $('#filterDeviceModal').modal('hide');
+
+    // Redirect to clean URL but preserve pageSize and search
+    const currentPageSize = $('select[name="pageSize"]').val() || '10';
+    const currentSearch = $('input[name="search"]').val() || '';
+    let cleanUrl = '/device/device';
+    const params = [];
+    if (currentPageSize && currentPageSize !== '10') params.push('pageSize=' + encodeURIComponent(currentPageSize));
+    if (currentSearch) params.push('search=' + encodeURIComponent(currentSearch));
+    if (params.length > 0) cleanUrl += '?' + params.join('&');
+    window.location.href = cleanUrl;
+
     console.log('All filters cleared');
   });
 
