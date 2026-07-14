@@ -787,17 +787,17 @@ deviceController.downloadDeviceTemplate = async (req, res) => {
       'Name (Optional - auto-generated if empty)',
       'IPAddress (Require, comma-separated if multiple)',
       'Device Type (Require)',
-      'Platform (OS)',
-      'Location',
-      'Serial Number',
-      'Management Address (comma-separated if multiple)',
-      'Manufacturer',
-      'Device Role',
-      'Manager (comma-separated if multiple)',
-      'Tag (comma-separated if multiple)',
-      'Description'
+      'Platform (Optional, OS)',
+      'Location (Optional)',
+      'Serial Number (Optional)',
+      'Management Address (Optional, comma-separated if multiple)',
+      'Manufacturer (Optional)',
+      'Device Role (Optional)',
+      'Manager (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Description (Optional)'
     ]);
-    
+
     // Add sample data
     worksheet.addRow([
       'Test Device 1',
@@ -952,21 +952,21 @@ deviceController.validateImportDevices = async (req, res) => {
       'Name (Optional - auto-generated if empty)',
       'IPAddress (Require, comma-separated if multiple)',
       'Device Type (Require)',
-      'Platform (OS)',
-      'Location',
-      'Serial Number',
-      'Management Address (comma-separated if multiple)',
-      'Manufacturer',
-      'Device Role',
-      'Manager (comma-separated if multiple)',
-      'Tag (comma-separated if multiple)',
-      'Description'
+      'Platform (Optional, OS)',
+      'Location (Optional)',
+      'Serial Number (Optional)',
+      'Management Address (Optional, comma-separated if multiple)',
+      'Manufacturer (Optional)',
+      'Device Role (Optional)',
+      'Manager (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Description (Optional)'
     ];
 
     // Check for missing columns
     const missingColumns = requiredColumns.filter(col => !headers.includes(col));
     if (missingColumns.length > 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'File format validation failed',
         details: {
           missingColumns: missingColumns,
@@ -978,7 +978,7 @@ deviceController.validateImportDevices = async (req, res) => {
     // Check for extra columns
     const extraColumns = headers.filter(col => !requiredColumns.includes(col));
     if (extraColumns.length > 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'File format validation failed',
         details: {
           extraColumns: extraColumns,
@@ -1008,15 +1008,15 @@ deviceController.validateImportDevices = async (req, res) => {
         name: sanitizeString(row['Name (Optional - auto-generated if empty)'] || ''),
         ip_addresses: sanitizeString(row['IPAddress (Require, comma-separated if multiple)'] || ''),
         device_type: sanitizeString(row['Device Type (Require)'] || ''),
-        platform: sanitizeString(row['Platform (OS)'] || ''),
-        location: sanitizeString(row['Location'] || ''),
-        serial_number: sanitizeString(row['Serial Number'] || ''),
-        management_address: sanitizeString(row['Management Address (comma-separated if multiple)'] || ''),
-        manufacturer: sanitizeString(row['Manufacturer'] || ''),
-        device_role: sanitizeString(row['Device Role'] || ''),
-        manager: sanitizeString(row['Manager (comma-separated if multiple)'] || ''),
-        tag: sanitizeString(row['Tag (comma-separated if multiple)'] || ''),
-        description: sanitizeString(row['Description'] || ''),
+        platform: sanitizeString(row['Platform (Optional, OS)'] || ''),
+        location: sanitizeString(row['Location (Optional)'] || ''),
+        serial_number: sanitizeString(row['Serial Number (Optional)'] || ''),
+        management_address: sanitizeString(row['Management Address (Optional, comma-separated if multiple)'] || ''),
+        manufacturer: sanitizeString(row['Manufacturer (Optional)'] || ''),
+        device_role: sanitizeString(row['Device Role (Optional)'] || ''),
+        manager: sanitizeString(row['Manager (Optional, comma-separated if multiple)'] || ''),
+        tag: sanitizeString(row['Tag (Optional, comma-separated if multiple)'] || ''),
+        description: sanitizeString(row['Description (Optional)'] || ''),
         validation_status: 'PASS',
         validation_reason: ''
       };
@@ -1142,15 +1142,15 @@ deviceController.validateImportDevices = async (req, res) => {
       'Name (Optional - auto-generated if empty)',
       'IPAddress (Require, comma-separated if multiple)',
       'Device Type (Require)',
-      'Platform (OS)',
-      'Location',
-      'Serial Number',
-      'Management Address (comma-separated if multiple)',
-      'Manufacturer',
-      'Device Role',
-      'Manager (comma-separated if multiple)',
-      'Tag (comma-separated if multiple)',
-      'Description',
+      'Platform (Optional, OS)',
+      'Location (Optional)',
+      'Serial Number (Optional)',
+      'Management Address (Optional, comma-separated if multiple)',
+      'Manufacturer (Optional)',
+      'Device Role (Optional)',
+      'Manager (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Description (Optional)',
       'Validation Status',
       'Validation Reason'
     ]);
@@ -1327,15 +1327,15 @@ deviceController.importDevices = async (req, res) => {
         name: sanitizeString(row['Name (Optional - auto-generated if empty)'] || ''),
         ip_addresses: sanitizeString(row['IPAddress (Require, comma-separated if multiple)'] || ''),
         device_type: sanitizeString(row['Device Type (Require)'] || ''),
-        platform: sanitizeString(row['Platform (OS)'] || ''),
-        location: sanitizeString(row['Location'] || ''),
-        serial_number: sanitizeString(row['Serial Number'] || ''),
-        management_address: sanitizeString(row['Management Address (comma-separated if multiple)'] || ''),
-        manufacturer: sanitizeString(row['Manufacturer'] || ''),
-        device_role: sanitizeString(row['Device Role'] || ''),
-        manager: sanitizeString(row['Manager (comma-separated if multiple)'] || ''),
-        tag: sanitizeString(row['Tag (comma-separated if multiple)'] || ''),
-        description: sanitizeString(row['Description'] || ''),
+        platform: sanitizeString(row['Platform (Optional, OS)'] || ''),
+        location: sanitizeString(row['Location (Optional)'] || ''),
+        serial_number: sanitizeString(row['Serial Number (Optional)'] || ''),
+        management_address: sanitizeString(row['Management Address (Optional, comma-separated if multiple)'] || ''),
+        manufacturer: sanitizeString(row['Manufacturer (Optional)'] || ''),
+        device_role: sanitizeString(row['Device Role (Optional)'] || ''),
+        manager: sanitizeString(row['Manager (Optional, comma-separated if multiple)'] || ''),
+        tag: sanitizeString(row['Tag (Optional, comma-separated if multiple)'] || ''),
+        description: sanitizeString(row['Description (Optional)'] || ''),
         import_status: 'SUCCESS',
         import_reason: ''
       };
@@ -1578,15 +1578,15 @@ deviceController.importDevices = async (req, res) => {
       'Name (Optional - auto-generated if empty)',
       'IPAddress (Require, comma-separated if multiple)',
       'Device Type (Require)',
-      'Platform (OS)',
-      'Location',
-      'Serial Number',
-      'Management Address (comma-separated if multiple)',
-      'Manufacturer',
-      'Device Role',
-      'Manager (comma-separated if multiple)',
-      'Tag (comma-separated if multiple)',
-      'Description',
+      'Platform (Optional, OS)',
+      'Location (Optional)',
+      'Serial Number (Optional)',
+      'Management Address (Optional, comma-separated if multiple)',
+      'Manufacturer (Optional)',
+      'Device Role (Optional)',
+      'Manager (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Description (Optional)',
       'Import Status',
       'Import Reason'
     ]);

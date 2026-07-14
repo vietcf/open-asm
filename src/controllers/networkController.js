@@ -779,11 +779,11 @@ networkController.validateImportIPs = async (req, res) => {
       const result = {
         row: rowNumber,
         ip_address: row['IPAddress (Require, one per row)'] || '',
-        description: row['Description'] || '',
-        status: row['Status'] || 'reserved',
-        tags: row['Tag (comma-separated if multiple)'] || row['Tags'] || '',
-        contacts: row['Contact (Email or Email prefix, comma-separated if multiple)'] || row['Contact (Email, comma-separated if multiple)'] || row['Contacts'] || '',
-        system: row['System Name (comma-separated if multiple)'] || row['System'] || '',
+        description: row['Description (Optional)'] || row['Description'] || '',
+        status: row['Status (Optional)'] || row['Status'] || 'reserved',
+        tags: row['Tag (Optional, comma-separated if multiple)'] || row['Tag (comma-separated if multiple)'] || row['Tags'] || '',
+        contacts: row['Contact (Optional, Email or Email prefix, comma-separated if multiple)'] || row['Contact (Email or Email prefix, comma-separated if multiple)'] || row['Contact (Email, comma-separated if multiple)'] || row['Contacts'] || '',
+        system: row['System Name (Optional, comma-separated if multiple)'] || row['System Name (comma-separated if multiple)'] || row['System'] || '',
         validation_status: 'Pass',
         validation_reason: ''
       };
@@ -906,13 +906,13 @@ networkController.validateImportIPs = async (req, res) => {
       
       // Định nghĩa headers - đầy đủ các trường từ file ban đầu + 2 trường validation
       const headers = [
-        'IPAddress (Require, one per row)', 
-        'Description', 
-        'Status', 
-        'Tag (comma-separated if multiple)', 
-        'Contact (Email or Email prefix, comma-separated if multiple)', 
-        'System Name (comma-separated if multiple)',
-        'Validation Status', 
+        'IPAddress (Require, one per row)',
+        'Description (Optional)',
+        'Status (Optional)',
+        'Tag (Optional, comma-separated if multiple)',
+        'Contact (Optional, Email or Email prefix, comma-separated if multiple)',
+        'System Name (Optional, comma-separated if multiple)',
+        'Validation Status',
         'Validation Reason'
       ];
       
@@ -1080,11 +1080,11 @@ networkController.importIPs = async (req, res) => {
       const result = {
         row: rowNumber,
         ip_address: (row['IPAddress (Require, one per row)'] || '').toString().trim(),
-        description: row['Description'] || '',
-        status: row['Status'] || 'reserved',
-        tags: row['Tag (comma-separated if multiple)'] || row['Tags'] || '',
-        contacts: row['Contact (Email or Email prefix, comma-separated if multiple)'] || row['Contact (Email, comma-separated if multiple)'] || row['Contacts'] || '',
-        system: row['System Name (comma-separated if multiple)'] || row['System'] || '',
+        description: row['Description (Optional)'] || row['Description'] || '',
+        status: row['Status (Optional)'] || row['Status'] || 'reserved',
+        tags: row['Tag (Optional, comma-separated if multiple)'] || row['Tag (comma-separated if multiple)'] || row['Tags'] || '',
+        contacts: row['Contact (Optional, Email or Email prefix, comma-separated if multiple)'] || row['Contact (Email or Email prefix, comma-separated if multiple)'] || row['Contact (Email, comma-separated if multiple)'] || row['Contacts'] || '',
+        system: row['System Name (Optional, comma-separated if multiple)'] || row['System Name (comma-separated if multiple)'] || row['System'] || '',
         import_status: 'Success',
         import_reason: ''
       };
@@ -1176,13 +1176,13 @@ networkController.importIPs = async (req, res) => {
       
       // Định nghĩa headers - đầy đủ các trường từ file ban đầu + 2 trường import
       const headers = [
-        'IPAddress (Require, one per row)', 
-        'Description', 
-        'Status', 
-        'Tag (comma-separated if multiple)', 
-        'Contact (Email or Email prefix, comma-separated if multiple)', 
-        'System Name (comma-separated if multiple)',
-        'Import Status', 
+        'IPAddress (Require, one per row)',
+        'Description (Optional)',
+        'Status (Optional)',
+        'Tag (Optional, comma-separated if multiple)',
+        'Contact (Optional, Email or Email prefix, comma-separated if multiple)',
+        'System Name (Optional, comma-separated if multiple)',
+        'Import Status',
         'Import Reason'
       ];
       
@@ -1451,11 +1451,11 @@ networkController.downloadTemplate = async (req, res) => {
     // Add headers
     worksheet.addRow([
       'IPAddress (Require, one per row)',
-      'Description',
-      'Status',
-      'Tag (comma-separated if multiple)',
-      'Contact (Email, comma-separated if multiple)',
-      'System Name (comma-separated if multiple)'
+      'Description (Optional)',
+      'Status (Optional)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Contact (Optional, Email or Email prefix, comma-separated if multiple)',
+      'System Name (Optional, comma-separated if multiple)'
     ]);
     
     // Add sample data
@@ -1586,12 +1586,12 @@ networkController.downloadSubnetTemplate = async (req, res) => {
     // Add headers
     worksheet.addRow([
       'Subnet Address (Require)',
-      'Description',
-      'Zone',
-      'Environment',
-      'Tag (comma-separated if multiple)'
+      'Description (Optional)',
+      'Zone (Optional)',
+      'Environment (Optional)',
+      'Tag (Optional, comma-separated if multiple)'
     ]);
-    
+
     // Add sample data
     worksheet.addRow([
       '192.168.1.0/24',
@@ -1676,10 +1676,10 @@ networkController.validateImportSubnets = async (req, res) => {
     // can't "pass validation" and then be rejected outright at import time.
     const expectedHeaders = [
       'Subnet Address (Require)',
-      'Description',
-      'Zone',
-      'Environment',
-      'Tag (comma-separated if multiple)'
+      'Description (Optional)',
+      'Zone (Optional)',
+      'Environment (Optional)',
+      'Tag (Optional, comma-separated if multiple)'
     ];
     const validateHeaderOrder = (headerValues) => {
       if (headerValues.length !== expectedHeaders.length) {
@@ -1768,10 +1768,10 @@ networkController.validateImportSubnets = async (req, res) => {
       const result = {
         row: rowNumber,
         subnet_address: row['Subnet Address (Require)'] || '',
-        description: row['Description'] || '',
-        zone: row['Zone'] || '',
-        environment: row['Environment'] || '',
-        tags: row['Tag (comma-separated if multiple)'] || '',
+        description: row['Description (Optional)'] || '',
+        zone: row['Zone (Optional)'] || '',
+        environment: row['Environment (Optional)'] || '',
+        tags: row['Tag (Optional, comma-separated if multiple)'] || '',
         validation_status: 'Pass',
         validation_reason: ''
       };
@@ -1832,10 +1832,10 @@ networkController.validateImportSubnets = async (req, res) => {
     // Add headers
     worksheet.addRow([
       'Subnet Address (Require)',
-      'Description',
-      'Zone',
-      'Environment',
-      'Tag (comma-separated if multiple)',
+      'Description (Optional)',
+      'Zone (Optional)',
+      'Environment (Optional)',
+      'Tag (Optional, comma-separated if multiple)',
       'Validation Status',
       'Validation Reason'
     ]);
@@ -1984,12 +1984,12 @@ networkController.importSubnets = async (req, res) => {
       // Validate headers order and required fields
       const expectedHeaders = [
         'Subnet Address (Require)',
-        'Description',
-        'Zone',
-        'Environment', 
-        'Tag (comma-separated if multiple)'
+        'Description (Optional)',
+        'Zone (Optional)',
+        'Environment (Optional)',
+        'Tag (Optional, comma-separated if multiple)'
       ];
-      
+
       if (headers.length !== expectedHeaders.length) {
         return res.status(400).json({ 
           error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}` 
@@ -2023,12 +2023,12 @@ networkController.importSubnets = async (req, res) => {
         const headers = Object.keys(rows[0]);
         const expectedHeaders = [
           'Subnet Address (Require)',
-          'Description',
-          'Zone',
-          'Environment', 
-          'Tag (comma-separated if multiple)'
+          'Description (Optional)',
+          'Zone (Optional)',
+          'Environment (Optional)',
+          'Tag (Optional, comma-separated if multiple)'
         ];
-        
+
         if (headers.length !== expectedHeaders.length) {
           return res.status(400).json({ 
             error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}` 
@@ -2059,10 +2059,10 @@ networkController.importSubnets = async (req, res) => {
       const result = {
         row_number: i + 1,
         subnet_address: sanitizeString(row['Subnet Address (Require)'] || ''),
-        description: sanitizeString(row['Description'] || ''),
-        zone: sanitizeString(row['Zone'] || ''),
-        environment: sanitizeString(row['Environment'] || ''),
-        tags: sanitizeString(row['Tag (comma-separated if multiple)'] || ''),
+        description: sanitizeString(row['Description (Optional)'] || ''),
+        zone: sanitizeString(row['Zone (Optional)'] || ''),
+        environment: sanitizeString(row['Environment (Optional)'] || ''),
+        tags: sanitizeString(row['Tag (Optional, comma-separated if multiple)'] || ''),
         import_status: 'SUCCESS',
         import_reason: ''
       };
@@ -2121,10 +2121,10 @@ networkController.importSubnets = async (req, res) => {
     // Add headers
     worksheet.addRow([
       'Subnet Address (Require)',
-      'Description',
-      'Zone',
-      'Environment',
-      'Tag (comma-separated if multiple)',
+      'Description (Optional)',
+      'Zone (Optional)',
+      'Environment (Optional)',
+      'Tag (Optional, comma-separated if multiple)',
       'Import Status',
       'Import Reason'
     ]);

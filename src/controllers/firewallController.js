@@ -366,27 +366,27 @@ firewallController.downloadRuleTemplate = async (req, res) => {
       'Audit Batch (Required)',
       'Firewall Name (Required)',
       'Rule Name (Required)',
-      'Source Zone',
+      'Source Zone (Optional)',
       'Source (Required)',
-      'Source Detail',
-      'Destination Zone',
+      'Source Detail (Optional)',
+      'Destination Zone (Optional)',
       'Destination (Required)',
-      'Destination Detail',
-      'Services',
-      'Application',
-      'URL',
+      'Destination Detail (Optional)',
+      'Services (Optional)',
+      'Application (Optional)',
+      'URL (Optional)',
       'Action (Required)',
-      'Violation Type',
-      'Violation Detail',
-      'OU Name',
-      'Contacts (comma-separated emails)',
-      'Solution Proposal',
-      'Solution Confirm',
-      'Work Order',
-      'Status',
-      'Description',
-      'Raw Data',
-      'Tags (comma-separated IDs)'
+      'Violation Type (Optional)',
+      'Violation Detail (Optional)',
+      'OU Name (Optional)',
+      'Contacts (Optional, comma-separated emails)',
+      'Solution Proposal (Optional)',
+      'Solution Confirm (Optional)',
+      'Work Order (Optional)',
+      'Status (Optional)',
+      'Description (Optional)',
+      'Raw Data (Optional)',
+      'Tags (Optional, comma-separated IDs)'
     ]);
     
     // Add sample data based on Add Rule modal fields
@@ -637,27 +637,27 @@ firewallController.validateImportRules = async (req, res) => {
       'Audit Batch (Required)',
       'Firewall Name (Required)',
       'Rule Name (Required)',
-      'Source Zone',
+      'Source Zone (Optional)',
       'Source (Required)',
-      'Source Detail',
-      'Destination Zone',
+      'Source Detail (Optional)',
+      'Destination Zone (Optional)',
       'Destination (Required)',
-      'Destination Detail',
-      'Services',
-      'Application',
-      'URL',
+      'Destination Detail (Optional)',
+      'Services (Optional)',
+      'Application (Optional)',
+      'URL (Optional)',
       'Action (Required)',
-      'Violation Type',
-      'Violation Detail',
-      'OU Name',
-      'Contacts (comma-separated emails)',
-      'Solution Proposal',
-      'Solution Confirm',
-      'Work Order',
-      'Status',
-      'Description',
-      'Raw Data',
-      'Tags (comma-separated IDs)'
+      'Violation Type (Optional)',
+      'Violation Detail (Optional)',
+      'OU Name (Optional)',
+      'Contacts (Optional, comma-separated emails)',
+      'Solution Proposal (Optional)',
+      'Solution Confirm (Optional)',
+      'Work Order (Optional)',
+      'Status (Optional)',
+      'Description (Optional)',
+      'Raw Data (Optional)',
+      'Tags (Optional, comma-separated IDs)'
     ];
     
     // Check if we have exactly 24 columns
@@ -727,27 +727,27 @@ firewallController.validateImportRules = async (req, res) => {
       'Audit Batch (Required)',
       'Firewall Name (Required)',
       'Rule Name (Required)',
-      'Source Zone',
+      'Source Zone (Optional)',
       'Source (Required)',
-      'Source Detail',
-      'Destination Zone',
+      'Source Detail (Optional)',
+      'Destination Zone (Optional)',
       'Destination (Required)',
-      'Destination Detail',
-      'Services',
-      'Application',
-      'URL',
+      'Destination Detail (Optional)',
+      'Services (Optional)',
+      'Application (Optional)',
+      'URL (Optional)',
       'Action (Required)',
-      'Violation Type',
-      'Violation Detail',
-      'OU Name',
-      'Contacts (comma-separated emails)',
-      'Solution Proposal',
-      'Solution Confirm',
-      'Work Order',
-      'Status',
-      'Description',
-      'Raw Data',
-      'Tags (comma-separated IDs)'
+      'Violation Type (Optional)',
+      'Violation Detail (Optional)',
+      'OU Name (Optional)',
+      'Contacts (Optional, comma-separated emails)',
+      'Solution Proposal (Optional)',
+      'Solution Confirm (Optional)',
+      'Work Order (Optional)',
+      'Status (Optional)',
+      'Description (Optional)',
+      'Raw Data (Optional)',
+      'Tags (Optional, comma-separated IDs)'
     ];
     
     // Check if headers match expected order
@@ -871,8 +871,8 @@ firewallController.validateImportRules = async (req, res) => {
       }
 
       // Validate Status enum (case insensitive)
-      if (row['Status'] && row['Status'].toString().trim() !== '') {
-        const statusValue = row['Status'].toString().trim();
+      if (row['Status (Optional)'] && row['Status (Optional)'].toString().trim() !== '') {
+        const statusValue = row['Status (Optional)'].toString().trim();
         const statusMatch = allowedStatus.find(status => status.toLowerCase() === statusValue.toLowerCase());
         if (!statusMatch) {
           result.passed = false;
@@ -881,8 +881,8 @@ firewallController.validateImportRules = async (req, res) => {
       }
 
       // Validate Violation Type enum (case insensitive)
-      if (row['Violation Type'] && row['Violation Type'].toString().trim() !== '') {
-        const violationTypeValue = row['Violation Type'].toString().trim();
+      if (row['Violation Type (Optional)'] && row['Violation Type (Optional)'].toString().trim() !== '') {
+        const violationTypeValue = row['Violation Type (Optional)'].toString().trim();
         const violationTypeMatch = allowedViolationTypes.find(violationType => violationType.toLowerCase() === violationTypeValue.toLowerCase());
         if (!violationTypeMatch) {
           result.passed = false;
@@ -901,9 +901,9 @@ firewallController.validateImportRules = async (req, res) => {
       }
 
       // Validate OU Name exists in database (case insensitive)
-      if (row['OU Name'] && row['OU Name'].toString().trim() !== '') {
+      if (row['OU Name (Optional)'] && row['OU Name (Optional)'].toString().trim() !== '') {
         try {
-          const ouNameValue = row['OU Name'].toString().trim();
+          const ouNameValue = row['OU Name (Optional)'].toString().trim();
           const unit = await Unit.findByName(ouNameValue);
           if (!unit) {
             result.passed = false;
@@ -911,13 +911,13 @@ firewallController.validateImportRules = async (req, res) => {
           }
         } catch (dbError) {
           result.passed = false;
-          result.errors.push(`Invalid OU Name: ${row['OU Name']}`);
+          result.errors.push(`Invalid OU Name: ${row['OU Name (Optional)']}`);
         }
       }
 
       // Validate Contacts exist in database (supports both full email and email prefix)
-      if (row['Contacts (comma-separated emails)'] && row['Contacts (comma-separated emails)'].toString().trim() !== '') {
-        const contactsStr = row['Contacts (comma-separated emails)'].toString().trim();
+      if (row['Contacts (Optional, comma-separated emails)'] && row['Contacts (Optional, comma-separated emails)'].toString().trim() !== '') {
+        const contactsStr = row['Contacts (Optional, comma-separated emails)'].toString().trim();
         const contactEmails = contactsStr.split(',').map(email => email.trim()).filter(email => email !== '');
         const invalidContacts = [];
         
@@ -940,8 +940,8 @@ firewallController.validateImportRules = async (req, res) => {
       }
 
       // Validate Tags exist in database (if provided)
-      if (row['Tags (comma-separated IDs)'] && row['Tags (comma-separated IDs)'].toString().trim() !== '') {
-        const tagsStr = row['Tags (comma-separated IDs)'].toString().trim();
+      if (row['Tags (Optional, comma-separated IDs)'] && row['Tags (Optional, comma-separated IDs)'].toString().trim() !== '') {
+        const tagsStr = row['Tags (Optional, comma-separated IDs)'].toString().trim();
         const tagIds = tagsStr.split(',').map(id => id.trim()).filter(id => id !== '');
         const invalidTags = [];
         
@@ -1201,27 +1201,27 @@ firewallController.importRules = async (req, res) => {
       'Audit Batch (Required)',
       'Firewall Name (Required)',
       'Rule Name (Required)',
-      'Source Zone',
+      'Source Zone (Optional)',
       'Source (Required)',
-      'Source Detail',
-      'Destination Zone',
+      'Source Detail (Optional)',
+      'Destination Zone (Optional)',
       'Destination (Required)',
-      'Destination Detail',
-      'Services',
-      'Application',
-      'URL',
+      'Destination Detail (Optional)',
+      'Services (Optional)',
+      'Application (Optional)',
+      'URL (Optional)',
       'Action (Required)',
-      'Violation Type',
-      'Violation Detail',
-      'OU Name',
-      'Contacts (comma-separated emails)',
-      'Solution Proposal',
-      'Solution Confirm',
-      'Work Order',
-      'Status',
-      'Description',
-      'Raw Data',
-      'Tags (comma-separated IDs)'
+      'Violation Type (Optional)',
+      'Violation Detail (Optional)',
+      'OU Name (Optional)',
+      'Contacts (Optional, comma-separated emails)',
+      'Solution Proposal (Optional)',
+      'Solution Confirm (Optional)',
+      'Work Order (Optional)',
+      'Status (Optional)',
+      'Description (Optional)',
+      'Raw Data (Optional)',
+      'Tags (Optional, comma-separated IDs)'
     ];
     
     // Check if we have exactly 24 columns
@@ -1292,27 +1292,27 @@ firewallController.importRules = async (req, res) => {
       'Audit Batch (Required)',
       'Firewall Name (Required)',
       'Rule Name (Required)',
-      'Source Zone',
+      'Source Zone (Optional)',
       'Source (Required)',
-      'Source Detail',
-      'Destination Zone',
+      'Source Detail (Optional)',
+      'Destination Zone (Optional)',
       'Destination (Required)',
-      'Destination Detail',
-      'Services',
-      'Application',
-      'URL',
+      'Destination Detail (Optional)',
+      'Services (Optional)',
+      'Application (Optional)',
+      'URL (Optional)',
       'Action (Required)',
-      'Violation Type',
-      'Violation Detail',
-      'OU Name',
-      'Contacts (comma-separated emails)',
-      'Solution Proposal',
-      'Solution Confirm',
-      'Work Order',
-      'Status',
-      'Description',
-      'Raw Data',
-      'Tags (comma-separated IDs)'
+      'Violation Type (Optional)',
+      'Violation Detail (Optional)',
+      'OU Name (Optional)',
+      'Contacts (Optional, comma-separated emails)',
+      'Solution Proposal (Optional)',
+      'Solution Confirm (Optional)',
+      'Work Order (Optional)',
+      'Status (Optional)',
+      'Description (Optional)',
+      'Raw Data (Optional)',
+      'Tags (Optional, comma-separated IDs)'
     ];
     
     // Check if headers match expected order
@@ -1383,28 +1383,28 @@ firewallController.importRules = async (req, res) => {
         row_number: i + 2,
         firewall_name: sanitizeString(row['Firewall Name (Required)'] || ''),
         rulename: sanitizeString(row['Rule Name (Required)'] || ''),
-        src_zone: sanitizeString(row['Source Zone'] || ''),
+        src_zone: sanitizeString(row['Source Zone (Optional)'] || ''),
         src: sanitizeString(row['Source (Required)'] || ''),
-        src_detail: sanitizeString(row['Source Detail'] || ''),
-        dst_zone: sanitizeString(row['Destination Zone'] || ''),
+        src_detail: sanitizeString(row['Source Detail (Optional)'] || ''),
+        dst_zone: sanitizeString(row['Destination Zone (Optional)'] || ''),
         dst: sanitizeString(row['Destination (Required)'] || ''),
-        dst_detail: sanitizeString(row['Destination Detail'] || ''),
-        services: sanitizeString(row['Services'] || ''),
-        application: sanitizeString(row['Application'] || ''),
-        url: sanitizeString(row['URL'] || ''),
+        dst_detail: sanitizeString(row['Destination Detail (Optional)'] || ''),
+        services: sanitizeString(row['Services (Optional)'] || ''),
+        application: sanitizeString(row['Application (Optional)'] || ''),
+        url: sanitizeString(row['URL (Optional)'] || ''),
         action: sanitizeString(row['Action (Required)'] || ''),
-        ou_name: sanitizeString(row['OU Name'] || ''),
-        status: sanitizeString(row['Status'] || ''),
-        violation_type: sanitizeString(row['Violation Type'] || ''),
-        violation_detail: sanitizeString(row['Violation Detail'] || ''),
-        solution_proposal: sanitizeString(row['Solution Proposal'] || ''),
-        solution_confirm: sanitizeString(row['Solution Confirm'] || ''),
-        description: sanitizeString(row['Description'] || ''),
+        ou_name: sanitizeString(row['OU Name (Optional)'] || ''),
+        status: sanitizeString(row['Status (Optional)'] || ''),
+        violation_type: sanitizeString(row['Violation Type (Optional)'] || ''),
+        violation_detail: sanitizeString(row['Violation Detail (Optional)'] || ''),
+        solution_proposal: sanitizeString(row['Solution Proposal (Optional)'] || ''),
+        solution_confirm: sanitizeString(row['Solution Confirm (Optional)'] || ''),
+        description: sanitizeString(row['Description (Optional)'] || ''),
         audit_batch: sanitizeString(row['Audit Batch (Required)'] || ''),
-        work_order: sanitizeString(row['Work Order'] || ''),
-        raw_data: sanitizeString(row['Raw Data'] || ''),
-        contacts: sanitizeString(row['Contacts (comma-separated emails)'] || ''),
-        tags: sanitizeString(row['Tags (comma-separated IDs)'] || ''),
+        work_order: sanitizeString(row['Work Order (Optional)'] || ''),
+        raw_data: sanitizeString(row['Raw Data (Optional)'] || ''),
+        contacts: sanitizeString(row['Contacts (Optional, comma-separated emails)'] || ''),
+        tags: sanitizeString(row['Tags (Optional, comma-separated IDs)'] || ''),
         import_status: 'SUCCESS',
         import_reason: ''
       };
