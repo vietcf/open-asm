@@ -372,11 +372,51 @@ function editContact(id, name, email, position, phone, unitId, description) {
   document.getElementById('editContactForm').action = '/organize/contact/' + id + '?_method=PUT';
   document.getElementById('editContactName').value = name;
   document.getElementById('editContactEmail').value = email;
-  document.getElementById('editContactPosition').value = position;
   document.getElementById('editContactPhone').value = phone;
   document.getElementById('editContactDescription').value = description || '';
-  document.getElementById('editContactUnit').value = unitId || '';
+  $('#editContactPosition').val(position).trigger('change');
+  $('#editContactUnit').val(unitId || '').trigger('change');
 }
+
+$(function() {
+  // Position select2 - Bootstrap 5 theme
+  $('#contactPosition').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select position',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#addContactModal')
+  });
+  $('#editContactPosition').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select position',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#editContactModal')
+  });
+
+  // Organization select2 - Bootstrap 5 theme
+  $('#contactUnit').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select organization (optional)',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#addContactModal')
+  });
+  $('#editContactUnit').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select organization (optional)',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#editContactModal')
+  });
+
+  // Reset Add Contact form (and select2 fields) when modal is hidden
+  $('#addContactModal').on('hidden.bs.modal', function() {
+    $('#addContactModal').find('form')[0].reset();
+    $('#contactPosition, #contactUnit').val(null).trigger('change');
+  });
+});
 
 // Handle edit button click
 $(document).on('click', 'button[data-bs-target="#editContactModal"]', function() {
