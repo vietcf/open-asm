@@ -201,12 +201,12 @@
                             </div>
                             <div class="mb-3">
                               <label class="form-label">Value <span class="text-danger">*</span></label>
-                              <textarea class="form-control" name="value" rows="6" required><%= config.value %></textarea>
+                              <textarea class="form-control" name="value" rows="6" required placeholder='Enter value, example: [{ "value": "DC", "label": "Data Center DR" }, ...]'><%= config.value %></textarea>
                               <div class="form-text small">You can enter JSON or multiple lines for list-type configurations.</div>
                             </div>
                             <div class="mb-3">
                               <label class="form-label">Description</label>
-                              <input type="text" class="form-control" name="description" value="<%= config.description || '' %>">
+                              <input type="text" class="form-control" name="description" value="<%= config.description || '' %>" placeholder="Enter configuration description">
                             </div>
                           </div>
                           <div class="modal-footer d-flex justify-content-end">
@@ -335,7 +335,7 @@
           <form id="addConfigForm" action="/administrator/configuration" method="POST">
             <div class="mb-3">
               <label class="form-label">Key <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" name="key" required>
+              <input type="text" class="form-control" name="key" placeholder="Enter configuration key" required>
             </div>
             <div class="mb-3">
               <label class="form-label">Value <span class="text-danger">*</span></label>
@@ -344,7 +344,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Description</label>
-              <input type="text" class="form-control" name="description">
+              <input type="text" class="form-control" name="description" placeholder="Enter configuration description">
             </div>
           </form>
         </div>

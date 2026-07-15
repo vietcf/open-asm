@@ -26,7 +26,7 @@
           <div class="card-body">
             <div class="mb-3">
               <label class="form-label">Component Name <span class="text-danger">*</span></label>
-              <input type="text" name="name" class="form-control" value="<%= component.name %>" required>
+              <input type="text" name="name" class="form-control" value="<%= component.name %>" placeholder="Enter component name" required>
             </div>
             <div class="mb-3">
               <label class="form-label">Description</label>
@@ -59,7 +59,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">FQDN / Domain / IP / URL (comma separated)</label>
-              <textarea name="fqdn" class="form-control" rows="3"><%= Array.isArray(component.fqdn) ? component.fqdn.join(', ') : (component.fqdn || '') %></textarea>
+              <textarea name="fqdn" class="form-control" rows="3" placeholder="Example: http://domain:8443, https://domain.com, http://192.168.1.3:8443, ..."><%= Array.isArray(component.fqdn) ? component.fqdn.join(', ') : (component.fqdn || '') %></textarea>
             </div>
             <div class="mb-3">
               <label class="form-label">Contacts</label>

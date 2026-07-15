@@ -27,15 +27,15 @@
           <div class="card-body">
             <div class="mb-3">
               <label class="form-label">System ID <span class="text-danger">*</span></label>
-              <input type="text" name="system_id" class="form-control" value="<%= system.system_id %>" required>
+              <input type="text" name="system_id" class="form-control" value="<%= system.system_id %>" placeholder="Enter system ID" required>
             </div>
             <div class="mb-3">
               <label class="form-label">System Name <span class="text-danger">*</span></label>
-              <input type="text" name="name" class="form-control" value="<%= system.name %>" required>
+              <input type="text" name="name" class="form-control" value="<%= system.name %>" placeholder="Enter system name" required>
             </div>
             <div class="mb-3">
               <label class="form-label">Alias (comma separated)</label>
-              <input type="text" name="alias" class="form-control" value="<%= Array.isArray(system.alias) ? system.alias.join(', ') : (system.alias || '') %>">
+              <input type="text" name="alias" class="form-control" value="<%= Array.isArray(system.alias) ? system.alias.join(', ') : (system.alias || '') %>" placeholder="e.g. alias1, alias2">
             </div>
             <div class="mb-3">
               <label class="form-label">FQDN (comma separated, optional)</label>
@@ -126,11 +126,11 @@
                   <div class="modal-body">
                     <div class="mb-3">
                       <label class="form-label">Name</label>
-                      <input type="text" class="form-control" id="new-manager-name">
+                      <input type="text" class="form-control" id="new-manager-name" placeholder="Enter contact name">
                     </div>
                     <div class="mb-3">
                       <label class="form-label">Email</label>
-                      <input type="email" class="form-control" id="new-manager-email">
+                      <input type="email" class="form-control" id="new-manager-email" placeholder="Enter email address">
                     </div>
                   </div>
                   <div class="modal-footer">

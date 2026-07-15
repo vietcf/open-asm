@@ -152,7 +152,7 @@
                               </div>
                               <div class="mb-3">
                                 <label class="form-label">Description</label>
-                                <input type="text" name="description" class="form-control" value="<%= permission.description %>">
+                                <input type="text" name="description" class="form-control" value="<%= permission.description %>" placeholder="Enter permission description">
                               </div>
                             </div>
                             <div class="modal-footer">
@@ -235,11 +235,11 @@
           <form id="addPermissionForm" action="/administrator/permissions" method="POST">
             <div class="mb-3">
               <label class="form-label">Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" name="name" required pattern="^[a-zA-Z0-9_]+\.(read|create|update|delete)$" title="Format: abc.read|abc.create|abc.update|abc.delete">
+              <input type="text" class="form-control" name="name" required pattern="^[a-zA-Z0-9_]+\.(read|create|update|delete)$" title="Format: abc.read|abc.create|abc.update|abc.delete" placeholder="e.g. module.read">
             </div>
             <div class="mb-3">
               <label class="form-label">Description</label>
-              <input type="text" class="form-control" name="description">
+              <input type="text" class="form-control" name="description" placeholder="Enter permission description">
             </div>
           </form>
         </div>

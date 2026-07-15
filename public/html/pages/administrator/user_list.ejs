@@ -213,15 +213,15 @@
           <form id="addUserForm" action="/administrator/users" method="POST">
             <div class="mb-3">
               <label class="form-label">Username <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" name="username" required pattern="^[a-zA-Z0-9_.-]{3,50}$" title="3-50 characters: letters, numbers, dots, hyphens, and underscores only (no spaces)" maxlength="50">
+              <input type="text" class="form-control" name="username" required pattern="^[a-zA-Z0-9_.-]{3,50}$" title="3-50 characters: letters, numbers, dots, hyphens, and underscores only (no spaces)" maxlength="50" placeholder="Enter username">
             </div>
             <div class="mb-3">
               <label class="form-label">Email <span class="text-danger">*</span></label>
-              <input type="email" class="form-control" name="email" required>
+              <input type="email" class="form-control" name="email" required placeholder="Enter email address">
             </div>
             <div class="mb-3">
               <label class="form-label">Full Name</label>
-              <input type="text" class="form-control" name="fullname">
+              <input type="text" class="form-control" name="fullname" placeholder="Enter full name">
             </div>
             <div class="mb-3">
               <label class="form-label">Role <span class="text-danger">*</span></label>
@@ -234,7 +234,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Password <span class="text-danger">*</span></label>
-              <input type="password" class="form-control" name="password" required minlength="4">
+              <input type="password" class="form-control" name="password" required minlength="4" placeholder="Enter password">
             </div>
             <div class="mb-3">
               <label class="form-label">Require 2FA</label>
@@ -277,15 +277,15 @@
               <form id="editUserForm-<%= user.id %>" action="/administrator/users/<%= user.id %>?_method=PUT" method="POST">
                 <div class="mb-3">
                   <label class="form-label">Username <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" name="username" value="<%= user.username %>" required pattern="^[a-zA-Z0-9_.-]{3,50}$" title="3-50 characters: letters, numbers, dots, hyphens, and underscores only (no spaces)" maxlength="50">
+                  <input type="text" class="form-control" name="username" value="<%= user.username %>" required pattern="^[a-zA-Z0-9_.-]{3,50}$" title="3-50 characters: letters, numbers, dots, hyphens, and underscores only (no spaces)" maxlength="50" placeholder="Enter username">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Email <span class="text-danger">*</span></label>
-                  <input type="email" class="form-control" name="email" value="<%= user.email %>" required>
+                  <input type="email" class="form-control" name="email" value="<%= user.email %>" required placeholder="Enter email address">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Full Name</label>
-                  <input type="text" class="form-control" name="fullname" value="<%= user.fullname || '' %>">
+                  <input type="text" class="form-control" name="fullname" value="<%= user.fullname || '' %>" placeholder="Enter full name">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Role <span class="text-danger">*</span></label>
