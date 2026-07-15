@@ -96,10 +96,9 @@
   font-size: 1rem !important;
 }
 
-/* Placeholder styling */
+/* Placeholder styling - matches native .form-control::placeholder (not italic) */
 .select2-container--bootstrap-5 .select2-selection--single .select2-selection__placeholder {
   color: #6c757d !important;
-  font-style: italic !important;
 }
 
 /* Arrow styling */
@@ -309,7 +308,6 @@
 /* Placeholder styling for multi-select - match Bootstrap 5 form-select exactly */
 .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__placeholder {
     color: #6c757d !important;
-  font-style: italic !important;
   display: inline-flex !important;
   align-items: center !important;
   padding: 0 !important;
@@ -354,7 +352,6 @@
 
 .select2-container--bootstrap-5 .select2-search--inline .select2-search__field::placeholder {
     color: #6c757d !important;
-  font-style: italic !important;
 }
 
 /* Clear all button for multi-select - match form-select height */
