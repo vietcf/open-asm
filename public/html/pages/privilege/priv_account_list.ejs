@@ -782,6 +782,8 @@ $(function() {
     initServerSelect2('#privUserServers', modalElement);
     initContactSelect2('#privUserContacts', modalElement);
     initOrganizeSelect2('#privUserOrganize', modalElement);
+    initSelect2('#privUserType', { placeholder: 'Select account type', dropdownParent: modalElement });
+    initSelect2('#privUserManageType', { placeholder: 'Select management method', dropdownParent: modalElement });
 
     // Initialize and handle Role select2
     function initPrivUserRoleSelect2() {
@@ -930,6 +932,8 @@ $(function() {
     const contactSelect = initContactSelect2('#editAccountContacts', modalElement);
     const organizeSelect = initOrganizeSelect2('#editAccountOrganize', modalElement);
     const roleSelect = initRoleSelect2('#editAccountRole', modalContent, '#editAccountSystem');
+    initSelect2('#editAccountType', { placeholder: 'Select account type', dropdownParent: modalElement });
+    initSelect2('#editAccountManageType', { placeholder: 'Select management method', dropdownParent: modalElement });
 
     // Handle account type changes
     function updateEditModalFields() {
@@ -984,9 +988,9 @@ $(function() {
       $('#editAccountId').val(accountId);
       $('#editAccountUsername').val(accountUsername);
       $('#editAccountDescription').val(accountDescription);
-      $('#editAccountType').val(accountType);
+      $('#editAccountType').val(accountType).trigger('change');
       $('#editAccountAppUrl').val(accountAppUrl);
-      $('#editAccountManageType').val(accountManageType);
+      $('#editAccountManageType').val(accountManageType).trigger('change');
       
       // Set form action
       $('#editPrivAccountForm').attr('action', '/priv-account/account/' + accountId + '?_method=PUT');

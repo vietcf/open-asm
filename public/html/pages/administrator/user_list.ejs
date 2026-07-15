@@ -225,7 +225,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Role <span class="text-danger">*</span></label>
-              <select class="form-select" name="role" required>
+              <select class="form-select user-role-select2" name="role" required>
                 <option value="">-- Select Role --</option>
                 <% if (roles && roles.length) { roles.forEach(function(role) { %>
                   <option value="<%= role.id %>"><%= role.name %></option>
@@ -289,7 +289,7 @@
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Role <span class="text-danger">*</span></label>
-                  <select class="form-select" name="role" required>
+                  <select class="form-select user-role-select2" name="role" required>
                     <option value="">-- Select Role --</option>
                     <% if (roles && roles.length) { roles.forEach(function(role) { %>
                       <option value="<%= role.id %>" <%= user.role_id === role.id ? 'selected' : '' %>><%= role.name %></option>
@@ -361,6 +361,19 @@
 </div>
 
 <script>
+// Role select styled like every other dropdown in the app (select2 instead
+// of a plain native <select>) - one select2 per modal (Add + one per Edit
+// modal), each scoped to its own modal for correct dropdown positioning.
+$('.user-role-select2').each(function() {
+  $(this).select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select role',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $(this).closest('.modal')
+  });
+});
+
 // When an admin sets a new password for a user, nudge them to also force a
 // change on next login — otherwise the admin-chosen password can persist
 // indefinitely if they forget to tick the box separately.

@@ -680,6 +680,15 @@ function buildExportUrl() {
 
 <script>
   $(function() {
+  // Status select2 - Bootstrap 5 theme (matches Tags/Systems/Contacts styling)
+    $('#ipStatus').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select status',
+      allowClear: true,
+      width: '100%',
+      dropdownParent: $('#addIpModal')
+    });
+
   // Tags select2 AJAX - Bootstrap 5 theme (clone from system_add.ejs)
     $('#ipTags').select2({
       theme: 'bootstrap-5',
@@ -750,6 +759,7 @@ function buildExportUrl() {
   $('#addIpModal').on('hidden.bs.modal', function() {
     $('#addIpForm')[0].reset();
     $('#ipTags, #ipSystems, #ipContacts').val(null).trigger('change');
+    $('#ipStatus').trigger('change');
     // Clear validation states
     $('#ipAddress').removeClass('is-invalid is-valid');
     $('#ipValidationIcon').hide();
@@ -828,6 +838,15 @@ function buildExportUrl() {
   });
 
   // Edit IP Modal - Initialize Select2
+  // Status select2 - Bootstrap 5 theme (matches Tags/Systems/Contacts styling)
+  $('#editIpStatus').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select status',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#editIpModal')
+  });
+
   $('#editIpTags').select2({
             theme: 'bootstrap-5',
     multiple: true,
@@ -911,7 +930,7 @@ function buildExportUrl() {
     // Populate form fields
     $('#editIpAddress').val(ipAddress);
     $('#editIpDescription').val(description);
-    $('#editIpStatus').val(status);
+    $('#editIpStatus').val(status).trigger('change');
 
     // Load existing values for Select2 fields after a short delay
         setTimeout(() => {
@@ -948,6 +967,15 @@ function buildExportUrl() {
   });
 
   // Filter IP Modal - Initialize Select2
+  // Status select2 - Bootstrap 5 theme (matches Tags/Systems/Contacts styling)
+  $('#filterIpStatus').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'All Status',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterIpModal')
+  });
+
   $('#filterIpTags').select2({
             theme: 'bootstrap-5',
             placeholder: 'Select tag(s)',
@@ -1022,7 +1050,7 @@ function buildExportUrl() {
   $('#filterIpModal').on('hidden.bs.modal', function() {
     console.log('Filter IP Modal hidden, resetting form');
     $('#filterIpForm')[0].reset();
-    $('#filterIpTags, #filterIpSystems, #filterIpContacts').val(null).trigger('change');
+    $('#filterIpTags, #filterIpSystems, #filterIpContacts, #filterIpStatus').val(null).trigger('change');
   });
 
   // Clear All Filters button
@@ -1031,7 +1059,7 @@ function buildExportUrl() {
     $('#filterIpTags').val(null).trigger('change');
     $('#filterIpSystems').val(null).trigger('change');
     $('#filterIpContacts').val(null).trigger('change');
-    $('#filterIpStatus').val('');
+    $('#filterIpStatus').val(null).trigger('change');
     
     // Close modal
     $('#filterIpModal').modal('hide');
