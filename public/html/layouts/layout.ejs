@@ -195,8 +195,11 @@
         flex-shrink: 0;
       }
       
-      /* Page size select - smaller and separate */
-      .form-select {
+      /* Page size select - smaller and separate. Scoped to the pageSize
+         dropdown specifically - a bare .form-select here used to hit every
+         select on every page (Add/Edit modal fields included), shrinking
+         them to 100px and knocking them inline with their label. */
+      select[name="pageSize"] {
         width: 100px !important;
         max-width: 100px !important;
         margin-bottom: 8px;
