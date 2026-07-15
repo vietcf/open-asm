@@ -516,10 +516,12 @@ serverController.deleteServer = async (req, res) => {
     const id = req.params.id;
     const deleteIp = ['true', '1'].includes(String(req.body.delete_ip ?? req.query.delete_ip).toLowerCase());
     await deleteServerService(id, { deleteIp });
-    res.redirect('/server/server/list?success=Server deleted successfully');
+    req.flash('success', 'Server deleted successfully');
   } catch (err) {
-    res.redirect('/server/server/list?error=Unable to delete server');
+    const message = err instanceof ServiceError ? err.message : 'Unable to delete server: ' + err.message;
+    req.flash('error', message);
   }
+  res.redirect('/server/server/list');
 };
 
 // Export server list as Excel (filtered)
