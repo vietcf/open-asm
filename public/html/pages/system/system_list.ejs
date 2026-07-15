@@ -115,8 +115,8 @@ function buildSystemExportUrl() {
               <div class="modal-footer d-flex justify-content-between">
                 <button type="button" id="clearFilterBtnSystem" class="btn btn-outline-danger btn-sm">Clear All Filters</button>
                 <div>
+                  <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
                   <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
-                  <button type="button" class="btn btn-outline-secondary btn-sm ms-2" data-bs-dismiss="modal">Close</button>
                 </div>
               </div>
             </form>
@@ -1334,4 +1334,29 @@ function buildSystemExportUrl() {
   overflow-wrap: break-word;
 }
 
+/* Filter modal footer has 3 buttons (Clear/Cancel/Apply), Cancel+Apply
+   nested in a sub-div - the site-wide .modal-footer rule only reaches
+   direct children, so this footer needs its own mobile stacking rule
+   (same pattern as device_list.ejs's filter modal). */
+@media (max-width: 991.98px) {
+  #filterSystemModal .modal-footer > div {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+  }
+  #filterSystemModal .modal-footer > div .btn {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  #filterSystemModal .modal-footer .btn:first-child {
+    order: 3 !important; /* Clear All Filters at bottom */
+  }
+  #filterSystemModal .modal-footer > div .btn:first-child {
+    order: 2 !important; /* Cancel in middle */
+  }
+  #filterSystemModal .modal-footer > div .btn:last-child {
+    order: 1 !important; /* Apply Filter on top */
+  }
+}
 </style>
