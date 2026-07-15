@@ -1641,14 +1641,15 @@ $(document).on('click', '#validateIpBtn', function() {
       }
     },
     error: function(xhr, status, error) {
-      console.error('Validation error:', xhr.responseText);
       console.error('Status:', xhr.status);
       console.error('Error:', error);
-      
+
       $('.progress-bar').css('width', '100%').text('Validation Failed');
-      $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
-        .html('<strong>Validation Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
-        .show();
+      extractImportErrorMessage(xhr).then(function(msg) {
+        $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
+          .html('<strong>Validation Error!</strong><br>' + msg)
+          .show();
+      });
       },
       complete: function() {
       $('#validateIpBtn').prop('disabled', false);
@@ -1735,14 +1736,15 @@ $(document).on('click', '#importIpBtn', function() {
       }, 2000);
     },
     error: function(xhr, status, error) {
-      console.error('Import error:', xhr.responseText);
       console.error('Status:', xhr.status);
       console.error('Error:', error);
-      
+
       $('#ipImportProgress .progress-bar').css('width', '100%').text('Import Failed');
-      $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
-        .html('<strong>Import Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
-        .show();
+      extractImportErrorMessage(xhr).then(function(msg) {
+        $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
+          .html('<strong>Import Error!</strong><br>' + msg)
+          .show();
+      });
     },
     complete: function() {
       $('#importIpBtn').prop('disabled', false);

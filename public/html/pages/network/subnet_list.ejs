@@ -1873,11 +1873,13 @@ $(document).on('click', '#validateSubnetBtn', function() {
       }
     },
     error: function(xhr, status, error) {
-      
+
       $('.progress-bar').css('width', '100%').text('Validation Failed');
-      $('#subnetImportResults').removeClass('alert-success').addClass('alert-danger')
-        .html('<strong>Validation Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
-        .show();
+      extractImportErrorMessage(xhr).then(function(msg) {
+        $('#subnetImportResults').removeClass('alert-success').addClass('alert-danger')
+          .html('<strong>Validation Error!</strong><br>' + msg)
+          .show();
+      });
       },
       complete: function() {
       $('#validateSubnetBtn').prop('disabled', false);
@@ -1964,11 +1966,13 @@ $(document).on('click', '#importSubnetBtn', function() {
       }, 2000);
     },
     error: function(xhr, status, error) {
-      
+
       $('#subnetImportProgress .progress-bar').css('width', '100%').text('Import Failed');
-      $('#subnetImportResults').removeClass('alert-success').addClass('alert-danger')
-        .html('<strong>Import Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
-        .show();
+      extractImportErrorMessage(xhr).then(function(msg) {
+        $('#subnetImportResults').removeClass('alert-success').addClass('alert-danger')
+          .html('<strong>Import Error!</strong><br>' + msg)
+          .show();
+      });
     },
     complete: function() {
       $('#importSubnetBtn').prop('disabled', false);

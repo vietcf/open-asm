@@ -987,10 +987,13 @@ deviceController.validateImportDevices = async (req, res) => {
       });
     }
 
-    // Check column order (optional - can be flexible)
-    const columnOrderMismatch = requiredColumns.some((col, index) => headers[index] !== col);
-    if (columnOrderMismatch) {
-      console.warn('Column order mismatch detected, but continuing with validation...');
+    // Check column order - must match the template exactly
+    for (let i = 0; i < requiredColumns.length; i++) {
+      if (headers[i] !== requiredColumns[i]) {
+        return res.status(400).json({
+          error: `Invalid column order. Expected "${requiredColumns[i]}" at position ${i + 1}, got "${headers[i]}"`
+        });
+      }
     }
 
     // Get valid options from database
@@ -1278,13 +1281,47 @@ deviceController.importDevices = async (req, res) => {
     const originalFileName = req.file.originalname;
     let rows = [];
 
+    // Every column must be present and in this exact order, matching the
+    // downloadable template - optional columns may have empty cell values,
+    // but the header row itself must not be missing/reordered/renamed.
+    const expectedHeaders = [
+      'Name (Optional - auto-generated if empty)',
+      'IPAddress (Require, comma-separated if multiple)',
+      'Device Type (Require)',
+      'Platform (Optional, OS)',
+      'Location (Optional)',
+      'Serial Number (Optional)',
+      'Management Address (Optional, comma-separated if multiple)',
+      'Manufacturer (Optional)',
+      'Device Role (Optional)',
+      'Manager (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Description (Optional)'
+    ];
+    const validateHeaderOrder = (headerValues) => {
+      if (headerValues.length !== expectedHeaders.length) {
+        return `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headerValues.length}`;
+      }
+      for (let i = 0; i < expectedHeaders.length; i++) {
+        if (headerValues[i] !== expectedHeaders[i]) {
+          return `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headerValues[i]}"`;
+        }
+      }
+      return null;
+    };
+
     // Parse file (same logic as validation)
     const ext = path.extname(originalFileName).toLowerCase();
     if (ext === '.csv') {
       const csvContent = fs.readFileSync(filePath, 'utf8');
       const lines = csvContent.split('\n').filter(line => line.trim());
       const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      
+
+      const headerError = validateHeaderOrder(headers);
+      if (headerError) {
+        return res.status(400).json({ error: headerError });
+      }
+
       for (let i = 1; i < lines.length; i++) {
         const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
         const row = {};
@@ -1298,12 +1335,18 @@ deviceController.importDevices = async (req, res) => {
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      
+
       if (jsonData.length < 2) {
         return res.status(400).json({ error: 'File must contain at least a header row and one data row' });
       }
-      
+
       const headers = jsonData[0];
+
+      const headerError = validateHeaderOrder(headers);
+      if (headerError) {
+        return res.status(400).json({ error: headerError });
+      }
+
       for (let i = 1; i < jsonData.length; i++) {
         const row = {};
         headers.forEach((header, index) => {

@@ -707,19 +707,46 @@ networkController.validateImportIPs = async (req, res) => {
 
     const filePath = req.file.path;
     const fileExtension = req.file.originalname.split('.').pop().toLowerCase();
-    
+
     let rows = [];
-    
+
+    // Every column must be present and in this exact order, matching the
+    // downloadable template - optional columns may have empty cell values,
+    // but the header row itself must not be missing/reordered/renamed.
+    const expectedHeaders = [
+      'IPAddress (Require, one per row)',
+      'Description (Optional)',
+      'Status (Optional)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Contact (Optional, Email or Email prefix, comma-separated if multiple)',
+      'System Name (Optional, comma-separated if multiple)'
+    ];
+    const validateHeaderOrder = (headerValues) => {
+      if (headerValues.length !== expectedHeaders.length) {
+        return `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headerValues.length}`;
+      }
+      for (let i = 0; i < expectedHeaders.length; i++) {
+        if (headerValues[i] !== expectedHeaders[i]) {
+          return `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headerValues[i]}"`;
+        }
+      }
+      return null;
+    };
+
     // Parse file based on extension
     if (fileExtension === 'csv') {
       const results = [];
-      
+
       // Simple CSV parsing without csv-parser dependency
       const fileContent = fs.readFileSync(filePath, 'utf8');
       const lines = fileContent.split('\n');
       const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      
-      
+
+      const headerError = validateHeaderOrder(headers);
+      if (headerError) {
+        return res.status(400).json({ error: headerError });
+      }
+
       for (let i = 1; i < lines.length; i++) {
         if (lines[i].trim()) {
           const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
@@ -730,33 +757,37 @@ networkController.validateImportIPs = async (req, res) => {
           results.push(rowData);
         }
       }
-      
+
       rows = results;
     } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(filePath);
-      
+
       const worksheet = workbook.worksheets[0];
       const headers = [];
-      
+
       // Get headers from first row
       worksheet.getRow(1).eachCell((cell, colNumber) => {
         headers[colNumber] = cell.value;
       });
-      
-      
+
+      const headerError = validateHeaderOrder(headers.slice(1));
+      if (headerError) {
+        return res.status(400).json({ error: headerError });
+      }
+
       // Get data rows
       for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
         const row = worksheet.getRow(rowNumber);
         const rowData = {};
-        
+
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber];
           if (header) {
             rowData[header] = cell.value;
           }
         });
-        
+
         if (Object.keys(rowData).length > 0) {
           rows.push(rowData);
         }
@@ -764,7 +795,7 @@ networkController.validateImportIPs = async (req, res) => {
     } else {
       return res.status(400).json({ error: 'Unsupported file format' });
     }
-    
+
 
     // Validate each row
     const validationResults = [];
@@ -1013,19 +1044,46 @@ networkController.importIPs = async (req, res) => {
 
     const filePath = req.file.path;
     const fileExtension = req.file.originalname.split('.').pop().toLowerCase();
-    
+
     let rows = [];
-    
+
+    // Every column must be present and in this exact order, matching the
+    // downloadable template - optional columns may have empty cell values,
+    // but the header row itself must not be missing/reordered/renamed.
+    const expectedHeaders = [
+      'IPAddress (Require, one per row)',
+      'Description (Optional)',
+      'Status (Optional)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Contact (Optional, Email or Email prefix, comma-separated if multiple)',
+      'System Name (Optional, comma-separated if multiple)'
+    ];
+    const validateHeaderOrder = (headerValues) => {
+      if (headerValues.length !== expectedHeaders.length) {
+        return `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headerValues.length}`;
+      }
+      for (let i = 0; i < expectedHeaders.length; i++) {
+        if (headerValues[i] !== expectedHeaders[i]) {
+          return `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headerValues[i]}"`;
+        }
+      }
+      return null;
+    };
+
       // Parse file (same logic as validation)
       if (fileExtension === 'csv') {
         const results = [];
-        
+
         // Simple CSV parsing without csv-parser dependency
         const fileContent = fs.readFileSync(filePath, 'utf8');
         const lines = fileContent.split('\n');
         const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-        
-      
+
+        const headerError = validateHeaderOrder(headers);
+        if (headerError) {
+          return res.status(400).json({ error: headerError });
+        }
+
       for (let i = 1; i < lines.length; i++) {
         if (lines[i].trim()) {
           const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
@@ -1036,30 +1094,35 @@ networkController.importIPs = async (req, res) => {
           results.push(rowData);
         }
       }
-      
+
       rows = results;
     } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(filePath);
-      
+
       const worksheet = workbook.worksheets[0];
       const headers = [];
-      
+
       worksheet.getRow(1).eachCell((cell, colNumber) => {
         headers[colNumber] = cell.value;
       });
-      
+
+      const headerError = validateHeaderOrder(headers.slice(1));
+      if (headerError) {
+        return res.status(400).json({ error: headerError });
+      }
+
       for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
         const row = worksheet.getRow(rowNumber);
         const rowData = {};
-        
+
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber];
           if (header) {
             rowData[header] = cell.value;
           }
         });
-        
+
         if (Object.keys(rowData).length > 0) {
           rows.push(rowData);
         }

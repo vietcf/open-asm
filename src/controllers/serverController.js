@@ -831,10 +831,13 @@ serverController.validateImportServers = async (req, res) => {
       });
     }
 
-    // Check column order (optional - can be flexible)
-    const columnOrderMismatch = requiredColumns.some((col, index) => headers[index] !== col);
-    if (columnOrderMismatch) {
-      console.warn('Column order mismatch detected, but continuing with validation...');
+    // Check column order - must match the template exactly
+    for (let i = 0; i < requiredColumns.length; i++) {
+      if (headers[i] !== requiredColumns[i]) {
+        return res.status(400).json({
+          error: `Invalid column order. Expected "${requiredColumns[i]}" at position ${i + 1}, got "${headers[i]}"`
+        });
+      }
     }
 
     // Get valid options from database
@@ -1291,6 +1294,15 @@ serverController.importServers = async (req, res) => {
           message: `Extra columns found: ${extraColumns.join(', ')}. Please use the correct template.`
         }
       });
+    }
+
+    // Check column order - must match the template exactly
+    for (let i = 0; i < requiredColumns.length; i++) {
+      if (headers[i] !== requiredColumns[i]) {
+        return res.status(400).json({
+          error: `Invalid column order. Expected "${requiredColumns[i]}" at position ${i + 1}, got "${headers[i]}"`
+        });
+      }
     }
 
     await client.query('BEGIN');

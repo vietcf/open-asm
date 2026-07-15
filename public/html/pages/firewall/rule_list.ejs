@@ -2178,21 +2178,10 @@ let selectedFile = null;
     error: function(xhr, status, error) {
       $('.progress-bar').css('width', '100%').text('Validation Failed');
         $('#importResults').show();
-        
-        // Try to parse error response
-        let errorMessage = 'Unknown error occurred';
-        if (xhr.responseJSON && xhr.responseJSON.error) {
-          errorMessage = xhr.responseJSON.error;
-        } else if (xhr.responseText) {
-          try {
-            const errorData = JSON.parse(xhr.responseText);
-            errorMessage = errorData.error || errorMessage;
-          } catch (e) {
-            errorMessage = xhr.responseText;
-          }
-        }
-        
-        $('#importMessage').html('<strong>Validation Error!</strong><br>' + errorMessage);
+
+        extractImportErrorMessage(xhr).then(function(errorMessage) {
+          $('#importMessage').html('<strong>Validation Error!</strong><br>' + errorMessage);
+        });
       },
       complete: function() {
         $('#validateBtn').prop('disabled', false);
@@ -2269,7 +2258,9 @@ let selectedFile = null;
     error: function(xhr, status, error) {
         $('#importProgress .progress-bar').css('width', '100%').text('Import Failed');
         $('#importResults').show();
-        $('#importMessage').html('<strong>Import Error!</strong><br>' + (xhr.responseJSON?.error || 'Unknown error occurred'));
+        extractImportErrorMessage(xhr).then(function(errorMessage) {
+          $('#importMessage').html('<strong>Import Error!</strong><br>' + errorMessage);
+        });
     },
     complete: function() {
         $('#importBtn').prop('disabled', false);

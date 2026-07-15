@@ -1227,25 +1227,12 @@ $(document).on('click', '#validateServerBtn', function() {
       console.error('Error:', error);
       
       $('.progress-bar').css('width', '100%').text('Validation Failed');
-      
-      let errorMessage = 'Unknown error occurred';
-      try {
-        // Try to parse JSON response
-        if (xhr.responseJSON && xhr.responseJSON.error) {
-          errorMessage = xhr.responseJSON.error;
-        } else if (xhr.responseText && typeof xhr.responseText === 'string') {
-          errorMessage = xhr.responseText;
-        } else if (xhr.response && typeof xhr.response === 'string') {
-          errorMessage = xhr.response;
-        }
-      } catch (e) {
-        console.error('Error parsing response:', e);
-        errorMessage = `HTTP ${xhr.status}: ${error}`;
-      }
-      
-      $('#serverImportResults').removeClass('alert-success').addClass('alert-danger')
-        .html('<strong>Validation Error!</strong><br>' + errorMessage)
-        .show();
+
+      extractImportErrorMessage(xhr).then(function(errorMessage) {
+        $('#serverImportResults').removeClass('alert-success').addClass('alert-danger')
+          .html('<strong>Validation Error!</strong><br>' + errorMessage)
+          .show();
+      });
     },
     complete: function() {
       $('#validateServerBtn').prop('disabled', false);
@@ -1333,25 +1320,12 @@ $(document).on('click', '#importServerBtn', function() {
       console.error('Error:', error);
       
       $('.progress-bar').css('width', '100%').text('Import Failed');
-      
-      let errorMessage = 'Unknown error occurred';
-      try {
-        // Try to parse JSON response
-        if (xhr.responseJSON && xhr.responseJSON.error) {
-          errorMessage = xhr.responseJSON.error;
-        } else if (xhr.responseText && typeof xhr.responseText === 'string') {
-          errorMessage = xhr.responseText;
-        } else if (xhr.response && typeof xhr.response === 'string') {
-          errorMessage = xhr.response;
-        }
-      } catch (e) {
-        console.error('Error parsing response:', e);
-        errorMessage = `HTTP ${xhr.status}: ${error}`;
-      }
-      
-      $('#serverImportResults').removeClass('alert-success').addClass('alert-danger')
-        .html('<strong>Import Error!</strong><br>' + errorMessage)
-        .show();
+
+      extractImportErrorMessage(xhr).then(function(errorMessage) {
+        $('#serverImportResults').removeClass('alert-success').addClass('alert-danger')
+          .html('<strong>Import Error!</strong><br>' + errorMessage)
+          .show();
+      });
     },
     complete: function() {
       $('#importServerBtn').prop('disabled', false);

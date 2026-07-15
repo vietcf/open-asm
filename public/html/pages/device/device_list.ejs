@@ -1138,25 +1138,13 @@ $(document).on('click', '#validateDeviceBtn', function() {
       console.error('Response JSON:', xhr.responseJSON);
       
       $('.progress-bar').css('width', '100%').text('Validation Failed');
-      
-      let errorMessage = 'Unknown error occurred';
-      try {
-        // Try to parse JSON response
-        if (xhr.responseJSON && xhr.responseJSON.error) {
-          errorMessage = xhr.responseJSON.error;
-        } else if (xhr.responseText && typeof xhr.responseText === 'string') {
-          errorMessage = xhr.responseText;
-        } else if (xhr.response && typeof xhr.response === 'string') {
-          errorMessage = xhr.response;
-        }
-      } catch (e) {
-        console.error('Error parsing error response:', e);
-      }
-      
-      const resultsDiv = $('#deviceImportResults');
-      resultsDiv.removeClass('alert-success').addClass('alert-danger')
-        .html(`<strong>Validation Failed!</strong><br>${errorMessage}`);
-      resultsDiv.show();
+
+      extractImportErrorMessage(xhr).then(function(errorMessage) {
+        const resultsDiv = $('#deviceImportResults');
+        resultsDiv.removeClass('alert-success').addClass('alert-danger')
+          .html(`<strong>Validation Failed!</strong><br>${errorMessage}`);
+        resultsDiv.show();
+      });
     },
     complete: function() {
       console.log('AJAX complete - Validation request finished');
@@ -1244,25 +1232,13 @@ $(document).on('click', '#importDeviceBtn', function() {
       console.error('Error:', error);
       
       $('.progress-bar').css('width', '100%').text('Import Failed');
-      
-      let errorMessage = 'Unknown error occurred';
-      try {
-        // Try to parse JSON response
-        if (xhr.responseJSON && xhr.responseJSON.error) {
-          errorMessage = xhr.responseJSON.error;
-        } else if (xhr.responseText && typeof xhr.responseText === 'string') {
-          errorMessage = xhr.responseText;
-        } else if (xhr.response && typeof xhr.response === 'string') {
-          errorMessage = xhr.response;
-        }
-      } catch (e) {
-        console.error('Error parsing error response:', e);
-      }
-      
-      const resultsDiv = $('#deviceImportResults');
-      resultsDiv.removeClass('alert-success').addClass('alert-danger')
-        .html(`<strong>Import Failed!</strong><br>${errorMessage}`);
-      resultsDiv.show();
+
+      extractImportErrorMessage(xhr).then(function(errorMessage) {
+        const resultsDiv = $('#deviceImportResults');
+        resultsDiv.removeClass('alert-success').addClass('alert-danger')
+          .html(`<strong>Import Failed!</strong><br>${errorMessage}`);
+        resultsDiv.show();
+      });
     },
     complete: function() {
       $('#importDeviceBtn').prop('disabled', false);
