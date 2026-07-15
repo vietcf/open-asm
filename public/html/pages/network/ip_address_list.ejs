@@ -1568,6 +1568,7 @@ $(document).on('click', '#validateIpBtn', function() {
   $('#ipImportResults').text('Validating file...');
   $('.progress-bar').css('width', '30%');
   
+  let nativeXhr;
   $.ajax({
     url: '/network/ip-address/validate-import',
     type: 'POST',
@@ -1575,9 +1576,9 @@ $(document).on('click', '#validateIpBtn', function() {
     processData: false,
     contentType: false,
     xhr: function() {
-      const xhr = new window.XMLHttpRequest();
-      xhr.responseType = 'blob'; // Important for file download
-      return xhr;
+      nativeXhr = new window.XMLHttpRequest();
+      nativeXhr.responseType = 'blob'; // Important for file download
+      return nativeXhr;
     },
     success: function(data, status, xhr) {
       $('.progress-bar').css('width', '100%');
@@ -1645,7 +1646,7 @@ $(document).on('click', '#validateIpBtn', function() {
       console.error('Error:', error);
 
       $('.progress-bar').css('width', '100%').text('Validation Failed');
-      extractImportErrorMessage(xhr).then(function(msg) {
+      extractImportErrorMessage(nativeXhr || xhr).then(function(msg) {
         $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
           .html('<strong>Validation Error!</strong><br>' + msg)
           .show();
@@ -1676,6 +1677,7 @@ $(document).on('click', '#importIpBtn', function() {
   $('.progress-bar').css('width', '30%').text('Importing...');
   $('#importIpBtn').prop('disabled', true);
   
+  let nativeXhr;
   $.ajax({
     url: '/network/ip-address/import',
     type: 'POST',
@@ -1683,9 +1685,9 @@ $(document).on('click', '#importIpBtn', function() {
     processData: false,
     contentType: false,
     xhr: function() {
-      const xhr = new window.XMLHttpRequest();
-      xhr.responseType = 'blob'; // Important for file download
-      return xhr;
+      nativeXhr = new window.XMLHttpRequest();
+      nativeXhr.responseType = 'blob'; // Important for file download
+      return nativeXhr;
     },
     success: function(data, status, xhr) {
       $('#ipImportProgress .progress-bar').css('width', '100%').text('Import Complete');
@@ -1740,7 +1742,7 @@ $(document).on('click', '#importIpBtn', function() {
       console.error('Error:', error);
 
       $('#ipImportProgress .progress-bar').css('width', '100%').text('Import Failed');
-      extractImportErrorMessage(xhr).then(function(msg) {
+      extractImportErrorMessage(nativeXhr || xhr).then(function(msg) {
         $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
           .html('<strong>Import Error!</strong><br>' + msg)
           .show();

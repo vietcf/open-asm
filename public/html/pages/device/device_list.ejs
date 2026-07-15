@@ -1035,6 +1035,7 @@ $(document).on('click', '#validateDeviceBtn', function() {
   $('.progress-bar').css('width', '30%');
   
   console.log('Starting AJAX request to:', '/device/device/validate-import');
+  let nativeXhr;
   $.ajax({
     url: '/device/device/validate-import',
     type: 'POST',
@@ -1043,9 +1044,9 @@ $(document).on('click', '#validateDeviceBtn', function() {
     contentType: false,
     xhr: function() {
       console.log('Creating XHR with blob response type');
-      const xhr = new window.XMLHttpRequest();
-      xhr.responseType = 'blob'; // Important for file download
-      return xhr;
+      nativeXhr = new window.XMLHttpRequest();
+      nativeXhr.responseType = 'blob'; // Important for file download
+      return nativeXhr;
     },
     success: function(data, status, xhr) {
       console.log('AJAX success - Validation completed');
@@ -1139,7 +1140,7 @@ $(document).on('click', '#validateDeviceBtn', function() {
       
       $('.progress-bar').css('width', '100%').text('Validation Failed');
 
-      extractImportErrorMessage(xhr).then(function(errorMessage) {
+      extractImportErrorMessage(nativeXhr || xhr).then(function(errorMessage) {
         const resultsDiv = $('#deviceImportResults');
         resultsDiv.removeClass('alert-success').addClass('alert-danger')
           .html(`<strong>Validation Failed!</strong><br>${errorMessage}`);
@@ -1173,6 +1174,7 @@ $(document).on('click', '#importDeviceBtn', function() {
   $('.progress-bar').css('width', '30%').text('Importing...');
   $('#importDeviceBtn').prop('disabled', true);
   
+  let nativeXhr;
   $.ajax({
     url: '/device/device/import',
     type: 'POST',
@@ -1180,9 +1182,9 @@ $(document).on('click', '#importDeviceBtn', function() {
     processData: false,
     contentType: false,
     xhr: function() {
-      const xhr = new window.XMLHttpRequest();
-      xhr.responseType = 'blob'; // Important for file download
-      return xhr;
+      nativeXhr = new window.XMLHttpRequest();
+      nativeXhr.responseType = 'blob'; // Important for file download
+      return nativeXhr;
     },
     success: function(data, status, xhr) {
       $('#deviceImportProgress .progress-bar').css('width', '100%').text('Import Complete');
@@ -1233,7 +1235,7 @@ $(document).on('click', '#importDeviceBtn', function() {
       
       $('.progress-bar').css('width', '100%').text('Import Failed');
 
-      extractImportErrorMessage(xhr).then(function(errorMessage) {
+      extractImportErrorMessage(nativeXhr || xhr).then(function(errorMessage) {
         const resultsDiv = $('#deviceImportResults');
         resultsDiv.removeClass('alert-success').addClass('alert-danger')
           .html(`<strong>Import Failed!</strong><br>${errorMessage}`);

@@ -1129,6 +1129,7 @@ $(document).on('click', '#validateServerBtn', function() {
   $('#serverImportResults').text('Validating file...');
   $('.progress-bar').css('width', '30%');
   
+  let nativeXhr;
   $.ajax({
     url: '/server/server/validate-import',
     type: 'POST',
@@ -1136,9 +1137,9 @@ $(document).on('click', '#validateServerBtn', function() {
     processData: false,
     contentType: false,
     xhr: function() {
-      const xhr = new window.XMLHttpRequest();
-      xhr.responseType = 'blob'; // Important for file download
-      return xhr;
+      nativeXhr = new window.XMLHttpRequest();
+      nativeXhr.responseType = 'blob'; // Important for file download
+      return nativeXhr;
     },
     success: function(data, status, xhr) {
       $('.progress-bar').css('width', '100%');
@@ -1228,7 +1229,7 @@ $(document).on('click', '#validateServerBtn', function() {
       
       $('.progress-bar').css('width', '100%').text('Validation Failed');
 
-      extractImportErrorMessage(xhr).then(function(errorMessage) {
+      extractImportErrorMessage(nativeXhr || xhr).then(function(errorMessage) {
         $('#serverImportResults').removeClass('alert-success').addClass('alert-danger')
           .html('<strong>Validation Error!</strong><br>' + errorMessage)
           .show();
@@ -1259,6 +1260,7 @@ $(document).on('click', '#importServerBtn', function() {
   $('.progress-bar').css('width', '30%').text('Importing...');
   $('#importServerBtn').prop('disabled', true);
   
+  let nativeXhr;
   $.ajax({
     url: '/server/server/import',
     type: 'POST',
@@ -1266,9 +1268,9 @@ $(document).on('click', '#importServerBtn', function() {
     processData: false,
     contentType: false,
     xhr: function() {
-      const xhr = new window.XMLHttpRequest();
-      xhr.responseType = 'blob'; // Important for file download
-      return xhr;
+      nativeXhr = new window.XMLHttpRequest();
+      nativeXhr.responseType = 'blob'; // Important for file download
+      return nativeXhr;
     },
     success: function(data, status, xhr) {
       $('#serverImportProgress .progress-bar').css('width', '100%').text('Import Complete');
@@ -1321,7 +1323,7 @@ $(document).on('click', '#importServerBtn', function() {
       
       $('.progress-bar').css('width', '100%').text('Import Failed');
 
-      extractImportErrorMessage(xhr).then(function(errorMessage) {
+      extractImportErrorMessage(nativeXhr || xhr).then(function(errorMessage) {
         $('#serverImportResults').removeClass('alert-success').addClass('alert-danger')
           .html('<strong>Import Error!</strong><br>' + errorMessage)
           .show();

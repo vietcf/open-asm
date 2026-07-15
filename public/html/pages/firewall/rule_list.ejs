@@ -2124,14 +2124,17 @@ let selectedFile = null;
     $('#importStatus').text('Validating file...');
   $('.progress-bar').css('width', '30%');
   
+  let nativeXhr;
   $.ajax({
       url: '/firewall/rule/validate-import',
     type: 'POST',
     data: formData,
     processData: false,
     contentType: false,
-    xhrFields: {
-      responseType: 'blob'
+    xhr: function() {
+      nativeXhr = new window.XMLHttpRequest();
+      nativeXhr.responseType = 'blob';
+      return nativeXhr;
     },
       success: function(data, status, xhr) {
       $('.progress-bar').css('width', '100%');
@@ -2179,7 +2182,7 @@ let selectedFile = null;
       $('.progress-bar').css('width', '100%').text('Validation Failed');
         $('#importResults').show();
 
-        extractImportErrorMessage(xhr).then(function(errorMessage) {
+        extractImportErrorMessage(nativeXhr || xhr).then(function(errorMessage) {
           $('#importMessage').html('<strong>Validation Error!</strong><br>' + errorMessage);
         });
       },
@@ -2208,14 +2211,17 @@ let selectedFile = null;
   $('.progress-bar').css('width', '30%').text('Importing...');
     $('#importBtn').prop('disabled', true);
   
+  let nativeXhr;
   $.ajax({
       url: '/firewall/rule/import',
     type: 'POST',
     data: formData,
     processData: false,
     contentType: false,
-    xhrFields: {
-      responseType: 'blob' // Important for downloading files
+    xhr: function() {
+      nativeXhr = new window.XMLHttpRequest();
+      nativeXhr.responseType = 'blob'; // Important for downloading files
+      return nativeXhr;
     },
       success: function(data, status, xhr) {
         $('#importProgress .progress-bar').css('width', '100%').text('Import Complete');
@@ -2258,7 +2264,7 @@ let selectedFile = null;
     error: function(xhr, status, error) {
         $('#importProgress .progress-bar').css('width', '100%').text('Import Failed');
         $('#importResults').show();
-        extractImportErrorMessage(xhr).then(function(errorMessage) {
+        extractImportErrorMessage(nativeXhr || xhr).then(function(errorMessage) {
           $('#importMessage').html('<strong>Import Error!</strong><br>' + errorMessage);
         });
     },
