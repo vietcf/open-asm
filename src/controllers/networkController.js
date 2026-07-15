@@ -412,8 +412,8 @@ networkController.listDomain = async (req, res) => {
       pageSize
     });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-    const success = req.flash('success')[0];
-    const error = req.flash('error')[0];
+    const successMessage = req.flash('success')[0];
+    const errorMessage = req.flash('error')[0];
     // Load record type options from DB (Configuration)
     const recordTypeOptions = await getRecordTypeOptionsFromConfig();
 
@@ -442,8 +442,8 @@ networkController.listDomain = async (req, res) => {
       totalPages,
       totalCount,
       search,
-      success,
-      error,
+      successMessage,
+      errorMessage,
       recordTypeOptions,
       filterStatus,
       filterTags: selectedTags,
