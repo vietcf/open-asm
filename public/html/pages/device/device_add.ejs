@@ -148,6 +148,28 @@
   </div>
 </section>
 
+<style>
+/* Match Add IP Address modal: stack action buttons full-width on mobile,
+   with the primary action above Cancel. */
+@media (max-width: 991.98px) {
+  .card-footer.d-flex.justify-content-end {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    align-items: stretch !important;
+  }
+  .card-footer.d-flex.justify-content-end .btn {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  .card-footer.d-flex.justify-content-end .btn:first-child {
+    order: 2 !important;
+  }
+  .card-footer.d-flex.justify-content-end .btn:last-child {
+    order: 1 !important;
+  }
+}
+</style>
+
 <script src="/vendor/jquery-3.6.0.min.js"></script>
 <link href="/css/select2.min.css" rel="stylesheet" />
 <link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
