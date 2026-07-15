@@ -364,13 +364,18 @@
 // Role select styled like every other dropdown in the app (select2 instead
 // of a plain native <select>) - one select2 per modal (Add + one per Edit
 // modal), each scoped to its own modal for correct dropdown positioning.
-$('.user-role-select2').each(function() {
-  $(this).select2({
-    theme: 'bootstrap-5',
-    placeholder: 'Select role',
-    allowClear: true,
-    width: '100%',
-    dropdownParent: $(this).closest('.modal')
+// Deferred to document-ready: select2.min.js loads after this page's body
+// content in the layout, so calling .select2() at parse time (before the
+// script has loaded) throws "not a function" and leaves a plain <select>.
+$(function() {
+  $('.user-role-select2').each(function() {
+    $(this).select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select role',
+      allowClear: true,
+      width: '100%',
+      dropdownParent: $(this).closest('.modal')
+    });
   });
 });
 
