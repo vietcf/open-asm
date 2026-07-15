@@ -5,6 +5,8 @@ import Configuration from '../models/Configuration.js';
 import Tag from '../models/Tag.js';
 import Contact from '../models/Contact.js';
 import IpAddress from '../models/IpAddress.js';
+import { IPV4_REGEX } from '../services/ipAddressService.js';
+import { parseCsvLine } from '../utils/csvParser.js';
 import { pool } from '../../config/config.js';
 import ExcelJS from 'exceljs';
 import XLSX from 'xlsx';
@@ -915,10 +917,10 @@ deviceController.validateImportDevices = async (req, res) => {
     if (ext === '.csv') {
       const csvContent = fs.readFileSync(filePath, 'utf8');
       const lines = csvContent.split('\n').filter(line => line.trim());
-      headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      
+      headers = parseCsvLine(lines[0]);
+
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const values = parseCsvLine(lines[i]);
         const row = {};
         headers.forEach((header, index) => {
           row[header] = values[index] || '';
@@ -1002,7 +1004,6 @@ deviceController.validateImportDevices = async (req, res) => {
 
     // Validate each row
     const validationResults = [];
-    const ipRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}$/;
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -1036,7 +1037,7 @@ deviceController.validateImportDevices = async (req, res) => {
         // Validate IP addresses format
         const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
         for (const ip of ipList) {
-          if (!ipRegex.test(ip)) {
+          if (!IPV4_REGEX.test(ip)) {
             validationErrors.push(`Invalid IP format: ${ip}`);
           }
         }
@@ -1315,7 +1316,7 @@ deviceController.importDevices = async (req, res) => {
     if (ext === '.csv') {
       const csvContent = fs.readFileSync(filePath, 'utf8');
       const lines = csvContent.split('\n').filter(line => line.trim());
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const headers = parseCsvLine(lines[0]);
 
       const headerError = validateHeaderOrder(headers);
       if (headerError) {
@@ -1323,7 +1324,7 @@ deviceController.importDevices = async (req, res) => {
       }
 
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const values = parseCsvLine(lines[i]);
         const row = {};
         headers.forEach((header, index) => {
           row[header] = values[index] || '';

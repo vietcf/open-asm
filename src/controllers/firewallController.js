@@ -11,6 +11,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { ServiceError } from '../services/errors.js';
+import { parseCsvLine } from '../utils/csvParser.js';
 import {
   listRules as listRulesService,
   createRule as createRuleService,
@@ -572,10 +573,10 @@ firewallController.validateImportRules = async (req, res) => {
     if (ext === '.csv') {
       const csvContent = fs.readFileSync(filePath, 'utf8');
       const lines = csvContent.split('\n').filter(line => line.trim());
-      headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      
+      headers = parseCsvLine(lines[0]);
+
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const values = parseCsvLine(lines[i]);
         const row = {};
         headers.forEach((header, index) => {
           row[header] = values[index] || '';
@@ -1164,10 +1165,10 @@ firewallController.importRules = async (req, res) => {
     if (ext === '.csv') {
       const csvContent = fs.readFileSync(filePath, 'utf8');
       const lines = csvContent.split('\n').filter(line => line.trim());
-      headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      
+      headers = parseCsvLine(lines[0]);
+
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const values = parseCsvLine(lines[i]);
         const row = {};
         headers.forEach((header, index) => {
           row[header] = values[index] || '';

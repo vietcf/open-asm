@@ -14,6 +14,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import archiver from 'archiver';
 import { ServiceError } from '../services/errors.js';
+import { parseCsvLine } from '../utils/csvParser.js';
 import {
   listIpAddresses as listIpAddressesService,
   createIpAddress as createIpAddressService,
@@ -164,9 +165,8 @@ networkController.createIP = async (req, res) => {
     // Pre-validate format for all addresses up front (fail fast on the first
     // bad one, with the specific-IP message) — the service also validates
     // format per-address, but this keeps the friendlier original message.
-    const ipRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}$/;
     for (const ip of ipAddresses) {
-      if (!ipRegex.test(ip)) {
+      if (!IPV4_REGEX.test(ip)) {
         req.flash('error', `Invalid IP address format: ${ip}. Please enter valid IPv4 addresses, e.g. 192.168.1.100`);
         await client.query('ROLLBACK');
         return res.redirect('/network/ip-address');
@@ -740,7 +740,7 @@ networkController.validateImportIPs = async (req, res) => {
       // Simple CSV parsing without csv-parser dependency
       const fileContent = fs.readFileSync(filePath, 'utf8');
       const lines = fileContent.split('\n');
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const headers = parseCsvLine(lines[0]);
 
       const headerError = validateHeaderOrder(headers);
       if (headerError) {
@@ -749,7 +749,7 @@ networkController.validateImportIPs = async (req, res) => {
 
       for (let i = 1; i < lines.length; i++) {
         if (lines[i].trim()) {
-          const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+          const values = parseCsvLine(lines[i]);
           const rowData = {};
           headers.forEach((header, index) => {
             rowData[header] = values[index] || '';
@@ -1077,7 +1077,7 @@ networkController.importIPs = async (req, res) => {
         // Simple CSV parsing without csv-parser dependency
         const fileContent = fs.readFileSync(filePath, 'utf8');
         const lines = fileContent.split('\n');
-        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        const headers = parseCsvLine(lines[0]);
 
         const headerError = validateHeaderOrder(headers);
         if (headerError) {
@@ -1086,7 +1086,7 @@ networkController.importIPs = async (req, res) => {
 
       for (let i = 1; i < lines.length; i++) {
         if (lines[i].trim()) {
-          const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+          const values = parseCsvLine(lines[i]);
           const rowData = {};
           headers.forEach((header, index) => {
             rowData[header] = values[index] || '';
@@ -1762,7 +1762,7 @@ networkController.validateImportSubnets = async (req, res) => {
       // Simple CSV parsing without csv-parser dependency
       const fileContent = fs.readFileSync(filePath, 'utf8');
       const lines = fileContent.split('\n');
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const headers = parseCsvLine(lines[0]);
 
       const headerError = validateHeaderOrder(headers);
       if (headerError) {
@@ -1771,7 +1771,7 @@ networkController.validateImportSubnets = async (req, res) => {
 
       for (let i = 1; i < lines.length; i++) {
         if (lines[i].trim()) {
-          const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+          const values = parseCsvLine(lines[i]);
           const rowData = {};
           headers.forEach((header, index) => {
             rowData[header] = values[index] || '';
@@ -2042,8 +2042,8 @@ networkController.importSubnets = async (req, res) => {
     if (ext === '.csv') {
       const csvContent = fs.readFileSync(filePath, 'utf8');
       const lines = csvContent.split('\n').filter(line => line.trim());
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      
+      const headers = parseCsvLine(lines[0]);
+
       // Validate headers order and required fields
       const expectedHeaders = [
         'Subnet Address (Require)',
@@ -2054,21 +2054,21 @@ networkController.importSubnets = async (req, res) => {
       ];
 
       if (headers.length !== expectedHeaders.length) {
-        return res.status(400).json({ 
-          error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}` 
+        return res.status(400).json({
+          error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}`
         });
       }
-      
+
       for (let i = 0; i < expectedHeaders.length; i++) {
         if (headers[i] !== expectedHeaders[i]) {
-          return res.status(400).json({ 
-            error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"` 
+          return res.status(400).json({
+            error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"`
           });
         }
       }
-      
+
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const values = parseCsvLine(lines[i]);
         const row = {};
         headers.forEach((header, index) => {
           row[header] = values[index] || '';
@@ -2501,8 +2501,7 @@ networkController.apiFindSubnetForIP = async (req, res) => {
     }
     
     // Validate IP format
-    const ipRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}$/;
-    if (!ipRegex.test(ipAddress)) {
+    if (!IPV4_REGEX.test(ipAddress)) {
       return res.status(400).json({ error: 'Invalid IP address format' });
     }
     
