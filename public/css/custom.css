@@ -1,6 +1,20 @@
 /* ========== MINIMAL CUSTOM CSS - AdminLTE 4 Compatible ========== */
 /* Cache buster: 2025-01-20 10:45:00 - Minimal custom styles for AdminLTE 4 */
 
+/* ========== UNIFIED PLACEHOLDER STYLE (ALL fields, native + select2) ========== */
+/* One color, one italic style, everywhere: plain text inputs/textareas
+   (native ::placeholder) and select2's own placeholder span (which isn't
+   a real ::placeholder, so it needs its own matching rule). */
+.form-control::placeholder,
+textarea.form-control::placeholder,
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__placeholder,
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__placeholder,
+.select2-container--bootstrap-5 .select2-search--inline .select2-search__field::placeholder {
+  color: #6c757d !important;
+  font-style: italic !important;
+  opacity: 1 !important;
+}
+
 /* ========== DETAIL MODAL STYLES ========== */
 /* Canonical layout for every "Show/Detail" modal's body: a definition list
    with label/value pairs, one pair per row, consistent spacing and a
@@ -94,11 +108,6 @@
     width: 100% !important;
   vertical-align: middle !important;
   font-size: 1rem !important;
-}
-
-/* Placeholder styling - matches native .form-control::placeholder (not italic) */
-.select2-container--bootstrap-5 .select2-selection--single .select2-selection__placeholder {
-  color: #6c757d !important;
 }
 
 /* Arrow styling */
