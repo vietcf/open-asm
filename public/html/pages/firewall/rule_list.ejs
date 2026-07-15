@@ -2230,10 +2230,12 @@ let selectedFile = null;
         // Get import summary from headers
         const importSummary = xhr.getResponseHeader('X-Import-Summary');
         let summaryInfo = '';
+        let importFailedCount = 0;
         if (importSummary) {
           try {
             const summary = JSON.parse(importSummary);
             summaryInfo = `<br>Total: ${summary.total}, Success: ${summary.success}, Failed: ${summary.failed}`;
+            importFailedCount = summary.failed || 0;
           } catch (e) {
             console.log('Could not parse import summary');
           }
@@ -2250,8 +2252,12 @@ let selectedFile = null;
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
         
-        // Show success message
-        $('#importMessage').html('<strong>Import Completed!</strong><br>Import results file has been downloaded.' + summaryInfo + '<br><br>Page will refresh in 3 seconds.');
+        // Show results - flag partial failures in red instead of a plain neutral message
+        if (importFailedCount > 0) {
+          $('#importMessage').html('<strong style="color: red;">Import Completed with Errors!</strong><br>Import results file has been downloaded.' + summaryInfo + '<br><br>Page will refresh in 3 seconds.');
+        } else {
+          $('#importMessage').html('<strong style="color: green;">Import Completed!</strong><br>Import results file has been downloaded.' + summaryInfo + '<br><br>Page will refresh in 3 seconds.');
+        }
       
       // Hide import button
         $('#importBtn').hide();

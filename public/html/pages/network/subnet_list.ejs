@@ -1852,16 +1852,19 @@ $(document).on('click', '#validateSubnetBtn', function() {
         try {
           const summary = JSON.parse(validationSummary);
           const resultsDiv = $('#subnetImportResults');
-          resultsDiv.removeClass('alert-danger').addClass('alert-success')
-            .html(`<strong>Validation Complete!</strong><br>
-                   <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
-                   <small>Validation file downloaded. Review results before importing.</small>`);
-          resultsDiv.show();
-          
-          // Show import button if validation passed
           if (summary.allPassed) {
+            resultsDiv.removeClass('alert-danger').addClass('alert-success')
+              .html(`<strong>Validation Complete!</strong><br>
+                     <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
+                     <small>Validation file downloaded. Review results before importing.</small>`);
             $('#importSubnetBtn').show();
+          } else {
+            resultsDiv.removeClass('alert-success').addClass('alert-danger')
+              .html(`<strong>Validation Failed!</strong><br>
+                     <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
+                     <small>Validation file downloaded. Please fix the errors before importing.</small>`);
           }
+          resultsDiv.show();
         } catch (e) {
           // Fallback if header parsing fails
           const resultsDiv = $('#subnetImportResults');
@@ -1952,11 +1955,24 @@ $(document).on('click', '#importSubnetBtn', function() {
         window.URL.revokeObjectURL(url);
       }
       
-      // Show results
+      // Show results - reflect actual success/failure counts, not just "it downloaded"
       const resultsDiv = $('#subnetImportResults');
-      resultsDiv.removeClass('alert-danger').addClass('alert-success')
-        .html(`<strong>Import Completed!</strong><br>
-               <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
+      let importSummary = null;
+      try {
+        const summaryHeader = xhr.getResponseHeader('X-Import-Summary');
+        if (summaryHeader) importSummary = JSON.parse(summaryHeader);
+      } catch (e) {}
+
+      if (importSummary && importSummary.failed > 0) {
+        resultsDiv.removeClass('alert-success').addClass('alert-danger')
+          .html(`<strong>Import Completed with Errors!</strong><br>
+                 <small>Total: ${importSummary.total}, Success: ${importSummary.success}, Failed: ${importSummary.failed}</small><br>
+                 <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
+      } else {
+        resultsDiv.removeClass('alert-danger').addClass('alert-success')
+          .html(`<strong>Import Completed!</strong><br>
+                 <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
+      }
       resultsDiv.show();
       
       // Hide import button
