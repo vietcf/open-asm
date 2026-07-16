@@ -15,6 +15,10 @@ ssl
 backups
 *.tmp
 *.temp
+*.tar
+*.tar.gz
+*.tgz
+*.zip
 public/uploads/temp
 public/uploads/tmp
 .cursor
