@@ -1237,7 +1237,15 @@ function buildSystemExportUrl() {
       const table = document.getElementById('systemTable');
       const mobileCards = document.getElementById('systemMobileCards');
       
-      if (width <= 576) {
+      // 768px matches the breakpoint of layout.ejs's generic mobile table
+      // simplification (hide every column but the 2nd + last). That generic
+      // rule assumes column 2 is "Name" - here it's "System Code" instead,
+      // so below this width we always want our own card view, not the
+      // generic table fallback. The actual show/hide is enforced in this
+      // page's #systemTable / #systemMobileCards CSS (with !important,
+      // scoped by ID) since the generic rule's `.table-responsive { display:
+      // block !important }` would otherwise override a JS-set inline style.
+      if (width <= 768) {
         // Show mobile cards, hide table
         if (table) table.closest('.table-responsive').style.display = 'none';
         if (mobileCards) mobileCards.style.display = 'block';
@@ -1338,6 +1346,21 @@ function buildSystemExportUrl() {
    nested in a sub-div - the site-wide .modal-footer rule only reaches
    direct children, so this footer needs its own mobile stacking rule
    (same pattern as device_list.ejs's filter modal). */
+@media (max-width: 768px) {
+  /* layout.ejs's generic mobile table rule forces `.table-responsive` (and
+     every `.table`) visible with !important, assuming column 2 is "Name" -
+     here column 2 is "System Code", so that fallback shows the wrong data
+     and also defeats the JS toggle above that tries to swap in
+     #systemMobileCards. Both overrides need #systemTable's ID specificity
+     (beats the generic .table-responsive/.table class selectors) to win. */
+  #systemTable {
+    display: none !important;
+  }
+  #systemMobileCards {
+    display: block !important;
+  }
+}
+
 @media (max-width: 991.98px) {
   #filterSystemModal .modal-footer > div {
     display: flex !important;
