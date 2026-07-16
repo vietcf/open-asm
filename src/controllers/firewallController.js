@@ -1588,35 +1588,51 @@ firewallController.importRules = async (req, res) => {
             updated_by: username
           };
 
-          // Create rule
-          const ruleId = await RuleFirewall.create(ruleData, client);
+          // Create rule + link contacts/tags in one savepoint: rulefirewall
+          // has a real UNIQUE constraint on (rulename, firewall_name,
+          // audit_batch), so a raw DB error here (or anything else in this
+          // block) would otherwise abort the whole shared transaction —
+          // every row after it would then fail too, and the final COMMIT
+          // would silently discard the entire batch, including rows already
+          // reported as SUCCESS. See importSubnets for the same rationale.
+          const savepoint = `import_rule_row_${i}`;
+          try {
+            await client.query(`SAVEPOINT ${savepoint}`);
 
-          // Handle contacts if provided
-          if (result.contacts) {
-            const Contact = (await import('../models/Contact.js')).default;
-            const contactEmails = result.contacts.split(',').map(email => email.trim()).filter(email => email);
-            const contactIds = [];
-            
-            for (const email of contactEmails) {
-              const contacts = await Contact.findByEmailSearch(email);
-              if (contacts.length > 0) {
-                contactIds.push(contacts[0].id); // Use first match
-              } else {
-                throw new Error(`Contact not found: ${email}`);
+            const ruleId = await RuleFirewall.create(ruleData, client);
+
+            // Handle contacts if provided
+            if (result.contacts) {
+              const Contact = (await import('../models/Contact.js')).default;
+              const contactEmails = result.contacts.split(',').map(email => email.trim()).filter(email => email);
+              const contactIds = [];
+
+              for (const email of contactEmails) {
+                const contacts = await Contact.findByEmailSearch(email);
+                if (contacts.length > 0) {
+                  contactIds.push(contacts[0].id); // Use first match
+                } else {
+                  throw new Error(`Contact not found: ${email}`);
+                }
+              }
+
+              if (contactIds.length > 0) {
+                await RuleFirewall.setContacts(ruleId, contactIds, client);
               }
             }
-            
-            if (contactIds.length > 0) {
-              await RuleFirewall.setContacts(ruleId, contactIds, client);
-            }
-          }
 
-          // Handle tags if provided
-          if (result.tags) {
-            const tagIds = result.tags.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
-            if (tagIds.length > 0) {
-              await RuleFirewall.setTags(ruleId, tagIds, client);
+            // Handle tags if provided
+            if (result.tags) {
+              const tagIds = result.tags.split(',').map(id => parseInt(id.trim(), 10)).filter(id => !isNaN(id));
+              if (tagIds.length > 0) {
+                await RuleFirewall.setTags(ruleId, tagIds, client);
+              }
             }
+
+            await client.query(`RELEASE SAVEPOINT ${savepoint}`);
+          } catch (writeErr) {
+            await client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+            throw writeErr;
           }
         }
 
