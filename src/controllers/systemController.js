@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import System from '../models/System.js';
 import Contact from '../models/Contact.js';
+import Unit from '../models/Unit.js';
 import FileUpload from '../models/FileUpload.js';
 import { pool } from '../../config/config.js';
 import SystemComponent from '../models/SystemComponent.js';
@@ -176,8 +177,10 @@ systemController.listSystem = async (req, res) => {
   filterContacts = normalizeArray(filterContacts).filter(x => x !== '');
   filterScopes = normalizeArray(filterScopes).filter(x => x !== '');
   filterArchitecture = normalizeArray(filterArchitecture).filter(x => x !== '');
+  const filterLevel = req.query.level ? String(req.query.level).trim() : '';
+  const filterDepartment = req.query.department_id ? String(req.query.department_id).trim() : '';
   // Data
-  const { items: systemList, totalCount } = await systemService.listSystems({ search, page, pageSize, filterTags, filterContacts, filterScopes, filterArchitecture });
+  const { items: systemList, totalCount } = await systemService.listSystems({ search, page, pageSize, filterTags, filterContacts, filterScopes, filterArchitecture, filterLevel, filterDepartment });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
     const endItem = totalCount === 0 ? 0 : Math.min(page * pageSize, totalCount);
@@ -222,9 +225,11 @@ systemController.listSystem = async (req, res) => {
     const successMessage = req.flash('success')[0];
     const errorMessage = req.flash('error')[0];
 
-    // Get scope and architecture options for filter modal
+    // Get scope, architecture, and level options plus departments for filter modal
     const scopeOptions = await getScopeOptions();
     const architectureOptions = await getArchitectureOptions();
+    const levelOptions = await getLevelOptions();
+    const departments = await Unit.findAll();
 
     res.render('pages/system/system_list', {
       systemList,
@@ -242,8 +247,12 @@ systemController.listSystem = async (req, res) => {
       filterContacts,
       filterScopes,
       filterArchitecture,
+      filterLevel,
+      filterDepartment,
       scopeOptions,
       architectureOptions,
+      levelOptions,
+      departments,
       title: 'System Management',
       activeMenu: 'system'
     });
@@ -265,10 +274,12 @@ systemController.exportSystemList = async (req, res) => {
     filterContacts = normalizeArray(filterContacts).filter(x => x !== '');
     filterScopes = normalizeArray(filterScopes).filter(x => x !== '');
     filterArchitecture = normalizeArray(filterArchitecture).filter(x => x !== '');
+    const filterLevel = req.query.level ? String(req.query.level).trim() : '';
+    const filterDepartment = req.query.department_id ? String(req.query.department_id).trim() : '';
 
     // Lấy toàn bộ danh sách phù hợp filter (không phân trang)
     const { items: systemList } = await systemService.listSystems({
-      search, page: 1, pageSize: 10000, filterTags, filterContacts, filterScopes, filterArchitecture
+      search, page: 1, pageSize: 10000, filterTags, filterContacts, filterScopes, filterArchitecture, filterLevel, filterDepartment
     });
 
     const headers = ['System Code', 'System Name', 'Alias', 'Tags', 'Contacts', 'Architecture'];

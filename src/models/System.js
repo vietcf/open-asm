@@ -276,7 +276,7 @@ class System {
   }
 
   // ===== FILTERED LIST & PAGINATION =====
-  static async findFilteredList({ search = '', page = 1, pageSize = 10, filterScopes = [], filterArchitecture = [] }) {
+  static async findFilteredList({ search = '', page = 1, pageSize = 10, filterScopes = [], filterArchitecture = [], filterLevel = '', filterDepartment = '' }) {
     const offset = (page - 1) * pageSize;
     const q = `%${search}%`;
     // filterTags, filterContacts, filterScopes, and filterArchitecture are arrays
@@ -310,6 +310,18 @@ class System {
       filterArchitecture.forEach(architecture => {
         params.push(JSON.stringify([architecture]));
       });
+    }
+    if (filterLevel === '__none__') {
+      whereClauses.push('s.level IS NULL');
+    } else if (filterLevel) {
+      whereClauses.push(`s.level = $${paramIdx}`);
+      params.push(filterLevel);
+      paramIdx++;
+    }
+    if (filterDepartment) {
+      whereClauses.push(`s.department_id = $${paramIdx}`);
+      params.push(parseInt(filterDepartment, 10));
+      paramIdx++;
     }
     const result = await pool.query(`
       SELECT s.*,
@@ -347,7 +359,7 @@ class System {
     return result.rows;
   }
 
-  static async countFiltered({ search = '', filterScopes = [], filterArchitecture = [] }) {
+  static async countFiltered({ search = '', filterScopes = [], filterArchitecture = [], filterLevel = '', filterDepartment = '' }) {
     const q = `%${search}%`;
     const filterTags = arguments[0].filterTags || [];
     const filterContacts = arguments[0].filterContacts || [];
@@ -379,6 +391,18 @@ class System {
       filterArchitecture.forEach(architecture => {
         params.push(JSON.stringify([architecture]));
       });
+    }
+    if (filterLevel === '__none__') {
+      whereClauses.push('s.level IS NULL');
+    } else if (filterLevel) {
+      whereClauses.push(`s.level = $${paramIdx}`);
+      params.push(filterLevel);
+      paramIdx++;
+    }
+    if (filterDepartment) {
+      whereClauses.push(`s.department_id = $${paramIdx}`);
+      params.push(parseInt(filterDepartment, 10));
+      paramIdx++;
     }
     const result = await pool.query(`
       SELECT COUNT(DISTINCT s.id) AS count

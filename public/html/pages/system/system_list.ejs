@@ -17,6 +17,12 @@ function buildSystemExportUrl() {
   if (typeof filterArchitecture !== 'undefined' && filterArchitecture && filterArchitecture.length > 0) {
     filterArchitecture.forEach(v => params.append('architectures[]', v));
   }
+  if (typeof filterLevel !== 'undefined' && filterLevel) {
+    params.set('level', filterLevel);
+  }
+  if (typeof filterDepartment !== 'undefined' && filterDepartment) {
+    params.set('department_id', filterDepartment);
+  }
   return '/system/system/export' + (params.toString() ? '?' + params.toString() : '');
 }
 %>
@@ -109,6 +115,29 @@ function buildSystemExportUrl() {
                   <div class="col-12 mb-2">
                     <label class="form-label">Architecture</label>
                     <select id="filterSystemArchitecture" name="architectures[]" class="form-control" multiple></select>
+                  </div>
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Level</label>
+                    <select id="filterSystemLevel" name="level" class="form-select">
+                      <option value="">All Levels</option>
+                      <option value="__none__" <%= (typeof filterLevel !== 'undefined' && filterLevel === '__none__') ? 'selected' : '' %>>(Not set)</option>
+                      <% if (levelOptions && levelOptions.length > 0) { %>
+                        <% levelOptions.forEach(function(level) { %>
+                          <option value="<%= level.id %>" <%= (typeof filterLevel !== 'undefined' && filterLevel === level.id) ? 'selected' : '' %>><%= level.text %></option>
+                        <% }) %>
+                      <% } %>
+                    </select>
+                  </div>
+                  <div class="col-12 mb-2">
+                    <label class="form-label">Department</label>
+                    <select id="filterSystemDepartment" name="department_id" class="form-select">
+                      <option value="">All Departments</option>
+                      <% if (departments && departments.length > 0) { %>
+                        <% departments.forEach(function(dept) { %>
+                          <option value="<%= dept.id %>" <%= (typeof filterDepartment !== 'undefined' && String(filterDepartment) === String(dept.id)) ? 'selected' : '' %>><%= dept.name %></option>
+                        <% }) %>
+                      <% } %>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -449,6 +478,8 @@ function buildSystemExportUrl() {
                   if (typeof filterContacts !== 'undefined' && filterContacts.length) filterContacts.forEach(function(c) { params.push('contacts[]=' + encodeURIComponent(c)); });
                   if (typeof filterScopes !== 'undefined' && filterScopes.length) filterScopes.forEach(function(scope) { params.push('scopes[]=' + encodeURIComponent(scope)); });
                   if (typeof filterArchitecture !== 'undefined' && filterArchitecture.length) filterArchitecture.forEach(function(arch) { params.push('architectures[]=' + encodeURIComponent(arch)); });
+                  if (typeof filterLevel !== 'undefined' && filterLevel) params.push('level=' + encodeURIComponent(filterLevel));
+                  if (typeof filterDepartment !== 'undefined' && filterDepartment) params.push('department_id=' + encodeURIComponent(filterDepartment));
                   return params.join('&');
                 }
                 const filterQuery = buildFilterQuery();
@@ -1147,7 +1178,24 @@ function buildSystemExportUrl() {
         data: window.architectureOptionsData || [],
         // Sử dụng format {id, text} mặc định của Select2
       });
-      
+
+      // Level and Department: plain single-selects, options + selected
+      // state already rendered server-side, so no restore step needed.
+      $('#filterSystemLevel').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'All Levels',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $modalContent
+      });
+      $('#filterSystemDepartment').select2({
+        theme: 'bootstrap-5',
+        placeholder: 'All Departments',
+        allowClear: true,
+        width: '100%',
+        dropdownParent: $modalContent
+      });
+
 
       // Restore all filter values with proper timing
       setTimeout(function() {
@@ -1215,6 +1263,8 @@ function buildSystemExportUrl() {
         $('#filterSystemContacts').val(null).trigger('change');
         $('#filterSystemScopes').val(null).trigger('change');
         $('#filterSystemArchitecture').val(null).trigger('change');
+        $('#filterSystemLevel').val(null).trigger('change');
+        $('#filterSystemDepartment').val(null).trigger('change');
         // Close modal
         $filterModal.modal('hide');
         // Redirect to clean URL but preserve pageSize and search
