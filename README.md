@@ -430,7 +430,7 @@ node migrations/init_data.js
 node migrations/alters/run.js
 ```
 
-In Docker, run these inside the app/migration container, e.g. `docker-compose run --rm migration node migrations/alters/run.js`. The `migration` service in `docker-compose.yml` already runs all three in sequence on every `docker-compose up`, so this is normally automatic — see "Updating an existing deployment" above.
+In Docker, run these inside the app/migration container, e.g. `docker-compose run --rm migration node migrations/alters/run.js`. The `migration` service in `docker-compose.yml` already runs all three in sequence on every `docker-compose up`, so this is normally automatic — see "Updating an existing deployment" above. The `app` service's `depends_on` uses `condition: service_completed_successfully` on `migration`, so `app` won't start until migration has actually finished (exit code 0), not just started.
 
 **Making a schema change (between releases):**
 1. Add a new file `migrations/alters/000N_description.js` (start at `0001` again, since the folder was just emptied — next number after the last one once more files accumulate), exporting `default async (pool) => { await pool.query('ALTER TABLE ...'); }`. Use `IF NOT EXISTS`/`IF EXISTS` guards so it's safe to re-run.
