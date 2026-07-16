@@ -21,8 +21,8 @@ class Contact {
    * @param {string} data.description
    * @returns {Promise<Object>} The created contact
    */
-  static async create({ name, email, phone, position, unit_id, description }) {
-    const result = await pool.query(
+  static async create({ name, email, phone, position, unit_id, description }, client = pool) {
+    const result = await client.query(
       `INSERT INTO contacts (name, email, phone, position, unit_id, description)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
       [name, email, phone, position, unit_id || null, description || null]

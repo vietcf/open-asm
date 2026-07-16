@@ -3,7 +3,7 @@ import Unit from '../models/Unit.js';
 import Configuration from '../models/Configuration.js';
 import { ValidationError, NotFoundError, ConflictError } from './errors.js';
 
-const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+export const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export async function getPositionOptions() {
   try {
@@ -67,7 +67,7 @@ export async function findContactsByEmail(email) {
 // required explicitly here, matching the frontend's original (correct)
 // behavior — its form's <select> is `required` anyway, so this is a no-op
 // change for real form submissions.
-export async function createContact(input) {
+export async function createContact(input, client) {
   const name = (input.name || '').trim();
   const email = (input.email || '').trim();
   const position = (input.position || '').trim();
@@ -86,7 +86,7 @@ export async function createContact(input) {
   const existing = await Contact.findByEmail(email);
   if (existing) throw new ConflictError('Contact already exists with this email');
 
-  return Contact.create({ name, email, phone, position, unit_id: unitId, description });
+  return Contact.create({ name, email, phone, position, unit_id: unitId, description }, client);
 }
 
 // Partial update: only fields present as own-properties of `input` are

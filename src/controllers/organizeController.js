@@ -15,7 +15,8 @@ import {
   createContact as createContactService,
   updateContact as updateContactService,
   deleteContact as deleteContactService,
-  getPositionOptions as getPositionOptionsFromConfig
+  getPositionOptions as getPositionOptionsFromConfig,
+  EMAIL_REGEX
 } from '../services/contactService.js';
 import {
   listUnits as listUnitsService,
@@ -627,6 +628,11 @@ organizeController.validateImportContacts = async (req, res) => {
     // Validation logic
     const validationResults = [];
     let allPassed = true;
+    // Real configured position list (config_name contact_position), not a
+    // hardcoded guess — deployments can (and here, do) configure values
+    // beyond just MANAGER/STAFF, e.g. "Staff", "Accountant", "Engineer".
+    const positionOptions = await getPositionOptionsFromConfig();
+    const allowedPositions = positionOptions.map(o => o.value);
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -645,12 +651,8 @@ organizeController.validateImportContacts = async (req, res) => {
 
       if (!row['Email (Require)'] || !row['Email (Require)'].trim()) {
         errors.push('Email is required');
-      } else {
-        // Validate email format
-        const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-        if (!emailRegex.test(row['Email (Require)'].trim())) {
-          errors.push('Invalid email format');
-        }
+      } else if (!EMAIL_REGEX.test(row['Email (Require)'].trim())) {
+        errors.push('Invalid email format');
       }
 
       // Check if contact already exists (by email or name)
@@ -669,12 +671,8 @@ organizeController.validateImportContacts = async (req, res) => {
 
       if (!row['Position (Require)'] || !row['Position (Require)'].trim()) {
         errors.push('Position is required');
-      } else {
-        // Validate position values
-        const allowedPositions = ['MANAGER', 'STAFF'];
-        if (!allowedPositions.includes(row['Position (Require)'].trim().toUpperCase())) {
-          errors.push('Position must be MANAGER or STAFF');
-        }
+      } else if (allowedPositions.length > 0 && !allowedPositions.includes(row['Position (Require)'].trim())) {
+        errors.push(`Invalid position. Must be one of: ${allowedPositions.join(', ')}`);
       }
 
       // Validate Org Unit if provided
@@ -841,7 +839,16 @@ organizeController.importContacts = async (req, res) => {
     }
 
     const importResults = [];
-    const username = req.session && req.session.user && req.session.user.username ? req.session.user.username : 'admin';
+    // Tracks emails/names already claimed earlier in this same file — the
+    // per-row "already exists" check below only queries the DB, so two rows
+    // with the same email/name in one file would both pass it individually
+    // (contacts.email has no DB-level UNIQUE constraint) and both get
+    // created as separate contacts. See importSubnets for the SAVEPOINT
+    // rationale: without it, a raw DB error on one row would abort the
+    // whole shared transaction and the final COMMIT would silently discard
+    // the entire batch, even rows already marked Success.
+    const seenEmails = new Set();
+    const seenNames = new Set();
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -851,55 +858,89 @@ organizeController.importContacts = async (req, res) => {
         import_reason: ''
       };
 
-      try {
-        // Check if contact already exists by email or name
-        const existingContactByEmail = await Contact.findByEmail(row['Email (Require)'].trim());
-        const existingContactByName = await Contact.findByName(row['Name (Require)'].trim());
-        
-        if (existingContactByEmail && existingContactByName) {
-          result.import_status = 'Skipped';
-          result.import_reason = 'Contact already exists (both email and name)';
-          importResults.push(result);
-          continue;
-        } else if (existingContactByEmail) {
-          result.import_status = 'Skipped';
-          result.import_reason = 'Email already exists';
-          importResults.push(result);
-          continue;
-        } else if (existingContactByName) {
-          result.import_status = 'Skipped';
-          result.import_reason = 'Name already exists';
-          importResults.push(result);
-          continue;
-        }
+      const name = (row['Name (Require)'] || '').toString().trim();
+      const email = (row['Email (Require)'] || '').toString().trim();
+      const position = (row['Position (Require)'] || '').toString().trim();
 
-        // Get unit_id if Org Unit is provided
-        let unit_id = null;
-        if (row['Org Unit'] && row['Org Unit'].trim()) {
-          const unit = await Unit.findByName(row['Org Unit'].trim());
-          if (unit) {
-            unit_id = unit.id;
-          }
-        }
-
-        // Create contact
-        const newContact = await Contact.create({
-          name: row['Name (Require)'].trim(),
-          email: row['Email (Require)'].trim(),
-          phone: row['Phone'] ? row['Phone'].trim() : null,
-          position: row['Position (Require)'].trim().toUpperCase(),
-          unit_id: unit_id,
-          description: row['Description'] ? row['Description'].trim() : null
-        });
-
+      if (!name || !email || !position) {
+        result.import_status = 'Failed';
+        result.import_reason = 'Name, Email, and Position are required';
         importResults.push(result);
+        continue;
+      }
 
+      const emailKey = email.toLowerCase();
+      const nameKey = name.toLowerCase();
+      if (seenEmails.has(emailKey) || seenNames.has(nameKey)) {
+        result.import_status = 'Skipped';
+        result.import_reason = 'Duplicate email or name within this file';
+        importResults.push(result);
+        continue;
+      }
+
+      // Check if contact already exists by email or name
+      const existingContactByEmail = await Contact.findByEmail(email);
+      const existingContactByName = await Contact.findByName(name);
+      if (existingContactByEmail && existingContactByName) {
+        result.import_status = 'Skipped';
+        result.import_reason = 'Contact already exists (both email and name)';
+        importResults.push(result);
+        continue;
+      } else if (existingContactByEmail) {
+        result.import_status = 'Skipped';
+        result.import_reason = 'Email already exists';
+        importResults.push(result);
+        continue;
+      } else if (existingContactByName) {
+        result.import_status = 'Skipped';
+        result.import_reason = 'Name already exists';
+        importResults.push(result);
+        continue;
+      }
+
+      // Get unit_id if Org Unit is provided
+      let unit_id = null;
+      if (row['Org Unit'] && row['Org Unit'].toString().trim()) {
+        const unit = await Unit.findByName(row['Org Unit'].toString().trim());
+        if (!unit) {
+          result.import_status = 'Failed';
+          result.import_reason = `Org Unit not found: ${row['Org Unit']}`;
+          importResults.push(result);
+          continue;
+        }
+        unit_id = unit.id;
+      }
+
+      seenEmails.add(emailKey);
+      seenNames.add(nameKey);
+
+      // Each row gets its own savepoint: createContactService runs the same
+      // format/position/duplicate validation as the single-add path, but if
+      // it (or anything else) still hits a raw DB error, that error leaves
+      // the whole shared transaction "aborted" in Postgres until rolled
+      // back — without a savepoint, every row after the first failure would
+      // also fail and the final COMMIT would discard the entire batch.
+      const savepoint = `import_contact_row_${i}`;
+      try {
+        await client.query(`SAVEPOINT ${savepoint}`);
+        await createContactService({
+          name,
+          email,
+          position,
+          phone: row['Phone'] ? row['Phone'].toString().trim() : '',
+          unit_id,
+          description: row['Description'] ? row['Description'].toString().trim() : ''
+        }, client);
+        await client.query(`RELEASE SAVEPOINT ${savepoint}`);
+        result.import_reason = 'Successfully created contact';
       } catch (err) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
         console.error(`Error importing contact row ${i + 1}:`, err);
         result.import_status = 'Failed';
-        result.import_reason = err.message;
-        importResults.push(result);
+        result.import_reason = err instanceof ServiceError ? err.message : (err.message || 'Unknown error');
       }
+
+      importResults.push(result);
     }
 
     await client.query('COMMIT');
