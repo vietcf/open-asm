@@ -41,17 +41,10 @@ async function resolveUnitId(rawUnitId) {
   return unitId;
 }
 
-export async function listContacts({ search, page, pageSize }) {
-  if (search) {
-    const [items, totalCount] = await Promise.all([
-      Contact.findSearchPage(search, page, pageSize),
-      Contact.countSearch(search)
-    ]);
-    return { items, totalCount };
-  }
+export async function listContacts({ search, unit_id, position, page, pageSize }) {
   const [items, totalCount] = await Promise.all([
-    Contact.findPage(page, pageSize),
-    Contact.countAll()
+    Contact.findFilteredPage({ search, unit_id, position, page, pageSize }),
+    Contact.countFiltered({ search, unit_id, position })
   ]);
   return { items, totalCount };
 }

@@ -36,13 +36,15 @@ const organizeController = {};
 organizeController.contactList = async (req, res) => {
   try {
     const search = req.query.search ? req.query.search.trim() : '';
+    const filterUnitId = req.query.unit_id ? req.query.unit_id.trim() : '';
+    const filterPosition = req.query.position ? req.query.position.trim() : '';
     const page = parseInt(req.query.page, 10) || 1;
     // Use global page size options
     let pageSize = parseInt(req.query.pageSize, 10);
     if (!res.locals.pageSizeOptions.includes(pageSize)) {
       pageSize = res.locals.defaultPageSize;
     }
-    const { items: contactList, totalCount } = await listContactsService({ search, page, pageSize });
+    const { items: contactList, totalCount } = await listContactsService({ search, unit_id: filterUnitId, position: filterPosition, page, pageSize });
     const totalPages = Math.ceil(totalCount / pageSize);
     // fetch units for Org Unit select options
     const units = await Unit.findAll();
@@ -56,6 +58,8 @@ organizeController.contactList = async (req, res) => {
       units,
       positionOptions,
       search,
+      filterUnitId,
+      filterPosition,
       page,
       totalPages,
       errorMessage,
