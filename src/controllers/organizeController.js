@@ -500,10 +500,16 @@ organizeController.downloadContactTemplate = async (req, res) => {
       fgColor: { argb: 'FFE0E0E0' }
     };
 
-    // Add sample data
+    // Add sample data — position values pulled from the real configured
+    // list (contact_position) rather than a hardcoded guess, since that
+    // guess ("MANAGER"/"STAFF") previously didn't match this deployment's
+    // actual configured casing ("Manager"/"Staff") and would fail import.
+    const positionOptions = await getPositionOptionsFromConfig();
+    const samplePosition1 = positionOptions[0] ? positionOptions[0].value : 'Manager';
+    const samplePosition2 = positionOptions[1] ? positionOptions[1].value : (positionOptions[0] ? positionOptions[0].value : 'Staff');
     const sampleData = [
-      ['John Doe', 'john.doe@company.com', '0123456789', 'IT Department', 'MANAGER', 'Sample contact for IT management'],
-      ['Jane Smith', 'jane.smith@company.com', '0987654321', 'HR Department', 'STAFF', 'Sample contact for HR staff']
+      ['John Doe', 'john.doe@company.com', '0123456789', 'IT Department', samplePosition1, 'Sample contact for IT management'],
+      ['Jane Smith', 'jane.smith@company.com', '0987654321', 'HR Department', samplePosition2, 'Sample contact for HR staff']
     ];
 
     sampleData.forEach(row => {

@@ -105,6 +105,11 @@ function buildPaginationUrl(targetPage) {
           <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterContactModal">
             <i class="bi bi-funnel"></i> Filter
           </button>
+          <% if (hasPermission && hasPermission('contact.create')) { %>
+            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importContactModal">
+              <i class="bi bi-upload"></i> Import Contact
+            </button>
+          <% } %>
         </div>
       </div>
     </div>
@@ -435,6 +440,61 @@ function buildPaginationUrl(targetPage) {
   </div>
 </div>
 
+<!-- Import Contact Modal -->
+<div class="modal fade" id="importContactModal" tabindex="-1" aria-labelledby="importContactModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="importContactModalLabel">Import Contacts</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="importContactForm" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label for="contactImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="file"
+                     class="form-control"
+                     id="contactImportFile"
+                     name="file"
+                     accept=".csv,.xlsx,.xls"
+                     required>
+              <a href="/organize/contact/template" class="btn btn-outline-info" download>
+                <i class="bi bi-download"></i> Download Template
+              </a>
+            </div>
+            <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
+          </div>
+
+          <div class="mb-3">
+            <div class="alert alert-info">
+              <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
+              <ul class="mb-0">
+                <li>Click "Download Template" to get the Excel template with correct format</li>
+                <li>Fill the template with your contact data</li>
+                <li>Name, Email, and Position (Required, one per row) must not already exist</li>
+                <li>Phone, Org Unit, and Description are optional</li>
+                <li>Select your filled template file and validate before importing</li>
+              </ul>
+            </div>
+          </div>
+
+          <div id="contactImportProgress" class="progress mb-3" style="display: none;">
+            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+          </div>
+
+          <div id="contactImportResults" class="alert" style="display: none;"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning btn-sm" id="validateContactBtn" disabled>Validate File</button>
+        <button type="button" class="btn btn-success btn-sm" id="importContactBtn" style="display: none;">Import Contacts</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ==========================================
 // JAVASCRIPT FUNCTIONS
@@ -522,6 +582,139 @@ $(function() {
     if (currentSearch) params.push('search=' + encodeURIComponent(currentSearch));
     if (params.length > 0) cleanUrl += '?' + params.join('&');
     window.location.href = cleanUrl;
+  });
+
+  // ==========================================
+  // IMPORT CONTACT
+  // ==========================================
+  let selectedContactFile = null;
+
+  $(document).on('change', '#contactImportFile', function() {
+    selectedContactFile = this.files[0];
+    if (selectedContactFile) {
+      $('#validateContactBtn').prop('disabled', false);
+      $('#importContactBtn').hide();
+      $('#contactImportResults').hide();
+    } else {
+      $('#validateContactBtn').prop('disabled', true);
+      $('#importContactBtn').hide();
+    }
+  });
+
+  $(document).on('click', '#validateContactBtn', function() {
+    if (!selectedContactFile) {
+      alert('Please select a file first');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', selectedContactFile);
+
+    $('#contactImportProgress').show();
+    $('#contactImportResults').text('Validating file...');
+    $('.progress-bar').css('width', '30%');
+
+    $.ajax({
+      url: '/organize/contact/validate-import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      success: function(data) {
+        $('.progress-bar').css('width', '100%');
+        const resultsDiv = $('#contactImportResults');
+        const summary = data.summary || {};
+        if (summary.allPassed) {
+          resultsDiv.removeClass('alert-danger').addClass('alert-success')
+            .html(`<strong>Validation Complete!</strong><br>
+                   <small>Total: ${summary.totalRows}, Passed: ${summary.passedRows}, Failed: ${summary.failedRows}</small><br>
+                   <a href="${data.validation_file}" target="_blank">Download validation results</a>`);
+          $('#importContactBtn').show();
+        } else {
+          resultsDiv.removeClass('alert-success').addClass('alert-danger')
+            .html(`<strong>Validation Failed!</strong><br>
+                   <small>Total: ${summary.totalRows}, Passed: ${summary.passedRows}, Failed: ${summary.failedRows}</small><br>
+                   <a href="${data.validation_file}" target="_blank">Download validation results</a> to see errors.`);
+        }
+        resultsDiv.show();
+      },
+      error: function(xhr) {
+        $('.progress-bar').css('width', '100%').text('Validation Failed');
+        extractImportErrorMessage(xhr).then(function(msg) {
+          $('#contactImportResults').removeClass('alert-success').addClass('alert-danger')
+            .html('<strong>Validation Error!</strong><br>' + msg)
+            .show();
+        });
+      },
+      complete: function() {
+        $('#validateContactBtn').prop('disabled', false);
+        setTimeout(() => { $('#contactImportProgress').hide(); }, 2000);
+      }
+    });
+  });
+
+  $(document).on('click', '#importContactBtn', function() {
+    if (!selectedContactFile) {
+      alert('Please select a file first');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', selectedContactFile);
+
+    $('#contactImportProgress').show();
+    $('#contactImportResults').text('Importing contacts...');
+    $('.progress-bar').css('width', '30%').text('Importing...');
+    $('#importContactBtn').prop('disabled', true);
+
+    $.ajax({
+      url: '/organize/contact/import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      success: function(data) {
+        $('#contactImportProgress .progress-bar').css('width', '100%').text('Import Complete');
+        const resultsDiv = $('#contactImportResults');
+        const summary = data.summary || {};
+        if (summary.failedRows > 0) {
+          resultsDiv.removeClass('alert-success').addClass('alert-danger')
+            .html(`<strong>Import Completed with Errors!</strong><br>
+                   <small>Total: ${summary.totalRows}, Success: ${summary.successRows}, Skipped: ${summary.skippedRows}, Failed: ${summary.failedRows}</small><br>
+                   <a href="${data.import_file}" target="_blank">Download import results</a><br>
+                   <small>Page will refresh to show updated data.</small>`);
+        } else {
+          resultsDiv.removeClass('alert-danger').addClass('alert-success')
+            .html(`<strong>Import Completed!</strong><br>
+                   <small>Total: ${summary.totalRows}, Success: ${summary.successRows}, Skipped: ${summary.skippedRows}</small><br>
+                   <a href="${data.import_file}" target="_blank">Download import results</a><br>
+                   <small>Page will refresh to show updated data.</small>`);
+        }
+        resultsDiv.show();
+        $('#importContactBtn').hide();
+        setTimeout(() => { window.location.reload(); }, 2500);
+      },
+      error: function(xhr) {
+        $('#contactImportProgress .progress-bar').css('width', '100%').text('Import Failed');
+        extractImportErrorMessage(xhr).then(function(msg) {
+          $('#contactImportResults').removeClass('alert-success').addClass('alert-danger')
+            .html('<strong>Import Error!</strong><br>' + msg)
+            .show();
+        });
+      },
+      complete: function() {
+        $('#importContactBtn').prop('disabled', false);
+        setTimeout(() => { $('#contactImportProgress').hide(); }, 2000);
+      }
+    });
+  });
+
+  $('#importContactModal').on('hidden.bs.modal', function() {
+    $('#importContactForm')[0].reset();
+    selectedContactFile = null;
+    $('#validateContactBtn').prop('disabled', true);
+    $('#importContactBtn').hide();
+    $('#contactImportProgress').hide();
+    $('#contactImportResults').hide();
+    $('.progress-bar').css('width', '0%').text('');
   });
 });
 
