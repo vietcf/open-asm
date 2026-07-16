@@ -1886,7 +1886,27 @@ networkController.validateImportSubnets = async (req, res) => {
       console.log('Final validation result for row', i + 1, ':', result);
       validationResults.push(result);
     }
-    
+
+    // Detect subnet addresses duplicated within the file itself — the
+    // per-row loop above only checks each address against the DB, so two
+    // identical addresses in the same file both "Pass" individually, which
+    // is exactly the case most likely to hit a duplicate-key error mid-import
+    // (see importSubnets).
+    const rowsByAddress = new Map();
+    for (const result of validationResults) {
+      if (!result.subnet_address) continue;
+      const key = result.subnet_address.trim();
+      if (!rowsByAddress.has(key)) rowsByAddress.set(key, []);
+      rowsByAddress.get(key).push(result);
+    }
+    for (const dupRows of rowsByAddress.values()) {
+      if (dupRows.length <= 1) continue;
+      for (const result of dupRows) {
+        result.validation_status = 'Fail';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + 'Duplicate subnet address within this file';
+      }
+    }
+
     // Create validation results Excel file
     console.log('Creating Excel file with', validationResults.length, 'results');
     const workbook = new ExcelJS.Workbook();
@@ -2116,6 +2136,12 @@ networkController.importSubnets = async (req, res) => {
 
     const importResults = [];
     const username = req.session && req.session.user && req.session.user.username ? req.session.user.username : 'admin';
+    // Tracks addresses already processed earlier in this same file — a
+    // second occurrence is failed immediately instead of being attempted
+    // (see finding: two identical rows in one file previously both
+    // "succeeded" right up until the duplicate-key error aborted the
+    // whole shared transaction, silently discarding every row on COMMIT).
+    const seenAddresses = new Set();
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -2130,48 +2156,59 @@ networkController.importSubnets = async (req, res) => {
         import_reason: ''
       };
 
-      try {
-        // Double-check subnet doesn't exist (safety check)
-        const existingSubnet = await Subnet.findByAddress(result.subnet_address);
-        if (existingSubnet) {
-          result.import_status = 'FAILED';
-          result.import_reason = 'Subnet address already exists';
-          importResults.push(result);
-          continue;
-        }
+      if (seenAddresses.has(result.subnet_address)) {
+        result.import_status = 'FAILED';
+        result.import_reason = 'Duplicate subnet address within this file';
+        importResults.push(result);
+        continue;
+      }
+      seenAddresses.add(result.subnet_address);
 
-        // Create subnet
-        const newSubnet = await Subnet.create({
+      // Resolve tag names to IDs up front. A name that doesn't resolve
+      // fails the whole row (matching validateImportSubnets) instead of
+      // being silently dropped from the created subnet's tags.
+      const tagNames = result.tags.split(',').map(t => t.trim()).filter(Boolean);
+      const tagIds = [];
+      const notFoundTags = [];
+      for (const tagName of tagNames) {
+        const existingTags = await Tag.findByNameExact(tagName);
+        if (existingTags && existingTags.length > 0) tagIds.push(existingTags[0].id);
+        else notFoundTags.push(tagName);
+      }
+      if (notFoundTags.length > 0) {
+        result.import_status = 'FAILED';
+        result.import_reason = `Tag(s) not found: ${notFoundTags.join(', ')}`;
+        importResults.push(result);
+        continue;
+      }
+
+      // Each row gets its own savepoint: createSubnetService runs the same
+      // format/duplicate/tag validation as the single-add path, but if it
+      // (or anything else) still hits a raw DB error, that error leaves the
+      // whole shared transaction "aborted" in Postgres until rolled back —
+      // without a savepoint, every row after the first failure would also
+      // fail and the final COMMIT would discard the entire batch, even rows
+      // already reported as SUCCESS.
+      const savepoint = `import_subnet_row_${i}`;
+      try {
+        await client.query(`SAVEPOINT ${savepoint}`);
+        await createSubnetService({
           address: result.subnet_address,
           description: result.description || null,
           zone: result.zone || null,
           environment: result.environment || null,
+          tags: tagIds,
           updated_by: username
         }, client);
-
-        // Set tags if provided
-        if (result.tags) {
-          const tagList = result.tags.split(',').map(t => t.trim()).filter(t => t);
-          const tagIds = [];
-          for (const tagName of tagList) {
-            const existingTags = await Tag.findByNameExact(tagName);
-            if (existingTags && existingTags.length > 0) {
-              tagIds.push(existingTags[0].id);
-            }
-          }
-          if (tagIds.length > 0) {
-            await Subnet.setTags(newSubnet.id, tagIds, client);
-          }
-        }
-
-        importResults.push(result);
-
+        await client.query(`RELEASE SAVEPOINT ${savepoint}`);
       } catch (err) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
         console.error(`Error importing subnet row ${i + 1}:`, err);
         result.import_status = 'FAILED';
-        result.import_reason = err.message;
-        importResults.push(result);
+        result.import_reason = err instanceof ServiceError ? err.message : (err.message || 'Unknown error');
       }
+
+      importResults.push(result);
     }
 
     // Commit transaction
