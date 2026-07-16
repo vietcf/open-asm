@@ -51,12 +51,15 @@ export async function listDomains(filter) {
   return { items, totalCount };
 }
 
-export async function getDomain(id) {
-  const domain = await Domain.findById(id);
+// client is optional — pass the caller's transaction client when reading
+// back a row created/updated earlier in that same not-yet-committed
+// transaction, since a plain pool query can't see uncommitted writes.
+export async function getDomain(id, client) {
+  const domain = await Domain.findById(id, client);
   if (!domain) throw new NotFoundError('Domain not found');
   const [systems, ip] = await Promise.all([
-    Domain.findSystems(id),
-    Domain.getIp(domain.ip_id)
+    Domain.findSystems(id, client),
+    Domain.getIp(domain.ip_id, client)
   ]);
   return { ...domain, systems, ip };
 }
@@ -90,7 +93,7 @@ export async function createDomain(input, client) {
   } catch (err) {
     mapUniqueViolation(err);
   }
-  return getDomain(created.id);
+  return getDomain(created.id, client);
 }
 
 // Partial update. description/ip_id/record_type are written together
@@ -98,7 +101,7 @@ export async function createDomain(input, client) {
 // merged onto the current row's values. systems/tags: key present (even as
 // []) replaces the association; key absent leaves it untouched.
 export async function updateDomain(id, input, client) {
-  const current = await Domain.findById(id);
+  const current = await Domain.findById(id, client);
   if (!current) throw new NotFoundError('Domain not found');
 
   const has = key => Object.prototype.hasOwnProperty.call(input, key);
@@ -137,7 +140,7 @@ export async function updateDomain(id, input, client) {
   } catch (err) {
     mapUniqueViolation(err);
   }
-  return getDomain(id);
+  return getDomain(id, client);
 }
 
 export async function deleteDomain(id) {

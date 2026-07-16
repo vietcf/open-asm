@@ -65,6 +65,9 @@ router.post('/domain', requirePermission('domain.create'), networkController.cre
 router.put('/domain/:id', requirePermission('domain.update'), networkController.updateDomain);
 router.delete('/domain/:id', requirePermission('domain.delete'), networkController.deleteDomain);
 router.get('/domain/export', requirePermission('domain.read'), networkController.exportDomainList);
+router.get('/domain/template', requirePermission('domain.create'), networkController.downloadDomainTemplate);
+router.post('/domain/validate-import', requirePermission('domain.create'), upload.single('file'), networkController.validateImportDomains);
+router.post('/domain/import', requirePermission('domain.create'), upload.single('file'), networkController.importDomains);
 
 
 // // ====== AJAX API ======

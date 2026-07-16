@@ -32,8 +32,17 @@ class Domain {
   /**
    * Get a domain by id
    */
-  static async findById(id) {
-    const result = await pool.query('SELECT * FROM domains WHERE id = $1', [id]);
+  static async findById(id, client = pool) {
+    const result = await client.query('SELECT * FROM domains WHERE id = $1', [id]);
+    return result.rows[0] || null;
+  }
+
+  /**
+   * Get a domain by exact name — case-sensitive, matching the DB's plain
+   * UNIQUE constraint on the domain column.
+   */
+  static async findByDomain(domainName) {
+    const result = await pool.query('SELECT * FROM domains WHERE domain = $1', [domainName]);
     return result.rows[0] || null;
   }
 
@@ -287,8 +296,8 @@ class Domain {
   /**
    * Get all systems of a domain (many-to-many)
    */
-  static async findSystems(domainId) {
-    const result = await pool.query(
+  static async findSystems(domainId, client = pool) {
+    const result = await client.query(
       `SELECT s.* FROM systems s
        JOIN system_domain sd ON s.id = sd.system_id
        WHERE sd.domain_id = $1`,
@@ -328,9 +337,9 @@ class Domain {
   /**
    * Get IP info for a domain (returns {id, ip_address} or null)
    */
-  static async getIp(ip_id) {
+  static async getIp(ip_id, client = pool) {
     if (!ip_id) return null;
-    const result = await pool.query('SELECT id, ip_address FROM ip_addresses WHERE id = $1', [ip_id]);
+    const result = await client.query('SELECT id, ip_address FROM ip_addresses WHERE id = $1', [ip_id]);
     return result.rows[0] || null;
   }
 }
