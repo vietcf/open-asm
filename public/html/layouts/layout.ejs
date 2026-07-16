@@ -195,8 +195,11 @@
         flex-shrink: 0;
       }
       
-      /* Page size select - smaller and separate */
-      .form-select {
+      /* Page size select - smaller and separate. Scoped to the pageSize
+         dropdown specifically - a bare .form-select here used to hit every
+         select on every page (Add/Edit modal fields included), shrinking
+         them to 100px and knocking them inline with their label. */
+      select[name="pageSize"] {
         width: 100px !important;
         max-width: 100px !important;
         margin-bottom: 8px;
@@ -215,8 +218,11 @@
         vertical-align: top;
       }
       
-      /* Search button next to input - simple style - ONLY for search form */
-      form .btn[type="submit"],
+      /* Search button next to input - simple style - ONLY for search form.
+         Scoped to .input-group specifically: every #searchBtn in the app is
+         wrapped in .input-group, but a bare `form .btn[type="submit"]` also
+         matched every full-page Add/Edit form's primary submit button,
+         capping it to 60px and breaking its mobile layout. */
       .input-group .btn[type="submit"] {
         width: 60px !important;
         height: 38px !important;
@@ -233,8 +239,6 @@
       }
       
       /* Hide search icon on mobile - only for search form buttons */
-      form .btn[type="submit"] i[class*="search"],
-      form .btn[type="submit"] i[class*="magnifying"],
       .input-group .btn[type="submit"] i[class*="search"],
       .input-group .btn[type="submit"] i[class*="magnifying"] {
         display: none !important;

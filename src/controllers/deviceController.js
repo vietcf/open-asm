@@ -5,6 +5,8 @@ import Configuration from '../models/Configuration.js';
 import Tag from '../models/Tag.js';
 import Contact from '../models/Contact.js';
 import IpAddress from '../models/IpAddress.js';
+import { IPV4_REGEX } from '../services/ipAddressService.js';
+import { parseCsvLine } from '../utils/csvParser.js';
 import { pool } from '../../config/config.js';
 import ExcelJS from 'exceljs';
 import XLSX from 'xlsx';
@@ -414,7 +416,7 @@ deviceController.updateDevice = async (req, res) => {
 // Delete a device
 deviceController.deleteDevice = async (req, res) => {
   try {
-    const deleteIp = ['true', '1'].includes(String(req.body.delete_ip ?? req.query.delete_ip).toLowerCase());
+    const deleteIp = ['true', '1'].includes(String(req.body?.delete_ip ?? req.query.delete_ip).toLowerCase());
     await deleteDeviceService(req.params.id, { deleteIp });
     req.flash('success', 'Device deleted successfully!');
     res.redirect('/device/device');
@@ -599,8 +601,7 @@ deviceController.updateDeviceType = async (req, res) => {
   const page = parseInt(req.body.page, 10) || 1;
   const search = req.body.search ? req.body.search.trim() : '';
   try {
-    // Only description is editable from this form
-    await updateDeviceTypeService(id, { description: req.body.description });
+    await updateDeviceTypeService(id, { name: req.body.name, description: req.body.description });
     const query = `?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}&success=Device type updated successfully`;
     return res.redirect(`/device/type${query}`);
   } catch (err) {
@@ -788,17 +789,17 @@ deviceController.downloadDeviceTemplate = async (req, res) => {
       'Name (Optional - auto-generated if empty)',
       'IPAddress (Require, comma-separated if multiple)',
       'Device Type (Require)',
-      'Platform (OS)',
-      'Location',
-      'Serial Number',
-      'Management Address (comma-separated if multiple)',
-      'Manufacturer',
-      'Device Role',
-      'Manager (comma-separated if multiple)',
-      'Tag (comma-separated if multiple)',
-      'Description'
+      'Platform (Optional, OS)',
+      'Location (Optional)',
+      'Serial Number (Optional)',
+      'Management Address (Optional, comma-separated if multiple)',
+      'Manufacturer (Optional)',
+      'Device Role (Optional)',
+      'Manager (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Description (Optional)'
     ]);
-    
+
     // Add sample data
     worksheet.addRow([
       'Test Device 1',
@@ -916,10 +917,10 @@ deviceController.validateImportDevices = async (req, res) => {
     if (ext === '.csv') {
       const csvContent = fs.readFileSync(filePath, 'utf8');
       const lines = csvContent.split('\n').filter(line => line.trim());
-      headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      
+      headers = parseCsvLine(lines[0]);
+
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const values = parseCsvLine(lines[i]);
         const row = {};
         headers.forEach((header, index) => {
           row[header] = values[index] || '';
@@ -953,21 +954,21 @@ deviceController.validateImportDevices = async (req, res) => {
       'Name (Optional - auto-generated if empty)',
       'IPAddress (Require, comma-separated if multiple)',
       'Device Type (Require)',
-      'Platform (OS)',
-      'Location',
-      'Serial Number',
-      'Management Address (comma-separated if multiple)',
-      'Manufacturer',
-      'Device Role',
-      'Manager (comma-separated if multiple)',
-      'Tag (comma-separated if multiple)',
-      'Description'
+      'Platform (Optional, OS)',
+      'Location (Optional)',
+      'Serial Number (Optional)',
+      'Management Address (Optional, comma-separated if multiple)',
+      'Manufacturer (Optional)',
+      'Device Role (Optional)',
+      'Manager (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Description (Optional)'
     ];
 
     // Check for missing columns
     const missingColumns = requiredColumns.filter(col => !headers.includes(col));
     if (missingColumns.length > 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'File format validation failed',
         details: {
           missingColumns: missingColumns,
@@ -979,7 +980,7 @@ deviceController.validateImportDevices = async (req, res) => {
     // Check for extra columns
     const extraColumns = headers.filter(col => !requiredColumns.includes(col));
     if (extraColumns.length > 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'File format validation failed',
         details: {
           extraColumns: extraColumns,
@@ -988,10 +989,13 @@ deviceController.validateImportDevices = async (req, res) => {
       });
     }
 
-    // Check column order (optional - can be flexible)
-    const columnOrderMismatch = requiredColumns.some((col, index) => headers[index] !== col);
-    if (columnOrderMismatch) {
-      console.warn('Column order mismatch detected, but continuing with validation...');
+    // Check column order - must match the template exactly
+    for (let i = 0; i < requiredColumns.length; i++) {
+      if (headers[i] !== requiredColumns[i]) {
+        return res.status(400).json({
+          error: `Invalid column order. Expected "${requiredColumns[i]}" at position ${i + 1}, got "${headers[i]}"`
+        });
+      }
     }
 
     // Get valid options from database
@@ -1000,7 +1004,6 @@ deviceController.validateImportDevices = async (req, res) => {
 
     // Validate each row
     const validationResults = [];
-    const ipRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}$/;
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -1009,15 +1012,15 @@ deviceController.validateImportDevices = async (req, res) => {
         name: sanitizeString(row['Name (Optional - auto-generated if empty)'] || ''),
         ip_addresses: sanitizeString(row['IPAddress (Require, comma-separated if multiple)'] || ''),
         device_type: sanitizeString(row['Device Type (Require)'] || ''),
-        platform: sanitizeString(row['Platform (OS)'] || ''),
-        location: sanitizeString(row['Location'] || ''),
-        serial_number: sanitizeString(row['Serial Number'] || ''),
-        management_address: sanitizeString(row['Management Address (comma-separated if multiple)'] || ''),
-        manufacturer: sanitizeString(row['Manufacturer'] || ''),
-        device_role: sanitizeString(row['Device Role'] || ''),
-        manager: sanitizeString(row['Manager (comma-separated if multiple)'] || ''),
-        tag: sanitizeString(row['Tag (comma-separated if multiple)'] || ''),
-        description: sanitizeString(row['Description'] || ''),
+        platform: sanitizeString(row['Platform (Optional, OS)'] || ''),
+        location: sanitizeString(row['Location (Optional)'] || ''),
+        serial_number: sanitizeString(row['Serial Number (Optional)'] || ''),
+        management_address: sanitizeString(row['Management Address (Optional, comma-separated if multiple)'] || ''),
+        manufacturer: sanitizeString(row['Manufacturer (Optional)'] || ''),
+        device_role: sanitizeString(row['Device Role (Optional)'] || ''),
+        manager: sanitizeString(row['Manager (Optional, comma-separated if multiple)'] || ''),
+        tag: sanitizeString(row['Tag (Optional, comma-separated if multiple)'] || ''),
+        description: sanitizeString(row['Description (Optional)'] || ''),
         validation_status: 'PASS',
         validation_reason: ''
       };
@@ -1034,7 +1037,7 @@ deviceController.validateImportDevices = async (req, res) => {
         // Validate IP addresses format
         const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
         for (const ip of ipList) {
-          if (!ipRegex.test(ip)) {
+          if (!IPV4_REGEX.test(ip)) {
             validationErrors.push(`Invalid IP format: ${ip}`);
           }
         }
@@ -1143,15 +1146,15 @@ deviceController.validateImportDevices = async (req, res) => {
       'Name (Optional - auto-generated if empty)',
       'IPAddress (Require, comma-separated if multiple)',
       'Device Type (Require)',
-      'Platform (OS)',
-      'Location',
-      'Serial Number',
-      'Management Address (comma-separated if multiple)',
-      'Manufacturer',
-      'Device Role',
-      'Manager (comma-separated if multiple)',
-      'Tag (comma-separated if multiple)',
-      'Description',
+      'Platform (Optional, OS)',
+      'Location (Optional)',
+      'Serial Number (Optional)',
+      'Management Address (Optional, comma-separated if multiple)',
+      'Manufacturer (Optional)',
+      'Device Role (Optional)',
+      'Manager (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Description (Optional)',
       'Validation Status',
       'Validation Reason'
     ]);
@@ -1279,15 +1282,49 @@ deviceController.importDevices = async (req, res) => {
     const originalFileName = req.file.originalname;
     let rows = [];
 
+    // Every column must be present and in this exact order, matching the
+    // downloadable template - optional columns may have empty cell values,
+    // but the header row itself must not be missing/reordered/renamed.
+    const expectedHeaders = [
+      'Name (Optional - auto-generated if empty)',
+      'IPAddress (Require, comma-separated if multiple)',
+      'Device Type (Require)',
+      'Platform (Optional, OS)',
+      'Location (Optional)',
+      'Serial Number (Optional)',
+      'Management Address (Optional, comma-separated if multiple)',
+      'Manufacturer (Optional)',
+      'Device Role (Optional)',
+      'Manager (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Description (Optional)'
+    ];
+    const validateHeaderOrder = (headerValues) => {
+      if (headerValues.length !== expectedHeaders.length) {
+        return `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headerValues.length}`;
+      }
+      for (let i = 0; i < expectedHeaders.length; i++) {
+        if (headerValues[i] !== expectedHeaders[i]) {
+          return `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headerValues[i]}"`;
+        }
+      }
+      return null;
+    };
+
     // Parse file (same logic as validation)
     const ext = path.extname(originalFileName).toLowerCase();
     if (ext === '.csv') {
       const csvContent = fs.readFileSync(filePath, 'utf8');
       const lines = csvContent.split('\n').filter(line => line.trim());
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      
+      const headers = parseCsvLine(lines[0]);
+
+      const headerError = validateHeaderOrder(headers);
+      if (headerError) {
+        return res.status(400).json({ error: headerError });
+      }
+
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const values = parseCsvLine(lines[i]);
         const row = {};
         headers.forEach((header, index) => {
           row[header] = values[index] || '';
@@ -1299,12 +1336,18 @@ deviceController.importDevices = async (req, res) => {
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      
+
       if (jsonData.length < 2) {
         return res.status(400).json({ error: 'File must contain at least a header row and one data row' });
       }
-      
+
       const headers = jsonData[0];
+
+      const headerError = validateHeaderOrder(headers);
+      if (headerError) {
+        return res.status(400).json({ error: headerError });
+      }
+
       for (let i = 1; i < jsonData.length; i++) {
         const row = {};
         headers.forEach((header, index) => {
@@ -1328,15 +1371,15 @@ deviceController.importDevices = async (req, res) => {
         name: sanitizeString(row['Name (Optional - auto-generated if empty)'] || ''),
         ip_addresses: sanitizeString(row['IPAddress (Require, comma-separated if multiple)'] || ''),
         device_type: sanitizeString(row['Device Type (Require)'] || ''),
-        platform: sanitizeString(row['Platform (OS)'] || ''),
-        location: sanitizeString(row['Location'] || ''),
-        serial_number: sanitizeString(row['Serial Number'] || ''),
-        management_address: sanitizeString(row['Management Address (comma-separated if multiple)'] || ''),
-        manufacturer: sanitizeString(row['Manufacturer'] || ''),
-        device_role: sanitizeString(row['Device Role'] || ''),
-        manager: sanitizeString(row['Manager (comma-separated if multiple)'] || ''),
-        tag: sanitizeString(row['Tag (comma-separated if multiple)'] || ''),
-        description: sanitizeString(row['Description'] || ''),
+        platform: sanitizeString(row['Platform (Optional, OS)'] || ''),
+        location: sanitizeString(row['Location (Optional)'] || ''),
+        serial_number: sanitizeString(row['Serial Number (Optional)'] || ''),
+        management_address: sanitizeString(row['Management Address (Optional, comma-separated if multiple)'] || ''),
+        manufacturer: sanitizeString(row['Manufacturer (Optional)'] || ''),
+        device_role: sanitizeString(row['Device Role (Optional)'] || ''),
+        manager: sanitizeString(row['Manager (Optional, comma-separated if multiple)'] || ''),
+        tag: sanitizeString(row['Tag (Optional, comma-separated if multiple)'] || ''),
+        description: sanitizeString(row['Description (Optional)'] || ''),
         import_status: 'SUCCESS',
         import_reason: ''
       };
@@ -1426,7 +1469,8 @@ deviceController.importDevices = async (req, res) => {
             management_address: result.management_address || null,
             manufacturer: result.manufacturer || null,
             device_role: result.device_role || null,
-            description: result.description || null
+            description: result.description || null,
+            updated_by: username
           });
           
           const deviceId = device.id;
@@ -1578,15 +1622,15 @@ deviceController.importDevices = async (req, res) => {
       'Name (Optional - auto-generated if empty)',
       'IPAddress (Require, comma-separated if multiple)',
       'Device Type (Require)',
-      'Platform (OS)',
-      'Location',
-      'Serial Number',
-      'Management Address (comma-separated if multiple)',
-      'Manufacturer',
-      'Device Role',
-      'Manager (comma-separated if multiple)',
-      'Tag (comma-separated if multiple)',
-      'Description',
+      'Platform (Optional, OS)',
+      'Location (Optional)',
+      'Serial Number (Optional)',
+      'Management Address (Optional, comma-separated if multiple)',
+      'Manufacturer (Optional)',
+      'Device Role (Optional)',
+      'Manager (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Description (Optional)',
       'Import Status',
       'Import Reason'
     ]);

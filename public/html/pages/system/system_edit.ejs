@@ -27,15 +27,15 @@
           <div class="card-body">
             <div class="mb-3">
               <label class="form-label">System ID <span class="text-danger">*</span></label>
-              <input type="text" name="system_id" class="form-control" value="<%= system.system_id %>" required>
+              <input type="text" name="system_id" class="form-control" value="<%= system.system_id %>" placeholder="Enter system ID" required>
             </div>
             <div class="mb-3">
               <label class="form-label">System Name <span class="text-danger">*</span></label>
-              <input type="text" name="name" class="form-control" value="<%= system.name %>" required>
+              <input type="text" name="name" class="form-control" value="<%= system.name %>" placeholder="Enter system name" required>
             </div>
             <div class="mb-3">
               <label class="form-label">Alias (comma separated)</label>
-              <input type="text" name="alias" class="form-control" value="<%= Array.isArray(system.alias) ? system.alias.join(', ') : (system.alias || '') %>">
+              <input type="text" name="alias" class="form-control" value="<%= Array.isArray(system.alias) ? system.alias.join(', ') : (system.alias || '') %>" placeholder="e.g. alias1, alias2">
             </div>
             <div class="mb-3">
               <label class="form-label">FQDN (comma separated, optional)</label>
@@ -126,11 +126,11 @@
                   <div class="modal-body">
                     <div class="mb-3">
                       <label class="form-label">Name</label>
-                      <input type="text" class="form-control" id="new-manager-name">
+                      <input type="text" class="form-control" id="new-manager-name" placeholder="Enter contact name">
                     </div>
                     <div class="mb-3">
                       <label class="form-label">Email</label>
-                      <input type="email" class="form-control" id="new-manager-email">
+                      <input type="email" class="form-control" id="new-manager-email" placeholder="Enter email address">
                     </div>
                   </div>
                   <div class="modal-footer">
@@ -142,7 +142,7 @@
             </div>
           </div>
           <div class="card-footer d-flex justify-content-end">
-            <a href="/system/system" class="btn btn-outline-secondary btn-sm me-2">Cancel</a>
+            <a href="/system/system" class="btn btn-secondary btn-sm me-2">Cancel</a>
             <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
           </div>
         </form>
@@ -150,6 +150,29 @@
     </div>
   </div>
 </section>
+
+<style>
+/* Match Add IP Address modal: stack action buttons full-width on mobile,
+   with the primary action above Cancel. */
+@media (max-width: 991.98px) {
+  .card-footer.d-flex.justify-content-end {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    align-items: stretch !important;
+  }
+  .card-footer.d-flex.justify-content-end .btn {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  .card-footer.d-flex.justify-content-end .btn:first-child {
+    order: 2 !important;
+  }
+  .card-footer.d-flex.justify-content-end .btn:last-child {
+    order: 1 !important;
+  }
+}
+</style>
+
 <!-- jQuery, Select2, Bootstrap, Font Awesome (local) -->
 <script src="/vendor/jquery-3.6.0.min.js"></script>
 <link href="/css/select2.min.css" rel="stylesheet" />

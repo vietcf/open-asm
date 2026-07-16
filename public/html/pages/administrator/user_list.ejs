@@ -5,7 +5,6 @@
       <div class="col-12">
         <ol class="breadcrumb">
           <li class="breadcrumb-item"><a href="/">Home</a></li>
-          <li class="breadcrumb-item"><a href="/administrator">Administrator</a></li>
           <li class="breadcrumb-item active">User List</li>
         </ol>
       </div>
@@ -213,19 +212,19 @@
           <form id="addUserForm" action="/administrator/users" method="POST">
             <div class="mb-3">
               <label class="form-label">Username <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" name="username" required pattern="^[a-zA-Z0-9_.-]{3,50}$" title="3-50 characters: letters, numbers, dots, hyphens, and underscores only (no spaces)" maxlength="50">
+              <input type="text" class="form-control" name="username" required pattern="^[a-zA-Z0-9_.-]{3,50}$" title="3-50 characters: letters, numbers, dots, hyphens, and underscores only (no spaces)" maxlength="50" placeholder="Enter username">
             </div>
             <div class="mb-3">
               <label class="form-label">Email <span class="text-danger">*</span></label>
-              <input type="email" class="form-control" name="email" required>
+              <input type="email" class="form-control" name="email" required placeholder="Enter email address">
             </div>
             <div class="mb-3">
               <label class="form-label">Full Name</label>
-              <input type="text" class="form-control" name="fullname">
+              <input type="text" class="form-control" name="fullname" placeholder="Enter full name">
             </div>
             <div class="mb-3">
               <label class="form-label">Role <span class="text-danger">*</span></label>
-              <select class="form-select" name="role" required>
+              <select class="form-select user-role-select2" name="role" required>
                 <option value="">-- Select Role --</option>
                 <% if (roles && roles.length) { roles.forEach(function(role) { %>
                   <option value="<%= role.id %>"><%= role.name %></option>
@@ -234,7 +233,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Password <span class="text-danger">*</span></label>
-              <input type="password" class="form-control" name="password" required minlength="4">
+              <input type="password" class="form-control" name="password" required minlength="4" placeholder="Enter password">
             </div>
             <div class="mb-3">
               <label class="form-label">Require 2FA</label>
@@ -253,7 +252,7 @@
           </form>
         </div>
         <div class="modal-footer d-flex justify-content-end">
-          <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-primary btn-sm" form="addUserForm">Add User</button>
         </div>
       </div>
@@ -277,19 +276,19 @@
               <form id="editUserForm-<%= user.id %>" action="/administrator/users/<%= user.id %>?_method=PUT" method="POST">
                 <div class="mb-3">
                   <label class="form-label">Username <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" name="username" value="<%= user.username %>" required pattern="^[a-zA-Z0-9_.-]{3,50}$" title="3-50 characters: letters, numbers, dots, hyphens, and underscores only (no spaces)" maxlength="50">
+                  <input type="text" class="form-control" name="username" value="<%= user.username %>" required pattern="^[a-zA-Z0-9_.-]{3,50}$" title="3-50 characters: letters, numbers, dots, hyphens, and underscores only (no spaces)" maxlength="50" placeholder="Enter username">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Email <span class="text-danger">*</span></label>
-                  <input type="email" class="form-control" name="email" value="<%= user.email %>" required>
+                  <input type="email" class="form-control" name="email" value="<%= user.email %>" required placeholder="Enter email address">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Full Name</label>
-                  <input type="text" class="form-control" name="fullname" value="<%= user.fullname || '' %>">
+                  <input type="text" class="form-control" name="fullname" value="<%= user.fullname || '' %>" placeholder="Enter full name">
                 </div>
                 <div class="mb-3">
                   <label class="form-label">Role <span class="text-danger">*</span></label>
-                  <select class="form-select" name="role" required>
+                  <select class="form-select user-role-select2" name="role" required>
                     <option value="">-- Select Role --</option>
                     <% if (roles && roles.length) { roles.forEach(function(role) { %>
                       <option value="<%= role.id %>" <%= user.role_id === role.id ? 'selected' : '' %>><%= role.name %></option>
@@ -328,7 +327,7 @@
               </form>
             </div>
             <div class="modal-footer d-flex justify-content-end">
-              <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Close</button>
+              <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
               <button type="submit" class="btn btn-primary btn-sm" form="editUserForm-<%= user.id %>">Save Changes</button>
             </div>
           </div>
@@ -348,7 +347,7 @@
               <p class="text-danger">This action cannot be undone.</p>
             </div>
             <div class="modal-footer">
-              <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+              <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
               <form action="/administrator/users/<%= user.id %>?_method=DELETE" method="POST" style="display:inline;">
                 <button type="submit" class="btn btn-danger btn-sm">Delete</button>
               </form>
@@ -361,6 +360,24 @@
 </div>
 
 <script>
+// Role select styled like every other dropdown in the app (select2 instead
+// of a plain native <select>) - one select2 per modal (Add + one per Edit
+// modal), each scoped to its own modal for correct dropdown positioning.
+// Deferred to document-ready: select2.min.js loads after this page's body
+// content in the layout, so calling .select2() at parse time (before the
+// script has loaded) throws "not a function" and leaves a plain <select>.
+$(function() {
+  $('.user-role-select2').each(function() {
+    $(this).select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select role',
+      allowClear: true,
+      width: '100%',
+      dropdownParent: $(this).closest('.modal')
+    });
+  });
+});
+
 // When an admin sets a new password for a user, nudge them to also force a
 // change on next login — otherwise the admin-chosen password can persist
 // indefinitely if they forget to tick the box separately.

@@ -9,6 +9,7 @@ import ExcelJS from 'exceljs';
 import fs from 'fs';
 import path from 'path';
 import { ServiceError } from '../services/errors.js';
+import { parseCsvLine } from '../utils/csvParser.js';
 import {
   listContacts as listContactsService,
   createContact as createContactService,
@@ -545,34 +546,34 @@ organizeController.validateImportContacts = async (req, res) => {
     if (ext === '.csv') {
       const csvContent = fs.readFileSync(filePath, 'utf8');
       const lines = csvContent.split('\n').filter(line => line.trim());
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      
+      const headers = parseCsvLine(lines[0]);
+
       // Validate headers order and required fields
       const expectedHeaders = [
         'Name (Require)',
         'Email (Require)',
         'Phone',
-        'Org Unit', 
+        'Org Unit',
         'Position (Require)',
         'Description'
       ];
-      
+
       if (headers.length !== expectedHeaders.length) {
-        return res.status(400).json({ 
-          error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}` 
+        return res.status(400).json({
+          error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}`
         });
       }
-      
+
       for (let i = 0; i < expectedHeaders.length; i++) {
         if (headers[i] !== expectedHeaders[i]) {
-          return res.status(400).json({ 
-            error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"` 
+          return res.status(400).json({
+            error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"`
           });
         }
       }
-      
+
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const values = parseCsvLine(lines[i]);
         const row = {};
         headers.forEach((header, index) => {
           row[header] = values[index] || '';
@@ -814,10 +815,10 @@ organizeController.importContacts = async (req, res) => {
     if (ext === '.csv') {
       const csvContent = fs.readFileSync(filePath, 'utf8');
       const lines = csvContent.split('\n').filter(line => line.trim());
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      
+      const headers = parseCsvLine(lines[0]);
+
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const values = parseCsvLine(lines[i]);
         const row = {};
         headers.forEach((header, index) => {
           row[header] = values[index] || '';

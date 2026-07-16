@@ -14,6 +14,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import archiver from 'archiver';
 import { ServiceError } from '../services/errors.js';
+import { parseCsvLine } from '../utils/csvParser.js';
 import {
   listIpAddresses as listIpAddressesService,
   createIpAddress as createIpAddressService,
@@ -164,9 +165,8 @@ networkController.createIP = async (req, res) => {
     // Pre-validate format for all addresses up front (fail fast on the first
     // bad one, with the specific-IP message) — the service also validates
     // format per-address, but this keeps the friendlier original message.
-    const ipRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}$/;
     for (const ip of ipAddresses) {
-      if (!ipRegex.test(ip)) {
+      if (!IPV4_REGEX.test(ip)) {
         req.flash('error', `Invalid IP address format: ${ip}. Please enter valid IPv4 addresses, e.g. 192.168.1.100`);
         await client.query('ROLLBACK');
         return res.redirect('/network/ip-address');
@@ -412,8 +412,8 @@ networkController.listDomain = async (req, res) => {
       pageSize
     });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-    const success = req.flash('success')[0];
-    const error = req.flash('error')[0];
+    const successMessage = req.flash('success')[0];
+    const errorMessage = req.flash('error')[0];
     // Load record type options from DB (Configuration)
     const recordTypeOptions = await getRecordTypeOptionsFromConfig();
 
@@ -442,8 +442,8 @@ networkController.listDomain = async (req, res) => {
       totalPages,
       totalCount,
       search,
-      success,
-      error,
+      successMessage,
+      errorMessage,
       recordTypeOptions,
       filterStatus,
       filterTags: selectedTags,
@@ -707,22 +707,49 @@ networkController.validateImportIPs = async (req, res) => {
 
     const filePath = req.file.path;
     const fileExtension = req.file.originalname.split('.').pop().toLowerCase();
-    
+
     let rows = [];
-    
+
+    // Every column must be present and in this exact order, matching the
+    // downloadable template - optional columns may have empty cell values,
+    // but the header row itself must not be missing/reordered/renamed.
+    const expectedHeaders = [
+      'IPAddress (Require, one per row)',
+      'Description (Optional)',
+      'Status (Optional)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Contact (Optional, Email or Email prefix, comma-separated if multiple)',
+      'System Name (Optional, comma-separated if multiple)'
+    ];
+    const validateHeaderOrder = (headerValues) => {
+      if (headerValues.length !== expectedHeaders.length) {
+        return `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headerValues.length}`;
+      }
+      for (let i = 0; i < expectedHeaders.length; i++) {
+        if (headerValues[i] !== expectedHeaders[i]) {
+          return `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headerValues[i]}"`;
+        }
+      }
+      return null;
+    };
+
     // Parse file based on extension
     if (fileExtension === 'csv') {
       const results = [];
-      
+
       // Simple CSV parsing without csv-parser dependency
       const fileContent = fs.readFileSync(filePath, 'utf8');
       const lines = fileContent.split('\n');
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      
-      
+      const headers = parseCsvLine(lines[0]);
+
+      const headerError = validateHeaderOrder(headers);
+      if (headerError) {
+        return res.status(400).json({ error: headerError });
+      }
+
       for (let i = 1; i < lines.length; i++) {
         if (lines[i].trim()) {
-          const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+          const values = parseCsvLine(lines[i]);
           const rowData = {};
           headers.forEach((header, index) => {
             rowData[header] = values[index] || '';
@@ -730,33 +757,37 @@ networkController.validateImportIPs = async (req, res) => {
           results.push(rowData);
         }
       }
-      
+
       rows = results;
     } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(filePath);
-      
+
       const worksheet = workbook.worksheets[0];
       const headers = [];
-      
+
       // Get headers from first row
       worksheet.getRow(1).eachCell((cell, colNumber) => {
         headers[colNumber] = cell.value;
       });
-      
-      
+
+      const headerError = validateHeaderOrder(headers.slice(1));
+      if (headerError) {
+        return res.status(400).json({ error: headerError });
+      }
+
       // Get data rows
       for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
         const row = worksheet.getRow(rowNumber);
         const rowData = {};
-        
+
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber];
           if (header) {
             rowData[header] = cell.value;
           }
         });
-        
+
         if (Object.keys(rowData).length > 0) {
           rows.push(rowData);
         }
@@ -764,7 +795,7 @@ networkController.validateImportIPs = async (req, res) => {
     } else {
       return res.status(400).json({ error: 'Unsupported file format' });
     }
-    
+
 
     // Validate each row
     const validationResults = [];
@@ -779,11 +810,11 @@ networkController.validateImportIPs = async (req, res) => {
       const result = {
         row: rowNumber,
         ip_address: row['IPAddress (Require, one per row)'] || '',
-        description: row['Description'] || '',
-        status: row['Status'] || 'reserved',
-        tags: row['Tag (comma-separated if multiple)'] || row['Tags'] || '',
-        contacts: row['Contact (Email or Email prefix, comma-separated if multiple)'] || row['Contact (Email, comma-separated if multiple)'] || row['Contacts'] || '',
-        system: row['System Name (comma-separated if multiple)'] || row['System'] || '',
+        description: row['Description (Optional)'] || row['Description'] || '',
+        status: row['Status (Optional)'] || row['Status'] || 'reserved',
+        tags: row['Tag (Optional, comma-separated if multiple)'] || row['Tag (comma-separated if multiple)'] || row['Tags'] || '',
+        contacts: row['Contact (Optional, Email or Email prefix, comma-separated if multiple)'] || row['Contact (Email or Email prefix, comma-separated if multiple)'] || row['Contact (Email, comma-separated if multiple)'] || row['Contacts'] || '',
+        system: row['System Name (Optional, comma-separated if multiple)'] || row['System Name (comma-separated if multiple)'] || row['System'] || '',
         validation_status: 'Pass',
         validation_reason: ''
       };
@@ -906,13 +937,13 @@ networkController.validateImportIPs = async (req, res) => {
       
       // Định nghĩa headers - đầy đủ các trường từ file ban đầu + 2 trường validation
       const headers = [
-        'IPAddress (Require, one per row)', 
-        'Description', 
-        'Status', 
-        'Tag (comma-separated if multiple)', 
-        'Contact (Email or Email prefix, comma-separated if multiple)', 
-        'System Name (comma-separated if multiple)',
-        'Validation Status', 
+        'IPAddress (Require, one per row)',
+        'Description (Optional)',
+        'Status (Optional)',
+        'Tag (Optional, comma-separated if multiple)',
+        'Contact (Optional, Email or Email prefix, comma-separated if multiple)',
+        'System Name (Optional, comma-separated if multiple)',
+        'Validation Status',
         'Validation Reason'
       ];
       
@@ -1013,22 +1044,49 @@ networkController.importIPs = async (req, res) => {
 
     const filePath = req.file.path;
     const fileExtension = req.file.originalname.split('.').pop().toLowerCase();
-    
+
     let rows = [];
-    
+
+    // Every column must be present and in this exact order, matching the
+    // downloadable template - optional columns may have empty cell values,
+    // but the header row itself must not be missing/reordered/renamed.
+    const expectedHeaders = [
+      'IPAddress (Require, one per row)',
+      'Description (Optional)',
+      'Status (Optional)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Contact (Optional, Email or Email prefix, comma-separated if multiple)',
+      'System Name (Optional, comma-separated if multiple)'
+    ];
+    const validateHeaderOrder = (headerValues) => {
+      if (headerValues.length !== expectedHeaders.length) {
+        return `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headerValues.length}`;
+      }
+      for (let i = 0; i < expectedHeaders.length; i++) {
+        if (headerValues[i] !== expectedHeaders[i]) {
+          return `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headerValues[i]}"`;
+        }
+      }
+      return null;
+    };
+
       // Parse file (same logic as validation)
       if (fileExtension === 'csv') {
         const results = [];
-        
+
         // Simple CSV parsing without csv-parser dependency
         const fileContent = fs.readFileSync(filePath, 'utf8');
         const lines = fileContent.split('\n');
-        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-        
-      
+        const headers = parseCsvLine(lines[0]);
+
+        const headerError = validateHeaderOrder(headers);
+        if (headerError) {
+          return res.status(400).json({ error: headerError });
+        }
+
       for (let i = 1; i < lines.length; i++) {
         if (lines[i].trim()) {
-          const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+          const values = parseCsvLine(lines[i]);
           const rowData = {};
           headers.forEach((header, index) => {
             rowData[header] = values[index] || '';
@@ -1036,30 +1094,35 @@ networkController.importIPs = async (req, res) => {
           results.push(rowData);
         }
       }
-      
+
       rows = results;
     } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(filePath);
-      
+
       const worksheet = workbook.worksheets[0];
       const headers = [];
-      
+
       worksheet.getRow(1).eachCell((cell, colNumber) => {
         headers[colNumber] = cell.value;
       });
-      
+
+      const headerError = validateHeaderOrder(headers.slice(1));
+      if (headerError) {
+        return res.status(400).json({ error: headerError });
+      }
+
       for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
         const row = worksheet.getRow(rowNumber);
         const rowData = {};
-        
+
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber];
           if (header) {
             rowData[header] = cell.value;
           }
         });
-        
+
         if (Object.keys(rowData).length > 0) {
           rows.push(rowData);
         }
@@ -1080,11 +1143,11 @@ networkController.importIPs = async (req, res) => {
       const result = {
         row: rowNumber,
         ip_address: (row['IPAddress (Require, one per row)'] || '').toString().trim(),
-        description: row['Description'] || '',
-        status: row['Status'] || 'reserved',
-        tags: row['Tag (comma-separated if multiple)'] || row['Tags'] || '',
-        contacts: row['Contact (Email or Email prefix, comma-separated if multiple)'] || row['Contact (Email, comma-separated if multiple)'] || row['Contacts'] || '',
-        system: row['System Name (comma-separated if multiple)'] || row['System'] || '',
+        description: row['Description (Optional)'] || row['Description'] || '',
+        status: row['Status (Optional)'] || row['Status'] || 'reserved',
+        tags: row['Tag (Optional, comma-separated if multiple)'] || row['Tag (comma-separated if multiple)'] || row['Tags'] || '',
+        contacts: row['Contact (Optional, Email or Email prefix, comma-separated if multiple)'] || row['Contact (Email or Email prefix, comma-separated if multiple)'] || row['Contact (Email, comma-separated if multiple)'] || row['Contacts'] || '',
+        system: row['System Name (Optional, comma-separated if multiple)'] || row['System Name (comma-separated if multiple)'] || row['System'] || '',
         import_status: 'Success',
         import_reason: ''
       };
@@ -1176,13 +1239,13 @@ networkController.importIPs = async (req, res) => {
       
       // Định nghĩa headers - đầy đủ các trường từ file ban đầu + 2 trường import
       const headers = [
-        'IPAddress (Require, one per row)', 
-        'Description', 
-        'Status', 
-        'Tag (comma-separated if multiple)', 
-        'Contact (Email or Email prefix, comma-separated if multiple)', 
-        'System Name (comma-separated if multiple)',
-        'Import Status', 
+        'IPAddress (Require, one per row)',
+        'Description (Optional)',
+        'Status (Optional)',
+        'Tag (Optional, comma-separated if multiple)',
+        'Contact (Optional, Email or Email prefix, comma-separated if multiple)',
+        'System Name (Optional, comma-separated if multiple)',
+        'Import Status',
         'Import Reason'
       ];
       
@@ -1451,11 +1514,11 @@ networkController.downloadTemplate = async (req, res) => {
     // Add headers
     worksheet.addRow([
       'IPAddress (Require, one per row)',
-      'Description',
-      'Status',
-      'Tag (comma-separated if multiple)',
-      'Contact (Email, comma-separated if multiple)',
-      'System Name (comma-separated if multiple)'
+      'Description (Optional)',
+      'Status (Optional)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Contact (Optional, Email or Email prefix, comma-separated if multiple)',
+      'System Name (Optional, comma-separated if multiple)'
     ]);
     
     // Add sample data
@@ -1586,12 +1649,12 @@ networkController.downloadSubnetTemplate = async (req, res) => {
     // Add headers
     worksheet.addRow([
       'Subnet Address (Require)',
-      'Description',
-      'Zone',
-      'Environment',
-      'Tag (comma-separated if multiple)'
+      'Description (Optional)',
+      'Zone (Optional)',
+      'Environment (Optional)',
+      'Tag (Optional, comma-separated if multiple)'
     ]);
-    
+
     // Add sample data
     worksheet.addRow([
       '192.168.1.0/24',
@@ -1676,10 +1739,10 @@ networkController.validateImportSubnets = async (req, res) => {
     // can't "pass validation" and then be rejected outright at import time.
     const expectedHeaders = [
       'Subnet Address (Require)',
-      'Description',
-      'Zone',
-      'Environment',
-      'Tag (comma-separated if multiple)'
+      'Description (Optional)',
+      'Zone (Optional)',
+      'Environment (Optional)',
+      'Tag (Optional, comma-separated if multiple)'
     ];
     const validateHeaderOrder = (headerValues) => {
       if (headerValues.length !== expectedHeaders.length) {
@@ -1699,7 +1762,7 @@ networkController.validateImportSubnets = async (req, res) => {
       // Simple CSV parsing without csv-parser dependency
       const fileContent = fs.readFileSync(filePath, 'utf8');
       const lines = fileContent.split('\n');
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const headers = parseCsvLine(lines[0]);
 
       const headerError = validateHeaderOrder(headers);
       if (headerError) {
@@ -1708,7 +1771,7 @@ networkController.validateImportSubnets = async (req, res) => {
 
       for (let i = 1; i < lines.length; i++) {
         if (lines[i].trim()) {
-          const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+          const values = parseCsvLine(lines[i]);
           const rowData = {};
           headers.forEach((header, index) => {
             rowData[header] = values[index] || '';
@@ -1768,10 +1831,10 @@ networkController.validateImportSubnets = async (req, res) => {
       const result = {
         row: rowNumber,
         subnet_address: row['Subnet Address (Require)'] || '',
-        description: row['Description'] || '',
-        zone: row['Zone'] || '',
-        environment: row['Environment'] || '',
-        tags: row['Tag (comma-separated if multiple)'] || '',
+        description: row['Description (Optional)'] || '',
+        zone: row['Zone (Optional)'] || '',
+        environment: row['Environment (Optional)'] || '',
+        tags: row['Tag (Optional, comma-separated if multiple)'] || '',
         validation_status: 'Pass',
         validation_reason: ''
       };
@@ -1832,10 +1895,10 @@ networkController.validateImportSubnets = async (req, res) => {
     // Add headers
     worksheet.addRow([
       'Subnet Address (Require)',
-      'Description',
-      'Zone',
-      'Environment',
-      'Tag (comma-separated if multiple)',
+      'Description (Optional)',
+      'Zone (Optional)',
+      'Environment (Optional)',
+      'Tag (Optional, comma-separated if multiple)',
       'Validation Status',
       'Validation Reason'
     ]);
@@ -1979,33 +2042,33 @@ networkController.importSubnets = async (req, res) => {
     if (ext === '.csv') {
       const csvContent = fs.readFileSync(filePath, 'utf8');
       const lines = csvContent.split('\n').filter(line => line.trim());
-      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      
+      const headers = parseCsvLine(lines[0]);
+
       // Validate headers order and required fields
       const expectedHeaders = [
         'Subnet Address (Require)',
-        'Description',
-        'Zone',
-        'Environment', 
-        'Tag (comma-separated if multiple)'
+        'Description (Optional)',
+        'Zone (Optional)',
+        'Environment (Optional)',
+        'Tag (Optional, comma-separated if multiple)'
       ];
-      
+
       if (headers.length !== expectedHeaders.length) {
-        return res.status(400).json({ 
-          error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}` 
+        return res.status(400).json({
+          error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}`
         });
       }
-      
+
       for (let i = 0; i < expectedHeaders.length; i++) {
         if (headers[i] !== expectedHeaders[i]) {
-          return res.status(400).json({ 
-            error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"` 
+          return res.status(400).json({
+            error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"`
           });
         }
       }
-      
+
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const values = parseCsvLine(lines[i]);
         const row = {};
         headers.forEach((header, index) => {
           row[header] = values[index] || '';
@@ -2023,12 +2086,12 @@ networkController.importSubnets = async (req, res) => {
         const headers = Object.keys(rows[0]);
         const expectedHeaders = [
           'Subnet Address (Require)',
-          'Description',
-          'Zone',
-          'Environment', 
-          'Tag (comma-separated if multiple)'
+          'Description (Optional)',
+          'Zone (Optional)',
+          'Environment (Optional)',
+          'Tag (Optional, comma-separated if multiple)'
         ];
-        
+
         if (headers.length !== expectedHeaders.length) {
           return res.status(400).json({ 
             error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}` 
@@ -2059,10 +2122,10 @@ networkController.importSubnets = async (req, res) => {
       const result = {
         row_number: i + 1,
         subnet_address: sanitizeString(row['Subnet Address (Require)'] || ''),
-        description: sanitizeString(row['Description'] || ''),
-        zone: sanitizeString(row['Zone'] || ''),
-        environment: sanitizeString(row['Environment'] || ''),
-        tags: sanitizeString(row['Tag (comma-separated if multiple)'] || ''),
+        description: sanitizeString(row['Description (Optional)'] || ''),
+        zone: sanitizeString(row['Zone (Optional)'] || ''),
+        environment: sanitizeString(row['Environment (Optional)'] || ''),
+        tags: sanitizeString(row['Tag (Optional, comma-separated if multiple)'] || ''),
         import_status: 'SUCCESS',
         import_reason: ''
       };
@@ -2121,10 +2184,10 @@ networkController.importSubnets = async (req, res) => {
     // Add headers
     worksheet.addRow([
       'Subnet Address (Require)',
-      'Description',
-      'Zone',
-      'Environment',
-      'Tag (comma-separated if multiple)',
+      'Description (Optional)',
+      'Zone (Optional)',
+      'Environment (Optional)',
+      'Tag (Optional, comma-separated if multiple)',
       'Import Status',
       'Import Reason'
     ]);
@@ -2438,8 +2501,7 @@ networkController.apiFindSubnetForIP = async (req, res) => {
     }
     
     // Validate IP format
-    const ipRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}$/;
-    if (!ipRegex.test(ipAddress)) {
+    if (!IPV4_REGEX.test(ipAddress)) {
       return res.status(400).json({ error: 'Invalid IP address format' });
     }
     

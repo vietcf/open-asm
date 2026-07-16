@@ -414,7 +414,7 @@ function buildExportUrl() {
             </div>
             <div class="col-12">
               <label for="ipDescription" class="form-label">Description</label>
-              <textarea class="form-control" id="ipDescription" name="description" rows="3"></textarea>
+              <textarea class="form-control" id="ipDescription" name="description" rows="3" placeholder="Enter IP address description"></textarea>
                             </div>
             <div class="col-12">
               <label for="ipStatus" class="form-label">Status</label>
@@ -478,7 +478,7 @@ function buildExportUrl() {
                             </div>
             <div class="col-12">
               <label for="editIpDescription" class="form-label">Description</label>
-              <textarea class="form-control" id="editIpDescription" name="description" rows="3"></textarea>
+              <textarea class="form-control" id="editIpDescription" name="description" rows="3" placeholder="Enter IP address description"></textarea>
                             </div>
             <div class="col-12">
               <label for="editIpStatus" class="form-label">Status</label>
@@ -680,6 +680,15 @@ function buildExportUrl() {
 
 <script>
   $(function() {
+  // Status select2 - Bootstrap 5 theme (matches Tags/Systems/Contacts styling)
+    $('#ipStatus').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select status',
+      allowClear: true,
+      width: '100%',
+      dropdownParent: $('#addIpModal')
+    });
+
   // Tags select2 AJAX - Bootstrap 5 theme (clone from system_add.ejs)
     $('#ipTags').select2({
       theme: 'bootstrap-5',
@@ -750,6 +759,7 @@ function buildExportUrl() {
   $('#addIpModal').on('hidden.bs.modal', function() {
     $('#addIpForm')[0].reset();
     $('#ipTags, #ipSystems, #ipContacts').val(null).trigger('change');
+    $('#ipStatus').trigger('change');
     // Clear validation states
     $('#ipAddress').removeClass('is-invalid is-valid');
     $('#ipValidationIcon').hide();
@@ -828,8 +838,18 @@ function buildExportUrl() {
   });
 
   // Edit IP Modal - Initialize Select2
+  // Status select2 - Bootstrap 5 theme (matches Tags/Systems/Contacts styling)
+  $('#editIpStatus').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select status',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#editIpModal')
+  });
+
   $('#editIpTags').select2({
             theme: 'bootstrap-5',
+    placeholder: 'Select tags (optional)',
     multiple: true,
             allowClear: true,
             width: '100%',
@@ -850,6 +870,7 @@ function buildExportUrl() {
 
   $('#editIpSystems').select2({
             theme: 'bootstrap-5',
+    placeholder: 'Select systems (optional)',
     multiple: true,
             allowClear: true,
             width: '100%',
@@ -870,6 +891,7 @@ function buildExportUrl() {
 
   $('#editIpContacts').select2({
             theme: 'bootstrap-5',
+    placeholder: 'Select contacts (optional)',
     multiple: true,
             allowClear: true,
             width: '100%',
@@ -911,7 +933,7 @@ function buildExportUrl() {
     // Populate form fields
     $('#editIpAddress').val(ipAddress);
     $('#editIpDescription').val(description);
-    $('#editIpStatus').val(status);
+    $('#editIpStatus').val(status).trigger('change');
 
     // Load existing values for Select2 fields after a short delay
         setTimeout(() => {
@@ -948,6 +970,15 @@ function buildExportUrl() {
   });
 
   // Filter IP Modal - Initialize Select2
+  // Status select2 - Bootstrap 5 theme (matches Tags/Systems/Contacts styling)
+  $('#filterIpStatus').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'All Status',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterIpModal')
+  });
+
   $('#filterIpTags').select2({
             theme: 'bootstrap-5',
             placeholder: 'Select tag(s)',
@@ -1022,7 +1053,7 @@ function buildExportUrl() {
   $('#filterIpModal').on('hidden.bs.modal', function() {
     console.log('Filter IP Modal hidden, resetting form');
     $('#filterIpForm')[0].reset();
-    $('#filterIpTags, #filterIpSystems, #filterIpContacts').val(null).trigger('change');
+    $('#filterIpTags, #filterIpSystems, #filterIpContacts, #filterIpStatus').val(null).trigger('change');
   });
 
   // Clear All Filters button
@@ -1031,7 +1062,7 @@ function buildExportUrl() {
     $('#filterIpTags').val(null).trigger('change');
     $('#filterIpSystems').val(null).trigger('change');
     $('#filterIpContacts').val(null).trigger('change');
-    $('#filterIpStatus').val('');
+    $('#filterIpStatus').val(null).trigger('change');
     
     // Close modal
     $('#filterIpModal').modal('hide');
@@ -1520,6 +1551,14 @@ function showIpDetail(ipId) {
     html += '</ul></dd>';
   }
 
+  const ipCreated = (ip.created_at || 'N/A');
+  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + String(ipCreated).trim() + '</dd>';
+  const ipUpdated = (ip.updated_at || 'N/A');
+  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + String(ipUpdated).trim() + '</dd>';
+  if (ip.updated_by) {
+    html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + String(ip.updated_by).trim() + '</dd>';
+  }
+
   html += '</dl>';
   content.innerHTML = html;
   modal.show();
@@ -1560,6 +1599,7 @@ $(document).on('click', '#validateIpBtn', function() {
   $('#ipImportResults').text('Validating file...');
   $('.progress-bar').css('width', '30%');
   
+  let nativeXhr;
   $.ajax({
     url: '/network/ip-address/validate-import',
     type: 'POST',
@@ -1567,9 +1607,9 @@ $(document).on('click', '#validateIpBtn', function() {
     processData: false,
     contentType: false,
     xhr: function() {
-      const xhr = new window.XMLHttpRequest();
-      xhr.responseType = 'blob'; // Important for file download
-      return xhr;
+      nativeXhr = new window.XMLHttpRequest();
+      nativeXhr.responseType = 'blob'; // Important for file download
+      return nativeXhr;
     },
     success: function(data, status, xhr) {
       $('.progress-bar').css('width', '100%');
@@ -1611,16 +1651,19 @@ $(document).on('click', '#validateIpBtn', function() {
         try {
           const summary = JSON.parse(validationSummary);
           const resultsDiv = $('#ipImportResults');
-          resultsDiv.removeClass('alert-danger').addClass('alert-success')
-            .html(`<strong>Validation Complete!</strong><br>
-                   <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
-                   <small>Validation file downloaded. Review results before importing.</small>`);
-          resultsDiv.show();
-          
-          // Show import button if validation passed
           if (summary.allPassed) {
+            resultsDiv.removeClass('alert-danger').addClass('alert-success')
+              .html(`<strong>Validation Complete!</strong><br>
+                     <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
+                     <small>Validation file downloaded. Review results before importing.</small>`);
             $('#importIpBtn').show();
+          } else {
+            resultsDiv.removeClass('alert-success').addClass('alert-danger')
+              .html(`<strong>Validation Failed!</strong><br>
+                     <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
+                     <small>Validation file downloaded. Please fix the errors before importing.</small>`);
           }
+          resultsDiv.show();
         } catch (e) {
           // Fallback if header parsing fails
           const resultsDiv = $('#ipImportResults');
@@ -1633,14 +1676,15 @@ $(document).on('click', '#validateIpBtn', function() {
       }
     },
     error: function(xhr, status, error) {
-      console.error('Validation error:', xhr.responseText);
       console.error('Status:', xhr.status);
       console.error('Error:', error);
-      
+
       $('.progress-bar').css('width', '100%').text('Validation Failed');
-      $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
-        .html('<strong>Validation Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
-        .show();
+      extractImportErrorMessage(nativeXhr || xhr).then(function(msg) {
+        $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
+          .html('<strong>Validation Error!</strong><br>' + msg)
+          .show();
+      });
       },
       complete: function() {
       $('#validateIpBtn').prop('disabled', false);
@@ -1667,6 +1711,7 @@ $(document).on('click', '#importIpBtn', function() {
   $('.progress-bar').css('width', '30%').text('Importing...');
   $('#importIpBtn').prop('disabled', true);
   
+  let nativeXhr;
   $.ajax({
     url: '/network/ip-address/import',
     type: 'POST',
@@ -1674,9 +1719,9 @@ $(document).on('click', '#importIpBtn', function() {
     processData: false,
     contentType: false,
     xhr: function() {
-      const xhr = new window.XMLHttpRequest();
-      xhr.responseType = 'blob'; // Important for file download
-      return xhr;
+      nativeXhr = new window.XMLHttpRequest();
+      nativeXhr.responseType = 'blob'; // Important for file download
+      return nativeXhr;
     },
     success: function(data, status, xhr) {
       $('#ipImportProgress .progress-bar').css('width', '100%').text('Import Complete');
@@ -1711,11 +1756,24 @@ $(document).on('click', '#importIpBtn', function() {
         window.URL.revokeObjectURL(url);
       }
       
-      // Show results
+      // Show results - reflect actual success/failure counts, not just "it downloaded"
       const resultsDiv = $('#ipImportResults');
-      resultsDiv.removeClass('alert-danger').addClass('alert-success')
-        .html(`<strong>Import Completed!</strong><br>
-               <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
+      let importSummary = null;
+      try {
+        const summaryHeader = xhr.getResponseHeader('X-Import-Summary');
+        if (summaryHeader) importSummary = JSON.parse(summaryHeader);
+      } catch (e) {}
+
+      if (importSummary && importSummary.failed > 0) {
+        resultsDiv.removeClass('alert-success').addClass('alert-danger')
+          .html(`<strong>Import Completed with Errors!</strong><br>
+                 <small>Total: ${importSummary.total}, Success: ${importSummary.success}, Failed: ${importSummary.failed}</small><br>
+                 <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
+      } else {
+        resultsDiv.removeClass('alert-danger').addClass('alert-success')
+          .html(`<strong>Import Completed!</strong><br>
+                 <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
+      }
       resultsDiv.show();
       
       // Hide import button
@@ -1727,14 +1785,15 @@ $(document).on('click', '#importIpBtn', function() {
       }, 2000);
     },
     error: function(xhr, status, error) {
-      console.error('Import error:', xhr.responseText);
       console.error('Status:', xhr.status);
       console.error('Error:', error);
-      
+
       $('#ipImportProgress .progress-bar').css('width', '100%').text('Import Failed');
-      $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
-        .html('<strong>Import Error!</strong><br>' + (xhr.responseJSON?.error || xhr.responseText || 'Unknown error occurred'))
-        .show();
+      extractImportErrorMessage(nativeXhr || xhr).then(function(msg) {
+        $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
+          .html('<strong>Import Error!</strong><br>' + msg)
+          .show();
+      });
     },
     complete: function() {
       $('#importIpBtn').prop('disabled', false);

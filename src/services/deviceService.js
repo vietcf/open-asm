@@ -14,10 +14,6 @@ const toIdArray = v => {
   if (v === undefined || v === null) return [];
   return Array.isArray(v) ? v : [v];
 };
-// Note: Device.create() itself writes via the pool directly (the model has no
-// client param for create), so a create can still leave an orphan device row
-// if a later step in the transaction fails — a pre-existing limitation of
-// Device.create, carried over unchanged; not something this service introduces.
 
 export async function getLocationOptions() {
   let locationOptions = [];
@@ -147,8 +143,9 @@ export async function createDevice(input, client) {
       location: safeStr(input.location),
       serial_number: safeStr(input.serial),
       management_address: safeStr(input.management),
-      description: safeStr(input.description)
-    });
+      description: safeStr(input.description),
+      updated_by: input.updated_by || null
+    }, c);
     await Device.setIpAddresses(created.id, ipAddresses, c);
     if (tags.length) await Device.setTags(created.id, tags, c);
     if (contacts.length) await Device.setContacts(created.id, contacts, c);

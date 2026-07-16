@@ -55,3 +55,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // (Add more custom JS for other dynamic modals/forms if needed)
 });
+
+// Extracts a human-readable error message from an AJAX error response.
+// Import/validate endpoints set xhr.responseType = 'blob' (to receive an
+// Excel file on success), so on failure the JSON error body arrives as a
+// Blob too - jQuery can't parse it into responseJSON/responseText, which
+// used to surface as the literal string "[object Blob]". Always resolves
+// (never rejects) so callers can safely chain .then().
+window.extractImportErrorMessage = function(xhr, fallback) {
+  fallback = fallback || 'Import failed: the file format is invalid. Please download the template and try again.';
+  const parseText = function(text) {
+    if (!text) return fallback;
+    try {
+      const parsed = JSON.parse(text);
+      return parsed.error || parsed.message || text;
+    } catch (e) {
+      return text;
+    }
+  };
+  const response = xhr.response;
+  if (typeof Blob !== 'undefined' && response instanceof Blob) {
+    return response.text().then(parseText).catch(function() { return fallback; });
+  }
+  if (xhr.responseJSON && xhr.responseJSON.error) {
+    return Promise.resolve(xhr.responseJSON.error);
+  }
+  if (typeof xhr.responseText === 'string' && xhr.responseText) {
+    return Promise.resolve(parseText(xhr.responseText));
+  }
+  return Promise.resolve(fallback);
+};

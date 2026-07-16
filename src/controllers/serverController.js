@@ -17,6 +17,8 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { ServiceError } from '../services/errors.js';
+import { IPV4_REGEX } from '../services/ipAddressService.js';
+import { parseCsvLine } from '../utils/csvParser.js';
 import {
   listAgents as listAgentsService,
   createAgent as createAgentService,
@@ -516,10 +518,12 @@ serverController.deleteServer = async (req, res) => {
     const id = req.params.id;
     const deleteIp = ['true', '1'].includes(String(req.body.delete_ip ?? req.query.delete_ip).toLowerCase());
     await deleteServerService(id, { deleteIp });
-    res.redirect('/server/server/list?success=Server deleted successfully');
+    req.flash('success', 'Server deleted successfully');
   } catch (err) {
-    res.redirect('/server/server/list?error=Unable to delete server');
+    const message = err instanceof ServiceError ? err.message : 'Unable to delete server: ' + err.message;
+    req.flash('error', message);
   }
+  res.redirect('/server/server/list');
 };
 
 // Export server list as Excel (filtered)
@@ -626,18 +630,18 @@ serverController.downloadServerTemplate = async (req, res) => {
     worksheet.addRow([
       'Name (Optional - auto-generated if empty)',
       'IPAddress (Require, comma-separated if multiple)',
-      'OS',
-      'Status',
-      'Location',
-      'Type',
-      'Manager (comma-separated if multiple)',
-      'System (comma-separated if multiple)',
-      'Agent (comma-separated if multiple)',
-      'Service (comma-separated if multiple)',
-      'Tag (comma-separated if multiple)',
-      'Description'
+      'OS (Optional)',
+      'Status (Optional)',
+      'Location (Optional)',
+      'Type (Optional)',
+      'Manager (Optional, comma-separated if multiple)',
+      'System (Optional, comma-separated if multiple)',
+      'Agent (Optional, comma-separated if multiple)',
+      'Service (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Description (Optional)'
     ]);
-    
+
     // Add sample data
     worksheet.addRow([
       'Test Server 1',
@@ -759,10 +763,10 @@ serverController.validateImportServers = async (req, res) => {
     if (ext === '.csv') {
       const csvContent = fs.readFileSync(filePath, 'utf8');
       const lines = csvContent.split('\n').filter(line => line.trim());
-      headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      
+      headers = parseCsvLine(lines[0]);
+
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const values = parseCsvLine(lines[i]);
         const row = {};
         headers.forEach((header, index) => {
           row[header] = values[index] || '';
@@ -795,22 +799,22 @@ serverController.validateImportServers = async (req, res) => {
     const requiredColumns = [
       'Name (Optional - auto-generated if empty)',
       'IPAddress (Require, comma-separated if multiple)',
-      'OS',
-      'Status',
-      'Location',
-      'Type',
-      'Manager (comma-separated if multiple)',
-      'System (comma-separated if multiple)',
-      'Agent (comma-separated if multiple)',
-      'Service (comma-separated if multiple)',
-      'Tag (comma-separated if multiple)',
-      'Description'
+      'OS (Optional)',
+      'Status (Optional)',
+      'Location (Optional)',
+      'Type (Optional)',
+      'Manager (Optional, comma-separated if multiple)',
+      'System (Optional, comma-separated if multiple)',
+      'Agent (Optional, comma-separated if multiple)',
+      'Service (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Description (Optional)'
     ];
 
     // Check for missing columns
     const missingColumns = requiredColumns.filter(col => !headers.includes(col));
     if (missingColumns.length > 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'File format validation failed',
         details: {
           missingColumns: missingColumns,
@@ -822,7 +826,7 @@ serverController.validateImportServers = async (req, res) => {
     // Check for extra columns
     const extraColumns = headers.filter(col => !requiredColumns.includes(col));
     if (extraColumns.length > 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'File format validation failed',
         details: {
           extraColumns: extraColumns,
@@ -831,10 +835,13 @@ serverController.validateImportServers = async (req, res) => {
       });
     }
 
-    // Check column order (optional - can be flexible)
-    const columnOrderMismatch = requiredColumns.some((col, index) => headers[index] !== col);
-    if (columnOrderMismatch) {
-      console.warn('Column order mismatch detected, but continuing with validation...');
+    // Check column order - must match the template exactly
+    for (let i = 0; i < requiredColumns.length; i++) {
+      if (headers[i] !== requiredColumns[i]) {
+        return res.status(400).json({
+          error: `Invalid column order. Expected "${requiredColumns[i]}" at position ${i + 1}, got "${headers[i]}"`
+        });
+      }
     }
 
     // Get valid options from database
@@ -849,7 +856,6 @@ serverController.validateImportServers = async (req, res) => {
 
     // Validate each row
     const validationResults = [];
-    const ipRegex = /^[0-9]{1,3}(\.[0-9]{1,3}){3}$/;
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -857,16 +863,16 @@ serverController.validateImportServers = async (req, res) => {
         row_number: i + 1,
         name: sanitizeString(row['Name (Optional - auto-generated if empty)'] || ''),
         ip_addresses: sanitizeString(row['IPAddress (Require, comma-separated if multiple)'] || ''),
-        os: sanitizeString(row['OS'] || ''),
-        status: sanitizeString(row['Status'] || ''),
-        location: sanitizeString(row['Location'] || ''),
-        type: sanitizeString(row['Type'] || ''),
-        manager: sanitizeString(row['Manager (comma-separated if multiple)'] || ''),
-        system: sanitizeString(row['System (comma-separated if multiple)'] || ''),
-        agent: sanitizeString(row['Agent (comma-separated if multiple)'] || ''),
-        service: sanitizeString(row['Service (comma-separated if multiple)'] || ''),
-        tag: sanitizeString(row['Tag (comma-separated if multiple)'] || ''),
-        description: sanitizeString(row['Description'] || ''),
+        os: sanitizeString(row['OS (Optional)'] || ''),
+        status: sanitizeString(row['Status (Optional)'] || ''),
+        location: sanitizeString(row['Location (Optional)'] || ''),
+        type: sanitizeString(row['Type (Optional)'] || ''),
+        manager: sanitizeString(row['Manager (Optional, comma-separated if multiple)'] || ''),
+        system: sanitizeString(row['System (Optional, comma-separated if multiple)'] || ''),
+        agent: sanitizeString(row['Agent (Optional, comma-separated if multiple)'] || ''),
+        service: sanitizeString(row['Service (Optional, comma-separated if multiple)'] || ''),
+        tag: sanitizeString(row['Tag (Optional, comma-separated if multiple)'] || ''),
+        description: sanitizeString(row['Description (Optional)'] || ''),
         validation_status: 'PASS',
         validation_reason: ''
       };
@@ -880,7 +886,7 @@ serverController.validateImportServers = async (req, res) => {
         // Validate IP addresses format
         const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
         for (const ip of ipList) {
-          if (!ipRegex.test(ip)) {
+          if (!IPV4_REGEX.test(ip)) {
             result.validation_status = 'FAIL';
             result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Invalid IP format: ${ip}`;
           }
@@ -1075,16 +1081,16 @@ serverController.validateImportServers = async (req, res) => {
     worksheet.addRow([
       'Name (Optional - auto-generated if empty)',
       'IPAddress (Require, comma-separated if multiple)',
-      'OS',
-      'Status',
-      'Location',
-      'Type',
-      'Manager (comma-separated if multiple)',
-      'System (comma-separated if multiple)',
-      'Agent (comma-separated if multiple)',
-      'Service (comma-separated if multiple)',
-      'Tag (comma-separated if multiple)',
-      'Description',
+      'OS (Optional)',
+      'Status (Optional)',
+      'Location (Optional)',
+      'Type (Optional)',
+      'Manager (Optional, comma-separated if multiple)',
+      'System (Optional, comma-separated if multiple)',
+      'Agent (Optional, comma-separated if multiple)',
+      'Service (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Description (Optional)',
       'Validation Status',
       'Validation Reason'
     ]);
@@ -1221,10 +1227,10 @@ serverController.importServers = async (req, res) => {
     if (ext === '.csv') {
       const csvContent = fs.readFileSync(filePath, 'utf8');
       const lines = csvContent.split('\n').filter(line => line.trim());
-      headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
-      
+      headers = parseCsvLine(lines[0]);
+
       for (let i = 1; i < lines.length; i++) {
-        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const values = parseCsvLine(lines[i]);
         const row = {};
         headers.forEach((header, index) => {
           row[header] = values[index] || '';
@@ -1257,22 +1263,22 @@ serverController.importServers = async (req, res) => {
     const requiredColumns = [
       'Name (Optional - auto-generated if empty)',
       'IPAddress (Require, comma-separated if multiple)',
-      'OS',
-      'Status',
-      'Location',
-      'Type',
-      'Manager (comma-separated if multiple)',
-      'System (comma-separated if multiple)',
-      'Agent (comma-separated if multiple)',
-      'Service (comma-separated if multiple)',
-      'Tag (comma-separated if multiple)',
-      'Description'
+      'OS (Optional)',
+      'Status (Optional)',
+      'Location (Optional)',
+      'Type (Optional)',
+      'Manager (Optional, comma-separated if multiple)',
+      'System (Optional, comma-separated if multiple)',
+      'Agent (Optional, comma-separated if multiple)',
+      'Service (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Description (Optional)'
     ];
 
     // Check for missing columns
     const missingColumns = requiredColumns.filter(col => !headers.includes(col));
     if (missingColumns.length > 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'File format validation failed',
         details: {
           missingColumns: missingColumns,
@@ -1284,13 +1290,22 @@ serverController.importServers = async (req, res) => {
     // Check for extra columns
     const extraColumns = headers.filter(col => !requiredColumns.includes(col));
     if (extraColumns.length > 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'File format validation failed',
         details: {
           extraColumns: extraColumns,
           message: `Extra columns found: ${extraColumns.join(', ')}. Please use the correct template.`
         }
       });
+    }
+
+    // Check column order - must match the template exactly
+    for (let i = 0; i < requiredColumns.length; i++) {
+      if (headers[i] !== requiredColumns[i]) {
+        return res.status(400).json({
+          error: `Invalid column order. Expected "${requiredColumns[i]}" at position ${i + 1}, got "${headers[i]}"`
+        });
+      }
     }
 
     await client.query('BEGIN');
@@ -1304,16 +1319,16 @@ serverController.importServers = async (req, res) => {
         row_number: i + 1,
         name: sanitizeString(row['Name (Optional - auto-generated if empty)'] || ''),
         ip_addresses: sanitizeString(row['IPAddress (Require, comma-separated if multiple)'] || ''),
-        os: sanitizeString(row['OS'] || ''),
-        status: sanitizeString(row['Status'] || ''),
-        location: sanitizeString(row['Location'] || ''),
-        type: sanitizeString(row['Type'] || ''),
-        manager: sanitizeString(row['Manager (comma-separated if multiple)'] || ''),
-        system: sanitizeString(row['System (comma-separated if multiple)'] || ''),
-        agent: sanitizeString(row['Agent (comma-separated if multiple)'] || ''),
-        service: sanitizeString(row['Service (comma-separated if multiple)'] || ''),
-        tag: sanitizeString(row['Tag (comma-separated if multiple)'] || ''),
-        description: sanitizeString(row['Description'] || ''),
+        os: sanitizeString(row['OS (Optional)'] || ''),
+        status: sanitizeString(row['Status (Optional)'] || ''),
+        location: sanitizeString(row['Location (Optional)'] || ''),
+        type: sanitizeString(row['Type (Optional)'] || ''),
+        manager: sanitizeString(row['Manager (Optional, comma-separated if multiple)'] || ''),
+        system: sanitizeString(row['System (Optional, comma-separated if multiple)'] || ''),
+        agent: sanitizeString(row['Agent (Optional, comma-separated if multiple)'] || ''),
+        service: sanitizeString(row['Service (Optional, comma-separated if multiple)'] || ''),
+        tag: sanitizeString(row['Tag (Optional, comma-separated if multiple)'] || ''),
+        description: sanitizeString(row['Description (Optional)'] || ''),
         import_status: 'SUCCESS',
         import_reason: ''
       };
@@ -1546,16 +1561,16 @@ serverController.importServers = async (req, res) => {
     worksheet.addRow([
       'Name (Optional - auto-generated if empty)',
       'IPAddress (Require, comma-separated if multiple)',
-      'OS',
-      'Status',
-      'Location',
-      'Type',
-      'Manager (comma-separated if multiple)',
-      'System (comma-separated if multiple)',
-      'Agent (comma-separated if multiple)',
-      'Service (comma-separated if multiple)',
-      'Tag (comma-separated if multiple)',
-      'Description',
+      'OS (Optional)',
+      'Status (Optional)',
+      'Location (Optional)',
+      'Type (Optional)',
+      'Manager (Optional, comma-separated if multiple)',
+      'System (Optional, comma-separated if multiple)',
+      'Agent (Optional, comma-separated if multiple)',
+      'Service (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Description (Optional)',
       'Import Status',
       'Import Reason'
     ]);

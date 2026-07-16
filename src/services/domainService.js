@@ -143,9 +143,7 @@ export async function updateDomain(id, input, client) {
 export async function deleteDomain(id) {
   const domain = await Domain.findById(id);
   if (!domain) throw new NotFoundError('Domain not found');
-  const inUseCount = await Domain.countSystemsUsing(id);
-  if (inUseCount > 0) {
-    throw new ConflictError(`Cannot delete: this domain is used by ${inUseCount} system(s)`);
-  }
+  // Domain isn't dependent on the systems it's linked to - Domain.delete()
+  // unlinks system_domain rows itself before deleting the domain row.
   await Domain.delete(id);
 }

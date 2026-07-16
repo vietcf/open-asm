@@ -495,7 +495,7 @@ function buildExportUrl() {
           </form>
         </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
         <button type="submit" class="btn btn-primary btn-sm" form="addRuleForm">Add Rule</button>
         </div>
       </div>
@@ -670,7 +670,7 @@ function buildExportUrl() {
           </form>
           </div>
           <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
         <button type="submit" class="btn btn-primary btn-sm" form="editRuleForm">Update Rule</button>
           </div>
         </div>
@@ -748,7 +748,7 @@ function buildExportUrl() {
           </div>
         </div>
         <div class="modal-footer d-flex justify-content-end gap-2">
-          <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
           <button type="button" class="btn btn-warning btn-sm" id="clearRuleFilterBtn">Clear Filter</button>
             <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
           </div>
@@ -2124,14 +2124,17 @@ let selectedFile = null;
     $('#importStatus').text('Validating file...');
   $('.progress-bar').css('width', '30%');
   
+  let nativeXhr;
   $.ajax({
       url: '/firewall/rule/validate-import',
     type: 'POST',
     data: formData,
     processData: false,
     contentType: false,
-    xhrFields: {
-      responseType: 'blob'
+    xhr: function() {
+      nativeXhr = new window.XMLHttpRequest();
+      nativeXhr.responseType = 'blob';
+      return nativeXhr;
     },
       success: function(data, status, xhr) {
       $('.progress-bar').css('width', '100%');
@@ -2178,21 +2181,10 @@ let selectedFile = null;
     error: function(xhr, status, error) {
       $('.progress-bar').css('width', '100%').text('Validation Failed');
         $('#importResults').show();
-        
-        // Try to parse error response
-        let errorMessage = 'Unknown error occurred';
-        if (xhr.responseJSON && xhr.responseJSON.error) {
-          errorMessage = xhr.responseJSON.error;
-        } else if (xhr.responseText) {
-          try {
-            const errorData = JSON.parse(xhr.responseText);
-            errorMessage = errorData.error || errorMessage;
-          } catch (e) {
-            errorMessage = xhr.responseText;
-          }
-        }
-        
-        $('#importMessage').html('<strong>Validation Error!</strong><br>' + errorMessage);
+
+        extractImportErrorMessage(nativeXhr || xhr).then(function(errorMessage) {
+          $('#importMessage').html('<strong>Validation Error!</strong><br>' + errorMessage);
+        });
       },
       complete: function() {
         $('#validateBtn').prop('disabled', false);
@@ -2219,14 +2211,17 @@ let selectedFile = null;
   $('.progress-bar').css('width', '30%').text('Importing...');
     $('#importBtn').prop('disabled', true);
   
+  let nativeXhr;
   $.ajax({
       url: '/firewall/rule/import',
     type: 'POST',
     data: formData,
     processData: false,
     contentType: false,
-    xhrFields: {
-      responseType: 'blob' // Important for downloading files
+    xhr: function() {
+      nativeXhr = new window.XMLHttpRequest();
+      nativeXhr.responseType = 'blob'; // Important for downloading files
+      return nativeXhr;
     },
       success: function(data, status, xhr) {
         $('#importProgress .progress-bar').css('width', '100%').text('Import Complete');
@@ -2235,10 +2230,12 @@ let selectedFile = null;
         // Get import summary from headers
         const importSummary = xhr.getResponseHeader('X-Import-Summary');
         let summaryInfo = '';
+        let importFailedCount = 0;
         if (importSummary) {
           try {
             const summary = JSON.parse(importSummary);
             summaryInfo = `<br>Total: ${summary.total}, Success: ${summary.success}, Failed: ${summary.failed}`;
+            importFailedCount = summary.failed || 0;
           } catch (e) {
             console.log('Could not parse import summary');
           }
@@ -2255,8 +2252,12 @@ let selectedFile = null;
         document.body.removeChild(link);
         window.URL.revokeObjectURL(url);
         
-        // Show success message
-        $('#importMessage').html('<strong>Import Completed!</strong><br>Import results file has been downloaded.' + summaryInfo + '<br><br>Page will refresh in 3 seconds.');
+        // Show results - flag partial failures in red instead of a plain neutral message
+        if (importFailedCount > 0) {
+          $('#importMessage').html('<strong style="color: red;">Import Completed with Errors!</strong><br>Import results file has been downloaded.' + summaryInfo + '<br><br>Page will refresh in 3 seconds.');
+        } else {
+          $('#importMessage').html('<strong style="color: green;">Import Completed!</strong><br>Import results file has been downloaded.' + summaryInfo + '<br><br>Page will refresh in 3 seconds.');
+        }
       
       // Hide import button
         $('#importBtn').hide();
@@ -2269,7 +2270,9 @@ let selectedFile = null;
     error: function(xhr, status, error) {
         $('#importProgress .progress-bar').css('width', '100%').text('Import Failed');
         $('#importResults').show();
-        $('#importMessage').html('<strong>Import Error!</strong><br>' + (xhr.responseJSON?.error || 'Unknown error occurred'));
+        extractImportErrorMessage(nativeXhr || xhr).then(function(errorMessage) {
+          $('#importMessage').html('<strong>Import Error!</strong><br>' + errorMessage);
+        });
     },
     complete: function() {
         $('#importBtn').prop('disabled', false);
@@ -2391,6 +2394,46 @@ let selectedFile = null;
   .input-group .form-select {
     font-size: 0.75rem !important;
     width: 80px !important;
+  }
+}
+
+/* layout.ejs's generic mobile table rule keeps only column 2 + the last
+   column visible, assuming column 2 is "Name" - here column 2 is
+   "Audit Batch" (often blank) and the identifying column, Rule Name, is
+   column 4. Swap which column stays visible, same fix as System List's
+   #systemTable; #ruleTable's ID specificity beats the generic
+   .table th/td:nth-child(2) class selector. Applies to both the
+   detailedHeader and groupedHeader rows, which share the same layout. */
+@media (max-width: 768px) {
+  #ruleTable th:nth-child(2),
+  #ruleTable td:nth-child(2) {
+    display: none !important;
+  }
+  #ruleTable th:nth-child(4),
+  #ruleTable td:nth-child(4) {
+    display: table-cell !important;
+    width: 70% !important;
+    max-width: 70% !important;
+    word-wrap: break-word;
+    word-break: break-word;
+  }
+  /* Match the site-standard "Name column" text style that the generic rule
+     applies to td:nth-child(2) - it doesn't reach column 4. */
+  #ruleTable td:nth-child(4) {
+    font-size: 0.9rem;
+    line-height: 1.3;
+    padding: 8px 6px;
+  }
+
+  /* layout.ejs's generic .table tr { display: table-row !important } also
+     forces visible every <tr> this page hides via jQuery .hide() - the
+     inactive detailedHeader/groupedHeader row and every collapsed
+     .group-detail-row - which duplicated every rule's row on mobile.
+     [style*="display: none"] tracks jQuery's live inline style: matches
+     while jQuery has the row hidden, stops matching the instant .show()
+     rewrites that inline style, so expand/collapse still works normally. */
+  #ruleTable tr[style*="display: none"] {
+    display: none !important;
   }
 }
 

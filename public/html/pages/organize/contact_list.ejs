@@ -261,11 +261,11 @@ function buildPaginationUrl(targetPage) {
         <div class="modal-body">
           <div class="mb-3">
             <label for="contactName" class="form-label">Name <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="contactName" name="name" required>
+            <input type="text" class="form-control" id="contactName" name="name" placeholder="Enter contact name" required>
           </div>
           <div class="mb-3">
             <label for="contactEmail" class="form-label">Email <span class="text-danger">*</span></label>
-            <input type="email" class="form-control" id="contactEmail" name="email" required>
+            <input type="email" class="form-control" id="contactEmail" name="email" placeholder="Enter email address" required>
           </div>
           <div class="mb-3">
             <label for="contactPosition" class="form-label">Position <span class="text-danger">*</span></label>
@@ -280,7 +280,7 @@ function buildPaginationUrl(targetPage) {
           </div>
           <div class="mb-3">
             <label for="contactPhone" class="form-label">Phone</label>
-            <input type="text" class="form-control" id="contactPhone" name="phone">
+            <input type="text" class="form-control" id="contactPhone" name="phone" placeholder="Enter phone number">
           </div>
           <div class="mb-3">
             <label for="contactUnit" class="form-label">Organization</label>
@@ -295,7 +295,7 @@ function buildPaginationUrl(targetPage) {
           </div>
         </div>
         <div class="modal-footer d-flex justify-content-end">
-          <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-primary btn-sm">Add Contact</button>
         </div>
       </form>
@@ -315,11 +315,11 @@ function buildPaginationUrl(targetPage) {
         <div class="modal-body">
           <div class="mb-3">
             <label for="editContactName" class="form-label">Name <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="editContactName" name="name" required>
+            <input type="text" class="form-control" id="editContactName" name="name" placeholder="Enter contact name" required>
           </div>
           <div class="mb-3">
             <label for="editContactEmail" class="form-label">Email <span class="text-danger">*</span></label>
-            <input type="email" class="form-control" id="editContactEmail" name="email" required>
+            <input type="email" class="form-control" id="editContactEmail" name="email" placeholder="Enter email address" required>
           </div>
           <div class="mb-3">
             <label for="editContactPosition" class="form-label">Position <span class="text-danger">*</span></label>
@@ -334,11 +334,11 @@ function buildPaginationUrl(targetPage) {
           </div>
           <div class="mb-3">
             <label for="editContactPhone" class="form-label">Phone</label>
-            <input type="text" class="form-control" id="editContactPhone" name="phone">
+            <input type="text" class="form-control" id="editContactPhone" name="phone" placeholder="Enter phone number">
           </div>
           <div class="mb-3">
             <label for="editContactDescription" class="form-label">Description</label>
-            <textarea class="form-control" id="editContactDescription" name="description" rows="3"></textarea>
+            <textarea class="form-control" id="editContactDescription" name="description" rows="3" placeholder="Enter contact description"></textarea>
           </div>
           <div class="mb-3">
             <label for="editContactUnit" class="form-label">Organization</label>
@@ -353,7 +353,7 @@ function buildPaginationUrl(targetPage) {
           </div>
         </div>
         <div class="modal-footer d-flex justify-content-end">
-          <button type="button" class="btn btn-outline-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
           <button type="submit" class="btn btn-primary btn-sm">Update Contact</button>
         </div>
       </form>
@@ -372,11 +372,51 @@ function editContact(id, name, email, position, phone, unitId, description) {
   document.getElementById('editContactForm').action = '/organize/contact/' + id + '?_method=PUT';
   document.getElementById('editContactName').value = name;
   document.getElementById('editContactEmail').value = email;
-  document.getElementById('editContactPosition').value = position;
   document.getElementById('editContactPhone').value = phone;
   document.getElementById('editContactDescription').value = description || '';
-  document.getElementById('editContactUnit').value = unitId || '';
+  $('#editContactPosition').val(position).trigger('change');
+  $('#editContactUnit').val(unitId || '').trigger('change');
 }
+
+$(function() {
+  // Position select2 - Bootstrap 5 theme
+  $('#contactPosition').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select position',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#addContactModal')
+  });
+  $('#editContactPosition').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select position',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#editContactModal')
+  });
+
+  // Organization select2 - Bootstrap 5 theme
+  $('#contactUnit').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select organization (optional)',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#addContactModal')
+  });
+  $('#editContactUnit').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select organization (optional)',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#editContactModal')
+  });
+
+  // Reset Add Contact form (and select2 fields) when modal is hidden
+  $('#addContactModal').on('hidden.bs.modal', function() {
+    $('#addContactModal').find('form')[0].reset();
+    $('#contactPosition, #contactUnit').val(null).trigger('change');
+  });
+});
 
 // Handle edit button click
 $(document).on('click', 'button[data-bs-target="#editContactModal"]', function() {

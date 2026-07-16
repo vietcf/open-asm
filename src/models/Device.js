@@ -4,10 +4,10 @@ import { pool } from '../../config/config.js';
 
 class Device {
   // Create a new device (with manufacturer and device_role)
-  static async create({ name, manufacturer, device_role, platform_id, device_type_id, location, serial_number, management_address, description }) {
-    const result = await pool.query(
-      'INSERT INTO devices (name, manufacturer, device_role, platform_id, device_type_id, location, serial_number, management_address, description) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-      [name, manufacturer, device_role, platform_id, device_type_id, location, serial_number, management_address, description]
+  static async create({ name, manufacturer, device_role, platform_id, device_type_id, location, serial_number, management_address, description, updated_by }, client = pool) {
+    const result = await client.query(
+      'INSERT INTO devices (name, manufacturer, device_role, platform_id, device_type_id, location, serial_number, management_address, description, updated_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [name, manufacturer, device_role, platform_id, device_type_id, location, serial_number, management_address, description, updated_by]
     );
     return result.rows[0];
   }

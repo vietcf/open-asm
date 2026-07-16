@@ -1086,6 +1086,14 @@ function showServerDetail(serverId) {
     });
     html += '</dd>';
   }
+
+  const serverCreated = (server.created_at || 'N/A');
+  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + String(serverCreated).trim() + '</dd>';
+  const serverUpdated = (server.updated_at || 'N/A');
+  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + String(serverUpdated).trim() + '</dd>';
+  if (server.updated_by) {
+    html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + String(server.updated_by).trim() + '</dd>';
+  }
   html += '</dl>';
   content.innerHTML = html;
   modal.show();
@@ -1121,6 +1129,7 @@ $(document).on('click', '#validateServerBtn', function() {
   $('#serverImportResults').text('Validating file...');
   $('.progress-bar').css('width', '30%');
   
+  let nativeXhr;
   $.ajax({
     url: '/server/server/validate-import',
     type: 'POST',
@@ -1128,9 +1137,9 @@ $(document).on('click', '#validateServerBtn', function() {
     processData: false,
     contentType: false,
     xhr: function() {
-      const xhr = new window.XMLHttpRequest();
-      xhr.responseType = 'blob'; // Important for file download
-      return xhr;
+      nativeXhr = new window.XMLHttpRequest();
+      nativeXhr.responseType = 'blob'; // Important for file download
+      return nativeXhr;
     },
     success: function(data, status, xhr) {
       $('.progress-bar').css('width', '100%');
@@ -1192,16 +1201,19 @@ $(document).on('click', '#validateServerBtn', function() {
         try {
           const summary = JSON.parse(validationSummary);
           const resultsDiv = $('#serverImportResults');
-          resultsDiv.removeClass('alert-danger').addClass('alert-success')
-            .html(`<strong>Validation Complete!</strong><br>
-                   <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
-                   <small>Validation file downloaded. Review results before importing.</small>`);
-          resultsDiv.show();
-          
-          // Show import button if validation passed
           if (summary.allPassed) {
+            resultsDiv.removeClass('alert-danger').addClass('alert-success')
+              .html(`<strong>Validation Complete!</strong><br>
+                     <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
+                     <small>Validation file downloaded. Review results before importing.</small>`);
             $('#importServerBtn').show();
+          } else {
+            resultsDiv.removeClass('alert-success').addClass('alert-danger')
+              .html(`<strong>Validation Failed!</strong><br>
+                     <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
+                     <small>Validation file downloaded. Please fix the errors before importing.</small>`);
           }
+          resultsDiv.show();
         } catch (e) {
           // Fallback if header parsing fails
           const resultsDiv = $('#serverImportResults');
@@ -1219,25 +1231,12 @@ $(document).on('click', '#validateServerBtn', function() {
       console.error('Error:', error);
       
       $('.progress-bar').css('width', '100%').text('Validation Failed');
-      
-      let errorMessage = 'Unknown error occurred';
-      try {
-        // Try to parse JSON response
-        if (xhr.responseJSON && xhr.responseJSON.error) {
-          errorMessage = xhr.responseJSON.error;
-        } else if (xhr.responseText && typeof xhr.responseText === 'string') {
-          errorMessage = xhr.responseText;
-        } else if (xhr.response && typeof xhr.response === 'string') {
-          errorMessage = xhr.response;
-        }
-      } catch (e) {
-        console.error('Error parsing response:', e);
-        errorMessage = `HTTP ${xhr.status}: ${error}`;
-      }
-      
-      $('#serverImportResults').removeClass('alert-success').addClass('alert-danger')
-        .html('<strong>Validation Error!</strong><br>' + errorMessage)
-        .show();
+
+      extractImportErrorMessage(nativeXhr || xhr).then(function(errorMessage) {
+        $('#serverImportResults').removeClass('alert-success').addClass('alert-danger')
+          .html('<strong>Validation Error!</strong><br>' + errorMessage)
+          .show();
+      });
     },
     complete: function() {
       $('#validateServerBtn').prop('disabled', false);
@@ -1264,6 +1263,7 @@ $(document).on('click', '#importServerBtn', function() {
   $('.progress-bar').css('width', '30%').text('Importing...');
   $('#importServerBtn').prop('disabled', true);
   
+  let nativeXhr;
   $.ajax({
     url: '/server/server/import',
     type: 'POST',
@@ -1271,9 +1271,9 @@ $(document).on('click', '#importServerBtn', function() {
     processData: false,
     contentType: false,
     xhr: function() {
-      const xhr = new window.XMLHttpRequest();
-      xhr.responseType = 'blob'; // Important for file download
-      return xhr;
+      nativeXhr = new window.XMLHttpRequest();
+      nativeXhr.responseType = 'blob'; // Important for file download
+      return nativeXhr;
     },
     success: function(data, status, xhr) {
       $('#serverImportProgress .progress-bar').css('width', '100%').text('Import Complete');
@@ -1308,11 +1308,23 @@ $(document).on('click', '#importServerBtn', function() {
         window.URL.revokeObjectURL(url);
       }
       
-      // Show results
+      // Show results - reflect actual success/failure counts, not just "it downloaded"
       const resultsDiv = $('#serverImportResults');
-      resultsDiv.removeClass('alert-danger').addClass('alert-success')
-        .html('<strong>Import Complete!</strong><br><small>Import results file downloaded. Page will refresh in 2 seconds...</small>')
-        .show();
+      let importSummary = null;
+      try {
+        const summaryHeader = xhr.getResponseHeader('X-Import-Summary');
+        if (summaryHeader) importSummary = JSON.parse(summaryHeader);
+      } catch (e) {}
+
+      if (importSummary && importSummary.failed > 0) {
+        resultsDiv.removeClass('alert-success').addClass('alert-danger')
+          .html(`<strong>Import Completed with Errors!</strong><br><small>Total: ${importSummary.total}, Success: ${importSummary.success}, Failed: ${importSummary.failed}</small><br><small>Import results file downloaded. Page will refresh in 2 seconds...</small>`)
+          .show();
+      } else {
+        resultsDiv.removeClass('alert-danger').addClass('alert-success')
+          .html('<strong>Import Complete!</strong><br><small>Import results file downloaded. Page will refresh in 2 seconds...</small>')
+          .show();
+      }
 
       // Refresh page after delay (same 2s as IP/Subnet/Device import)
       setTimeout(() => {
@@ -1325,25 +1337,12 @@ $(document).on('click', '#importServerBtn', function() {
       console.error('Error:', error);
       
       $('.progress-bar').css('width', '100%').text('Import Failed');
-      
-      let errorMessage = 'Unknown error occurred';
-      try {
-        // Try to parse JSON response
-        if (xhr.responseJSON && xhr.responseJSON.error) {
-          errorMessage = xhr.responseJSON.error;
-        } else if (xhr.responseText && typeof xhr.responseText === 'string') {
-          errorMessage = xhr.responseText;
-        } else if (xhr.response && typeof xhr.response === 'string') {
-          errorMessage = xhr.response;
-        }
-      } catch (e) {
-        console.error('Error parsing response:', e);
-        errorMessage = `HTTP ${xhr.status}: ${error}`;
-      }
-      
-      $('#serverImportResults').removeClass('alert-success').addClass('alert-danger')
-        .html('<strong>Import Error!</strong><br>' + errorMessage)
-        .show();
+
+      extractImportErrorMessage(nativeXhr || xhr).then(function(errorMessage) {
+        $('#serverImportResults').removeClass('alert-success').addClass('alert-danger')
+          .html('<strong>Import Error!</strong><br>' + errorMessage)
+          .show();
+      });
     },
     complete: function() {
       $('#importServerBtn').prop('disabled', false);

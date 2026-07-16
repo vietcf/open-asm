@@ -48,7 +48,7 @@ apiSubnetController.findSubnet = async (req, res) => {
 
 apiSubnetController.createSubnet = async (req, res) => {
   try {
-    const subnet = await createSubnetService(req.body || {});
+    const subnet = await createSubnetService({ ...req.body, updated_by: req.user ? req.user.username : null });
     res.status(201).json(subnet);
   } catch (err) {
     handleServiceErrorPlain(err, res);
@@ -57,7 +57,7 @@ apiSubnetController.createSubnet = async (req, res) => {
 
 apiSubnetController.updateSubnet = async (req, res) => {
   try {
-    const subnet = await updateSubnetService(req.params.id, req.body || {});
+    const subnet = await updateSubnetService(req.params.id, { ...req.body, updated_by: req.user ? req.user.username : null });
     res.json(subnet);
   } catch (err) {
     handleServiceErrorPlain(err, res);
