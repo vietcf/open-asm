@@ -2145,19 +2145,20 @@ networkController.importSubnets = async (req, res) => {
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
+      const rowNumber = i + 2; // +2 because Excel starts from 1 and we skip header
       const result = {
-        row_number: i + 1,
+        row: rowNumber,
         subnet_address: sanitizeString(row['Subnet Address (Require)'] || ''),
         description: sanitizeString(row['Description (Optional)'] || ''),
         zone: sanitizeString(row['Zone (Optional)'] || ''),
         environment: sanitizeString(row['Environment (Optional)'] || ''),
         tags: sanitizeString(row['Tag (Optional, comma-separated if multiple)'] || ''),
-        import_status: 'SUCCESS',
+        import_status: 'Success',
         import_reason: ''
       };
 
       if (seenAddresses.has(result.subnet_address)) {
-        result.import_status = 'FAILED';
+        result.import_status = 'Failed';
         result.import_reason = 'Duplicate subnet address within this file';
         importResults.push(result);
         continue;
@@ -2176,7 +2177,7 @@ networkController.importSubnets = async (req, res) => {
         else notFoundTags.push(tagName);
       }
       if (notFoundTags.length > 0) {
-        result.import_status = 'FAILED';
+        result.import_status = 'Failed';
         result.import_reason = `Tag(s) not found: ${notFoundTags.join(', ')}`;
         importResults.push(result);
         continue;
@@ -2188,7 +2189,7 @@ networkController.importSubnets = async (req, res) => {
       // whole shared transaction "aborted" in Postgres until rolled back —
       // without a savepoint, every row after the first failure would also
       // fail and the final COMMIT would discard the entire batch, even rows
-      // already reported as SUCCESS.
+      // already reported as Success.
       const savepoint = `import_subnet_row_${i}`;
       try {
         await client.query(`SAVEPOINT ${savepoint}`);
@@ -2201,10 +2202,11 @@ networkController.importSubnets = async (req, res) => {
           updated_by: username
         }, client);
         await client.query(`RELEASE SAVEPOINT ${savepoint}`);
+        result.import_reason = 'Successfully created subnet';
       } catch (err) {
         await client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
         console.error(`Error importing subnet row ${i + 1}:`, err);
-        result.import_status = 'FAILED';
+        result.import_status = 'Failed';
         result.import_reason = err instanceof ServiceError ? err.message : (err.message || 'Unknown error');
       }
 
@@ -2250,7 +2252,7 @@ networkController.importSubnets = async (req, res) => {
       ]);
 
       // Color code import status
-      if (result.import_status === 'FAILED') {
+      if (result.import_status === 'Failed') {
         row.getCell(6).font = { color: { argb: 'FFFF0000' } }; // Import Status column
         row.getCell(7).font = { color: { argb: 'FFFF0000' } }; // Import Reason column
       } else {
@@ -2283,7 +2285,7 @@ networkController.importSubnets = async (req, res) => {
     await workbook.xlsx.writeFile(importFilePath);
 
     // Count import results
-    const successCount = importResults.filter(result => result.import_status === 'SUCCESS').length;
+    const successCount = importResults.filter(result => result.import_status === 'Success').length;
     const failCount = importResults.length - successCount;
 
     // Clean up uploaded file
