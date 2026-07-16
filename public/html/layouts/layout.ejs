@@ -218,8 +218,11 @@
         vertical-align: top;
       }
       
-      /* Search button next to input - simple style - ONLY for search form */
-      form .btn[type="submit"],
+      /* Search button next to input - simple style - ONLY for search form.
+         Scoped to .input-group specifically: every #searchBtn in the app is
+         wrapped in .input-group, but a bare `form .btn[type="submit"]` also
+         matched every full-page Add/Edit form's primary submit button,
+         capping it to 60px and breaking its mobile layout. */
       .input-group .btn[type="submit"] {
         width: 60px !important;
         height: 38px !important;
@@ -236,8 +239,6 @@
       }
       
       /* Hide search icon on mobile - only for search form buttons */
-      form .btn[type="submit"] i[class*="search"],
-      form .btn[type="submit"] i[class*="magnifying"],
       .input-group .btn[type="submit"] i[class*="search"],
       .input-group .btn[type="submit"] i[class*="magnifying"] {
         display: none !important;
