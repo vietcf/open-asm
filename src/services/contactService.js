@@ -110,7 +110,7 @@ export async function updateContact(id, input) {
 
   const position = has('position') ? (typeof input.position === 'string' ? input.position.trim() : current.position) : current.position;
   if (has('position') && !position) throw new ValidationError('Position must not be empty if provided');
-  await validatePosition(position);
+  if (has('position')) await validatePosition(position);
 
   const description = has('description') ? (typeof input.description === 'string' ? input.description.trim() : current.description) : current.description;
 
