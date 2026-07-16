@@ -72,13 +72,13 @@ cp .env.docker.sample .env.docker
 
 3. **Start the application**:
 ```bash
-docker-compose up --build -d
+docker compose up --build -d
 ```
 
 > ⚠️ **After any rebuild** (`--build`), also restart nginx: `docker restart openasm_nginx`.
 > Nginx resolves the `app` container's IP once at startup; when `app` is recreated by a
 > rebuild it gets a new IP, and nginx will keep routing to the old one (502 errors) until
-> it's restarted. This is not needed for a plain `docker-compose up -d` with no rebuild.
+> it's restarted. This is not needed for a plain `docker compose up -d` with no rebuild.
 
 4. **Access the application**:
 - Web Interface: https://localhost:8443
@@ -169,19 +169,19 @@ see Installation above). The key difference from local development's `.env`:
 ### Build and Run
 ```bash
 # Build and start all services
-docker-compose up --build -d
+docker compose up --build -d
 
 # Restart nginx after any rebuild above — see warning in Installation section
 docker restart openasm_nginx
 
 # Build specific service
-docker-compose build app
+docker compose build app
 
 # Start services
-docker-compose up -d
+docker compose up -d
 
 # Stop services
-docker-compose down
+docker compose down
 ```
 
 ### Docker Image Management
@@ -200,19 +200,19 @@ sudo docker load < openasm_app_1.1.0.tar.gz
 ### Logs and Monitoring
 ```bash
 # View logs
-docker-compose logs -f app
-docker-compose logs -f db
-docker-compose logs -f nginx
+docker compose logs -f app
+docker compose logs -f db
+docker compose logs -f nginx
 
 # Check container status
-docker-compose ps
+docker compose ps
 ```
 
 All containers use the `json-file` logging driver capped at 10MB × 3 files
 (see the `x-logging` block in `docker-compose.yml`) — Docker rotates them
 automatically, no separate logrotate setup needed. Nginx logs to
 stdout/stderr (the base image's default), so they show up in
-`docker-compose logs -f nginx` like any other container instead of being
+`docker compose logs -f nginx` like any other container instead of being
 written to a host-mounted file — this is what keeps them under Docker's
 log-size cap. Database backups and old `system_log` DB rows are cleaned up
 separately by the app's own scheduled jobs (see below).
@@ -220,7 +220,7 @@ separately by the app's own scheduled jobs (see below).
 ### Scheduled Maintenance Jobs
 
 The `app` container runs three background jobs on startup (`src/app.js`),
-all visible in `docker-compose logs -f app`:
+all visible in `docker compose logs -f app`:
 
 | Job | Schedule | What it does | Config |
 |---|---|---|---|
@@ -343,7 +343,7 @@ cp .env.docker.sample .env.docker
 # Edit .env.docker
 
 # Deploy
-docker-compose up --build -d
+docker compose up --build -d
 
 # Restart nginx so it picks up the app container's IP (see warning above)
 docker restart openasm_nginx
@@ -352,7 +352,7 @@ docker restart openasm_nginx
 **Updating an existing deployment** (after pulling new code):
 ```bash
 git pull
-docker-compose up --build -d   # also rebuilds/recreates the migration + app containers;
+docker compose up --build -d   # also rebuilds/recreates the migration + app containers;
                                 # migrations run automatically and are safe to re-run
 docker restart openasm_nginx   # required after every rebuild, see warning above
 ```
@@ -430,7 +430,7 @@ node migrations/init_data.js
 node migrations/alters/run.js
 ```
 
-In Docker, run these inside the app/migration container, e.g. `docker-compose run --rm migration node migrations/alters/run.js`. The `migration` service in `docker-compose.yml` already runs all three in sequence on every `docker-compose up`, so this is normally automatic — see "Updating an existing deployment" above. The `app` service's `depends_on` uses `condition: service_completed_successfully` on `migration`, so `app` won't start until migration has actually finished (exit code 0), not just started.
+In Docker, run these inside the app/migration container, e.g. `docker compose run --rm migration node migrations/alters/run.js`. The `migration` service in `docker-compose.yml` already runs all three in sequence on every `docker compose up`, so this is normally automatic — see "Updating an existing deployment" above. The `app` service's `depends_on` uses `condition: service_completed_successfully` on `migration`, so `app` won't start until migration has actually finished (exit code 0), not just started.
 
 **Making a schema change (between releases):**
 1. Add a new file `migrations/alters/000N_description.js` (start at `0001` again, since the folder was just emptied — next number after the last one once more files accumulate), exporting `default async (pool) => { await pool.query('ALTER TABLE ...'); }`. Use `IF NOT EXISTS`/`IF EXISTS` guards so it's safe to re-run.
