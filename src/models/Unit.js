@@ -144,21 +144,29 @@ class Unit {
   }
 
   /**
-   * Count how many records reference this unit (contacts, systems'
-   * department, privileged accounts' organization, and firewall rules' OU).
+   * Count, per referencing table, how many records point at this unit
+   * (contacts, systems' department, privileged accounts' organization, and
+   * firewall rules' OU) — broken down so callers can report exactly what's
+   * still attached instead of just a combined total.
    * @param {number} id
-   * @returns {Promise<number>}
+   * @returns {Promise<{contacts:number, systems:number, priv_users:number, rulefirewall:number}>}
    */
-  static async countUsage(id) {
+  static async getUsageBreakdown(id) {
     const result = await pool.query(
       `SELECT
-        (SELECT COUNT(*) FROM contacts WHERE unit_id = $1) +
-        (SELECT COUNT(*) FROM systems WHERE department_id = $1) +
-        (SELECT COUNT(*) FROM priv_users WHERE organize_id = $1) +
-        (SELECT COUNT(*) FROM rulefirewall WHERE ou_id = $1) AS count`,
+        (SELECT COUNT(*) FROM contacts WHERE unit_id = $1) AS contacts,
+        (SELECT COUNT(*) FROM systems WHERE department_id = $1) AS systems,
+        (SELECT COUNT(*) FROM priv_users WHERE organize_id = $1) AS priv_users,
+        (SELECT COUNT(*) FROM rulefirewall WHERE ou_id = $1) AS rulefirewall`,
       [id]
     );
-    return parseInt(result.rows[0].count, 10);
+    const row = result.rows[0];
+    return {
+      contacts: parseInt(row.contacts, 10),
+      systems: parseInt(row.systems, 10),
+      priv_users: parseInt(row.priv_users, 10),
+      rulefirewall: parseInt(row.rulefirewall, 10)
+    };
   }
 
 
