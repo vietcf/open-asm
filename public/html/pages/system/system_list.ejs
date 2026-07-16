@@ -1237,15 +1237,7 @@ function buildSystemExportUrl() {
       const table = document.getElementById('systemTable');
       const mobileCards = document.getElementById('systemMobileCards');
       
-      // 768px matches the breakpoint of layout.ejs's generic mobile table
-      // simplification (hide every column but the 2nd + last). That generic
-      // rule assumes column 2 is "Name" - here it's "System Code" instead,
-      // so below this width we always want our own card view, not the
-      // generic table fallback. The actual show/hide is enforced in this
-      // page's #systemTable / #systemMobileCards CSS (with !important,
-      // scoped by ID) since the generic rule's `.table-responsive { display:
-      // block !important }` would otherwise override a JS-set inline style.
-      if (width <= 768) {
+      if (width <= 576) {
         // Show mobile cards, hide table
         if (table) table.closest('.table-responsive').style.display = 'none';
         if (mobileCards) mobileCards.style.display = 'block';
@@ -1347,17 +1339,30 @@ function buildSystemExportUrl() {
    direct children, so this footer needs its own mobile stacking rule
    (same pattern as device_list.ejs's filter modal). */
 @media (max-width: 768px) {
-  /* layout.ejs's generic mobile table rule forces `.table-responsive` (and
-     every `.table`) visible with !important, assuming column 2 is "Name" -
-     here column 2 is "System Code", so that fallback shows the wrong data
-     and also defeats the JS toggle above that tries to swap in
-     #systemMobileCards. Both overrides need #systemTable's ID specificity
-     (beats the generic .table-responsive/.table class selectors) to win. */
-  #systemTable {
+  /* layout.ejs's generic mobile table rule keeps only column 2 + the last
+     column visible, assuming column 2 is "Name" - here column 2 is
+     "System Code" (Name is column 3), so it showed the wrong data. Swap
+     which column stays visible; #systemTable's ID specificity beats the
+     generic .table th/td:nth-child(2) class selector. */
+  #systemTable th:nth-child(2),
+  #systemTable td:nth-child(2) {
     display: none !important;
   }
-  #systemMobileCards {
-    display: block !important;
+  #systemTable th:nth-child(3),
+  #systemTable td:nth-child(3) {
+    display: table-cell !important;
+    width: 70% !important;
+    max-width: 70% !important;
+    word-wrap: break-word;
+    word-break: break-word;
+  }
+  /* Match the site-standard "Name column" text style that the generic rule
+     applies to td:nth-child(2) - it doesn't reach column 3, so without this
+     the name here rendered in the browser's plain default font/size. */
+  #systemTable td:nth-child(3) {
+    font-size: 0.9rem;
+    line-height: 1.3;
+    padding: 8px 6px;
   }
 }
 
