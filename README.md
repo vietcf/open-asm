@@ -81,8 +81,8 @@ docker compose up --build -d
 > it's restarted. This is not needed for a plain `docker compose up -d` with no rebuild.
 
 4. **Access the application**:
-- Web Interface: https://localhost:8443
-- API Documentation: https://localhost:8443/api-docs
+- Web Interface: https://localhost
+- API Documentation: https://localhost/api-docs
 - PgAdmin: http://localhost:8888
 
 ### Local Development Installation
@@ -235,19 +235,19 @@ driver (see Logs and Monitoring above), not by an app-level job.
 
 ### Base URL
 - **Development**: http://localhost:3000/api/v1
-- **Production**: https://localhost:8443/api/v1
+- **Production**: https://localhost/api/v1
 
 ### Authentication
 All API endpoints require JWT authentication:
 
 ```bash
 # Login to get token
-curl -X POST https://localhost:8443/api/v1/auth/login \
+curl -X POST https://localhost/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username": "admin", "password": "admin123"}'
 
 # Use token in requests
-curl -X GET https://localhost:8443/api/v1/systems \
+curl -X GET https://localhost/api/v1/systems \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -493,7 +493,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 ### Documentation
-- **API Documentation**: https://localhost:8443/api-docs
+- **API Documentation**: https://localhost/api-docs
 - **Swagger UI**: Interactive API documentation
 
 ### Issues
