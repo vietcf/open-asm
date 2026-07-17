@@ -29,12 +29,12 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024 // 10MB limit
   },
   fileFilter: function (req, file, cb) {
-    const allowedTypes = ['.csv', '.xlsx', '.xls'];
+    const allowedTypes = ['.xlsx', '.xls'];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowedTypes.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error('Only CSV and Excel files are allowed'), false);
+      cb(new Error('Only Excel files (.xlsx, .xls) are allowed'), false);
     }
   }
 });

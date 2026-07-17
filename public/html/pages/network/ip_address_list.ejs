@@ -617,12 +617,12 @@ function buildExportUrl() {
           <div class="mb-3">
             <label for="ipImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
             <div class="input-group">
-              <input type="file" class="form-control" id="ipImportFile" name="file" accept=".csv,.xlsx,.xls" required>
+              <input type="file" class="form-control" id="ipImportFile" name="file" accept=".xlsx,.xls" required>
               <a href="/network/ip-address/template" class="btn btn-outline-info" download>
                 <i class="bi bi-download"></i> Download Template
               </a>
             </div>
-            <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
+            <div class="form-text">Supported format: Excel (.xlsx, .xls). Maximum file size: 10MB</div>
           </div>
           
           <div class="mb-3">
@@ -1379,17 +1379,44 @@ function loadSubnetInfoForIP(ipAddress, contentElement) {
   });
 }
 
-// Function to update subnet information in the modal (as plain text, no badges)
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// Function to update subnet information in the modal
 function updateSubnetInfoInModal(contentElement, subnetInfo) {
   const currentHTML = contentElement.innerHTML;
-  
+
   if (subnetInfo) {
     // Zone as plain text
     let zoneHTML = subnetInfo.zone && subnetInfo.zone.trim() ? String(subnetInfo.zone).trim() : '<span class="text-muted">N/A</span>';
     // Environment as plain text
     let environmentHTML = subnetInfo.environment && subnetInfo.environment.trim() ? String(subnetInfo.environment).trim() : '<span class="text-muted">N/A</span>';
-    // Subnet as plain text
-    let subnetHTML = String(subnetInfo.address).trim();
+
+    // Subnet as a link to the Subnet List filtered to this subnet, with a
+    // hover tooltip showing the subnet's own details (zone/environment/
+    // description/tags) so users don't have to click through just to see them.
+    const subnetAddress = String(subnetInfo.address).trim();
+    const subnetUrl = '/network/subnet-address?page=1&search=' + encodeURIComponent(subnetAddress) + '&pageSize=5';
+    const tooltipLines = [
+      'Zone: ' + (subnetInfo.zone && subnetInfo.zone.trim() ? escapeHtml(subnetInfo.zone.trim()) : 'N/A'),
+      'Environment: ' + (subnetInfo.environment && subnetInfo.environment.trim() ? escapeHtml(subnetInfo.environment.trim()) : 'N/A')
+    ];
+    if (subnetInfo.description && subnetInfo.description.trim()) {
+      tooltipLines.push('Description: ' + escapeHtml(subnetInfo.description.trim()));
+    }
+    if (subnetInfo.tags && subnetInfo.tags.length > 0) {
+      const tagNames = subnetInfo.tags.map(t => (t && t.name) ? t.name : t).join(', ');
+      tooltipLines.push('Tags: ' + escapeHtml(tagNames));
+    }
+    const subnetHTML = '<a href="' + subnetUrl + '" class="text-primary text-decoration-underline" ' +
+      'data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true" title="' + tooltipLines.join('<br>') + '">' +
+      escapeHtml(subnetAddress) + '</a>';
 
     // Replace loading states with actual data
     let updatedHTML = currentHTML.replace(
@@ -1423,6 +1450,13 @@ function updateSubnetInfoInModal(contentElement, subnetInfo) {
 
     contentElement.innerHTML = updatedHTML;
   }
+
+  // Dynamically injected content — (re)initialize any tooltip triggers in it.
+  contentElement.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(function(el) {
+    const existing = bootstrap.Tooltip.getInstance(el);
+    if (existing) existing.dispose();
+    new bootstrap.Tooltip(el);
+  });
 }
 
 function showIpDetail(ipId) {
@@ -1483,6 +1517,19 @@ function showIpDetail(ipId) {
       const searchUrl = '/device/device?page=1&search=' + encodeURIComponent(ip.device_name);
       html += '<a href="' + searchUrl + '" class="text-decoration-none" target="_blank">' + String(ip.device_name).trim() + '</a>';
     }
+  } else {
+    html += '<span class="text-muted">N/A</span>';
+  }
+  html += '</dd>';
+
+  // Add System(s) this IP is assigned to (system_ip), with search links —
+  // already present in ip.systems from the list query, no extra fetch needed.
+  html += '<dt class="col-sm-4">System</dt><dd class="col-sm-8">';
+  if (ip.systems && ip.systems.length > 0) {
+    html += ip.systems.map(function(sys) {
+      const searchUrl = '/system/system?page=1&search=' + encodeURIComponent(sys.name || sys.system_id || '');
+      return '<a href="' + searchUrl + '" class="text-decoration-none" target="_blank">' + escapeHtml(sys.name || sys.system_id || '') + '</a>';
+    }).join(', ');
   } else {
     html += '<span class="text-muted">N/A</span>';
   }

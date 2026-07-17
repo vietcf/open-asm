@@ -185,6 +185,16 @@ function buildExportUrl() {
             </a>
           <% } %>
 
+          <!-- Import Domain Button -->
+          <% if (hasPermission && hasPermission('domain.create')) { %>
+            <button type="button"
+                    class="btn btn-success btn-sm"
+                    data-bs-toggle="modal"
+                    data-bs-target="#importDomainModal">
+              <i class="bi bi-upload"></i> Import Domain
+            </button>
+          <% } %>
+
       </div>
     </div>
             </div>
@@ -728,8 +738,67 @@ function buildExportUrl() {
     </div>
   </div>
 </div>
-        
-        
+
+<!-- Import Domain Modal -->
+<div class="modal fade" id="importDomainModal" tabindex="-1" aria-labelledby="importDomainModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="importDomainModalLabel">Import Domains</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="importDomainForm" enctype="multipart/form-data">
+          <!-- File Selection -->
+          <div class="mb-3">
+            <label for="domainImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="file"
+                     class="form-control"
+                     id="domainImportFile"
+                     name="file"
+                     accept=".xlsx,.xls"
+                     required>
+              <a href="/network/domain/template" class="btn btn-outline-info" download>
+                <i class="bi bi-download"></i> Download Template
+              </a>
+            </div>
+            <div class="form-text">Supported format: Excel (.xlsx, .xls). Maximum file size: 10MB</div>
+          </div>
+
+          <!-- Import Instructions -->
+          <div class="mb-3">
+            <div class="alert alert-info">
+              <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
+              <ul class="mb-0">
+                <li>Click "Download Template" to get the Excel template with correct format</li>
+                <li>Fill the template with your domain data</li>
+                <li>Domain Name (Required, one per row) must not already exist</li>
+                <li>Description and Record Type are optional (Record Type defaults to A)</li>
+                <li>IP Address, System Name, and Tags are optional and can be comma-separated if multiple</li>
+                <li>Select your filled template file and validate before importing</li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Progress Bar -->
+          <div id="domainImportProgress" class="progress mb-3" style="display: none;">
+            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+          </div>
+
+          <!-- Results Display -->
+          <div id="domainImportResults" class="alert" style="display: none;"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning btn-sm" id="validateDomainBtn">Validate File</button>
+        <button type="button" class="btn btn-success btn-sm" id="importDomainBtn" style="display: none;">Import Domains</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ==========================================
      STYLES
      ========================================== -->
@@ -1114,6 +1183,221 @@ $(function() {
     if (currentSearch) params.push('search=' + encodeURIComponent(currentSearch));
     if (params.length > 0) cleanUrl += '?' + params.join('&');
     window.location.href = cleanUrl;
+  });
+
+  // ==========================================
+  // IMPORT DOMAIN
+  // ==========================================
+  let selectedDomainFile = null;
+
+  $(document).on('change', '#domainImportFile', function() {
+    selectedDomainFile = this.files[0];
+    if (selectedDomainFile) {
+      $('#validateDomainBtn').prop('disabled', false);
+      $('#importDomainBtn').hide();
+      $('#domainImportResults').hide();
+    } else {
+      $('#validateDomainBtn').prop('disabled', true);
+      $('#importDomainBtn').hide();
+    }
+  });
+
+  // Handle validate button click
+  $(document).on('click', '#validateDomainBtn', function() {
+    if (!selectedDomainFile) {
+      alert('Please select a file first');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', selectedDomainFile);
+
+    $('#domainImportProgress').show();
+    $('#domainImportResults').text('Validating file...');
+    $('.progress-bar').css('width', '30%');
+
+    let nativeXhr;
+    $.ajax({
+      url: '/network/domain/validate-import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      xhr: function() {
+        nativeXhr = new window.XMLHttpRequest();
+        nativeXhr.responseType = 'blob';
+        return nativeXhr;
+      },
+      success: function(data, status, xhr) {
+        $('.progress-bar').css('width', '100%');
+        $('#domainImportResults').text('Validation complete! Downloading results...');
+
+        const contentType = xhr.getResponseHeader('Content-Type');
+        const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+
+        if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+          const blob = new Blob([data], { type: contentType });
+          const url = window.URL.createObjectURL(blob);
+          let filename = 'validation_results.xlsx';
+          if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+            if (filenameMatch) filename = filenameMatch[1];
+          }
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        }
+
+        const validationSummary = xhr.getResponseHeader('X-Validation-Summary');
+        if (validationSummary) {
+          try {
+            const summary = JSON.parse(validationSummary);
+            const resultsDiv = $('#domainImportResults');
+            if (summary.allPassed) {
+              resultsDiv.removeClass('alert-danger').addClass('alert-success')
+                .html(`<strong>Validation Complete!</strong><br>
+                       <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
+                       <small>Validation file downloaded. Review results before importing.</small>`);
+              $('#importDomainBtn').show();
+            } else {
+              resultsDiv.removeClass('alert-success').addClass('alert-danger')
+                .html(`<strong>Validation Failed!</strong><br>
+                       <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
+                       <small>Validation file downloaded. Please fix the errors before importing.</small>`);
+            }
+            resultsDiv.show();
+          } catch (e) {
+            const resultsDiv = $('#domainImportResults');
+            resultsDiv.removeClass('alert-danger').addClass('alert-success')
+              .html(`<strong>Validation Complete!</strong><br>
+                     <small>Validation file downloaded. Review results before importing.</small>`);
+            resultsDiv.show();
+            $('#importDomainBtn').show();
+          }
+        }
+      },
+      error: function(xhr, status, error) {
+        $('.progress-bar').css('width', '100%').text('Validation Failed');
+        extractImportErrorMessage(nativeXhr || xhr).then(function(msg) {
+          $('#domainImportResults').removeClass('alert-success').addClass('alert-danger')
+            .html('<strong>Validation Error!</strong><br>' + msg)
+            .show();
+        });
+      },
+      complete: function() {
+        $('#validateDomainBtn').prop('disabled', false);
+        setTimeout(() => {
+          $('#domainImportProgress').hide();
+        }, 2000);
+      }
+    });
+  });
+
+  // Handle import button click
+  $(document).on('click', '#importDomainBtn', function() {
+    if (!selectedDomainFile) {
+      alert('Please select a file first');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', selectedDomainFile);
+
+    $('#domainImportProgress').show();
+    $('#domainImportResults').text('Importing domains...');
+    $('.progress-bar').css('width', '30%').text('Importing...');
+    $('#importDomainBtn').prop('disabled', true);
+
+    let nativeXhr;
+    $.ajax({
+      url: '/network/domain/import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      xhr: function() {
+        nativeXhr = new window.XMLHttpRequest();
+        nativeXhr.responseType = 'blob';
+        return nativeXhr;
+      },
+      success: function(data, status, xhr) {
+        $('#domainImportProgress .progress-bar').css('width', '100%').text('Import Complete');
+
+        const contentType = xhr.getResponseHeader('Content-Type');
+        const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+
+        if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+          const blob = new Blob([data], { type: contentType });
+          const url = window.URL.createObjectURL(blob);
+          let filename = 'import_results.xlsx';
+          if (contentDisposition) {
+            const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+            if (filenameMatch) filename = filenameMatch[1];
+          }
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        }
+
+        const resultsDiv = $('#domainImportResults');
+        let importSummary = null;
+        try {
+          const summaryHeader = xhr.getResponseHeader('X-Import-Summary');
+          if (summaryHeader) importSummary = JSON.parse(summaryHeader);
+        } catch (e) {}
+
+        if (importSummary && importSummary.failed > 0) {
+          resultsDiv.removeClass('alert-success').addClass('alert-danger')
+            .html(`<strong>Import Completed with Errors!</strong><br>
+                   <small>Total: ${importSummary.total}, Success: ${importSummary.success}, Failed: ${importSummary.failed}</small><br>
+                   <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
+        } else {
+          resultsDiv.removeClass('alert-danger').addClass('alert-success')
+            .html(`<strong>Import Completed!</strong><br>
+                   <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
+        }
+        resultsDiv.show();
+
+        $('#importDomainBtn').hide();
+
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      },
+      error: function(xhr, status, error) {
+        $('#domainImportProgress .progress-bar').css('width', '100%').text('Import Failed');
+        extractImportErrorMessage(nativeXhr || xhr).then(function(msg) {
+          $('#domainImportResults').removeClass('alert-success').addClass('alert-danger')
+            .html('<strong>Import Error!</strong><br>' + msg)
+            .show();
+        });
+      },
+      complete: function() {
+        $('#importDomainBtn').prop('disabled', false);
+        setTimeout(() => {
+          $('#domainImportProgress').hide();
+        }, 2000);
+      }
+    });
+  });
+
+  // Reset import modal when closed
+  $('#importDomainModal').on('hidden.bs.modal', function() {
+    $('#importDomainForm')[0].reset();
+    selectedDomainFile = null;
+    $('#validateDomainBtn').prop('disabled', true);
+    $('#importDomainBtn').hide();
+    $('#domainImportProgress').hide();
+    $('#domainImportResults').hide();
+    $('.progress-bar').css('width', '0%').text('');
   });
 });
 

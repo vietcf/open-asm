@@ -18,7 +18,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { ServiceError } from '../services/errors.js';
 import { IPV4_REGEX } from '../services/ipAddressService.js';
-import { parseCsvLine } from '../utils/csvParser.js';
 import {
   listAgents as listAgentsService,
   createAgent as createAgentService,
@@ -760,29 +759,19 @@ serverController.validateImportServers = async (req, res) => {
     console.log('File extension:', ext);
     let headers = [];
     
-    if (ext === '.csv') {
-      const csvContent = fs.readFileSync(filePath, 'utf8');
-      const lines = csvContent.split('\n').filter(line => line.trim());
-      headers = parseCsvLine(lines[0]);
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCsvLine(lines[i]);
-        const row = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
-        rows.push(row);
-      }
-    } else if (ext === '.xlsx' || ext === '.xls') {
+    // Excel only — CSV import is no longer supported (multer's fileFilter
+    // already rejects non-Excel uploads; this is the belt-and-suspenders
+    // check for anything that reaches here another way).
+    if (ext === '.xlsx' || ext === '.xls') {
       const workbook = XLSX.readFile(filePath);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      
+
       if (jsonData.length < 2) {
         return res.status(400).json({ error: 'File must contain at least a header row and one data row' });
       }
-      
+
       headers = jsonData[0];
       for (let i = 1; i < jsonData.length; i++) {
         const row = {};
@@ -792,7 +781,7 @@ serverController.validateImportServers = async (req, res) => {
         rows.push(row);
       }
     } else {
-      return res.status(400).json({ error: 'Unsupported file format' });
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
     }
 
     // Validate file format - check required columns
@@ -1224,29 +1213,19 @@ serverController.importServers = async (req, res) => {
     const ext = path.extname(originalFileName).toLowerCase();
     let headers = [];
     
-    if (ext === '.csv') {
-      const csvContent = fs.readFileSync(filePath, 'utf8');
-      const lines = csvContent.split('\n').filter(line => line.trim());
-      headers = parseCsvLine(lines[0]);
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCsvLine(lines[i]);
-        const row = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
-        rows.push(row);
-      }
-    } else if (ext === '.xlsx' || ext === '.xls') {
+    // Excel only — CSV import is no longer supported (multer's fileFilter
+    // already rejects non-Excel uploads; this is the belt-and-suspenders
+    // check for anything that reaches here another way).
+    if (ext === '.xlsx' || ext === '.xls') {
       const workbook = XLSX.readFile(filePath);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      
+
       if (jsonData.length < 2) {
         return res.status(400).json({ error: 'File must contain at least a header row and one data row' });
       }
-      
+
       headers = jsonData[0];
       for (let i = 1; i < jsonData.length; i++) {
         const row = {};
@@ -1256,7 +1235,7 @@ serverController.importServers = async (req, res) => {
         rows.push(row);
       }
     } else {
-      return res.status(400).json({ error: 'Unsupported file format' });
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
     }
 
     // Validate file format - check required columns
@@ -1312,6 +1291,14 @@ serverController.importServers = async (req, res) => {
 
     const importResults = [];
     const username = req.session && req.session.user && req.session.user.username ? req.session.user.username : 'admin';
+    // Tracks names/IPs already claimed earlier in this same file. IPs matter
+    // most: ip_addresses.ip_address has a real DB UNIQUE constraint, so two
+    // rows creating the same new IP would hit a raw duplicate-key error mid
+    // transaction — without a savepoint (see below) that poisons every row
+    // after it, and the final COMMIT silently discards the whole batch,
+    // including rows already reported as Success.
+    const seenNames = new Set();
+    const seenIps = new Set();
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -1329,223 +1316,187 @@ serverController.importServers = async (req, res) => {
         service: sanitizeString(row['Service (Optional, comma-separated if multiple)'] || ''),
         tag: sanitizeString(row['Tag (Optional, comma-separated if multiple)'] || ''),
         description: sanitizeString(row['Description (Optional)'] || ''),
-        import_status: 'SUCCESS',
+        import_status: 'Success',
         import_reason: ''
       };
 
+      const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(Boolean);
+      if (ipList.length === 0) {
+        result.import_status = 'Failed';
+        result.import_reason = 'At least one IP address is required';
+        importResults.push(result);
+        continue;
+      }
+
+      const dupIp = ipList.find(ip => seenIps.has(ip));
+      if (dupIp) {
+        result.import_status = 'Failed';
+        result.import_reason = `Duplicate IP address within this file: ${dupIp}`;
+        importResults.push(result);
+        continue;
+      }
+
+      // Check IPs against already-committed data (pre-existing assignments
+      // from before this import ran) — in-file collisions are handled
+      // separately by seenIps above.
+      const alreadyAssigned = [];
+      for (const ip of ipList) {
+        const existingIP = await IpAddress.findByAddressWithDetails(ip);
+        if (existingIP && existingIP.status === 'assigned') alreadyAssigned.push(ip);
+      }
+      if (alreadyAssigned.length > 0) {
+        result.import_status = 'Failed';
+        result.import_reason = `IP already assigned to a server: ${alreadyAssigned.join(', ')}`;
+        importResults.push(result);
+        continue;
+      }
+      ipList.forEach(ip => seenIps.add(ip));
+
+      // Generate server name if not provided
+      let serverName = result.name;
+      if (!serverName) {
+        const firstIP = ipList[0];
+        const platformName = result.os ? result.os.replace(/\s+/g, '-').toLowerCase() : '';
+        serverName = platformName ? `server_${platformName}_${firstIP}` : `server_${firstIP}`;
+      }
+
+      if (seenNames.has(serverName)) {
+        result.import_status = 'Failed';
+        result.import_reason = `Duplicate server name within this file: ${serverName}`;
+        importResults.push(result);
+        continue;
+      }
+      if (serverName) {
+        const existingServer = await Server.findByName(serverName);
+        if (existingServer) {
+          result.import_status = 'Failed';
+          result.import_reason = 'Server name already exists';
+          importResults.push(result);
+          continue;
+        }
+      }
+      seenNames.add(serverName);
+
+      // Resolve OS/Manager/System/Agent/Service/Tag names to IDs up front.
+      // A name that doesn't resolve fails the whole row instead of being
+      // silently dropped from the created server.
+      const notFound = [];
+
+      let osId = null;
+      if (result.os) {
+        const platforms = await Platform.findByNameExact(result.os);
+        if (platforms && platforms.length > 0) osId = platforms[0].id;
+        else notFound.push(`OS "${result.os}"`);
+      }
+      const managerIds = [];
+      for (const email of result.manager.split(',').map(m => m.trim()).filter(Boolean)) {
+        const contacts = await Contact.findByEmailSearch(email);
+        if (contacts && contacts.length > 0) managerIds.push(contacts[0].id);
+        else notFound.push(`Manager "${email}"`);
+      }
+      const systemIds = [];
+      for (const systemName of result.system.split(',').map(s => s.trim()).filter(Boolean)) {
+        const systems = await System.findByNameExact(systemName);
+        if (systems && systems.length > 0) systemIds.push(systems[0].id);
+        else notFound.push(`System "${systemName}"`);
+      }
+      const agentIds = [];
+      for (const agentName of result.agent.split(',').map(a => a.trim()).filter(Boolean)) {
+        const agents = await Agent.findByNameExact(agentName);
+        if (agents && agents.length > 0) agentIds.push(agents[0].id);
+        else notFound.push(`Agent "${agentName}"`);
+      }
+      const serviceIds = [];
+      for (const serviceName of result.service.split(',').map(s => s.trim()).filter(Boolean)) {
+        const services = await Service.findByNameExact(serviceName);
+        if (services && services.length > 0) serviceIds.push(services[0].id);
+        else notFound.push(`Service "${serviceName}"`);
+      }
+      const tagIds = [];
+      for (const tagName of result.tag.split(',').map(t => t.trim()).filter(Boolean)) {
+        const tags = await Tag.findByNameExact(tagName);
+        if (tags && tags.length > 0) tagIds.push(tags[0].id);
+        else notFound.push(`Tag "${tagName}"`);
+      }
+      if (notFound.length > 0) {
+        result.import_status = 'Failed';
+        result.import_reason = `Not found: ${notFound.join(', ')}`;
+        importResults.push(result);
+        continue;
+      }
+
+      // Each row gets its own savepoint, wrapping BOTH the new-IP creation
+      // and the server creation — so a failure partway through rolls back
+      // any IP just created for this row too, instead of leaving an
+      // orphaned "assigned" IP with no server attached to it.
+      const savepoint = `import_server_row_${i}`;
       try {
-        // Double-check server doesn't exist (safety check)
-        let serverExists = false;
-        
-        // Check by server name
-        if (result.name) {
-          const existingServer = await Server.findByName(result.name);
-          if (existingServer) {
-            serverExists = true;
-            result.import_reason = 'Server name already exists';
-          }
-        }
-        
-        // Check by assigned IP addresses
-        if (!serverExists && result.ip_addresses) {
-          const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
-          for (const ip of ipList) {
-            const existingIP = await IpAddress.findByAddressWithDetails(ip);
-            if (existingIP && existingIP.status === 'assigned') {
-              serverExists = true;
-              result.import_reason = `IP ${ip} is already assigned to a server`;
-              break;
-            }
-          }
-        }
-        
-        if (serverExists) {
-          result.import_status = 'FAILED';
-          result.import_reason = result.import_reason || 'Server already exists';
-        } else {
-          // Generate server name if not provided
-          let serverName = result.name;
-          if (!serverName || serverName.trim() === '') {
-            // Get first IP address
-            const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
-            const firstIP = ipList[0] || 'unknown';
-            
-            // Get platform name and replace spaces with dashes
-            let platformName = '';
-            if (result.os && result.os.trim() !== '') {
-              // Use OS string directly
-              platformName = result.os.trim().replace(/\s+/g, '-').toLowerCase();
-            }
-            
-            // Generate server name: server_<platform>_<first-ip>
-            if (platformName) {
-              serverName = `server_${platformName}_${firstIP}`;
-            } else {
-              serverName = `server_${firstIP}`;
-            }
-          }
-          
-          // Convert OS string to ID
-          let osId = null;
-          if (result.os && result.os.trim() !== '') {
-            const platforms = await Platform.findByNameExact(result.os.trim());
-            if (platforms && platforms.length > 0) {
-              osId = platforms[0].id;
-            }
-          }
+        await client.query(`SAVEPOINT ${savepoint}`);
 
-          // Create server
-          const serverId = await Server.create({
-            name: serverName,
-            os: osId,
-            status: result.status || null,
-            location: result.location || null,
-            type: result.type || null,
-            description: result.description || null,
-            username,
-            client
-          });
+        const ipDescription = [
+          `Note: This IP address was automatically created from server import feature`,
+          `Server: ${serverName}`,
+          `OS: ${result.os || 'N/A'}`,
+          `Status: ${result.status || 'N/A'}`,
+          `Location: ${result.location || 'N/A'}`,
+          `Manager: ${result.manager || 'N/A'}`,
+          `System: ${result.system || 'N/A'}`,
+          `Agent: ${result.agent || 'N/A'}`,
+          `Service: ${result.service || 'N/A'}`,
+          `Tag: ${result.tag || 'N/A'}`,
+          `Description: ${result.description || 'N/A'}`
+        ].join('\n');
 
-        // Set IP addresses
-        if (result.ip_addresses) {
-          const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
-          const ipIds = [];
-          
-          // Create detailed description for IP
-          const ipDescription = [
-            `Note: This IP address was automatically created from server import feature`,
-            `Server: ${serverName}`,
-            `OS: ${result.os || 'N/A'}`,
-            `Status: ${result.status || 'N/A'}`,
-            `Location: ${result.location || 'N/A'}`,
-            `Manager: ${result.manager || 'N/A'}`,
-            `System: ${result.system || 'N/A'}`,
-            `Agent: ${result.agent || 'N/A'}`,
-            `Service: ${result.service || 'N/A'}`,
-            `Tag: ${result.tag || 'N/A'}`,
-            `Description: ${result.description || 'N/A'}`
-          ].join('\n');
-          
-          for (const ip of ipList) {
-            let ipRecord = await IpAddress.findByAddress(ip);
-            
-            if (!ipRecord) {
-              // Create new IP address if not exists
-              ipRecord = await IpAddress.create({
-                address: ip,
-                description: ipDescription,
-                status: 'assigned',
-                updated_by: username
-              }, client);
-            }
-            
-            ipIds.push(ipRecord.id);
+        const ipIds = [];
+        for (const ip of ipList) {
+          let ipRecord = await IpAddress.findByAddress(ip);
+          if (!ipRecord) {
+            // Created as 'reserved', not 'assigned' — createServerService's
+            // validateIpAddressIds() rejects any IP already marked
+            // 'assigned' as belonging to some other server. Server.setIpAddresses
+            // (called inside createServerService) is what actually promotes
+            // it to 'assigned' once linked to this new server.
+            ipRecord = await IpAddress.create({
+              address: ip,
+              description: ipDescription,
+              status: 'reserved',
+              updated_by: username
+            }, client);
           }
-          
-          if (ipIds.length > 0) {
-            await Server.setIpAddresses(serverId, ipIds, client);
-            
-            // Set contacts for IP addresses (if managers exist)
-            if (result.manager) {
-              const managerList = result.manager.split(',').map(m => m.trim()).filter(m => m);
-              const managerIds = [];
-              for (const managerEmail of managerList) {
-                const existingContacts = await Contact.findByEmailSearch(managerEmail);
-                if (existingContacts && existingContacts.length > 0) {
-                  managerIds.push(existingContacts[0].id);
-                }
-              }
-              
-              // Set contacts for each IP
-              for (const ipId of ipIds) {
-                if (managerIds.length > 0) {
-                  // @ts-ignore - client parameter is supported by model methods
-                  await IpAddress.setContacts(ipId, managerIds, client);
-                }
-              }
-            }
+          ipIds.push(ipRecord.id);
+        }
+
+        await createServerService({
+          name: serverName,
+          os: osId,
+          status: result.status || null,
+          location: result.location || null,
+          type: result.type || null,
+          description: result.description || null,
+          managers: managerIds,
+          systems: systemIds,
+          agents: agentIds,
+          services: serviceIds,
+          tags: tagIds,
+          ip_addresses: ipIds,
+          updated_by: username
+        }, client);
+
+        // Set contacts on each IP too (managers), matching the pre-existing
+        // import behavior of also linking managers to the IPs themselves.
+        if (managerIds.length > 0) {
+          for (const ipId of ipIds) {
+            await IpAddress.setContacts(ipId, managerIds, client);
           }
         }
 
-        // Set managers
-        if (result.manager) {
-          const managerList = result.manager.split(',').map(m => m.trim()).filter(m => m);
-          const managerIds = [];
-          for (const managerEmail of managerList) {
-            const existingContacts = await Contact.findByEmailSearch(managerEmail);
-            if (existingContacts && existingContacts.length > 0) {
-              managerIds.push(existingContacts[0].id);
-            }
-          }
-          if (managerIds.length > 0) {
-            await Server.setManagers(serverId, managerIds, client);
-          }
-        }
-
-        // Set systems
-        if (result.system) {
-          const systemList = result.system.split(',').map(s => s.trim()).filter(s => s);
-          const systemIds = [];
-          for (const systemName of systemList) {
-            const existingSystems = await System.findByNameExact(systemName);
-            if (existingSystems && existingSystems.length > 0) {
-              systemIds.push(existingSystems[0].id);
-            }
-          }
-          if (systemIds.length > 0) {
-            await Server.setSystems(serverId, systemIds, client);
-          }
-        }
-
-        // Set agents
-        if (result.agent) {
-          const agentList = result.agent.split(',').map(a => a.trim()).filter(a => a);
-          const agentIds = [];
-          for (const agentName of agentList) {
-            const existingAgents = await Agent.findByNameExact(agentName);
-            if (existingAgents && existingAgents.length > 0) {
-              agentIds.push(existingAgents[0].id);
-            }
-          }
-          if (agentIds.length > 0) {
-            await Server.setAgents(serverId, agentIds, client);
-          }
-        }
-
-        // Set services
-        if (result.service) {
-          const serviceList = result.service.split(',').map(s => s.trim()).filter(s => s);
-          const serviceIds = [];
-          for (const serviceName of serviceList) {
-            const existingServices = await Service.findByNameExact(serviceName);
-            if (existingServices && existingServices.length > 0) {
-              serviceIds.push(existingServices[0].id);
-            }
-          }
-          if (serviceIds.length > 0) {
-            await Server.setServices(serverId, serviceIds, client);
-          }
-        }
-
-        // Set tags
-        if (result.tag) {
-          const tagList = result.tag.split(',').map(t => t.trim()).filter(t => t);
-          const tagIds = [];
-          for (const tagName of tagList) {
-            const existingTags = await Tag.findByNameExact(tagName);
-            if (existingTags && existingTags.length > 0) {
-              tagIds.push(existingTags[0].id);
-            }
-          }
-          if (tagIds.length > 0) {
-            await Server.setTags(serverId, tagIds, client);
-          }
-        }
-        } // End of else block for server creation
-
+        await client.query(`RELEASE SAVEPOINT ${savepoint}`);
+        result.import_reason = 'Successfully created server';
       } catch (err) {
-        result.import_status = 'FAILED';
-        result.import_reason = err.message;
+        await client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+        console.error(`Error importing server row ${i + 1}:`, err);
+        result.import_status = 'Failed';
+        result.import_reason = err instanceof ServiceError ? err.message : (err.message || 'Unknown error');
       }
 
       importResults.push(result);
@@ -1603,7 +1554,7 @@ serverController.importServers = async (req, res) => {
       ]);
 
       // Color code import status
-      if (result.import_status === 'FAILED') {
+      if (result.import_status === 'Failed') {
         row.getCell(13).font = { color: { argb: 'FFFF0000' } }; // Import Status column
         row.getCell(14).font = { color: { argb: 'FFFF0000' } }; // Import Reason column
       } else {
@@ -1643,7 +1594,7 @@ serverController.importServers = async (req, res) => {
 
     // Set header for frontend to know import results — same shape as
     // Subnet/Firewall import (total/success/failed) for consistent UI.
-    const successCount = importResults.filter(result => result.import_status === 'SUCCESS').length;
+    const successCount = importResults.filter(result => result.import_status === 'Success').length;
     res.setHeader('X-Import-Summary', JSON.stringify({
       total: importResults.length,
       success: successCount,

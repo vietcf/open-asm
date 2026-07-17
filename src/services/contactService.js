@@ -3,7 +3,7 @@ import Unit from '../models/Unit.js';
 import Configuration from '../models/Configuration.js';
 import { ValidationError, NotFoundError, ConflictError } from './errors.js';
 
-const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+export const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 export async function getPositionOptions() {
   try {
@@ -41,17 +41,10 @@ async function resolveUnitId(rawUnitId) {
   return unitId;
 }
 
-export async function listContacts({ search, page, pageSize }) {
-  if (search) {
-    const [items, totalCount] = await Promise.all([
-      Contact.findSearchPage(search, page, pageSize),
-      Contact.countSearch(search)
-    ]);
-    return { items, totalCount };
-  }
+export async function listContacts({ search, unit_id, position, page, pageSize }) {
   const [items, totalCount] = await Promise.all([
-    Contact.findPage(page, pageSize),
-    Contact.countAll()
+    Contact.findFilteredPage({ search, unit_id, position, page, pageSize }),
+    Contact.countFiltered({ search, unit_id, position })
   ]);
   return { items, totalCount };
 }
@@ -74,7 +67,7 @@ export async function findContactsByEmail(email) {
 // required explicitly here, matching the frontend's original (correct)
 // behavior — its form's <select> is `required` anyway, so this is a no-op
 // change for real form submissions.
-export async function createContact(input) {
+export async function createContact(input, client) {
   const name = (input.name || '').trim();
   const email = (input.email || '').trim();
   const position = (input.position || '').trim();
@@ -93,7 +86,7 @@ export async function createContact(input) {
   const existing = await Contact.findByEmail(email);
   if (existing) throw new ConflictError('Contact already exists with this email');
 
-  return Contact.create({ name, email, phone, position, unit_id: unitId, description });
+  return Contact.create({ name, email, phone, position, unit_id: unitId, description }, client);
 }
 
 // Partial update: only fields present as own-properties of `input` are
@@ -117,7 +110,7 @@ export async function updateContact(id, input) {
 
   const position = has('position') ? (typeof input.position === 'string' ? input.position.trim() : current.position) : current.position;
   if (has('position') && !position) throw new ValidationError('Position must not be empty if provided');
-  await validatePosition(position);
+  if (has('position')) await validatePosition(position);
 
   const description = has('description') ? (typeof input.description === 'string' ? input.description.trim() : current.description) : current.description;
 

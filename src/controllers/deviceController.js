@@ -6,7 +6,6 @@ import Tag from '../models/Tag.js';
 import Contact from '../models/Contact.js';
 import IpAddress from '../models/IpAddress.js';
 import { IPV4_REGEX } from '../services/ipAddressService.js';
-import { parseCsvLine } from '../utils/csvParser.js';
 import { pool } from '../../config/config.js';
 import ExcelJS from 'exceljs';
 import XLSX from 'xlsx';
@@ -914,29 +913,19 @@ deviceController.validateImportDevices = async (req, res) => {
     console.log('File extension:', ext);
     let headers = [];
     
-    if (ext === '.csv') {
-      const csvContent = fs.readFileSync(filePath, 'utf8');
-      const lines = csvContent.split('\n').filter(line => line.trim());
-      headers = parseCsvLine(lines[0]);
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCsvLine(lines[i]);
-        const row = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
-        rows.push(row);
-      }
-    } else if (ext === '.xlsx' || ext === '.xls') {
+    // Excel only — CSV import is no longer supported (multer's fileFilter
+    // already rejects non-Excel uploads; this is the belt-and-suspenders
+    // check for anything that reaches here another way).
+    if (ext === '.xlsx' || ext === '.xls') {
       const workbook = XLSX.readFile(filePath);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      
+
       if (jsonData.length < 2) {
         return res.status(400).json({ error: 'File must contain at least a header row and one data row' });
       }
-      
+
       headers = jsonData[0];
       for (let i = 1; i < jsonData.length; i++) {
         const row = {};
@@ -946,7 +935,7 @@ deviceController.validateImportDevices = async (req, res) => {
         rows.push(row);
       }
     } else {
-      return res.status(400).json({ error: 'Unsupported file format' });
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
     }
 
     // Validate file format - check required columns
@@ -1272,7 +1261,6 @@ deviceController.validateImportDevices = async (req, res) => {
 // Import devices
 deviceController.importDevices = async (req, res) => {
   const client = await pool.connect();
-  let clientReleased = false;
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -1311,27 +1299,11 @@ deviceController.importDevices = async (req, res) => {
       return null;
     };
 
-    // Parse file (same logic as validation)
+    // Parse file (same logic as validation) — Excel only (multer's
+    // fileFilter already rejects non-Excel uploads; this is the
+    // belt-and-suspenders check for anything that reaches here another way).
     const ext = path.extname(originalFileName).toLowerCase();
-    if (ext === '.csv') {
-      const csvContent = fs.readFileSync(filePath, 'utf8');
-      const lines = csvContent.split('\n').filter(line => line.trim());
-      const headers = parseCsvLine(lines[0]);
-
-      const headerError = validateHeaderOrder(headers);
-      if (headerError) {
-        return res.status(400).json({ error: headerError });
-      }
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCsvLine(lines[i]);
-        const row = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
-        rows.push(row);
-      }
-    } else if (ext === '.xlsx' || ext === '.xls') {
+    if (ext === '.xlsx' || ext === '.xls') {
       const workbook = XLSX.readFile(filePath);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
@@ -1356,13 +1328,21 @@ deviceController.importDevices = async (req, res) => {
         rows.push(row);
       }
     } else {
-      return res.status(400).json({ error: 'Unsupported file format' });
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
     }
 
     await client.query('BEGIN');
 
     const importResults = [];
     const username = req.session && req.session.user && req.session.user.username ? req.session.user.username : 'admin';
+    // Tracks names/IPs already claimed earlier in this same file. IPs matter
+    // most: ip_addresses.ip_address has a real DB UNIQUE constraint, so two
+    // rows creating the same new IP would hit a raw duplicate-key error mid
+    // transaction — without a savepoint (see below) that poisons every row
+    // after it, and the final COMMIT silently discards the whole batch,
+    // including rows already reported as Success.
+    const seenNames = new Set();
+    const seenIps = new Set();
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -1380,232 +1360,172 @@ deviceController.importDevices = async (req, res) => {
         manager: sanitizeString(row['Manager (Optional, comma-separated if multiple)'] || ''),
         tag: sanitizeString(row['Tag (Optional, comma-separated if multiple)'] || ''),
         description: sanitizeString(row['Description (Optional)'] || ''),
-        import_status: 'SUCCESS',
+        import_status: 'Success',
         import_reason: ''
       };
 
+      const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(Boolean);
+      if (ipList.length === 0) {
+        result.import_status = 'Failed';
+        result.import_reason = 'At least one IP address is required';
+        importResults.push(result);
+        continue;
+      }
+
+      const dupIp = ipList.find(ip => seenIps.has(ip));
+      if (dupIp) {
+        result.import_status = 'Failed';
+        result.import_reason = `Duplicate IP address within this file: ${dupIp}`;
+        importResults.push(result);
+        continue;
+      }
+
+      // Check IPs against already-committed data (pre-existing assignments
+      // from before this import ran) — in-file collisions are handled
+      // separately by seenIps above.
+      const alreadyAssigned = [];
+      for (const ip of ipList) {
+        const existingIP = await IpAddress.findByAddressWithDetails(ip);
+        if (existingIP && existingIP.status === 'assigned') alreadyAssigned.push(ip);
+      }
+      if (alreadyAssigned.length > 0) {
+        result.import_status = 'Failed';
+        result.import_reason = `IP already assigned to a device: ${alreadyAssigned.join(', ')}`;
+        importResults.push(result);
+        continue;
+      }
+      ipList.forEach(ip => seenIps.add(ip));
+
+      // Generate device name if not provided
+      let deviceName = result.name;
+      if (!deviceName) {
+        const firstIP = ipList[0];
+        const deviceTypeName = result.device_type ? result.device_type.toLowerCase().replace(/\s+/g, '-') : '';
+        deviceName = deviceTypeName ? `${deviceTypeName}_${firstIP}` : `device_${firstIP}`;
+      }
+
+      if (seenNames.has(deviceName)) {
+        result.import_status = 'Failed';
+        result.import_reason = `Duplicate device name within this file: ${deviceName}`;
+        importResults.push(result);
+        continue;
+      }
+      if (deviceName) {
+        const existingDevice = await Device.findByName(deviceName);
+        if (existingDevice) {
+          result.import_status = 'Failed';
+          result.import_reason = 'Device name already exists';
+          importResults.push(result);
+          continue;
+        }
+      }
+      seenNames.add(deviceName);
+
+      // Resolve Device Type/Platform/Manager/Tag names to IDs up front. A
+      // name that doesn't resolve fails the whole row instead of being
+      // silently dropped from the created device.
+      const notFound = [];
+
+      let deviceTypeId = null;
+      if (!result.device_type) {
+        notFound.push('Device Type is required');
+      } else {
+        const deviceType = await DeviceType.findByNameExact(result.device_type);
+        if (deviceType && deviceType.length > 0) deviceTypeId = deviceType[0].id;
+        else notFound.push(`Device Type "${result.device_type}"`);
+      }
+      let platformId = null;
+      if (result.platform) {
+        const platform = await Platform.findByNameExact(result.platform);
+        if (platform && platform.length > 0) platformId = platform[0].id;
+        else notFound.push(`Platform "${result.platform}"`);
+      }
+      const managerIds = [];
+      for (const email of result.manager.split(',').map(m => m.trim()).filter(Boolean)) {
+        const contacts = await Contact.findByEmailSearch(email);
+        if (contacts && contacts.length > 0) managerIds.push(contacts[0].id);
+        else notFound.push(`Manager "${email}"`);
+      }
+      const tagIds = [];
+      for (const tagName of result.tag.split(',').map(t => t.trim()).filter(Boolean)) {
+        const tags = await Tag.findByNameExact(tagName);
+        if (tags && tags.length > 0) tagIds.push(tags[0].id);
+        else notFound.push(`Tag "${tagName}"`);
+      }
+      if (notFound.length > 0) {
+        result.import_status = 'Failed';
+        result.import_reason = `Not found: ${notFound.join(', ')}`;
+        importResults.push(result);
+        continue;
+      }
+
+      // Each row gets its own savepoint, wrapping BOTH the new-IP creation
+      // and the device creation — so a failure partway through rolls back
+      // any IP just created for this row too, instead of leaving an
+      // orphaned "assigned" IP with no device attached to it. This also
+      // replaces Device.create() being called without the shared client,
+      // which previously committed the device row on its own connection
+      // immediately, outside this transaction entirely — so a later
+      // failure in the same row (or a ROLLBACK anywhere else in the batch)
+      // could never undo it, leaving an orphaned device behind.
+      const savepoint = `import_device_row_${i}`;
       try {
-        // Double-check device doesn't exist (safety check)
-        let deviceExists = false;
-        
-        // Check by device name
-        if (result.name) {
-          const existingDevice = await Device.findByName(result.name);
-          if (existingDevice) {
-            deviceExists = true;
-            result.import_reason = 'Device name already exists';
+        await client.query(`SAVEPOINT ${savepoint}`);
+
+        const ipDescription = [
+          `Note: This IP address was automatically created from device import feature`,
+          `Device: ${deviceName}`,
+          `Device Type: ${result.device_type || 'N/A'}`,
+          `Location: ${result.location || 'N/A'}`,
+          `Serial: ${result.serial_number || 'N/A'}`,
+          `Management: ${result.management_address || 'N/A'}`,
+          `Manufacturer: ${result.manufacturer || 'N/A'}`,
+          `Device Role: ${result.device_role || 'N/A'}`,
+          `Description: ${result.description || 'N/A'}`
+        ].join('\n');
+
+        const ipIds = [];
+        for (const ip of ipList) {
+          let ipRecord = await IpAddress.findByAddress(ip);
+          if (!ipRecord) {
+            // Created as 'reserved', not 'assigned' — createDeviceService's
+            // validateIpAddressIds() rejects any IP already marked
+            // 'assigned' as belonging to some other device. Device.setIpAddresses
+            // (called inside createDeviceService) is what actually promotes
+            // it to 'assigned' once linked to this new device.
+            ipRecord = await IpAddress.create({
+              address: ip,
+              description: ipDescription,
+              status: 'reserved',
+              updated_by: username
+            }, client);
           }
+          ipIds.push(ipRecord.id);
         }
-        
-        // Check by assigned IP addresses
-        if (!deviceExists && result.ip_addresses) {
-          const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
-          for (const ip of ipList) {
-            const existingIP = await IpAddress.findByAddressWithDetails(ip);
-            if (existingIP && existingIP.status === 'assigned') {
-              deviceExists = true;
-              result.import_reason = `IP ${ip} is already assigned to a device`;
-              break;
-            }
-          }
-        }
-        
-        if (deviceExists) {
-          result.import_status = 'FAILED';
-          result.import_reason = result.import_reason || 'Device already exists';
-        } else {
-          // Generate device name if not provided
-          let deviceName = result.name;
-          if (!deviceName || deviceName.trim() === '') {
-            // Get first IP address
-            const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
-            const firstIP = ipList[0] || 'unknown';
-            
-            // Get device type and convert to lowercase
-            let deviceTypeName = '';
-            if (result.device_type) {
-              deviceTypeName = result.device_type.toLowerCase().replace(/\s+/g, '-');
-            }
-            
-            // Generate device name: <device-type>_<first-ip>
-            if (deviceTypeName) {
-              deviceName = `${deviceTypeName}_${firstIP}`;
-            } else {
-              deviceName = `device_${firstIP}`;
-            }
-          }
-          
-          // Get device type ID
-          let deviceTypeId = null;
-          if (result.device_type) {
-            const deviceType = await DeviceType.findByNameExact(result.device_type);
-            if (deviceType && deviceType.length > 0) {
-              deviceTypeId = deviceType[0].id;
-            } else {
-              console.error(`Device type not found during import: ${result.device_type}`);
-              throw new Error(`Device type not found: ${result.device_type}`);
-            }
-          }
 
-          // Get platform ID
-          let platformId = null;
-          if (result.platform) {
-            const platform = await Platform.findByNameExact(result.platform);
-            if (platform && platform.length > 0) {
-              platformId = platform[0].id;
-            } else {
-              console.error(`Platform not found during import: ${result.platform}`);
-              throw new Error(`Platform not found: ${result.platform}`);
-            }
-          }
+        await createDeviceService({
+          name: deviceName,
+          device_type_id: deviceTypeId,
+          platform_id: platformId,
+          location: result.location || null,
+          serial: result.serial_number || null,
+          management: result.management_address || null,
+          manufacturer: result.manufacturer || null,
+          device_role: result.device_role || null,
+          description: result.description || null,
+          tags: tagIds,
+          contacts: managerIds,
+          ip_addresses: ipIds,
+          updated_by: username
+        }, client);
 
-          // Create device
-          const device = await Device.create({
-            name: deviceName,
-            device_type_id: deviceTypeId,
-            platform_id: platformId,
-            location: result.location || null,
-            serial_number: result.serial_number || null,
-            management_address: result.management_address || null,
-            manufacturer: result.manufacturer || null,
-            device_role: result.device_role || null,
-            description: result.description || null,
-            updated_by: username
-          });
-          
-          const deviceId = device.id;
-          
-          // Validate deviceId is a proper integer
-          if (deviceId === null || deviceId === undefined || typeof deviceId !== 'number' || !Number.isInteger(deviceId)) {
-            console.error(`Invalid device ID: ${deviceId}`);
-            throw new Error(`Failed to create device - invalid ID: ${deviceId}`);
-          }
-
-          // Set IP addresses
-          if (result.ip_addresses) {
-            const ipList = result.ip_addresses.split(',').map(ip => ip.trim()).filter(ip => ip);
-            const ipIds = [];
-            
-            // Create detailed description for IP
-            const ipDescription = [
-              `Note: This IP address was automatically created from device import feature`,
-              `Device: ${deviceName}`,
-              `Device Type: ${result.device_type || 'N/A'}`,
-              `Location: ${result.location || 'N/A'}`,
-              `Serial: ${result.serial_number || 'N/A'}`,
-              `Management: ${result.management_address || 'N/A'}`,
-              `Manufacturer: ${result.manufacturer || 'N/A'}`,
-              `Device Role: ${result.device_role || 'N/A'}`,
-              `Description: ${result.description || 'N/A'}`
-            ].join('\n');
-            
-            for (const ip of ipList) {
-              let ipRecord = await IpAddress.findByAddress(ip);
-              
-              if (!ipRecord) {
-                // Create new IP address if not exists
-                ipRecord = await IpAddress.create({
-                  address: ip,
-                  description: ipDescription,
-                  status: 'assigned',
-                  updated_by: username
-                }, client);
-              }
-              
-              // Ensure ipRecord exists and has an id
-              if (ipRecord && ipRecord.id) {
-                ipIds.push(ipRecord.id);
-              } else {
-                console.error(`Failed to get IP record for address: ${ip}`);
-                throw new Error(`Failed to create or find IP address: ${ip}`);
-              }
-            }
-            
-            if (ipIds.length > 0) {
-              // Validate all IP IDs are integers
-              const invalidIpIds = ipIds.filter(id => id === null || id === undefined || typeof id !== 'number' || !Number.isInteger(id));
-              if (invalidIpIds.length > 0) {
-                console.error(`Invalid IP IDs found:`, invalidIpIds);
-                throw new Error(`Invalid IP IDs: ${invalidIpIds.join(', ')}`);
-              }
-              
-              console.log(`Setting IP addresses for device ${deviceId}:`, ipIds);
-              // @ts-ignore - client parameter is supported by model methods
-              await Device.setIpAddresses(deviceId, ipIds, client);
-            }
-          }
-
-          // Set tags
-          if (result.tag) {
-            const tagNames = result.tag.split(',').map(t => t.trim()).filter(t => t);
-            const tagIds = [];
-            
-            for (const tagName of tagNames) {
-              const tag = await Tag.findByNameExact(tagName);
-              if (tag && tag.length > 0) {
-                tagIds.push(tag[0].id);
-              } else {
-                console.error(`Tag not found: ${tagName}`);
-                throw new Error(`Tag not found: ${tagName}`);
-              }
-            }
-            
-            if (tagIds.length > 0) {
-              // Validate all tag IDs are integers
-              const invalidTagIds = tagIds.filter(id => id === null || id === undefined || typeof id !== 'number' || !Number.isInteger(id));
-              if (invalidTagIds.length > 0) {
-                console.error(`Invalid tag IDs found:`, invalidTagIds);
-                throw new Error(`Invalid tag IDs: ${invalidTagIds.join(', ')}`);
-              }
-              
-              // @ts-ignore - client parameter is supported by model methods
-              await Device.setTags(deviceId, tagIds, client);
-            }
-          }
-
-          // Set managers (contacts)
-          if (result.manager) {
-            const managerEmails = result.manager.split(',').map(c => c.trim()).filter(c => c);
-            const managerIds = [];
-            
-            for (const managerEmail of managerEmails) {
-              const contact = await Contact.findByEmailSearch(managerEmail);
-              if (contact && contact.length > 0) {
-                managerIds.push(contact[0].id);
-              } else {
-                console.error(`Manager not found: ${managerEmail}`);
-                throw new Error(`Manager not found: ${managerEmail}`);
-              }
-            }
-            
-            if (managerIds.length > 0) {
-              // Validate all manager IDs are integers
-              const invalidManagerIds = managerIds.filter(id => id === null || id === undefined || typeof id !== 'number' || !Number.isInteger(id));
-              if (invalidManagerIds.length > 0) {
-                console.error(`Invalid manager IDs found:`, invalidManagerIds);
-                throw new Error(`Invalid manager IDs: ${invalidManagerIds.join(', ')}`);
-              }
-              
-              // @ts-ignore - client parameter is supported by model methods
-              await Device.setContacts(deviceId, managerIds, client);
-            }
-          }
-        } // End of else block for device creation
-
+        await client.query(`RELEASE SAVEPOINT ${savepoint}`);
+        result.import_reason = 'Successfully created device';
       } catch (err) {
-        console.error(`Error processing row ${i + 1}:`, err);
-        result.import_status = 'FAILED';
-        result.import_reason = err.message;
-        
-        // If it's a database error, rollback and stop processing
-        if (err.code && err.code.startsWith('23')) { // PostgreSQL constraint violations
-          await client.query('ROLLBACK');
-          client.release();
-          clientReleased = true;
-          return res.status(400).json({
-            error: `Database error at row ${i + 1}: ${err.message}`
-          });
-        }
+        await client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+        console.error(`Error importing device row ${i + 1}:`, err);
+        result.import_status = 'Failed';
+        result.import_reason = err instanceof ServiceError ? err.message : (err.message || 'Unknown error');
       }
 
       importResults.push(result);
@@ -1663,7 +1583,7 @@ deviceController.importDevices = async (req, res) => {
       ]);
 
       // Color code import status
-      if (result.import_status === 'FAILED') {
+      if (result.import_status === 'Failed') {
         row.getCell(13).font = { color: { argb: 'FFFF0000' } }; // Import Status column
         row.getCell(14).font = { color: { argb: 'FFFF0000' } }; // Import Reason column
       } else {
@@ -1703,7 +1623,7 @@ deviceController.importDevices = async (req, res) => {
 
     // Set header for frontend to know import results — same shape as
     // Subnet/Firewall import (total/success/failed) for consistent UI.
-    const successCount = importResults.filter(result => result.import_status === 'SUCCESS').length;
+    const successCount = importResults.filter(result => result.import_status === 'Success').length;
     res.setHeader('X-Import-Summary', JSON.stringify({
       total: importResults.length,
       success: successCount,
@@ -1735,21 +1655,17 @@ deviceController.importDevices = async (req, res) => {
     }, 10000); // 10 seconds delay
 
   } catch (err) {
-    // Note: clientReleased is only set true once client.release() has
-    // actually been called (see the per-row constraint-violation branch
-    // above) — not merely after rollback — so the finally block below
-    // still releases the connection on this path.
-    if (!clientReleased) {
+    try {
       await client.query('ROLLBACK');
+    } catch (rollbackErr) {
+      console.error('Error rolling back device import transaction:', rollbackErr);
     }
     console.error('Error importing devices:', err);
     if (!res.headersSent) {
       res.status(500).json({ error: 'Error importing devices: ' + err.message });
     }
   } finally {
-    if (!clientReleased) {
-      client.release();
-    }
+    client.release();
   }
 };
 

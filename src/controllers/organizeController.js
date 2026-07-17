@@ -9,13 +9,13 @@ import ExcelJS from 'exceljs';
 import fs from 'fs';
 import path from 'path';
 import { ServiceError } from '../services/errors.js';
-import { parseCsvLine } from '../utils/csvParser.js';
 import {
   listContacts as listContactsService,
   createContact as createContactService,
   updateContact as updateContactService,
   deleteContact as deleteContactService,
-  getPositionOptions as getPositionOptionsFromConfig
+  getPositionOptions as getPositionOptionsFromConfig,
+  EMAIL_REGEX
 } from '../services/contactService.js';
 import {
   listUnits as listUnitsService,
@@ -36,13 +36,15 @@ const organizeController = {};
 organizeController.contactList = async (req, res) => {
   try {
     const search = req.query.search ? req.query.search.trim() : '';
+    const filterUnitId = req.query.unit_id ? req.query.unit_id.trim() : '';
+    const filterPosition = req.query.position ? req.query.position.trim() : '';
     const page = parseInt(req.query.page, 10) || 1;
     // Use global page size options
     let pageSize = parseInt(req.query.pageSize, 10);
     if (!res.locals.pageSizeOptions.includes(pageSize)) {
       pageSize = res.locals.defaultPageSize;
     }
-    const { items: contactList, totalCount } = await listContactsService({ search, page, pageSize });
+    const { items: contactList, totalCount } = await listContactsService({ search, unit_id: filterUnitId, position: filterPosition, page, pageSize });
     const totalPages = Math.ceil(totalCount / pageSize);
     // fetch units for Org Unit select options
     const units = await Unit.findAll();
@@ -56,6 +58,8 @@ organizeController.contactList = async (req, res) => {
       units,
       positionOptions,
       search,
+      filterUnitId,
+      filterPosition,
       page,
       totalPages,
       errorMessage,
@@ -495,10 +499,16 @@ organizeController.downloadContactTemplate = async (req, res) => {
       fgColor: { argb: 'FFE0E0E0' }
     };
 
-    // Add sample data
+    // Add sample data — position values pulled from the real configured
+    // list (contact_position) rather than a hardcoded guess, since that
+    // guess ("MANAGER"/"STAFF") previously didn't match this deployment's
+    // actual configured casing ("Manager"/"Staff") and would fail import.
+    const positionOptions = await getPositionOptionsFromConfig();
+    const samplePosition1 = positionOptions[0] ? positionOptions[0].value : 'Manager';
+    const samplePosition2 = positionOptions[1] ? positionOptions[1].value : (positionOptions[0] ? positionOptions[0].value : 'Staff');
     const sampleData = [
-      ['John Doe', 'john.doe@company.com', '0123456789', 'IT Department', 'MANAGER', 'Sample contact for IT management'],
-      ['Jane Smith', 'jane.smith@company.com', '0987654321', 'HR Department', 'STAFF', 'Sample contact for HR staff']
+      ['John Doe', 'john.doe@company.com', '0123456789', 'IT Department', samplePosition1, 'Sample contact for IT management'],
+      ['Jane Smith', 'jane.smith@company.com', '0987654321', 'HR Department', samplePosition2, 'Sample contact for HR staff']
     ];
 
     sampleData.forEach(row => {
@@ -541,54 +551,24 @@ organizeController.validateImportContacts = async (req, res) => {
     const originalFileName = req.file.originalname;
     let rows = [];
 
-    // Parse file based on extension
+    // Parse file based on extension — Excel only (multer's fileFilter
+    // already rejects non-Excel uploads; this is the belt-and-suspenders
+    // check for anything that reaches here another way).
     const ext = path.extname(originalFileName).toLowerCase();
-    if (ext === '.csv') {
-      const csvContent = fs.readFileSync(filePath, 'utf8');
-      const lines = csvContent.split('\n').filter(line => line.trim());
-      const headers = parseCsvLine(lines[0]);
-
-      // Validate headers order and required fields
-      const expectedHeaders = [
-        'Name (Require)',
-        'Email (Require)',
-        'Phone',
-        'Org Unit',
-        'Position (Require)',
-        'Description'
-      ];
-
-      if (headers.length !== expectedHeaders.length) {
-        return res.status(400).json({
-          error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}`
-        });
-      }
-
-      for (let i = 0; i < expectedHeaders.length; i++) {
-        if (headers[i] !== expectedHeaders[i]) {
-          return res.status(400).json({
-            error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"`
-          });
-        }
-      }
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCsvLine(lines[i]);
-        const row = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
-        rows.push(row);
-      }
-    } else if (ext === '.xlsx' || ext === '.xls') {
+    if (ext === '.xlsx' || ext === '.xls') {
       const workbook = XLSX.readFile(filePath);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      rows = XLSX.utils.sheet_to_json(worksheet);
-      
-      // Validate headers for Excel files
-      if (rows.length > 0) {
-        const headers = Object.keys(rows[0]);
+      // { header: 1 } reads row 1 itself as the header list — the default
+      // (object-per-row) mode instead infers headers from which cells of
+      // the FIRST DATA row are non-blank, undercounting columns whenever
+      // that row has any blank optional field (e.g. "Expected 6 columns,
+      // got 4" on a perfectly valid file just because Phone/Description
+      // happened to be blank on row 2).
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+      if (jsonData.length > 0) {
+        const headers = jsonData[0];
         const expectedHeaders = [
           'Name (Require)',
           'Email (Require)',
@@ -597,23 +577,29 @@ organizeController.validateImportContacts = async (req, res) => {
           'Position (Require)',
           'Description'
         ];
-        
+
         if (headers.length !== expectedHeaders.length) {
-          return res.status(400).json({ 
-            error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}` 
+          return res.status(400).json({
+            error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}`
           });
         }
-        
+
         for (let i = 0; i < expectedHeaders.length; i++) {
           if (headers[i] !== expectedHeaders[i]) {
-            return res.status(400).json({ 
-              error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"` 
+            return res.status(400).json({
+              error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"`
             });
           }
         }
+
+        for (let i = 1; i < jsonData.length; i++) {
+          const row = {};
+          headers.forEach((header, index) => { row[header] = jsonData[i][index] || ''; });
+          rows.push(row);
+        }
       }
     } else {
-      return res.status(400).json({ error: 'Unsupported file format. Only CSV and Excel files are allowed.' });
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
     }
 
     if (rows.length === 0) {
@@ -623,6 +609,11 @@ organizeController.validateImportContacts = async (req, res) => {
     // Validation logic
     const validationResults = [];
     let allPassed = true;
+    // Real configured position list (config_name contact_position), not a
+    // hardcoded guess — deployments can (and here, do) configure values
+    // beyond just MANAGER/STAFF, e.g. "Staff", "Accountant", "Engineer".
+    const positionOptions = await getPositionOptionsFromConfig();
+    const allowedPositions = positionOptions.map(o => o.value);
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -641,12 +632,8 @@ organizeController.validateImportContacts = async (req, res) => {
 
       if (!row['Email (Require)'] || !row['Email (Require)'].trim()) {
         errors.push('Email is required');
-      } else {
-        // Validate email format
-        const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-        if (!emailRegex.test(row['Email (Require)'].trim())) {
-          errors.push('Invalid email format');
-        }
+      } else if (!EMAIL_REGEX.test(row['Email (Require)'].trim())) {
+        errors.push('Invalid email format');
       }
 
       // Check if contact already exists (by email or name)
@@ -665,12 +652,8 @@ organizeController.validateImportContacts = async (req, res) => {
 
       if (!row['Position (Require)'] || !row['Position (Require)'].trim()) {
         errors.push('Position is required');
-      } else {
-        // Validate position values
-        const allowedPositions = ['MANAGER', 'STAFF'];
-        if (!allowedPositions.includes(row['Position (Require)'].trim().toUpperCase())) {
-          errors.push('Position must be MANAGER or STAFF');
-        }
+      } else if (allowedPositions.length > 0 && !allowedPositions.includes(row['Position (Require)'].trim())) {
+        errors.push(`Invalid position. Must be one of: ${allowedPositions.join(', ')}`);
       }
 
       // Validate Org Unit if provided
@@ -810,26 +793,27 @@ organizeController.importContacts = async (req, res) => {
     const originalFileName = req.file.originalname;
     let rows = [];
 
-    // Parse file (same logic as validation)
+    // Parse file (same logic as validation) — Excel only (multer's
+    // fileFilter already rejects non-Excel uploads; this is the
+    // belt-and-suspenders check for anything that reaches here another way).
     const ext = path.extname(originalFileName).toLowerCase();
-    if (ext === '.csv') {
-      const csvContent = fs.readFileSync(filePath, 'utf8');
-      const lines = csvContent.split('\n').filter(line => line.trim());
-      const headers = parseCsvLine(lines[0]);
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCsvLine(lines[i]);
-        const row = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
-        rows.push(row);
-      }
-    } else if (ext === '.xlsx' || ext === '.xls') {
+    if (ext === '.xlsx' || ext === '.xls') {
       const workbook = XLSX.readFile(filePath);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      rows = XLSX.utils.sheet_to_json(worksheet);
+      // { header: 1 } reads row 1 itself as the header list, so a blank
+      // optional cell on a data row can't shift/drop columns.
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      if (jsonData.length > 0) {
+        const headers = jsonData[0];
+        for (let i = 1; i < jsonData.length; i++) {
+          const row = {};
+          headers.forEach((header, index) => { row[header] = jsonData[i][index] || ''; });
+          rows.push(row);
+        }
+      }
+    } else {
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
     }
 
     if (rows.length === 0) {
@@ -837,7 +821,16 @@ organizeController.importContacts = async (req, res) => {
     }
 
     const importResults = [];
-    const username = req.session && req.session.user && req.session.user.username ? req.session.user.username : 'admin';
+    // Tracks emails/names already claimed earlier in this same file — the
+    // per-row "already exists" check below only queries the DB, so two rows
+    // with the same email/name in one file would both pass it individually
+    // (contacts.email has no DB-level UNIQUE constraint) and both get
+    // created as separate contacts. See importSubnets for the SAVEPOINT
+    // rationale: without it, a raw DB error on one row would abort the
+    // whole shared transaction and the final COMMIT would silently discard
+    // the entire batch, even rows already marked Success.
+    const seenEmails = new Set();
+    const seenNames = new Set();
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -847,55 +840,89 @@ organizeController.importContacts = async (req, res) => {
         import_reason: ''
       };
 
-      try {
-        // Check if contact already exists by email or name
-        const existingContactByEmail = await Contact.findByEmail(row['Email (Require)'].trim());
-        const existingContactByName = await Contact.findByName(row['Name (Require)'].trim());
-        
-        if (existingContactByEmail && existingContactByName) {
-          result.import_status = 'Skipped';
-          result.import_reason = 'Contact already exists (both email and name)';
-          importResults.push(result);
-          continue;
-        } else if (existingContactByEmail) {
-          result.import_status = 'Skipped';
-          result.import_reason = 'Email already exists';
-          importResults.push(result);
-          continue;
-        } else if (existingContactByName) {
-          result.import_status = 'Skipped';
-          result.import_reason = 'Name already exists';
-          importResults.push(result);
-          continue;
-        }
+      const name = (row['Name (Require)'] || '').toString().trim();
+      const email = (row['Email (Require)'] || '').toString().trim();
+      const position = (row['Position (Require)'] || '').toString().trim();
 
-        // Get unit_id if Org Unit is provided
-        let unit_id = null;
-        if (row['Org Unit'] && row['Org Unit'].trim()) {
-          const unit = await Unit.findByName(row['Org Unit'].trim());
-          if (unit) {
-            unit_id = unit.id;
-          }
-        }
-
-        // Create contact
-        const newContact = await Contact.create({
-          name: row['Name (Require)'].trim(),
-          email: row['Email (Require)'].trim(),
-          phone: row['Phone'] ? row['Phone'].trim() : null,
-          position: row['Position (Require)'].trim().toUpperCase(),
-          unit_id: unit_id,
-          description: row['Description'] ? row['Description'].trim() : null
-        });
-
+      if (!name || !email || !position) {
+        result.import_status = 'Failed';
+        result.import_reason = 'Name, Email, and Position are required';
         importResults.push(result);
+        continue;
+      }
 
+      const emailKey = email.toLowerCase();
+      const nameKey = name.toLowerCase();
+      if (seenEmails.has(emailKey) || seenNames.has(nameKey)) {
+        result.import_status = 'Skipped';
+        result.import_reason = 'Duplicate email or name within this file';
+        importResults.push(result);
+        continue;
+      }
+
+      // Check if contact already exists by email or name
+      const existingContactByEmail = await Contact.findByEmail(email);
+      const existingContactByName = await Contact.findByName(name);
+      if (existingContactByEmail && existingContactByName) {
+        result.import_status = 'Skipped';
+        result.import_reason = 'Contact already exists (both email and name)';
+        importResults.push(result);
+        continue;
+      } else if (existingContactByEmail) {
+        result.import_status = 'Skipped';
+        result.import_reason = 'Email already exists';
+        importResults.push(result);
+        continue;
+      } else if (existingContactByName) {
+        result.import_status = 'Skipped';
+        result.import_reason = 'Name already exists';
+        importResults.push(result);
+        continue;
+      }
+
+      // Get unit_id if Org Unit is provided
+      let unit_id = null;
+      if (row['Org Unit'] && row['Org Unit'].toString().trim()) {
+        const unit = await Unit.findByName(row['Org Unit'].toString().trim());
+        if (!unit) {
+          result.import_status = 'Failed';
+          result.import_reason = `Org Unit not found: ${row['Org Unit']}`;
+          importResults.push(result);
+          continue;
+        }
+        unit_id = unit.id;
+      }
+
+      seenEmails.add(emailKey);
+      seenNames.add(nameKey);
+
+      // Each row gets its own savepoint: createContactService runs the same
+      // format/position/duplicate validation as the single-add path, but if
+      // it (or anything else) still hits a raw DB error, that error leaves
+      // the whole shared transaction "aborted" in Postgres until rolled
+      // back — without a savepoint, every row after the first failure would
+      // also fail and the final COMMIT would discard the entire batch.
+      const savepoint = `import_contact_row_${i}`;
+      try {
+        await client.query(`SAVEPOINT ${savepoint}`);
+        await createContactService({
+          name,
+          email,
+          position,
+          phone: row['Phone'] ? row['Phone'].toString().trim() : '',
+          unit_id,
+          description: row['Description'] ? row['Description'].toString().trim() : ''
+        }, client);
+        await client.query(`RELEASE SAVEPOINT ${savepoint}`);
+        result.import_reason = 'Successfully created contact';
       } catch (err) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
         console.error(`Error importing contact row ${i + 1}:`, err);
         result.import_status = 'Failed';
-        result.import_reason = err.message;
-        importResults.push(result);
+        result.import_reason = err instanceof ServiceError ? err.message : (err.message || 'Unknown error');
       }
+
+      importResults.push(result);
     }
 
     await client.query('COMMIT');

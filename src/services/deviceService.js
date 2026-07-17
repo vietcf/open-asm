@@ -73,11 +73,14 @@ export async function validateContactIds(contactIds) {
 
 // excludeDeviceId: when checking IPs for an update, an IP already assigned to
 // THIS device is fine; assigned to any other device is rejected.
-export async function validateIpAddressIds(ipIds, excludeDeviceId) {
+// client is optional — pass the caller's transaction client so a newly
+// created IP address (not yet committed) is still visible here, instead of
+// falsely reporting it as an invalid ID via a plain pool read.
+export async function validateIpAddressIds(ipIds, excludeDeviceId, client) {
   const invalidIps = [];
   const assignedIps = [];
   for (const ipId of ipIds) {
-    const ip = await IpAddress.findById(ipId);
+    const ip = await IpAddress.findById(ipId, client);
     if (!ip) {
       invalidIps.push(ipId);
     } else if (ip.status === 'assigned' && (excludeDeviceId == null || String(ip.device_id) !== String(excludeDeviceId))) {
@@ -121,7 +124,7 @@ export async function createDevice(input, client) {
 
   const ipAddresses = toIdArray(input.ip_addresses);
   if (ipAddresses.length === 0) throw new ValidationError('At least one IP address is required');
-  await validateIpAddressIds(ipAddresses);
+  await validateIpAddressIds(ipAddresses, undefined, client);
 
   await assertNameAvailable(name);
 
@@ -203,7 +206,7 @@ export async function updateDevice(id, input, client) {
   if (has('ip_addresses')) {
     ipAddresses = toIdArray(input.ip_addresses);
     if (ipAddresses.length === 0) throw new ValidationError('At least one IP address is required');
-    await validateIpAddressIds(ipAddresses, id);
+    await validateIpAddressIds(ipAddresses, id, client);
   }
 
   let tags = null;

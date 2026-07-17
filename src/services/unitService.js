@@ -64,6 +64,13 @@ export async function updateUnit(id, input) {
   return Unit.update(id, { name, code, description });
 }
 
+const USAGE_LABELS = {
+  contacts: 'contact(s)',
+  systems: 'system(s)',
+  priv_users: 'privileged account(s)',
+  rulefirewall: 'firewall rule(s)'
+};
+
 export async function deleteUnit(id) {
   const exists = await Unit.exists(id);
   if (!exists) throw new NotFoundError('Unit not found');
@@ -71,9 +78,12 @@ export async function deleteUnit(id) {
   // on delete) and rulefirewall.ou_id is ON DELETE SET NULL (silent data
   // loss) — neither would surface an error, so check usage explicitly
   // instead of relying on the DB to block the delete.
-  const inUseCount = await Unit.countUsage(id);
-  if (inUseCount > 0) {
-    throw new ConflictError(`Cannot delete: this unit is used by ${inUseCount} record(s)`);
+  const usage = await Unit.getUsageBreakdown(id);
+  const parts = Object.entries(usage)
+    .filter(([, count]) => count > 0)
+    .map(([key, count]) => `${count} ${USAGE_LABELS[key]}`);
+  if (parts.length) {
+    throw new ConflictError(`Cannot delete: this unit is still in use by ${parts.join(', ')}`);
   }
   await Unit.delete(id);
 }

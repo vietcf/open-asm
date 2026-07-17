@@ -52,8 +52,8 @@ class IpAddress {
    * @param {number} id
    * @returns {Promise<Object|null>}
    */
-  static async findById(id) {
-    const result = await pool.query('SELECT * FROM ip_addresses WHERE id = $1', [id]);
+  static async findById(id, client = pool) {
+    const result = await client.query('SELECT * FROM ip_addresses WHERE id = $1', [id]);
     return result.rows[0];
   }
 

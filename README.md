@@ -81,8 +81,8 @@ docker compose up --build -d
 > it's restarted. This is not needed for a plain `docker compose up -d` with no rebuild.
 
 4. **Access the application**:
-- Web Interface: https://localhost:8443
-- API Documentation: https://localhost:8443/api-docs
+- Web Interface: https://localhost
+- API Documentation: https://localhost/api-docs
 - PgAdmin: http://localhost:8888
 
 ### Local Development Installation
@@ -235,19 +235,19 @@ driver (see Logs and Monitoring above), not by an app-level job.
 
 ### Base URL
 - **Development**: http://localhost:3000/api/v1
-- **Production**: https://localhost:8443/api/v1
+- **Production**: https://localhost/api/v1
 
 ### Authentication
 All API endpoints require JWT authentication:
 
 ```bash
 # Login to get token
-curl -X POST https://localhost:8443/api/v1/auth/login \
+curl -X POST https://localhost/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username": "admin", "password": "admin123"}'
 
 # Use token in requests
-curl -X GET https://localhost:8443/api/v1/systems \
+curl -X GET https://localhost/api/v1/systems \
   -H "Authorization: Bearer YOUR_JWT_TOKEN"
 ```
 
@@ -444,13 +444,44 @@ In Docker, run these inside the app/migration container, e.g. `docker compose ru
 2. Add a new `### Version X.Y.Z (Latest)` entry at the top of the Changelog below, and relabel the previous "(Latest)" entry.
 3. Optional cleanup (do this occasionally, not every release): once accumulated `migrations/alters/*.js` files are safely folded into every baseline `create_*.js` (verify with a fresh-database test like the one described above), delete the numbered alter files and keep just `run.js` — same reset done for v1.1.0.
 
-```bash
-# Create backup
-pg_dump -h localhost -U postgres -d open_asm | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz
+**Backup & Restore:**
 
-# Restore backup
-gunzip -c backup_20240101_120000.sql.gz | psql -h localhost -U postgres -d open_asm
+A scheduled job already does this automatically — see "Scheduled Maintenance Jobs" above (`BACKUP_FREQUENCY`/`BACKUP_RETENTION` in `.env.docker`, files land in `./backups/` as `backup_<timestamp>.sql.gz`). These are **plain SQL dumps** (`pg_dump` with no `--clean`/`--if-exists`), so restoring into a database that already has the schema will fail on `CREATE TABLE ... already exists` — the target database must be dropped and recreated first.
+
+```bash
+# Docker Compose (see docker-compose.yml for the actual container/db names
+# if yours differ from openasm_db / openasm / postgres)
+
+# 1. Create a backup on demand (same command the scheduled job runs)
+docker exec openasm_db pg_dump -U postgres -d openasm | gzip > backups/backup_$(date +%Y%m%d_%H%M%S).sql.gz
+
+# 2. To restore: stop the app first so nothing writes during the restore
+docker compose stop app migration
+
+# 3. Take a fresh safety backup of the current state before overwriting it —
+#    skip only if you're deliberately discarding everything since the last backup
+docker exec openasm_db pg_dump -U postgres -d openasm | gzip > backups/pre-restore-safety_$(date +%Y%m%d_%H%M%S).sql.gz
+
+# 4. Drop and recreate the database, then load the chosen backup into it
+docker exec openasm_db psql -U postgres -c "DROP DATABASE openasm;"
+docker exec openasm_db psql -U postgres -c "CREATE DATABASE openasm;"
+gunzip -c backups/backup_20260101_120000.sql.gz | docker exec -i openasm_db psql -U postgres -d openasm
+
+# 5. Bring the app back up
+docker compose up -d app migration
+docker restart openasm_nginx   # required after any app/db disruption, see warning above
 ```
+
+```bash
+# Bare-host Postgres (no Docker) — same idea, run directly against the DB
+pg_dump -h localhost -U postgres -d openasm | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz
+
+dropdb -h localhost -U postgres openasm
+createdb -h localhost -U postgres openasm
+gunzip -c backup_20260101_120000.sql.gz | psql -h localhost -U postgres -d openasm
+```
+
+Restoring **replaces the entire database** — everything written after the backup's timestamp is gone once step 4 runs, which is why step 3 (a fresh safety backup of the current state) is not optional unless you mean to discard it.
 
 ## 📝 Changelog
 
@@ -458,7 +489,51 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.2.0 (Latest)
+### Version 1.2.1 (Latest)
+- ✅ **Domain Import**: New Excel import for Domain (Download Template /
+  Validate / Import), same pattern as Subnet import; Contact import (backend
+  already existed) is now wired up to the UI
+- ✅ **Excel-only imports**: Dropped CSV support across every import feature
+  (IP Address, Subnet, Domain, Contact, Server, Device, Firewall Rule) — only
+  `.xlsx`/`.xls` accepted now, enforced both at upload (multer) and in each
+  controller
+- 🐛 **Fixed import data loss**: Subnet/Domain/Server/Device/Contact/Firewall
+  Rule import ran the whole file in one shared transaction with no per-row
+  isolation — a single bad row (e.g. a duplicate value within the same file)
+  could abort the transaction and silently discard the entire batch, even
+  rows already reported as successful. Each row now runs in its own
+  SAVEPOINT; Device import additionally created its record outside the
+  transaction entirely, leaving orphaned rows on failure
+- 🐛 **Fixed Excel column-count false positive**: import steps that inferred
+  headers from which cells of the first data row were non-blank (instead of
+  reading the header row itself) rejected valid files whenever that row had
+  any blank optional column (e.g. "Expected 5 columns, got 3")
+- 🐛 **Fixed Contact position validation**: import used a hardcoded
+  MANUAL/STAFF-only allow-list instead of the actual configured position
+  options, and force-uppercased values before insert, corrupting casing;
+  contact update also re-validated the existing position on every save
+  (even when untouched), failing edits if the configured list had changed
+  since the contact was created
+- ✅ **Subnet Detail**: added an IP usage donut chart (used/free, color-coded
+  by utilization); IP list description now shows a hover tooltip instead of
+  a click-to-expand toggle
+- ✅ **IP Address Detail**: Subnet is now a clickable link to the filtered
+  Subnet List with a hover tooltip of its zone/environment/description/tags;
+  added a System field showing linked system(s); subnet lookup now returns
+  the smallest/most specific containing subnet instead of an arbitrary match
+  when subnets overlap
+- ✅ **Dashboard**: replaced the static welcome card with real stats — entity
+  counts, IP status and device type breakdowns, and top subnets by
+  utilization
+- ✅ **System List**: added Level and Department filters
+- 🐛 Fixed `contacts` table missing `created_at`/`updated_at` on databases
+  created before those columns were added, causing every contact update to
+  fail with a 500
+- 🐛 Fixed Unit delete reporting only a combined usage count; now breaks it
+  down by referencing table (contacts, systems, privileged accounts,
+  firewall rules)
+
+### Version 1.2.0
 - ✅ **System List Export**: Added Excel export for System List (System
   Code, System Name, Tags, Contacts — multi-value fields comma-separated),
   matching the existing IP Address List export pattern
@@ -493,7 +568,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 ### Documentation
-- **API Documentation**: https://localhost:8443/api-docs
+- **API Documentation**: https://localhost/api-docs
 - **Swagger UI**: Interactive API documentation
 
 ### Issues

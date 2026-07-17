@@ -21,8 +21,8 @@ class Contact {
    * @param {string} data.description
    * @returns {Promise<Object>} The created contact
    */
-  static async create({ name, email, phone, position, unit_id, description }) {
-    const result = await pool.query(
+  static async create({ name, email, phone, position, unit_id, description }, client = pool) {
+    const result = await client.query(
       `INSERT INTO contacts (name, email, phone, position, unit_id, description)
        VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
       [name, email, phone, position, unit_id || null, description || null]
@@ -112,71 +112,6 @@ class Contact {
   }
 
   /**
-   * Count all contacts
-   * @returns {Promise<number>}
-   */
-  static async countAll() {
-    const result = await pool.query('SELECT COUNT(*) FROM contacts');
-    return parseInt(result.rows[0].count, 10);
-  }
-
-  /**
-   * Get paginated list of contacts
-   * @param {number} page
-   * @param {number} pageSize
-   * @returns {Promise<Array>}
-   */
-  static async findPage(page, pageSize) {
-    const offset = (page - 1) * pageSize;
-    const result = await pool.query(
-      `SELECT c.*, u.name AS unit_name
-       FROM contacts c
-       LEFT JOIN units u ON c.unit_id = u.id
-       ORDER BY c.id
-       LIMIT $1 OFFSET $2`,
-      [pageSize, offset]
-    );
-    return result.rows;
-  }
-
-  /**
-   * Get paginated list of contacts by search
-   * @param {string} search
-   * @param {number} page
-   * @param {number} pageSize
-   * @returns {Promise<Array>}
-   */
-  static async findSearchPage(search, page, pageSize) {
-    const offset = (page - 1) * pageSize;
-    const q = `%${search}%`;
-    const result = await pool.query(
-      `SELECT c.*, u.name AS unit_name
-       FROM contacts c
-       LEFT JOIN units u ON c.unit_id = u.id
-       WHERE c.name ILIKE $1 OR c.email ILIKE $2 OR c.phone ILIKE $1 OR c.position ILIKE $1 OR c.description ILIKE $1 OR u.name ILIKE $1
-       ORDER BY c.id
-       LIMIT $3 OFFSET $4`,
-      [q, search.includes('@') ? search : q, pageSize, offset]
-    );
-    return result.rows;
-  }
-
-  /**
-   * Count contacts by search
-   * @param {string} search
-   * @returns {Promise<number>}
-   */
-  static async countSearch(search) {
-    const q = `%${search}%`;
-    const result = await pool.query(
-      `SELECT COUNT(*) FROM contacts
-       WHERE name ILIKE $1 OR email ILIKE $2 OR phone ILIKE $1 OR position ILIKE $1 OR description ILIKE $1`,
-      [q, search.includes('@') ? search : q]
-    );
-    return parseInt(result.rows[0].count, 10);
-  }
-
-  /**
    * Get contacts by array of ids
    * @param {Array<number>} ids
    * @returns {Promise<Array>}
@@ -201,6 +136,68 @@ class Contact {
   static async exists(id) {
     const res = await pool.query('SELECT 1 FROM contacts WHERE id = $1', [id]);
     return res.rowCount > 0;
+  }
+
+  /**
+   * Build the shared WHERE clause/params for search + unit/position filters,
+   * so the page query and its count always agree on what matches.
+   * @private
+   */
+  static _buildFilterConditions({ search, unit_id, position }) {
+    const conditions = [];
+    const params = [];
+    if (search) {
+      params.push(`%${search}%`);
+      const idx = params.length;
+      conditions.push(`(c.name ILIKE $${idx} OR c.email ILIKE $${idx} OR c.phone ILIKE $${idx} OR c.position ILIKE $${idx} OR c.description ILIKE $${idx} OR u.name ILIKE $${idx})`);
+    }
+    if (unit_id) {
+      params.push(unit_id);
+      conditions.push(`c.unit_id = $${params.length}`);
+    }
+    if (position) {
+      params.push(position);
+      conditions.push(`c.position = $${params.length}`);
+    }
+    return {
+      whereSql: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '',
+      params
+    };
+  }
+
+  /**
+   * Get paginated contacts, optionally searched and/or filtered by
+   * unit_id/position (all optional, combine with AND).
+   * @returns {Promise<Array>}
+   */
+  static async findFilteredPage({ search, unit_id, position, page, pageSize }) {
+    const offset = (page - 1) * pageSize;
+    const { whereSql, params } = Contact._buildFilterConditions({ search, unit_id, position });
+    params.push(pageSize, offset);
+    const result = await pool.query(
+      `SELECT c.*, u.name AS unit_name
+       FROM contacts c
+       LEFT JOIN units u ON c.unit_id = u.id
+       ${whereSql}
+       ORDER BY c.id
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
+    );
+    return result.rows;
+  }
+
+  /**
+   * Count contacts matching the same search/filter combination as
+   * findFilteredPage.
+   * @returns {Promise<number>}
+   */
+  static async countFiltered({ search, unit_id, position }) {
+    const { whereSql, params } = Contact._buildFilterConditions({ search, unit_id, position });
+    const result = await pool.query(
+      `SELECT COUNT(*) FROM contacts c LEFT JOIN units u ON c.unit_id = u.id ${whereSql}`,
+      params
+    );
+    return parseInt(result.rows[0].count, 10);
   }
 
    /**

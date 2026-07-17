@@ -21,12 +21,12 @@ const storage = multer.diskStorage({
 const upload = multer({ 
   storage: storage,
   fileFilter: function (req, file, cb) {
-    const allowedTypes = ['.csv', '.xlsx', '.xls'];
+    const allowedTypes = ['.xlsx', '.xls'];
     const ext = path.extname(file.originalname).toLowerCase();
     if (allowedTypes.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error('Only CSV and Excel files are allowed'));
+      cb(new Error('Only Excel files (.xlsx, .xls) are allowed'));
     }
   },
   limits: {
@@ -65,6 +65,9 @@ router.post('/domain', requirePermission('domain.create'), networkController.cre
 router.put('/domain/:id', requirePermission('domain.update'), networkController.updateDomain);
 router.delete('/domain/:id', requirePermission('domain.delete'), networkController.deleteDomain);
 router.get('/domain/export', requirePermission('domain.read'), networkController.exportDomainList);
+router.get('/domain/template', requirePermission('domain.create'), networkController.downloadDomainTemplate);
+router.post('/domain/validate-import', requirePermission('domain.create'), upload.single('file'), networkController.validateImportDomains);
+router.post('/domain/import', requirePermission('domain.create'), upload.single('file'), networkController.importDomains);
 
 
 // // ====== AJAX API ======

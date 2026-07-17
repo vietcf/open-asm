@@ -673,13 +673,13 @@ function buildExportUrl() {
                      class="form-control" 
                      id="subnetImportFile" 
                      name="file" 
-                     accept=".csv,.xlsx,.xls" 
+                     accept=".xlsx,.xls"
                      required>
               <a href="/network/subnet-address/template" class="btn btn-outline-info" download>
                 <i class="bi bi-download"></i> Download Template
               </a>
             </div>
-            <div class="form-text">Supported formats: CSV, Excel (.xlsx, .xls). Maximum file size: 10MB</div>
+            <div class="form-text">Supported format: Excel (.xlsx, .xls). Maximum file size: 10MB</div>
           </div>
           
           <!-- Import Instructions -->
@@ -1556,6 +1556,12 @@ function showSubnetDetail(subnetId) {
   }
   html += '</dl>';
 
+  // Add IP usage chart (populated once the IP list below finishes loading)
+  html += '<div class="mb-3"><strong>IP Usage</strong></div>';
+  html += '<div id="subnetUsageChart" class="mb-3">';
+  html += '<div class="text-muted">Calculating usage...</div>';
+  html += '</div>';
+
   // Add IP Addresses section
   html += '<div class="mb-3"><strong>IP Addresses in this Subnet:</strong></div>';
   html += '<div id="subnetIpList" class="mb-3">';
@@ -1571,22 +1577,76 @@ function showSubnetDetail(subnetId) {
   
   content.innerHTML = html;
   modal.show();
-  
+
   // Load IP addresses for this subnet
-  loadSubnetIpAddresses(subnet.id);
+  loadSubnetIpAddresses(subnet.id, 1, subnet.address);
 }
 
 // Global variables for IP pagination
 let currentSubnetId = null;
+let currentSubnetAddress = null;
 let allIpAddresses = [];
 let currentPage = 1;
 const IP_PER_PAGE = 20;
 
+// Renders a small donut chart of used vs. free IP capacity. totalIPs is the
+// theoretical size of the /prefix (matches networkController.detailSubnet's
+// own calculation) — not "usable host addresses", so it does not subtract
+// the network/broadcast addresses for e.g. a /24.
+function renderSubnetUsageChart(usedCount, subnetAddress) {
+  const container = document.getElementById('subnetUsageChart');
+  if (!container) return;
+
+  const match = String(subnetAddress || '').match(/\/(\d{1,2})$/);
+  if (!match) {
+    container.innerHTML = '<div class="text-muted">Usage unavailable</div>';
+    return;
+  }
+  const prefix = parseInt(match[1], 10);
+  if (isNaN(prefix) || prefix < 0 || prefix > 32) {
+    container.innerHTML = '<div class="text-muted">Usage unavailable</div>';
+    return;
+  }
+  const totalIPs = Math.pow(2, 32 - prefix);
+  const pct = totalIPs > 0 ? Math.min(100, Math.round((usedCount / totalIPs) * 100)) : 0;
+  const freeCount = Math.max(0, totalIPs - usedCount);
+
+  // Bootstrap success/warning/danger — same tiers as a disk/memory usage
+  // gauge: comfortable, getting full, nearly exhausted.
+  const statusColor = pct >= 90 ? '#dc3545' : (pct >= 70 ? '#fd7e14' : '#198754');
+
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+  const dash = (pct / 100) * circumference;
+
+  container.innerHTML = `
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <svg width="96" height="96" viewBox="0 0 96 96" role="img" aria-label="${pct} percent of subnet capacity used">
+        <circle cx="48" cy="48" r="${radius}" fill="none" stroke="#e9ecef" stroke-width="10"></circle>
+        <circle cx="48" cy="48" r="${radius}" fill="none" stroke="${statusColor}" stroke-width="10"
+          stroke-linecap="round"
+          stroke-dasharray="${dash} ${circumference - dash}"
+          transform="rotate(-90 48 48)"></circle>
+        <text x="48" y="46" text-anchor="middle" font-size="19" font-weight="700" fill="#212529">${pct}%</text>
+        <text x="48" y="61" text-anchor="middle" font-size="9" fill="#6c757d">used</text>
+      </svg>
+      <div>
+        <div><span class="badge rounded-pill" style="background-color:${statusColor};">&nbsp;</span> Used: <strong>${usedCount.toLocaleString()}</strong></div>
+        <div><span class="badge rounded-pill bg-light border">&nbsp;</span> Free: <strong>${freeCount.toLocaleString()}</strong></div>
+        <div class="text-muted small mt-1">Total capacity: ${totalIPs.toLocaleString()} addresses (/${prefix})</div>
+      </div>
+    </div>
+  `;
+}
+
 // Function to load IP addresses for a subnet
-function loadSubnetIpAddresses(subnetId, page = 1) {
+function loadSubnetIpAddresses(subnetId, page = 1, subnetAddress) {
   currentSubnetId = subnetId;
   currentPage = page;
-  
+  if (subnetAddress !== undefined) {
+    currentSubnetAddress = subnetAddress;
+  }
+
   fetch(`/network/api/subnet/${subnetId}/ips`)
     .then(response => response.json())
     .then(data => {
@@ -1595,13 +1655,17 @@ function loadSubnetIpAddresses(subnetId, page = 1) {
         allIpAddresses = data.data;
         displayIpAddresses(page);
       } else {
+        allIpAddresses = [];
         ipListElement.innerHTML = '<div class="text-muted">No IP addresses found in this subnet.</div>';
       }
+      renderSubnetUsageChart(allIpAddresses.length, currentSubnetAddress);
     })
     .catch(error => {
       console.error('Error loading subnet IP addresses:', error);
       const ipListElement = document.getElementById('subnetIpList');
       ipListElement.innerHTML = '<div class="text-danger">Error loading IP addresses.</div>';
+      const chartElement = document.getElementById('subnetUsageChart');
+      if (chartElement) chartElement.innerHTML = '<div class="text-danger">Usage unavailable.</div>';
     });
 }
 
@@ -1619,23 +1683,21 @@ function displayIpAddresses(page = 1) {
   html += '<thead><tr><th>IP Address</th><th class="d-none d-sm-table-cell">Description</th></tr></thead>';
   html += '<tbody>';
 
-  currentPageData.forEach(function(ip, index) {
-    const globalIndex = startIndex + index;
+  currentPageData.forEach(function(ip) {
     const description = String(ip.description || 'N/A').trim();
-    const truncatedDesc = description.length > 20 ? description.substring(0, 20) + '...' : description;
-    const fullDesc = description.length > 20 ? description : '';
+    const truncatedDesc = description.length > 20 ? description.substring(0, 20) + '…' : description;
 
     html += '<tr>';
     html += '<td><a href="/network/ip-address?search=' + encodeURIComponent(ip.ip_address) + '" class="text-primary text-decoration-underline">' + String(ip.ip_address).trim() + '</a></td>';
     html += '<td class="d-none d-sm-table-cell">';
-    html += '<span class="ip-description" data-full="' + fullDesc.replace(/"/g, '&quot;') + '">' + truncatedDesc + '</span>';
-    if (description.length > 20) {
-      html += ' <button type="button" class="btn btn-link btn-sm p-0 ms-1 show-more-btn" onclick="toggleDescription(' + globalIndex + ')" style="font-size: 0.8em;">show more</button>';
-    }
+    // Same short-text + hover-tooltip pattern used for Description columns
+    // elsewhere (Device/Domain/IP Address lists) — full text on hover
+    // instead of a click-to-expand toggle.
+    html += '<span data-bs-toggle="tooltip" data-bs-placement="top" title="' + escapeHtml(description) + '" style="cursor: help; word-break: break-word;">' + escapeHtml(truncatedDesc) + '</span>';
     html += '</td>';
     html += '</tr>';
   });
-  
+
   html += '</tbody></table></div>';
   
   // Add pagination info and controls
@@ -1672,33 +1734,25 @@ function displayIpAddresses(page = 1) {
   html += '</div>';
   
   ipListElement.innerHTML = html;
+
+  // Dispose any tooltip instances from the previous render (pagination)
+  // before creating new ones, so hidden/removed nodes don't leak instances.
+  document.querySelectorAll('#subnetIpList [data-bs-toggle="tooltip"]').forEach(function(el) {
+    const existing = bootstrap.Tooltip.getInstance(el);
+    if (existing) existing.dispose();
+  });
+  document.querySelectorAll('#subnetIpList [data-bs-toggle="tooltip"]').forEach(function(el) {
+    new bootstrap.Tooltip(el);
+  });
 }
 
-// Function to toggle description display
-function toggleDescription(index) {
-  const descriptions = document.querySelectorAll('.ip-description');
-  const buttons = document.querySelectorAll('.show-more-btn');
-  
-  // Find the correct elements based on current page
-  const startIndex = (currentPage - 1) * IP_PER_PAGE;
-  const localIndex = index - startIndex;
-  
-  if (localIndex >= 0 && localIndex < descriptions.length && localIndex < buttons.length) {
-    const descElement = descriptions[localIndex];
-    const buttonElement = buttons[localIndex];
-    const fullText = descElement.getAttribute('data-full');
-    
-    if (descElement.textContent.includes('...')) {
-      // Show full description
-      descElement.textContent = fullText;
-      buttonElement.textContent = 'show less';
-    } else {
-      // Show truncated description
-      const truncatedText = fullText.substring(0, 20) + '...';
-      descElement.textContent = truncatedText;
-      buttonElement.textContent = 'show more';
-    }
-  }
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // Function to download IP addresses list

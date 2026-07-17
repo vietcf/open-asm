@@ -70,11 +70,14 @@ const validateServiceIds = ids => validateIds(ids, id => Service.exists(id), 'se
 const validateTagIds = ids => validateIds(ids, id => Tag.exists(id), 'tag');
 
 // excludeServerId: on update, an IP already assigned to THIS server is fine.
-async function validateIpAddressIds(ids, excludeServerId) {
+// client is optional — pass the caller's transaction client so a newly
+// created IP address (not yet committed) is still visible here, instead of
+// falsely reporting it as an invalid ID via a plain pool read.
+async function validateIpAddressIds(ids, excludeServerId, client) {
   const invalid = [];
   const assigned = [];
   for (const id of ids) {
-    const details = await IpAddress.findById(id);
+    const details = await IpAddress.findById(id, client);
     if (!details) {
       invalid.push(id);
     } else if (details.status === 'assigned' && (excludeServerId == null || String(details.server_id) !== String(excludeServerId))) {
@@ -137,7 +140,7 @@ export async function createServer(input, client) {
 
   const ipAddresses = toIdArray(input.ip_addresses);
   if (ipAddresses.length === 0) throw new ValidationError('At least one IP address is required');
-  await validateIpAddressIds(ipAddresses);
+  await validateIpAddressIds(ipAddresses, undefined, client);
 
   const description = typeof input.description === 'string' ? (input.description.trim() || null) : (input.description ?? null);
   const username = input.updated_by || 'admin';
@@ -210,7 +213,7 @@ export async function updateServer(id, input, client) {
     // isn't a meaningful state, so the frontend's stricter rule is adopted
     // here for both.
     if (arr.length === 0) throw new ValidationError('At least one IP address is required');
-    await validateIpAddressIds(arr, id);
+    await validateIpAddressIds(arr, id, client);
     normalizedArrays.ip_addresses = arr;
   }
 

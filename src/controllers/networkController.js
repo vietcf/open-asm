@@ -14,7 +14,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import archiver from 'archiver';
 import { ServiceError } from '../services/errors.js';
-import { parseCsvLine } from '../utils/csvParser.js';
 import {
   listIpAddresses as listIpAddressesService,
   createIpAddress as createIpAddressService,
@@ -733,33 +732,10 @@ networkController.validateImportIPs = async (req, res) => {
       return null;
     };
 
-    // Parse file based on extension
-    if (fileExtension === 'csv') {
-      const results = [];
-
-      // Simple CSV parsing without csv-parser dependency
-      const fileContent = fs.readFileSync(filePath, 'utf8');
-      const lines = fileContent.split('\n');
-      const headers = parseCsvLine(lines[0]);
-
-      const headerError = validateHeaderOrder(headers);
-      if (headerError) {
-        return res.status(400).json({ error: headerError });
-      }
-
-      for (let i = 1; i < lines.length; i++) {
-        if (lines[i].trim()) {
-          const values = parseCsvLine(lines[i]);
-          const rowData = {};
-          headers.forEach((header, index) => {
-            rowData[header] = values[index] || '';
-          });
-          results.push(rowData);
-        }
-      }
-
-      rows = results;
-    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+    // Excel only — CSV import is no longer supported (multer's fileFilter
+    // already rejects non-Excel uploads; this is the belt-and-suspenders
+    // check for anything that reaches here another way).
+    if (fileExtension === 'xlsx' || fileExtension === 'xls') {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(filePath);
 
@@ -793,7 +769,7 @@ networkController.validateImportIPs = async (req, res) => {
         }
       }
     } else {
-      return res.status(400).json({ error: 'Unsupported file format' });
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
     }
 
 
@@ -1070,33 +1046,10 @@ networkController.importIPs = async (req, res) => {
       return null;
     };
 
-      // Parse file (same logic as validation)
-      if (fileExtension === 'csv') {
-        const results = [];
-
-        // Simple CSV parsing without csv-parser dependency
-        const fileContent = fs.readFileSync(filePath, 'utf8');
-        const lines = fileContent.split('\n');
-        const headers = parseCsvLine(lines[0]);
-
-        const headerError = validateHeaderOrder(headers);
-        if (headerError) {
-          return res.status(400).json({ error: headerError });
-        }
-
-      for (let i = 1; i < lines.length; i++) {
-        if (lines[i].trim()) {
-          const values = parseCsvLine(lines[i]);
-          const rowData = {};
-          headers.forEach((header, index) => {
-            rowData[header] = values[index] || '';
-          });
-          results.push(rowData);
-        }
-      }
-
-      rows = results;
-    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+      // Excel only — CSV import is no longer supported (multer's fileFilter
+      // already rejects non-Excel uploads; this is the belt-and-suspenders
+      // check for anything that reaches here another way).
+      if (fileExtension === 'xlsx' || fileExtension === 'xls') {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(filePath);
 
@@ -1127,8 +1080,10 @@ networkController.importIPs = async (req, res) => {
           rows.push(rowData);
         }
       }
+    } else {
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
     }
-    
+
     const importResults = [];
     const updated_by = req.session.user?.username || '';
     // Tracks IPs already processed earlier in this same file — a second
@@ -1756,35 +1711,13 @@ networkController.validateImportSubnets = async (req, res) => {
       return null;
     };
 
-    if (fileExtension === 'csv') {
-      const results = [];
-
-      // Simple CSV parsing without csv-parser dependency
-      const fileContent = fs.readFileSync(filePath, 'utf8');
-      const lines = fileContent.split('\n');
-      const headers = parseCsvLine(lines[0]);
-
-      const headerError = validateHeaderOrder(headers);
-      if (headerError) {
-        return res.status(400).json({ error: headerError });
-      }
-
-      for (let i = 1; i < lines.length; i++) {
-        if (lines[i].trim()) {
-          const values = parseCsvLine(lines[i]);
-          const rowData = {};
-          headers.forEach((header, index) => {
-            rowData[header] = values[index] || '';
-          });
-          results.push(rowData);
-        }
-      }
-      
-      rows = results;
-    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+    // Excel only — CSV import is no longer supported (multer's fileFilter
+    // already rejects non-Excel uploads; this is the belt-and-suspenders
+    // check for anything that reaches here another way).
+    if (fileExtension === 'xlsx' || fileExtension === 'xls') {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(filePath);
-      
+
       const worksheet = workbook.worksheets[0];
       const headers = [];
 
@@ -1815,7 +1748,7 @@ networkController.validateImportSubnets = async (req, res) => {
         }
       }
     } else {
-      return res.status(400).json({ error: 'Unsupported file format' });
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
     }
 
 
@@ -1886,7 +1819,27 @@ networkController.validateImportSubnets = async (req, res) => {
       console.log('Final validation result for row', i + 1, ':', result);
       validationResults.push(result);
     }
-    
+
+    // Detect subnet addresses duplicated within the file itself — the
+    // per-row loop above only checks each address against the DB, so two
+    // identical addresses in the same file both "Pass" individually, which
+    // is exactly the case most likely to hit a duplicate-key error mid-import
+    // (see importSubnets).
+    const rowsByAddress = new Map();
+    for (const result of validationResults) {
+      if (!result.subnet_address) continue;
+      const key = result.subnet_address.trim();
+      if (!rowsByAddress.has(key)) rowsByAddress.set(key, []);
+      rowsByAddress.get(key).push(result);
+    }
+    for (const dupRows of rowsByAddress.values()) {
+      if (dupRows.length <= 1) continue;
+      for (const result of dupRows) {
+        result.validation_status = 'Fail';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + 'Duplicate subnet address within this file';
+      }
+    }
+
     // Create validation results Excel file
     console.log('Creating Excel file with', validationResults.length, 'results');
     const workbook = new ExcelJS.Workbook();
@@ -2037,77 +1990,54 @@ networkController.importSubnets = async (req, res) => {
     const originalFileName = req.file.originalname;
     let rows = [];
 
-    // Parse file based on extension
+    // Parse file based on extension — Excel only (multer's fileFilter
+    // already rejects non-Excel uploads; this is the belt-and-suspenders
+    // check for anything that reaches here another way).
     const ext = path.extname(originalFileName).toLowerCase();
-    if (ext === '.csv') {
-      const csvContent = fs.readFileSync(filePath, 'utf8');
-      const lines = csvContent.split('\n').filter(line => line.trim());
-      const headers = parseCsvLine(lines[0]);
-
-      // Validate headers order and required fields
-      const expectedHeaders = [
-        'Subnet Address (Require)',
-        'Description (Optional)',
-        'Zone (Optional)',
-        'Environment (Optional)',
-        'Tag (Optional, comma-separated if multiple)'
-      ];
-
-      if (headers.length !== expectedHeaders.length) {
-        return res.status(400).json({
-          error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}`
-        });
-      }
-
-      for (let i = 0; i < expectedHeaders.length; i++) {
-        if (headers[i] !== expectedHeaders[i]) {
-          return res.status(400).json({
-            error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"`
-          });
-        }
-      }
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCsvLine(lines[i]);
-        const row = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
-        rows.push(row);
-      }
-    } else if (ext === '.xlsx' || ext === '.xls') {
+    const expectedHeaders = [
+      'Subnet Address (Require)',
+      'Description (Optional)',
+      'Zone (Optional)',
+      'Environment (Optional)',
+      'Tag (Optional, comma-separated if multiple)'
+    ];
+    if (ext === '.xlsx' || ext === '.xls') {
       const workbook = XLSX.readFile(filePath);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      rows = XLSX.utils.sheet_to_json(worksheet);
-      
-      // Validate headers for Excel files
-      if (rows.length > 0) {
-        const headers = Object.keys(rows[0]);
-        const expectedHeaders = [
-          'Subnet Address (Require)',
-          'Description (Optional)',
-          'Zone (Optional)',
-          'Environment (Optional)',
-          'Tag (Optional, comma-separated if multiple)'
-        ];
+      // { header: 1 } reads row 1 itself as the header list — using the
+      // default (object-per-row) mode and inferring headers from
+      // Object.keys(rows[0]) instead looked at which cells of the FIRST
+      // DATA row happened to be non-blank, so a row with any blank optional
+      // column undercounted the columns (e.g. "Expected 5 columns, got 3")
+      // even though the real header row was correct and Validate had passed.
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+      if (jsonData.length > 0) {
+        const headers = jsonData[0];
 
         if (headers.length !== expectedHeaders.length) {
-          return res.status(400).json({ 
-            error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}` 
+          return res.status(400).json({
+            error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}`
           });
         }
-        
+
         for (let i = 0; i < expectedHeaders.length; i++) {
           if (headers[i] !== expectedHeaders[i]) {
-            return res.status(400).json({ 
-              error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"` 
+            return res.status(400).json({
+              error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"`
             });
           }
         }
+
+        for (let i = 1; i < jsonData.length; i++) {
+          const row = {};
+          headers.forEach((header, index) => { row[header] = jsonData[i][index] || ''; });
+          rows.push(row);
+        }
       }
     } else {
-      return res.status(400).json({ error: 'Unsupported file format. Only CSV and Excel files are allowed.' });
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
     }
 
     // Start transaction
@@ -2116,62 +2046,81 @@ networkController.importSubnets = async (req, res) => {
 
     const importResults = [];
     const username = req.session && req.session.user && req.session.user.username ? req.session.user.username : 'admin';
+    // Tracks addresses already processed earlier in this same file — a
+    // second occurrence is failed immediately instead of being attempted
+    // (see finding: two identical rows in one file previously both
+    // "succeeded" right up until the duplicate-key error aborted the
+    // whole shared transaction, silently discarding every row on COMMIT).
+    const seenAddresses = new Set();
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
+      const rowNumber = i + 2; // +2 because Excel starts from 1 and we skip header
       const result = {
-        row_number: i + 1,
+        row: rowNumber,
         subnet_address: sanitizeString(row['Subnet Address (Require)'] || ''),
         description: sanitizeString(row['Description (Optional)'] || ''),
         zone: sanitizeString(row['Zone (Optional)'] || ''),
         environment: sanitizeString(row['Environment (Optional)'] || ''),
         tags: sanitizeString(row['Tag (Optional, comma-separated if multiple)'] || ''),
-        import_status: 'SUCCESS',
+        import_status: 'Success',
         import_reason: ''
       };
 
-      try {
-        // Double-check subnet doesn't exist (safety check)
-        const existingSubnet = await Subnet.findByAddress(result.subnet_address);
-        if (existingSubnet) {
-          result.import_status = 'FAILED';
-          result.import_reason = 'Subnet address already exists';
-          importResults.push(result);
-          continue;
-        }
+      if (seenAddresses.has(result.subnet_address)) {
+        result.import_status = 'Failed';
+        result.import_reason = 'Duplicate subnet address within this file';
+        importResults.push(result);
+        continue;
+      }
+      seenAddresses.add(result.subnet_address);
 
-        // Create subnet
-        const newSubnet = await Subnet.create({
+      // Resolve tag names to IDs up front. A name that doesn't resolve
+      // fails the whole row (matching validateImportSubnets) instead of
+      // being silently dropped from the created subnet's tags.
+      const tagNames = result.tags.split(',').map(t => t.trim()).filter(Boolean);
+      const tagIds = [];
+      const notFoundTags = [];
+      for (const tagName of tagNames) {
+        const existingTags = await Tag.findByNameExact(tagName);
+        if (existingTags && existingTags.length > 0) tagIds.push(existingTags[0].id);
+        else notFoundTags.push(tagName);
+      }
+      if (notFoundTags.length > 0) {
+        result.import_status = 'Failed';
+        result.import_reason = `Tag(s) not found: ${notFoundTags.join(', ')}`;
+        importResults.push(result);
+        continue;
+      }
+
+      // Each row gets its own savepoint: createSubnetService runs the same
+      // format/duplicate/tag validation as the single-add path, but if it
+      // (or anything else) still hits a raw DB error, that error leaves the
+      // whole shared transaction "aborted" in Postgres until rolled back —
+      // without a savepoint, every row after the first failure would also
+      // fail and the final COMMIT would discard the entire batch, even rows
+      // already reported as Success.
+      const savepoint = `import_subnet_row_${i}`;
+      try {
+        await client.query(`SAVEPOINT ${savepoint}`);
+        await createSubnetService({
           address: result.subnet_address,
           description: result.description || null,
           zone: result.zone || null,
           environment: result.environment || null,
+          tags: tagIds,
           updated_by: username
         }, client);
-
-        // Set tags if provided
-        if (result.tags) {
-          const tagList = result.tags.split(',').map(t => t.trim()).filter(t => t);
-          const tagIds = [];
-          for (const tagName of tagList) {
-            const existingTags = await Tag.findByNameExact(tagName);
-            if (existingTags && existingTags.length > 0) {
-              tagIds.push(existingTags[0].id);
-            }
-          }
-          if (tagIds.length > 0) {
-            await Subnet.setTags(newSubnet.id, tagIds, client);
-          }
-        }
-
-        importResults.push(result);
-
+        await client.query(`RELEASE SAVEPOINT ${savepoint}`);
+        result.import_reason = 'Successfully created subnet';
       } catch (err) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
         console.error(`Error importing subnet row ${i + 1}:`, err);
-        result.import_status = 'FAILED';
-        result.import_reason = err.message;
-        importResults.push(result);
+        result.import_status = 'Failed';
+        result.import_reason = err instanceof ServiceError ? err.message : (err.message || 'Unknown error');
       }
+
+      importResults.push(result);
     }
 
     // Commit transaction
@@ -2213,7 +2162,7 @@ networkController.importSubnets = async (req, res) => {
       ]);
 
       // Color code import status
-      if (result.import_status === 'FAILED') {
+      if (result.import_status === 'Failed') {
         row.getCell(6).font = { color: { argb: 'FFFF0000' } }; // Import Status column
         row.getCell(7).font = { color: { argb: 'FFFF0000' } }; // Import Reason column
       } else {
@@ -2246,7 +2195,7 @@ networkController.importSubnets = async (req, res) => {
     await workbook.xlsx.writeFile(importFilePath);
 
     // Count import results
-    const successCount = importResults.filter(result => result.import_status === 'SUCCESS').length;
+    const successCount = importResults.filter(result => result.import_status === 'Success').length;
     const failCount = importResults.length - successCount;
 
     // Clean up uploaded file
@@ -2296,6 +2245,598 @@ networkController.importSubnets = async (req, res) => {
     }
     if (!res.headersSent) {
       res.status(500).json({ error: 'Error importing subnets', detail: err.message });
+    }
+  } finally {
+    if (client) {
+      client.release();
+    }
+  }
+};
+
+// ====== DOMAIN IMPORT METHODS ======
+// Same validate-then-import pattern as Subnet import (see importSubnets
+// above): validate-only step reports Pass/Fail per row without touching the
+// DB (Import button in the UI stays hidden unless every row Passes), then
+// the real import step re-parses the file, runs each row in its own
+// SAVEPOINT (so one bad row can't abort the whole shared transaction and
+// silently discard rows already reported as Success), and pre-checks
+// duplicate domain names within the file itself before ever reaching the DB.
+
+// Download domain template
+networkController.downloadDomainTemplate = async (req, res) => {
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Domain Template');
+
+    worksheet.addRow([
+      'Domain Name (Require)',
+      'Description (Optional)',
+      'Record Type (Optional, default A)',
+      'IP Address (Optional)',
+      'System Name (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)'
+    ]);
+
+    worksheet.addRow([
+      'example.com',
+      'Main company domain',
+      'A',
+      '10.0.0.10',
+      'SYS001',
+      'Network,Office'
+    ]);
+    worksheet.addRow([
+      'sub.example.com',
+      'Subdomain for internal services',
+      'CNAME',
+      '',
+      '',
+      ''
+    ]);
+
+    worksheet.columns = [
+      { width: 30 }, // Domain Name
+      { width: 30 }, // Description
+      { width: 20 }, // Record Type
+      { width: 20 }, // IP Address
+      { width: 30 }, // System Name
+      { width: 30 }  // Tags
+    ];
+
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const tempFilePath = path.join(tempDir, 'temp_domain_template.xlsx');
+    await workbook.xlsx.writeFile(tempFilePath);
+
+    res.download(tempFilePath, 'domain_template.xlsx', (err) => {
+      if (err) {
+        console.error('Error downloading template:', err);
+      }
+      setTimeout(() => {
+        try {
+          if (fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+          }
+        } catch (cleanupErr) {
+          console.error('Error cleaning up template file:', cleanupErr);
+        }
+      }, 5000);
+    });
+  } catch (err) {
+    console.error('Error generating domain template:', err);
+    res.status(500).json({ error: 'Error generating template', detail: err.message });
+  }
+};
+
+// Validate domain import
+networkController.validateImportDomains = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const filePath = req.file.path;
+    const fileExtension = req.file.originalname.split('.').pop().toLowerCase();
+
+    let rows = [];
+
+    // Same column order/count import expects — checked here too so a file
+    // can't "pass validation" and then be rejected outright at import time.
+    const expectedHeaders = [
+      'Domain Name (Require)',
+      'Description (Optional)',
+      'Record Type (Optional, default A)',
+      'IP Address (Optional)',
+      'System Name (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)'
+    ];
+    const validateHeaderOrder = (headerValues) => {
+      if (headerValues.length !== expectedHeaders.length) {
+        return `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headerValues.length}`;
+      }
+      for (let i = 0; i < expectedHeaders.length; i++) {
+        if (headerValues[i] !== expectedHeaders[i]) {
+          return `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headerValues[i]}"`;
+        }
+      }
+      return null;
+    };
+
+    // Excel only — CSV import is no longer supported (multer's fileFilter
+    // already rejects non-Excel uploads; this is the belt-and-suspenders
+    // check for anything that reaches here another way).
+    if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(filePath);
+
+      const worksheet = workbook.worksheets[0];
+      const headers = [];
+      worksheet.getRow(1).eachCell((cell, colNumber) => {
+        headers[colNumber] = cell.value;
+      });
+
+      const headerError = validateHeaderOrder(headers.slice(1));
+      if (headerError) {
+        return res.status(400).json({ error: headerError });
+      }
+
+      for (let rowNumber = 2; rowNumber <= worksheet.rowCount; rowNumber++) {
+        const row = worksheet.getRow(rowNumber);
+        const rowData = {};
+        row.eachCell((cell, colNumber) => {
+          const header = headers[colNumber];
+          if (header) rowData[header] = cell.value;
+        });
+        if (Object.keys(rowData).length > 0) rows.push(rowData);
+      }
+    } else {
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
+    }
+
+    // Validate each row
+    const validationResults = [];
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNumber = i + 2;
+      const result = {
+        row: rowNumber,
+        domain_name: (row['Domain Name (Require)'] || '').toString().trim(),
+        description: (row['Description (Optional)'] || '').toString().trim(),
+        record_type: (row['Record Type (Optional, default A)'] || '').toString().trim(),
+        ip_address: (row['IP Address (Optional)'] || '').toString().trim(),
+        systems: (row['System Name (Optional, comma-separated if multiple)'] || '').toString().trim(),
+        tags: (row['Tag (Optional, comma-separated if multiple)'] || '').toString().trim(),
+        validation_status: 'Pass',
+        validation_reason: ''
+      };
+
+      if (!result.domain_name) {
+        result.validation_status = 'Fail';
+        result.validation_reason = 'Domain Name is required';
+      }
+
+      // Check if domain already exists
+      if (result.domain_name) {
+        try {
+          const existingDomain = await Domain.findByDomain(result.domain_name);
+          if (existingDomain) {
+            result.validation_status = 'Fail';
+            result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + 'Domain already exists';
+          }
+        } catch (err) {
+          // If error checking existence, continue with validation
+        }
+      }
+
+      // Validate IP Address (if provided)
+      if (result.ip_address) {
+        try {
+          const existingIp = await IpAddress.findByAddress(result.ip_address);
+          if (!existingIp) {
+            result.validation_status = 'Fail';
+            result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `IP address not found: ${result.ip_address}`;
+          }
+        } catch (err) {
+          // If error checking IP, continue with validation
+        }
+      }
+
+      // Validate Systems (if provided)
+      if (result.systems) {
+        const systemNames = result.systems.split(',').map(s => s.trim()).filter(Boolean);
+        const invalidSystems = [];
+        for (const systemName of systemNames) {
+          try {
+            const systems = await System.findByNameExact(systemName);
+            if (!systems || systems.length === 0) invalidSystems.push(systemName);
+          } catch (err) {
+            // If error checking system, continue with validation
+          }
+        }
+        if (invalidSystems.length > 0) {
+          result.validation_status = 'Fail';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `System(s) not found: ${invalidSystems.join(', ')}`;
+        }
+      }
+
+      // Validate Tags (if provided)
+      if (result.tags) {
+        const tagNames = result.tags.split(',').map(t => t.trim()).filter(Boolean);
+        const invalidTags = [];
+        for (const tagName of tagNames) {
+          try {
+            const tags = await Tag.findByNameExact(tagName);
+            if (!tags || tags.length === 0) invalidTags.push(tagName);
+          } catch (err) {
+            // If error checking tag, continue with validation
+          }
+        }
+        if (invalidTags.length > 0) {
+          result.validation_status = 'Fail';
+          result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Tag(s) not found: ${invalidTags.join(', ')}`;
+        }
+      }
+
+      validationResults.push(result);
+    }
+
+    // Detect domain names duplicated within the file itself — the per-row
+    // loop above only checks each name against the DB, so two identical
+    // names in the same file both "Pass" individually, which is exactly the
+    // case most likely to hit a duplicate-key error mid-import (see
+    // importDomains).
+    const rowsByDomain = new Map();
+    for (const result of validationResults) {
+      if (!result.domain_name) continue;
+      if (!rowsByDomain.has(result.domain_name)) rowsByDomain.set(result.domain_name, []);
+      rowsByDomain.get(result.domain_name).push(result);
+    }
+    for (const dupRows of rowsByDomain.values()) {
+      if (dupRows.length <= 1) continue;
+      for (const result of dupRows) {
+        result.validation_status = 'Fail';
+        result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + 'Duplicate domain name within this file';
+      }
+    }
+
+    // Create validation results Excel file
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Validation Results');
+
+    worksheet.addRow([
+      'Domain Name (Require)',
+      'Description (Optional)',
+      'Record Type (Optional, default A)',
+      'IP Address (Optional)',
+      'System Name (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Validation Status',
+      'Validation Reason'
+    ]);
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+
+    validationResults.forEach(result => {
+      const row = worksheet.addRow([
+        result.domain_name,
+        result.description,
+        result.record_type,
+        result.ip_address,
+        result.systems,
+        result.tags,
+        result.validation_status,
+        result.validation_reason
+      ]);
+      if (result.validation_status === 'Fail') {
+        row.getCell(7).font = { color: { argb: 'FFFF0000' } };
+        row.getCell(8).font = { color: { argb: 'FFFF0000' } };
+      } else {
+        row.getCell(7).font = { color: { argb: 'FF008000' } };
+      }
+    });
+
+    worksheet.columns = [
+      { width: 30 }, { width: 30 }, { width: 20 }, { width: 20 }, { width: 30 }, { width: 30 }, { width: 20 }, { width: 40 }
+    ];
+
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const timestamp = Date.now();
+    const validationFileName = `${timestamp}_${req.file.originalname}_validation.xlsx`;
+    const validationFilePath = path.join(tempDir, validationFileName);
+    await workbook.xlsx.writeFile(validationFilePath);
+
+    const allPassed = validationResults.every(result => result.validation_status === 'Pass');
+    const passCount = validationResults.filter(result => result.validation_status === 'Pass').length;
+    const failCount = validationResults.length - passCount;
+
+    try {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch (cleanupErr) {
+      console.error('Error cleaning up uploaded file:', cleanupErr);
+    }
+
+    setTimeout(() => {
+      try {
+        if (fs.existsSync(validationFilePath)) fs.unlinkSync(validationFilePath);
+      } catch (cleanupErr) {
+        console.error('Error cleaning up validation file:', cleanupErr);
+      }
+    }, 10000);
+
+    res.set('X-Validation-Summary', JSON.stringify({
+      total: validationResults.length,
+      passed: passCount,
+      failed: failCount,
+      allPassed
+    }));
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${validationFileName}"`);
+    res.sendFile(validationFilePath);
+
+  } catch (err) {
+    console.error('Error validating domain import file:', err);
+    res.status(500).json({ error: 'Error validating file', detail: err.message });
+  }
+};
+
+// Import domains
+networkController.importDomains = async (req, res) => {
+  let client;
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const filePath = req.file.path;
+    const originalFileName = req.file.originalname;
+    let rows = [];
+
+    const ext = path.extname(originalFileName).toLowerCase();
+    const expectedHeaders = [
+      'Domain Name (Require)',
+      'Description (Optional)',
+      'Record Type (Optional, default A)',
+      'IP Address (Optional)',
+      'System Name (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)'
+    ];
+
+    // Excel only — CSV import is no longer supported (multer's fileFilter
+    // already rejects non-Excel uploads; this is the belt-and-suspenders
+    // check for anything that reaches here another way).
+    if (ext === '.xlsx' || ext === '.xls') {
+      const workbook = XLSX.readFile(filePath);
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      // { header: 1 } reads row 1 itself as the header list — the default
+      // (object-per-row) mode instead infers headers from which cells of
+      // the FIRST DATA row are non-blank, undercounting columns whenever
+      // that row has any blank optional field.
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+      if (jsonData.length > 0) {
+        const headers = jsonData[0];
+        if (headers.length !== expectedHeaders.length) {
+          return res.status(400).json({ error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}` });
+        }
+        for (let i = 0; i < expectedHeaders.length; i++) {
+          if (headers[i] !== expectedHeaders[i]) {
+            return res.status(400).json({ error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"` });
+          }
+        }
+        for (let i = 1; i < jsonData.length; i++) {
+          const row = {};
+          headers.forEach((header, index) => { row[header] = jsonData[i][index] || ''; });
+          rows.push(row);
+        }
+      }
+    } else {
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
+    }
+
+    client = await pool.connect();
+    await client.query('BEGIN');
+
+    const importResults = [];
+    const username = req.session && req.session.user && req.session.user.username ? req.session.user.username : 'admin';
+    // Tracks domain names already processed earlier in this same file — see
+    // importSubnets for why this must be checked before ever reaching the DB.
+    const seenDomains = new Set();
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNumber = i + 2;
+      const result = {
+        row: rowNumber,
+        domain_name: (row['Domain Name (Require)'] || '').toString().trim(),
+        description: (row['Description (Optional)'] || '').toString().trim(),
+        record_type: (row['Record Type (Optional, default A)'] || '').toString().trim(),
+        ip_address: (row['IP Address (Optional)'] || '').toString().trim(),
+        systems: (row['System Name (Optional, comma-separated if multiple)'] || '').toString().trim(),
+        tags: (row['Tag (Optional, comma-separated if multiple)'] || '').toString().trim(),
+        import_status: 'Success',
+        import_reason: ''
+      };
+
+      if (!result.domain_name) {
+        result.import_status = 'Failed';
+        result.import_reason = 'Domain Name is required';
+        importResults.push(result);
+        continue;
+      }
+
+      if (seenDomains.has(result.domain_name)) {
+        result.import_status = 'Failed';
+        result.import_reason = 'Duplicate domain name within this file';
+        importResults.push(result);
+        continue;
+      }
+      seenDomains.add(result.domain_name);
+
+      // Resolve IP/System/Tag references up front. A value that doesn't
+      // resolve fails the whole row (matching validateImportDomains)
+      // instead of being silently dropped from the created domain.
+      const notFound = [];
+
+      let ipId = null;
+      if (result.ip_address) {
+        const existingIp = await IpAddress.findByAddress(result.ip_address);
+        if (existingIp) ipId = existingIp.id;
+        else notFound.push(`IP address "${result.ip_address}"`);
+      }
+
+      const systemIds = [];
+      for (const systemName of result.systems.split(',').map(s => s.trim()).filter(Boolean)) {
+        const systems = await System.findByNameExact(systemName);
+        if (systems && systems.length > 0) systemIds.push(systems[0].id);
+        else notFound.push(`System "${systemName}"`);
+      }
+
+      const tagIds = [];
+      for (const tagName of result.tags.split(',').map(t => t.trim()).filter(Boolean)) {
+        const tags = await Tag.findByNameExact(tagName);
+        if (tags && tags.length > 0) tagIds.push(tags[0].id);
+        else notFound.push(`Tag "${tagName}"`);
+      }
+
+      if (notFound.length > 0) {
+        result.import_status = 'Failed';
+        result.import_reason = `Not found: ${notFound.join(', ')}`;
+        importResults.push(result);
+        continue;
+      }
+
+      // Each row gets its own savepoint — see importSubnets for why this is
+      // required: without it, a raw DB error on one row would abort the
+      // whole shared transaction and the final COMMIT would silently
+      // discard the entire batch, including rows already marked Success.
+      const savepoint = `import_domain_row_${i}`;
+      try {
+        await client.query(`SAVEPOINT ${savepoint}`);
+        await createDomainService({
+          domain: result.domain_name,
+          description: result.description || null,
+          record_type: result.record_type || null,
+          ip_id: ipId,
+          systems: systemIds,
+          tags: tagIds,
+          updated_by: username
+        }, client);
+        await client.query(`RELEASE SAVEPOINT ${savepoint}`);
+        result.import_reason = 'Successfully created domain';
+      } catch (err) {
+        await client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+        console.error(`Error importing domain row ${i + 1}:`, err);
+        result.import_status = 'Failed';
+        result.import_reason = err instanceof ServiceError ? err.message : (err.message || 'Unknown error');
+      }
+
+      importResults.push(result);
+    }
+
+    await client.query('COMMIT');
+
+    // Create import results Excel file (same as validation)
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Import Results');
+
+    worksheet.addRow([
+      'Domain Name (Require)',
+      'Description (Optional)',
+      'Record Type (Optional, default A)',
+      'IP Address (Optional)',
+      'System Name (Optional, comma-separated if multiple)',
+      'Tag (Optional, comma-separated if multiple)',
+      'Import Status',
+      'Import Reason'
+    ]);
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
+
+    importResults.forEach(result => {
+      const row = worksheet.addRow([
+        result.domain_name,
+        result.description,
+        result.record_type,
+        result.ip_address,
+        result.systems,
+        result.tags,
+        result.import_status,
+        result.import_reason
+      ]);
+      if (result.import_status === 'Failed') {
+        row.getCell(7).font = { color: { argb: 'FFFF0000' } };
+        row.getCell(8).font = { color: { argb: 'FFFF0000' } };
+      } else {
+        row.getCell(7).font = { color: { argb: 'FF008000' } };
+      }
+    });
+
+    worksheet.columns = [
+      { width: 30 }, { width: 30 }, { width: 20 }, { width: 20 }, { width: 30 }, { width: 30 }, { width: 20 }, { width: 40 }
+    ];
+
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+
+    const timestamp = Date.now();
+    const importFileName = `${timestamp}_${originalFileName}_imported.xlsx`;
+    const importFilePath = path.join(tempDir, importFileName);
+    await workbook.xlsx.writeFile(importFilePath);
+
+    const successCount = importResults.filter(result => result.import_status === 'Success').length;
+    const failCount = importResults.length - successCount;
+
+    try {
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    } catch (cleanupErr) {
+      console.error('Error cleaning up uploaded file:', cleanupErr);
+    }
+
+    setTimeout(() => {
+      try {
+        if (fs.existsSync(importFilePath)) fs.unlinkSync(importFilePath);
+      } catch (cleanupErr) {
+        console.error('Error cleaning up import file:', cleanupErr);
+      }
+    }, 10000);
+
+    res.set('X-Import-Summary', JSON.stringify({
+      total: importResults.length,
+      success: successCount,
+      failed: failCount
+    }));
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${importFileName}"`);
+    res.sendFile(importFilePath);
+
+  } catch (err) {
+    console.error('=== DOMAIN IMPORT ERROR ===');
+    console.error('Error importing domains:', err);
+    console.error('Error stack:', err.stack);
+    if (client) {
+      try {
+        await client.query('ROLLBACK');
+      } catch (rollbackErr) {
+        console.error('Error rolling back domain import transaction:', rollbackErr);
+      }
+    }
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Error importing domains', detail: err.message });
     }
   } finally {
     if (client) {
@@ -2495,79 +3036,44 @@ networkController.apiEnvironments = async (req, res) => {
 networkController.apiFindSubnetForIP = async (req, res) => {
   try {
     const ipAddress = req.params.ip;
-    
+
     if (!ipAddress) {
       return res.status(400).json({ error: 'IP address is required' });
     }
-    
+
     // Validate IP format
     if (!IPV4_REGEX.test(ipAddress)) {
       return res.status(400).json({ error: 'Invalid IP address format' });
     }
-    
-    // Get all subnets
-    const subnets = await Subnet.findFilteredList({ 
-      search: '', 
-      tags: [], 
-      zone: undefined,
-      environment: undefined,
-      page: 1, 
-      pageSize: 1000 // Get all subnets
-    });
-    
-    // Function to check if IP is in subnet
-    function isIPInSubnet(ip, subnetCIDR) {
-      try {
-        const [subnetIP, prefixLength] = subnetCIDR.split('/');
-        const prefix = parseInt(prefixLength);
-        
-        // Convert IPs to numbers
-        const ipParts = ip.split('.');
-        const subnetParts = subnetIP.split('.');
-        
-        if (ipParts.length !== 4 || subnetParts.length !== 4) {
-          return false;
-        }
-        
-        const ipNum = (parseInt(ipParts[0]) << 24) + (parseInt(ipParts[1]) << 16) + (parseInt(ipParts[2]) << 8) + parseInt(ipParts[3]);
-        const subnetNum = (parseInt(subnetParts[0]) << 24) + (parseInt(subnetParts[1]) << 16) + (parseInt(subnetParts[2]) << 8) + parseInt(subnetParts[3]);
-        
-        const mask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
-        
-        return (ipNum & mask) === (subnetNum & mask);
-      } catch (error) {
-        return false;
-      }
-    }
-    
-    // Find the subnet that contains this IP
-    let matchingSubnet = null;
-    for (let subnet of subnets) {
-      if (isIPInSubnet(ipAddress, subnet.address)) {
-        matchingSubnet = subnet;
-        break;
-      }
-    }
-    
-    if (matchingSubnet) {
-      res.json({
-        found: true,
-        subnet: {
-          id: matchingSubnet.id,
-          address: matchingSubnet.address,
-          description: matchingSubnet.description,
-          zone: matchingSubnet.zone,
-          environment: matchingSubnet.environment,
-          tags: matchingSubnet.tags || []
-        }
-      });
-    } else {
-      res.json({
+
+    // Subnets can nest (e.g. 10.0.0.0/8 and 10.1.0.0/16 both contain
+    // 10.1.2.3) — ORDER BY masklen DESC LIMIT 1 picks the smallest, most
+    // specific one, matching what a user actually means by "the subnet"
+    // an IP belongs to.
+    const containing = await Subnet.findContainingSubnet(ipAddress);
+    if (!containing) {
+      return res.json({
         found: false,
         message: 'No subnet found containing this IP address'
       });
     }
-    
+
+    // findContainingSubnet is a plain SELECT * (no tags join) — findById
+    // has the tags join already, so fetch through it for the full shape.
+    const matchingSubnet = await Subnet.findById(containing.id);
+
+    res.json({
+      found: true,
+      subnet: {
+        id: matchingSubnet.id,
+        address: matchingSubnet.address,
+        description: matchingSubnet.description,
+        zone: matchingSubnet.zone,
+        environment: matchingSubnet.environment,
+        tags: matchingSubnet.tags || []
+      }
+    });
+
   } catch (err) {
     console.error('Error finding subnet for IP:', err);
     res.status(500).json({ error: 'Internal server error' });
