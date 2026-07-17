@@ -1683,23 +1683,21 @@ function displayIpAddresses(page = 1) {
   html += '<thead><tr><th>IP Address</th><th class="d-none d-sm-table-cell">Description</th></tr></thead>';
   html += '<tbody>';
 
-  currentPageData.forEach(function(ip, index) {
-    const globalIndex = startIndex + index;
+  currentPageData.forEach(function(ip) {
     const description = String(ip.description || 'N/A').trim();
-    const truncatedDesc = description.length > 20 ? description.substring(0, 20) + '...' : description;
-    const fullDesc = description.length > 20 ? description : '';
+    const truncatedDesc = description.length > 20 ? description.substring(0, 20) + '…' : description;
 
     html += '<tr>';
     html += '<td><a href="/network/ip-address?search=' + encodeURIComponent(ip.ip_address) + '" class="text-primary text-decoration-underline">' + String(ip.ip_address).trim() + '</a></td>';
     html += '<td class="d-none d-sm-table-cell">';
-    html += '<span class="ip-description" data-full="' + fullDesc.replace(/"/g, '&quot;') + '">' + truncatedDesc + '</span>';
-    if (description.length > 20) {
-      html += ' <button type="button" class="btn btn-link btn-sm p-0 ms-1 show-more-btn" onclick="toggleDescription(' + globalIndex + ')" style="font-size: 0.8em;">show more</button>';
-    }
+    // Same short-text + hover-tooltip pattern used for Description columns
+    // elsewhere (Device/Domain/IP Address lists) — full text on hover
+    // instead of a click-to-expand toggle.
+    html += '<span data-bs-toggle="tooltip" data-bs-placement="top" title="' + escapeHtml(description) + '" style="cursor: help; word-break: break-word;">' + escapeHtml(truncatedDesc) + '</span>';
     html += '</td>';
     html += '</tr>';
   });
-  
+
   html += '</tbody></table></div>';
   
   // Add pagination info and controls
@@ -1736,33 +1734,25 @@ function displayIpAddresses(page = 1) {
   html += '</div>';
   
   ipListElement.innerHTML = html;
+
+  // Dispose any tooltip instances from the previous render (pagination)
+  // before creating new ones, so hidden/removed nodes don't leak instances.
+  document.querySelectorAll('#subnetIpList [data-bs-toggle="tooltip"]').forEach(function(el) {
+    const existing = bootstrap.Tooltip.getInstance(el);
+    if (existing) existing.dispose();
+  });
+  document.querySelectorAll('#subnetIpList [data-bs-toggle="tooltip"]').forEach(function(el) {
+    new bootstrap.Tooltip(el);
+  });
 }
 
-// Function to toggle description display
-function toggleDescription(index) {
-  const descriptions = document.querySelectorAll('.ip-description');
-  const buttons = document.querySelectorAll('.show-more-btn');
-  
-  // Find the correct elements based on current page
-  const startIndex = (currentPage - 1) * IP_PER_PAGE;
-  const localIndex = index - startIndex;
-  
-  if (localIndex >= 0 && localIndex < descriptions.length && localIndex < buttons.length) {
-    const descElement = descriptions[localIndex];
-    const buttonElement = buttons[localIndex];
-    const fullText = descElement.getAttribute('data-full');
-    
-    if (descElement.textContent.includes('...')) {
-      // Show full description
-      descElement.textContent = fullText;
-      buttonElement.textContent = 'show less';
-    } else {
-      // Show truncated description
-      const truncatedText = fullText.substring(0, 20) + '...';
-      descElement.textContent = truncatedText;
-      buttonElement.textContent = 'show more';
-    }
-  }
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // Function to download IP addresses list
