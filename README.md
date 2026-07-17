@@ -444,13 +444,44 @@ In Docker, run these inside the app/migration container, e.g. `docker compose ru
 2. Add a new `### Version X.Y.Z (Latest)` entry at the top of the Changelog below, and relabel the previous "(Latest)" entry.
 3. Optional cleanup (do this occasionally, not every release): once accumulated `migrations/alters/*.js` files are safely folded into every baseline `create_*.js` (verify with a fresh-database test like the one described above), delete the numbered alter files and keep just `run.js` — same reset done for v1.1.0.
 
-```bash
-# Create backup
-pg_dump -h localhost -U postgres -d open_asm | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz
+**Backup & Restore:**
 
-# Restore backup
-gunzip -c backup_20240101_120000.sql.gz | psql -h localhost -U postgres -d open_asm
+A scheduled job already does this automatically — see "Scheduled Maintenance Jobs" above (`BACKUP_FREQUENCY`/`BACKUP_RETENTION` in `.env.docker`, files land in `./backups/` as `backup_<timestamp>.sql.gz`). These are **plain SQL dumps** (`pg_dump` with no `--clean`/`--if-exists`), so restoring into a database that already has the schema will fail on `CREATE TABLE ... already exists` — the target database must be dropped and recreated first.
+
+```bash
+# Docker Compose (see docker-compose.yml for the actual container/db names
+# if yours differ from openasm_db / openasm / postgres)
+
+# 1. Create a backup on demand (same command the scheduled job runs)
+docker exec openasm_db pg_dump -U postgres -d openasm | gzip > backups/backup_$(date +%Y%m%d_%H%M%S).sql.gz
+
+# 2. To restore: stop the app first so nothing writes during the restore
+docker compose stop app migration
+
+# 3. Take a fresh safety backup of the current state before overwriting it —
+#    skip only if you're deliberately discarding everything since the last backup
+docker exec openasm_db pg_dump -U postgres -d openasm | gzip > backups/pre-restore-safety_$(date +%Y%m%d_%H%M%S).sql.gz
+
+# 4. Drop and recreate the database, then load the chosen backup into it
+docker exec openasm_db psql -U postgres -c "DROP DATABASE openasm;"
+docker exec openasm_db psql -U postgres -c "CREATE DATABASE openasm;"
+gunzip -c backups/backup_20260101_120000.sql.gz | docker exec -i openasm_db psql -U postgres -d openasm
+
+# 5. Bring the app back up
+docker compose up -d app migration
+docker restart openasm_nginx   # required after any app/db disruption, see warning above
 ```
+
+```bash
+# Bare-host Postgres (no Docker) — same idea, run directly against the DB
+pg_dump -h localhost -U postgres -d openasm | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz
+
+dropdb -h localhost -U postgres openasm
+createdb -h localhost -U postgres openasm
+gunzip -c backup_20260101_120000.sql.gz | psql -h localhost -U postgres -d openasm
+```
+
+Restoring **replaces the entire database** — everything written after the backup's timestamp is gone once step 4 runs, which is why step 3 (a fresh safety backup of the current state) is not optional unless you mean to discard it.
 
 ## 📝 Changelog
 
