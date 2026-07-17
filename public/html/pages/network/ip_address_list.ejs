@@ -1522,6 +1522,19 @@ function showIpDetail(ipId) {
   }
   html += '</dd>';
 
+  // Add System(s) this IP is assigned to (system_ip), with search links —
+  // already present in ip.systems from the list query, no extra fetch needed.
+  html += '<dt class="col-sm-4">System</dt><dd class="col-sm-8">';
+  if (ip.systems && ip.systems.length > 0) {
+    html += ip.systems.map(function(sys) {
+      const searchUrl = '/system/system?page=1&search=' + encodeURIComponent(sys.name || sys.system_id || '');
+      return '<a href="' + searchUrl + '" class="text-decoration-none" target="_blank">' + escapeHtml(sys.name || sys.system_id || '') + '</a>';
+    }).join(', ');
+  } else {
+    html += '<span class="text-muted">N/A</span>';
+  }
+  html += '</dd>';
+
   // Find subnet containing this IP and show Zone/Environment as plain text
   const ipAddress = ip.ip_address;
   if (ipAddress) {
