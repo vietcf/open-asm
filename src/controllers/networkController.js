@@ -3153,79 +3153,44 @@ networkController.apiEnvironments = async (req, res) => {
 networkController.apiFindSubnetForIP = async (req, res) => {
   try {
     const ipAddress = req.params.ip;
-    
+
     if (!ipAddress) {
       return res.status(400).json({ error: 'IP address is required' });
     }
-    
+
     // Validate IP format
     if (!IPV4_REGEX.test(ipAddress)) {
       return res.status(400).json({ error: 'Invalid IP address format' });
     }
-    
-    // Get all subnets
-    const subnets = await Subnet.findFilteredList({ 
-      search: '', 
-      tags: [], 
-      zone: undefined,
-      environment: undefined,
-      page: 1, 
-      pageSize: 1000 // Get all subnets
-    });
-    
-    // Function to check if IP is in subnet
-    function isIPInSubnet(ip, subnetCIDR) {
-      try {
-        const [subnetIP, prefixLength] = subnetCIDR.split('/');
-        const prefix = parseInt(prefixLength);
-        
-        // Convert IPs to numbers
-        const ipParts = ip.split('.');
-        const subnetParts = subnetIP.split('.');
-        
-        if (ipParts.length !== 4 || subnetParts.length !== 4) {
-          return false;
-        }
-        
-        const ipNum = (parseInt(ipParts[0]) << 24) + (parseInt(ipParts[1]) << 16) + (parseInt(ipParts[2]) << 8) + parseInt(ipParts[3]);
-        const subnetNum = (parseInt(subnetParts[0]) << 24) + (parseInt(subnetParts[1]) << 16) + (parseInt(subnetParts[2]) << 8) + parseInt(subnetParts[3]);
-        
-        const mask = (0xFFFFFFFF << (32 - prefix)) >>> 0;
-        
-        return (ipNum & mask) === (subnetNum & mask);
-      } catch (error) {
-        return false;
-      }
-    }
-    
-    // Find the subnet that contains this IP
-    let matchingSubnet = null;
-    for (let subnet of subnets) {
-      if (isIPInSubnet(ipAddress, subnet.address)) {
-        matchingSubnet = subnet;
-        break;
-      }
-    }
-    
-    if (matchingSubnet) {
-      res.json({
-        found: true,
-        subnet: {
-          id: matchingSubnet.id,
-          address: matchingSubnet.address,
-          description: matchingSubnet.description,
-          zone: matchingSubnet.zone,
-          environment: matchingSubnet.environment,
-          tags: matchingSubnet.tags || []
-        }
-      });
-    } else {
-      res.json({
+
+    // Subnets can nest (e.g. 10.0.0.0/8 and 10.1.0.0/16 both contain
+    // 10.1.2.3) — ORDER BY masklen DESC LIMIT 1 picks the smallest, most
+    // specific one, matching what a user actually means by "the subnet"
+    // an IP belongs to.
+    const containing = await Subnet.findContainingSubnet(ipAddress);
+    if (!containing) {
+      return res.json({
         found: false,
         message: 'No subnet found containing this IP address'
       });
     }
-    
+
+    // findContainingSubnet is a plain SELECT * (no tags join) — findById
+    // has the tags join already, so fetch through it for the full shape.
+    const matchingSubnet = await Subnet.findById(containing.id);
+
+    res.json({
+      found: true,
+      subnet: {
+        id: matchingSubnet.id,
+        address: matchingSubnet.address,
+        description: matchingSubnet.description,
+        zone: matchingSubnet.zone,
+        environment: matchingSubnet.environment,
+        tags: matchingSubnet.tags || []
+      }
+    });
+
   } catch (err) {
     console.error('Error finding subnet for IP:', err);
     res.status(500).json({ error: 'Internal server error' });
