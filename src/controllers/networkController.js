@@ -14,7 +14,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import archiver from 'archiver';
 import { ServiceError } from '../services/errors.js';
-import { parseCsvLine } from '../utils/csvParser.js';
 import {
   listIpAddresses as listIpAddressesService,
   createIpAddress as createIpAddressService,
@@ -733,33 +732,10 @@ networkController.validateImportIPs = async (req, res) => {
       return null;
     };
 
-    // Parse file based on extension
-    if (fileExtension === 'csv') {
-      const results = [];
-
-      // Simple CSV parsing without csv-parser dependency
-      const fileContent = fs.readFileSync(filePath, 'utf8');
-      const lines = fileContent.split('\n');
-      const headers = parseCsvLine(lines[0]);
-
-      const headerError = validateHeaderOrder(headers);
-      if (headerError) {
-        return res.status(400).json({ error: headerError });
-      }
-
-      for (let i = 1; i < lines.length; i++) {
-        if (lines[i].trim()) {
-          const values = parseCsvLine(lines[i]);
-          const rowData = {};
-          headers.forEach((header, index) => {
-            rowData[header] = values[index] || '';
-          });
-          results.push(rowData);
-        }
-      }
-
-      rows = results;
-    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+    // Excel only — CSV import is no longer supported (multer's fileFilter
+    // already rejects non-Excel uploads; this is the belt-and-suspenders
+    // check for anything that reaches here another way).
+    if (fileExtension === 'xlsx' || fileExtension === 'xls') {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(filePath);
 
@@ -793,7 +769,7 @@ networkController.validateImportIPs = async (req, res) => {
         }
       }
     } else {
-      return res.status(400).json({ error: 'Unsupported file format' });
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
     }
 
 
@@ -1070,33 +1046,10 @@ networkController.importIPs = async (req, res) => {
       return null;
     };
 
-      // Parse file (same logic as validation)
-      if (fileExtension === 'csv') {
-        const results = [];
-
-        // Simple CSV parsing without csv-parser dependency
-        const fileContent = fs.readFileSync(filePath, 'utf8');
-        const lines = fileContent.split('\n');
-        const headers = parseCsvLine(lines[0]);
-
-        const headerError = validateHeaderOrder(headers);
-        if (headerError) {
-          return res.status(400).json({ error: headerError });
-        }
-
-      for (let i = 1; i < lines.length; i++) {
-        if (lines[i].trim()) {
-          const values = parseCsvLine(lines[i]);
-          const rowData = {};
-          headers.forEach((header, index) => {
-            rowData[header] = values[index] || '';
-          });
-          results.push(rowData);
-        }
-      }
-
-      rows = results;
-    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+      // Excel only — CSV import is no longer supported (multer's fileFilter
+      // already rejects non-Excel uploads; this is the belt-and-suspenders
+      // check for anything that reaches here another way).
+      if (fileExtension === 'xlsx' || fileExtension === 'xls') {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(filePath);
 
@@ -1127,8 +1080,10 @@ networkController.importIPs = async (req, res) => {
           rows.push(rowData);
         }
       }
+    } else {
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
     }
-    
+
     const importResults = [];
     const updated_by = req.session.user?.username || '';
     // Tracks IPs already processed earlier in this same file — a second
@@ -1756,35 +1711,13 @@ networkController.validateImportSubnets = async (req, res) => {
       return null;
     };
 
-    if (fileExtension === 'csv') {
-      const results = [];
-
-      // Simple CSV parsing without csv-parser dependency
-      const fileContent = fs.readFileSync(filePath, 'utf8');
-      const lines = fileContent.split('\n');
-      const headers = parseCsvLine(lines[0]);
-
-      const headerError = validateHeaderOrder(headers);
-      if (headerError) {
-        return res.status(400).json({ error: headerError });
-      }
-
-      for (let i = 1; i < lines.length; i++) {
-        if (lines[i].trim()) {
-          const values = parseCsvLine(lines[i]);
-          const rowData = {};
-          headers.forEach((header, index) => {
-            rowData[header] = values[index] || '';
-          });
-          results.push(rowData);
-        }
-      }
-      
-      rows = results;
-    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+    // Excel only — CSV import is no longer supported (multer's fileFilter
+    // already rejects non-Excel uploads; this is the belt-and-suspenders
+    // check for anything that reaches here another way).
+    if (fileExtension === 'xlsx' || fileExtension === 'xls') {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(filePath);
-      
+
       const worksheet = workbook.worksheets[0];
       const headers = [];
 
@@ -1815,7 +1748,7 @@ networkController.validateImportSubnets = async (req, res) => {
         }
       }
     } else {
-      return res.status(400).json({ error: 'Unsupported file format' });
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
     }
 
 
@@ -2057,45 +1990,18 @@ networkController.importSubnets = async (req, res) => {
     const originalFileName = req.file.originalname;
     let rows = [];
 
-    // Parse file based on extension
+    // Parse file based on extension — Excel only (multer's fileFilter
+    // already rejects non-Excel uploads; this is the belt-and-suspenders
+    // check for anything that reaches here another way).
     const ext = path.extname(originalFileName).toLowerCase();
-    if (ext === '.csv') {
-      const csvContent = fs.readFileSync(filePath, 'utf8');
-      const lines = csvContent.split('\n').filter(line => line.trim());
-      const headers = parseCsvLine(lines[0]);
-
-      // Validate headers order and required fields
-      const expectedHeaders = [
-        'Subnet Address (Require)',
-        'Description (Optional)',
-        'Zone (Optional)',
-        'Environment (Optional)',
-        'Tag (Optional, comma-separated if multiple)'
-      ];
-
-      if (headers.length !== expectedHeaders.length) {
-        return res.status(400).json({
-          error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}`
-        });
-      }
-
-      for (let i = 0; i < expectedHeaders.length; i++) {
-        if (headers[i] !== expectedHeaders[i]) {
-          return res.status(400).json({
-            error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"`
-          });
-        }
-      }
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCsvLine(lines[i]);
-        const row = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
-        rows.push(row);
-      }
-    } else if (ext === '.xlsx' || ext === '.xls') {
+    const expectedHeaders = [
+      'Subnet Address (Require)',
+      'Description (Optional)',
+      'Zone (Optional)',
+      'Environment (Optional)',
+      'Tag (Optional, comma-separated if multiple)'
+    ];
+    if (ext === '.xlsx' || ext === '.xls') {
       const workbook = XLSX.readFile(filePath);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
@@ -2109,13 +2015,6 @@ networkController.importSubnets = async (req, res) => {
 
       if (jsonData.length > 0) {
         const headers = jsonData[0];
-        const expectedHeaders = [
-          'Subnet Address (Require)',
-          'Description (Optional)',
-          'Zone (Optional)',
-          'Environment (Optional)',
-          'Tag (Optional, comma-separated if multiple)'
-        ];
 
         if (headers.length !== expectedHeaders.length) {
           return res.status(400).json({
@@ -2138,7 +2037,7 @@ networkController.importSubnets = async (req, res) => {
         }
       }
     } else {
-      return res.status(400).json({ error: 'Unsupported file format. Only CSV and Excel files are allowed.' });
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
     }
 
     // Start transaction
@@ -2467,29 +2366,10 @@ networkController.validateImportDomains = async (req, res) => {
       return null;
     };
 
-    if (fileExtension === 'csv') {
-      const fileContent = fs.readFileSync(filePath, 'utf8');
-      const lines = fileContent.split('\n');
-      const headers = parseCsvLine(lines[0]);
-
-      const headerError = validateHeaderOrder(headers);
-      if (headerError) {
-        return res.status(400).json({ error: headerError });
-      }
-
-      const results = [];
-      for (let i = 1; i < lines.length; i++) {
-        if (lines[i].trim()) {
-          const values = parseCsvLine(lines[i]);
-          const rowData = {};
-          headers.forEach((header, index) => {
-            rowData[header] = values[index] || '';
-          });
-          results.push(rowData);
-        }
-      }
-      rows = results;
-    } else if (fileExtension === 'xlsx' || fileExtension === 'xls') {
+    // Excel only — CSV import is no longer supported (multer's fileFilter
+    // already rejects non-Excel uploads; this is the belt-and-suspenders
+    // check for anything that reaches here another way).
+    if (fileExtension === 'xlsx' || fileExtension === 'xls') {
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(filePath);
 
@@ -2514,7 +2394,7 @@ networkController.validateImportDomains = async (req, res) => {
         if (Object.keys(rowData).length > 0) rows.push(rowData);
       }
     } else {
-      return res.status(400).json({ error: 'Unsupported file format' });
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
     }
 
     // Validate each row
@@ -2731,27 +2611,10 @@ networkController.importDomains = async (req, res) => {
       'Tag (Optional, comma-separated if multiple)'
     ];
 
-    if (ext === '.csv') {
-      const csvContent = fs.readFileSync(filePath, 'utf8');
-      const lines = csvContent.split('\n').filter(line => line.trim());
-      const headers = parseCsvLine(lines[0]);
-
-      if (headers.length !== expectedHeaders.length) {
-        return res.status(400).json({ error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}` });
-      }
-      for (let i = 0; i < expectedHeaders.length; i++) {
-        if (headers[i] !== expectedHeaders[i]) {
-          return res.status(400).json({ error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"` });
-        }
-      }
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCsvLine(lines[i]);
-        const row = {};
-        headers.forEach((header, index) => { row[header] = values[index] || ''; });
-        rows.push(row);
-      }
-    } else if (ext === '.xlsx' || ext === '.xls') {
+    // Excel only — CSV import is no longer supported (multer's fileFilter
+    // already rejects non-Excel uploads; this is the belt-and-suspenders
+    // check for anything that reaches here another way).
+    if (ext === '.xlsx' || ext === '.xls') {
       const workbook = XLSX.readFile(filePath);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
@@ -2778,7 +2641,7 @@ networkController.importDomains = async (req, res) => {
         }
       }
     } else {
-      return res.status(400).json({ error: 'Unsupported file format. Only CSV and Excel files are allowed.' });
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
     }
 
     client = await pool.connect();

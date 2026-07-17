@@ -9,7 +9,6 @@ import ExcelJS from 'exceljs';
 import fs from 'fs';
 import path from 'path';
 import { ServiceError } from '../services/errors.js';
-import { parseCsvLine } from '../utils/csvParser.js';
 import {
   listContacts as listContactsService,
   createContact as createContactService,
@@ -552,46 +551,11 @@ organizeController.validateImportContacts = async (req, res) => {
     const originalFileName = req.file.originalname;
     let rows = [];
 
-    // Parse file based on extension
+    // Parse file based on extension — Excel only (multer's fileFilter
+    // already rejects non-Excel uploads; this is the belt-and-suspenders
+    // check for anything that reaches here another way).
     const ext = path.extname(originalFileName).toLowerCase();
-    if (ext === '.csv') {
-      const csvContent = fs.readFileSync(filePath, 'utf8');
-      const lines = csvContent.split('\n').filter(line => line.trim());
-      const headers = parseCsvLine(lines[0]);
-
-      // Validate headers order and required fields
-      const expectedHeaders = [
-        'Name (Require)',
-        'Email (Require)',
-        'Phone',
-        'Org Unit',
-        'Position (Require)',
-        'Description'
-      ];
-
-      if (headers.length !== expectedHeaders.length) {
-        return res.status(400).json({
-          error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}`
-        });
-      }
-
-      for (let i = 0; i < expectedHeaders.length; i++) {
-        if (headers[i] !== expectedHeaders[i]) {
-          return res.status(400).json({
-            error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"`
-          });
-        }
-      }
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCsvLine(lines[i]);
-        const row = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
-        rows.push(row);
-      }
-    } else if (ext === '.xlsx' || ext === '.xls') {
+    if (ext === '.xlsx' || ext === '.xls') {
       const workbook = XLSX.readFile(filePath);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
@@ -635,7 +599,7 @@ organizeController.validateImportContacts = async (req, res) => {
         }
       }
     } else {
-      return res.status(400).json({ error: 'Unsupported file format. Only CSV and Excel files are allowed.' });
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
     }
 
     if (rows.length === 0) {
@@ -829,26 +793,27 @@ organizeController.importContacts = async (req, res) => {
     const originalFileName = req.file.originalname;
     let rows = [];
 
-    // Parse file (same logic as validation)
+    // Parse file (same logic as validation) — Excel only (multer's
+    // fileFilter already rejects non-Excel uploads; this is the
+    // belt-and-suspenders check for anything that reaches here another way).
     const ext = path.extname(originalFileName).toLowerCase();
-    if (ext === '.csv') {
-      const csvContent = fs.readFileSync(filePath, 'utf8');
-      const lines = csvContent.split('\n').filter(line => line.trim());
-      const headers = parseCsvLine(lines[0]);
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCsvLine(lines[i]);
-        const row = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
-        rows.push(row);
-      }
-    } else if (ext === '.xlsx' || ext === '.xls') {
+    if (ext === '.xlsx' || ext === '.xls') {
       const workbook = XLSX.readFile(filePath);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      rows = XLSX.utils.sheet_to_json(worksheet);
+      // { header: 1 } reads row 1 itself as the header list, so a blank
+      // optional cell on a data row can't shift/drop columns.
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+      if (jsonData.length > 0) {
+        const headers = jsonData[0];
+        for (let i = 1; i < jsonData.length; i++) {
+          const row = {};
+          headers.forEach((header, index) => { row[header] = jsonData[i][index] || ''; });
+          rows.push(row);
+        }
+      }
+    } else {
+      return res.status(400).json({ error: 'Unsupported file format. Only Excel files (.xlsx, .xls) are allowed.' });
     }
 
     if (rows.length === 0) {

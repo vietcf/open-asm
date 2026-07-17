@@ -11,7 +11,6 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { ServiceError } from '../services/errors.js';
-import { parseCsvLine } from '../utils/csvParser.js';
 import {
   listRules as listRulesService,
   createRule as createRuleService,
@@ -570,20 +569,10 @@ firewallController.validateImportRules = async (req, res) => {
     let headers = [];
     
     try {
-    if (ext === '.csv') {
-      const csvContent = fs.readFileSync(filePath, 'utf8');
-      const lines = csvContent.split('\n').filter(line => line.trim());
-      headers = parseCsvLine(lines[0]);
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCsvLine(lines[i]);
-        const row = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
-        rows.push(row);
-      }
-    } else if (ext === '.xlsx' || ext === '.xls') {
+    // Excel only — CSV import is no longer supported (multer's fileFilter
+    // already rejects non-Excel uploads; this is the belt-and-suspenders
+    // check for anything that reaches here another way).
+    if (ext === '.xlsx' || ext === '.xls') {
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.readFile(filePath);
         
@@ -626,7 +615,7 @@ firewallController.validateImportRules = async (req, res) => {
         }
         
     } else {
-        return res.status(400).json({ error: 'Unsupported file format. Please use Excel (.xlsx) or CSV files. Download the template for the correct format.' });
+        return res.status(400).json({ error: 'Unsupported file format. Please use an Excel (.xlsx, .xls) file. Download the template for the correct format.' });
       }
     } catch (parseError) {
       console.error('Error parsing file:', parseError);
@@ -1162,29 +1151,19 @@ firewallController.importRules = async (req, res) => {
     const ext = path.extname(originalFileName).toLowerCase();
     let headers = [];
     
-    if (ext === '.csv') {
-      const csvContent = fs.readFileSync(filePath, 'utf8');
-      const lines = csvContent.split('\n').filter(line => line.trim());
-      headers = parseCsvLine(lines[0]);
-
-      for (let i = 1; i < lines.length; i++) {
-        const values = parseCsvLine(lines[i]);
-        const row = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
-        rows.push(row);
-      }
-    } else if (ext === '.xlsx' || ext === '.xls') {
+    // Excel only — CSV import is no longer supported (multer's fileFilter
+    // already rejects non-Excel uploads; this is the belt-and-suspenders
+    // check for anything that reaches here another way).
+    if (ext === '.xlsx' || ext === '.xls') {
       const workbook = XLSX.readFile(filePath);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-      
+
       if (jsonData.length < 2) {
         return res.status(400).json({ error: 'File must contain at least a header row and one data row' });
       }
-      
+
       headers = jsonData[0];
       for (let i = 1; i < jsonData.length; i++) {
         const row = {};
@@ -1194,7 +1173,7 @@ firewallController.importRules = async (req, res) => {
         rows.push(row);
       }
     } else {
-      return res.status(400).json({ error: 'Unsupported file format. Please use Excel (.xlsx) or CSV files. Download the template for the correct format.' });
+      return res.status(400).json({ error: 'Unsupported file format. Please use an Excel (.xlsx, .xls) file. Download the template for the correct format.' });
     }
 
     // Strict validation - must have exactly all 24 columns with correct names
