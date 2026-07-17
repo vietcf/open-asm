@@ -2099,11 +2099,16 @@ networkController.importSubnets = async (req, res) => {
       const workbook = XLSX.readFile(filePath);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      rows = XLSX.utils.sheet_to_json(worksheet);
-      
-      // Validate headers for Excel files
-      if (rows.length > 0) {
-        const headers = Object.keys(rows[0]);
+      // { header: 1 } reads row 1 itself as the header list — using the
+      // default (object-per-row) mode and inferring headers from
+      // Object.keys(rows[0]) instead looked at which cells of the FIRST
+      // DATA row happened to be non-blank, so a row with any blank optional
+      // column undercounted the columns (e.g. "Expected 5 columns, got 3")
+      // even though the real header row was correct and Validate had passed.
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+      if (jsonData.length > 0) {
+        const headers = jsonData[0];
         const expectedHeaders = [
           'Subnet Address (Require)',
           'Description (Optional)',
@@ -2113,17 +2118,23 @@ networkController.importSubnets = async (req, res) => {
         ];
 
         if (headers.length !== expectedHeaders.length) {
-          return res.status(400).json({ 
-            error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}` 
+          return res.status(400).json({
+            error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}`
           });
         }
-        
+
         for (let i = 0; i < expectedHeaders.length; i++) {
           if (headers[i] !== expectedHeaders[i]) {
-            return res.status(400).json({ 
-              error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"` 
+            return res.status(400).json({
+              error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"`
             });
           }
+        }
+
+        for (let i = 1; i < jsonData.length; i++) {
+          const row = {};
+          headers.forEach((header, index) => { row[header] = jsonData[i][index] || ''; });
+          rows.push(row);
         }
       }
     } else {
@@ -2744,10 +2755,14 @@ networkController.importDomains = async (req, res) => {
       const workbook = XLSX.readFile(filePath);
       const sheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[sheetName];
-      rows = XLSX.utils.sheet_to_json(worksheet);
+      // { header: 1 } reads row 1 itself as the header list — the default
+      // (object-per-row) mode instead infers headers from which cells of
+      // the FIRST DATA row are non-blank, undercounting columns whenever
+      // that row has any blank optional field.
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-      if (rows.length > 0) {
-        const headers = Object.keys(rows[0]);
+      if (jsonData.length > 0) {
+        const headers = jsonData[0];
         if (headers.length !== expectedHeaders.length) {
           return res.status(400).json({ error: `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headers.length}` });
         }
@@ -2755,6 +2770,11 @@ networkController.importDomains = async (req, res) => {
           if (headers[i] !== expectedHeaders[i]) {
             return res.status(400).json({ error: `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headers[i]}"` });
           }
+        }
+        for (let i = 1; i < jsonData.length; i++) {
+          const row = {};
+          headers.forEach((header, index) => { row[header] = jsonData[i][index] || ''; });
+          rows.push(row);
         }
       }
     } else {
