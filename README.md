@@ -458,7 +458,51 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.2.0 (Latest)
+### Version 1.2.1 (Latest)
+- ✅ **Domain Import**: New Excel import for Domain (Download Template /
+  Validate / Import), same pattern as Subnet import; Contact import (backend
+  already existed) is now wired up to the UI
+- ✅ **Excel-only imports**: Dropped CSV support across every import feature
+  (IP Address, Subnet, Domain, Contact, Server, Device, Firewall Rule) — only
+  `.xlsx`/`.xls` accepted now, enforced both at upload (multer) and in each
+  controller
+- 🐛 **Fixed import data loss**: Subnet/Domain/Server/Device/Contact/Firewall
+  Rule import ran the whole file in one shared transaction with no per-row
+  isolation — a single bad row (e.g. a duplicate value within the same file)
+  could abort the transaction and silently discard the entire batch, even
+  rows already reported as successful. Each row now runs in its own
+  SAVEPOINT; Device import additionally created its record outside the
+  transaction entirely, leaving orphaned rows on failure
+- 🐛 **Fixed Excel column-count false positive**: import steps that inferred
+  headers from which cells of the first data row were non-blank (instead of
+  reading the header row itself) rejected valid files whenever that row had
+  any blank optional column (e.g. "Expected 5 columns, got 3")
+- 🐛 **Fixed Contact position validation**: import used a hardcoded
+  MANUAL/STAFF-only allow-list instead of the actual configured position
+  options, and force-uppercased values before insert, corrupting casing;
+  contact update also re-validated the existing position on every save
+  (even when untouched), failing edits if the configured list had changed
+  since the contact was created
+- ✅ **Subnet Detail**: added an IP usage donut chart (used/free, color-coded
+  by utilization); IP list description now shows a hover tooltip instead of
+  a click-to-expand toggle
+- ✅ **IP Address Detail**: Subnet is now a clickable link to the filtered
+  Subnet List with a hover tooltip of its zone/environment/description/tags;
+  added a System field showing linked system(s); subnet lookup now returns
+  the smallest/most specific containing subnet instead of an arbitrary match
+  when subnets overlap
+- ✅ **Dashboard**: replaced the static welcome card with real stats — entity
+  counts, IP status and device type breakdowns, and top subnets by
+  utilization
+- ✅ **System List**: added Level and Department filters
+- 🐛 Fixed `contacts` table missing `created_at`/`updated_at` on databases
+  created before those columns were added, causing every contact update to
+  fail with a 500
+- 🐛 Fixed Unit delete reporting only a combined usage count; now breaks it
+  down by referencing table (contacts, systems, privileged accounts,
+  firewall rules)
+
+### Version 1.2.0
 - ✅ **System List Export**: Added Excel export for System List (System
   Code, System Name, Tags, Contacts — multi-value fields comma-separated),
   matching the existing IP Address List export pattern
