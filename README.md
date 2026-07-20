@@ -489,7 +489,31 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.2.1 (Latest)
+### Version 1.2.2 (Latest)
+- 🔒 **Security**: fixed path traversal in Network's validation-file download
+  routes (`/network/download/validation(-subnet)/:filename`) that let any
+  authenticated user with basic read access (every existing role, including
+  `viewer`) read arbitrary files off the server via `../` in the filename
+  segment
+- 🔒 **Security**: fixed path traversal in Network's import upload/result
+  filenames (raw upload filename and 8 generated validation/import result
+  filenames all wove the client-supplied original filename into a
+  filesystem path unsanitized)
+- 🔒 **Security**: fixed the same path-traversal pattern in System's
+  document-upload filenames; uploads are also now restricted to a safe
+  document/image extension allow-list, capped at 25MB, and served back
+  under `/uploads/*` as forced downloads (`Content-Disposition: attachment`
+  + `X-Content-Type-Options: nosniff`) — previously any file type
+  (including `.html`/`.svg`) was accepted and served inline, a stored-XSS
+  vector
+- 🐛 Server/Device list: filters (tags/systems/manager/services) were
+  silently dropped from the Export link and from pagination/quick-search
+  navigation due to a `.id` access on what were actually raw ID arrays
+- ✅ Export filenames (Server/Device/IP/Subnet/Domain/System/Firewall
+  Rule/Privileged Account) now include a timestamp suffix to distinguish
+  repeated exports
+
+### Version 1.2.1
 - ✅ **Domain Import**: New Excel import for Domain (Download Template /
   Validate / Import), same pattern as Subnet import; Contact import (backend
   already existed) is now wired up to the UI
