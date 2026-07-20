@@ -32,21 +32,50 @@ function buildPaginationUrl(targetPage) {
   if (typeof filterStatus !== 'undefined' && filterStatus) {
     params.set('status', filterStatus);
   }
-  
+
+  // Add type filter if exists
+  if (typeof filterType !== 'undefined' && filterType) {
+    params.set('type', filterType);
+  }
+
+  // Add location filter if exists
+  if (typeof filterLocation !== 'undefined' && filterLocation) {
+    params.set('location', filterLocation);
+  }
+
   // Add tags filter if exists
   if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
     filterTags.forEach(tag => {
       params.append('tags[]', tag.id);
     });
   }
-  
+
   // Add systems filter if exists
   if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
     filterSystems.forEach(system => {
       params.append('systems[]', system.id);
     });
   }
-  
+
+  // Add contacts filter if exists
+  if (typeof filterManager !== 'undefined' && filterManager && filterManager.length > 0) {
+    filterManager.forEach(contact => {
+      params.append('contacts[]', contact.id);
+    });
+  }
+
+  // Add services filter if exists
+  if (typeof filterServices !== 'undefined' && filterServices && filterServices.length > 0) {
+    filterServices.forEach(service => {
+      params.append('services[]', service.id);
+    });
+  }
+
+  // Add OS filter if exists
+  if (typeof filterOs !== 'undefined' && filterOs) {
+    params.set('os', filterOs);
+  }
+
   return '?' + params.toString();
 }
 
@@ -146,6 +175,15 @@ function buildExportUrl() {
             <% if (typeof filterStatus !== 'undefined' && filterStatus) { %>
               <input type="hidden" name="status" value="<%= filterStatus %>">
             <% } %>
+            <% if (typeof filterType !== 'undefined' && filterType) { %>
+              <input type="hidden" name="type" value="<%= filterType %>">
+            <% } %>
+            <% if (typeof filterLocation !== 'undefined' && filterLocation) { %>
+              <input type="hidden" name="location" value="<%= filterLocation %>">
+            <% } %>
+            <% if (typeof filterOs !== 'undefined' && filterOs) { %>
+              <input type="hidden" name="os" value="<%= filterOs %>">
+            <% } %>
             <% if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) { %>
               <% filterTags.forEach(function(tag) { %>
                 <input type="hidden" name="tags[]" value="<%= tag.id %>">
@@ -154,6 +192,16 @@ function buildExportUrl() {
             <% if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) { %>
               <% filterSystems.forEach(function(system) { %>
                 <input type="hidden" name="systems[]" value="<%= system.id %>">
+              <% }); %>
+            <% } %>
+            <% if (typeof filterManager !== 'undefined' && filterManager && filterManager.length > 0) { %>
+              <% filterManager.forEach(function(contact) { %>
+                <input type="hidden" name="contacts[]" value="<%= contact.id %>">
+              <% }); %>
+            <% } %>
+            <% if (typeof filterServices !== 'undefined' && filterServices && filterServices.length > 0) { %>
+              <% filterServices.forEach(function(service) { %>
+                <input type="hidden" name="services[]" value="<%= service.id %>">
               <% }); %>
             <% } %>
             

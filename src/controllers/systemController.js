@@ -301,8 +301,9 @@ systemController.exportSystemList = async (req, res) => {
     worksheet.addRow(headers);
     rows.forEach(row => worksheet.addRow(row));
     worksheet.columns.forEach(col => { col.width = 30; });
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="system_list.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="system_list_${timestamp}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {

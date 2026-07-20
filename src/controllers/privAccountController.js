@@ -690,8 +690,9 @@ privAccountController.exportPermissions = async (req, res) => {
         updated_by: row.updated_by || '',
       }).commit();
     });
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="privileged_permissions.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="privileged_permissions_${timestamp}.xlsx"`);
     await sheet.commit();
     await workbook.commit();
   } catch (err) {
@@ -765,8 +766,9 @@ privAccountController.exportRoles = async (req, res) => {
     });
 
     // Set response headers
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="privileged_roles.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="privileged_roles_${timestamp}.xlsx"`);
 
     // Write workbook to response
     await sheet.commit();
@@ -986,8 +988,9 @@ privAccountController.exportAccounts = async (req, res) => {
     });
 
     // Set response headers for Excel download
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="privileged_accounts.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="privileged_accounts_${timestamp}.xlsx"`);
 
     // Finalize and send the workbook
     await sheet.commit();

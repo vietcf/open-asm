@@ -113,14 +113,25 @@ function buildExportUrl() {
           <form class="d-flex align-items-center gap-2" role="search" method="get" action="/device/device">
             <!-- Hidden inputs to preserve filter values -->
             <input type="hidden" name="page" value="1">
-            <% if (typeof filterStatus !== 'undefined' && filterStatus) { %>
-              <input type="hidden" name="status" value="<%= filterStatus %>">
+            <% if (typeof device_type_id !== 'undefined' && device_type_id) { %>
+              <input type="hidden" name="device_type_id" value="<%= device_type_id %>">
             <% } %>
-            <% if (typeof filterType !== 'undefined' && filterType) { %>
-              <input type="hidden" name="type" value="<%= filterType %>">
+            <% if (typeof platform_id !== 'undefined' && platform_id) { %>
+              <input type="hidden" name="platform_id" value="<%= platform_id %>">
             <% } %>
-            <% if (typeof filterLocation !== 'undefined' && filterLocation) { %>
-              <input type="hidden" name="location" value="<%= filterLocation %>">
+            <% if (typeof location !== 'undefined' && location) { %>
+              <input type="hidden" name="location" value="<%= location %>">
+            <% } %>
+            <% if (typeof manufacturer !== 'undefined' && manufacturer) { %>
+              <input type="hidden" name="manufacturer" value="<%= manufacturer %>">
+            <% } %>
+            <% if (typeof device_role !== 'undefined' && device_role) { %>
+              <input type="hidden" name="device_role" value="<%= device_role %>">
+            <% } %>
+            <% if (typeof tags !== 'undefined' && tags && tags.length > 0) { %>
+              <% tags.forEach(function(tag) { %>
+                <input type="hidden" name="tags[]" value="<%= tag %>">
+              <% }); %>
             <% } %>
             
             <div class="input-group input-group-sm" style="width: 250px;">
@@ -314,9 +325,14 @@ function buildExportUrl() {
                     let params = [];
                     if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
                     if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
-                    if (typeof filterStatus !== 'undefined' && filterStatus) params.push('status=' + encodeURIComponent(filterStatus));
-                    if (typeof filterType !== 'undefined' && filterType) params.push('type=' + encodeURIComponent(filterType));
-                    if (typeof filterLocation !== 'undefined' && filterLocation) params.push('location=' + encodeURIComponent(filterLocation));
+                    if (typeof device_type_id !== 'undefined' && device_type_id) params.push('device_type_id=' + encodeURIComponent(device_type_id));
+                    if (typeof platform_id !== 'undefined' && platform_id) params.push('platform_id=' + encodeURIComponent(platform_id));
+                    if (typeof location !== 'undefined' && location) params.push('location=' + encodeURIComponent(location));
+                    if (typeof manufacturer !== 'undefined' && manufacturer) params.push('manufacturer=' + encodeURIComponent(manufacturer));
+                    if (typeof device_role !== 'undefined' && device_role) params.push('device_role=' + encodeURIComponent(device_role));
+                    if (typeof tags !== 'undefined' && tags && tags.length > 0) {
+                      tags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag)); });
+                    }
                     return params.join('&');
                   }
                   const deviceFilterQuery = buildDeviceFilterQuery();

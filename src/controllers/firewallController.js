@@ -316,9 +316,10 @@ firewallController.exportRuleList = async (req, res) => {
       });
     });
     worksheet.getRow(1).font = { bold: true };
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="firewall_rules_export.xlsx"');
-    
+    res.setHeader('Content-Disposition', `attachment; filename="firewall_rules_export_${timestamp}.xlsx"`);
+
     // Write to buffer first, then send
     const buffer = await workbook.xlsx.writeBuffer();
     res.send(buffer);

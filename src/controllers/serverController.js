@@ -153,11 +153,28 @@ serverController.listServer = async (req, res) => {
       }
       console.log('Selected OS:', selectedOS);
     }
+
+    // Build query string carrying all active filters, used by pagination links
+    // so filters aren't lost when navigating between pages.
+    const filterQueryParams = new URLSearchParams();
+    if (pageSize) filterQueryParams.set('pageSize', pageSize);
+    if (filterParams.search) filterQueryParams.set('search', filterParams.search);
+    if (filterParams.status) filterQueryParams.set('status', filterParams.status);
+    if (filterParams.type) filterQueryParams.set('type', filterParams.type);
+    if (filterParams.location) filterQueryParams.set('location', filterParams.location);
+    if (filterParams.tags && filterParams.tags.length) filterParams.tags.forEach(id => filterQueryParams.append('tags[]', id));
+    if (filterParams.manager && filterParams.manager.length) filterParams.manager.forEach(id => filterQueryParams.append('contacts[]', id));
+    if (filterParams.systems && filterParams.systems.length) filterParams.systems.forEach(id => filterQueryParams.append('systems[]', id));
+    if (filterParams.services && filterParams.services.length) filterParams.services.forEach(id => filterQueryParams.append('services[]', id));
+    if (filterParams.os && filterParams.os.length) filterQueryParams.set('os', filterParams.os[0]);
+    const serverFilterQuery = filterQueryParams.toString();
+
     res.render('pages/server/server_list', {
       serverList,
       search: filterParams.search,
       page,
       pageSize,
+      serverFilterQuery,
       totalPages,
       totalCount,
       startItem,
@@ -593,8 +610,9 @@ serverController.exportServerList = async (req, res) => {
     worksheet.addRow(headers);
     rows.forEach(row => worksheet.addRow(row));
     worksheet.columns.forEach(col => { col.width = 22; });
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="server_list.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="server_list_${timestamp}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {

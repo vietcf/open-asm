@@ -1332,8 +1332,9 @@ networkController.exportIpAddressList = async (req, res) => {
     worksheet.addRow(headers);
     rows.forEach(row => worksheet.addRow(row));
     worksheet.columns.forEach(col => { col.width = 22; });
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="ip_address_list.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="ip_address_list_${timestamp}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
@@ -1391,8 +1392,9 @@ networkController.exportSubnetList = async (req, res) => {
     rows.forEach(row => worksheet.addRow(row));
     worksheet.columns.forEach(col => { col.width = 22; });
     
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="subnet_list.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="subnet_list_${timestamp}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
@@ -1449,8 +1451,9 @@ networkController.exportDomainList = async (req, res) => {
     rows.forEach(row => worksheet.addRow(row));
     worksheet.columns.forEach(col => { col.width = 22; });
     
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="domain_list.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="domain_list_${timestamp}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
