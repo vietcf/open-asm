@@ -137,6 +137,16 @@ app.set('layout', 'layouts/layout');
 // app.set('layout extractStyles', true);
 
 // 7. Static files
+// User-uploaded documents (system/server/device attachments etc.) are served
+// as forced downloads with sniffing disabled — they're arbitrary files
+// uploaded by any authenticated user, so this closes the stored-XSS vector
+// (a .html/.svg upload would otherwise render/execute in the app's origin).
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads'), {
+  setHeaders: (res, filePath) => {
+    res.setHeader('Content-Disposition', `attachment; filename="${path.basename(filePath)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+  }
+}));
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Smart redirect for root URL - handles both authenticated and anonymous users
