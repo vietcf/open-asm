@@ -46,28 +46,28 @@ function buildPaginationUrl(targetPage) {
   // Add tags filter if exists
   if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
     filterTags.forEach(tag => {
-      params.append('tags[]', tag.id);
+      params.append('tags[]', tag.id || tag);
     });
   }
 
   // Add systems filter if exists
   if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
     filterSystems.forEach(system => {
-      params.append('systems[]', system.id);
+      params.append('systems[]', system.id || system);
     });
   }
 
   // Add contacts filter if exists
   if (typeof filterManager !== 'undefined' && filterManager && filterManager.length > 0) {
     filterManager.forEach(contact => {
-      params.append('contacts[]', contact.id);
+      params.append('contacts[]', contact.id || contact);
     });
   }
 
   // Add services filter if exists
   if (typeof filterServices !== 'undefined' && filterServices && filterServices.length > 0) {
     filterServices.forEach(service => {
-      params.append('services[]', service.id);
+      params.append('services[]', service.id || service);
     });
   }
 
@@ -106,28 +106,28 @@ function buildExportUrl() {
   // Add tags filter if exists
   if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
     filterTags.forEach(tag => {
-      params.append('tags[]', tag.id);
+      params.append('tags[]', tag.id || tag);
     });
   }
-  
+
   // Add systems filter if exists
   if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
     filterSystems.forEach(system => {
-      params.append('systems[]', system.id);
+      params.append('systems[]', system.id || system);
     });
   }
-  
+
   // Add contacts filter if exists
   if (typeof filterManager !== 'undefined' && filterManager && filterManager.length > 0) {
     filterManager.forEach(contact => {
-      params.append('contacts[]', contact.id);
+      params.append('contacts[]', contact.id || contact);
     });
   }
-  
+
   // Add services filter if exists
   if (typeof filterServices !== 'undefined' && filterServices && filterServices.length > 0) {
     filterServices.forEach(service => {
-      params.append('services[]', service.id);
+      params.append('services[]', service.id || service);
     });
   }
   
@@ -186,22 +186,22 @@ function buildExportUrl() {
             <% } %>
             <% if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) { %>
               <% filterTags.forEach(function(tag) { %>
-                <input type="hidden" name="tags[]" value="<%= tag.id %>">
+                <input type="hidden" name="tags[]" value="<%= tag.id || tag %>">
               <% }); %>
             <% } %>
             <% if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) { %>
               <% filterSystems.forEach(function(system) { %>
-                <input type="hidden" name="systems[]" value="<%= system.id %>">
+                <input type="hidden" name="systems[]" value="<%= system.id || system %>">
               <% }); %>
             <% } %>
             <% if (typeof filterManager !== 'undefined' && filterManager && filterManager.length > 0) { %>
               <% filterManager.forEach(function(contact) { %>
-                <input type="hidden" name="contacts[]" value="<%= contact.id %>">
+                <input type="hidden" name="contacts[]" value="<%= contact.id || contact %>">
               <% }); %>
             <% } %>
             <% if (typeof filterServices !== 'undefined' && filterServices && filterServices.length > 0) { %>
               <% filterServices.forEach(function(service) { %>
-                <input type="hidden" name="services[]" value="<%= service.id %>">
+                <input type="hidden" name="services[]" value="<%= service.id || service %>">
               <% }); %>
             <% } %>
             
