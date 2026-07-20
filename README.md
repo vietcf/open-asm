@@ -506,6 +506,12 @@ when cutting a release.
   + `X-Content-Type-Options: nosniff`) — previously any file type
   (including `.html`/`.svg`) was accepted and served inline, a stored-XSS
   vector
+- 🔒 **Security**: found and fixed the identical path-traversal pattern
+  repeated in Device, Firewall Rule, Contact, and Server's own
+  validation-file download routes and import upload/result filenames —
+  same root cause and fix as Network/System above, confirmed exploitable
+  by any authenticated user (every role including `viewer`) via PoC before
+  patching each one
 - 🐛 Server/Device list: filters (tags/systems/manager/services) were
   silently dropped from the Export link and from pagination/quick-search
   navigation due to a `.id` access on what were actually raw ID arrays
