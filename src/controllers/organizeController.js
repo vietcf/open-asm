@@ -548,7 +548,9 @@ organizeController.validateImportContacts = async (req, res) => {
     }
 
     const filePath = req.file.path;
-    const originalFileName = req.file.originalname;
+    // path.basename strips any directory components a crafted upload
+    // filename could carry, before it's woven into a filesystem path below.
+    const originalFileName = path.basename(req.file.originalname);
     let rows = [];
 
     // Parse file based on extension — Excel only (multer's fileFilter
@@ -790,7 +792,9 @@ organizeController.importContacts = async (req, res) => {
     }
 
     const filePath = req.file.path;
-    const originalFileName = req.file.originalname;
+    // path.basename strips any directory components a crafted upload
+    // filename could carry, before it's woven into a filesystem path below.
+    const originalFileName = path.basename(req.file.originalname);
     let rows = [];
 
     // Parse file (same logic as validation) — Excel only (multer's
@@ -1038,7 +1042,9 @@ organizeController.importContacts = async (req, res) => {
 // Download validation/import result files
 organizeController.downloadContactValidationFile = async (req, res) => {
   try {
-    const filename = req.params.filename;
+    // path.basename strips any directory components (../ or absolute
+    // paths) an attacker could smuggle through the :filename route param.
+    const filename = path.basename(req.params.filename || '');
     const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
     const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
     const filePath = path.join(tempDir, filename);

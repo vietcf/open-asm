@@ -1730,7 +1730,9 @@ firewallController.importRules = async (req, res) => {
 // Download firewall rule validation file
 firewallController.downloadRuleValidationFile = async (req, res) => {
   try {
-    const filename = req.params.filename;
+    // path.basename strips any directory components (../ or absolute
+    // paths) an attacker could smuggle through the :filename route param.
+    const filename = path.basename(req.params.filename || '');
     const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
     const filePath = path.join(process.cwd(), uploadsDir, 'temp', filename);
 

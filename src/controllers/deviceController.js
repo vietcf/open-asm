@@ -906,7 +906,9 @@ deviceController.validateImportDevices = async (req, res) => {
     console.log('File uploaded:', req.file.originalname, 'Size:', req.file.size);
 
     const filePath = req.file.path;
-    const originalFileName = req.file.originalname;
+    // path.basename strips any directory components a crafted upload
+    // filename could carry, before it's woven into a filesystem path below.
+    const originalFileName = path.basename(req.file.originalname);
     let rows = [];
 
     // Parse file based on extension
@@ -1268,7 +1270,9 @@ deviceController.importDevices = async (req, res) => {
     }
 
     const filePath = req.file.path;
-    const originalFileName = req.file.originalname;
+    // path.basename strips any directory components a crafted upload
+    // filename could carry, before it's woven into a filesystem path below.
+    const originalFileName = path.basename(req.file.originalname);
     let rows = [];
 
     // Every column must be present and in this exact order, matching the
@@ -1673,7 +1677,9 @@ deviceController.importDevices = async (req, res) => {
 // Download device validation file
 deviceController.downloadDeviceValidationFile = async (req, res) => {
   try {
-    const filename = req.params.filename;
+    // path.basename strips any directory components (../ or absolute
+    // paths) an attacker could smuggle through the :filename route param.
+    const filename = path.basename(req.params.filename || '');
     const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
     const filePath = path.join(process.cwd(), uploadsDir, 'temp', filename);
     

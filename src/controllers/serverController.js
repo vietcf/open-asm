@@ -769,7 +769,9 @@ serverController.validateImportServers = async (req, res) => {
     console.log('File uploaded:', req.file.originalname, 'Size:', req.file.size);
 
     const filePath = req.file.path;
-    const originalFileName = req.file.originalname;
+    // path.basename strips any directory components a crafted upload
+    // filename could carry, before it's woven into a filesystem path below.
+    const originalFileName = path.basename(req.file.originalname);
     let rows = [];
 
     // Parse file based on extension
@@ -1224,7 +1226,9 @@ serverController.importServers = async (req, res) => {
     }
 
     const filePath = req.file.path;
-    const originalFileName = req.file.originalname;
+    // path.basename strips any directory components a crafted upload
+    // filename could carry, before it's woven into a filesystem path below.
+    const originalFileName = path.basename(req.file.originalname);
     let rows = [];
 
     // Parse file (same logic as validation)
@@ -1657,7 +1661,9 @@ serverController.importServers = async (req, res) => {
 // Download server validation file
 serverController.downloadServerValidationFile = async (req, res) => {
   try {
-    const filename = req.params.filename;
+    // path.basename strips any directory components (../ or absolute
+    // paths) an attacker could smuggle through the :filename route param.
+    const filename = path.basename(req.params.filename || '');
     const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
     const filePath = path.join(process.cwd(), uploadsDir, 'temp', filename);
     
