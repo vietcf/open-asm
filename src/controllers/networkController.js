@@ -952,7 +952,9 @@ networkController.validateImportIPs = async (req, res) => {
       }
       
       // Tạo file Excel tạm với tên theo định dạng timestamp_filename_validated.xlsx
-      const originalFileName = req.file.originalname.replace(/\.[^/.]+$/, ""); // Remove extension
+      // path.basename strips any directory components a crafted upload
+      // filename could carry, before it's woven into a filesystem path.
+      const originalFileName = path.basename(req.file.originalname).replace(/\.[^/.]+$/, ""); // Remove extension
       const timestamp = Date.now();
       const excelFileName = `${timestamp}_${originalFileName}_validation.xlsx`;
       const excelFilePath = path.join(tempDir, excelFileName);
@@ -1233,7 +1235,7 @@ networkController.importIPs = async (req, res) => {
       }
       
       // Tạo file Excel tạm với tên theo định dạng timestamp_filename_imported.xlsx
-      const originalFileName = req.file.originalname.replace(/\.[^/.]+$/, ""); // Remove extension
+      const originalFileName = path.basename(req.file.originalname).replace(/\.[^/.]+$/, ""); // Remove extension
       const timestamp = Date.now();
       const excelFileName = `${timestamp}_${originalFileName}_imported.xlsx`;
       const excelFilePath = path.join(tempDir, excelFileName);
@@ -1554,10 +1556,13 @@ networkController.downloadTemplate = async (req, res) => {
 // Download validation results file
 networkController.downloadValidationFile = async (req, res) => {
   try {
-    const filename = req.params.filename;
+    // path.basename strips any directory components (../ or absolute
+    // paths) an attacker could smuggle through the :filename route param —
+    // otherwise this joins straight into the filesystem path below.
+    const filename = path.basename(req.params.filename || '');
     const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
     const filePath = path.join(process.cwd(), uploadsDir, 'temp', filename);
-    
+
     console.log('Downloading file:', filePath);
     
     if (fs.existsSync(filePath)) {
@@ -1907,7 +1912,7 @@ networkController.validateImportSubnets = async (req, res) => {
     }
 
     const timestamp = Date.now();
-    const validationFileName = `${timestamp}_${req.file.originalname}_validation.xlsx`;
+    const validationFileName = `${timestamp}_${path.basename(req.file.originalname)}_validation.xlsx`;
     const validationFilePath = path.join(tempDir, validationFileName);
     console.log('Writing Excel file to:', validationFilePath);
 
@@ -1990,7 +1995,7 @@ networkController.importSubnets = async (req, res) => {
     }
 
     const filePath = req.file.path;
-    const originalFileName = req.file.originalname;
+    const originalFileName = path.basename(req.file.originalname);
     let rows = [];
 
     // Parse file based on extension — Excel only (multer's fileFilter
@@ -2553,7 +2558,7 @@ networkController.validateImportDomains = async (req, res) => {
     }
 
     const timestamp = Date.now();
-    const validationFileName = `${timestamp}_${req.file.originalname}_validation.xlsx`;
+    const validationFileName = `${timestamp}_${path.basename(req.file.originalname)}_validation.xlsx`;
     const validationFilePath = path.join(tempDir, validationFileName);
     await workbook.xlsx.writeFile(validationFilePath);
 
@@ -2601,7 +2606,7 @@ networkController.importDomains = async (req, res) => {
     }
 
     const filePath = req.file.path;
-    const originalFileName = req.file.originalname;
+    const originalFileName = path.basename(req.file.originalname);
     let rows = [];
 
     const ext = path.extname(originalFileName).toLowerCase();
@@ -2851,7 +2856,9 @@ networkController.importDomains = async (req, res) => {
 // Download subnet validation file
 networkController.downloadSubnetValidationFile = async (req, res) => {
   try {
-    const filename = req.params.filename;
+    // path.basename strips any directory components (../ or absolute
+    // paths) an attacker could smuggle through the :filename route param.
+    const filename = path.basename(req.params.filename || '');
     const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
     const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
     const filePath = path.join(tempDir, filename);
