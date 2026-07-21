@@ -955,6 +955,17 @@
   // Read-only quick-view of pentest rounds for a System/Component, launched
   // from the Detail modal's "Pentest History" button. Full add/edit/delete
   // happens on the dedicated Pentest Management page (link below).
+  // Round name, participant names, and the uploaded report's original
+  // filename are all free-text user input persisted server-side with no
+  // HTML stripping — must be escaped before going into innerHTML, or a
+  // crafted round/filename executes script in the browser of anyone who
+  // later opens this quick-view.
+  function escapePentestHtml(value) {
+    return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
   function showPentestQuickView(objectType, objectId) {
     if (!objectId) return;
     const content = document.getElementById('pentestQuickViewContent');
@@ -973,13 +984,13 @@
         }
         let html = '<table class="table table-sm table-hover mb-0"><thead><tr><th>Round Name</th><th>Date</th><th>Status</th><th>Participants</th><th>Report</th></tr></thead><tbody>';
         rounds.forEach(function(round) {
-          const participants = (round.participants || []).map(p => p.name).join(', ') || '-';
+          const participants = (round.participants || []).map(p => escapePentestHtml(p.name)).join(', ') || '-';
           let report = '<span class="text-muted">No report</span>';
           if (round.report) {
-            report = '<a href="' + round.report.url + '" download class="text-decoration-none text-primary me-1">' + round.report.original_name + '</a>' +
-                     '<a href="/pentest/report/' + round.report.id + '/view" target="_blank" rel="noopener noreferrer" class="badge bg-light text-dark border text-decoration-none" style="border-radius:3px;">[View]</a>';
+            report = '<a href="' + escapePentestHtml(round.report.url) + '" download class="text-decoration-none text-primary me-1">' + escapePentestHtml(round.report.original_name) + '</a>' +
+                     '<a href="/pentest/report/' + encodeURIComponent(round.report.id) + '/view" target="_blank" rel="noopener noreferrer" class="badge bg-light text-dark border text-decoration-none" style="border-radius:3px;">[View]</a>';
           }
-          html += '<tr><td>' + round.name + '</td><td>' + (round.test_date ? new Date(round.test_date).toLocaleDateString('en-GB') : '-') + '</td><td>' + (round.status || 'NOT_STARTED') + '</td><td>' + participants + '</td><td>' + report + '</td></tr>';
+          html += '<tr><td>' + escapePentestHtml(round.name) + '</td><td>' + (round.test_date ? new Date(round.test_date).toLocaleDateString('en-GB') : '-') + '</td><td>' + escapePentestHtml(round.status || 'NOT_STARTED') + '</td><td>' + participants + '</td><td>' + report + '</td></tr>';
         });
         html += '</tbody></table>';
         content.innerHTML = html;
