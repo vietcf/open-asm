@@ -50,6 +50,12 @@
               </select>
             </div>
             <div class="mb-3">
+              <label class="form-label">Server Role</label>
+              <select id="server-role-select" name="server_role" class="form-select" data-placeholder="Select or type server role">
+                <option value="">-- Select Server Role --</option>
+              </select>
+            </div>
+            <div class="mb-3">
               <label class="form-label">Status</label>
               <select name="status" class="form-select" data-placeholder="Select status">
                 <option value="">-- Select Status --</option>
@@ -220,6 +226,34 @@
       placeholder: 'Select type',
       allowClear: true,
       width: '100%'
+    });
+
+    // Server Role select2 AJAX - Bootstrap 5 theme (type-to-create or pick existing)
+    $('#server-role-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select or type server role',
+      allowClear: true,
+      width: '100%',
+      tags: true,
+      createTag: function (params) {
+        var term = $.trim(params.term);
+        if (term === '') {
+          return null;
+        }
+        return {
+          id: term,
+          text: term,
+          newTag: true
+        };
+      },
+      ajax: {
+        url: '/server/api/server-role',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      }
     });
 
     // Status select2 - Bootstrap 5 theme

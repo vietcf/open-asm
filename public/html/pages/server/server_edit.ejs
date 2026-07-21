@@ -50,6 +50,12 @@
               </select>
             </div>
             <div class="mb-3">
+              <label class="form-label">Server Role</label>
+              <select id="server-role-select" name="server_role" class="form-select" data-placeholder="Select or type server role">
+                <option value="">-- Select Server Role --</option>
+              </select>
+            </div>
+            <div class="mb-3">
               <label class="form-label">Status</label>
               <select name="status" class="form-select" data-placeholder="Select status">
                 <option value="">-- Select Status --</option>
@@ -100,6 +106,7 @@
                  data-agents='<%= JSON.stringify(server.agents || []) %>'
                  data-services='<%= JSON.stringify(server.services || []) %>'
                  data-os='<%= JSON.stringify(server.os || null) %>'
+                 data-server-role='<%= server.server_role || "" %>'
                  style="display:none"></div>
           </div>
           <div class="card-footer d-flex justify-content-end">
@@ -228,6 +235,34 @@
       }
     });
 
+    // Server Role select2 AJAX - Bootstrap 5 theme (type-to-create or pick existing)
+    $('#server-role-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select or type server role',
+      allowClear: true,
+      width: '100%',
+      tags: true,
+      createTag: function (params) {
+        var term = $.trim(params.term);
+        if (term === '') {
+          return null;
+        }
+        return {
+          id: term,
+          text: term,
+          newTag: true
+        };
+      },
+      ajax: {
+        url: '/server/api/server-role',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      }
+    });
+
     // Type select2 - Bootstrap 5 theme
     $('select[name="type"]').select2({
       theme: 'bootstrap-5',
@@ -321,7 +356,8 @@ function loadServerExistingValues() {
       managers: JSON.parse(serverDataEl.dataset.managers || '[]'),
       agents: JSON.parse(serverDataEl.dataset.agents || '[]'),
       services: JSON.parse(serverDataEl.dataset.services || '[]'),
-      os: JSON.parse(serverDataEl.dataset.os || 'null')
+      os: JSON.parse(serverDataEl.dataset.os || 'null'),
+      server_role: serverDataEl.dataset.serverRole || ''
     };
 
     console.log('Loading server data:', serverData);
@@ -391,6 +427,12 @@ function loadServerExistingValues() {
         $('#service-select').append(option);
       });
       $('#service-select').trigger('change');
+    }
+
+    // Load Server Role
+    if (serverData.server_role) {
+      const option = new Option(serverData.server_role, serverData.server_role, true, true);
+      $('#server-role-select').append(option).trigger('change');
     }
 
     // Load Platform (OS) - need to fetch platform data first

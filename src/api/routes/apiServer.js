@@ -41,11 +41,20 @@ const apiServerRouter = express.Router();
  *           with config_name = 'server_type'. Example values: PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE.
  *           Must select from the configured list in the system.
  *       - in: query
+ *         name: server_role
+ *         schema:
+ *           type: string
+ *         description: |
+ *           Filter by server role (free-text, partial match). Not a fixed enum —
+ *           existing values can be discovered via GET /api/v1/servers/config
+ *           (server_roles), but any string may also be entered. Example values:
+ *           Web Server, Database Server.
+ *       - in: query
  *         name: location
  *         schema:
  *           type: string
  *         description: |
- *           Filter by location. Values are dynamically loaded from database config table 
+ *           Filter by location. Values are dynamically loaded from database config table
  *           with config_name = 'server_location'. Example values: DC, DR, CMC, BRANCH, CLOUD.
  *           Must select from the configured list in the system.
  *       - in: query
@@ -226,6 +235,17 @@ apiServerRouter.get('/find', authorizePermissionJWT('server.read'), apiServerCon
  *                           label:
  *                             type: string
  *                       example: [{"value": "DC", "label": "Data Center"}, {"value": "DR", "label": "Disaster Recovery"}]
+ *                     server_roles:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           value:
+ *                             type: string
+ *                           label:
+ *                             type: string
+ *                       description: Distinct server_role values currently in use (free-text, not a fixed enum).
+ *                       example: [{"value": "Web Server", "label": "Web Server"}, {"value": "Database Server", "label": "Database Server"}]
  *       500:
  *         description: Server error
  *         content:
@@ -284,9 +304,15 @@ apiServerRouter.get('/config', authorizePermissionJWT('server.read'), apiServerC
  *               type:
  *                 type: string
  *                 description: |
- *                   Server type. Values are dynamically loaded from database config table 
+ *                   Server type. Values are dynamically loaded from database config table
  *                   with config_name = 'server_type'. Example values: PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE.
  *                   Must select from the configured list in the system.
+ *               server_role:
+ *                 type: string
+ *                 description: |
+ *                   Server role (free-text, not a fixed enum). Existing values can be
+ *                   discovered via GET /api/v1/servers/config (server_roles), but any
+ *                   string may be used. Example values: Web Server, Database Server.
  *               managers:
  *                 type: array
  *                 items:
@@ -415,9 +441,15 @@ apiServerRouter.get('/:id', authorizePermissionJWT('server.read'), apiServerCont
  *               type:
  *                 type: string
  *                 description: |
- *                   Server type. Values are dynamically loaded from database config table 
+ *                   Server type. Values are dynamically loaded from database config table
  *                   with config_name = 'server_type'. Example values: PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE.
  *                   Must select from the configured list in the system.
+ *               server_role:
+ *                 type: string
+ *                 description: |
+ *                   Server role (free-text, not a fixed enum). Existing values can be
+ *                   discovered via GET /api/v1/servers/config (server_roles), but any
+ *                   string may be used. Example values: Web Server, Database Server.
  *               managers:
  *                 type: array
  *                 items:
@@ -457,6 +489,7 @@ apiServerRouter.get('/:id', authorizePermissionJWT('server.read'), apiServerCont
  *             status: "ONLINE"
  *             location: "DC"
  *             type: "PHYSICAL"
+ *             server_role: "Web Server"
  *             managers: [101, 102]
  *             systems: [201]
  *             agents: [301]
@@ -542,6 +575,9 @@ apiServerRouter.delete('/:id', authorizePermissionJWT('server.delete'), apiServe
  *             Server type. Values are dynamically loaded from database config table 
  *             with config_name = 'server_type'. Example values: PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE.
  *             Must select from the configured list in the system.
+ *         server_role:
+ *           type: string
+ *           description: Server role (free-text, not a fixed enum). Example values: Web Server, Database Server.
  *         managers:
  *           type: array
  *           items:
@@ -593,6 +629,9 @@ apiServerRouter.delete('/:id', authorizePermissionJWT('server.delete'), apiServe
  *             Server type. Values are dynamically loaded from database config table 
  *             with config_name = 'server_type'. Example values: PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE.
  *             Must select from the configured list in the system.
+ *         server_role:
+ *           type: string
+ *           description: Server role (free-text, not a fixed enum). Example values: Web Server, Database Server.
  *         description:
  *           type: string
  *         created_at:
