@@ -856,6 +856,31 @@ function buildExportUrl() {
             }
           });
 
+  // Status/Type/Location — options are already rendered server-side, so no
+  // ajax needed, just the Bootstrap 5 Select2 styling to match the other
+  // filter fields in this modal.
+  $('#filterServerStatus').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'All Status',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterServerModal')
+  });
+  $('#filterServerType').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'All Types',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterServerModal')
+  });
+  $('#filterServerLocation').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'All Locations',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterServerModal')
+  });
+
   // Filter IP Modal - Load existing filter values when opened
   $('#filterServerModal').on('show.bs.modal', function() {
     console.log('Filter IP Modal opened');
@@ -870,7 +895,7 @@ function buildExportUrl() {
   $('#filterServerModal').on('hidden.bs.modal', function() {
     console.log('Filter Server Modal hidden, resetting form');
     $('#filterServerForm')[0].reset();
-    $('#filterServerTags, #filterServerSystems, #filterServerContacts, #filterServerServices, #filterServerOs').val(null).trigger('change');
+    $('#filterServerTags, #filterServerSystems, #filterServerContacts, #filterServerServices, #filterServerOs, #filterServerStatus, #filterServerType, #filterServerLocation').val(null).trigger('change');
   });
 
   // Clear All Filters button
@@ -881,9 +906,9 @@ function buildExportUrl() {
     $('#filterServerContacts').val(null).trigger('change');
     $('#filterServerServices').val(null).trigger('change');
     $('#filterServerOs').val(null).trigger('change');
-    $('#filterServerStatus').val('');
-    $('#filterServerType').val('');
-    $('#filterServerLocation').val('');
+    $('#filterServerStatus').val(null).trigger('change');
+    $('#filterServerType').val(null).trigger('change');
+    $('#filterServerLocation').val(null).trigger('change');
     
     // Close modal
     $('#filterServerModal').modal('hide');
@@ -936,7 +961,7 @@ function loadFilterExistingValues() {
     
     // Load status
     if (filterStatus) {
-      $('#filterServerStatus').val(filterStatus);
+      $('#filterServerStatus').val(filterStatus).trigger('change');
     }
     
     // Load tags from window variables (more reliable)
@@ -988,12 +1013,12 @@ function loadFilterExistingValues() {
     
     // Load Type
     if (filterType) {
-      $('#filterServerType').val(filterType);
+      $('#filterServerType').val(filterType).trigger('change');
     }
-    
+
     // Load Location
     if (filterLocation) {
-      $('#filterServerLocation').val(filterLocation);
+      $('#filterServerLocation').val(filterLocation).trigger('change');
     }
     
     } catch (e) {

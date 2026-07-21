@@ -835,6 +835,15 @@ $(function() {
   
   // Tags Select2 - Add Domain Modal
   console.log('Setting up Tags Select2...');
+  // Record Type — options are already rendered server-side, so no ajax
+  // needed, just the Bootstrap 5 Select2 styling to match Tags/Systems.
+  $('#domainRecordType').select2({
+    theme: 'bootstrap-5',
+    width: '100%',
+    minimumResultsForSearch: Infinity,
+    dropdownParent: $('#addDomainModal')
+  });
+
   $('#domainTags').select2({
     theme: 'bootstrap-5',
     placeholder: 'Select tags (optional)',
@@ -941,6 +950,7 @@ $(function() {
     console.log('Add Domain Modal hidden, resetting form');
     $('#addDomainForm')[0].reset();
     $('#domainTags, #domainSystems, #domainIpId').val(null).trigger('change');
+    $('#domainRecordType').trigger('change');
   });
 
 
@@ -999,6 +1009,15 @@ $(function() {
   });
 
   // Edit Domain Modal - Initialize Select2
+  // Record Type — options are already rendered server-side, so no ajax
+  // needed, just the Bootstrap 5 Select2 styling to match Tags/Systems.
+  $('#editDomainRecordType').select2({
+    theme: 'bootstrap-5',
+    width: '100%',
+    minimumResultsForSearch: Infinity,
+    dropdownParent: $('#editDomainModal')
+  });
+
   $('#editDomainTags').select2({
             theme: 'bootstrap-5',
     multiple: true,
@@ -1069,7 +1088,7 @@ $(function() {
     // Populate form fields
     $('#editDomainName').val(domain);
     $('#editDomainDescription').val(description);
-    $('#editDomainRecordType').val(recordType);
+    $('#editDomainRecordType').val(recordType).trigger('change');
 
     // Load existing values for Select2 fields after a short delay
         setTimeout(() => {
@@ -1106,6 +1125,16 @@ $(function() {
   });
 
   // Filter Domain Modal - Initialize Select2
+  // Record Type — options are already rendered server-side, so no ajax
+  // needed, just the Bootstrap 5 Select2 styling to match Tags/Systems.
+  $('#filterDomainRecordType').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'All Record Types',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterDomainModal')
+  });
+
   $('#filterDomainTags').select2({
             theme: 'bootstrap-5',
             placeholder: 'Select tag(s)',
@@ -1161,7 +1190,7 @@ $(function() {
   $('#filterDomainModal').on('hidden.bs.modal', function() {
     console.log('Filter Domain Modal hidden, resetting form');
     $('#filterDomainForm')[0].reset();
-    $('#filterDomainTags, #filterDomainSystems').val(null).trigger('change');
+    $('#filterDomainTags, #filterDomainSystems, #filterDomainRecordType').val(null).trigger('change');
   });
 
   // Clear All Filters button
@@ -1169,7 +1198,7 @@ $(function() {
     // Clear all select2 values
     $('#filterDomainTags').val(null).trigger('change');
     $('#filterDomainSystems').val(null).trigger('change');
-    $('#filterDomainRecordType').val('');
+    $('#filterDomainRecordType').val(null).trigger('change');
     
     // Close modal
     $('#filterDomainModal').modal('hide');
@@ -1424,7 +1453,7 @@ function loadFilterExistingValues() {
     
     // Load Record Type
     if (filterStatus) {
-      $('#filterDomainRecordType').val(filterStatus);
+      $('#filterDomainRecordType').val(filterStatus).trigger('change');
     }
     
     // Load tags

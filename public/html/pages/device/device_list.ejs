@@ -840,6 +840,17 @@ $(document).ready(function() {
     }
   });
 
+  // Initialize Select2 for Location — options are already rendered
+  // server-side (locationOptions), so no ajax needed, just the Bootstrap 5
+  // styling to match the other filter fields in this modal.
+  $('#filterDeviceLocation').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'All Locations',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterDeviceModal')
+  });
+
   console.log('All Select2 fields initialized');
 
   // Clear all filters - use event delegation
@@ -852,6 +863,7 @@ $(document).ready(function() {
     $('#filterDevicePlatform').val(null).trigger('change');
     $('#filterDeviceManufacturer').val(null).trigger('change');
     $('#filterDeviceRole').val(null).trigger('change');
+    $('#filterDeviceLocation').val(null).trigger('change');
 
     // Also try using Select2 API to clear
     $('#filterDeviceTypeId').select2('val', null);
@@ -859,9 +871,7 @@ $(document).ready(function() {
     $('#filterDevicePlatform').select2('val', null);
     $('#filterDeviceManufacturer').select2('val', null);
     $('#filterDeviceRole').select2('val', null);
-
-    // Clear regular select field
-    $('#filterDeviceLocation').val('');
+    $('#filterDeviceLocation').select2('val', null);
 
     // Close modal
     $('#filterDeviceModal').modal('hide');
