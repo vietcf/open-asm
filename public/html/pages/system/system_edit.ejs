@@ -387,7 +387,8 @@ $(function() {
     if (fileMap.size > 0) {
       fileMap.forEach(function(file) {
         if (file.type === 'existing') {
-          html += `<li class="list-group-item d-flex justify-content-between align-items-center">${file.originalname || file.name} <a href="${file.url}" target="_blank">[View]</a> <a href="#" class="remove-doc text-danger ms-2" data-type="existing" data-id="${file.fileId}" title="Delete"><i class="fa fa-trash"></i></a></li>`;
+          const viewUrl = file.fileId ? ('/system/file/' + file.fileId + '/view') : file.url;
+          html += `<li class="list-group-item d-flex justify-content-between align-items-center"><a href="${file.url}" download class="text-decoration-none">${file.originalname || file.name}</a> <a href="${viewUrl}" target="_blank" rel="noopener noreferrer">[View]</a> <a href="#" class="remove-doc text-danger ms-2" data-type="existing" data-id="${file.fileId}" title="Delete"><i class="fa fa-trash"></i></a></li>`;
         } else if (file.type === 'uploaded') {
           html += `<li class="list-group-item d-flex justify-content-between align-items-center">${file.originalname || file.name} <a href="${file.url}" target="_blank">[View]</a> <a href="#" class="remove-doc text-danger ms-2" data-type="uploaded" data-name="${file.fileName}" title="Remove"><i class="fa fa-times"></i></a> <span class="badge bg-info ms-2">new</span></li>`;
         }

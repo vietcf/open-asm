@@ -60,4 +60,8 @@ router.get('/api/system', systemController.apiSystemSearch);
 // API: Get all components of a system (for AJAX in system detail)
 router.get('/api/system/:id/components', requirePermission('system.read'), systemController.apiSystemComponents);
 
+// View an attached system file inline (opens in a new tab) instead of the
+// forced download every /uploads/* file gets from the global static route.
+router.get('/file/:id/view', requirePermission('system.read'), systemController.viewSystemFile);
+
 export default router;

@@ -1,4 +1,6 @@
 import ExcelJS from 'exceljs';
+import fs from 'fs';
+import path from 'path';
 import System from '../models/System.js';
 import Contact from '../models/Contact.js';
 import Unit from '../models/Unit.js';
@@ -578,6 +580,78 @@ systemController.apiSystemComponents = async (req, res) => {
     res.json({ components: componentList });
   } catch (err) {
     res.status(500).json({ error: 'Error loading components', detail: err.message });
+  }
+};
+
+// Extension -> MIME map for inline preview, restricted to the same
+// safe allow-list enforced at upload time (fileUpload.middleware.js). We
+// deliberately never trust the DB's stored mime_type here: it comes
+// straight from the client-supplied multipart Content-Type at upload time
+// (systemController create() calls pass file.mimetype through unchecked),
+// so a malicious uploader could have paired a "safe" .pdf extension with a
+// declared mime_type of text/html. Serving inline with an attacker-chosen
+// Content-Type would reopen the stored-XSS hole the forced-download
+// behavior (src/app.js /uploads static route) exists to close.
+const SAFE_INLINE_MIME_BY_EXT = {
+  '.pdf': 'application/pdf',
+  '.doc': 'application/msword',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.xls': 'application/vnd.ms-excel',
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.ppt': 'application/vnd.ms-powerpoint',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.txt': 'text/plain',
+  '.csv': 'text/csv',
+  '.zip': 'application/zip',
+  '.rar': 'application/vnd.rar',
+  '.7z': 'application/x-7z-compressed',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif'
+};
+
+// Serve a previously-uploaded system attachment inline (opens in a new
+// browser tab) instead of the forced download every /uploads/* file gets
+// from the global static middleware. Only extensions in the safe allow-list
+// are ever served inline; anything else falls back to attachment.
+systemController.viewSystemFile = async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!id || isNaN(Number(id))) return res.status(400).send('Invalid file id');
+
+    const file = await FileUpload.findById(id);
+    if (!file || file.object_type !== 'system') return res.status(404).send('File not found');
+
+    if (process.env.FILE_UPLOAD_DRIVER === 's3') {
+      return res.redirect(FileUpload.getUrl(file));
+    }
+
+    // Resolve strictly within uploads/system, ignoring whatever directory
+    // components file_path happens to carry (it's stored inconsistently as
+    // either an absolute multer path or a "/uploads/system/..." URL,
+    // depending on which upload flow created it) — only the basename is
+    // trusted, same as FileUpload.getUrl().
+    const basename = path.basename(file.file_path);
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const baseDir = path.resolve(process.cwd(), uploadsDir, 'system');
+    const absPath = path.resolve(baseDir, basename);
+    if (!absPath.startsWith(baseDir + path.sep)) {
+      return res.status(400).send('Invalid file path');
+    }
+    if (!fs.existsSync(absPath)) return res.status(404).send('File not found on disk');
+
+    const ext = path.extname(basename).toLowerCase();
+    const safeMime = SAFE_INLINE_MIME_BY_EXT[ext];
+    const disposition = safeMime ? 'inline' : 'attachment';
+    const safeName = (file.original_name || basename).replace(/["\r\n]/g, '');
+
+    res.setHeader('Content-Type', safeMime || 'application/octet-stream');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Disposition', `${disposition}; filename="${safeName}"`);
+    res.sendFile(absPath);
+  } catch (err) {
+    res.status(500).send('Error viewing file: ' + err.message);
   }
 };
 

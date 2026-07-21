@@ -770,9 +770,10 @@ function buildSystemExportUrl() {
           system.docs.forEach(function(file) {
             const fileName = file.name || file.originalname || 'Unknown file';
             const fileUrl = file.url || '#';
+            const fileViewUrl = file.id ? ('/system/file/' + file.id + '/view') : fileUrl;
             html += '<div class="mt-1">';
-            html += '<a href="' + fileUrl + '" target="_blank" class="text-decoration-none text-primary me-2">' + String(fileName).trim() + '</a>';
-            html += '<span class="badge bg-light text-dark border" style="border-radius: 3px;">[View]</span>';
+            html += '<a href="' + fileUrl + '" download class="text-decoration-none text-primary me-2">' + String(fileName).trim() + '</a>';
+            html += '<a href="' + fileViewUrl + '" target="_blank" rel="noopener noreferrer" class="badge bg-light text-dark border text-decoration-none" style="border-radius: 3px;">[View]</a>';
             html += '</div>';
           });
           html += '</dd>';
