@@ -51,7 +51,7 @@
             </div>
             <div class="mb-3">
               <label class="form-label">Server Role</label>
-              <select id="server-role-select" name="server_role" class="form-select" data-placeholder="e.g. Web, Database, API...">
+              <select id="server-role-select" name="server_role" class="form-select" data-placeholder="Select or type server role">
                 <option value="">-- Select Server Role --</option>
               </select>
             </div>
@@ -238,7 +238,7 @@
     // Server Role select2 AJAX - Bootstrap 5 theme (type-to-create or pick existing)
     $('#server-role-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'e.g. Web, Database, API...',
+      placeholder: 'Select or type server role',
       allowClear: true,
       width: '100%',
       tags: true,

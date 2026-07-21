@@ -577,8 +577,7 @@ apiServerRouter.delete('/:id', authorizePermissionJWT('server.delete'), apiServe
  *             Must select from the configured list in the system.
  *         server_role:
  *           type: string
- *           description: |
- *             Server role (free-text, not a fixed enum). Example values: Web Server, Database Server.
+ *           description: Server role (free-text, not a fixed enum). Example values: Web Server, Database Server.
  *         managers:
  *           type: array
  *           items:
@@ -632,8 +631,7 @@ apiServerRouter.delete('/:id', authorizePermissionJWT('server.delete'), apiServe
  *             Must select from the configured list in the system.
  *         server_role:
  *           type: string
- *           description: |
- *             Server role (free-text, not a fixed enum). Example values: Web Server, Database Server.
+ *           description: Server role (free-text, not a fixed enum). Example values: Web Server, Database Server.
  *         description:
  *           type: string
  *         created_at:
