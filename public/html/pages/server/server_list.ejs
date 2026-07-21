@@ -38,11 +38,6 @@ function buildPaginationUrl(targetPage) {
     params.set('type', filterType);
   }
 
-  // Add server role filter if exists
-  if (typeof filterServerRole !== 'undefined' && filterServerRole) {
-    params.set('server_role', filterServerRole);
-  }
-
   // Add location filter if exists
   if (typeof filterLocation !== 'undefined' && filterLocation) {
     params.set('location', filterLocation);
@@ -102,12 +97,7 @@ function buildExportUrl() {
   if (typeof filterType !== 'undefined' && filterType) {
     params.set('type', filterType);
   }
-
-  // Add server role filter if exists
-  if (typeof filterServerRole !== 'undefined' && filterServerRole) {
-    params.set('server_role', filterServerRole);
-  }
-
+  
   // Add location filter if exists
   if (typeof filterLocation !== 'undefined' && filterLocation) {
     params.set('location', filterLocation);
@@ -187,9 +177,6 @@ function buildExportUrl() {
             <% } %>
             <% if (typeof filterType !== 'undefined' && filterType) { %>
               <input type="hidden" name="type" value="<%= filterType %>">
-            <% } %>
-            <% if (typeof filterServerRole !== 'undefined' && filterServerRole) { %>
-              <input type="hidden" name="server_role" value="<%= filterServerRole %>">
             <% } %>
             <% if (typeof filterLocation !== 'undefined' && filterLocation) { %>
               <input type="hidden" name="location" value="<%= filterLocation %>">
@@ -278,7 +265,6 @@ function buildExportUrl() {
          data-services='<%= JSON.stringify(filterServices || []) %>'
          data-os='<%= filterOs || '' %>'
          data-type='<%= filterType || '' %>'
-         data-server-role='<%= filterServerRole || '' %>'
          data-location='<%= filterLocation || '' %>'
          style="display:none"></div>
 
@@ -593,15 +579,7 @@ function buildExportUrl() {
                 <% } %>
               </select>
                   </div>
-
-            <!-- Server Role Filter -->
-            <div class="col-12 mb-2">
-              <label class="form-label">Server Role</label>
-              <select id="filterServerRole" name="server_role" class="form-control">
-                <option value="">All Server Roles</option>
-              </select>
-                  </div>
-
+                  
             <!-- Location Filter -->
             <div class="col-12 mb-2">
               <label class="form-label">Location</label>
@@ -657,7 +635,7 @@ function buildExportUrl() {
                 <li>Fill the template with your server data</li>
                 <li>IPAddress (Required, comma-separated if multiple) is required and must be valid IP format</li>
                 <li>Name is optional (auto-generated if empty using format: platform_firstIP)</li>
-                <li>OS, Status, Location, Type, Server Role are optional</li>
+                <li>OS, Status, Location, Type are optional</li>
                 <li>Manager, System, Agent, Service, Tag are optional and can be comma-separated if multiple</li>
                 <li>Description is optional</li>
                 <li>Select your filled template file and validate before importing</li>
@@ -895,39 +873,6 @@ function buildExportUrl() {
     width: '100%',
     dropdownParent: $('#filterServerModal')
   });
-
-  // Server Role filter select2 AJAX - Bootstrap 5 theme (type-to-create or pick existing)
-  $('#filterServerRole').select2({
-    theme: 'bootstrap-5',
-    placeholder: 'All Server Roles',
-    allowClear: true,
-    width: '100%',
-    dropdownParent: $('#filterServerModal'),
-    tags: true,
-    createTag: function (params) {
-      var term = $.trim(params.term);
-      if (term === '') {
-        return null;
-      }
-      return {
-        id: term,
-        text: term,
-        newTag: true
-      };
-    },
-    ajax: {
-      url: '/server/api/server-role',
-      dataType: 'json',
-      delay: 250,
-      data: function(params) {
-        return { search: params.term };
-      },
-      processResults: function(data) {
-        return { results: data };
-      },
-      cache: true
-    }
-  });
   $('#filterServerLocation').select2({
     theme: 'bootstrap-5',
     placeholder: 'All Locations',
@@ -950,7 +895,7 @@ function buildExportUrl() {
   $('#filterServerModal').on('hidden.bs.modal', function() {
     console.log('Filter Server Modal hidden, resetting form');
     $('#filterServerForm')[0].reset();
-    $('#filterServerTags, #filterServerSystems, #filterServerContacts, #filterServerServices, #filterServerOs, #filterServerStatus, #filterServerType, #filterServerRole, #filterServerLocation').val(null).trigger('change');
+    $('#filterServerTags, #filterServerSystems, #filterServerContacts, #filterServerServices, #filterServerOs, #filterServerStatus, #filterServerType, #filterServerLocation').val(null).trigger('change');
   });
 
   // Clear All Filters button
@@ -963,7 +908,6 @@ function buildExportUrl() {
     $('#filterServerOs').val(null).trigger('change');
     $('#filterServerStatus').val(null).trigger('change');
     $('#filterServerType').val(null).trigger('change');
-    $('#filterServerRole').val(null).trigger('change');
     $('#filterServerLocation').val(null).trigger('change');
     
     // Close modal
@@ -999,10 +943,9 @@ function loadFilterExistingValues() {
     const filterServices = JSON.parse(filterDataEl.dataset.services || '[]');
     const filterOS = filterDataEl.dataset.os || '';
     const filterType = filterDataEl.dataset.type || '';
-    const filterServerRole = filterDataEl.dataset.serverRole || '';
     const filterLocation = filterDataEl.dataset.location || '';
-
-    console.log('Filter data:', { filterTags, filterSystems, filterStatus, filterManagers, filterServices, filterOS, filterType, filterServerRole, filterLocation });
+    
+    console.log('Filter data:', { filterTags, filterSystems, filterStatus, filterManagers, filterServices, filterOS, filterType, filterLocation });
     console.log('Window selectedManagers:', window.selectedManagers);
     console.log('Window selectedOS:', window.selectedOS);
     
@@ -1071,12 +1014,6 @@ function loadFilterExistingValues() {
     // Load Type
     if (filterType) {
       $('#filterServerType').val(filterType).trigger('change');
-    }
-
-    // Load Server Role (free-text tag select2 - needs the option created first)
-    if (filterServerRole) {
-      const option = new Option(filterServerRole, filterServerRole, true, true);
-      $('#filterServerRole').append(option).trigger('change');
     }
 
     // Load Location
@@ -1154,7 +1091,6 @@ function showServerDetail(serverId) {
   html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><span style="white-space: pre-wrap;">' + String(server.description || 'N/A').trim() + '</span></dd>';
   html += '<dt class="col-sm-4">Status</dt><dd class="col-sm-8">' + String(server.status || 'N/A').trim() + '</dd>';
   html += '<dt class="col-sm-4">Type</dt><dd class="col-sm-8">' + String(server.type || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Server Role</dt><dd class="col-sm-8">' + String(server.server_role || 'N/A').trim() + '</dd>';
   html += '<dt class="col-sm-4">Location</dt><dd class="col-sm-8">' + String(server.location || 'N/A').trim() + '</dd>';
   html += '<dt class="col-sm-4">Operating System</dt><dd class="col-sm-8">' + String(server.platform_name || server.os || 'N/A').trim() + '</dd>';
 

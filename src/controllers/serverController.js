@@ -74,7 +74,6 @@ serverController.listServer = async (req, res) => {
       search: req.query.search ? req.query.search.trim().toLowerCase() : '',
       location: typeof req.query.location !== 'undefined' ? req.query.location : '',
       type: typeof req.query.type !== 'undefined' ? req.query.type : '',
-      server_role: req.query.server_role ? req.query.server_role.trim() : '',
       status: typeof req.query.status !== 'undefined' ? req.query.status : '',
       tags: normalizeFilterArray(req.query['tags[]'] || req.query.tags),
       manager: normalizeFilterArray(req.query['contacts[]'] || req.query.manager),
@@ -82,7 +81,7 @@ serverController.listServer = async (req, res) => {
       services: normalizeFilterArray(req.query['services[]'] || req.query.services),
       os: normalizeFilterArray(req.query['os[]'] || req.query.os)
     };
-
+    
     console.log('Filter params:', filterParams);
 
     // --- Query server list and count ---
@@ -90,7 +89,6 @@ serverController.listServer = async (req, res) => {
       search: filterParams.search,
       status: filterParams.status,
       type: filterParams.type,
-      server_role: filterParams.server_role,
       location: filterParams.location,
       tags: filterParams.tags,
       manager: filterParams.manager,
@@ -163,7 +161,6 @@ serverController.listServer = async (req, res) => {
     if (filterParams.search) filterQueryParams.set('search', filterParams.search);
     if (filterParams.status) filterQueryParams.set('status', filterParams.status);
     if (filterParams.type) filterQueryParams.set('type', filterParams.type);
-    if (filterParams.server_role) filterQueryParams.set('server_role', filterParams.server_role);
     if (filterParams.location) filterQueryParams.set('location', filterParams.location);
     if (filterParams.tags && filterParams.tags.length) filterParams.tags.forEach(id => filterQueryParams.append('tags[]', id));
     if (filterParams.manager && filterParams.manager.length) filterParams.manager.forEach(id => filterQueryParams.append('contacts[]', id));
@@ -189,7 +186,6 @@ serverController.listServer = async (req, res) => {
       typesOptions,
       filterLocation: filterParams.location,
       filterType: filterParams.type,
-      filterServerRole: filterParams.server_role,
       filterStatus: filterParams.status,
       filterTags: filterParams.tags,
       filterManager: filterParams.manager,
@@ -212,11 +208,11 @@ serverController.listServer = async (req, res) => {
 // Create a new server
 serverController.createServer = async (req, res) => {
   try {
-    const { name, os, status, location, type, server_role, managers, systems, agents, services, tags, ip_addresses, description } = req.body || {};
+    const { name, os, status, location, type, managers, systems, agents, services, tags, ip_addresses, description } = req.body || {};
     const username = req.session && req.session.user && req.session.user.username ? req.session.user.username : 'admin';
 
     await createServerService({
-      name, os, status, location, type, server_role, managers, systems, agents, services, tags, ip_addresses, description,
+      name, os, status, location, type, managers, systems, agents, services, tags, ip_addresses, description,
       updated_by: username
     });
     req.flash('success', 'Server added successfully');
@@ -314,7 +310,7 @@ serverController.addServerForm = async (req, res) => {
 serverController.updateServer = async (req, res) => {
   try {
     const id = req.params.id;
-    const { name, os, status, location, type, server_role, managers, systems, agents, services, tags, ip_addresses, description } = req.body || {};
+    const { name, os, status, location, type, managers, systems, agents, services, tags, ip_addresses, description } = req.body || {};
     const username = req.session && req.session.user && req.session.user.username ? req.session.user.username : 'admin';
 
     // The edit form always fully replaces every association on submit, so
@@ -322,7 +318,7 @@ serverController.updateServer = async (req, res) => {
     // whatever happens to be present in the body — matches the previous
     // "always overwrite" behavior of this form.
     await updateServerService(id, {
-      name, os, status, location, type, server_role, description,
+      name, os, status, location, type, description,
       managers: managers || [],
       systems: systems || [],
       agents: agents || [],
@@ -530,44 +526,6 @@ serverController.apiSearchServer = async (req, res) => {
   }
 };
 
-// API: Get distinct server roles for select2 ajax (type-to-create or pick existing)
-serverController.apiServerRoles = async (req, res) => {
-  try {
-    const { search } = req.query;
-    const client = await pool.connect();
-
-    try {
-      let query = `
-        SELECT DISTINCT server_role
-        FROM servers
-        WHERE server_role IS NOT NULL
-        AND server_role != ''
-      `;
-      const params = [];
-
-      if (search && search.trim()) {
-        query += ` AND server_role ILIKE $1`;
-        params.push(`%${search.trim()}%`);
-      }
-
-      query += ` ORDER BY server_role ASC LIMIT 20`;
-
-      const result = await client.query(query, params);
-      const serverRoles = result.rows.map(row => ({
-        id: row.server_role,
-        text: row.server_role
-      }));
-
-      res.json(serverRoles);
-    } finally {
-      client.release();
-    }
-  } catch (err) {
-    console.error('Error fetching server roles:', err);
-    res.status(500).json({ error: 'Error fetching server roles: ' + err.message });
-  }
-};
-
 // Delete a server and all related links
 // This function deletes a server by its ID, removes all related records in join tables (server_contact, server_system, server_agents, server_services, ip_addresses),
 // and then deletes the server itself. It redirects to the server list with a success or error message.
@@ -598,7 +556,6 @@ serverController.exportServerList = async (req, res) => {
       search: req.query.search ? req.query.search.trim().toLowerCase() : '',
       location: typeof req.query.location !== 'undefined' ? req.query.location : '',
       type: typeof req.query.type !== 'undefined' ? req.query.type : '',
-      server_role: req.query.server_role ? req.query.server_role.trim() : '',
       status: typeof req.query.status !== 'undefined' ? req.query.status : '',
       tags: normalizeFilterArray(req.query['tags[]'] || req.query.tags),
       manager: normalizeFilterArray(req.query['contacts[]'] || req.query.manager),
@@ -606,15 +563,14 @@ serverController.exportServerList = async (req, res) => {
       services: normalizeFilterArray(req.query['services[]'] || req.query.services),
       os: normalizeFilterArray(req.query['os[]'] || req.query.os)
     };
-
+    
     console.log('Export filter params:', filterParams);
-
+    
     // Lấy toàn bộ danh sách (không phân trang)
     const serverList = await Server.findFilteredList({
       search: filterParams.search,
       status: filterParams.status,
       type: filterParams.type,
-      server_role: filterParams.server_role,
       location: filterParams.location,
       tags: filterParams.tags,
       manager: filterParams.manager,
@@ -626,7 +582,7 @@ serverController.exportServerList = async (req, res) => {
     });
     // Định nghĩa các cột xuất Excel
     const headers = [
-      'ID', 'Name', 'Description', 'IP Address(es)', 'Status', 'Location', 'Type', 'Server Role',
+      'ID', 'Name', 'Description', 'IP Address(es)', 'Status', 'Location', 'Type',
       'Managers', 'Platform (OS)', 'Agents', 'Services', 'Systems', 'Tags',
       'Created At', 'Updated At', 'Updated By'
     ];
@@ -638,7 +594,6 @@ serverController.exportServerList = async (req, res) => {
       server.status || '',
       server.location || '',
       server.type || '',
-      server.server_role || '',
       (server.managers && server.managers.length ? server.managers.map(m => m.email || m.name || 'Unknown').join(', ') : ''),
       server.platform_name || '',
       (server.agents && server.agents.length ? server.agents.map(a => a.name).join(', ') : ''),
@@ -696,7 +651,6 @@ serverController.downloadServerTemplate = async (req, res) => {
       'Status (Optional)',
       'Location (Optional)',
       'Type (Optional)',
-      'Server Role (Optional)',
       'Manager (Optional, comma-separated if multiple)',
       'System (Optional, comma-separated if multiple)',
       'Agent (Optional, comma-separated if multiple)',
@@ -713,7 +667,6 @@ serverController.downloadServerTemplate = async (req, res) => {
       'ONLINE',
       'DC',
       'Physical',
-      'Web Server',
       'admin@company.com,manager@company.com',
       'System1,System2',
       'Agent1,Agent2',
@@ -721,7 +674,7 @@ serverController.downloadServerTemplate = async (req, res) => {
       'Tag1,Tag2',
       'Test server description'
     ]);
-
+    
     // Add sample with auto-generated name
     worksheet.addRow([
       '', // Empty name - will be auto-generated
@@ -730,7 +683,6 @@ serverController.downloadServerTemplate = async (req, res) => {
       'OFFLINE',
       'DR',
       'Virtual',
-      'Database Server',
       'admin@company.com',
       'System1',
       'Agent1',
@@ -738,7 +690,7 @@ serverController.downloadServerTemplate = async (req, res) => {
       'Tag1',
       'Auto-generated name example'
     ]);
-
+    
     // Set column widths
     worksheet.columns = [
       { width: 25 },  // Name
@@ -747,7 +699,6 @@ serverController.downloadServerTemplate = async (req, res) => {
       { width: 15 },  // Status
       { width: 15 },  // Location
       { width: 15 },  // Type
-      { width: 20 },  // Server Role
       { width: 30 },  // Manager
       { width: 25 },  // System
       { width: 25 },  // Agent
@@ -861,7 +812,6 @@ serverController.validateImportServers = async (req, res) => {
       'Status (Optional)',
       'Location (Optional)',
       'Type (Optional)',
-      'Server Role (Optional)',
       'Manager (Optional, comma-separated if multiple)',
       'System (Optional, comma-separated if multiple)',
       'Agent (Optional, comma-separated if multiple)',
@@ -926,7 +876,6 @@ serverController.validateImportServers = async (req, res) => {
         status: sanitizeString(row['Status (Optional)'] || ''),
         location: sanitizeString(row['Location (Optional)'] || ''),
         type: sanitizeString(row['Type (Optional)'] || ''),
-        server_role: sanitizeString(row['Server Role (Optional)'] || ''),
         manager: sanitizeString(row['Manager (Optional, comma-separated if multiple)'] || ''),
         system: sanitizeString(row['System (Optional, comma-separated if multiple)'] || ''),
         agent: sanitizeString(row['Agent (Optional, comma-separated if multiple)'] || ''),
@@ -1145,7 +1094,6 @@ serverController.validateImportServers = async (req, res) => {
       'Status (Optional)',
       'Location (Optional)',
       'Type (Optional)',
-      'Server Role (Optional)',
       'Manager (Optional, comma-separated if multiple)',
       'System (Optional, comma-separated if multiple)',
       'Agent (Optional, comma-separated if multiple)',
@@ -1173,7 +1121,6 @@ serverController.validateImportServers = async (req, res) => {
         result.status,
         result.location,
         result.type,
-        result.server_role,
         result.manager,
         result.system,
         result.agent,
@@ -1186,10 +1133,10 @@ serverController.validateImportServers = async (req, res) => {
 
       // Color code validation status
       if (result.validation_status === 'FAIL') {
-        row.getCell(14).font = { color: { argb: 'FFFF0000' } }; // Validation Status column
-        row.getCell(15).font = { color: { argb: 'FFFF0000' } }; // Validation Reason column
+        row.getCell(13).font = { color: { argb: 'FFFF0000' } }; // Validation Status column
+        row.getCell(14).font = { color: { argb: 'FFFF0000' } }; // Validation Reason column
       } else {
-        row.getCell(14).font = { color: { argb: 'FF008000' } }; // Validation Status column
+        row.getCell(13).font = { color: { argb: 'FF008000' } }; // Validation Status column
       }
     });
 
@@ -1201,7 +1148,6 @@ serverController.validateImportServers = async (req, res) => {
       { width: 15 },  // Status
       { width: 15 },  // Location
       { width: 15 },  // Type
-      { width: 20 },  // Server Role
       { width: 30 },  // Manager
       { width: 25 },  // System
       { width: 25 },  // Agent
@@ -1322,7 +1268,6 @@ serverController.importServers = async (req, res) => {
       'Status (Optional)',
       'Location (Optional)',
       'Type (Optional)',
-      'Server Role (Optional)',
       'Manager (Optional, comma-separated if multiple)',
       'System (Optional, comma-separated if multiple)',
       'Agent (Optional, comma-separated if multiple)',
@@ -1387,7 +1332,6 @@ serverController.importServers = async (req, res) => {
         status: sanitizeString(row['Status (Optional)'] || ''),
         location: sanitizeString(row['Location (Optional)'] || ''),
         type: sanitizeString(row['Type (Optional)'] || ''),
-        server_role: sanitizeString(row['Server Role (Optional)'] || ''),
         manager: sanitizeString(row['Manager (Optional, comma-separated if multiple)'] || ''),
         system: sanitizeString(row['System (Optional, comma-separated if multiple)'] || ''),
         agent: sanitizeString(row['Agent (Optional, comma-separated if multiple)'] || ''),
@@ -1550,7 +1494,6 @@ serverController.importServers = async (req, res) => {
           status: result.status || null,
           location: result.location || null,
           type: result.type || null,
-          server_role: result.server_role || null,
           description: result.description || null,
           managers: managerIds,
           systems: systemIds,
@@ -1595,7 +1538,6 @@ serverController.importServers = async (req, res) => {
       'Status (Optional)',
       'Location (Optional)',
       'Type (Optional)',
-      'Server Role (Optional)',
       'Manager (Optional, comma-separated if multiple)',
       'System (Optional, comma-separated if multiple)',
       'Agent (Optional, comma-separated if multiple)',
@@ -1623,7 +1565,6 @@ serverController.importServers = async (req, res) => {
         result.status,
         result.location,
         result.type,
-        result.server_role,
         result.manager,
         result.system,
         result.agent,
@@ -1636,10 +1577,10 @@ serverController.importServers = async (req, res) => {
 
       // Color code import status
       if (result.import_status === 'Failed') {
-        row.getCell(14).font = { color: { argb: 'FFFF0000' } }; // Import Status column
-        row.getCell(15).font = { color: { argb: 'FFFF0000' } }; // Import Reason column
+        row.getCell(13).font = { color: { argb: 'FFFF0000' } }; // Import Status column
+        row.getCell(14).font = { color: { argb: 'FFFF0000' } }; // Import Reason column
       } else {
-        row.getCell(14).font = { color: { argb: 'FF008000' } }; // Import Status column
+        row.getCell(13).font = { color: { argb: 'FF008000' } }; // Import Status column
       }
     });
 
@@ -1651,7 +1592,6 @@ serverController.importServers = async (req, res) => {
       { width: 15 },  // Status
       { width: 15 },  // Location
       { width: 15 },  // Type
-      { width: 20 },  // Server Role
       { width: 30 },  // Manager
       { width: 25 },  // System
       { width: 25 },  // Agent

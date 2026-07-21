@@ -126,7 +126,6 @@ export async function createServer(input, client) {
   const location = typeof input.location === 'string' ? input.location.trim() : input.location;
   await validateLocation(location);
   const type = typeof input.type === 'string' ? input.type.trim() : input.type;
-  const server_role = typeof input.server_role === 'string' ? (input.server_role.trim() || null) : (input.server_role ?? null);
 
   const managers = toIdArray(input.managers);
   if (managers.length) await validateManagerIds(managers);
@@ -147,7 +146,7 @@ export async function createServer(input, client) {
   const username = input.updated_by || 'admin';
 
   const serverId = await withTransaction(client, async (c) => {
-    const id = await Server.create({ name, os, status, location, type, server_role, description, username, client: c });
+    const id = await Server.create({ name, os, status, location, type, description, username, client: c });
     await Server.setIpAddresses(id, ipAddresses, c);
     await Server.setManagers(id, managers, c);
     await Server.setSystems(id, systems, c);
@@ -160,7 +159,7 @@ export async function createServer(input, client) {
 }
 
 const UPDATABLE_FIELDS = [
-  'name', 'description', 'os', 'status', 'type', 'server_role', 'location',
+  'name', 'description', 'os', 'status', 'type', 'location',
   'tags', 'managers', 'systems', 'agents', 'services', 'ip_addresses'
 ];
 const ARRAY_FIELD_SPECS = [
@@ -189,7 +188,6 @@ export async function updateServer(id, input, client) {
   const os = has('os') ? input.os : current.os_id;
   const status = has('status') ? input.status : current.status;
   const type = has('type') ? input.type : current.type;
-  const server_role = has('server_role') ? (typeof input.server_role === 'string' ? (input.server_role.trim() || null) : input.server_role) : current.server_role;
   const location = has('location') ? input.location : current.location;
 
   if (has('name') && name && name !== current.name) {
@@ -222,7 +220,7 @@ export async function updateServer(id, input, client) {
   const username = input.updated_by || 'admin';
 
   await withTransaction(client, async (c) => {
-    await Server.update(id, { name, os, status, location, type, server_role, description, username, client: c });
+    await Server.update(id, { name, os, status, location, type, description, username, client: c });
     for (const { key, set } of ARRAY_FIELD_SPECS) {
       if (has(key)) await set(id, normalizedArrays[key], c);
     }

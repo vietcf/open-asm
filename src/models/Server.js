@@ -1,10 +1,10 @@
 import { pool } from '../../config/config.js';
 
 class Server {
-  static async create({ name, os, status, location, type, server_role, description, username, client }) {
+  static async create({ name, os, status, location, type, description, username, client }) {
     const res = await client.query(
-      'INSERT INTO servers (name, os_id, status, location, type, server_role, description, updated_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
-      [name, os, status, location, type, server_role || null, description || null, username]
+      'INSERT INTO servers (name, os_id, status, location, type, description, updated_by) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+      [name, os, status, location, type, description || null, username]
     );
     return res.rows[0].id;
   }
@@ -51,10 +51,10 @@ class Server {
     return server;
   }
 
-  static async update(id, { name, os, status, location, type, server_role, description, username, client }) {
+  static async update(id, { name, os, status, location, type, description, username, client }) {
     await client.query(
-      'UPDATE servers SET name=$1, os_id=$2, status=$3, location=$4, type=$5, server_role=$6, description=$7, updated_at=NOW(), updated_by=$8 WHERE id=$9',
-      [name, os, status, location, type, server_role || null, description || null, username, id]
+      'UPDATE servers SET name=$1, os_id=$2, status=$3, location=$4, type=$5, description=$6, updated_at=NOW(), updated_by=$7 WHERE id=$8',
+      [name, os, status, location, type, description || null, username, id]
     );
   }
 
@@ -136,7 +136,7 @@ class Server {
     return result.rows;
   }
 
-  static async findFilteredList({ search, status, type, server_role, location, tags, ip, manager, systems, services, os, page = 1, pageSize = 10 }) {
+  static async findFilteredList({ search, status, type, location, tags, ip, manager, systems, services, os, page = 1, pageSize = 10 }) {
     let params = [];
     let whereClauses = [];
     let joinClauses = [];
@@ -161,11 +161,6 @@ class Server {
     if (type) {
       whereClauses.push(`s.type = $${idx}`);
       params.push(type);
-      idx++;
-    }
-    if (server_role) {
-      whereClauses.push(`s.server_role ILIKE $${idx}`);
-      params.push(`%${server_role}%`);
       idx++;
     }
 
@@ -205,7 +200,7 @@ class Server {
       idx++;
     }
     if (search) {
-      whereClauses.push(`(LOWER(s.name) LIKE $${idx} OR LOWER(s.description) LIKE $${idx} OR LOWER(s.server_role) LIKE $${idx} OR s.id IN (SELECT server_id FROM ip_addresses WHERE ip_address::text ILIKE $${idx}))`);
+      whereClauses.push(`(LOWER(s.name) LIKE $${idx} OR LOWER(s.description) LIKE $${idx} OR s.id IN (SELECT server_id FROM ip_addresses WHERE ip_address::text ILIKE $${idx}))`);
       params.push(`%${search}%`);
       idx++;
     }
@@ -238,7 +233,7 @@ class Server {
     });
   }
 
-  static async countFiltered({ search, status, type, server_role, location, tags, ip, manager, systems, services, os }) {
+  static async countFiltered({ search, status, type, location, tags, ip, manager, systems, services, os }) {
     let params = [];
     let whereClauses = [];
     let joinClauses = [];
@@ -263,11 +258,6 @@ class Server {
     if (type) {
       whereClauses.push(`s.type = $${idx}`);
       params.push(type);
-      idx++;
-    }
-    if (server_role) {
-      whereClauses.push(`s.server_role ILIKE $${idx}`);
-      params.push(`%${server_role}%`);
       idx++;
     }
 
@@ -307,7 +297,7 @@ class Server {
       idx++;
     }
     if (search) {
-      whereClauses.push(`(LOWER(s.name) LIKE $${idx} OR LOWER(s.description) LIKE $${idx} OR LOWER(s.server_role) LIKE $${idx} OR s.id IN (SELECT server_id FROM ip_addresses WHERE ip_address::text ILIKE $${idx}))`);
+      whereClauses.push(`(LOWER(s.name) LIKE $${idx} OR LOWER(s.description) LIKE $${idx} OR s.id IN (SELECT server_id FROM ip_addresses WHERE ip_address::text ILIKE $${idx}))`);
       params.push(`%${search}%`);
       idx++;
     }

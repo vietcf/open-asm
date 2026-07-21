@@ -88,10 +88,8 @@ router.get('/api/service', serverController.apiSearchService);
 // API: Get agents for select2 ajax. 
 // Call from server edit or add form
 router.get('/api/agent',serverController.apiSearchAgent);
-// API: Get servers for select2 ajax.
+// API: Get servers for select2 ajax. 
 // Call from system add/edit form
 router.get('/api/server',serverController.apiSearchServer);
-// API: Get distinct server roles for select2 ajax (type-to-create or pick existing)
-router.get('/api/server-role', serverController.apiServerRoles);
 
 export default router;

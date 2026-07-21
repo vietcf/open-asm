@@ -1,5 +1,4 @@
 // API Controller for Server (ES6)
-import { pool } from '../../../config/config.js';
 import Server from '../../models/Server.js';
 import {
   listServers as listServersService,
@@ -18,11 +17,10 @@ const apiServerController = {};
 // Get server configuration options
 apiServerController.getConfig = async (req, res) => {
   try {
-    const [statusOptions, typeOptions, locationOptions, serverRoles] = await Promise.all([
+    const [statusOptions, typeOptions, locationOptions] = await Promise.all([
       getServerStatusOptions(),
       getServerTypeOptions(),
-      getServerLocationOptions(),
-      getServerRolesFromDB()
+      getServerLocationOptions()
     ]);
 
     res.json({
@@ -30,8 +28,7 @@ apiServerController.getConfig = async (req, res) => {
       data: {
         status: statusOptions,
         type: typeOptions,
-        location: locationOptions,
-        server_roles: serverRoles
+        location: locationOptions
       }
     });
   } catch (err) {
@@ -46,13 +43,12 @@ apiServerController.getConfig = async (req, res) => {
 // List all servers (with filter and pagination)
 apiServerController.listServers = async (req, res) => {
   try {
-    const { search, status, type, server_role, location, tags, ip, manager, systems, services, os, page = 1, pageSize = 10 } = req.query;
+    const { search, status, type, location, tags, ip, manager, systems, services, os, page = 1, pageSize = 10 } = req.query;
     const normalize = v => (!v ? [] : Array.isArray(v) ? v : [v]);
     const filterParams = {
       search: search ? search.trim().toLowerCase() : '',
       status,
       type,
-      server_role,
       location,
       tags: normalize(tags),
       ip: normalize(ip),
@@ -171,30 +167,5 @@ apiServerController.deleteServer = async (req, res) => {
     handleServiceError(err, res);
   }
 };
-
-// Helper: Get distinct server roles from database
-async function getServerRolesFromDB() {
-  try {
-    const client = await pool.connect();
-    try {
-      const result = await client.query(`
-        SELECT DISTINCT server_role
-        FROM servers
-        WHERE server_role IS NOT NULL
-        AND server_role != ''
-        ORDER BY server_role ASC
-      `);
-      return result.rows.map(row => ({
-        value: row.server_role,
-        label: row.server_role
-      }));
-    } finally {
-      client.release();
-    }
-  } catch (err) {
-    console.error('Error fetching server roles:', err);
-    return [];
-  }
-}
 
 export default apiServerController;
