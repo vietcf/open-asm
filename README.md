@@ -489,7 +489,30 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.2.2 (Latest)
+### Version 1.2.3 (Latest)
+- ✨ **Pentest Round tracking**: new "Security Management" sidebar section
+  with a Pentest Management page for tracking pentest rounds against
+  Systems or System Components — round name, date, configurable status
+  (`System Configuration` → `pentest_status`: Not Started / In Progress /
+  Completed - Unfixed / Completed - Fixed), participants (from Contacts),
+  and one report file per round. A read-only quick-view modal on
+  System/Component Detail links out to the full management page. Deleting
+  a System/Component cascades to its pentest rounds (and their report
+  files); deleting a round never touches its parent.
+- ✨ **System attachments**: file name now downloads directly; a new
+  `[View]` link opens the file inline in a new tab instead of forcing a
+  download for every file type. Pentest reports use the same split.
+- 🔒 **Security**: fixed a stored XSS in the new Pentest Round detail
+  views — round name/description, participant name/email, and the
+  uploaded report's original filename are free-text/attacker-controlled
+  input persisted with no HTML stripping, and were concatenated
+  unescaped into `innerHTML` in the Pentest Management "Show" modal and
+  the System/Component "Pentest History" quick-view, letting a user with
+  only `pentest.create`/`pentest.update` plant a payload that executed in
+  any `pentest.read` user's session. Found and fixed before this version
+  shipped.
+
+### Version 1.2.2
 - 🔒 **Security**: fixed path traversal in Network's validation-file download
   routes (`/network/download/validation(-subnet)/:filename`) that let any
   authenticated user with basic read access (every existing role, including
