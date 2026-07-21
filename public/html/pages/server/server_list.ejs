@@ -338,6 +338,7 @@ function buildExportUrl() {
                     <th>IP Address</th>
                     <th>Systems</th>
                     <th>Type</th>
+                    <th>Role</th>
                     <th>Tags</th>
                     <th class="text-end">Actions</th>
                   </tr>
@@ -375,6 +376,7 @@ function buildExportUrl() {
                           <% } %>
                         </td>
                         <td><%= server.type || '-' %></td>
+                        <td><%= server.server_role || '-' %></td>
                         <td>
                           <% if (server.tags && server.tags.length > 0) { %>
                             <% server.tags.forEach(function(tag) { %>
@@ -405,7 +407,7 @@ function buildExportUrl() {
                       </tr>
                     <% }) %>
                   <% } else { %>
-                    <tr><td colspan="8" class="text-center">No servers found</td></tr>
+                    <tr><td colspan="9" class="text-center">No servers found</td></tr>
                   <% } %>
                 </tbody>
               </table>
@@ -1517,13 +1519,14 @@ $(document).ready(function() {
   white-space: nowrap;
 }
 #serverTable th:nth-child(1), #serverTable td:nth-child(1) { width: 4%; }
-#serverTable th:nth-child(2), #serverTable td:nth-child(2) { width: 14%; }
-#serverTable th:nth-child(3), #serverTable td:nth-child(3) { width: 14%; }
-#serverTable th:nth-child(4), #serverTable td:nth-child(4) { width: 14%; }
-#serverTable th:nth-child(5), #serverTable td:nth-child(5) { width: 14%; }
-#serverTable th:nth-child(6), #serverTable td:nth-child(6) { width: 10%; }
-#serverTable th:nth-child(7), #serverTable td:nth-child(7) { width: 14%; }
-#serverTable th:nth-child(8), #serverTable td:nth-child(8) { width: 16%; }
+#serverTable th:nth-child(2), #serverTable td:nth-child(2) { width: 13%; }
+#serverTable th:nth-child(3), #serverTable td:nth-child(3) { width: 13%; }
+#serverTable th:nth-child(4), #serverTable td:nth-child(4) { width: 13%; }
+#serverTable th:nth-child(5), #serverTable td:nth-child(5) { width: 12%; }
+#serverTable th:nth-child(6), #serverTable td:nth-child(6) { width: 8%; }
+#serverTable th:nth-child(7), #serverTable td:nth-child(7) { width: 10%; }
+#serverTable th:nth-child(8), #serverTable td:nth-child(8) { width: 12%; }
+#serverTable th:nth-child(9), #serverTable td:nth-child(9) { width: 15%; }
 
 /* Description column alignment */
 #serverTable td:nth-child(3) {
@@ -1536,12 +1539,12 @@ $(document).ready(function() {
    long system/tag name would overflow past these fixed-width columns and
    visually cover the next column instead of wrapping. */
 #serverTable td:nth-child(5),
-#serverTable td:nth-child(7) {
+#serverTable td:nth-child(8) {
   vertical-align: top;
   overflow-wrap: break-word;
 }
 #serverTable td:nth-child(5) .badge,
-#serverTable td:nth-child(7) .badge {
+#serverTable td:nth-child(8) .badge {
   white-space: normal;
   word-break: break-word;
   text-align: left;
