@@ -57,6 +57,8 @@ router.post('/component/:id/delete', requirePermission('system.delete'), systemC
 // (/api/server, /api/device, /api/contact, /api/tag, ...), which are all
 // reference-lookups open to any authenticated user, not just system.read.
 router.get('/api/system', systemController.apiSystemSearch);
+// API: Component search for select2 ajax (used by the Pentest object picker)
+router.get('/api/component', systemController.apiComponentSearch);
 // API: Get all components of a system (for AJAX in system detail)
 router.get('/api/system/:id/components', requirePermission('system.read'), systemController.apiSystemComponents);
 

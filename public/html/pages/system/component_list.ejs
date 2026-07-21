@@ -389,6 +389,30 @@
         <!-- Content will be loaded here -->
       </div>
       <div class="modal-footer">
+        <% if (hasPermission && hasPermission('pentest.read')) { %>
+          <button type="button" class="btn btn-outline-primary btn-sm me-auto" onclick="showPentestQuickView('system_component', window.currentDetailComponentId)">
+            <i class="bi bi-shield-check"></i> Pentest History
+          </button>
+        <% } %>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Pentest Quick-View Modal (read-only) -->
+<div class="modal fade" id="pentestQuickViewModal" tabindex="-1" aria-labelledby="pentestQuickViewModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="pentestQuickViewModalLabel">Pentest History</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="pentestQuickViewContent">
+        <!-- Content will be loaded here -->
+      </div>
+      <div class="modal-footer">
+        <a id="pentestQuickViewManageLink" href="/pentest" class="btn btn-outline-primary btn-sm me-auto">Manage in Pentest page</a>
         <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
@@ -658,7 +682,8 @@
   // Component Detail Modal Function
   function showComponentDetail(componentId) {
     console.log('showComponentDetail called with ID:', componentId);
-    
+    window.currentDetailComponentId = componentId;
+
     // Find the button that was clicked to get the component data
     let targetButton = null;
     const buttons = document.querySelectorAll('button[data-component]');
@@ -926,6 +951,43 @@
       return new bootstrap.Tooltip(tooltipTriggerEl);
     });
   });
+
+  // Read-only quick-view of pentest rounds for a System/Component, launched
+  // from the Detail modal's "Pentest History" button. Full add/edit/delete
+  // happens on the dedicated Pentest Management page (link below).
+  function showPentestQuickView(objectType, objectId) {
+    if (!objectId) return;
+    const content = document.getElementById('pentestQuickViewContent');
+    content.innerHTML = '<p class="text-muted mb-0">Loading...</p>';
+    document.getElementById('pentestQuickViewManageLink').href = '/pentest?object_type=' + encodeURIComponent(objectType) + '&object_id=' + encodeURIComponent(objectId);
+    const modal = new bootstrap.Modal(document.getElementById('pentestQuickViewModal'));
+    modal.show();
+
+    fetch('/pentest/api/by-object?object_type=' + encodeURIComponent(objectType) + '&object_id=' + encodeURIComponent(objectId))
+      .then(res => res.json())
+      .then(data => {
+        const rounds = data.rounds || [];
+        if (rounds.length === 0) {
+          content.innerHTML = '<p class="text-muted mb-0">No pentest rounds recorded yet.</p>';
+          return;
+        }
+        let html = '<table class="table table-sm table-hover mb-0"><thead><tr><th>Round Name</th><th>Date</th><th>Status</th><th>Participants</th><th>Report</th></tr></thead><tbody>';
+        rounds.forEach(function(round) {
+          const participants = (round.participants || []).map(p => p.name).join(', ') || '-';
+          let report = '<span class="text-muted">No report</span>';
+          if (round.report) {
+            report = '<a href="' + round.report.url + '" download class="text-decoration-none text-primary me-1">' + round.report.original_name + '</a>' +
+                     '<a href="/pentest/report/' + round.report.id + '/view" target="_blank" rel="noopener noreferrer" class="badge bg-light text-dark border text-decoration-none" style="border-radius:3px;">[View]</a>';
+          }
+          html += '<tr><td>' + round.name + '</td><td>' + (round.test_date ? new Date(round.test_date).toLocaleDateString('en-GB') : '-') + '</td><td>' + (round.status || 'NOT_STARTED') + '</td><td>' + participants + '</td><td>' + report + '</td></tr>';
+        });
+        html += '</tbody></table>';
+        content.innerHTML = html;
+      })
+      .catch(() => {
+        content.innerHTML = '<p class="text-danger mb-0">Error loading pentest rounds.</p>';
+      });
+  }
 </script>
 
 <style>

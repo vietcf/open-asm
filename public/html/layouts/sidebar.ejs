@@ -13,7 +13,7 @@
       <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu" data-accordion="false">
         <!-- System Management -->
         <% if (hasPermission('system.read')) { %>
-        <li class="nav-item<%= isMenuOpen(['system','system-component']) ? ' menu-open' : '' %>">
+        <li class="nav-item<%= isMenuOpen(['system','system-component','pentest']) ? ' menu-open' : '' %>">
           <a href="#" class="nav-link">
             <i class="nav-icon bi bi-list-ul"></i>
             <p>
@@ -21,7 +21,7 @@
               <i class="nav-arrow bi bi-chevron-right"></i>
             </p>
           </a>
-          <ul class="nav nav-treeview"<%= isMenuOpen(['system','system-component']) ? ' style=\"display: block;\"' : '' %>>
+          <ul class="nav nav-treeview"<%= isMenuOpen(['system','system-component','pentest']) ? ' style=\"display: block;\"' : '' %>>
             <li class="nav-item">
               <a href="/system/system" class="nav-link<%= (activeMenu === 'system') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'system') ? ' text-primary' : '' %>"></i>
@@ -34,6 +34,14 @@
                 <p>Component</p>
               </a>
             </li>
+            <% if (hasPermission('pentest.read')) { %>
+            <li class="nav-item">
+              <a href="/pentest" class="nav-link<%= (activeMenu === 'pentest') ? ' active' : '' %>">
+                <i class="nav-icon bi bi-circle<%= (activeMenu === 'pentest') ? ' text-primary' : '' %>"></i>
+                <p>Pentest</p>
+              </a>
+            </li>
+            <% } %>
           </ul>
         </li>
         <% } %>

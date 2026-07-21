@@ -305,6 +305,20 @@ class SystemComponent {
     return result.rowCount > 0;
   }
 
+  static async select2Search({ search = '', limit = 20 }) {
+    let sql = 'SELECT id, name FROM system_components';
+    let params = [];
+    if (search) {
+      sql += ' WHERE LOWER(name) LIKE $1';
+      params.push(`%${search.toLowerCase()}%`);
+    }
+    sql += ' ORDER BY name LIMIT $' + (params.length + 1);
+    params.push(limit);
+    const result = await pool.query(sql, params);
+    // Select2 expects: { results: [ { id, text } ] }
+    return result.rows.map(row => ({ id: row.id, text: row.name }));
+  }
+
   // Lấy 1 component kèm đầy đủ tags, contacts, ip_addresses
   static async findByIdWithRelations(id) {
     const sql = `

@@ -41,6 +41,7 @@ import dashboardRouter from './routes/dashboard.js';
 import requireLogin from './middlewares/requireLogin.middleware.js';
 import networkRouter from './routes/network.js';
 import systemRouter from './routes/system.js';
+import pentestRouter from './routes/pentest.js';
 import privAccountRouter from './routes/privAccount.js';
 import serverRouter from './routes/server.js';
 import serverController from './controllers/serverController.js';
@@ -188,6 +189,7 @@ app.use('/2fa', requireLogin, twofaRouter);
 
 app.use('/dashboard', requireLogin, require2fa, dashboardRouter);
 app.use('/system', requireLogin, require2fa, systemRouter);
+app.use('/pentest', requireLogin, require2fa, pentestRouter);
 app.use('/network', requireLogin, require2fa, networkRouter);
 // Public template download route (no auth required)
 app.get('/server/server/template', serverController.downloadServerTemplate);
