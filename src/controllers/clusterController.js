@@ -92,6 +92,14 @@ async function validateClusterGroups(results) {
     const existing = await Cluster.findByNameExact(group.name);
     if (existing.length > 0) groupErrors.push(`Cluster name already exists: ${group.name}`);
 
+    // Description is a cluster-level field but repeats on every member row -
+    // if rows disagree on it, that's inconsistent input rather than something
+    // safe to silently pick one of.
+    const distinctDescriptions = [...new Set(group.rows.map(r => r.description).filter(Boolean))];
+    if (distinctDescriptions.length > 1) {
+      groupErrors.push(`Inconsistent Description across rows for this cluster - found ${distinctDescriptions.length} different values, leave it blank on all but one row`);
+    }
+
     const seenIps = new Set();
     for (const r of group.rows) {
       const rowErrors = [];
