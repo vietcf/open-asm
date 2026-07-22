@@ -115,16 +115,16 @@
         </li>
         <% } %>
         <!-- Device Management -->
-        <% if (hasPermission('device.read') || hasPermission('device_type.read') || hasPermission('platform.read')) { %>
-        <li class="nav-item<%= isMenuOpen(['device', 'device-type', 'device-platform']) ? ' menu-open' : '' %>">
-          <a href="#" class="nav-link<%= isMenuOpen(['device', 'device-type', 'device-platform']) ? ' active' : '' %>" style="<%= isMenuOpen(['device', 'device-type', 'device-platform']) ? 'background-color: #495057;' : '' %>">
+        <% if (hasPermission('device.read') || hasPermission('device_type.read') || hasPermission('platform.read') || hasPermission('cluster.read')) { %>
+        <li class="nav-item<%= isMenuOpen(['device', 'device-type', 'device-platform', 'cluster']) ? ' menu-open' : '' %>">
+          <a href="#" class="nav-link<%= isMenuOpen(['device', 'device-type', 'device-platform', 'cluster']) ? ' active' : '' %>" style="<%= isMenuOpen(['device', 'device-type', 'device-platform', 'cluster']) ? 'background-color: #495057;' : '' %>">
             <i class="nav-icon bi bi-cpu"></i>
             <p>
               Device
               <i class="nav-arrow bi bi-chevron-right"></i>
             </p>
           </a>
-          <ul class="nav nav-treeview"<%= isMenuOpen(['device', 'device-type', 'device-platform']) ? ' style="display: block;"' : '' %>>
+          <ul class="nav nav-treeview"<%= isMenuOpen(['device', 'device-type', 'device-platform', 'cluster']) ? ' style="display: block;"' : '' %>>
             <% if (hasPermission('device.read')) { %>
             <li class="nav-item">
               <a href="/device/device" class="nav-link<%= (activeMenu === 'device') ? ' active' : '' %>">
@@ -146,6 +146,14 @@
               <a href="/device/platform" class="nav-link<%= (activeMenu === 'device-platform') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'device-platform') ? ' text-primary' : '' %>"></i>
                 <p>Device Platform</p>
+              </a>
+            </li>
+            <% } %>
+            <% if (hasPermission('cluster.read')) { %>
+            <li class="nav-item">
+              <a href="/cluster" class="nav-link<%= (activeMenu === 'cluster') ? ' active' : '' %>">
+                <i class="nav-icon bi bi-circle<%= (activeMenu === 'cluster') ? ' text-primary' : '' %>"></i>
+                <p>Cluster Management</p>
               </a>
             </li>
             <% } %>

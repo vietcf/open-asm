@@ -33,7 +33,7 @@ async function seedPermissionsAndRoles(pool) {
     'server', 'subnet', 'platform', 'service', 'system', 'ip_address',
     'role', 'permission',
     'configuration', 'system_log',
-    'priv_account', 'priv_role', 'priv_permission', 'rule', 'pentest'
+    'priv_account', 'priv_role', 'priv_permission', 'rule', 'pentest', 'cluster'
   ];
   const actions = ['create', 'read', 'update', 'delete'];
   const permissionValues = [];

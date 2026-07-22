@@ -1,0 +1,174 @@
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item"><a href="/cluster">Cluster Management</a></li>
+          <li class="breadcrumb-item active">Edit Cluster</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main content -->
+<section class="app-content">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 col-md-10 col-sm-12">
+      <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Edit Cluster</h5>
+        </div>
+        <form action="/cluster/<%= cluster.id %>/edit" method="POST">
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label">Cluster Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" value="<%= cluster.name %>" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Description</label>
+              <textarea name="description" class="form-control" rows="3"><%= cluster.description || '' %></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Systems</label>
+              <select id="system-select" name="systems[]" class="form-select" multiple data-placeholder="Select systems this cluster serves"></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Members</label>
+              <div id="member-rows"></div>
+              <button type="button" id="add-member-row" class="btn btn-outline-primary btn-sm mt-1">
+                <i class="bi bi-plus"></i> Add Member
+              </button>
+              <small class="d-block form-text text-muted mt-1">Each member is an IP address with a role in this cluster (e.g. master, worker, primary, standby). Type a new role to add it — it becomes suggested for future clusters too.</small>
+            </div>
+          </div>
+          <div class="card-footer d-flex justify-content-end">
+            <a href="/cluster" class="btn btn-secondary btn-sm me-2">Cancel</a>
+            <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<datalist id="role-options-list">
+  <% (roleOptions || []).forEach(function(r) { %>
+    <option value="<%= r %>"></option>
+  <% }) %>
+</datalist>
+
+<style>
+@media (max-width: 991.98px) {
+  .card-footer.d-flex.justify-content-end {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    align-items: stretch !important;
+  }
+  .card-footer.d-flex.justify-content-end .btn {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  .card-footer.d-flex.justify-content-end .btn:first-child { order: 2 !important; }
+  .card-footer.d-flex.justify-content-end .btn:last-child { order: 1 !important; }
+}
+.member-row .select2-container { flex: 1 1 auto; }
+</style>
+
+<script src="/vendor/jquery-3.6.0.min.js"></script>
+<link href="/css/select2.min.css" rel="stylesheet" />
+<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="/vendor/select2.min.js"></script>
+<script src="/vendor/bootstrap.min.js"></script>
+<link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
+
+<script>
+  const existingSystems = <%- JSON.stringify((cluster.systems || []).map(s => ({ id: s.id, text: s.name }))) %>;
+  const existingMembers = <%- JSON.stringify((cluster.members || []).map(m => ({ ip_address_id: m.ip_address_id, ip: m.ip, role: m.role }))) %>;
+
+  $(function() {
+    $('#system-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select systems this cluster serves',
+      allowClear: true,
+      width: '100%',
+      ajax: {
+        url: '/system/api/system',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      }
+    });
+    existingSystems.forEach(function(s) {
+      const option = new Option(s.text, s.id, true, true);
+      $('#system-select').append(option);
+    });
+    $('#system-select').trigger('change');
+
+    // An IP already picked in one member row shouldn't be offered again in
+    // another row's dropdown (a cluster member is one IP with one role).
+    function getOtherSelectedIpIds(currentSelectEl) {
+      const ids = [];
+      $('.member-ip-select').each(function() {
+        if (this === currentSelectEl[0]) return;
+        const val = $(this).val();
+        if (val) ids.push(String(val));
+      });
+      return ids;
+    }
+
+    let memberRowIndex = 0;
+    function addMemberRow(preset) {
+      const idx = memberRowIndex++;
+      const row = $(
+        '<div class="member-row d-flex gap-2 align-items-start mb-2">' +
+          '<select class="form-select member-ip-select" name="member_ip_id" style="flex: 2 1 auto;"></select>' +
+          '<input type="text" class="form-control member-role-input" name="member_role" list="role-options-list" placeholder="Role (e.g. master)" style="flex: 1 1 auto;">' +
+          '<button type="button" class="btn btn-outline-danger btn-sm remove-member-row" title="Remove"><i class="bi bi-x-lg"></i></button>' +
+        '</div>'
+      );
+      $('#member-rows').append(row);
+      const ipSelect = row.find('.member-ip-select');
+      ipSelect.select2({
+        theme: 'bootstrap-5',
+        placeholder: 'Select IP address',
+        allowClear: true,
+        width: '100%',
+        ajax: {
+          url: '/network/api/ip-addresses',
+          dataType: 'json',
+          delay: 250,
+          data: params => ({ search: params.term }),
+          processResults: data => {
+            const excluded = getOtherSelectedIpIds(ipSelect);
+            return { results: data.filter(item => !excluded.includes(String(item.id))) };
+          },
+          cache: true
+        }
+      });
+      if (preset && preset.ip_address_id) {
+        const option = new Option(preset.ip, preset.ip_address_id, true, true);
+        ipSelect.append(option).trigger('change');
+      }
+      if (preset && preset.role) {
+        row.find('.member-role-input').val(preset.role);
+      }
+    }
+
+    $('#add-member-row').on('click', function() { addMemberRow(null); });
+    $(document).on('click', '.remove-member-row', function() {
+      $(this).closest('.member-row').remove();
+    });
+
+    if (existingMembers.length > 0) {
+      existingMembers.forEach(function(m) { addMemberRow(m); });
+    } else {
+      addMemberRow(null);
+    }
+  });
+</script>
