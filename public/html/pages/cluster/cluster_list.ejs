@@ -358,7 +358,7 @@ function buildClusterQuery(overrides) {
     html += '<dt class="col-sm-4">Systems</dt><dd class="col-sm-8">';
     if (cluster.systems && cluster.systems.length > 0) {
       cluster.systems.forEach(function(s) {
-        html += '<span class="badge bg-secondary me-1 mb-1">' + escapeHtml(s.name) + '</span>';
+        html += '<a href="/system/system?search=' + encodeURIComponent(s.name) + '" target="_blank" rel="noopener noreferrer" class="badge bg-secondary me-1 mb-1 text-decoration-none">' + escapeHtml(s.name) + '</a>';
       });
     } else {
       html += '<span class="text-muted">-</span>';
@@ -369,8 +369,14 @@ function buildClusterQuery(overrides) {
     if (cluster.members && cluster.members.length > 0) {
       html += '<table class="table table-sm mb-0"><thead><tr><th>IP</th><th>Server/Device</th><th>Role</th></tr></thead><tbody>';
       cluster.members.forEach(function(m) {
-        const owner = m.server_name || m.device_name || '-';
-        html += '<tr><td>' + escapeHtml(m.ip) + '</td><td>' + escapeHtml(owner) + '</td><td>' + escapeHtml(m.role || '-') + '</td></tr>';
+        const ipLink = '<a href="/network/ip-address?search=' + encodeURIComponent(m.ip) + '" target="_blank" rel="noopener noreferrer" class="text-decoration-none">' + escapeHtml(m.ip) + '</a>';
+        let ownerLink = '<span class="text-muted">-</span>';
+        if (m.server_name) {
+          ownerLink = '<a href="/server/server/list?search=' + encodeURIComponent(m.server_name) + '" target="_blank" rel="noopener noreferrer" class="text-decoration-none">' + escapeHtml(m.server_name) + '</a>';
+        } else if (m.device_name) {
+          ownerLink = '<a href="/device/device?search=' + encodeURIComponent(m.device_name) + '" target="_blank" rel="noopener noreferrer" class="text-decoration-none">' + escapeHtml(m.device_name) + '</a>';
+        }
+        html += '<tr><td>' + ipLink + '</td><td>' + ownerLink + '</td><td>' + escapeHtml(m.role || '-') + '</td></tr>';
       });
       html += '</tbody></table>';
     } else {
