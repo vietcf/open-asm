@@ -503,7 +503,7 @@ textarea.form-control::placeholder,
    FOOTER STYLING
    ======================================== */
 
-.main-footer {
+.app-footer {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
   color: #fff !important;
   border-top: none !important;
@@ -511,27 +511,27 @@ textarea.form-control::placeholder,
   margin-top: auto !important;
 }
 
-.main-footer .container-fluid {
+.app-footer .container-fluid {
   padding: 0 20px !important;
 }
 
-.main-footer .text-muted {
+.app-footer .text-muted {
   color: rgba(255, 255, 255, 0.8) !important;
   font-size: 14px !important;
   line-height: 1.5 !important;
 }
 
-.main-footer strong {
+.app-footer strong {
   color: #fff !important;
   font-weight: 600 !important;
 }
 
-.main-footer small {
+.app-footer small {
   color: rgba(255, 255, 255, 0.7) !important;
   font-size: 12px !important;
 }
 
-.main-footer i {
+.app-footer i {
   margin-right: 5px !important;
   opacity: 0.8 !important;
 }
@@ -539,12 +539,12 @@ textarea.form-control::placeholder,
 
 /* Responsive footer */
 @media (max-width: 768px) {
-  .main-footer .col-md-6 {
+  .app-footer .col-md-6 {
     text-align: center !important;
     margin-bottom: 10px !important;
   }
   
-  .main-footer .text-end {
+  .app-footer .text-end {
     text-align: center !important;
   }
 }
