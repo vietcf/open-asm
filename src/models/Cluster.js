@@ -38,6 +38,11 @@ class Cluster {
     return result.rowCount > 0;
   }
 
+  static async findByNameExact(name) {
+    const result = await pool.query('SELECT * FROM clusters WHERE LOWER(name) = LOWER($1) ORDER BY id', [name]);
+    return result.rows;
+  }
+
   static async setMembers(clusterId, members, client) {
     const executor = client || pool;
     await executor.query('DELETE FROM cluster_members WHERE cluster_id = $1', [clusterId]);

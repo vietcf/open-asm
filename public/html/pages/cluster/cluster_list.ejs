@@ -60,6 +60,9 @@ function buildClusterQuery(overrides) {
             <a href="/cluster/add" class="btn btn-primary btn-sm">
               <i class="bi bi-plus"></i> Add Cluster
             </a>
+            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importClusterModal">
+              <i class="bi bi-upload"></i> Import
+            </button>
           <% } %>
           <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterClusterModal">
             <i class="bi bi-funnel"></i> Filter
@@ -103,6 +106,54 @@ function buildClusterQuery(overrides) {
               </div>
             </div>
           </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Import Cluster Modal -->
+    <div class="modal fade" id="importClusterModal" tabindex="-1" aria-labelledby="importClusterModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="importClusterModalLabel">Import Clusters</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="importClusterForm" enctype="multipart/form-data">
+              <div class="mb-3">
+                <label for="clusterImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <input type="file" class="form-control" id="clusterImportFile" name="file" accept=".xlsx,.xls" required>
+                  <a href="/cluster/template" class="btn btn-outline-info" download>
+                    <i class="bi bi-download"></i> Download Template
+                  </a>
+                </div>
+                <div class="form-text">Supported format: Excel (.xlsx, .xls). Maximum file size: 10MB</div>
+              </div>
+              <div class="mb-3">
+                <div class="alert alert-info">
+                  <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
+                  <ul class="mb-0">
+                    <li>One row per cluster member — rows sharing the same Cluster Name become one cluster with multiple members</li>
+                    <li>Cluster Name is required, and must not already exist</li>
+                    <li>IP Address is required and must already exist — this import never creates IPs, create them first</li>
+                    <li>System Name (if any) must already exist too, comma-separated if multiple</li>
+                    <li>A cluster is only created once every row for it passes validation</li>
+                    <li>Select your filled template file and validate before importing</li>
+                  </ul>
+                </div>
+              </div>
+              <div id="clusterImportProgress" class="progress mb-3" style="display: none;">
+                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+              </div>
+              <div id="clusterImportResults" class="alert" style="display: none;"></div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-warning btn-sm" id="validateClusterImportBtn" disabled>Validate File</button>
+            <button type="button" class="btn btn-success btn-sm" id="importClusterBtn" style="display: none;">Import Clusters</button>
+          </div>
         </div>
       </div>
     </div>
@@ -405,4 +456,155 @@ function buildClusterQuery(overrides) {
     content.innerHTML = html;
     modal.show();
   }
+
+  // Import Cluster functionality (mirrors the IP Address import flow:
+  // validate first - downloads a report and only enables Import once
+  // everything passes - then import, which also downloads a results report).
+  let selectedClusterFile = null;
+
+  $(document).on('change', '#clusterImportFile', function() {
+    selectedClusterFile = this.files[0];
+    $('#validateClusterImportBtn').prop('disabled', !selectedClusterFile);
+    if (!selectedClusterFile) $('#importClusterBtn').hide();
+  });
+
+  function downloadBlobResponse(data, xhr, fallbackName) {
+    const contentType = xhr.getResponseHeader('Content-Type');
+    const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+    if (!contentType || !contentType.includes('spreadsheetml.sheet')) return;
+    const blob = new Blob([data], { type: contentType });
+    const url = window.URL.createObjectURL(blob);
+    let filename = fallbackName;
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="(.+)"/);
+      if (match) filename = match[1];
+    }
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  }
+
+  $(document).on('click', '#validateClusterImportBtn', function() {
+    if (!selectedClusterFile) { alert('Please select a file first'); return; }
+    const formData = new FormData();
+    formData.append('file', selectedClusterFile);
+
+    $('#clusterImportProgress').show();
+    $('#clusterImportResults').hide();
+    $('#clusterImportProgress .progress-bar').css('width', '30%');
+
+    let nativeXhr;
+    $.ajax({
+      url: '/cluster/validate-import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      xhr: function() {
+        nativeXhr = new window.XMLHttpRequest();
+        nativeXhr.responseType = 'blob';
+        return nativeXhr;
+      },
+      success: function(data, status, xhr) {
+        $('#clusterImportProgress .progress-bar').css('width', '100%');
+        downloadBlobResponse(data, xhr, 'cluster_import_validation.xlsx');
+
+        const resultsDiv = $('#clusterImportResults');
+        try {
+          const summary = JSON.parse(xhr.getResponseHeader('X-Validation-Summary'));
+          if (summary.allPassed) {
+            resultsDiv.removeClass('alert-danger').addClass('alert-success')
+              .html('<strong>Validation Complete!</strong><br><small>Total: ' + summary.total + ', Passed: ' + summary.passed + ', Failed: ' + summary.failed + '</small><br><small>Validation file downloaded. Review results before importing.</small>');
+            $('#importClusterBtn').show();
+          } else {
+            resultsDiv.removeClass('alert-success').addClass('alert-danger')
+              .html('<strong>Validation Failed!</strong><br><small>Total: ' + summary.total + ', Passed: ' + summary.passed + ', Failed: ' + summary.failed + '</small><br><small>Validation file downloaded. Please fix the errors before importing.</small>');
+            $('#importClusterBtn').hide();
+          }
+        } catch (e) {
+          resultsDiv.removeClass('alert-danger').addClass('alert-success')
+            .html('<strong>Validation Complete!</strong><br><small>Validation file downloaded. Review results before importing.</small>');
+        }
+        resultsDiv.show();
+      },
+      error: function(xhr, status, error) {
+        $('#clusterImportProgress .progress-bar').css('width', '100%');
+        extractImportErrorMessage(nativeXhr || xhr).then(function(msg) {
+          $('#clusterImportResults').removeClass('alert-success').addClass('alert-danger')
+            .html('<strong>Validation Error!</strong><br>' + msg).show();
+        });
+      },
+      complete: function() {
+        $('#validateClusterImportBtn').prop('disabled', false);
+        setTimeout(() => { $('#clusterImportProgress').hide(); }, 2000);
+      }
+    });
+  });
+
+  $(document).on('click', '#importClusterBtn', function() {
+    if (!selectedClusterFile) { alert('Please select a file first'); return; }
+    const formData = new FormData();
+    formData.append('file', selectedClusterFile);
+
+    $('#clusterImportProgress').show();
+    $('#clusterImportProgress .progress-bar').css('width', '30%');
+    $('#importClusterBtn').prop('disabled', true);
+
+    let nativeXhr;
+    $.ajax({
+      url: '/cluster/import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      xhr: function() {
+        nativeXhr = new window.XMLHttpRequest();
+        nativeXhr.responseType = 'blob';
+        return nativeXhr;
+      },
+      success: function(data, status, xhr) {
+        $('#clusterImportProgress .progress-bar').css('width', '100%');
+        downloadBlobResponse(data, xhr, 'cluster_import_results.xlsx');
+
+        const resultsDiv = $('#clusterImportResults');
+        let summary = null;
+        try { summary = JSON.parse(xhr.getResponseHeader('X-Import-Summary')); } catch (e) {}
+
+        if (summary && summary.failed > 0) {
+          resultsDiv.removeClass('alert-success').addClass('alert-danger')
+            .html('<strong>Import Completed with Errors!</strong><br><small>Total: ' + summary.total + ', Success: ' + summary.success + ', Failed: ' + summary.failed + '</small><br><small>Import results file downloaded. Page will refresh.</small>');
+        } else {
+          resultsDiv.removeClass('alert-danger').addClass('alert-success')
+            .html('<strong>Import Completed!</strong><br><small>Import results file downloaded. Page will refresh.</small>');
+        }
+        resultsDiv.show();
+        $('#importClusterBtn').hide();
+        setTimeout(() => { window.location.reload(); }, 2000);
+      },
+      error: function(xhr, status, error) {
+        $('#clusterImportProgress .progress-bar').css('width', '100%');
+        extractImportErrorMessage(nativeXhr || xhr).then(function(msg) {
+          $('#clusterImportResults').removeClass('alert-success').addClass('alert-danger')
+            .html('<strong>Import Error!</strong><br>' + msg).show();
+        });
+      },
+      complete: function() {
+        $('#importClusterBtn').prop('disabled', false);
+        setTimeout(() => { $('#clusterImportProgress').hide(); }, 2000);
+      }
+    });
+  });
+
+  $('#importClusterModal').on('hidden.bs.modal', function() {
+    $('#importClusterForm')[0].reset();
+    selectedClusterFile = null;
+    $('#validateClusterImportBtn').prop('disabled', true);
+    $('#importClusterBtn').hide();
+    $('#clusterImportProgress').hide();
+    $('#clusterImportResults').hide();
+  });
 </script>
