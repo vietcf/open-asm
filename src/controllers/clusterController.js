@@ -1,5 +1,7 @@
+import ExcelJS from 'exceljs';
 import System from '../models/System.js';
-import { ServiceError } from '../services/errors.js';
+import { ServiceError, NotFoundError } from '../services/errors.js';
+import { sanitizeExcelRow } from '../utils/excelSafe.js';
 import {
   listClusters as listClustersService,
   getCluster,
@@ -158,6 +160,35 @@ clusterController.apiClustersBySystem = async (req, res) => {
     res.json({ clusters });
   } catch (err) {
     res.status(500).json({ error: 'Error loading clusters', detail: err.message });
+  }
+};
+
+clusterController.exportClusterMembers = async (req, res) => {
+  try {
+    const cluster = await getCluster(req.params.id);
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Cluster Members');
+    worksheet.addRow(['IP Address', 'Server', 'Device', 'Role']);
+    (cluster.members || []).forEach(m => {
+      worksheet.addRow(sanitizeExcelRow([
+        m.ip || '',
+        m.server_name || '',
+        m.device_name || '',
+        m.role || ''
+      ]));
+    });
+    worksheet.columns.forEach(col => { col.width = 24; });
+
+    const safeName = (cluster.name || 'cluster').replace(/[^a-z0-9]+/gi, '_').toLowerCase();
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${safeName}_members_${timestamp}.xlsx"`);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    if (err instanceof NotFoundError) return res.status(404).send('Cluster not found');
+    res.status(500).send('Error exporting cluster members: ' + err.message);
   }
 };
 

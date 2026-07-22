@@ -6,6 +6,8 @@ const router = express.Router();
 
 router.get('/', requirePermission('cluster.read'), clusterController.listClusters);
 
+router.get('/:id/export', requirePermission('cluster.read'), clusterController.exportClusterMembers);
+
 router.get('/add', requirePermission('cluster.create'), clusterController.addClusterForm);
 router.post('/add', requirePermission('cluster.create'), clusterController.addCluster);
 

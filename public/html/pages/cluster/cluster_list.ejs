@@ -223,6 +223,9 @@ function buildClusterQuery(overrides) {
           <!-- Content will be loaded here -->
         </div>
         <div class="modal-footer">
+          <a id="exportClusterMembersBtn" href="#" class="btn btn-outline-success btn-sm me-auto">
+            <i class="bi bi-file-earmark-excel"></i> Export Members
+          </a>
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
         </div>
       </div>
@@ -348,6 +351,10 @@ function buildClusterQuery(overrides) {
 
     const modal = new bootstrap.Modal(document.getElementById('clusterDetailModal'));
     const content = document.getElementById('clusterDetailContent');
+
+    const exportBtn = document.getElementById('exportClusterMembersBtn');
+    exportBtn.href = '/cluster/' + encodeURIComponent(cluster.id) + '/export';
+    exportBtn.style.display = (cluster.members && cluster.members.length > 0) ? '' : 'none';
 
     let html = '<dl class="row detail-dl">';
     html += '<dt class="col-sm-4">Cluster Name</dt><dd class="col-sm-8">' + escapeHtml(cluster.name || 'N/A') + '</dd>';
