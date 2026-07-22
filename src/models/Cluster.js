@@ -96,6 +96,29 @@ class Cluster {
     return result.rows[0] || null;
   }
 
+  // Clusters serving one System — used by System Detail's AJAX-loaded
+  // "Clusters" section, without System's own query knowing anything about
+  // clusters.
+  static async findBySystemId(systemId) {
+    const sql = `
+      SELECT cl.*,
+        COALESCE(json_agg(DISTINCT jsonb_build_object(
+          'id', cm.id, 'ip_address_id', ip.id, 'ip', ip.ip_address, 'role', cm.role,
+          'server_name', srv.name, 'device_name', dev.name
+        )) FILTER (WHERE cm.id IS NOT NULL), '[]') AS members
+      FROM clusters cl
+      JOIN cluster_system cs ON cs.cluster_id = cl.id AND cs.system_id = $1
+      LEFT JOIN cluster_members cm ON cm.cluster_id = cl.id
+      LEFT JOIN ip_addresses ip ON ip.id = cm.ip_address_id
+      LEFT JOIN servers srv ON srv.id = ip.server_id
+      LEFT JOIN devices dev ON dev.id = ip.device_id
+      GROUP BY cl.id
+      ORDER BY cl.id DESC
+    `;
+    const result = await pool.query(sql, [systemId]);
+    return result.rows;
+  }
+
   static async findFilteredList({ search = '', role = null, system_id = null, page = 1, pageSize = 20 }) {
     const offset = (page - 1) * pageSize;
     const params = [];

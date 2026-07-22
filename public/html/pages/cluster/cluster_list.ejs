@@ -384,6 +384,9 @@ function buildClusterQuery(overrides) {
     }
     html += '</dd>';
 
+    if (cluster.created_at) {
+      html += '<dt class="col-sm-4">Created At</dt><dd class="col-sm-8">' + new Date(cluster.created_at).toLocaleString('en-GB') + '</dd>';
+    }
     if (cluster.updated_by) {
       html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + escapeHtml(cluster.updated_by) + '</dd>';
     }

@@ -15,5 +15,6 @@ router.post('/:id/edit', requirePermission('cluster.update'), clusterController.
 router.post('/:id/delete', requirePermission('cluster.delete'), clusterController.deleteCluster);
 
 router.get('/api/roles', requirePermission('cluster.read'), clusterController.apiRoleOptions);
+router.get('/api/by-system', requirePermission('cluster.read'), clusterController.apiClustersBySystem);
 
 export default router;

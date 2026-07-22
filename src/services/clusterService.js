@@ -60,6 +60,10 @@ export async function getRoleOptions() {
   return Cluster.getDistinctRoles();
 }
 
+export async function getClustersForSystem(systemId) {
+  return Cluster.findBySystemId(systemId);
+}
+
 // input: {name, description?, member_ip_id[], member_role[], systems[], updated_by?}
 export async function createCluster(input) {
   const name = (input.name || '').trim();

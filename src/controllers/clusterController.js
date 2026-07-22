@@ -4,6 +4,7 @@ import {
   listClusters as listClustersService,
   getCluster,
   getRoleOptions,
+  getClustersForSystem,
   createCluster as createClusterService,
   updateCluster as updateClusterService,
   deleteCluster as deleteClusterService
@@ -143,6 +144,21 @@ clusterController.deleteCluster = async (req, res) => {
     req.flash('error', message);
   }
   res.redirect('/cluster');
+};
+
+// AJAX: clusters serving one System, for System Detail's read-only
+// "Clusters" section.
+clusterController.apiClustersBySystem = async (req, res) => {
+  try {
+    const systemId = req.query.system_id;
+    if (!systemId || isNaN(Number(systemId))) {
+      return res.status(400).json({ error: 'system_id is required' });
+    }
+    const clusters = await getClustersForSystem(systemId);
+    res.json({ clusters });
+  } catch (err) {
+    res.status(500).json({ error: 'Error loading clusters', detail: err.message });
+  }
 };
 
 // AJAX: role autocomplete suggestions
