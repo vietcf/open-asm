@@ -22,6 +22,7 @@ import seedPrivPermissions from './seed_priv_permissions.js';
 import seedPrivUserRoles from './seed_priv_user_roles.js';
 import seedPrivRolePermissions from './seed_priv_role_permissions.js';
 import seedRuleFirewall from './seed_rulefirewall.js';
+import seedClusters from './seed_clusters.js';
 // Add more seed files here as needed
 
 const __filename = fileURLToPath(import.meta.url);
@@ -54,6 +55,7 @@ async function seedData() {
     // await seedTagObject(pool); // Uncomment if you want to seed tag_object
     // Seed firewall rules
     await seedRuleFirewall(pool);
+    await seedClusters(pool);
     console.log('Seeding completed.');
   } catch (err) {
     console.error('Seeding failed:', err);
