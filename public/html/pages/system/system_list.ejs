@@ -1125,17 +1125,7 @@ function buildSystemExportUrl() {
           }
           let html = '';
           clusters.forEach(function(cluster) {
-            html += '<div class="mb-2">';
-            html += '<a href="/cluster" target="_blank" rel="noopener noreferrer" class="fw-semibold text-decoration-none">' + escapeHtml(cluster.name) + '</a>';
-            if (cluster.members && cluster.members.length > 0) {
-              html += '<div class="mt-1">';
-              cluster.members.forEach(function(m) {
-                const label = escapeHtml(m.ip) + (m.role ? (' [' + escapeHtml(m.role) + ']') : '');
-                html += '<span class="badge bg-info text-dark me-1 mb-1">' + label + '</span>';
-              });
-              html += '</div>';
-            }
-            html += '</div>';
+            html += '<a href="/cluster?search=' + encodeURIComponent(cluster.name) + '" target="_blank" rel="noopener noreferrer" class="badge bg-secondary me-1 mb-1 text-decoration-none">' + escapeHtml(cluster.name) + '</a>';
           });
           clustersSection.innerHTML = html;
         })
