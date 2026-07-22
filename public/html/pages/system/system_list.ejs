@@ -634,38 +634,38 @@ function buildSystemExportUrl() {
         // System Name
         const systemName = (system.name || system.system_name || 'N/A');
         console.log('System Name:', systemName, 'System Code:', system.system_id || system.code);
-        html += '<dt class="col-sm-4">System Name</dt><dd class="col-sm-8">' + String(systemName).trim() + '</dd>';
+        html += '<dt class="col-sm-4">System Name</dt><dd class="col-sm-8">' + escapeHtml(String(systemName).trim()) + '</dd>';
 
         // System Code
         const systemCode = (system.system_id || system.code || 'N/A');
         console.log('System Code raw:', systemCode, 'Type:', typeof systemCode);
-        html += '<dt class="col-sm-4">System Code</dt><dd class="col-sm-8">' + String(systemCode).trim() + '</dd>';
+        html += '<dt class="col-sm-4">System Code</dt><dd class="col-sm-8">' + escapeHtml(String(systemCode).trim()) + '</dd>';
 
         // ID
         const systemIdValue = (system.id || 'N/A');
-        html += '<dt class="col-sm-4">ID</dt><dd class="col-sm-8">' + String(systemIdValue).trim() + '</dd>';
+        html += '<dt class="col-sm-4">ID</dt><dd class="col-sm-8">' + escapeHtml(String(systemIdValue).trim()) + '</dd>';
 
         // Description
         if (system.description && system.description.trim()) {
-          html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><span style="white-space: pre-line;">' + String(system.description).trim() + '</span></dd>';
+          html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><span style="white-space: pre-wrap;">' + escapeHtml(system.description) + '</span></dd>';
         }
 
         // Level
         const level = (system.level || 'N/A');
-        html += '<dt class="col-sm-4">Level</dt><dd class="col-sm-8">' + String(level).trim() + '</dd>';
+        html += '<dt class="col-sm-4">Level</dt><dd class="col-sm-8">' + escapeHtml(String(level).trim()) + '</dd>';
 
         // Organization (Department)
         const department = (system.department_name || system.department || 'N/A');
         if (system.department_id) {
-          html += '<dt class="col-sm-4">Organization</dt><dd class="col-sm-8"><span class="org-tooltip" data-unit-id="' + system.department_id + '" title="Loading..." style="cursor: help;">' + String(department).trim() + '</span></dd>';
+          html += '<dt class="col-sm-4">Organization</dt><dd class="col-sm-8"><span class="org-tooltip" data-unit-id="' + escapeHtml(system.department_id) + '" title="Loading..." style="cursor: help;">' + escapeHtml(String(department).trim()) + '</span></dd>';
         } else {
-          html += '<dt class="col-sm-4">Organization</dt><dd class="col-sm-8">' + String(department).trim() + '</dd>';
+          html += '<dt class="col-sm-4">Organization</dt><dd class="col-sm-8">' + escapeHtml(String(department).trim()) + '</dd>';
         }
 
         // Alias
         if (system.alias && (Array.isArray(system.alias) ? system.alias.length > 0 : system.alias)) {
           const alias = Array.isArray(system.alias) ? system.alias.join(', ') : system.alias;
-          html += '<dt class="col-sm-4">Alias</dt><dd class="col-sm-8">' + String(alias).trim() + '</dd>';
+          html += '<dt class="col-sm-4">Alias</dt><dd class="col-sm-8">' + escapeHtml(String(alias).trim()) + '</dd>';
         }
 
         // FQDN
@@ -681,12 +681,12 @@ function buildSystemExportUrl() {
               if (bracketMatch) {
                 const domain = bracketMatch[1].trim();
                 const comment = bracketMatch[2].trim();
-                html += '<li><a href="http://' + domain + '" target="_blank" class="text-decoration-none">' + domain + '</a> <span class="badge bg-secondary ms-1">' + comment + '</span></li>';
+                html += '<li><a href="http://' + escapeHtml(domain) + '" target="_blank" class="text-decoration-none">' + escapeHtml(domain) + '</a> <span class="badge bg-secondary ms-1">' + escapeHtml(comment) + '</span></li>';
               } else {
-                html += '<li><span class="text-muted">' + fqdnStr + '</span></li>';
+                html += '<li><span class="text-muted">' + escapeHtml(fqdnStr) + '</span></li>';
               }
             } else {
-              html += '<li><a href="http://' + fqdnStr + '" target="_blank" class="text-decoration-none">' + fqdnStr + '</a></li>';
+              html += '<li><a href="http://' + escapeHtml(fqdnStr) + '" target="_blank" class="text-decoration-none">' + escapeHtml(fqdnStr) + '</a></li>';
             }
           });
           html += '</ul>';
@@ -698,7 +698,7 @@ function buildSystemExportUrl() {
           html += '<dt class="col-sm-4">Tags</dt><dd class="col-sm-8">';
           system.tags.forEach(function(tag) {
             const tagValue = (typeof tag === 'string' ? tag : tag.name);
-            html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
+            html += '<span class="badge bg-primary me-1 mb-1">' + escapeHtml(String(tagValue).trim()) + '</span>';
           });
           html += '</dd>';
         }
@@ -707,7 +707,7 @@ function buildSystemExportUrl() {
         if (system.scopes && system.scopes.length > 0) {
           html += '<dt class="col-sm-4">Scope</dt><dd class="col-sm-8">';
           system.scopes.forEach(function(scope) {
-            html += '<span class="badge bg-info me-1 mb-1">' + String(scope).trim() + '</span>';
+            html += '<span class="badge bg-info me-1 mb-1">' + escapeHtml(String(scope).trim()) + '</span>';
           });
           html += '</dd>';
         }
@@ -716,7 +716,7 @@ function buildSystemExportUrl() {
         if (system.architecture && system.architecture.length > 0) {
           html += '<dt class="col-sm-4">Architecture</dt><dd class="col-sm-8">';
           system.architecture.forEach(function(arch) {
-            html += '<span class="badge bg-warning me-1 mb-1">' + String(arch).trim() + '</span>';
+            html += '<span class="badge bg-warning me-1 mb-1">' + escapeHtml(String(arch).trim()) + '</span>';
           });
           html += '</dd>';
         }
@@ -731,17 +731,17 @@ function buildSystemExportUrl() {
             const serverName = ipObj.server_name || '';
             
             html += '<div class="mt-1 d-flex align-items-center flex-wrap">';
-            html += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary me-2 ip-hover-link" data-ip="' + ipAddress + '" data-bs-toggle="tooltip" data-bs-placement="top" title="Loading IP info...">' + String(ipAddress).trim() + '</a>';
-            
+            html += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary me-2 ip-hover-link" data-ip="' + escapeHtml(ipAddress) + '" data-bs-toggle="tooltip" data-bs-placement="top" title="Loading IP info...">' + escapeHtml(String(ipAddress).trim()) + '</a>';
+
             // Add server/device name if available
             if (serverName) {
-              html += '<span class="badge bg-light text-dark border me-2" style="border-radius: 3px;">[' + serverName + ']</span>';
+              html += '<span class="badge bg-light text-dark border me-2" style="border-radius: 3px;">[' + escapeHtml(serverName) + ']</span>';
             }
-            
+
             // Add zone and environment info if available
             if (zone || environment) {
               const zoneEnvText = (zone && environment) ? zone + '-' + environment : (zone || environment);
-              html += '<span class="badge bg-light text-dark border me-2" style="border-radius: 3px;">[' + zoneEnvText + ']</span>';
+              html += '<span class="badge bg-light text-dark border me-2" style="border-radius: 3px;">[' + escapeHtml(zoneEnvText) + ']</span>';
             }
             
             html += '</div>';
@@ -754,7 +754,7 @@ function buildSystemExportUrl() {
           html += '<dt class="col-sm-4">Domains</dt><dd class="col-sm-8">';
           system.domains.forEach(function(domainObj) {
             const domain = domainObj.domain || domainObj;
-            html += '<a href="/network/domain?search=' + encodeURIComponent(domain) + '" target="_blank" class="badge bg-secondary me-1 mb-1 text-decoration-none" title="Click to view domain details">' + String(domain).trim() + '</a>';
+            html += '<a href="/network/domain?search=' + encodeURIComponent(domain) + '" target="_blank" class="badge bg-secondary me-1 mb-1 text-decoration-none" title="Click to view domain details">' + escapeHtml(String(domain).trim()) + '</a>';
           });
           html += '</dd>';
         }
@@ -775,22 +775,22 @@ function buildSystemExportUrl() {
               searchTerm = contactEmail; // Still use full email for search
             }
 
-            html += '<li><a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary">' + String(displayText).trim() + '</a></li>';
+            html += '<li><a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary">' + escapeHtml(String(displayText).trim()) + '</a></li>';
           });
           html += '</ul></dd>';
         }
 
         // Created
         const created = (system.created_at || system.createdAt || 'N/A');
-        html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + String(created).trim() + '</dd>';
+        html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + escapeHtml(String(created).trim()) + '</dd>';
 
         // Updated
         const updated = (system.updated_at || system.updatedAt || 'N/A');
-        html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + String(updated).trim() + '</dd>';
+        html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + escapeHtml(String(updated).trim()) + '</dd>';
 
         // Updated By
         if (system.updated_by) {
-          html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + String(system.updated_by).trim() + '</dd>';
+          html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + escapeHtml(String(system.updated_by).trim()) + '</dd>';
         }
 
         // Files/Documents
@@ -801,15 +801,15 @@ function buildSystemExportUrl() {
             const fileUrl = file.url || '#';
             const fileViewUrl = file.id ? ('/system/file/' + file.id + '/view') : fileUrl;
             html += '<div class="mt-1">';
-            html += '<a href="' + fileUrl + '" download class="text-decoration-none text-primary me-2">' + String(fileName).trim() + '</a>';
-            html += '<a href="' + fileViewUrl + '" target="_blank" rel="noopener noreferrer" class="badge bg-light text-dark border text-decoration-none" style="border-radius: 3px;">[View]</a>';
+            html += '<a href="' + escapeHtml(fileUrl) + '" download class="text-decoration-none text-primary me-2">' + escapeHtml(String(fileName).trim()) + '</a>';
+            html += '<a href="' + escapeHtml(fileViewUrl) + '" target="_blank" rel="noopener noreferrer" class="badge bg-light text-dark border text-decoration-none" style="border-radius: 3px;">[View]</a>';
             html += '</div>';
           });
           html += '</dd>';
         }
 
         // Components - will be loaded via AJAX (moved to bottom)
-        html += '<dt class="col-sm-4">Components</dt><dd class="col-sm-8" id="components-section-' + systemId + '"><span class="text-muted">Loading...</span></dd>';
+        html += '<dt class="col-sm-4">Components</dt><dd class="col-sm-8" id="components-section-' + escapeHtml(systemId) + '"><span class="text-muted">Loading...</span></dd>';
 
         html += '</dl>';
         content.innerHTML = html;
@@ -954,17 +954,17 @@ function buildSystemExportUrl() {
               const detailId = 'component-detail-' + systemId + '-' + index;
 
               // Name row — collapsed by default; click to expand the detail card below
-              componentsHtml += '<div class="component-name-row d-flex justify-content-between align-items-center border rounded px-3 py-2 mb-1 bg-light" style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#' + detailId + '" role="button" aria-expanded="false">';
-              componentsHtml += '<span class="fw-bold text-dark">' + String(component.name || 'N/A').trim() + '</span>';
+              componentsHtml += '<div class="component-name-row d-flex justify-content-between align-items-center border rounded px-3 py-2 mb-1 bg-light" style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#' + escapeHtml(detailId) + '" role="button" aria-expanded="false">';
+              componentsHtml += '<span class="fw-bold text-dark">' + escapeHtml(String(component.name || 'N/A').trim()) + '</span>';
               componentsHtml += '<span class="d-flex align-items-center">';
               if (component.app_type) {
-                componentsHtml += '<span class="badge bg-primary me-2">' + String(component.app_type).trim() + '</span>';
+                componentsHtml += '<span class="badge bg-primary me-2">' + escapeHtml(String(component.app_type).trim()) + '</span>';
               }
               componentsHtml += '<i class="bi bi-chevron-down component-toggle-icon"></i>';
               componentsHtml += '</span>';
               componentsHtml += '</div>';
 
-              componentsHtml += '<div class="collapse mb-2" id="' + detailId + '">';
+              componentsHtml += '<div class="collapse mb-2" id="' + escapeHtml(detailId) + '">';
               componentsHtml += '<div class="component-card border rounded p-3 bg-white">';
 
               // Component Details in smaller font
@@ -973,14 +973,14 @@ function buildSystemExportUrl() {
               // Component ID
               if (component.id) {
                 componentsHtml += '<div class="mb-1">';
-                componentsHtml += '<span class="fw-semibold">ID:</span> ' + String(component.id).trim();
+                componentsHtml += '<span class="fw-semibold">ID:</span> ' + escapeHtml(String(component.id).trim());
                 componentsHtml += '</div>';
               }
-              
+
               // Description
               if (component.description && component.description.trim()) {
                 componentsHtml += '<div class="mb-2">';
-                componentsHtml += '<span class="fw-semibold">Description:</span><br><span style="white-space: pre-line;">' + String(component.description).trim() + '</span>';
+                componentsHtml += '<span class="fw-semibold">Description:</span><br><span style="white-space: pre-wrap;">' + escapeHtml(component.description) + '</span>';
                 componentsHtml += '</div>';
               }
               
@@ -998,12 +998,12 @@ function buildSystemExportUrl() {
                     if (bracketMatch) {
                       const domain = bracketMatch[1].trim();
                       const comment = bracketMatch[2].trim();
-                      componentsHtml += '<div class="mb-1"><a href="http://' + domain + '" target="_blank" class="text-decoration-none text-primary">' + domain + '</a> <span class="badge bg-secondary ms-1">' + comment + '</span></div>';
+                      componentsHtml += '<div class="mb-1"><a href="http://' + escapeHtml(domain) + '" target="_blank" class="text-decoration-none text-primary">' + escapeHtml(domain) + '</a> <span class="badge bg-secondary ms-1">' + escapeHtml(comment) + '</span></div>';
                     } else {
-                      componentsHtml += '<div class="mb-1 text-muted">' + fqdnStr + '</div>';
+                      componentsHtml += '<div class="mb-1 text-muted">' + escapeHtml(fqdnStr) + '</div>';
                     }
                   } else {
-                    componentsHtml += '<div class="mb-1"><a href="http://' + fqdnStr + '" target="_blank" class="text-decoration-none text-primary">' + fqdnStr + '</a></div>';
+                    componentsHtml += '<div class="mb-1"><a href="http://' + escapeHtml(fqdnStr) + '" target="_blank" class="text-decoration-none text-primary">' + escapeHtml(fqdnStr) + '</a></div>';
                   }
                 });
                 componentsHtml += '</div>';
@@ -1017,7 +1017,7 @@ function buildSystemExportUrl() {
                 componentsHtml += '<div class="mt-1">';
                 component.ips.forEach(function(ipObj, index) {
                   const ipAddress = ipObj.ip_address || ipObj.ip || ipObj;
-                  componentsHtml += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary ip-hover-link" data-ip="' + ipAddress + '" data-bs-toggle="tooltip" data-bs-placement="top" title="Loading IP info...">' + String(ipAddress).trim() + '</a>';
+                  componentsHtml += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary ip-hover-link" data-ip="' + escapeHtml(ipAddress) + '" data-bs-toggle="tooltip" data-bs-placement="top" title="Loading IP info...">' + escapeHtml(String(ipAddress).trim()) + '</a>';
                   
                   // Add comma separator if not the last item
                   if (index < component.ips.length - 1) {
@@ -1046,12 +1046,12 @@ function buildSystemExportUrl() {
                     searchTerm = contactEmail; // Still use full email for search
                   }
                   
-                  componentsHtml += '<li><a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary">' + String(displayText).trim() + '</a></li>';
+                  componentsHtml += '<li><a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary">' + escapeHtml(String(displayText).trim()) + '</a></li>';
                 });
                 componentsHtml += '</ul>';
                 componentsHtml += '</div>';
               }
-              
+
               // Tags
               if (component.tags && component.tags.length > 0) {
                 componentsHtml += '<div class="mb-2">';
@@ -1059,20 +1059,20 @@ function buildSystemExportUrl() {
                 componentsHtml += '<div class="mt-1">';
                 component.tags.forEach(function(tag) {
                   const tagValue = (typeof tag === 'string' ? tag : tag.name);
-                  componentsHtml += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
+                  componentsHtml += '<span class="badge bg-primary me-1 mb-1">' + escapeHtml(String(tagValue).trim()) + '</span>';
                 });
                 componentsHtml += '</div>';
                 componentsHtml += '</div>';
               }
-              
+
               // Created/Updated dates
               if (component.created_at || component.updated_at) {
                 componentsHtml += '<div class="d-flex justify-content-between text-muted">';
                 if (component.created_at) {
-                  componentsHtml += '<small><span class="fw-semibold">Created:</span> ' + String(component.created_at).trim() + '</small>';
+                  componentsHtml += '<small><span class="fw-semibold">Created:</span> ' + escapeHtml(String(component.created_at).trim()) + '</small>';
                 }
                 if (component.updated_at) {
-                  componentsHtml += '<small><span class="fw-semibold">Updated:</span> ' + String(component.updated_at).trim() + '</small>';
+                  componentsHtml += '<small><span class="fw-semibold">Updated:</span> ' + escapeHtml(String(component.updated_at).trim()) + '</small>';
                 }
                 componentsHtml += '</div>';
               }
@@ -1388,7 +1388,7 @@ function buildSystemExportUrl() {
     // HTML stripping — must be escaped before going into innerHTML, or a
     // crafted round/filename executes script in the browser of anyone who
     // later opens this quick-view.
-    function escapePentestHtml(value) {
+    function escapeHtml(value) {
       return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
         return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
       });
@@ -1412,13 +1412,13 @@ function buildSystemExportUrl() {
           }
           let html = '<table class="table table-sm table-hover mb-0"><thead><tr><th>Round Name</th><th>Date</th><th>Status</th><th>Participants</th><th>Report</th></tr></thead><tbody>';
           rounds.forEach(function(round) {
-            const participants = (round.participants || []).map(p => escapePentestHtml(p.name)).join(', ') || '-';
+            const participants = (round.participants || []).map(p => escapeHtml(p.name)).join(', ') || '-';
             let report = '<span class="text-muted">No report</span>';
             if (round.report) {
-              report = '<a href="' + escapePentestHtml(round.report.url) + '" download class="text-decoration-none text-primary me-1">' + escapePentestHtml(round.report.original_name) + '</a>' +
+              report = '<a href="' + escapeHtml(round.report.url) + '" download class="text-decoration-none text-primary me-1">' + escapeHtml(round.report.original_name) + '</a>' +
                        '<a href="/pentest/report/' + encodeURIComponent(round.report.id) + '/view" target="_blank" rel="noopener noreferrer" class="badge bg-light text-dark border text-decoration-none" style="border-radius:3px;">[View]</a>';
             }
-            html += '<tr><td>' + escapePentestHtml(round.name) + '</td><td>' + (round.test_date ? new Date(round.test_date).toLocaleDateString('en-GB') : '-') + '</td><td>' + escapePentestHtml(round.status || 'NOT_STARTED') + '</td><td>' + participants + '</td><td>' + report + '</td></tr>';
+            html += '<tr><td>' + escapeHtml(round.name) + '</td><td>' + (round.test_date ? new Date(round.test_date).toLocaleDateString('en-GB') : '-') + '</td><td>' + escapeHtml(round.status || 'NOT_STARTED') + '</td><td>' + participants + '</td><td>' + report + '</td></tr>';
           });
           html += '</tbody></table>';
           content.innerHTML = html;

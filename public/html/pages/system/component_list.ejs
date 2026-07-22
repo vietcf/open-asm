@@ -736,24 +736,24 @@
 
     // Component Name
     const componentName = (component.name || 'N/A');
-    html += '<dt class="col-sm-4">Component Name</dt><dd class="col-sm-8">' + String(componentName).trim() + '</dd>';
+    html += '<dt class="col-sm-4">Component Name</dt><dd class="col-sm-8">' + escapeHtml(String(componentName).trim()) + '</dd>';
 
     // ID
     const componentIdValue = (component.id || 'N/A');
-    html += '<dt class="col-sm-4">ID</dt><dd class="col-sm-8">' + String(componentIdValue).trim() + '</dd>';
+    html += '<dt class="col-sm-4">ID</dt><dd class="col-sm-8">' + escapeHtml(String(componentIdValue).trim()) + '</dd>';
 
     // System
     const system = (component.system_name || 'N/A');
-    html += '<dt class="col-sm-4">System</dt><dd class="col-sm-8">' + String(system).trim() + '</dd>';
+    html += '<dt class="col-sm-4">System</dt><dd class="col-sm-8">' + escapeHtml(String(system).trim()) + '</dd>';
 
     // Description
     if (component.description && component.description.trim()) {
-      html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><span style="white-space: pre-line;">' + String(component.description).trim() + '</span></dd>';
+      html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><span style="white-space: pre-wrap;">' + escapeHtml(component.description) + '</span></dd>';
     }
 
     // App Type
     const appType = (component.app_type || 'N/A');
-    html += '<dt class="col-sm-4">App Type</dt><dd class="col-sm-8">' + String(appType).trim() + '</dd>';
+    html += '<dt class="col-sm-4">App Type</dt><dd class="col-sm-8">' + escapeHtml(String(appType).trim()) + '</dd>';
 
     // FQDN
     if (component.fqdn && (Array.isArray(component.fqdn) ? component.fqdn.length > 0 : component.fqdn)) {
@@ -768,12 +768,12 @@
           if (bracketMatch) {
             const domain = bracketMatch[1].trim();
             const comment = bracketMatch[2].trim();
-            html += '<li><a href="http://' + domain + '" target="_blank" class="text-decoration-none">' + domain + '</a> <span class="badge bg-secondary ms-1">' + comment + '</span></li>';
+            html += '<li><a href="http://' + escapeHtml(domain) + '" target="_blank" class="text-decoration-none">' + escapeHtml(domain) + '</a> <span class="badge bg-secondary ms-1">' + escapeHtml(comment) + '</span></li>';
           } else {
-            html += '<li><span class="text-muted">' + fqdnStr + '</span></li>';
+            html += '<li><span class="text-muted">' + escapeHtml(fqdnStr) + '</span></li>';
           }
         } else {
-          html += '<li><a href="http://' + fqdnStr + '" target="_blank" class="text-decoration-none">' + fqdnStr + '</a></li>';
+          html += '<li><a href="http://' + escapeHtml(fqdnStr) + '" target="_blank" class="text-decoration-none">' + escapeHtml(fqdnStr) + '</a></li>';
         }
       });
       html += '</ul>';
@@ -785,7 +785,7 @@
       html += '<dt class="col-sm-4">Tags</dt><dd class="col-sm-8">';
       component.tags.forEach(function(tag) {
         const tagValue = (typeof tag === 'string' ? tag : tag.name);
-        html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
+        html += '<span class="badge bg-primary me-1 mb-1">' + escapeHtml(String(tagValue).trim()) + '</span>';
       });
       html += '</dd>';
     }
@@ -798,21 +798,21 @@
         const zone = ipObj.subnet_zone || '';
         const environment = ipObj.subnet_environment || '';
         const serverName = ipObj.server_name || '';
-        
+
         html += '<div class="mt-1 d-flex align-items-center flex-wrap">';
-        html += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary me-2 ip-hover-link" data-ip="' + ipAddress + '" data-bs-toggle="tooltip" data-bs-placement="top" title="Loading IP info...">' + String(ipAddress).trim() + '</a>';
-        
+        html += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary me-2 ip-hover-link" data-ip="' + escapeHtml(ipAddress) + '" data-bs-toggle="tooltip" data-bs-placement="top" title="Loading IP info...">' + escapeHtml(String(ipAddress).trim()) + '</a>';
+
         // Add server/device name if available
         if (serverName) {
-          html += '<span class="badge bg-light text-dark border me-2" style="border-radius: 3px;">[' + serverName + ']</span>';
+          html += '<span class="badge bg-light text-dark border me-2" style="border-radius: 3px;">[' + escapeHtml(serverName) + ']</span>';
         }
-        
+
         // Add zone and environment info if available
         if (zone || environment) {
           const zoneEnvText = (zone && environment) ? zone + '-' + environment : (zone || environment);
-          html += '<span class="badge bg-light text-dark border me-2" style="border-radius: 3px;">[' + zoneEnvText + ']</span>';
+          html += '<span class="badge bg-light text-dark border me-2" style="border-radius: 3px;">[' + escapeHtml(zoneEnvText) + ']</span>';
         }
-        
+
         html += '</div>';
       });
       html += '</dd>';
@@ -834,22 +834,22 @@
           searchTerm = contactEmail; // Still use full email for search
         }
 
-        html += '<li><a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary">' + String(displayText).trim() + '</a></li>';
+        html += '<li><a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary">' + escapeHtml(String(displayText).trim()) + '</a></li>';
       });
       html += '</ul></dd>';
     }
 
     // Created
     const created = (component.created_at || component.createdAt || 'N/A');
-    html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + String(created).trim() + '</dd>';
+    html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + escapeHtml(String(created).trim()) + '</dd>';
 
     // Updated
     const updated = (component.updated_at || component.updatedAt || 'N/A');
-    html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + String(updated).trim() + '</dd>';
+    html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + escapeHtml(String(updated).trim()) + '</dd>';
 
     // Updated By
     if (component.updated_by) {
-      html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + String(component.updated_by).trim() + '</dd>';
+      html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + escapeHtml(String(component.updated_by).trim()) + '</dd>';
     }
 
     html += '</dl>';
@@ -960,7 +960,7 @@
   // HTML stripping — must be escaped before going into innerHTML, or a
   // crafted round/filename executes script in the browser of anyone who
   // later opens this quick-view.
-  function escapePentestHtml(value) {
+  function escapeHtml(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
     });
@@ -984,13 +984,13 @@
         }
         let html = '<table class="table table-sm table-hover mb-0"><thead><tr><th>Round Name</th><th>Date</th><th>Status</th><th>Participants</th><th>Report</th></tr></thead><tbody>';
         rounds.forEach(function(round) {
-          const participants = (round.participants || []).map(p => escapePentestHtml(p.name)).join(', ') || '-';
+          const participants = (round.participants || []).map(p => escapeHtml(p.name)).join(', ') || '-';
           let report = '<span class="text-muted">No report</span>';
           if (round.report) {
-            report = '<a href="' + escapePentestHtml(round.report.url) + '" download class="text-decoration-none text-primary me-1">' + escapePentestHtml(round.report.original_name) + '</a>' +
+            report = '<a href="' + escapeHtml(round.report.url) + '" download class="text-decoration-none text-primary me-1">' + escapeHtml(round.report.original_name) + '</a>' +
                      '<a href="/pentest/report/' + encodeURIComponent(round.report.id) + '/view" target="_blank" rel="noopener noreferrer" class="badge bg-light text-dark border text-decoration-none" style="border-radius:3px;">[View]</a>';
           }
-          html += '<tr><td>' + escapePentestHtml(round.name) + '</td><td>' + (round.test_date ? new Date(round.test_date).toLocaleDateString('en-GB') : '-') + '</td><td>' + escapePentestHtml(round.status || 'NOT_STARTED') + '</td><td>' + participants + '</td><td>' + report + '</td></tr>';
+          html += '<tr><td>' + escapeHtml(round.name) + '</td><td>' + (round.test_date ? new Date(round.test_date).toLocaleDateString('en-GB') : '-') + '</td><td>' + escapeHtml(round.status || 'NOT_STARTED') + '</td><td>' + participants + '</td><td>' + report + '</td></tr>';
         });
         html += '</tbody></table>';
         content.innerHTML = html;
