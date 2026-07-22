@@ -11,6 +11,7 @@
     <nav class="mt-2">
       <% function isMenuOpen(keys) { return keys.includes(activeMenu); } %>
       <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu" data-accordion="false">
+        <li class="nav-header">ASSET MANAGEMENT</li>
         <!-- System Management -->
         <% if (hasPermission('system.read')) { %>
         <li class="nav-item<%= isMenuOpen(['system','system-component']) ? ' menu-open' : '' %>">
@@ -178,7 +179,7 @@
             <li class="nav-item">
               <a href="/organize/unit" class="nav-link<%= (activeMenu === 'unit') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'unit') ? ' text-primary' : '' %>"></i>
-                <p>Organization Unit</p>
+                <p>Unit</p>
               </a>
             </li>
             <% } %>
@@ -193,6 +194,7 @@
           </ul>
         </li>
         <% } %>
+        <li class="nav-header">SECURITY</li>
         <!-- Privileged Account Management -->
         <% if (
           hasPermission('priv_account.read') ||
@@ -246,7 +248,7 @@
           <a href="#" class="nav-link">
             <i class="nav-icon bi bi-shield-exclamation"></i>
             <p>
-              Firewall Rulelists
+              Firewall Rules
               <i class="nav-arrow bi bi-chevron-right"></i>
             </p>
           </a>
