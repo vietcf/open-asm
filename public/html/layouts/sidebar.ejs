@@ -203,7 +203,7 @@
         ) { %>
         <li class="nav-item<%= isMenuOpen(['priv-account-list', 'priv-role-list', 'priv-permission-list']) ? ' menu-open' : '' %>">
           <a href="#" class="nav-link">
-            <i class="nav-icon bi bi-shield-lock"></i>
+            <i class="nav-icon bi bi-person-lock"></i>
             <p>
               Privileged Accounts
               <i class="nav-arrow bi bi-chevron-right"></i>
@@ -262,13 +262,13 @@
           </ul>
         </li>
         <% } %>
-        <!-- Security Management -->
+        <!-- Vulnerability Management -->
         <% if (hasPermission('pentest.read')) { %>
         <li class="nav-item<%= isMenuOpen(['pentest']) ? ' menu-open' : '' %>">
           <a href="#" class="nav-link">
-            <i class="nav-icon bi bi-shield-lock"></i>
+            <i class="nav-icon bi bi-bug"></i>
             <p>
-              Security Management
+              Vulnerability Management
               <i class="nav-arrow bi bi-chevron-right"></i>
             </p>
           </a>
