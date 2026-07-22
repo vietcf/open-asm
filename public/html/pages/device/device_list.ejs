@@ -113,14 +113,25 @@ function buildExportUrl() {
           <form class="d-flex align-items-center gap-2" role="search" method="get" action="/device/device">
             <!-- Hidden inputs to preserve filter values -->
             <input type="hidden" name="page" value="1">
-            <% if (typeof filterStatus !== 'undefined' && filterStatus) { %>
-              <input type="hidden" name="status" value="<%= filterStatus %>">
+            <% if (typeof device_type_id !== 'undefined' && device_type_id) { %>
+              <input type="hidden" name="device_type_id" value="<%= device_type_id %>">
             <% } %>
-            <% if (typeof filterType !== 'undefined' && filterType) { %>
-              <input type="hidden" name="type" value="<%= filterType %>">
+            <% if (typeof platform_id !== 'undefined' && platform_id) { %>
+              <input type="hidden" name="platform_id" value="<%= platform_id %>">
             <% } %>
-            <% if (typeof filterLocation !== 'undefined' && filterLocation) { %>
-              <input type="hidden" name="location" value="<%= filterLocation %>">
+            <% if (typeof location !== 'undefined' && location) { %>
+              <input type="hidden" name="location" value="<%= location %>">
+            <% } %>
+            <% if (typeof manufacturer !== 'undefined' && manufacturer) { %>
+              <input type="hidden" name="manufacturer" value="<%= manufacturer %>">
+            <% } %>
+            <% if (typeof device_role !== 'undefined' && device_role) { %>
+              <input type="hidden" name="device_role" value="<%= device_role %>">
+            <% } %>
+            <% if (typeof tags !== 'undefined' && tags && tags.length > 0) { %>
+              <% tags.forEach(function(tag) { %>
+                <input type="hidden" name="tags[]" value="<%= tag %>">
+              <% }); %>
             <% } %>
             
             <div class="input-group input-group-sm" style="width: 250px;">
@@ -314,9 +325,14 @@ function buildExportUrl() {
                     let params = [];
                     if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
                     if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
-                    if (typeof filterStatus !== 'undefined' && filterStatus) params.push('status=' + encodeURIComponent(filterStatus));
-                    if (typeof filterType !== 'undefined' && filterType) params.push('type=' + encodeURIComponent(filterType));
-                    if (typeof filterLocation !== 'undefined' && filterLocation) params.push('location=' + encodeURIComponent(filterLocation));
+                    if (typeof device_type_id !== 'undefined' && device_type_id) params.push('device_type_id=' + encodeURIComponent(device_type_id));
+                    if (typeof platform_id !== 'undefined' && platform_id) params.push('platform_id=' + encodeURIComponent(platform_id));
+                    if (typeof location !== 'undefined' && location) params.push('location=' + encodeURIComponent(location));
+                    if (typeof manufacturer !== 'undefined' && manufacturer) params.push('manufacturer=' + encodeURIComponent(manufacturer));
+                    if (typeof device_role !== 'undefined' && device_role) params.push('device_role=' + encodeURIComponent(device_role));
+                    if (typeof tags !== 'undefined' && tags && tags.length > 0) {
+                      tags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag)); });
+                    }
                     return params.join('&');
                   }
                   const deviceFilterQuery = buildDeviceFilterQuery();
@@ -544,6 +560,17 @@ function buildExportUrl() {
 // ==========================================
 
 // Show device detail
+// Manufacturer/Device Role are free-text (autocomplete, not a fixed enum),
+// and name/description/serial_number/management_address/tags/contacts are
+// all user-editable — none are HTML-stripped server-side, so they must be
+// escaped before going into innerHTML or a crafted value executes script
+// in the browser of anyone who opens this detail modal.
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
 function showDeviceDetail(deviceId) {
   const buttons = document.querySelectorAll('button[data-device]');
   let targetButton = null;
@@ -582,13 +609,13 @@ function showDeviceDetail(deviceId) {
   const content = document.getElementById('deviceDetailContent');
   
   let html = '<dl class="row detail-dl">';
-  html += '<dt class="col-sm-4">Device Name</dt><dd class="col-sm-8">' + String(device.name || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Type</dt><dd class="col-sm-8">' + String(device.device_type_name || device.type || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Location</dt><dd class="col-sm-8">' + String(device.location || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Platform (OS)</dt><dd class="col-sm-8">' + String(device.platform_name || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Serial Number</dt><dd class="col-sm-8">' + String(device.serial_number || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Manufacturer</dt><dd class="col-sm-8">' + String(device.manufacturer || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Device Role</dt><dd class="col-sm-8">' + String(device.device_role || 'N/A').trim() + '</dd>';
+  html += '<dt class="col-sm-4">Device Name</dt><dd class="col-sm-8">' + escapeHtml(device.name || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Type</dt><dd class="col-sm-8">' + escapeHtml(device.device_type_name || device.type || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Location</dt><dd class="col-sm-8">' + escapeHtml(device.location || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Platform (OS)</dt><dd class="col-sm-8">' + escapeHtml(device.platform_name || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Serial Number</dt><dd class="col-sm-8">' + escapeHtml(device.serial_number || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Manufacturer</dt><dd class="col-sm-8">' + escapeHtml(device.manufacturer || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Device Role</dt><dd class="col-sm-8">' + escapeHtml(device.device_role || 'N/A') + '</dd>';
 
   html += '<dt class="col-sm-4">IP Addresses</dt><dd class="col-sm-8">';
   if (device.ip_addresses && device.ip_addresses.length > 0) {
@@ -596,7 +623,7 @@ function showDeviceDetail(deviceId) {
     device.ip_addresses.forEach(function(ip) {
       const ipValue = (typeof ip === 'string' ? ip : ip.ip_address);
       const searchUrl = '/network/ip-address?page=1&search=' + encodeURIComponent(ipValue);
-      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + String(ipValue).trim() + '</a></li>';
+      html += '<li><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' + escapeHtml(ipValue) + '</a></li>';
     });
     html += '</ul>';
   } else {
@@ -610,11 +637,11 @@ function showDeviceDetail(deviceId) {
     if (managementAddresses.length > 1) {
       html += '<ul class="mb-0 ps-3">';
       managementAddresses.forEach(function(addr) {
-        html += '<li>' + String(addr).trim() + '</li>';
+        html += '<li>' + escapeHtml(addr) + '</li>';
       });
       html += '</ul>';
     } else {
-      html += String(device.management_address).trim();
+      html += escapeHtml(device.management_address);
     }
   } else {
     html += 'N/A';
@@ -627,9 +654,9 @@ function showDeviceDetail(deviceId) {
       const managerName = (typeof manager === 'string' ? manager : manager.name);
       const managerEmail = (typeof manager === 'string' ? '' : manager.email);
       const searchUrl = '/organize/contact?page=1&search=' + encodeURIComponent(managerName);
-      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + String(managerName).trim();
+      html += '<li><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' + escapeHtml(managerName);
       if (managerEmail) {
-        html += ' (' + String(managerEmail).trim() + ')';
+        html += ' (' + escapeHtml(managerEmail) + ')';
       }
       html += '</a></li>';
     });
@@ -640,19 +667,19 @@ function showDeviceDetail(deviceId) {
     html += '<dt class="col-sm-4">Tags</dt><dd class="col-sm-8">';
     device.tags.forEach(function(tag) {
       const tagValue = (typeof tag === 'string' ? tag : tag.name);
-      html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
+      html += '<span class="badge bg-primary me-1 mb-1">' + escapeHtml(tagValue) + '</span>';
     });
     html += '</dd>';
   }
 
-  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + String(device.description || 'N/A').trim() + '</pre></dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + escapeHtml(device.description || 'N/A') + '</pre></dd>';
 
   const deviceCreated = (device.created_at || 'N/A');
-  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + String(deviceCreated).trim() + '</dd>';
+  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + escapeHtml(deviceCreated) + '</dd>';
   const deviceUpdated = (device.updated_at || 'N/A');
-  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + String(deviceUpdated).trim() + '</dd>';
+  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + escapeHtml(deviceUpdated) + '</dd>';
   if (device.updated_by) {
-    html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + String(device.updated_by).trim() + '</dd>';
+    html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + escapeHtml(device.updated_by) + '</dd>';
   }
   html += '</dl>';
   content.innerHTML = html;
@@ -824,6 +851,17 @@ $(document).ready(function() {
     }
   });
 
+  // Initialize Select2 for Location — options are already rendered
+  // server-side (locationOptions), so no ajax needed, just the Bootstrap 5
+  // styling to match the other filter fields in this modal.
+  $('#filterDeviceLocation').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'All Locations',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterDeviceModal')
+  });
+
   console.log('All Select2 fields initialized');
 
   // Clear all filters - use event delegation
@@ -836,6 +874,7 @@ $(document).ready(function() {
     $('#filterDevicePlatform').val(null).trigger('change');
     $('#filterDeviceManufacturer').val(null).trigger('change');
     $('#filterDeviceRole').val(null).trigger('change');
+    $('#filterDeviceLocation').val(null).trigger('change');
 
     // Also try using Select2 API to clear
     $('#filterDeviceTypeId').select2('val', null);
@@ -843,9 +882,7 @@ $(document).ready(function() {
     $('#filterDevicePlatform').select2('val', null);
     $('#filterDeviceManufacturer').select2('val', null);
     $('#filterDeviceRole').select2('val', null);
-
-    // Clear regular select field
-    $('#filterDeviceLocation').val('');
+    $('#filterDeviceLocation').select2('val', null);
 
     // Close modal
     $('#filterDeviceModal').modal('hide');

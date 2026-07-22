@@ -16,6 +16,7 @@ import apiPlatformRouter from './apiPlatform.js';
 import apiDeviceTypeRouter from './apiDeviceType.js';
 import apiTagRouter from './apiTag.js';
 import apiDomainRouter from './apiDomain.js';
+import apiPentestRouter from './apiPentest.js';
 
 const apiRouter = express.Router();
 
@@ -38,6 +39,7 @@ apiRouter.use('/platforms', authenticateJWT, apiPlatformRouter);
 apiRouter.use('/device-types', authenticateJWT, apiDeviceTypeRouter);
 apiRouter.use('/tags', authenticateJWT, apiTagRouter);
 apiRouter.use('/domains', authenticateJWT, apiDomainRouter);
+apiRouter.use('/pentest-rounds', authenticateJWT, apiPentestRouter);
 
 
 // Handle JSON parse errors for API routes only

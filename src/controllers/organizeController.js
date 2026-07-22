@@ -9,6 +9,7 @@ import ExcelJS from 'exceljs';
 import fs from 'fs';
 import path from 'path';
 import { ServiceError } from '../services/errors.js';
+import { sanitizeExcelRow } from '../utils/excelSafe.js';
 import {
   listContacts as listContactsService,
   createContact as createContactService,
@@ -255,6 +256,22 @@ organizeController.apiUnitSearch = async (req, res) => {
     res.json(data);
   } catch (err) {
     res.status(500).json({ error: 'Error loading units', detail: err.message });
+  }
+};
+
+// API: single unit's info (name/code/description) for on-hover tooltips —
+// used by any page that shows an Organization/Department reference
+// (Contact list, System detail, ...) without needing that page's own list
+// query to carry the description around.
+organizeController.apiUnitDetail = async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!id || isNaN(Number(id))) return res.status(400).json({ error: 'Invalid unit id' });
+    const unit = await Unit.findById(id);
+    if (!unit) return res.status(404).json({ error: 'Unit not found' });
+    res.json({ id: unit.id, name: unit.name, code: unit.code, description: unit.description });
+  } catch (err) {
+    res.status(500).json({ error: 'Error loading unit', detail: err.message });
   }
 };
 
@@ -548,7 +565,9 @@ organizeController.validateImportContacts = async (req, res) => {
     }
 
     const filePath = req.file.path;
-    const originalFileName = req.file.originalname;
+    // path.basename strips any directory components a crafted upload
+    // filename could carry, before it's woven into a filesystem path below.
+    const originalFileName = path.basename(req.file.originalname);
     let rows = [];
 
     // Parse file based on extension — Excel only (multer's fileFilter
@@ -711,7 +730,7 @@ organizeController.validateImportContacts = async (req, res) => {
 
     // Add data with color coding
     validationResults.forEach(result => {
-      const row = worksheet.addRow([
+      const row = worksheet.addRow(sanitizeExcelRow([
         sanitizeString(result['Name (Require)'] || ''),
         sanitizeString(result['Email (Require)'] || ''),
         sanitizeString(result['Phone'] || ''),
@@ -720,7 +739,7 @@ organizeController.validateImportContacts = async (req, res) => {
         sanitizeString(result['Description'] || ''),
         result.validation_status,
         sanitizeString(result.validation_reason || '')
-      ]);
+      ]));
 
       // Color code based on validation status
       if (result.validation_status === 'Fail') {
@@ -790,7 +809,9 @@ organizeController.importContacts = async (req, res) => {
     }
 
     const filePath = req.file.path;
-    const originalFileName = req.file.originalname;
+    // path.basename strips any directory components a crafted upload
+    // filename could carry, before it's woven into a filesystem path below.
+    const originalFileName = path.basename(req.file.originalname);
     let rows = [];
 
     // Parse file (same logic as validation) — Excel only (multer's
@@ -965,7 +986,7 @@ organizeController.importContacts = async (req, res) => {
 
     // Add data with color coding
     importResults.forEach(result => {
-      const row = worksheet.addRow([
+      const row = worksheet.addRow(sanitizeExcelRow([
         sanitizeString(result['Name (Require)'] || ''),
         sanitizeString(result['Email (Require)'] || ''),
         sanitizeString(result['Phone'] || ''),
@@ -974,7 +995,7 @@ organizeController.importContacts = async (req, res) => {
         sanitizeString(result['Description'] || ''),
         result.import_status,
         sanitizeString(result.import_reason || '')
-      ]);
+      ]));
 
       // Color code based on import status
       if (result.import_status === 'Failed') {
@@ -1038,7 +1059,9 @@ organizeController.importContacts = async (req, res) => {
 // Download validation/import result files
 organizeController.downloadContactValidationFile = async (req, res) => {
   try {
-    const filename = req.params.filename;
+    // path.basename strips any directory components (../ or absolute
+    // paths) an attacker could smuggle through the :filename route param.
+    const filename = path.basename(req.params.filename || '');
     const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
     const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
     const filePath = path.join(tempDir, filename);

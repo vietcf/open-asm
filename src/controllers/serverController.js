@@ -18,6 +18,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { ServiceError } from '../services/errors.js';
 import { IPV4_REGEX } from '../services/ipAddressService.js';
+import { sanitizeExcelRow } from '../utils/excelSafe.js';
 import {
   listAgents as listAgentsService,
   createAgent as createAgentService,
@@ -153,11 +154,28 @@ serverController.listServer = async (req, res) => {
       }
       console.log('Selected OS:', selectedOS);
     }
+
+    // Build query string carrying all active filters, used by pagination links
+    // so filters aren't lost when navigating between pages.
+    const filterQueryParams = new URLSearchParams();
+    if (pageSize) filterQueryParams.set('pageSize', pageSize);
+    if (filterParams.search) filterQueryParams.set('search', filterParams.search);
+    if (filterParams.status) filterQueryParams.set('status', filterParams.status);
+    if (filterParams.type) filterQueryParams.set('type', filterParams.type);
+    if (filterParams.location) filterQueryParams.set('location', filterParams.location);
+    if (filterParams.tags && filterParams.tags.length) filterParams.tags.forEach(id => filterQueryParams.append('tags[]', id));
+    if (filterParams.manager && filterParams.manager.length) filterParams.manager.forEach(id => filterQueryParams.append('contacts[]', id));
+    if (filterParams.systems && filterParams.systems.length) filterParams.systems.forEach(id => filterQueryParams.append('systems[]', id));
+    if (filterParams.services && filterParams.services.length) filterParams.services.forEach(id => filterQueryParams.append('services[]', id));
+    if (filterParams.os && filterParams.os.length) filterQueryParams.set('os', filterParams.os[0]);
+    const serverFilterQuery = filterQueryParams.toString();
+
     res.render('pages/server/server_list', {
       serverList,
       search: filterParams.search,
       page,
       pageSize,
+      serverFilterQuery,
       totalPages,
       totalCount,
       startItem,
@@ -591,10 +609,11 @@ serverController.exportServerList = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Server List');
     worksheet.addRow(headers);
-    rows.forEach(row => worksheet.addRow(row));
+    rows.forEach(row => worksheet.addRow(sanitizeExcelRow(row)));
     worksheet.columns.forEach(col => { col.width = 22; });
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="server_list.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="server_list_${timestamp}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
@@ -751,7 +770,9 @@ serverController.validateImportServers = async (req, res) => {
     console.log('File uploaded:', req.file.originalname, 'Size:', req.file.size);
 
     const filePath = req.file.path;
-    const originalFileName = req.file.originalname;
+    // path.basename strips any directory components a crafted upload
+    // filename could carry, before it's woven into a filesystem path below.
+    const originalFileName = path.basename(req.file.originalname);
     let rows = [];
 
     // Parse file based on extension
@@ -1094,7 +1115,7 @@ serverController.validateImportServers = async (req, res) => {
 
     // Add data rows
     validationResults.forEach(result => {
-      const row = worksheet.addRow([
+      const row = worksheet.addRow(sanitizeExcelRow([
         result.name,
         result.ip_addresses,
         result.os,
@@ -1109,7 +1130,7 @@ serverController.validateImportServers = async (req, res) => {
         result.description,
         result.validation_status,
         result.validation_reason
-      ]);
+      ]));
 
       // Color code validation status
       if (result.validation_status === 'FAIL') {
@@ -1206,7 +1227,9 @@ serverController.importServers = async (req, res) => {
     }
 
     const filePath = req.file.path;
-    const originalFileName = req.file.originalname;
+    // path.basename strips any directory components a crafted upload
+    // filename could carry, before it's woven into a filesystem path below.
+    const originalFileName = path.basename(req.file.originalname);
     let rows = [];
 
     // Parse file (same logic as validation)
@@ -1536,7 +1559,7 @@ serverController.importServers = async (req, res) => {
 
     // Add data rows
     importResults.forEach(result => {
-      const row = worksheet.addRow([
+      const row = worksheet.addRow(sanitizeExcelRow([
         result.name,
         result.ip_addresses,
         result.os,
@@ -1551,7 +1574,7 @@ serverController.importServers = async (req, res) => {
         result.description,
         result.import_status,
         result.import_reason
-      ]);
+      ]));
 
       // Color code import status
       if (result.import_status === 'Failed') {
@@ -1639,7 +1662,9 @@ serverController.importServers = async (req, res) => {
 // Download server validation file
 serverController.downloadServerValidationFile = async (req, res) => {
   try {
-    const filename = req.params.filename;
+    // path.basename strips any directory components (../ or absolute
+    // paths) an attacker could smuggle through the :filename route param.
+    const filename = path.basename(req.params.filename || '');
     const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
     const filePath = path.join(process.cwd(), uploadsDir, 'temp', filename);
     

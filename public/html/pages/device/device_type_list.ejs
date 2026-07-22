@@ -318,20 +318,28 @@ function buildPaginationUrl(targetPage) {
 // JAVASCRIPT FUNCTIONS
 // ==========================================
 
+// name/description are free-text and not HTML-stripped server-side — must
+// be escaped before going into innerHTML.
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
 // Device Type Detail Modal Handler
 function showDeviceTypeDetail(deviceTypeId) {
   const button = document.querySelector(`button[onclick="showDeviceTypeDetail('${deviceTypeId}')"]`);
   const deviceTypeData = JSON.parse(button.getAttribute('data-device-type'));
-  
+
   const modalElement = document.getElementById('deviceTypeDetailModal');
   const content = document.getElementById('deviceTypeDetailContent');
-  
+
   let html = '<dl class="row detail-dl">';
   html += '<dt class="col-sm-4">Device Type ID</dt><dd class="col-sm-8">' + (deviceTypeData.id || '-') + '</dd>';
-  html += '<dt class="col-sm-4">Device Type Name</dt><dd class="col-sm-8">' + (deviceTypeData.name || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Device Type Name</dt><dd class="col-sm-8">' + escapeHtml(deviceTypeData.name || '-') + '</dd>';
   html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + (deviceTypeData.created_at ? new Date(deviceTypeData.created_at).toLocaleDateString() : '-') + '</dd>';
   html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + (deviceTypeData.updated_at ? new Date(deviceTypeData.updated_at).toLocaleDateString() : '-') + '</dd>';
-  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (deviceTypeData.description ? '<div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + deviceTypeData.description + '</div>' : '-') + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (deviceTypeData.description ? '<div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + escapeHtml(deviceTypeData.description) + '</div>' : '-') + '</dd>';
   html += '</dl>';
   
   content.innerHTML = html;

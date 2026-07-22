@@ -489,7 +489,88 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.2.1 (Latest)
+### Version 1.2.4 (Latest)
+- ✨ **Organization hover info**: hovering the Organization name in the
+  Contact list/detail, or the System detail modal (label there renamed
+  from "Department"), shows a tooltip with that Unit's description.
+  Fetched lazily via a new `GET /organize/api/unit/:id/detail` endpoint
+  and cached client-side, instead of adding the field to every
+  consuming page's own query.
+- 🎨 Sidebar reorganized into ASSET MANAGEMENT / SECURITY /
+  ADMINISTRATION sections; deduplicated menu icons; "Security
+  Management" renamed to "Vulnerabilities".
+- 🐛 Fixed a layout bug where the footer rendered at the top of the
+  page, overlapping the header, on tablet/iPad-width viewports; footer
+  colors simplified to match the rest of the theme.
+- 🔒 **Security (OWASP Top 10 audit, Device menu)**: fixed 3 issues
+  found in the Device module and then swept the same patterns across
+  the whole app:
+  - Stored XSS in 15 list-detail-modal JS functions that concatenated
+    free-text fields (name/description/manufacturer/tags/contacts/etc.)
+    unescaped into `innerHTML`, across Device, Server, Network
+    (IP/Subnet/Domain), and Organize (Contact/Tag/Unit) list pages.
+  - Missing permission check on `/device/device/export` (every other
+    export route already required one).
+  - Excel formula injection: user-controlled fields written raw into
+    exported/validation/import-result worksheets across Device,
+    System, Server, Firewall, Network, Organize, and Privileged
+    Account. Added a shared `src/utils/excelSafe.js` that prefixes any
+    cell starting with `=,+,-,@` with a quote before writing.
+
+### Version 1.2.3
+- ✨ **Pentest Round tracking**: new "Security Management" sidebar section
+  with a Pentest Management page for tracking pentest rounds against
+  Systems or System Components — round name, date, configurable status
+  (`System Configuration` → `pentest_status`: Not Started / In Progress /
+  Completed - Unfixed / Completed - Fixed), participants (from Contacts),
+  and one report file per round. A read-only quick-view modal on
+  System/Component Detail links out to the full management page. Deleting
+  a System/Component cascades to its pentest rounds (and their report
+  files); deleting a round never touches its parent.
+- ✨ **System attachments**: file name now downloads directly; a new
+  `[View]` link opens the file inline in a new tab instead of forcing a
+  download for every file type. Pentest reports use the same split.
+- 🔒 **Security**: fixed a stored XSS in the new Pentest Round detail
+  views — round name/description, participant name/email, and the
+  uploaded report's original filename are free-text/attacker-controlled
+  input persisted with no HTML stripping, and were concatenated
+  unescaped into `innerHTML` in the Pentest Management "Show" modal and
+  the System/Component "Pentest History" quick-view, letting a user with
+  only `pentest.create`/`pentest.update` plant a payload that executed in
+  any `pentest.read` user's session. Found and fixed before this version
+  shipped.
+
+### Version 1.2.2
+- 🔒 **Security**: fixed path traversal in Network's validation-file download
+  routes (`/network/download/validation(-subnet)/:filename`) that let any
+  authenticated user with basic read access (every existing role, including
+  `viewer`) read arbitrary files off the server via `../` in the filename
+  segment
+- 🔒 **Security**: fixed path traversal in Network's import upload/result
+  filenames (raw upload filename and 8 generated validation/import result
+  filenames all wove the client-supplied original filename into a
+  filesystem path unsanitized)
+- 🔒 **Security**: fixed the same path-traversal pattern in System's
+  document-upload filenames; uploads are also now restricted to a safe
+  document/image extension allow-list, capped at 25MB, and served back
+  under `/uploads/*` as forced downloads (`Content-Disposition: attachment`
+  + `X-Content-Type-Options: nosniff`) — previously any file type
+  (including `.html`/`.svg`) was accepted and served inline, a stored-XSS
+  vector
+- 🔒 **Security**: found and fixed the identical path-traversal pattern
+  repeated in Device, Firewall Rule, Contact, and Server's own
+  validation-file download routes and import upload/result filenames —
+  same root cause and fix as Network/System above, confirmed exploitable
+  by any authenticated user (every role including `viewer`) via PoC before
+  patching each one
+- 🐛 Server/Device list: filters (tags/systems/manager/services) were
+  silently dropped from the Export link and from pagination/quick-search
+  navigation due to a `.id` access on what were actually raw ID arrays
+- ✅ Export filenames (Server/Device/IP/Subnet/Domain/System/Firewall
+  Rule/Privileged Account) now include a timestamp suffix to distinguish
+  repeated exports
+
+### Version 1.2.1
 - ✅ **Domain Import**: New Excel import for Domain (Download Template /
   Validate / Import), same pattern as Subnet import; Contact import (backend
   already existed) is now wired up to the UI

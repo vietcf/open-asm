@@ -835,6 +835,15 @@ $(function() {
   
   // Tags Select2 - Add Domain Modal
   console.log('Setting up Tags Select2...');
+  // Record Type — options are already rendered server-side, so no ajax
+  // needed, just the Bootstrap 5 Select2 styling to match Tags/Systems.
+  $('#domainRecordType').select2({
+    theme: 'bootstrap-5',
+    width: '100%',
+    minimumResultsForSearch: Infinity,
+    dropdownParent: $('#addDomainModal')
+  });
+
   $('#domainTags').select2({
     theme: 'bootstrap-5',
     placeholder: 'Select tags (optional)',
@@ -941,6 +950,7 @@ $(function() {
     console.log('Add Domain Modal hidden, resetting form');
     $('#addDomainForm')[0].reset();
     $('#domainTags, #domainSystems, #domainIpId').val(null).trigger('change');
+    $('#domainRecordType').trigger('change');
   });
 
 
@@ -999,6 +1009,15 @@ $(function() {
   });
 
   // Edit Domain Modal - Initialize Select2
+  // Record Type — options are already rendered server-side, so no ajax
+  // needed, just the Bootstrap 5 Select2 styling to match Tags/Systems.
+  $('#editDomainRecordType').select2({
+    theme: 'bootstrap-5',
+    width: '100%',
+    minimumResultsForSearch: Infinity,
+    dropdownParent: $('#editDomainModal')
+  });
+
   $('#editDomainTags').select2({
             theme: 'bootstrap-5',
     multiple: true,
@@ -1069,7 +1088,7 @@ $(function() {
     // Populate form fields
     $('#editDomainName').val(domain);
     $('#editDomainDescription').val(description);
-    $('#editDomainRecordType').val(recordType);
+    $('#editDomainRecordType').val(recordType).trigger('change');
 
     // Load existing values for Select2 fields after a short delay
         setTimeout(() => {
@@ -1106,6 +1125,16 @@ $(function() {
   });
 
   // Filter Domain Modal - Initialize Select2
+  // Record Type — options are already rendered server-side, so no ajax
+  // needed, just the Bootstrap 5 Select2 styling to match Tags/Systems.
+  $('#filterDomainRecordType').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'All Record Types',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterDomainModal')
+  });
+
   $('#filterDomainTags').select2({
             theme: 'bootstrap-5',
             placeholder: 'Select tag(s)',
@@ -1161,7 +1190,7 @@ $(function() {
   $('#filterDomainModal').on('hidden.bs.modal', function() {
     console.log('Filter Domain Modal hidden, resetting form');
     $('#filterDomainForm')[0].reset();
-    $('#filterDomainTags, #filterDomainSystems').val(null).trigger('change');
+    $('#filterDomainTags, #filterDomainSystems, #filterDomainRecordType').val(null).trigger('change');
   });
 
   // Clear All Filters button
@@ -1169,7 +1198,7 @@ $(function() {
     // Clear all select2 values
     $('#filterDomainTags').val(null).trigger('change');
     $('#filterDomainSystems').val(null).trigger('change');
-    $('#filterDomainRecordType').val('');
+    $('#filterDomainRecordType').val(null).trigger('change');
     
     // Close modal
     $('#filterDomainModal').modal('hide');
@@ -1424,7 +1453,7 @@ function loadFilterExistingValues() {
     
     // Load Record Type
     if (filterStatus) {
-      $('#filterDomainRecordType').val(filterStatus);
+      $('#filterDomainRecordType').val(filterStatus).trigger('change');
     }
     
     // Load tags
@@ -1744,6 +1773,14 @@ function updateSubnetInfoInModal(contentElement, subnetInfo) {
   }
 }
 
+// domain/description/tags/systems/contacts are user-editable free text not
+// HTML-stripped server-side — must be escaped before going into innerHTML.
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
 function showDomainDetail(domainId) {
   const buttons = document.querySelectorAll('button[data-domain]');
   let targetButton = null;
@@ -1782,19 +1819,19 @@ function showDomainDetail(domainId) {
   const content = document.getElementById('domainDetailContent');
   
   let html = '<dl class="row detail-dl">';
-  html += '<dt class="col-sm-4">Domain</dt><dd class="col-sm-8">' + String(domain.domain || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + String(domain.description || 'N/A').trim() + '</pre></dd>';
-  html += '<dt class="col-sm-4">Record Type</dt><dd class="col-sm-8">' + String(domain.record_type || 'A').trim() + '</dd>';
+  html += '<dt class="col-sm-4">Domain</dt><dd class="col-sm-8">' + escapeHtml(domain.domain || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + escapeHtml(domain.description || 'N/A') + '</pre></dd>';
+  html += '<dt class="col-sm-4">Record Type</dt><dd class="col-sm-8">' + escapeHtml(domain.record_type || 'A') + '</dd>';
 
   if (domain.ip && domain.ip.ip_address) {
-    html += '<dt class="col-sm-4">IP Address</dt><dd class="col-sm-8">' + String(domain.ip.ip_address).trim() + '</dd>';
+    html += '<dt class="col-sm-4">IP Address</dt><dd class="col-sm-8">' + escapeHtml(domain.ip.ip_address) + '</dd>';
   }
 
   if (domain.tags && domain.tags.length > 0) {
     html += '<dt class="col-sm-4">Tags</dt><dd class="col-sm-8">';
     domain.tags.forEach(function(tag) {
       const tagValue = (typeof tag === 'string' ? tag : tag.name);
-      html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
+      html += '<span class="badge bg-primary me-1 mb-1">' + escapeHtml(tagValue) + '</span>';
     });
     html += '</dd>';
   }
@@ -1804,8 +1841,8 @@ function showDomainDetail(domainId) {
     domain.systems.forEach(function(system) {
       const systemValue = (typeof system === 'string' ? system : system.name);
       const searchUrl = '/system/system?search=' + encodeURIComponent(systemValue) + '&pageSize=2';
-      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' +
-              String(systemValue).trim() + '</a></li>';
+      html += '<li><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' +
+              escapeHtml(systemValue) + '</a></li>';
     });
     html += '</ul></dd>';
   }
@@ -1838,8 +1875,8 @@ function showDomainDetail(domainId) {
       
       // Create searchable link as simple text
       const searchUrl = '/organize/contact?search=' + encodeURIComponent(contactName);
-      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' +
-              String(displayText).trim() + '</a></li>';
+      html += '<li><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' +
+              escapeHtml(displayText) + '</a></li>';
     });
     html += '</ul></dd>';
   }

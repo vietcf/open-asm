@@ -16,7 +16,10 @@ const storage = multer.diskStorage({
     cb(null, dest);
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
+    // path.basename strips any directory components a crafted originalname
+    // could carry (multer's diskStorage does not sanitize this itself, it
+    // just path.joins(destination, filename)).
+    cb(null, Date.now() + '-' + path.basename(file.originalname));
   }
 });
 
@@ -68,6 +71,7 @@ router.get('/api/tag',organizeController.apiTagSearch);
 router.get('/api/tag/ids', organizeController.apiTagByIds);
 router.get('/api/system/ids', organizeController.apiSystemByIds);
 router.get('/api/unit', organizeController.apiUnitSearch);
+router.get('/api/unit/:id/detail', organizeController.apiUnitDetail);
 router.get('/api/contact/:id/qrcode', organizeController.apiContactQrVcard);
 
 

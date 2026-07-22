@@ -32,21 +32,50 @@ function buildPaginationUrl(targetPage) {
   if (typeof filterStatus !== 'undefined' && filterStatus) {
     params.set('status', filterStatus);
   }
-  
+
+  // Add type filter if exists
+  if (typeof filterType !== 'undefined' && filterType) {
+    params.set('type', filterType);
+  }
+
+  // Add location filter if exists
+  if (typeof filterLocation !== 'undefined' && filterLocation) {
+    params.set('location', filterLocation);
+  }
+
   // Add tags filter if exists
   if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
     filterTags.forEach(tag => {
-      params.append('tags[]', tag.id);
+      params.append('tags[]', tag.id || tag);
     });
   }
-  
+
   // Add systems filter if exists
   if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
     filterSystems.forEach(system => {
-      params.append('systems[]', system.id);
+      params.append('systems[]', system.id || system);
     });
   }
-  
+
+  // Add contacts filter if exists
+  if (typeof filterManager !== 'undefined' && filterManager && filterManager.length > 0) {
+    filterManager.forEach(contact => {
+      params.append('contacts[]', contact.id || contact);
+    });
+  }
+
+  // Add services filter if exists
+  if (typeof filterServices !== 'undefined' && filterServices && filterServices.length > 0) {
+    filterServices.forEach(service => {
+      params.append('services[]', service.id || service);
+    });
+  }
+
+  // Add OS filter if exists
+  if (typeof filterOs !== 'undefined' && filterOs) {
+    params.set('os', filterOs);
+  }
+
   return '?' + params.toString();
 }
 
@@ -77,28 +106,28 @@ function buildExportUrl() {
   // Add tags filter if exists
   if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
     filterTags.forEach(tag => {
-      params.append('tags[]', tag.id);
+      params.append('tags[]', tag.id || tag);
     });
   }
-  
+
   // Add systems filter if exists
   if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) {
     filterSystems.forEach(system => {
-      params.append('systems[]', system.id);
+      params.append('systems[]', system.id || system);
     });
   }
-  
+
   // Add contacts filter if exists
   if (typeof filterManager !== 'undefined' && filterManager && filterManager.length > 0) {
     filterManager.forEach(contact => {
-      params.append('contacts[]', contact.id);
+      params.append('contacts[]', contact.id || contact);
     });
   }
-  
+
   // Add services filter if exists
   if (typeof filterServices !== 'undefined' && filterServices && filterServices.length > 0) {
     filterServices.forEach(service => {
-      params.append('services[]', service.id);
+      params.append('services[]', service.id || service);
     });
   }
   
@@ -146,14 +175,33 @@ function buildExportUrl() {
             <% if (typeof filterStatus !== 'undefined' && filterStatus) { %>
               <input type="hidden" name="status" value="<%= filterStatus %>">
             <% } %>
+            <% if (typeof filterType !== 'undefined' && filterType) { %>
+              <input type="hidden" name="type" value="<%= filterType %>">
+            <% } %>
+            <% if (typeof filterLocation !== 'undefined' && filterLocation) { %>
+              <input type="hidden" name="location" value="<%= filterLocation %>">
+            <% } %>
+            <% if (typeof filterOs !== 'undefined' && filterOs) { %>
+              <input type="hidden" name="os" value="<%= filterOs %>">
+            <% } %>
             <% if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) { %>
               <% filterTags.forEach(function(tag) { %>
-                <input type="hidden" name="tags[]" value="<%= tag.id %>">
+                <input type="hidden" name="tags[]" value="<%= tag.id || tag %>">
               <% }); %>
             <% } %>
             <% if (typeof filterSystems !== 'undefined' && filterSystems && filterSystems.length > 0) { %>
               <% filterSystems.forEach(function(system) { %>
-                <input type="hidden" name="systems[]" value="<%= system.id %>">
+                <input type="hidden" name="systems[]" value="<%= system.id || system %>">
+              <% }); %>
+            <% } %>
+            <% if (typeof filterManager !== 'undefined' && filterManager && filterManager.length > 0) { %>
+              <% filterManager.forEach(function(contact) { %>
+                <input type="hidden" name="contacts[]" value="<%= contact.id || contact %>">
+              <% }); %>
+            <% } %>
+            <% if (typeof filterServices !== 'undefined' && filterServices && filterServices.length > 0) { %>
+              <% filterServices.forEach(function(service) { %>
+                <input type="hidden" name="services[]" value="<%= service.id || service %>">
               <% }); %>
             <% } %>
             
@@ -808,6 +856,31 @@ function buildExportUrl() {
             }
           });
 
+  // Status/Type/Location — options are already rendered server-side, so no
+  // ajax needed, just the Bootstrap 5 Select2 styling to match the other
+  // filter fields in this modal.
+  $('#filterServerStatus').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'All Status',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterServerModal')
+  });
+  $('#filterServerType').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'All Types',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterServerModal')
+  });
+  $('#filterServerLocation').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'All Locations',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterServerModal')
+  });
+
   // Filter IP Modal - Load existing filter values when opened
   $('#filterServerModal').on('show.bs.modal', function() {
     console.log('Filter IP Modal opened');
@@ -822,7 +895,7 @@ function buildExportUrl() {
   $('#filterServerModal').on('hidden.bs.modal', function() {
     console.log('Filter Server Modal hidden, resetting form');
     $('#filterServerForm')[0].reset();
-    $('#filterServerTags, #filterServerSystems, #filterServerContacts, #filterServerServices, #filterServerOs').val(null).trigger('change');
+    $('#filterServerTags, #filterServerSystems, #filterServerContacts, #filterServerServices, #filterServerOs, #filterServerStatus, #filterServerType, #filterServerLocation').val(null).trigger('change');
   });
 
   // Clear All Filters button
@@ -833,9 +906,9 @@ function buildExportUrl() {
     $('#filterServerContacts').val(null).trigger('change');
     $('#filterServerServices').val(null).trigger('change');
     $('#filterServerOs').val(null).trigger('change');
-    $('#filterServerStatus').val('');
-    $('#filterServerType').val('');
-    $('#filterServerLocation').val('');
+    $('#filterServerStatus').val(null).trigger('change');
+    $('#filterServerType').val(null).trigger('change');
+    $('#filterServerLocation').val(null).trigger('change');
     
     // Close modal
     $('#filterServerModal').modal('hide');
@@ -888,7 +961,7 @@ function loadFilterExistingValues() {
     
     // Load status
     if (filterStatus) {
-      $('#filterServerStatus').val(filterStatus);
+      $('#filterServerStatus').val(filterStatus).trigger('change');
     }
     
     // Load tags from window variables (more reliable)
@@ -940,12 +1013,12 @@ function loadFilterExistingValues() {
     
     // Load Type
     if (filterType) {
-      $('#filterServerType').val(filterType);
+      $('#filterServerType').val(filterType).trigger('change');
     }
-    
+
     // Load Location
     if (filterLocation) {
-      $('#filterServerLocation').val(filterLocation);
+      $('#filterServerLocation').val(filterLocation).trigger('change');
     }
     
     } catch (e) {
@@ -975,6 +1048,15 @@ document.getElementById('deleteServerConfirmBtn').addEventListener('click', func
   pendingDeleteServerForm.submit();
 });
 
+
+// name/description/type/location/tags/managers/services/agents are all
+// user-editable free text not HTML-stripped server-side — must be escaped
+// before going into innerHTML.
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
 
 function showServerDetail(serverId) {
   const buttons = document.querySelectorAll('button[data-server]');
@@ -1014,19 +1096,19 @@ function showServerDetail(serverId) {
   const content = document.getElementById('serverDetailContent');
   
   let html = '<dl class="row detail-dl">';
-  html += '<dt class="col-sm-4">Server Name</dt><dd class="col-sm-8">' + String(server.name || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><span style="white-space: pre-wrap;">' + String(server.description || 'N/A').trim() + '</span></dd>';
-  html += '<dt class="col-sm-4">Status</dt><dd class="col-sm-8">' + String(server.status || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Type</dt><dd class="col-sm-8">' + String(server.type || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Location</dt><dd class="col-sm-8">' + String(server.location || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Operating System</dt><dd class="col-sm-8">' + String(server.platform_name || server.os || 'N/A').trim() + '</dd>';
+  html += '<dt class="col-sm-4">Server Name</dt><dd class="col-sm-8">' + escapeHtml(server.name || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><span style="white-space: pre-wrap;">' + escapeHtml(server.description || 'N/A') + '</span></dd>';
+  html += '<dt class="col-sm-4">Status</dt><dd class="col-sm-8">' + escapeHtml(server.status || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Type</dt><dd class="col-sm-8">' + escapeHtml(server.type || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Location</dt><dd class="col-sm-8">' + escapeHtml(server.location || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Operating System</dt><dd class="col-sm-8">' + escapeHtml(server.platform_name || server.os || 'N/A') + '</dd>';
 
   html += '<dt class="col-sm-4">IP Addresses</dt><dd class="col-sm-8">';
   if (server.ip && server.ip.length > 0) {
     server.ip.forEach(function(ip) {
       const ipValue = (typeof ip === 'string' ? ip : ip.ip_address);
       const searchUrl = '/network/ip-address?page=1&search=' + encodeURIComponent(ipValue);
-      html += '<div><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + String(ipValue).trim() + '</a></div>';
+      html += '<div><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' + escapeHtml(ipValue) + '</a></div>';
     });
   } else {
     html += 'N/A';
@@ -1037,7 +1119,7 @@ function showServerDetail(serverId) {
     html += '<dt class="col-sm-4">Tags</dt><dd class="col-sm-8">';
     server.tags.forEach(function(tag) {
       const tagValue = (typeof tag === 'string' ? tag : tag.name);
-      html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
+      html += '<span class="badge bg-primary me-1 mb-1">' + escapeHtml(tagValue) + '</span>';
     });
     html += '</dd>';
   }
@@ -1047,8 +1129,8 @@ function showServerDetail(serverId) {
     server.systems.forEach(function(system) {
       const systemValue = (typeof system === 'string' ? system : system.name);
       const searchUrl = '/system/system?search=' + encodeURIComponent(systemValue) + '&pageSize=2';
-      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' +
-              String(systemValue).trim() + '</a></li>';
+      html += '<li><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' +
+              escapeHtml(systemValue) + '</a></li>';
     });
     html += '</ul></dd>';
   }
@@ -1059,10 +1141,10 @@ function showServerDetail(serverId) {
       const managerName = (typeof manager === 'string' ? manager : manager.name);
       const managerEmail = (typeof manager === 'string' ? '' : manager.email);
       const searchUrl = '/organize/contact?page=1&search=' + encodeURIComponent(managerName);
-      html += '<div><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + String(managerName).trim();
+      html += '<div><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' + escapeHtml(managerName);
       if (managerEmail) {
         const emailUsername = managerEmail.split('@')[0];
-        html += ' (' + String(emailUsername).trim() + ')';
+        html += ' (' + escapeHtml(emailUsername) + ')';
       }
       html += '</a></div>';
     });
@@ -1073,7 +1155,7 @@ function showServerDetail(serverId) {
     html += '<dt class="col-sm-4">Services</dt><dd class="col-sm-8">';
     server.services.forEach(function(service) {
       const serviceValue = (typeof service === 'string' ? service : service.name);
-      html += '<span class="badge bg-warning text-dark me-1 mb-1">' + String(serviceValue).trim() + '</span>';
+      html += '<span class="badge bg-warning text-dark me-1 mb-1">' + escapeHtml(serviceValue) + '</span>';
     });
     html += '</dd>';
   }
@@ -1082,17 +1164,17 @@ function showServerDetail(serverId) {
     html += '<dt class="col-sm-4">Agents</dt><dd class="col-sm-8">';
     server.agents.forEach(function(agent) {
       const agentName = (typeof agent === 'string' ? agent : agent.name);
-      html += '<span class="badge bg-secondary me-1 mb-1">' + String(agentName).trim() + '</span>';
+      html += '<span class="badge bg-secondary me-1 mb-1">' + escapeHtml(agentName) + '</span>';
     });
     html += '</dd>';
   }
 
   const serverCreated = (server.created_at || 'N/A');
-  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + String(serverCreated).trim() + '</dd>';
+  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + escapeHtml(serverCreated) + '</dd>';
   const serverUpdated = (server.updated_at || 'N/A');
-  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + String(serverUpdated).trim() + '</dd>';
+  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + escapeHtml(serverUpdated) + '</dd>';
   if (server.updated_by) {
-    html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + String(server.updated_by).trim() + '</dd>';
+    html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + escapeHtml(server.updated_by) + '</dd>';
   }
   html += '</dl>';
   content.innerHTML = html;

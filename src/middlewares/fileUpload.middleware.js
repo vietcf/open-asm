@@ -5,6 +5,33 @@ import fs from 'fs';
 
 const FILE_UPLOAD_DRIVER = process.env.FILE_UPLOAD_DRIVER || 'local';
 
+// Allow-list of safe, non-executable document/image types. Anything else
+// (html, svg, js, exe, php, ...) is rejected — uploaded files are served
+// back out via express.static, so an unrestricted extension list would let
+// any authenticated uploader plant stored XSS (html/svg) or other active
+// content under the app's own origin.
+const ALLOWED_EXTENSIONS = new Set([
+  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+  '.txt', '.csv', '.zip', '.rar', '.7z',
+  '.png', '.jpg', '.jpeg', '.gif'
+]);
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB per file
+
+function sanitizeOriginalName(originalname) {
+  // Strip any directory components (path traversal via "../" or absolute
+  // paths in the client-supplied filename) — multer's diskStorage does not
+  // sanitize this itself, it just path.joins(destination, filename).
+  return path.basename(originalname).replace(/[\\/]/g, '');
+}
+
+function fileFilter(req, file, cb) {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (!ALLOWED_EXTENSIONS.has(ext)) {
+    return cb(new Error(`File type not allowed: ${ext || '(no extension)'}`));
+  }
+  cb(null, true);
+}
+
 function createUploadMiddleware({ fieldName = 'file', folder = 'misc', maxCount = 10 } = {}) {
   let storage;
   if (FILE_UPLOAD_DRIVER === 's3') {
@@ -25,10 +52,10 @@ function createUploadMiddleware({ fieldName = 'file', folder = 'misc', maxCount 
         contentType: multerS3.AUTO_CONTENT_TYPE,
         key: function (req, file, cb) {
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-          cb(null, `${folder}/` + uniqueSuffix + '-' + file.originalname);
+          cb(null, `${folder}/` + uniqueSuffix + '-' + sanitizeOriginalName(file.originalname));
         }
       });
-      const upload = multer({ storage });
+      const upload = multer({ storage, fileFilter, limits: { fileSize: MAX_FILE_SIZE } });
       return upload.array(fieldName, maxCount);
     })();
   } else {
@@ -41,11 +68,11 @@ function createUploadMiddleware({ fieldName = 'file', folder = 'misc', maxCount 
       },
       filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + '-' + file.originalname);
+        cb(null, uniqueSuffix + '-' + sanitizeOriginalName(file.originalname));
       }
     });
   }
-  const upload = multer({ storage });
+  const upload = multer({ storage, fileFilter, limits: { fileSize: MAX_FILE_SIZE } });
   return upload.array(fieldName, maxCount);
 }
 

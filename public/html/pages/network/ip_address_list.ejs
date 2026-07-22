@@ -1394,9 +1394,9 @@ function updateSubnetInfoInModal(contentElement, subnetInfo) {
 
   if (subnetInfo) {
     // Zone as plain text
-    let zoneHTML = subnetInfo.zone && subnetInfo.zone.trim() ? String(subnetInfo.zone).trim() : '<span class="text-muted">N/A</span>';
+    let zoneHTML = subnetInfo.zone && subnetInfo.zone.trim() ? escapeHtml(subnetInfo.zone.trim()) : '<span class="text-muted">N/A</span>';
     // Environment as plain text
-    let environmentHTML = subnetInfo.environment && subnetInfo.environment.trim() ? String(subnetInfo.environment).trim() : '<span class="text-muted">N/A</span>';
+    let environmentHTML = subnetInfo.environment && subnetInfo.environment.trim() ? escapeHtml(subnetInfo.environment.trim()) : '<span class="text-muted">N/A</span>';
 
     // Subnet as a link to the Subnet List filtered to this subnet, with a
     // hover tooltip showing the subnet's own details (zone/environment/
@@ -1497,16 +1497,16 @@ function showIpDetail(ipId) {
   const content = document.getElementById('ipDetailContent');
   
   let html = '<dl class="row detail-dl">';
-  html += '<dt class="col-sm-4">IP Address</dt><dd class="col-sm-8">' + String(ip.ip_address || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + String(ip.description || 'N/A').trim() + '</pre></dd>';
-  html += '<dt class="col-sm-4">Status</dt><dd class="col-sm-8">' + String(ip.status || 'N/A').trim() + '</dd>';
+  html += '<dt class="col-sm-4">IP Address</dt><dd class="col-sm-8">' + escapeHtml(ip.ip_address || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + escapeHtml(ip.description || 'N/A') + '</pre></dd>';
+  html += '<dt class="col-sm-4">Status</dt><dd class="col-sm-8">' + escapeHtml(ip.status || 'N/A') + '</dd>';
 
   // Add Server/Device information with search links
   html += '<dt class="col-sm-4">Server/Device</dt><dd class="col-sm-8">';
   if (ip.server_name || ip.device_name) {
     if (ip.server_name) {
       const searchUrl = '/server/server/list?page=1&search=' + encodeURIComponent(ip.server_name);
-      html += '<a href="' + searchUrl + '" class="text-decoration-none" target="_blank">' + String(ip.server_name).trim() + '</a>';
+      html += '<a href="' + escapeHtml(searchUrl) + '" class="text-decoration-none" target="_blank">' + escapeHtml(ip.server_name) + '</a>';
     }
 
     if (ip.server_name && ip.device_name) {
@@ -1515,7 +1515,7 @@ function showIpDetail(ipId) {
 
     if (ip.device_name) {
       const searchUrl = '/device/device?page=1&search=' + encodeURIComponent(ip.device_name);
-      html += '<a href="' + searchUrl + '" class="text-decoration-none" target="_blank">' + String(ip.device_name).trim() + '</a>';
+      html += '<a href="' + escapeHtml(searchUrl) + '" class="text-decoration-none" target="_blank">' + escapeHtml(ip.device_name) + '</a>';
     }
   } else {
     html += '<span class="text-muted">N/A</span>';
@@ -1548,7 +1548,7 @@ function showIpDetail(ipId) {
     html += '<dt class="col-sm-4">Tags</dt><dd class="col-sm-8">';
     ip.tags.forEach(function(tag) {
       const tagValue = (typeof tag === 'string' ? tag : tag.name);
-      html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
+      html += '<span class="badge bg-primary me-1 mb-1">' + escapeHtml(tagValue) + '</span>';
     });
     html += '</dd>';
   }
@@ -1558,8 +1558,8 @@ function showIpDetail(ipId) {
     ip.systems.forEach(function(system) {
       const systemValue = (typeof system === 'string' ? system : system.name);
       const searchUrl = '/system/system?search=' + encodeURIComponent(systemValue) + '&pageSize=2';
-      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' +
-              String(systemValue).trim() + '</a></li>';
+      html += '<li><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' +
+              escapeHtml(systemValue) + '</a></li>';
     });
     html += '</ul></dd>';
   }
@@ -1592,18 +1592,18 @@ function showIpDetail(ipId) {
       
       // Create searchable link as simple text
       const searchUrl = '/organize/contact?search=' + encodeURIComponent(contactName);
-      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' +
-              String(displayText).trim() + '</a></li>';
+      html += '<li><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' +
+              escapeHtml(displayText) + '</a></li>';
     });
     html += '</ul></dd>';
   }
 
   const ipCreated = (ip.created_at || 'N/A');
-  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + String(ipCreated).trim() + '</dd>';
+  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + escapeHtml(ipCreated) + '</dd>';
   const ipUpdated = (ip.updated_at || 'N/A');
-  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + String(ipUpdated).trim() + '</dd>';
+  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + escapeHtml(ipUpdated) + '</dd>';
   if (ip.updated_by) {
-    html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + String(ip.updated_by).trim() + '</dd>';
+    html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + escapeHtml(ip.updated_by) + '</dd>';
   }
 
   html += '</dl>';

@@ -12,6 +12,7 @@ import XLSX from 'xlsx';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { sanitizeExcelRow } from '../utils/excelSafe.js';
 import {
   listDevices as listDevicesService,
   getDevice as getDeviceService,
@@ -672,10 +673,11 @@ deviceController.exportDeviceList = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Device List');
     worksheet.addRow(headers);
-    rows.forEach(row => worksheet.addRow(row));
+    rows.forEach(row => worksheet.addRow(sanitizeExcelRow(row)));
     worksheet.columns.forEach(col => { col.width = 22; });
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="device_list.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="device_list_${timestamp}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
@@ -905,7 +907,9 @@ deviceController.validateImportDevices = async (req, res) => {
     console.log('File uploaded:', req.file.originalname, 'Size:', req.file.size);
 
     const filePath = req.file.path;
-    const originalFileName = req.file.originalname;
+    // path.basename strips any directory components a crafted upload
+    // filename could carry, before it's woven into a filesystem path below.
+    const originalFileName = path.basename(req.file.originalname);
     let rows = [];
 
     // Parse file based on extension
@@ -1158,7 +1162,7 @@ deviceController.validateImportDevices = async (req, res) => {
 
     // Add data rows
     validationResults.forEach(result => {
-      const row = worksheet.addRow([
+      const row = worksheet.addRow(sanitizeExcelRow([
         result.name,
         result.ip_addresses,
         result.device_type,
@@ -1173,7 +1177,7 @@ deviceController.validateImportDevices = async (req, res) => {
         result.description,
         result.validation_status,
         result.validation_reason
-      ]);
+      ]));
 
       // Color code validation status
       if (result.validation_status === 'FAIL') {
@@ -1267,7 +1271,9 @@ deviceController.importDevices = async (req, res) => {
     }
 
     const filePath = req.file.path;
-    const originalFileName = req.file.originalname;
+    // path.basename strips any directory components a crafted upload
+    // filename could carry, before it's woven into a filesystem path below.
+    const originalFileName = path.basename(req.file.originalname);
     let rows = [];
 
     // Every column must be present and in this exact order, matching the
@@ -1565,7 +1571,7 @@ deviceController.importDevices = async (req, res) => {
 
     // Add data rows
     importResults.forEach(result => {
-      const row = worksheet.addRow([
+      const row = worksheet.addRow(sanitizeExcelRow([
         result.name,
         result.ip_addresses,
         result.device_type,
@@ -1580,7 +1586,7 @@ deviceController.importDevices = async (req, res) => {
         result.description,
         result.import_status,
         result.import_reason
-      ]);
+      ]));
 
       // Color code import status
       if (result.import_status === 'Failed') {
@@ -1672,7 +1678,9 @@ deviceController.importDevices = async (req, res) => {
 // Download device validation file
 deviceController.downloadDeviceValidationFile = async (req, res) => {
   try {
-    const filename = req.params.filename;
+    // path.basename strips any directory components (../ or absolute
+    // paths) an attacker could smuggle through the :filename route param.
+    const filename = path.basename(req.params.filename || '');
     const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
     const filePath = path.join(process.cwd(), uploadsDir, 'temp', filename);
     

@@ -33,7 +33,7 @@ async function seedPermissionsAndRoles(pool) {
     'server', 'subnet', 'platform', 'service', 'system', 'ip_address',
     'role', 'permission',
     'configuration', 'system_log',
-    'priv_account', 'priv_role', 'priv_permission', 'rule'
+    'priv_account', 'priv_role', 'priv_permission', 'rule', 'pentest'
   ];
   const actions = ['create', 'read', 'update', 'delete'];
   const permissionValues = [];
@@ -203,6 +203,16 @@ async function seedConfiguration(pool) {
           { value: 'OTHER', label: 'Other' }
         ],
         description: 'Kiểu DNS record'
+      },
+      {
+        key: 'pentest_status',
+        value: [
+          { value: 'NOT_STARTED', label: 'Not Started' },
+          { value: 'IN_PROGRESS', label: 'In Progress' },
+          { value: 'COMPLETED_UNFIXED', label: 'Completed - Unfixed' },
+          { value: 'COMPLETED_FIXED', label: 'Completed - Fixed' }
+        ],
+        description: 'Trạng thái đợt pentest (có thể cấu hình trong System Configuration)'
       },
       {
         key: 'system_app_type',

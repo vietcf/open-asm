@@ -14,7 +14,10 @@ const storage = multer.diskStorage({
     cb(null, dest);
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname);
+    // path.basename strips any directory components a crafted originalname
+    // could carry (multer's diskStorage does not sanitize this itself, it
+    // just path.joins(destination, filename)).
+    cb(null, Date.now() + '-' + path.basename(file.originalname));
   }
 });
 
@@ -46,7 +49,7 @@ router.delete('/device/:id', requirePermission('device.delete'), deviceControlle
 // Device Form Routes (optional, for add/edit forms)
 router.get('/device/add', requirePermission('device.create'), deviceController.addDeviceForm);
 router.get('/device/edit/:id', requirePermission('device.update'), deviceController.editDeviceForm);
-router.get('/device/export', deviceController.exportDeviceList);
+router.get('/device/export', requirePermission('device.read'), deviceController.exportDeviceList);
 // Device import/export
 router.get('/device/template', requirePermission('device.create'), deviceController.downloadDeviceTemplate);
 router.post('/device/validate-import', requirePermission('device.create'), upload.single('file'), deviceController.validateImportDevices);

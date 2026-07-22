@@ -41,6 +41,7 @@ import dashboardRouter from './routes/dashboard.js';
 import requireLogin from './middlewares/requireLogin.middleware.js';
 import networkRouter from './routes/network.js';
 import systemRouter from './routes/system.js';
+import pentestRouter from './routes/pentest.js';
 import privAccountRouter from './routes/privAccount.js';
 import serverRouter from './routes/server.js';
 import serverController from './controllers/serverController.js';
@@ -137,6 +138,16 @@ app.set('layout', 'layouts/layout');
 // app.set('layout extractStyles', true);
 
 // 7. Static files
+// User-uploaded documents (system/server/device attachments etc.) are served
+// as forced downloads with sniffing disabled — they're arbitrary files
+// uploaded by any authenticated user, so this closes the stored-XSS vector
+// (a .html/.svg upload would otherwise render/execute in the app's origin).
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads'), {
+  setHeaders: (res, filePath) => {
+    res.setHeader('Content-Disposition', `attachment; filename="${path.basename(filePath)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+  }
+}));
 app.use(express.static(path.join(__dirname, '../public')));
 
 // Smart redirect for root URL - handles both authenticated and anonymous users
@@ -178,6 +189,7 @@ app.use('/2fa', requireLogin, twofaRouter);
 
 app.use('/dashboard', requireLogin, require2fa, dashboardRouter);
 app.use('/system', requireLogin, require2fa, systemRouter);
+app.use('/pentest', requireLogin, require2fa, pentestRouter);
 app.use('/network', requireLogin, require2fa, networkRouter);
 // Public template download route (no auth required)
 app.get('/server/server/template', serverController.downloadServerTemplate);

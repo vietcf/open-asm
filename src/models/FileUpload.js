@@ -48,6 +48,11 @@ class FileUpload {
     return result.rows[0];
   }
 
+  static async findById(id) {
+    const result = await pool.query(`SELECT * FROM file_uploads WHERE id = $1`, [id]);
+    return result.rows[0] || null;
+  }
+
   static async findByObject(object_type, object_id) {
     const result = await pool.query(
       `SELECT * FROM file_uploads WHERE object_type = $1 AND object_id = $2 ORDER BY uploaded_at DESC`,
@@ -79,12 +84,20 @@ class FileUpload {
     return file;
   }
 
+  // Maps object_type -> the uploads subfolder its files physically live in.
+  // Add an entry here whenever a new object_type gets file attachments.
+  static FOLDER_BY_OBJECT_TYPE = {
+    system: 'system',
+    pentest_round: 'pentest'
+  };
+
   static getUrl(file) {
     if (!file) return null;
     if (process.env.FILE_UPLOAD_DRIVER === 's3') {
       return file.file_path;
     } else {
-      return '/uploads/system/' + file.file_path.split('/').pop();
+      const folder = FileUpload.FOLDER_BY_OBJECT_TYPE[file.object_type] || 'system';
+      return '/uploads/' + folder + '/' + file.file_path.split('/').pop();
     }
   }
 

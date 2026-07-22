@@ -8,6 +8,8 @@ import SystemComponent from '../models/SystemComponent.js';
 import * as systemService from '../services/systemService.js';
 import * as systemComponentService from '../services/systemComponentService.js';
 import { ServiceError } from '../services/errors.js';
+import { serveFileInline } from '../utils/fileServe.js';
+import { sanitizeExcelRow } from '../utils/excelSafe.js';
 
 const { getLevelOptions, getScopeOptions, getArchitectureOptions } = systemService;
 const { getAppTypeOptions } = systemComponentService;
@@ -299,10 +301,11 @@ systemController.exportSystemList = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('System List');
     worksheet.addRow(headers);
-    rows.forEach(row => worksheet.addRow(row));
+    rows.forEach(row => worksheet.addRow(sanitizeExcelRow(row)));
     worksheet.columns.forEach(col => { col.width = 30; });
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="system_list.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="system_list_${timestamp}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
@@ -577,6 +580,41 @@ systemController.apiSystemComponents = async (req, res) => {
     res.json({ components: componentList });
   } catch (err) {
     res.status(500).json({ error: 'Error loading components', detail: err.message });
+  }
+};
+
+// API for select2 ajax component search (used by the Pentest Round object
+// picker when object_type = 'system_component').
+systemController.apiComponentSearch = async (req, res) => {
+  try {
+    const search = req.query.search ? req.query.search.trim() : '';
+    const data = await SystemComponent.select2Search({ search });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Error loading components', detail: err.message });
+  }
+};
+
+// Serve a previously-uploaded system attachment inline (opens in a new
+// browser tab) instead of the forced download every /uploads/* file gets
+// from the global static middleware. Only extensions in the safe allow-list
+// (see src/utils/fileServe.js) are ever served inline; anything else falls
+// back to attachment.
+systemController.viewSystemFile = async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!id || isNaN(Number(id))) return res.status(400).send('Invalid file id');
+
+    const file = await FileUpload.findById(id);
+    if (!file || file.object_type !== 'system') return res.status(404).send('File not found');
+
+    if (process.env.FILE_UPLOAD_DRIVER === 's3') {
+      return res.redirect(FileUpload.getUrl(file));
+    }
+
+    serveFileInline(res, { file, folder: 'system' });
+  } catch (err) {
+    res.status(500).send('Error viewing file: ' + err.message);
   }
 };
 

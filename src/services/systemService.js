@@ -6,6 +6,7 @@ import IpAddress from '../models/IpAddress.js';
 import Domain from '../models/Domain.js';
 import Tag from '../models/Tag.js';
 import FileUpload from '../models/FileUpload.js';
+import PentestRound from '../models/PentestRound.js';
 import Configuration from '../models/Configuration.js';
 import { ValidationError, NotFoundError, ConflictError } from './errors.js';
 import { withTransaction } from './transaction.js';
@@ -270,6 +271,7 @@ export async function deleteSystem(id) {
     await System.deleteContacts(id, c);
     await System.deleteDomains(id, c);
     await FileUpload.deleteByObject('system', id);
+    await PentestRound.deleteByObject('system', id, c);
     await System.delete(id, c);
   });
 }

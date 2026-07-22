@@ -14,6 +14,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import archiver from 'archiver';
 import { ServiceError } from '../services/errors.js';
+import { sanitizeExcelRow } from '../utils/excelSafe.js';
 import {
   listIpAddresses as listIpAddressesService,
   createIpAddress as createIpAddressService,
@@ -938,7 +939,7 @@ networkController.validateImportIPs = async (req, res) => {
           result.validation_status || 'Pass',                                  // Validation Status
           result.validation_reason || ''                                       // Validation Reason
         ];
-        worksheet.addRow(row);
+        worksheet.addRow(sanitizeExcelRow(row));
       });
       
       // Set column widths
@@ -952,7 +953,9 @@ networkController.validateImportIPs = async (req, res) => {
       }
       
       // Tạo file Excel tạm với tên theo định dạng timestamp_filename_validated.xlsx
-      const originalFileName = req.file.originalname.replace(/\.[^/.]+$/, ""); // Remove extension
+      // path.basename strips any directory components a crafted upload
+      // filename could carry, before it's woven into a filesystem path.
+      const originalFileName = path.basename(req.file.originalname).replace(/\.[^/.]+$/, ""); // Remove extension
       const timestamp = Date.now();
       const excelFileName = `${timestamp}_${originalFileName}_validation.xlsx`;
       const excelFilePath = path.join(tempDir, excelFileName);
@@ -1219,7 +1222,7 @@ networkController.importIPs = async (req, res) => {
           result.import_status || 'Success',                                   // Import Status
           result.import_reason || ''                                           // Import Reason
         ];
-        worksheet.addRow(row);
+        worksheet.addRow(sanitizeExcelRow(row));
       });
       
       // Set column widths
@@ -1233,7 +1236,7 @@ networkController.importIPs = async (req, res) => {
       }
       
       // Tạo file Excel tạm với tên theo định dạng timestamp_filename_imported.xlsx
-      const originalFileName = req.file.originalname.replace(/\.[^/.]+$/, ""); // Remove extension
+      const originalFileName = path.basename(req.file.originalname).replace(/\.[^/.]+$/, ""); // Remove extension
       const timestamp = Date.now();
       const excelFileName = `${timestamp}_${originalFileName}_imported.xlsx`;
       const excelFilePath = path.join(tempDir, excelFileName);
@@ -1330,10 +1333,11 @@ networkController.exportIpAddressList = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('IP Address List');
     worksheet.addRow(headers);
-    rows.forEach(row => worksheet.addRow(row));
+    rows.forEach(row => worksheet.addRow(sanitizeExcelRow(row)));
     worksheet.columns.forEach(col => { col.width = 22; });
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="ip_address_list.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="ip_address_list_${timestamp}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
@@ -1388,11 +1392,12 @@ networkController.exportSubnetList = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Subnet List');
     worksheet.addRow(headers);
-    rows.forEach(row => worksheet.addRow(row));
+    rows.forEach(row => worksheet.addRow(sanitizeExcelRow(row)));
     worksheet.columns.forEach(col => { col.width = 22; });
     
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="subnet_list.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="subnet_list_${timestamp}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
@@ -1446,11 +1451,12 @@ networkController.exportDomainList = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Domain List');
     worksheet.addRow(headers);
-    rows.forEach(row => worksheet.addRow(row));
+    rows.forEach(row => worksheet.addRow(sanitizeExcelRow(row)));
     worksheet.columns.forEach(col => { col.width = 22; });
     
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="domain_list.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="domain_list_${timestamp}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {
@@ -1551,10 +1557,13 @@ networkController.downloadTemplate = async (req, res) => {
 // Download validation results file
 networkController.downloadValidationFile = async (req, res) => {
   try {
-    const filename = req.params.filename;
+    // path.basename strips any directory components (../ or absolute
+    // paths) an attacker could smuggle through the :filename route param —
+    // otherwise this joins straight into the filesystem path below.
+    const filename = path.basename(req.params.filename || '');
     const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
     const filePath = path.join(process.cwd(), uploadsDir, 'temp', filename);
-    
+
     console.log('Downloading file:', filePath);
     
     if (fs.existsSync(filePath)) {
@@ -1866,7 +1875,7 @@ networkController.validateImportSubnets = async (req, res) => {
 
     // Add data rows
     validationResults.forEach(result => {
-      const row =       worksheet.addRow([
+      const row = worksheet.addRow(sanitizeExcelRow([
         result.subnet_address,
         result.description,
         result.zone,
@@ -1874,7 +1883,7 @@ networkController.validateImportSubnets = async (req, res) => {
         result.tags,
         result.validation_status,
         result.validation_reason
-      ]);
+      ]));
 
       // Color code validation status
       if (result.validation_status === 'Fail') {
@@ -1904,7 +1913,7 @@ networkController.validateImportSubnets = async (req, res) => {
     }
 
     const timestamp = Date.now();
-    const validationFileName = `${timestamp}_${req.file.originalname}_validation.xlsx`;
+    const validationFileName = `${timestamp}_${path.basename(req.file.originalname)}_validation.xlsx`;
     const validationFilePath = path.join(tempDir, validationFileName);
     console.log('Writing Excel file to:', validationFilePath);
 
@@ -1987,7 +1996,7 @@ networkController.importSubnets = async (req, res) => {
     }
 
     const filePath = req.file.path;
-    const originalFileName = req.file.originalname;
+    const originalFileName = path.basename(req.file.originalname);
     let rows = [];
 
     // Parse file based on extension — Excel only (multer's fileFilter
@@ -2151,7 +2160,7 @@ networkController.importSubnets = async (req, res) => {
 
     // Add data rows
     importResults.forEach(result => {
-      const row = worksheet.addRow([
+      const row = worksheet.addRow(sanitizeExcelRow([
         result.subnet_address,
         result.description,
         result.zone,
@@ -2159,7 +2168,7 @@ networkController.importSubnets = async (req, res) => {
         result.tags,
         result.import_status,
         result.import_reason
-      ]);
+      ]));
 
       // Color code import status
       if (result.import_status === 'Failed') {
@@ -2521,7 +2530,7 @@ networkController.validateImportDomains = async (req, res) => {
     worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
 
     validationResults.forEach(result => {
-      const row = worksheet.addRow([
+      const row = worksheet.addRow(sanitizeExcelRow([
         result.domain_name,
         result.description,
         result.record_type,
@@ -2530,7 +2539,7 @@ networkController.validateImportDomains = async (req, res) => {
         result.tags,
         result.validation_status,
         result.validation_reason
-      ]);
+      ]));
       if (result.validation_status === 'Fail') {
         row.getCell(7).font = { color: { argb: 'FFFF0000' } };
         row.getCell(8).font = { color: { argb: 'FFFF0000' } };
@@ -2550,7 +2559,7 @@ networkController.validateImportDomains = async (req, res) => {
     }
 
     const timestamp = Date.now();
-    const validationFileName = `${timestamp}_${req.file.originalname}_validation.xlsx`;
+    const validationFileName = `${timestamp}_${path.basename(req.file.originalname)}_validation.xlsx`;
     const validationFilePath = path.join(tempDir, validationFileName);
     await workbook.xlsx.writeFile(validationFilePath);
 
@@ -2598,7 +2607,7 @@ networkController.importDomains = async (req, res) => {
     }
 
     const filePath = req.file.path;
-    const originalFileName = req.file.originalname;
+    const originalFileName = path.basename(req.file.originalname);
     let rows = [];
 
     const ext = path.extname(originalFileName).toLowerCase();
@@ -2764,7 +2773,7 @@ networkController.importDomains = async (req, res) => {
     worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
 
     importResults.forEach(result => {
-      const row = worksheet.addRow([
+      const row = worksheet.addRow(sanitizeExcelRow([
         result.domain_name,
         result.description,
         result.record_type,
@@ -2773,7 +2782,7 @@ networkController.importDomains = async (req, res) => {
         result.tags,
         result.import_status,
         result.import_reason
-      ]);
+      ]));
       if (result.import_status === 'Failed') {
         row.getCell(7).font = { color: { argb: 'FFFF0000' } };
         row.getCell(8).font = { color: { argb: 'FFFF0000' } };
@@ -2848,7 +2857,9 @@ networkController.importDomains = async (req, res) => {
 // Download subnet validation file
 networkController.downloadSubnetValidationFile = async (req, res) => {
   try {
-    const filename = req.params.filename;
+    // path.basename strips any directory components (../ or absolute
+    // paths) an attacker could smuggle through the :filename route param.
+    const filename = path.basename(req.params.filename || '');
     const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
     const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
     const filePath = path.join(tempDir, filename);

@@ -11,6 +11,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { ServiceError } from '../services/errors.js';
+import { sanitizeExcelObject, sanitizeExcelRow } from '../utils/excelSafe.js';
 import {
   listRules as listRulesService,
   createRule as createRuleService,
@@ -280,7 +281,7 @@ firewallController.exportRuleList = async (req, res) => {
       { header: 'Updated By', key: 'updated_by', width: 16 }
     ];
     ruleList.forEach((rule, idx) => {
-      worksheet.addRow({
+      worksheet.addRow(sanitizeExcelObject({
         idx: idx + 1,
         id: rule.id,
         firewall_name: rule.firewall_name || '',
@@ -313,12 +314,13 @@ firewallController.exportRuleList = async (req, res) => {
         created_at: rule.created_at ? (rule.created_at.toLocaleString ? rule.created_at.toLocaleString() : rule.created_at) : '',
         updated_at: rule.updated_at ? (rule.updated_at.toLocaleString ? rule.updated_at.toLocaleString() : rule.updated_at) : '',
         updated_by: rule.updated_by || ''
-      });
+      }));
     });
     worksheet.getRow(1).font = { bold: true };
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="firewall_rules_export.xlsx"');
-    
+    res.setHeader('Content-Disposition', `attachment; filename="firewall_rules_export_${timestamp}.xlsx"`);
+
     // Write to buffer first, then send
     const buffer = await workbook.xlsx.writeBuffer();
     res.send(buffer);
@@ -1003,8 +1005,8 @@ firewallController.validateImportRules = async (req, res) => {
         notes.push(...validation.notes);
       }
       resultRow.push(notes.join('; '));
-      
-      resultWorksheet.addRow(resultRow);
+
+      resultWorksheet.addRow(sanitizeExcelRow(resultRow));
     }
 
     // Style the header row
@@ -1646,7 +1648,7 @@ firewallController.importRules = async (req, res) => {
     ];
 
     importResults.forEach(result => {
-      worksheet.addRow(result);
+      worksheet.addRow(sanitizeExcelObject(result));
     });
 
     // Style the header row
@@ -1729,7 +1731,9 @@ firewallController.importRules = async (req, res) => {
 // Download firewall rule validation file
 firewallController.downloadRuleValidationFile = async (req, res) => {
   try {
-    const filename = req.params.filename;
+    // path.basename strips any directory components (../ or absolute
+    // paths) an attacker could smuggle through the :filename route param.
+    const filename = path.basename(req.params.filename || '');
     const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
     const filePath = path.join(process.cwd(), uploadsDir, 'temp', filename);
 

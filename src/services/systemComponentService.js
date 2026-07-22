@@ -4,6 +4,7 @@ import Contact from '../models/Contact.js';
 import IpAddress from '../models/IpAddress.js';
 import Tag from '../models/Tag.js';
 import Configuration from '../models/Configuration.js';
+import PentestRound from '../models/PentestRound.js';
 import { ValidationError, NotFoundError, ConflictError } from './errors.js';
 import { withTransaction } from './transaction.js';
 
@@ -218,6 +219,7 @@ export async function deleteComponent(id) {
       }
     }
     await SystemComponent.setTags(id, [], c);
+    await PentestRound.deleteByObject('system_component', id, c);
     await SystemComponent.delete(id, c);
   });
 }
