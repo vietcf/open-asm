@@ -26,7 +26,8 @@
           <div class="card-body">
             <div class="mb-3">
               <label class="form-label">Cluster Name <span class="text-danger">*</span></label>
-              <input type="text" name="name" class="form-control" placeholder="e.g. OpenShift Production, Oracle RAC DB01" required>
+              <input type="text" id="cluster-name-input" name="name" class="form-control" placeholder="e.g. OpenShift Production, Oracle RAC DB01" required>
+              <div id="cluster-name-feedback" class="invalid-feedback"></div>
             </div>
             <div class="mb-3">
               <label class="form-label">Description</label>
@@ -43,6 +44,24 @@
                 <i class="bi bi-plus"></i> Add Member
               </button>
               <small class="d-block form-text text-muted mt-1">Each member is an IP address with a role in this cluster (e.g. master, worker, primary, standby). Type a new role to add it — it becomes suggested for future clusters too.</small>
+
+              <div class="border rounded p-2 mt-3">
+                <label class="form-label mb-1">Bulk-add members from a file</label>
+                <div class="input-group input-group-sm">
+                  <input type="file" id="member-file-input" class="form-control" accept=".xlsx,.xls">
+                  <button type="button" id="validate-member-file-btn" class="btn btn-outline-warning" disabled>
+                    <i class="bi bi-check2-circle"></i> Validate File
+                  </button>
+                  <a href="/cluster/member-template" class="btn btn-outline-info" download>
+                    <i class="bi bi-download"></i> Template
+                  </a>
+                </div>
+                <div class="form-text">2 columns: IP Address (Require), Role (Optional). Every IP must already exist — this never creates IPs. Rows are only added once every row in the file passes.</div>
+                <button type="button" id="add-validated-members-btn" class="btn btn-success btn-sm mt-2" style="display: none;">
+                  <i class="bi bi-plus-circle"></i> Add Validated Members
+                </button>
+                <div id="member-file-results" class="alert mt-2" style="display: none;"></div>
+              </div>
             </div>
           </div>
           <div class="card-footer d-flex justify-content-end">
@@ -102,6 +121,26 @@
       }
     });
 
+    function downloadBlobResponse(data, xhr, fallbackName) {
+      const contentType = xhr.getResponseHeader('Content-Type');
+      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+      if (!contentType || !contentType.includes('spreadsheetml.sheet')) return;
+      const blob = new Blob([data], { type: contentType });
+      const url = window.URL.createObjectURL(blob);
+      let filename = fallbackName;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+)"/);
+        if (match) filename = match[1];
+      }
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }
+
     // An IP already picked in one member row shouldn't be offered again in
     // another row's dropdown (a cluster member is one IP with one role).
     function getOtherSelectedIpIds(currentSelectEl) {
@@ -115,7 +154,7 @@
     }
 
     let memberRowIndex = 0;
-    function addMemberRow() {
+    function addMemberRow(preset) {
       const idx = memberRowIndex++;
       const row = $(
         '<div class="member-row d-flex gap-2 align-items-start mb-2">' +
@@ -143,13 +182,129 @@
           cache: true
         }
       });
+      if (preset && preset.ip_address_id) {
+        const option = new Option(preset.ip, preset.ip_address_id, true, true);
+        ipSelect.append(option).trigger('change');
+      }
+      if (preset && preset.role) {
+        row.find('.member-role-input').val(preset.role);
+      }
     }
 
-    $('#add-member-row').on('click', addMemberRow);
+    $('#add-member-row').on('click', function() { addMemberRow(null); });
     $(document).on('click', '.remove-member-row', function() {
       $(this).closest('.member-row').remove();
     });
 
-    addMemberRow();
+    addMemberRow(null);
+
+    // Cluster Name: warn immediately on blur if the name is already taken,
+    // instead of only finding out after submitting the form.
+    let nameCheckSeq = 0;
+    $('#cluster-name-input').on('blur', function() {
+      const name = $(this).val().trim();
+      const $input = $(this);
+      const $feedback = $('#cluster-name-feedback');
+      if (!name) { $input.removeClass('is-invalid'); $feedback.hide(); return; }
+      const seq = ++nameCheckSeq;
+      $.get('/cluster/api/check-name', { name: name }, function(data) {
+        if (seq !== nameCheckSeq) return; // a later blur already superseded this check
+        if (data && data.available === false) {
+          $input.addClass('is-invalid');
+          $feedback.text('A cluster named "' + name + '" already exists.').show();
+        } else {
+          $input.removeClass('is-invalid');
+          $feedback.hide();
+        }
+      });
+    });
+
+    // Bulk-add members from an IP/Role file - same two-step contract as the
+    // list page's cluster import: Validate always downloads a row-by-row
+    // report; rows are only handed to "Add Validated Members" when the
+    // whole file passed (X-Resolved-Members), never partially.
+    let selectedMemberFile = null;
+    let resolvedMembersToAdd = null;
+
+    function currentFormIpIds() {
+      const ids = [];
+      $('.member-ip-select').each(function() {
+        const val = $(this).val();
+        if (val) ids.push(val);
+      });
+      return ids;
+    }
+
+    $('#member-file-input').on('change', function() {
+      selectedMemberFile = this.files[0];
+      $('#validate-member-file-btn').prop('disabled', !selectedMemberFile);
+      $('#add-validated-members-btn').hide();
+      resolvedMembersToAdd = null;
+    });
+
+    $('#validate-member-file-btn').on('click', function() {
+      if (!selectedMemberFile) return;
+      const formData = new FormData();
+      formData.append('file', selectedMemberFile);
+      currentFormIpIds().forEach(function(id) { formData.append('existing_ip_ids', id); });
+
+      const $btn = $(this);
+      const $results = $('#member-file-results');
+      $btn.prop('disabled', true);
+      $('#add-validated-members-btn').hide();
+      resolvedMembersToAdd = null;
+      $results.hide();
+
+      let nativeXhr;
+      $.ajax({
+        url: '/cluster/validate-members',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        xhr: function() {
+          nativeXhr = new window.XMLHttpRequest();
+          nativeXhr.responseType = 'blob';
+          return nativeXhr;
+        },
+        success: function(data, status, xhr) {
+          downloadBlobResponse(data, xhr, 'cluster_member_validation.xlsx');
+          let summary = null;
+          try { summary = JSON.parse(xhr.getResponseHeader('X-Validation-Summary')); } catch (e) {}
+
+          if (summary && summary.allPassed) {
+            try { resolvedMembersToAdd = JSON.parse(decodeURIComponent(xhr.getResponseHeader('X-Resolved-Members'))); } catch (e) { resolvedMembersToAdd = null; }
+            $results.removeClass('alert-danger').addClass('alert-success')
+              .html('<strong>Validation Complete!</strong><br><small>Total: ' + summary.total + ', Passed: ' + summary.passed + '</small><br><small>Validation file downloaded.</small>');
+            if (resolvedMembersToAdd && resolvedMembersToAdd.length) $('#add-validated-members-btn').show();
+          } else {
+            const total = summary ? summary.total : '?';
+            const failed = summary ? summary.failed : '?';
+            $results.removeClass('alert-success').addClass('alert-danger')
+              .html('<strong>Validation Failed!</strong><br><small>Total: ' + total + ', Failed: ' + failed + '</small><br><small>Validation file downloaded - fix the errors and try again. No members were added.</small>');
+          }
+          $results.show();
+        },
+        error: function(xhr) {
+          extractImportErrorMessage(nativeXhr || xhr).then(function(msg) {
+            $results.removeClass('alert-success').addClass('alert-danger').html('<strong>Validation Error!</strong><br>' + msg).show();
+          });
+        },
+        complete: function() {
+          $btn.prop('disabled', !selectedMemberFile);
+        }
+      });
+    });
+
+    $('#add-validated-members-btn').on('click', function() {
+      if (!resolvedMembersToAdd) return;
+      resolvedMembersToAdd.forEach(function(m) { addMemberRow(m); });
+      $('#member-file-results').hide();
+      $(this).hide();
+      $('#member-file-input').val('');
+      selectedMemberFile = null;
+      resolvedMembersToAdd = null;
+      $('#validate-member-file-btn').prop('disabled', true);
+    });
   });
 </script>

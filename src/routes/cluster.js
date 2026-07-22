@@ -37,6 +37,11 @@ router.get('/template', requirePermission('cluster.create'), clusterController.d
 router.post('/validate-import', requirePermission('cluster.create'), upload.single('file'), clusterController.validateImportClusters);
 router.post('/import', requirePermission('cluster.create'), upload.single('file'), clusterController.importClusters);
 
+// Bulk-add-members helper used by the Add/Edit form (not full cluster
+// import) - gated by create OR update since both forms use it.
+router.get('/member-template', requirePermission('cluster.create', 'cluster.update'), clusterController.downloadMemberTemplate);
+router.post('/validate-members', requirePermission('cluster.create', 'cluster.update'), upload.single('file'), clusterController.validateMembersFile);
+
 router.get('/add', requirePermission('cluster.create'), clusterController.addClusterForm);
 router.post('/add', requirePermission('cluster.create'), clusterController.addCluster);
 
@@ -47,5 +52,6 @@ router.post('/:id/delete', requirePermission('cluster.delete'), clusterControlle
 
 router.get('/api/roles', requirePermission('cluster.read'), clusterController.apiRoleOptions);
 router.get('/api/by-system', requirePermission('cluster.read'), clusterController.apiClustersBySystem);
+router.get('/api/check-name', requirePermission('cluster.create', 'cluster.update'), clusterController.apiCheckName);
 
 export default router;

@@ -1,7 +1,7 @@
 import Cluster from '../models/Cluster.js';
 import System from '../models/System.js';
 import IpAddress from '../models/IpAddress.js';
-import { ValidationError, NotFoundError } from './errors.js';
+import { ValidationError, NotFoundError, ConflictError } from './errors.js';
 import { withTransaction } from './transaction.js';
 
 const toIdArray = v => {
@@ -24,6 +24,12 @@ async function validateSystemIds(ids) {
     if (!(await System.exists(id))) invalid.push(id);
   }
   if (invalid.length) throw new ValidationError(`Invalid system IDs: ${invalid.join(', ')}`);
+}
+
+async function assertNameAvailable(name, excludeId) {
+  const existing = await Cluster.findByNameExact(name);
+  const clash = existing.find(c => String(c.id) !== String(excludeId));
+  if (clash) throw new ConflictError(`Cluster name already exists: ${name}`);
 }
 
 // members: [{ ip_address_id, role }]
@@ -68,6 +74,7 @@ export async function getClustersForSystem(systemId) {
 export async function createCluster(input) {
   const name = (input.name || '').trim();
   if (!name) throw new ValidationError('Cluster name is required');
+  await assertNameAvailable(name);
 
   const members = normalizeMembers(input.member_ip_id, input.member_role);
   if (members.length) await validateIpAddressIds(members.map(m => m.ip_address_id));
@@ -95,6 +102,9 @@ export async function updateCluster(id, input) {
   const has = key => Object.prototype.hasOwnProperty.call(input, key);
   const name = has('name') ? (input.name || '').trim() : current.name;
   if (!name) throw new ValidationError('Cluster name is required');
+  if (has('name') && name.toLowerCase() !== current.name.toLowerCase()) {
+    await assertNameAvailable(name, id);
+  }
   const description = has('description')
     ? (typeof input.description === 'string' ? (input.description.trim() || null) : null)
     : current.description;
