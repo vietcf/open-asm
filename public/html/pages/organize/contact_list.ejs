@@ -186,7 +186,13 @@ function buildPaginationUrl(targetPage) {
                       <td><%= contact.email || '-' %></td>
                       <td><%= contact.phone || '-' %></td>
                       <td><%= contact.position || '-' %></td>
-                      <td><%= contact.unit_name || '-' %></td>
+                      <td>
+                        <% if (contact.unit_name) { %>
+                          <span class="org-tooltip" data-unit-id="<%= contact.unit_id %>" title="Loading..." style="cursor: help;"><%= contact.unit_name %></span>
+                        <% } else { %>
+                          -
+                        <% } %>
+                      </td>
                       <td class="text-end">
                         <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showContactDetail('<%= contact.id %>')" data-contact='<%= JSON.stringify(contact) %>'><i class="bi bi-eye"></i></button>
                         <% if (hasPermission('contact.update')) { %>
@@ -752,7 +758,11 @@ function showContactDetail(contactId) {
   html += '<dt class="col-sm-4">Email</dt><dd class="col-sm-8">' + escapeHtml(contactData.email || '-') + '</dd>';
   html += '<dt class="col-sm-4">Phone</dt><dd class="col-sm-8">' + escapeHtml(contactData.phone || '-') + '</dd>';
   html += '<dt class="col-sm-4">Position</dt><dd class="col-sm-8">' + escapeHtml(contactData.position || '-') + '</dd>';
-  html += '<dt class="col-sm-4">Organization</dt><dd class="col-sm-8">' + escapeHtml(contactData.unit_name || '-') + '</dd>';
+  if (contactData.unit_name) {
+    html += '<dt class="col-sm-4">Organization</dt><dd class="col-sm-8"><span class="org-tooltip" data-unit-id="' + escapeHtml(contactData.unit_id) + '" title="Loading..." style="cursor: help;">' + escapeHtml(contactData.unit_name) + '</span></dd>';
+  } else {
+    html += '<dt class="col-sm-4">Organization</dt><dd class="col-sm-8">-</dd>';
+  }
   html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + (contactData.created_at ? new Date(contactData.created_at).toLocaleDateString() : '-') + '</dd>';
   html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + (contactData.updated_at ? new Date(contactData.updated_at).toLocaleDateString() : '-') + '</dd>';
   html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (contactData.description ? '<div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + escapeHtml(contactData.description) + '</div>' : '-') + '</dd>';
@@ -766,6 +776,7 @@ function showContactDetail(contactId) {
   }
 
   content.innerHTML = html;
+  initOrgTooltips(content);
 
   if (contactData.phone) {
     fetch('/organize/api/contact/' + contactId + '/qrcode')
@@ -804,6 +815,40 @@ function buildExportUrl() {
   
   return '/organize/contact/export' + (params.toString() ? '?' + params.toString() : '');
 }
+
+// Organization/Unit hover tooltip — lazily fetches the unit's description
+// via AJAX on first hover instead of carrying it through every query that
+// shows a unit reference. Cached across elements sharing the same unit id.
+const unitInfoCache = {};
+function initOrgTooltips(scopeEl) {
+  (scopeEl || document).querySelectorAll('.org-tooltip').forEach(function(el) {
+    if (el.dataset.tooltipInit) return;
+    el.dataset.tooltipInit = '1';
+    const unitId = el.getAttribute('data-unit-id');
+    if (!unitId) return;
+    const tooltip = new bootstrap.Tooltip(el, { title: 'Loading...' });
+    el.addEventListener('show.bs.tooltip', function() {
+      if (unitInfoCache[unitId]) {
+        tooltip.setContent({ '.tooltip-inner': unitInfoCache[unitId] });
+        return;
+      }
+      fetch('/organize/api/unit/' + encodeURIComponent(unitId) + '/detail')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          const desc = (data && data.description) ? data.description : 'No description';
+          unitInfoCache[unitId] = desc;
+          tooltip.setContent({ '.tooltip-inner': desc });
+        })
+        .catch(function() {
+          tooltip.setContent({ '.tooltip-inner': 'Error loading info' });
+        });
+    });
+  });
+}
+
+$(document).ready(function() {
+  initOrgTooltips(document);
+});
 </script>
 
 <!-- Responsive Tables CSS -->

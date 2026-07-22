@@ -259,6 +259,22 @@ organizeController.apiUnitSearch = async (req, res) => {
   }
 };
 
+// API: single unit's info (name/code/description) for on-hover tooltips —
+// used by any page that shows an Organization/Department reference
+// (Contact list, System detail, ...) without needing that page's own list
+// query to carry the description around.
+organizeController.apiUnitDetail = async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (!id || isNaN(Number(id))) return res.status(400).json({ error: 'Invalid unit id' });
+    const unit = await Unit.findById(id);
+    if (!unit) return res.status(404).json({ error: 'Unit not found' });
+    res.json({ id: unit.id, name: unit.name, code: unit.code, description: unit.description });
+  } catch (err) {
+    res.status(500).json({ error: 'Error loading unit', detail: err.message });
+  }
+};
+
 // ===== TAG MENU =====
 // Render tag list page with pagination
 organizeController.tagList = async (req, res) => {

@@ -71,6 +71,7 @@ router.get('/api/tag',organizeController.apiTagSearch);
 router.get('/api/tag/ids', organizeController.apiTagByIds);
 router.get('/api/system/ids', organizeController.apiSystemByIds);
 router.get('/api/unit', organizeController.apiUnitSearch);
+router.get('/api/unit/:id/detail', organizeController.apiUnitDetail);
 router.get('/api/contact/:id/qrcode', organizeController.apiContactQrVcard);
 
 

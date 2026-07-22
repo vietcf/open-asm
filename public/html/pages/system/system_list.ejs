@@ -654,9 +654,13 @@ function buildSystemExportUrl() {
         const level = (system.level || 'N/A');
         html += '<dt class="col-sm-4">Level</dt><dd class="col-sm-8">' + String(level).trim() + '</dd>';
 
-        // Department
+        // Organization (Department)
         const department = (system.department_name || system.department || 'N/A');
-        html += '<dt class="col-sm-4">Department</dt><dd class="col-sm-8">' + String(department).trim() + '</dd>';
+        if (system.department_id) {
+          html += '<dt class="col-sm-4">Organization</dt><dd class="col-sm-8"><span class="org-tooltip" data-unit-id="' + system.department_id + '" title="Loading..." style="cursor: help;">' + String(department).trim() + '</span></dd>';
+        } else {
+          html += '<dt class="col-sm-4">Organization</dt><dd class="col-sm-8">' + String(department).trim() + '</dd>';
+        }
 
         // Alias
         if (system.alias && (Array.isArray(system.alias) ? system.alias.length > 0 : system.alias)) {
@@ -809,7 +813,8 @@ function buildSystemExportUrl() {
 
         html += '</dl>';
         content.innerHTML = html;
-        
+        initOrgTooltips(content);
+
         // Show modal with proper event handling
         modal.show();
         
@@ -1344,6 +1349,36 @@ function buildSystemExportUrl() {
         return new bootstrap.Tooltip(tooltipTriggerEl);
       });
     });
+
+    // Organization/Unit hover tooltip — lazily fetches the unit's
+    // description via AJAX on first hover instead of carrying it through
+    // this page's own query. Cached across elements sharing the same unit id.
+    const unitInfoCache = {};
+    function initOrgTooltips(scopeEl) {
+      (scopeEl || document).querySelectorAll('.org-tooltip').forEach(function(el) {
+        if (el.dataset.tooltipInit) return;
+        el.dataset.tooltipInit = '1';
+        const unitId = el.getAttribute('data-unit-id');
+        if (!unitId) return;
+        const tooltip = new bootstrap.Tooltip(el, { title: 'Loading...' });
+        el.addEventListener('show.bs.tooltip', function() {
+          if (unitInfoCache[unitId]) {
+            tooltip.setContent({ '.tooltip-inner': unitInfoCache[unitId] });
+            return;
+          }
+          fetch('/organize/api/unit/' + encodeURIComponent(unitId) + '/detail')
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+              const desc = (data && data.description) ? data.description : 'No description';
+              unitInfoCache[unitId] = desc;
+              tooltip.setContent({ '.tooltip-inner': desc });
+            })
+            .catch(function() {
+              tooltip.setContent({ '.tooltip-inner': 'Error loading info' });
+            });
+        });
+      });
+    }
 
     // Read-only quick-view of pentest rounds for a System/Component, launched
     // from the Detail modal's "Pentest History" button. Full add/edit/delete
