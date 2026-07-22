@@ -489,7 +489,35 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.2.3 (Latest)
+### Version 1.2.4 (Latest)
+- ✨ **Organization hover info**: hovering the Organization name in the
+  Contact list/detail, or the System detail modal (label there renamed
+  from "Department"), shows a tooltip with that Unit's description.
+  Fetched lazily via a new `GET /organize/api/unit/:id/detail` endpoint
+  and cached client-side, instead of adding the field to every
+  consuming page's own query.
+- 🎨 Sidebar reorganized into ASSET MANAGEMENT / SECURITY /
+  ADMINISTRATION sections; deduplicated menu icons; "Security
+  Management" renamed to "Vulnerabilities".
+- 🐛 Fixed a layout bug where the footer rendered at the top of the
+  page, overlapping the header, on tablet/iPad-width viewports; footer
+  colors simplified to match the rest of the theme.
+- 🔒 **Security (OWASP Top 10 audit, Device menu)**: fixed 3 issues
+  found in the Device module and then swept the same patterns across
+  the whole app:
+  - Stored XSS in 15 list-detail-modal JS functions that concatenated
+    free-text fields (name/description/manufacturer/tags/contacts/etc.)
+    unescaped into `innerHTML`, across Device, Server, Network
+    (IP/Subnet/Domain), and Organize (Contact/Tag/Unit) list pages.
+  - Missing permission check on `/device/device/export` (every other
+    export route already required one).
+  - Excel formula injection: user-controlled fields written raw into
+    exported/validation/import-result worksheets across Device,
+    System, Server, Firewall, Network, Organize, and Privileged
+    Account. Added a shared `src/utils/excelSafe.js` that prefixes any
+    cell starting with `=,+,-,@` with a quote before writing.
+
+### Version 1.2.3
 - ✨ **Pentest Round tracking**: new "Security Management" sidebar section
   with a Pentest Management page for tracking pentest rounds against
   Systems or System Components — round name, date, configurable status
