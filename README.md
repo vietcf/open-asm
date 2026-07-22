@@ -489,7 +489,36 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.2.4 (Latest)
+### Version 1.3.1 (Latest)
+- ✨ **Cluster Management** (new top-level menu, between Device and
+  Organization): track named groups of IP-address members (e.g. an
+  OpenShift cluster or an Oracle RAC) with a free-text role per member
+  (master/worker, primary/standby, ...). Membership is anchored on the
+  IP address, so it covers both server-backed and device-backed IPs,
+  and works even for IP-only members with no owning server/device. A
+  cluster can serve several Systems and a System can be backed by
+  several clusters (pure many-to-many link, `ON DELETE CASCADE` both
+  ways — deleting a Cluster or a System never touches the other side,
+  no code changes needed in System/Server/Device).
+- ✨ Cluster Detail: Members/Systems are clickable, opening the
+  matching IP/Server/Device/System list pre-filtered by search; an
+  "Export Members" button downloads that cluster's members to Excel.
+- ✨ Cluster Import (Excel): one row per member, rows sharing a
+  Cluster Name become one cluster. Unlike every other import in the
+  app, this one never auto-creates what it references — a missing IP
+  or System fails that row ("not found, create it first"), the
+  Cluster Name must not already exist, and a cluster is only created
+  once every row for it passes (no half-created clusters). Same
+  Download Template → Validate → Import flow as the rest of the app.
+- ✨ REST API for Cluster (`/api/v1/clusters`) and for Pentest Round
+  (`/api/v1/pentest-rounds`), matching the existing JWT-authenticated
+  JSON CRUD pattern used by every other module.
+- ✨ System Detail now shows a read-only "Clusters" section (linking
+  out to Cluster Management) for any cluster serving that system,
+  fetched via a small dedicated API instead of adding cluster data to
+  System's own query.
+
+### Version 1.2.4
 - ✨ **Organization hover info**: hovering the Organization name in the
   Contact list/detail, or the System detail modal (label there renamed
   from "Department"), shows a tooltip with that Unit's description.

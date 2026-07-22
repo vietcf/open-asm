@@ -152,6 +152,26 @@
           </ul>
         </li>
         <% } %>
+        <!-- Cluster Management -->
+        <% if (hasPermission('cluster.read')) { %>
+        <li class="nav-item<%= isMenuOpen(['cluster']) ? ' menu-open' : '' %>">
+          <a href="#" class="nav-link<%= isMenuOpen(['cluster']) ? ' active' : '' %>" style="<%= isMenuOpen(['cluster']) ? 'background-color: #495057;' : '' %>">
+            <i class="nav-icon bi bi-hdd-stack"></i>
+            <p>
+              Cluster Management
+              <i class="nav-arrow bi bi-chevron-right"></i>
+            </p>
+          </a>
+          <ul class="nav nav-treeview"<%= isMenuOpen(['cluster']) ? ' style="display: block;"' : '' %>>
+            <li class="nav-item">
+              <a href="/cluster" class="nav-link<%= (activeMenu === 'cluster') ? ' active' : '' %>">
+                <i class="nav-icon bi bi-circle<%= (activeMenu === 'cluster') ? ' text-primary' : '' %>"></i>
+                <p>Cluster</p>
+              </a>
+            </li>
+          </ul>
+        </li>
+        <% } %>
         <!-- Organization -->
         <% if (
           hasPermission('contact.read') ||
