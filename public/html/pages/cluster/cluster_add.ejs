@@ -57,6 +57,9 @@
                   </a>
                 </div>
                 <div class="form-text">2 columns: IP Address (Require), Role (Optional). Every IP must already exist — this never creates IPs. Rows are only added once every row in the file passes.</div>
+                <span id="add-validated-members-pointer" class="mt-2" style="display: none;">
+                  <i class="bi bi-hand-index-thumb-fill blink-hand"></i>
+                </span>
                 <button type="button" id="add-validated-members-btn" class="btn btn-success btn-sm mt-2" style="display: none;">
                   <i class="bi bi-plus-circle"></i> Add Validated Members
                 </button>
@@ -95,6 +98,17 @@
   .card-footer.d-flex.justify-content-end .btn:last-child { order: 1 !important; }
 }
 .member-row .select2-container { flex: 1 1 auto; }
+
+.blink-hand {
+  color: #ffc107;
+  font-size: 1.5rem;
+  display: inline-block;
+  animation: blink-hand-anim 1s steps(1, end) infinite;
+}
+@keyframes blink-hand-anim {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.15; }
+}
 </style>
 
 <script src="/vendor/jquery-3.6.0.min.js"></script>
@@ -238,7 +252,7 @@
     $('#member-file-input').on('change', function() {
       selectedMemberFile = this.files[0];
       $('#validate-member-file-btn').prop('disabled', !selectedMemberFile);
-      $('#add-validated-members-btn').hide();
+      $('#add-validated-members-btn, #add-validated-members-pointer').hide();
       resolvedMembersToAdd = null;
     });
 
@@ -251,7 +265,7 @@
       const $btn = $(this);
       const $results = $('#member-file-results');
       $btn.prop('disabled', true);
-      $('#add-validated-members-btn').hide();
+      $('#add-validated-members-btn, #add-validated-members-pointer').hide();
       resolvedMembersToAdd = null;
       $results.hide();
 
@@ -276,7 +290,7 @@
             try { resolvedMembersToAdd = JSON.parse(decodeURIComponent(xhr.getResponseHeader('X-Resolved-Members'))); } catch (e) { resolvedMembersToAdd = null; }
             $results.removeClass('alert-danger').addClass('alert-success')
               .html('<strong>Validation Complete!</strong><br><small>Total: ' + summary.total + ', Passed: ' + summary.passed + '</small><br><small>Validation file downloaded.</small>');
-            if (resolvedMembersToAdd && resolvedMembersToAdd.length) $('#add-validated-members-btn').show();
+            if (resolvedMembersToAdd && resolvedMembersToAdd.length) $('#add-validated-members-btn, #add-validated-members-pointer').show();
           } else {
             const total = summary ? summary.total : '?';
             const failed = summary ? summary.failed : '?';
@@ -301,6 +315,7 @@
       resolvedMembersToAdd.forEach(function(m) { addMemberRow(m); });
       $('#member-file-results').hide();
       $(this).hide();
+      $('#add-validated-members-pointer').hide();
       $('#member-file-input').val('');
       selectedMemberFile = null;
       resolvedMembersToAdd = null;
