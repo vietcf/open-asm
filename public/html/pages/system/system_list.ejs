@@ -759,6 +759,14 @@ function buildSystemExportUrl() {
           html += '</dd>';
         }
 
+        <% if (hasPermission('cluster.read')) { %>
+        // Clusters - loaded via AJAX, same as Components. Kept out of
+        // System's own query entirely (mirrors the Organization-tooltip and
+        // Pentest quick-view approach: a small dedicated API + client-side
+        // fetch instead of baking cluster data into System's SQL).
+        html += '<dt class="col-sm-4">Clusters</dt><dd class="col-sm-8" id="clusters-section-' + escapeHtml(systemId) + '"><span class="text-muted">Loading...</span></dd>';
+        <% } %>
+
         // Contacts
         if (system.contacts && system.contacts.length > 0) {
           html += '<dt class="col-sm-4">Contacts</dt><dd class="col-sm-8"><ul class="mb-0 ps-3">';
@@ -810,14 +818,6 @@ function buildSystemExportUrl() {
 
         // Components - will be loaded via AJAX (moved to bottom)
         html += '<dt class="col-sm-4">Components</dt><dd class="col-sm-8" id="components-section-' + escapeHtml(systemId) + '"><span class="text-muted">Loading...</span></dd>';
-
-        <% if (hasPermission('cluster.read')) { %>
-        // Clusters - loaded via AJAX, same as Components. Kept out of
-        // System's own query entirely (mirrors the Organization-tooltip and
-        // Pentest quick-view approach: a small dedicated API + client-side
-        // fetch instead of baking cluster data into System's SQL).
-        html += '<dt class="col-sm-4">Clusters</dt><dd class="col-sm-8" id="clusters-section-' + escapeHtml(systemId) + '"><span class="text-muted">Loading...</span></dd>';
-        <% } %>
 
         html += '</dl>';
         content.innerHTML = html;
