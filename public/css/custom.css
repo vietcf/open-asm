@@ -504,10 +504,10 @@ textarea.form-control::placeholder,
    ======================================== */
 
 .app-footer {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-  color: #fff !important;
-  border-top: none !important;
-  padding: 20px 0 !important;
+  background-color: var(--bs-body-bg) !important;
+  color: var(--bs-secondary-color) !important;
+  border-top: 1px solid var(--bs-border-color) !important;
+  padding: 1rem !important;
   margin-top: auto !important;
 }
 
@@ -516,18 +516,18 @@ textarea.form-control::placeholder,
 }
 
 .app-footer .text-muted {
-  color: rgba(255, 255, 255, 0.8) !important;
+  color: var(--bs-secondary-color) !important;
   font-size: 14px !important;
   line-height: 1.5 !important;
 }
 
 .app-footer strong {
-  color: #fff !important;
+  color: var(--bs-body-color) !important;
   font-weight: 600 !important;
 }
 
 .app-footer small {
-  color: rgba(255, 255, 255, 0.7) !important;
+  color: var(--bs-secondary-color) !important;
   font-size: 12px !important;
 }
 
