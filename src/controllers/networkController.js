@@ -14,6 +14,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import archiver from 'archiver';
 import { ServiceError } from '../services/errors.js';
+import { sanitizeExcelRow } from '../utils/excelSafe.js';
 import {
   listIpAddresses as listIpAddressesService,
   createIpAddress as createIpAddressService,
@@ -938,7 +939,7 @@ networkController.validateImportIPs = async (req, res) => {
           result.validation_status || 'Pass',                                  // Validation Status
           result.validation_reason || ''                                       // Validation Reason
         ];
-        worksheet.addRow(row);
+        worksheet.addRow(sanitizeExcelRow(row));
       });
       
       // Set column widths
@@ -1221,7 +1222,7 @@ networkController.importIPs = async (req, res) => {
           result.import_status || 'Success',                                   // Import Status
           result.import_reason || ''                                           // Import Reason
         ];
-        worksheet.addRow(row);
+        worksheet.addRow(sanitizeExcelRow(row));
       });
       
       // Set column widths
@@ -1332,7 +1333,7 @@ networkController.exportIpAddressList = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('IP Address List');
     worksheet.addRow(headers);
-    rows.forEach(row => worksheet.addRow(row));
+    rows.forEach(row => worksheet.addRow(sanitizeExcelRow(row)));
     worksheet.columns.forEach(col => { col.width = 22; });
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1391,7 +1392,7 @@ networkController.exportSubnetList = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Subnet List');
     worksheet.addRow(headers);
-    rows.forEach(row => worksheet.addRow(row));
+    rows.forEach(row => worksheet.addRow(sanitizeExcelRow(row)));
     worksheet.columns.forEach(col => { col.width = 22; });
     
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -1450,7 +1451,7 @@ networkController.exportDomainList = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Domain List');
     worksheet.addRow(headers);
-    rows.forEach(row => worksheet.addRow(row));
+    rows.forEach(row => worksheet.addRow(sanitizeExcelRow(row)));
     worksheet.columns.forEach(col => { col.width = 22; });
     
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -1874,7 +1875,7 @@ networkController.validateImportSubnets = async (req, res) => {
 
     // Add data rows
     validationResults.forEach(result => {
-      const row =       worksheet.addRow([
+      const row = worksheet.addRow(sanitizeExcelRow([
         result.subnet_address,
         result.description,
         result.zone,
@@ -1882,7 +1883,7 @@ networkController.validateImportSubnets = async (req, res) => {
         result.tags,
         result.validation_status,
         result.validation_reason
-      ]);
+      ]));
 
       // Color code validation status
       if (result.validation_status === 'Fail') {
@@ -2159,7 +2160,7 @@ networkController.importSubnets = async (req, res) => {
 
     // Add data rows
     importResults.forEach(result => {
-      const row = worksheet.addRow([
+      const row = worksheet.addRow(sanitizeExcelRow([
         result.subnet_address,
         result.description,
         result.zone,
@@ -2167,7 +2168,7 @@ networkController.importSubnets = async (req, res) => {
         result.tags,
         result.import_status,
         result.import_reason
-      ]);
+      ]));
 
       // Color code import status
       if (result.import_status === 'Failed') {
@@ -2529,7 +2530,7 @@ networkController.validateImportDomains = async (req, res) => {
     worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
 
     validationResults.forEach(result => {
-      const row = worksheet.addRow([
+      const row = worksheet.addRow(sanitizeExcelRow([
         result.domain_name,
         result.description,
         result.record_type,
@@ -2538,7 +2539,7 @@ networkController.validateImportDomains = async (req, res) => {
         result.tags,
         result.validation_status,
         result.validation_reason
-      ]);
+      ]));
       if (result.validation_status === 'Fail') {
         row.getCell(7).font = { color: { argb: 'FFFF0000' } };
         row.getCell(8).font = { color: { argb: 'FFFF0000' } };
@@ -2772,7 +2773,7 @@ networkController.importDomains = async (req, res) => {
     worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE0E0E0' } };
 
     importResults.forEach(result => {
-      const row = worksheet.addRow([
+      const row = worksheet.addRow(sanitizeExcelRow([
         result.domain_name,
         result.description,
         result.record_type,
@@ -2781,7 +2782,7 @@ networkController.importDomains = async (req, res) => {
         result.tags,
         result.import_status,
         result.import_reason
-      ]);
+      ]));
       if (result.import_status === 'Failed') {
         row.getCell(7).font = { color: { argb: 'FFFF0000' } };
         row.getCell(8).font = { color: { argb: 'FFFF0000' } };

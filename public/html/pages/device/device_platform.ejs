@@ -321,19 +321,27 @@ function buildPaginationUrl(targetPage) {
 
 
 <script>
+// name/description are free-text and not HTML-stripped server-side — must
+// be escaped before going into innerHTML.
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
 // Platform Detail Modal Handler
 function showPlatformDetail(platformId) {
   const button = document.querySelector(`button[onclick="showPlatformDetail('${platformId}')"]`);
   const platformData = JSON.parse(button.getAttribute('data-platform'));
-  
+
   const modalElement = document.getElementById('platformDetailModal');
   const content = document.getElementById('platformDetailContent');
-  
+
   let html = '<dl class="row detail-dl">';
   html += '<dt class="col-sm-4">Platform ID</dt><dd class="col-sm-8">' + (platformData.id || '-') + '</dd>';
-  html += '<dt class="col-sm-4">Platform Name</dt><dd class="col-sm-8">' + (platformData.name || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Platform Name</dt><dd class="col-sm-8">' + escapeHtml(platformData.name || '-') + '</dd>';
   html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + (platformData.created_at ? new Date(platformData.created_at).toLocaleDateString() : '-') + '</dd>';
-  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (platformData.description ? '<div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + platformData.description + '</div>' : '-') + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (platformData.description ? '<div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + escapeHtml(platformData.description) + '</div>' : '-') + '</dd>';
   html += '</dl>';
   
   content.innerHTML = html;

@@ -323,17 +323,25 @@ function buildPaginationUrl(targetPage) {
 // ==========================================
 
 // Show tag detail
+// name/description are free text not HTML-stripped server-side — must be
+// escaped before going into innerHTML.
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
 function showTagDetail(tagId) {
   const button = document.querySelector(`button[onclick="showTagDetail('${tagId}')"]`);
   const tagData = JSON.parse(button.getAttribute('data-tag'));
-  
+
   const modalElement = document.getElementById('tagDetailModal');
   const content = document.getElementById('tagDetailContent');
-  
+
   let html = '<dl class="row detail-dl">';
   html += '<dt class="col-sm-4">Tag ID</dt><dd class="col-sm-8">' + (tagData.id || '-') + '</dd>';
-  html += '<dt class="col-sm-4">Tag Name</dt><dd class="col-sm-8">' + (tagData.name || '-') + '</dd>';
-  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (tagData.description ? '<div style="white-space: pre-wrap;">' + tagData.description + '</div>' : '-') + '</dd>';
+  html += '<dt class="col-sm-4">Tag Name</dt><dd class="col-sm-8">' + escapeHtml(tagData.name || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (tagData.description ? '<div style="white-space: pre-wrap;">' + escapeHtml(tagData.description) + '</div>' : '-') + '</dd>';
   html += '</dl>';
   
   content.innerHTML = html;

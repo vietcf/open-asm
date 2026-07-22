@@ -68,6 +68,7 @@ async function getManageTypesFromConfig() {
   return options;
 }
 import { clearPermissionsCache } from '../middlewares/permissions.middleware.js';
+import { sanitizeExcelObject } from '../utils/excelSafe.js';
 
 const privAccountController = {};
 
@@ -681,14 +682,14 @@ privAccountController.exportPermissions = async (req, res) => {
       { header: 'Updated By', key: 'updated_by', width: 20 },
     ];
     rows.forEach(row => {
-      sheet.addRow({
+      sheet.addRow(sanitizeExcelObject({
         id: row.id,
         name: row.name,
         description: row.description,
         system: row.system && row.system.name ? row.system.name : '',
         updated_date: row.updated_date ? new Date(row.updated_date).toLocaleString() : '',
         updated_by: row.updated_by || '',
-      }).commit();
+      })).commit();
     });
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -753,7 +754,7 @@ privAccountController.exportRoles = async (req, res) => {
 
     // Add rows
     rows.forEach(row => {
-      sheet.addRow({
+      sheet.addRow(sanitizeExcelObject({
         id: row.id,
         name: row.name,
         description: row.description,
@@ -762,7 +763,7 @@ privAccountController.exportRoles = async (req, res) => {
         created_at: row.created_at ? new Date(row.created_at).toLocaleString() : '',
         updated_date: row.updated_date ? new Date(row.updated_date).toLocaleString() : '',
         updated_by: row.updated_by || ''
-      }).commit();
+      })).commit();
     });
 
     // Set response headers
@@ -969,7 +970,7 @@ privAccountController.exportAccounts = async (req, res) => {
 
     // Write rows with data formatting
     rows.forEach(row => {
-      sheet.addRow({
+      sheet.addRow(sanitizeExcelObject({
         id: row.id,
         username: row.username,
         description: row.description || '',
@@ -982,9 +983,9 @@ privAccountController.exportAccounts = async (req, res) => {
         app_url: row.app_url || '',
         contacts: row.contacts || '',
         created_at: row.created_at ? new Date(row.created_at).toLocaleString() : '',
-        updated_date: row.updated_date ? new Date(row.updated_date).toLocaleString() : '', 
+        updated_date: row.updated_date ? new Date(row.updated_date).toLocaleString() : '',
         updated_by: row.updated_by || ''
-      }).commit();
+      })).commit();
     });
 
     // Set response headers for Excel download

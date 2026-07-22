@@ -9,6 +9,7 @@ import * as systemService from '../services/systemService.js';
 import * as systemComponentService from '../services/systemComponentService.js';
 import { ServiceError } from '../services/errors.js';
 import { serveFileInline } from '../utils/fileServe.js';
+import { sanitizeExcelRow } from '../utils/excelSafe.js';
 
 const { getLevelOptions, getScopeOptions, getArchitectureOptions } = systemService;
 const { getAppTypeOptions } = systemComponentService;
@@ -300,7 +301,7 @@ systemController.exportSystemList = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('System List');
     worksheet.addRow(headers);
-    rows.forEach(row => worksheet.addRow(row));
+    rows.forEach(row => worksheet.addRow(sanitizeExcelRow(row)));
     worksheet.columns.forEach(col => { col.width = 30; });
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

@@ -731,23 +731,31 @@ $(document).on('click', 'button[data-bs-target="#editContactModal"]', function()
 });
 
 // Show contact detail
+// name/email/phone/position/description are user-editable free text not
+// HTML-stripped server-side — must be escaped before going into innerHTML.
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
 function showContactDetail(contactId) {
   const button = document.querySelector(`button[onclick="showContactDetail('${contactId}')"]`);
   const contactData = JSON.parse(button.getAttribute('data-contact'));
-  
+
   const modalElement = document.getElementById('contactDetailModal');
   const content = document.getElementById('contactDetailContent');
-  
+
   let html = '<dl class="row detail-dl">';
   html += '<dt class="col-sm-4">Contact ID</dt><dd class="col-sm-8">' + (contactData.id || '-') + '</dd>';
-  html += '<dt class="col-sm-4">Name</dt><dd class="col-sm-8">' + (contactData.name || '-') + '</dd>';
-  html += '<dt class="col-sm-4">Email</dt><dd class="col-sm-8">' + (contactData.email || '-') + '</dd>';
-  html += '<dt class="col-sm-4">Phone</dt><dd class="col-sm-8">' + (contactData.phone || '-') + '</dd>';
-  html += '<dt class="col-sm-4">Position</dt><dd class="col-sm-8">' + (contactData.position || '-') + '</dd>';
-  html += '<dt class="col-sm-4">Organization</dt><dd class="col-sm-8">' + (contactData.unit_name || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Name</dt><dd class="col-sm-8">' + escapeHtml(contactData.name || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Email</dt><dd class="col-sm-8">' + escapeHtml(contactData.email || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Phone</dt><dd class="col-sm-8">' + escapeHtml(contactData.phone || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Position</dt><dd class="col-sm-8">' + escapeHtml(contactData.position || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Organization</dt><dd class="col-sm-8">' + escapeHtml(contactData.unit_name || '-') + '</dd>';
   html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + (contactData.created_at ? new Date(contactData.created_at).toLocaleDateString() : '-') + '</dd>';
   html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + (contactData.updated_at ? new Date(contactData.updated_at).toLocaleDateString() : '-') + '</dd>';
-  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (contactData.description ? '<div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + contactData.description + '</div>' : '-') + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (contactData.description ? '<div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + escapeHtml(contactData.description) + '</div>' : '-') + '</dd>';
   html += '</dl>';
 
   if (contactData.phone) {

@@ -323,18 +323,26 @@ function buildPaginationUrl(targetPage) {
 // ==========================================
 
 // Show unit detail
+// name/description are free text not HTML-stripped server-side — must be
+// escaped before going into innerHTML.
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
 function showUnitDetail(unitId) {
   const button = document.querySelector(`button[onclick="showUnitDetail('${unitId}')"]`);
   const unitData = JSON.parse(button.getAttribute('data-unit'));
-  
+
   const modalElement = document.getElementById('unitDetailModal');
   const content = document.getElementById('unitDetailContent');
-  
+
   let html = '<dl class="row detail-dl">';
   html += '<dt class="col-sm-4">Unit ID</dt><dd class="col-sm-8">' + (unitData.id || '-') + '</dd>';
-  html += '<dt class="col-sm-4">Unit Name</dt><dd class="col-sm-8">' + (unitData.name || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Unit Name</dt><dd class="col-sm-8">' + escapeHtml(unitData.name || '-') + '</dd>';
   html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + (unitData.created_at ? new Date(unitData.created_at).toLocaleDateString() : '-') + '</dd>';
-  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (unitData.description ? '<div style="white-space: pre-wrap;">' + unitData.description + '</div>' : '-') + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (unitData.description ? '<div style="white-space: pre-wrap;">' + escapeHtml(unitData.description) + '</div>' : '-') + '</dd>';
   html += '</dl>';
   
   content.innerHTML = html;

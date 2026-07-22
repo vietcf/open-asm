@@ -1049,6 +1049,15 @@ document.getElementById('deleteServerConfirmBtn').addEventListener('click', func
 });
 
 
+// name/description/type/location/tags/managers/services/agents are all
+// user-editable free text not HTML-stripped server-side — must be escaped
+// before going into innerHTML.
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
 function showServerDetail(serverId) {
   const buttons = document.querySelectorAll('button[data-server]');
   let targetButton = null;
@@ -1087,19 +1096,19 @@ function showServerDetail(serverId) {
   const content = document.getElementById('serverDetailContent');
   
   let html = '<dl class="row detail-dl">';
-  html += '<dt class="col-sm-4">Server Name</dt><dd class="col-sm-8">' + String(server.name || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><span style="white-space: pre-wrap;">' + String(server.description || 'N/A').trim() + '</span></dd>';
-  html += '<dt class="col-sm-4">Status</dt><dd class="col-sm-8">' + String(server.status || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Type</dt><dd class="col-sm-8">' + String(server.type || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Location</dt><dd class="col-sm-8">' + String(server.location || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Operating System</dt><dd class="col-sm-8">' + String(server.platform_name || server.os || 'N/A').trim() + '</dd>';
+  html += '<dt class="col-sm-4">Server Name</dt><dd class="col-sm-8">' + escapeHtml(server.name || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><span style="white-space: pre-wrap;">' + escapeHtml(server.description || 'N/A') + '</span></dd>';
+  html += '<dt class="col-sm-4">Status</dt><dd class="col-sm-8">' + escapeHtml(server.status || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Type</dt><dd class="col-sm-8">' + escapeHtml(server.type || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Location</dt><dd class="col-sm-8">' + escapeHtml(server.location || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Operating System</dt><dd class="col-sm-8">' + escapeHtml(server.platform_name || server.os || 'N/A') + '</dd>';
 
   html += '<dt class="col-sm-4">IP Addresses</dt><dd class="col-sm-8">';
   if (server.ip && server.ip.length > 0) {
     server.ip.forEach(function(ip) {
       const ipValue = (typeof ip === 'string' ? ip : ip.ip_address);
       const searchUrl = '/network/ip-address?page=1&search=' + encodeURIComponent(ipValue);
-      html += '<div><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + String(ipValue).trim() + '</a></div>';
+      html += '<div><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' + escapeHtml(ipValue) + '</a></div>';
     });
   } else {
     html += 'N/A';
@@ -1110,7 +1119,7 @@ function showServerDetail(serverId) {
     html += '<dt class="col-sm-4">Tags</dt><dd class="col-sm-8">';
     server.tags.forEach(function(tag) {
       const tagValue = (typeof tag === 'string' ? tag : tag.name);
-      html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
+      html += '<span class="badge bg-primary me-1 mb-1">' + escapeHtml(tagValue) + '</span>';
     });
     html += '</dd>';
   }
@@ -1120,8 +1129,8 @@ function showServerDetail(serverId) {
     server.systems.forEach(function(system) {
       const systemValue = (typeof system === 'string' ? system : system.name);
       const searchUrl = '/system/system?search=' + encodeURIComponent(systemValue) + '&pageSize=2';
-      html += '<li><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' +
-              String(systemValue).trim() + '</a></li>';
+      html += '<li><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' +
+              escapeHtml(systemValue) + '</a></li>';
     });
     html += '</ul></dd>';
   }
@@ -1132,10 +1141,10 @@ function showServerDetail(serverId) {
       const managerName = (typeof manager === 'string' ? manager : manager.name);
       const managerEmail = (typeof manager === 'string' ? '' : manager.email);
       const searchUrl = '/organize/contact?page=1&search=' + encodeURIComponent(managerName);
-      html += '<div><a href="' + searchUrl + '" class="text-primary text-decoration-underline">' + String(managerName).trim();
+      html += '<div><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' + escapeHtml(managerName);
       if (managerEmail) {
         const emailUsername = managerEmail.split('@')[0];
-        html += ' (' + String(emailUsername).trim() + ')';
+        html += ' (' + escapeHtml(emailUsername) + ')';
       }
       html += '</a></div>';
     });
@@ -1146,7 +1155,7 @@ function showServerDetail(serverId) {
     html += '<dt class="col-sm-4">Services</dt><dd class="col-sm-8">';
     server.services.forEach(function(service) {
       const serviceValue = (typeof service === 'string' ? service : service.name);
-      html += '<span class="badge bg-warning text-dark me-1 mb-1">' + String(serviceValue).trim() + '</span>';
+      html += '<span class="badge bg-warning text-dark me-1 mb-1">' + escapeHtml(serviceValue) + '</span>';
     });
     html += '</dd>';
   }
@@ -1155,17 +1164,17 @@ function showServerDetail(serverId) {
     html += '<dt class="col-sm-4">Agents</dt><dd class="col-sm-8">';
     server.agents.forEach(function(agent) {
       const agentName = (typeof agent === 'string' ? agent : agent.name);
-      html += '<span class="badge bg-secondary me-1 mb-1">' + String(agentName).trim() + '</span>';
+      html += '<span class="badge bg-secondary me-1 mb-1">' + escapeHtml(agentName) + '</span>';
     });
     html += '</dd>';
   }
 
   const serverCreated = (server.created_at || 'N/A');
-  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + String(serverCreated).trim() + '</dd>';
+  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + escapeHtml(serverCreated) + '</dd>';
   const serverUpdated = (server.updated_at || 'N/A');
-  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + String(serverUpdated).trim() + '</dd>';
+  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + escapeHtml(serverUpdated) + '</dd>';
   if (server.updated_by) {
-    html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + String(server.updated_by).trim() + '</dd>';
+    html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + escapeHtml(server.updated_by) + '</dd>';
   }
   html += '</dl>';
   content.innerHTML = html;

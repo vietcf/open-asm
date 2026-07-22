@@ -18,6 +18,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { ServiceError } from '../services/errors.js';
 import { IPV4_REGEX } from '../services/ipAddressService.js';
+import { sanitizeExcelRow } from '../utils/excelSafe.js';
 import {
   listAgents as listAgentsService,
   createAgent as createAgentService,
@@ -608,7 +609,7 @@ serverController.exportServerList = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Server List');
     worksheet.addRow(headers);
-    rows.forEach(row => worksheet.addRow(row));
+    rows.forEach(row => worksheet.addRow(sanitizeExcelRow(row)));
     worksheet.columns.forEach(col => { col.width = 22; });
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -1114,7 +1115,7 @@ serverController.validateImportServers = async (req, res) => {
 
     // Add data rows
     validationResults.forEach(result => {
-      const row = worksheet.addRow([
+      const row = worksheet.addRow(sanitizeExcelRow([
         result.name,
         result.ip_addresses,
         result.os,
@@ -1129,7 +1130,7 @@ serverController.validateImportServers = async (req, res) => {
         result.description,
         result.validation_status,
         result.validation_reason
-      ]);
+      ]));
 
       // Color code validation status
       if (result.validation_status === 'FAIL') {
@@ -1558,7 +1559,7 @@ serverController.importServers = async (req, res) => {
 
     // Add data rows
     importResults.forEach(result => {
-      const row = worksheet.addRow([
+      const row = worksheet.addRow(sanitizeExcelRow([
         result.name,
         result.ip_addresses,
         result.os,
@@ -1573,7 +1574,7 @@ serverController.importServers = async (req, res) => {
         result.description,
         result.import_status,
         result.import_reason
-      ]);
+      ]));
 
       // Color code import status
       if (result.import_status === 'Failed') {

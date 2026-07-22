@@ -1533,26 +1533,26 @@ function showSubnetDetail(subnetId) {
   const content = document.getElementById('subnetDetailContent');
   
   let html = '<dl class="row detail-dl">';
-  html += '<dt class="col-sm-4">Subnet Address</dt><dd class="col-sm-8">' + String(subnet.address || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + String(subnet.description || 'N/A').trim() + '</pre></dd>';
-  html += '<dt class="col-sm-4">Zone</dt><dd class="col-sm-8">' + String(subnet.zone || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Environment</dt><dd class="col-sm-8">' + String(subnet.environment || 'N/A').trim() + '</dd>';
+  html += '<dt class="col-sm-4">Subnet Address</dt><dd class="col-sm-8">' + escapeHtml(subnet.address || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + escapeHtml(subnet.description || 'N/A') + '</pre></dd>';
+  html += '<dt class="col-sm-4">Zone</dt><dd class="col-sm-8">' + escapeHtml(subnet.zone || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Environment</dt><dd class="col-sm-8">' + escapeHtml(subnet.environment || 'N/A') + '</dd>';
 
   if (subnet.tags && subnet.tags.length > 0) {
     html += '<dt class="col-sm-4">Tags</dt><dd class="col-sm-8">';
     subnet.tags.forEach(function(tag) {
       const tagValue = (typeof tag === 'string' ? tag : tag.name);
-      html += '<span class="badge bg-primary me-1 mb-1">' + String(tagValue).trim() + '</span>';
+      html += '<span class="badge bg-primary me-1 mb-1">' + escapeHtml(tagValue) + '</span>';
     });
     html += '</dd>';
   }
 
   const subnetCreated = (subnet.created_at || 'N/A');
-  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + String(subnetCreated).trim() + '</dd>';
+  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + escapeHtml(subnetCreated) + '</dd>';
   const subnetUpdated = (subnet.updated_at || 'N/A');
-  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + String(subnetUpdated).trim() + '</dd>';
+  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + escapeHtml(subnetUpdated) + '</dd>';
   if (subnet.updated_by) {
-    html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + String(subnet.updated_by).trim() + '</dd>';
+    html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + escapeHtml(subnet.updated_by) + '</dd>';
   }
   html += '</dl>';
 
@@ -1688,7 +1688,7 @@ function displayIpAddresses(page = 1) {
     const truncatedDesc = description.length > 20 ? description.substring(0, 20) + '…' : description;
 
     html += '<tr>';
-    html += '<td><a href="/network/ip-address?search=' + encodeURIComponent(ip.ip_address) + '" class="text-primary text-decoration-underline">' + String(ip.ip_address).trim() + '</a></td>';
+    html += '<td><a href="/network/ip-address?search=' + encodeURIComponent(ip.ip_address) + '" class="text-primary text-decoration-underline">' + escapeHtml(ip.ip_address) + '</a></td>';
     html += '<td class="d-none d-sm-table-cell">';
     // Same short-text + hover-tooltip pattern used for Description columns
     // elsewhere (Device/Domain/IP Address lists) — full text on hover

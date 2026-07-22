@@ -9,6 +9,7 @@ import ExcelJS from 'exceljs';
 import fs from 'fs';
 import path from 'path';
 import { ServiceError } from '../services/errors.js';
+import { sanitizeExcelRow } from '../utils/excelSafe.js';
 import {
   listContacts as listContactsService,
   createContact as createContactService,
@@ -713,7 +714,7 @@ organizeController.validateImportContacts = async (req, res) => {
 
     // Add data with color coding
     validationResults.forEach(result => {
-      const row = worksheet.addRow([
+      const row = worksheet.addRow(sanitizeExcelRow([
         sanitizeString(result['Name (Require)'] || ''),
         sanitizeString(result['Email (Require)'] || ''),
         sanitizeString(result['Phone'] || ''),
@@ -722,7 +723,7 @@ organizeController.validateImportContacts = async (req, res) => {
         sanitizeString(result['Description'] || ''),
         result.validation_status,
         sanitizeString(result.validation_reason || '')
-      ]);
+      ]));
 
       // Color code based on validation status
       if (result.validation_status === 'Fail') {
@@ -969,7 +970,7 @@ organizeController.importContacts = async (req, res) => {
 
     // Add data with color coding
     importResults.forEach(result => {
-      const row = worksheet.addRow([
+      const row = worksheet.addRow(sanitizeExcelRow([
         sanitizeString(result['Name (Require)'] || ''),
         sanitizeString(result['Email (Require)'] || ''),
         sanitizeString(result['Phone'] || ''),
@@ -978,7 +979,7 @@ organizeController.importContacts = async (req, res) => {
         sanitizeString(result['Description'] || ''),
         result.import_status,
         sanitizeString(result.import_reason || '')
-      ]);
+      ]));
 
       // Color code based on import status
       if (result.import_status === 'Failed') {

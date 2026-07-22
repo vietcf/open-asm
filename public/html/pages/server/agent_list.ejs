@@ -324,6 +324,14 @@ function buildPaginationUrl(targetPage) {
 
 <script>
 // Function to show agent detail
+// name/version/description are free text not HTML-stripped server-side —
+// must be escaped before going into innerHTML.
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
 function showAgentDetail(agentId) {
   const button = document.querySelector(`[data-agent='${JSON.stringify({id: agentId})}']`) || 
                  document.querySelector(`button[onclick="showAgentDetail('${agentId}')"]`);
@@ -347,15 +355,15 @@ function showAgentDetail(agentId) {
   const content = document.getElementById('agentDetailContent');
   
   let html = '<dl class="row detail-dl">';
-  html += '<dt class="col-sm-4">Agent ID</dt><dd class="col-sm-8">' + String(agent.id || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Agent Name</dt><dd class="col-sm-8">' + String(agent.name || 'N/A').trim() + '</dd>';
-  html += '<dt class="col-sm-4">Version</dt><dd class="col-sm-8">' + String(agent.version || 'N/A').trim() + '</dd>';
+  html += '<dt class="col-sm-4">Agent ID</dt><dd class="col-sm-8">' + escapeHtml(agent.id || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Agent Name</dt><dd class="col-sm-8">' + escapeHtml(agent.name || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Version</dt><dd class="col-sm-8">' + escapeHtml(agent.version || 'N/A') + '</dd>';
   html += '<dt class="col-sm-4">Created At</dt><dd class="col-sm-8">' + (agent.created_at ? new Date(agent.created_at).toLocaleString() : 'N/A') + '</dd>';
   html += '<dt class="col-sm-4">Updated At</dt><dd class="col-sm-8">' + (agent.updated_at ? new Date(agent.updated_at).toLocaleString() : 'N/A') + '</dd>';
-  html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + String(agent.updated_by || 'N/A').trim() + '</dd>';
+  html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + escapeHtml(agent.updated_by || 'N/A') + '</dd>';
 
   if (agent.description && agent.description.trim() !== '') {
-    html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + String(agent.description).trim() + '</div></dd>';
+    html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + escapeHtml(agent.description) + '</div></dd>';
   } else {
     html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">N/A</dd>';
   }
