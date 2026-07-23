@@ -31,9 +31,9 @@ export const getLoginPage = (req, res) => {
 export const postLogin = async (req, res) => {
   // Normalize username only
   let { username, password } = req.body;
-  if (typeof username !== 'string' || typeof password !== 'string') {
-    await writeLog({ action: 'login', description: 'Login failed: invalid input', status: 'failed', req });
-    return res.redirect('/login?error=Invalid%20input');
+  if (typeof username !== 'string' || typeof password !== 'string' || !username.trim() || !password.trim()) {
+    await writeLog({ action: 'login', description: 'Login failed: missing username or password', status: 'failed', req });
+    return res.redirect('/login?error=Please%20enter%20both%20username%20and%20password');
   }
   username = username.trim().toLowerCase();
   try {
