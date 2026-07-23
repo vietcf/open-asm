@@ -1,87 +1,116 @@
-<!-- 2FA Setup - AdminLTE style, similar to login page -->
-<link rel="stylesheet" href="/css/adminlte.min.css">
-<link rel="stylesheet" href="/css/bootstrap-icons.min.css">
-<style>
-  .login-box .card-body {
-    padding: 2.5rem 2.2rem 2rem 2.2rem;
-    font-family: 'Source Sans 3', 'Source Sans Pro', Arial, sans-serif;
-    font-size: 1.08rem;
-  }
-  .login-box .card-header .h1 {
-    font-family: 'Source Sans 3', 'Source Sans Pro', Arial, sans-serif;
-    font-size: 2.2rem;
-    letter-spacing: 1px;
-  }
-  .login-box .form-control-lg {
-    font-size: 1.25rem;
-    height: 2.8rem;
-  }
-  .login-box .input-group-text {
-    font-size: 1.3rem;
-    background: #f4f6f9;
-  }
-  .login-box .btn {
-    font-size: 1.1rem;
-    padding: 0.7rem 0;
-  }
-  .login-box .badge {
-    font-size: 1.15em;
-    letter-spacing: 2px;
-    word-break: break-all;
-    white-space: pre-line;
-    display: inline-block;
-    max-width: 100%;
-    text-align: left;
-  }
-  .login-box .login-box-msg {
-    font-size: 1.08rem;
-    margin-bottom: 1.5rem;
-  }
-  .login-box .secret-wrap {
-    word-break: break-all;
-    white-space: pre-line;
-    display: block;
-    max-width: 100%;
-    margin: 0 auto;
-    text-align: center;
-  }
-  @media (min-width: 576px) {
-    .login-box {
-      width: 480px;
-      max-width: 98vw;
-    }
-  }
-</style>
-<div class="hold-transition login-page" style="background: #f4f6f9; min-height: 100vh;">
-  <div class="login-box">
-    <div class="card card-outline card-primary shadow">
-      <div class="card-header text-center">
-        <span class="h1"><b>2FA</b> Setup</span>
-      </div>
-      <div class="card-body">
-        <p class="login-box-msg">Enable Two-Factor Authentication for your account</p>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>2FA Setup</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/css/source-sans-3.css" />
+    <link rel="stylesheet" href="/css/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="<%= cssPath %>adminlte.css" />
+    <style>
+      body.login-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f4f6f9;
+        font-family: var(--bs-body-font-family);
+      }
+      .login-shell {
+        width: 100%;
+        max-width: 420px;
+        margin: 2rem;
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.15);
+        background: #fff;
+      }
+      .login-form-panel {
+        padding: 2.75rem 2.5rem;
+      }
+      .login-form-panel h2 {
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+      }
+      .login-form-panel .subtitle {
+        color: #6c757d;
+        margin-bottom: 1.5rem;
+      }
+      .login-form-panel .form-control {
+        height: 3rem;
+        border-radius: 0.5rem;
+      }
+      .login-form-panel .input-group-text {
+        border-radius: 0.5rem;
+        background: transparent;
+        border-left: none;
+        color: #adb5bd;
+      }
+      .login-form-panel .input-group .form-control {
+        border-right: none;
+      }
+      .login-form-panel .input-group:focus-within .form-control,
+      .login-form-panel .input-group:focus-within .input-group-text {
+        border-color: #86b7fe;
+      }
+      .login-form-panel .btn-primary {
+        height: 3rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+      }
+      .qr-wrap img {
+        width: 180px;
+        height: 180px;
+      }
+      .secret-wrap {
+        word-break: break-all;
+        white-space: pre-line;
+        display: inline-block;
+        max-width: 100%;
+        text-align: left;
+        letter-spacing: 1px;
+      }
+      @media (max-width: 767.98px) {
+        .login-shell {
+          margin: 1rem;
+        }
+        .login-form-panel {
+          padding: 2rem 1.75rem;
+        }
+      }
+    </style>
+  </head>
+  <body class="login-page">
+    <div class="login-shell">
+      <div class="login-form-panel">
+        <h2>2FA Setup</h2>
+        <p class="subtitle">Enable Two-Factor Authentication for your account</p>
         <% if (error) { %>
-          <div class="alert alert-danger text-center py-2"><%= error %></div>
+          <div class="alert alert-danger py-2" role="alert"><%= error %></div>
         <% } %>
         <% if (qr) { %>
+          <div class="text-center qr-wrap mb-3">
+            <img src="<%= qr %>" alt="QR Code" class="img-fluid rounded border bg-white p-2" />
+          </div>
+          <p class="text-muted small text-center mb-3">
+            Scan this QR code with <strong>Google Authenticator</strong>,
+            <strong>Microsoft Authenticator</strong>, or any TOTP app.
+          </p>
           <div class="text-center mb-3">
-            <img src="<%= qr %>" alt="QR Code" class="img-fluid rounded border bg-white p-2" style="width:200px;height:200px;"/>
-          </div>
-          <div class="mb-2 text-center">
-            <small class="text-muted">Scan this QR code with <b>Google Authenticator</b>, <b>Microsoft Authenticator</b>,<br>or any TOTP app.</small>
-          </div>
-          <div class="mb-3 text-center">
-            <span class="text-secondary">Or enter this secret manually:</span><br>
-            <span class="badge bg-light text-dark px-3 py-2 mt-1 secret-wrap"><%= secret.replace(/(.{32})/g, '$1\n') %></span>
+            <div class="text-muted small mb-1">Or enter this secret manually:</div>
+            <span class="badge bg-light text-dark border px-3 py-2 secret-wrap"><%= secret.replace(/(.{4})/g, '$1 ').trim() %></span>
           </div>
           <form method="POST" action="/2fa/verify" autocomplete="off">
-            <div class="input-group mb-3" style="height: 48px;">
-              <input type="text" class="form-control form-control-lg text-center" id="token" name="token" maxlength="6" required pattern="[0-9]{6}" placeholder="Enter 6-digit code" autofocus style="height: 48px;">
-              <span class="input-group-text d-flex align-items-center justify-content-center" style="height: 48px; min-width: 48px; font-size: 1.5rem;"><span class="bi bi-shield-lock"></span></span>
+            <div class="mb-3">
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+                <input type="text" class="form-control text-center" id="token" name="token" maxlength="6" required pattern="[0-9]{6}" placeholder="Enter 6-digit code" autofocus />
+              </div>
             </div>
-            <div class="d-grid gap-2 mb-2">
-              <button type="submit" class="btn btn-primary btn-block">
-                <i class="fas fa-check-circle mr-1"></i> Verify & Enable 2FA
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle me-1"></i> Verify &amp; Enable 2FA
               </button>
             </div>
           </form>
@@ -90,5 +119,7 @@
         <% } %>
       </div>
     </div>
-  </div>
-</div>
+    <script src="/vendor/popper.min.js"></script>
+    <script src="/vendor/bootstrap.min.js"></script>
+  </body>
+</html>
