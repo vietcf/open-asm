@@ -38,7 +38,7 @@ apiSubnetController.findSubnet = async (req, res) => {
     if (!address) {
       return res.status(400).json({ error: 'Address parameter is required' });
     }
-    const subnet = await Subnet.findByAddress(address);
+    const subnet = await Subnet.findByAddressWithDetails(address);
     if (!subnet) return res.status(404).json({ error: 'Subnet not found' });
     res.json(subnet);
   } catch (err) {
