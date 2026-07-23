@@ -489,7 +489,32 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.3.1 (Latest)
+### Version 1.3.3 (Latest)
+- ✨ Login page redesigned as a simpler centered card matching the
+  AdminLTE theme; username/password are now required on both the
+  client (JS) and the server (`postLogin`), not just via the HTML
+  `required` attribute.
+- ✨ Sessions now auto-expire after a configurable period of
+  inactivity. Set the `session_idle_timeout_minutes` key in System
+  Configuration (minutes; `0` disables it) — takes effect immediately,
+  no restart needed.
+
+### Version 1.3.2
+- ✨ Cluster Name is now checked for uniqueness immediately on blur
+  (AJAX) in the Add/Edit form, not just after submitting.
+- ✨ Add/Edit Cluster: a new "Bulk-add members from a file" control
+  (IP Address + Role, 2 columns) validates the whole file first
+  (downloads a row-by-row report, same contract as every other Excel
+  import) and only appends rows to the member list once every row
+  passes — an IP must already exist, duplicates within the file fail,
+  and on Edit an IP already in this cluster (saved or just added on
+  the form) fails too. A blinking pointer draws attention to "Add
+  Validated Members" once validation passes.
+- 🐛 Cluster's validation/import result files (member bulk-add, and
+  the list page's cluster import) now get a timestamp suffix, like
+  every other export/import result file in the app.
+
+### Version 1.3.1
 - ✨ **Cluster Management** (new top-level menu, between Device and
   Organization): track named groups of IP-address members (e.g. an
   OpenShift cluster or an Oracle RAC) with a free-text role per member
