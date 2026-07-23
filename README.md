@@ -489,7 +489,13 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.3.4 (Latest)
+### Version 1.3.5 (Latest)
+- 🐛 Fixed dropdown filters (Subnet zone/environment, Device
+  location/manufacturer/role, Server location) matching values as a
+  substring instead of exact — e.g. filtering by "PROD" no longer
+  also returns "NON-PROD".
+
+### Version 1.3.4
 - 🐛 Unified table styling across every list page (Network, Server,
   Device, Cluster, Organize, Security, Administration): all now use
   the same flush-to-edge `card-body` layout as System List, instead of
