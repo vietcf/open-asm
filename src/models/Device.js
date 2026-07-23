@@ -168,17 +168,17 @@ class Device {
     }
     if (location) {
       whereClauses.push(`d.location ILIKE $${idx}`);
-      params.push(`%${location}%`);
+      params.push(location);
       idx++;
     }
     if (manufacturer) {
       whereClauses.push(`d.manufacturer ILIKE $${idx}`);
-      params.push(`%${manufacturer}%`);
+      params.push(manufacturer);
       idx++;
     }
     if (device_role) {
       whereClauses.push(`d.device_role ILIKE $${idx}`);
-      params.push(`%${device_role}%`);
+      params.push(device_role);
       idx++;
     }
     if (tags && tags.length > 0) {
@@ -243,17 +243,17 @@ class Device {
     }
     if (location) {
       whereClauses.push(`d.location ILIKE $${idx}`);
-      params.push(`%${location}%`);
+      params.push(location);
       idx++;
     }
     if (manufacturer) {
       whereClauses.push(`d.manufacturer ILIKE $${idx}`);
-      params.push(`%${manufacturer}%`);
+      params.push(manufacturer);
       idx++;
     }
     if (device_role) {
       whereClauses.push(`d.device_role ILIKE $${idx}`);
-      params.push(`%${device_role}%`);
+      params.push(device_role);
       idx++;
     }
     if (tags && tags.length > 0) {

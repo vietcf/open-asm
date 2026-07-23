@@ -101,20 +101,20 @@ class Subnet {
       idx++;
     }
     
-    // Filter by zone
+    // Filter by zone (exact match, case-insensitive — value comes from a dropdown of distinct zones)
     if (zone && zone.trim() !== '') {
       whereClauses.push(`s.zone ILIKE $${idx}`);
-      params.push(`%${zone}%`);
+      params.push(zone);
       idx++;
     }
-    
-    // Filter by environment
+
+    // Filter by environment (exact match, case-insensitive — value comes from a dropdown of distinct environments)
     if (environment && environment.trim() !== '') {
       whereClauses.push(`s.environment ILIKE $${idx}`);
-      params.push(`%${environment}%`);
+      params.push(environment);
       idx++;
     }
-    
+
     // Search by subnet address or description
     if (search && search.trim() !== '') {
       if (/^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?$/.test(search)) {
@@ -129,7 +129,7 @@ class Subnet {
         idx++;
       }
     }
-    
+
     const offset = (page - 1) * pageSize;
     const whereClause = whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : '';
     
@@ -165,20 +165,20 @@ class Subnet {
       idx++;
     }
     
-    // Filter by zone
+    // Filter by zone (exact match, case-insensitive — value comes from a dropdown of distinct zones)
     if (zone && zone.trim() !== '') {
       whereClauses.push(`s.zone ILIKE $${idx}`);
-      params.push(`%${zone}%`);
+      params.push(zone);
       idx++;
     }
-    
-    // Filter by environment
+
+    // Filter by environment (exact match, case-insensitive — value comes from a dropdown of distinct environments)
     if (environment && environment.trim() !== '') {
       whereClauses.push(`s.environment ILIKE $${idx}`);
-      params.push(`%${environment}%`);
+      params.push(environment);
       idx++;
     }
-    
+
     // Search by subnet address or description
     if (search && search.trim() !== '') {
       if (/^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?$/.test(search)) {
@@ -193,9 +193,9 @@ class Subnet {
         idx++;
       }
     }
-    
+
     const whereClause = whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : '';
-    
+
     const result = await pool.query(
       `SELECT COUNT(DISTINCT s.id) AS count
        FROM subnets s
