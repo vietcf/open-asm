@@ -489,7 +489,13 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.3.3 (Latest)
+### Version 1.3.4 (Latest)
+- 🐛 Unified table styling across every list page (Network, Server,
+  Device, Cluster, Organize, Security, Administration): all now use
+  the same flush-to-edge `card-body` layout as System List, instead of
+  a subset of pages having extra inset padding around the table.
+
+### Version 1.3.3
 - ✨ Login page redesigned as a simpler centered card matching the
   AdminLTE theme; username/password are now required on both the
   client (JS) and the server (`postLogin`), not just via the HTML
