@@ -489,7 +489,17 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.3.5 (Latest)
+### Version 1.4.1 (Latest)
+- ✨ Added LDAP / Active Directory login support: admin sets each user's
+  auth method (Local or LDAP) when creating/editing them, matched to the
+  AD `sAMAccountName`. LDAP users still get full 2FA support and skip the
+  local password-change flow. The API (`/api/v1/auth/login`) always
+  requires a local account regardless of a user's web login method.
+- 🐛 Fixed Component List's Edit/Delete action icons showing regardless of
+  permission (and the Add button checking a permission that didn't exist)
+  — now gated the same way as System List.
+
+### Version 1.3.5
 - 🐛 Fixed dropdown filters (Subnet zone/environment, Device
   location/manufacturer/role, Server location) matching values as a
   substring instead of exact — e.g. filtering by "PROD" no longer

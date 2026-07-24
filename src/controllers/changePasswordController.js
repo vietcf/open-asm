@@ -5,6 +5,10 @@ const changePasswordController = {};
 
 // GET change password page
 changePasswordController.getChangePassword = (req, res) => {
+  // LDAP accounts have no local password to change — AD owns it.
+  if (req.session.user && req.session.user.auth_source === 'ldap') {
+    return res.redirect('/dashboard');
+  }
   res.render('pages/change_password', {
     error: null,
     success: null,
@@ -18,6 +22,9 @@ changePasswordController.postChangePassword = async (req, res) => {
   const userId = req.session.user && req.session.user.id;
   if (!userId) {
     return res.redirect('/login');
+  }
+  if (req.session.user.auth_source === 'ldap') {
+    return res.redirect('/dashboard');
   }
   const { currentPassword, newPassword, confirmPassword } = req.body;
   let error = null;
