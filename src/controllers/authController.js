@@ -26,6 +26,7 @@ export const getLoginPage = (req, res) => {
   res.render('pages/login', {
     errorMessage,
     ldapEnabled: process.env.LDAP_ENABLED === 'true',
+    selectedMethod: req.query.method === 'ldap' ? 'ldap' : 'local',
     layout: false // Disable layout for login page
   });
 }
@@ -33,9 +34,15 @@ export const getLoginPage = (req, res) => {
 export const postLogin = async (req, res) => {
   // Normalize username only
   let { username, password } = req.body;
+  // The LDAP/Local toggle on the login page is cosmetic (the server always
+  // authenticates against the account's real auth_source), but on a failed
+  // login we still redirect back to /login — without this, the toggle would
+  // silently reset to "Local" even though the user picked LDAP, which reads
+  // as if their choice was ignored.
+  const methodSuffix = req.body.loginMethod === 'ldap' ? '&method=ldap' : '';
   if (typeof username !== 'string' || typeof password !== 'string' || !username.trim() || !password.trim()) {
     await writeLog({ action: 'login', description: 'Login failed: missing username or password', status: 'failed', req });
-    return res.redirect('/login?error=Please%20enter%20both%20username%20and%20password');
+    return res.redirect(`/login?error=Please%20enter%20both%20username%20and%20password${methodSuffix}`);
   }
   username = username.trim().toLowerCase();
   try {
@@ -75,22 +82,22 @@ export const postLogin = async (req, res) => {
   } catch (err) {
     if (err.code === 'UNAUTHORIZED') {
       await writeLog({ action: 'login', description: 'Login failed: invalid username or password', status: 'failed', req });
-      return res.redirect('/login?error=Invalid%20username%20or%20password');
+      return res.redirect(`/login?error=Invalid%20username%20or%20password${methodSuffix}`);
     }
     if (err.code === 'FORBIDDEN') {
       await writeLog({ action: 'login', description: 'Login failed: account is inactive', status: 'failed', req });
-      return res.redirect('/login?error=Account%20is%20inactive');
+      return res.redirect(`/login?error=Account%20is%20inactive${methodSuffix}`);
     }
     if (err.code === 'SERVICE_UNAVAILABLE') {
       // Log the real cause server-side (ECONNREFUSED, TLS failure, timeout,
       // etc.) — the user-facing message stays generic on purpose.
       console.error('LDAP authentication server unavailable:', err.details ? err.details.message : err.message);
       await writeLog({ action: 'login', description: 'Login failed: LDAP server unavailable', status: 'failed', req });
-      return res.redirect('/login?error=Authentication%20server%20is%20temporarily%20unavailable.%20Please%20try%20again%20later.');
+      return res.redirect(`/login?error=Authentication%20server%20is%20temporarily%20unavailable.%20Please%20try%20again%20later.${methodSuffix}`);
     }
     console.error('Login error:', err);
     await writeLog({ action: 'login', description: 'Login failed: server error', status: 'failed', req });
-    res.redirect('/login?error=Server%20error');
+    res.redirect(`/login?error=Server%20error${methodSuffix}`);
   }
 };
 

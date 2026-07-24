@@ -108,6 +108,7 @@
             <%= errorMessage %>
           </div>
         <% } %>
+        <% const initialMethod = (typeof selectedMethod !== 'undefined' && selectedMethod === 'ldap') ? 'ldap' : 'local'; %>
         <form action="/login" method="post" id="loginForm" novalidate>
           <% if (typeof ldapEnabled !== 'undefined' && ldapEnabled) { %>
           <!-- Cosmetic only: the server always determines the real auth method
@@ -115,16 +116,16 @@
                exists so users know which credentials (local vs. AD) they're
                about to type in. Hidden entirely when LDAP_ENABLED is off. -->
           <div class="auth-method-toggle" role="group" aria-label="Login method">
-            <button type="button" class="active" data-method="local" id="methodLocalBtn">Local Account</button>
-            <button type="button" data-method="ldap" id="methodLdapBtn">LDAP (AD)</button>
+            <button type="button" class="<%= initialMethod === 'local' ? 'active' : '' %>" data-method="local" id="methodLocalBtn">Local Account</button>
+            <button type="button" class="<%= initialMethod === 'ldap' ? 'active' : '' %>" data-method="ldap" id="methodLdapBtn">LDAP (AD)</button>
           </div>
-          <input type="hidden" name="loginMethod" id="loginMethod" value="local" />
+          <input type="hidden" name="loginMethod" id="loginMethod" value="<%= initialMethod %>" />
           <% } %>
           <div class="mb-3">
-            <label class="form-label" for="username" id="usernameLabel">Username</label>
+            <label class="form-label" for="username" id="usernameLabel"><%= initialMethod === 'ldap' ? 'AD Username' : 'Username' %></label>
             <div class="input-group">
               <span class="input-group-text"><i class="bi bi-person"></i></span>
-              <input type="text" id="username" name="username" class="form-control" placeholder="Enter your username" autofocus required />
+              <input type="text" id="username" name="username" class="form-control" placeholder="<%= initialMethod === 'ldap' ? 'Enter your AD username' : 'Enter your username' %>" autofocus required />
             </div>
             <div class="invalid-feedback d-block d-none" id="usernameError">Please enter your username.</div>
           </div>
