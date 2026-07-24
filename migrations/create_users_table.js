@@ -3,7 +3,7 @@ export default async (pool) => {
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       username VARCHAR(50) UNIQUE NOT NULL,
-      password_hash VARCHAR(255),
+      password_hash VARCHAR(255) NOT NULL,
       email VARCHAR(100) UNIQUE,
       fullname VARCHAR(255),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -13,8 +13,7 @@ export default async (pool) => {
       require_twofa BOOLEAN DEFAULT FALSE,
       twofa_setup_deadline TIMESTAMP,
       must_change_password BOOLEAN DEFAULT FALSE,
-      is_active BOOLEAN DEFAULT TRUE,
-      auth_source VARCHAR(20) NOT NULL DEFAULT 'local' CHECK (auth_source IN ('local', 'ldap'))
+      is_active BOOLEAN DEFAULT TRUE
     );
   `);
   await pool.query(`

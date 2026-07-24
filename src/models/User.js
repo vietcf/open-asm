@@ -61,9 +61,9 @@ class User {
    * @param {Object} userData
    * @returns {Promise<Object>}
    */
-  static async create({ username, email, fullname, role, passwordHash, require_twofa, must_change_password, auth_source }) {
-    const sql = 'INSERT INTO users (username, email, fullname, role_id, password_hash, require_twofa, must_change_password, auth_source) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *';
-    const result = await pool.query(sql, [username, email, fullname, role, passwordHash || null, require_twofa, must_change_password !== undefined ? must_change_password : true, auth_source || 'local']);
+  static async create({ username, email, fullname, role, passwordHash, require_twofa, must_change_password }) {
+    const sql = 'INSERT INTO users (username, email, fullname, role_id, password_hash, require_twofa, must_change_password) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *';
+    const result = await pool.query(sql, [username, email, fullname, role, passwordHash, require_twofa, must_change_password !== undefined ? must_change_password : true]);
     return result.rows[0];
   }
 
@@ -73,18 +73,14 @@ class User {
    * @param {Object} userData
    * @returns {Promise<Object>}
    */
-  static async update(id, { username, email, fullname, role, require_twofa, must_change_password, passwordHash, is_active, auth_source }) {
+  static async update(id, { username, email, fullname, role, require_twofa, must_change_password, passwordHash, is_active }) {
     let sql, params;
-    if (auth_source === 'ldap') {
-      // LDAP accounts never keep a local password hash — AD owns the password.
-      sql = 'UPDATE users SET username = $1, email = $2, fullname = $3, role_id = $4, require_twofa = $5, must_change_password = $6, is_active = $7, auth_source = $8, password_hash = NULL WHERE id = $9 RETURNING *';
-      params = [username, email, fullname, role, require_twofa, must_change_password, is_active, auth_source, id];
-    } else if (passwordHash) {
-      sql = 'UPDATE users SET username = $1, email = $2, fullname = $3, role_id = $4, require_twofa = $5, must_change_password = $6, password_hash = $7, is_active = $8, auth_source = $9 WHERE id = $10 RETURNING *';
-      params = [username, email, fullname, role, require_twofa, must_change_password, passwordHash, is_active, auth_source || 'local', id];
+    if (passwordHash) {
+      sql = 'UPDATE users SET username = $1, email = $2, fullname = $3, role_id = $4, require_twofa = $5, must_change_password = $6, password_hash = $7, is_active = $8 WHERE id = $9 RETURNING *';
+      params = [username, email, fullname, role, require_twofa, must_change_password, passwordHash, is_active, id];
     } else {
-      sql = 'UPDATE users SET username = $1, email = $2, fullname = $3, role_id = $4, require_twofa = $5, must_change_password = $6, is_active = $7, auth_source = $8 WHERE id = $9 RETURNING *';
-      params = [username, email, fullname, role, require_twofa, must_change_password, is_active, auth_source || 'local', id];
+      sql = 'UPDATE users SET username = $1, email = $2, fullname = $3, role_id = $4, require_twofa = $5, must_change_password = $6, is_active = $7 WHERE id = $8 RETURNING *';
+      params = [username, email, fullname, role, require_twofa, must_change_password, is_active, id];
     }
     const result = await pool.query(sql, params);
     return result.rows[0];

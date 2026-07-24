@@ -47,18 +47,10 @@ export class ForbiddenError extends ServiceError {
   }
 }
 
-export class ServiceUnavailableError extends ServiceError {
-  constructor(message = 'Service unavailable') {
-    super(message, 'SERVICE_UNAVAILABLE');
-    this.name = 'ServiceUnavailableError';
-  }
-}
-
 export const HTTP_STATUS_BY_CODE = {
   VALIDATION_ERROR: 400,
   NOT_FOUND: 404,
   CONFLICT: 409,
   UNAUTHORIZED: 401,
-  FORBIDDEN: 403,
-  SERVICE_UNAVAILABLE: 503
+  FORBIDDEN: 403
 };

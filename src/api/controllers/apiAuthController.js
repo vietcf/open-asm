@@ -1,6 +1,6 @@
 // Controller for API authentication (JWT login)
 import jwt from 'jsonwebtoken';
-import { verifyLocalCredentials, getUserPermissions } from '../../services/authService.js';
+import { verifyCredentials, getUserPermissions } from '../../services/authService.js';
 const JWT_SECRET = process.env.JWT_SECRET || 'VcB_your_jwt_secret';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
 
@@ -13,9 +13,7 @@ const apiAuthController = {
       }
       // Also enforces is_active, unlike the previous inline check here — an
       // inactive user's login now correctly fails instead of issuing a token.
-      // API access always requires a local (bcrypt) account, even if the user
-      // also has LDAP login enabled for the web UI.
-      const user = await verifyLocalCredentials(username, password);
+      const user = await verifyCredentials(username, password);
       if (user.must_change_password) {
         return res.status(403).json({ error: 'Password change required. Please log in via the web interface to change your password before using the API.' });
       }

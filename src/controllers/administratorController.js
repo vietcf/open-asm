@@ -67,16 +67,14 @@ administratorController.listUsers = async (req, res) => {
 administratorController.createUser = async (req, res) => {
   try {
     const { username, email, fullname, role, password } = req.body;
-    const auth_source = req.body.auth_source === 'ldap' ? 'ldap' : 'local';
     // Normalize and trim input fields
     const normUsername = username ? username.trim() : '';
     const normEmail = email ? email.trim() : '';
     const normFullname = fullname ? fullname.trim() : '';
     const normRole = role ? Number(role) : null;
     const normPassword = password ? password.trim() : '';
-    // Validate required fields (password only applies to local accounts —
-    // LDAP accounts authenticate against AD, no local password is stored)
-    if (!normUsername || !normEmail || (auth_source === 'local' && !normPassword)) {
+    // Validate required fields
+    if (!normUsername || !normEmail || !normPassword) {
       req.flash('error', 'Username, email, and password are required!');
       return res.redirect('/administrator/users');
     }
@@ -94,7 +92,7 @@ administratorController.createUser = async (req, res) => {
       req.flash('error', 'Invalid role!');
       return res.redirect('/administrator/users');
     }
-    if (auth_source === 'local' && normPassword.length < 4) {
+    if (normPassword.length < 4) {
       req.flash('error', 'Password must be at least 4 characters!');
       return res.redirect('/administrator/users');
     }
@@ -117,14 +115,13 @@ administratorController.createUser = async (req, res) => {
     // Read require_twofa from form (checkbox returns 'on' if checked)
     const requireTwofaRaw = req.body.require_twofa;
     const require_twofa = requireTwofaRaw === 'on' ? true : false;
-
-    // Read must_change_password from form (checkbox returns 'on' if checked).
-    // Never applies to LDAP accounts — AD owns the password, not this app.
+    
+    // Read must_change_password from form (checkbox returns 'on' if checked)
     const mustChangePasswordRaw = req.body.must_change_password;
-    const must_change_password = auth_source === 'ldap' ? false : (mustChangePasswordRaw === 'on' ? true : false);
-
-    const passwordHash = auth_source === 'ldap' ? null : await bcrypt.hash(normPassword, 10);
-    await User.create({ username: normUsername, email: normEmail, fullname: normFullname, role: role_id, passwordHash, require_twofa, must_change_password, auth_source });
+    const must_change_password = mustChangePasswordRaw === 'on' ? true : false;
+    
+    const passwordHash = await bcrypt.hash(normPassword, 10);
+    await User.create({ username: normUsername, email: normEmail, fullname: normFullname, role: role_id, passwordHash, require_twofa, must_change_password });
     req.flash('success', 'User added successfully!');
     res.redirect('/administrator/users');
   } catch (err) {
@@ -137,7 +134,6 @@ administratorController.updateUser = async (req, res) => {
   try {
     const id = req.params.id;
     const { username, email, fullname, role, password, repeat_password } = req.body;
-    const auth_source = req.body.auth_source === 'ldap' ? 'ldap' : 'local';
     // Normalize and trim input fields
     const normUsername = username ? username.trim() : '';
     const normEmail = email ? email.trim() : '';
@@ -187,10 +183,9 @@ administratorController.updateUser = async (req, res) => {
     // Handle require_twofa from edit form
     const requireTwofaRaw = req.body.require_twofa;
     const require_twofa = requireTwofaRaw === 'on' ? true : false;
-    // Handle must_change_password from edit form. Never applies to LDAP
-    // accounts — AD owns the password, not this app.
+    // Handle must_change_password from edit form
     const mustChangePasswordRaw = req.body.must_change_password;
-    const must_change_password = auth_source === 'ldap' ? false : (mustChangePasswordRaw === 'on' ? true : false);
+    const must_change_password = mustChangePasswordRaw === 'on' ? true : false;
     // Get OTP expiration days from configuration
     let otpDeadlineDays = 3;
     const otpDeadlineConfig = await Configuration.findByKey('otp_deadline_time');
@@ -207,30 +202,23 @@ administratorController.updateUser = async (req, res) => {
       await User.updateTwoFA(id, null, false);
     }
     let passwordHash = undefined;
-    if (auth_source === 'local') {
-      // Server-side validation: if password is entered, repeat_password must match
-      if (normPassword) {
-        if (!normRepeatPassword || normPassword !== normRepeatPassword) {
-          req.flash('error', 'Passwords do not match!');
-          return res.redirect('/administrator/users');
-        }
-        if (normPassword.length < 4) {
-          req.flash('error', 'Password must be at least 4 characters!');
-          return res.redirect('/administrator/users');
-        }
-        passwordHash = await bcrypt.hash(normPassword, 10);
-      } else if (currentUser.auth_source === 'ldap') {
-        // Switching a user from LDAP back to local requires a real password —
-        // there's no existing local hash to fall back to.
-        req.flash('error', 'Please set a password when switching this user to local authentication.');
+    // Server-side validation: if password is entered, repeat_password must match
+    if (normPassword) {
+      if (!normRepeatPassword || normPassword !== normRepeatPassword) {
+        req.flash('error', 'Passwords do not match!');
         return res.redirect('/administrator/users');
       }
+      if (normPassword.length < 4) {
+        req.flash('error', 'Password must be at least 4 characters!');
+        return res.redirect('/administrator/users');
+      }
+      passwordHash = await bcrypt.hash(normPassword, 10);
     }
     // Handle is_active from edit form
     const isActiveRaw = req.body.is_active;
     const is_active = isActiveRaw === 'on' ? true : false;
-
-    await User.update(id, { username: newUsername, email: normEmail, fullname: normFullname, role: newRole, require_twofa, must_change_password, passwordHash, is_active, auth_source });
+    
+    await User.update(id, { username: newUsername, email: normEmail, fullname: normFullname, role: newRole, require_twofa, must_change_password, passwordHash, is_active });
     req.flash('success', 'User updated successfully!');
     res.redirect('/administrator/users');
   } catch (err) {

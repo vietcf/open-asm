@@ -3,7 +3,6 @@ const requirePasswordChange = (req, res, next) => {
   if (
     req.session.user &&
     req.session.user.must_change_password &&
-    req.session.user.auth_source !== 'ldap' &&
     req.path !== '/change-password' &&
     req.path !== '/logout' &&
     !(req.path === '/change-password' && req.method === 'POST')
