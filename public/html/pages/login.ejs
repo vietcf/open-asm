@@ -109,15 +109,17 @@
           </div>
         <% } %>
         <form action="/login" method="post" id="loginForm" novalidate>
+          <% if (typeof ldapEnabled !== 'undefined' && ldapEnabled) { %>
           <!-- Cosmetic only: the server always determines the real auth method
                from the account's own record, regardless of this toggle. It
                exists so users know which credentials (local vs. AD) they're
-               about to type in. -->
+               about to type in. Hidden entirely when LDAP_ENABLED is off. -->
           <div class="auth-method-toggle" role="group" aria-label="Login method">
             <button type="button" class="active" data-method="local" id="methodLocalBtn">Local Account</button>
             <button type="button" data-method="ldap" id="methodLdapBtn">LDAP (AD)</button>
           </div>
           <input type="hidden" name="loginMethod" id="loginMethod" value="local" />
+          <% } %>
           <div class="mb-3">
             <label class="form-label" for="username" id="usernameLabel">Username</label>
             <div class="input-group">
@@ -183,23 +185,28 @@
       // Purely cosmetic: switches the label/placeholder so users know which
       // credentials they're entering. The server ignores this value and
       // always authenticates against the account's real configured method.
-      var loginMethodInput = document.getElementById('loginMethod');
-      var usernameLabel = document.getElementById('usernameLabel');
-      var usernameInput = document.getElementById('username');
+      // The toggle markup itself is omitted server-side when LDAP_ENABLED is
+      // off, so guard against that here too.
       var methodLocalBtn = document.getElementById('methodLocalBtn');
       var methodLdapBtn = document.getElementById('methodLdapBtn');
 
-      function setLoginMethod(method) {
-        loginMethodInput.value = method;
-        var isLdap = method === 'ldap';
-        methodLdapBtn.classList.toggle('active', isLdap);
-        methodLocalBtn.classList.toggle('active', !isLdap);
-        usernameLabel.textContent = isLdap ? 'AD Username' : 'Username';
-        usernameInput.placeholder = isLdap ? 'Enter your AD username' : 'Enter your username';
-      }
+      if (methodLocalBtn && methodLdapBtn) {
+        var loginMethodInput = document.getElementById('loginMethod');
+        var usernameLabel = document.getElementById('usernameLabel');
+        var usernameInput = document.getElementById('username');
 
-      methodLocalBtn.addEventListener('click', function () { setLoginMethod('local'); });
-      methodLdapBtn.addEventListener('click', function () { setLoginMethod('ldap'); });
+        function setLoginMethod(method) {
+          loginMethodInput.value = method;
+          var isLdap = method === 'ldap';
+          methodLdapBtn.classList.toggle('active', isLdap);
+          methodLocalBtn.classList.toggle('active', !isLdap);
+          usernameLabel.textContent = isLdap ? 'AD Username' : 'Username';
+          usernameInput.placeholder = isLdap ? 'Enter your AD username' : 'Enter your username';
+        }
+
+        methodLocalBtn.addEventListener('click', function () { setLoginMethod('local'); });
+        methodLdapBtn.addEventListener('click', function () { setLoginMethod('ldap'); });
+      }
     </script>
   </body>
   <!--end::Body-->

@@ -25,6 +25,7 @@ export const getLoginPage = (req, res) => {
   const errorMessage = req.query.error || null;
   res.render('pages/login', {
     errorMessage,
+    ldapEnabled: process.env.LDAP_ENABLED === 'true',
     layout: false // Disable layout for login page
   });
 }
