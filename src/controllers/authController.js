@@ -16,7 +16,8 @@ function buildSessionUser(user) {
     twofa_enabled: user.twofa_enabled,
     twofa_secret: user.twofa_secret,
     require_twofa: user.require_twofa,
-    must_change_password: user.must_change_password
+    must_change_password: user.must_change_password,
+    auth_source: user.auth_source
   };
 }
 
@@ -78,6 +79,10 @@ export const postLogin = async (req, res) => {
     if (err.code === 'FORBIDDEN') {
       await writeLog({ action: 'login', description: 'Login failed: account is inactive', status: 'failed', req });
       return res.redirect('/login?error=Account%20is%20inactive');
+    }
+    if (err.code === 'SERVICE_UNAVAILABLE') {
+      await writeLog({ action: 'login', description: 'Login failed: LDAP server unavailable', status: 'failed', req });
+      return res.redirect('/login?error=Authentication%20server%20is%20temporarily%20unavailable.%20Please%20try%20again%20later.');
     }
     console.error('Login error:', err);
     await writeLog({ action: 'login', description: 'Login failed: server error', status: 'failed', req });
