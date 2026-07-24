@@ -23,6 +23,14 @@ export function authenticateLdap(username, password) {
   if (process.env.LDAP_ENABLED !== 'true') {
     return Promise.reject(new LdapUnavailableError('LDAP authentication is not enabled on this server'));
   }
+  // Defense in depth: per RFC 4513, binding with a real DN/UPN but an empty
+  // password is an "unauthenticated bind" — AD (and most LDAP servers)
+  // return success without checking the password at all. The caller already
+  // rejects empty passwords before reaching here, but that must never be the
+  // only thing standing between an attacker and logging in as any LDAP user.
+  if (!password) {
+    return Promise.resolve(false);
+  }
   return new Promise((resolve, reject) => {
     const client = ldap.createClient({
       url: LDAP_URL,
