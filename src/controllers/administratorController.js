@@ -632,9 +632,19 @@ administratorController.createConfiguration = async (req, res) => {
         return res.redirect('/administrator/configuration');
       }
     }
+    else if (key === 'session_idle_timeout_minutes') {
+      // Must be a non-negative integer (0 disables auto-expiry)
+      if (!/^[0-9]+$/.test(value)) {
+        req.flash('error', 'Session idle timeout must be a non-negative integer (minutes)!');
+        return res.redirect('/administrator/configuration');
+      }
+    }
 
     const user = req.session.user ? req.session.user.username : null;
     await Configuration.create({ key, value, description, updatedBy: user });
+    // Reload site config cache so newly added keys take effect immediately
+    const { siteConfig } = await import('../utils/siteConfig.js');
+    await siteConfig.initialize();
     req.flash('success', 'Configuration added successfully!');
     res.redirect('/administrator/configuration');
   } catch (err) {
@@ -697,6 +707,13 @@ administratorController.updateConfiguration = async (req, res) => {
       // Must be a positive integer
       if (!/^[0-9]+$/.test(value) || parseInt(value) <= 0) {
         req.flash('error', 'Log retention days must be a positive integer!');
+        return res.redirect('/administrator/configuration');
+      }
+    }
+    else if (key === 'session_idle_timeout_minutes') {
+      // Must be a non-negative integer (0 disables auto-expiry)
+      if (!/^[0-9]+$/.test(value)) {
+        req.flash('error', 'Session idle timeout must be a non-negative integer (minutes)!');
         return res.redirect('/administrator/configuration');
       }
     }

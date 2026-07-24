@@ -26,13 +26,17 @@ const IMPORT_HEADERS = [
   'System Name (Optional, comma-separated if multiple)'
 ];
 
-function validateHeaderOrder(headerValues) {
-  if (headerValues.length !== IMPORT_HEADERS.length) {
-    return `Invalid file format. Expected ${IMPORT_HEADERS.length} columns, got ${headerValues.length}`;
+// Simpler 2-column format for bulk-adding members to one cluster from the
+// Add/Edit form, as opposed to IMPORT_HEADERS which creates whole clusters.
+const MEMBER_FILE_HEADERS = ['IP Address (Require)', 'Role (Optional)'];
+
+function validateHeaderOrder(headerValues, expectedHeaders) {
+  if (headerValues.length !== expectedHeaders.length) {
+    return `Invalid file format. Expected ${expectedHeaders.length} columns, got ${headerValues.length}`;
   }
-  for (let i = 0; i < IMPORT_HEADERS.length; i++) {
-    if (headerValues[i] !== IMPORT_HEADERS[i]) {
-      return `Invalid column order. Expected "${IMPORT_HEADERS[i]}" at position ${i + 1}, got "${headerValues[i]}"`;
+  for (let i = 0; i < expectedHeaders.length; i++) {
+    if (headerValues[i] !== expectedHeaders[i]) {
+      return `Invalid column order. Expected "${expectedHeaders[i]}" at position ${i + 1}, got "${headerValues[i]}"`;
     }
   }
   return null;
@@ -40,14 +44,14 @@ function validateHeaderOrder(headerValues) {
 
 // Reads the uploaded workbook into {rows, error}. Shared by validate and
 // import so the two never drift on parsing behavior.
-async function readImportRows(filePath) {
+async function readImportRows(filePath, expectedHeaders) {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.readFile(filePath);
   const worksheet = workbook.worksheets[0];
   const headers = [];
   worksheet.getRow(1).eachCell((cell, colNumber) => { headers[colNumber] = cell.value; });
 
-  const headerError = validateHeaderOrder(headers.slice(1));
+  const headerError = validateHeaderOrder(headers.slice(1), expectedHeaders);
   if (headerError) return { error: headerError };
 
   const rows = [];
@@ -370,6 +374,119 @@ clusterController.downloadClusterTemplate = async (req, res) => {
   }
 };
 
+clusterController.downloadMemberTemplate = async (req, res) => {
+  try {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Cluster Members Template');
+    worksheet.addRow(MEMBER_FILE_HEADERS);
+    worksheet.addRow(['10.10.10.11', 'master']);
+    worksheet.addRow(['10.10.10.12', 'worker']);
+    worksheet.columns.forEach(col => { col.width = 30; });
+
+    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
+    const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
+    fs.mkdirSync(tempDir, { recursive: true });
+    const tempPath = path.join(tempDir, 'temp_cluster_member_template.xlsx');
+    await workbook.xlsx.writeFile(tempPath);
+    res.download(tempPath, 'cluster_member_template.xlsx', (err) => {
+      if (err && !res.headersSent) res.status(500).json({ error: 'Error downloading template file' });
+      setTimeout(() => { try { fs.unlinkSync(tempPath); } catch (e) {} }, 5000);
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Error creating template file', detail: err.message });
+  }
+};
+
+// Validates an IP/Role file for the Add/Edit form's "bulk add members"
+// helper - same contract as the list page's cluster import validate step:
+// streams back a downloadable Excel report (Validation Status/Reason per
+// row) plus an X-Validation-Summary header. Rows never get added to the
+// form unless the whole file passes (X-Resolved-Members carries the
+// {ip_address_id, ip, role} for each passed row, but the client is only
+// meant to act on it when allPassed is true) - never writes to the DB
+// itself either way, the actual save still happens on form submit.
+clusterController.validateMembersFile = async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+  const filePath = req.file.path;
+  try {
+    const { rows, error } = await readImportRows(filePath, MEMBER_FILE_HEADERS);
+    if (error) return res.status(400).json({ error });
+
+    const clusterId = req.body.cluster_id ? Number(req.body.cluster_id) : null;
+    const existingIpIds = new Set(clusterId ? await Cluster.getMemberIpIds(clusterId) : []);
+    // Rows already sitting in the form but not yet saved (freshly added by
+    // hand, or from an earlier file in this same session) aren't in the DB
+    // yet either - the client sends their IP ids along so re-uploading a
+    // file that repeats one still gets caught as "already a member".
+    const formIpIds = req.body.existing_ip_ids;
+    (Array.isArray(formIpIds) ? formIpIds : (formIpIds ? [formIpIds] : []))
+      .map(Number).filter(id => !isNaN(id)).forEach(id => existingIpIds.add(id));
+    const seenInFile = new Set();
+
+    const results = [];
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const rowNumber = i + 2;
+      const ip_address = (row['IP Address (Require)'] || '').toString().trim();
+      const role = (row['Role (Optional)'] || '').toString().trim();
+      const result = { row: rowNumber, ip_address, role, validation_status: 'Pass', validation_reason: '' };
+
+      if (!ip_address) {
+        result.validation_status = 'Fail';
+        result.validation_reason = 'IP Address is required';
+      } else {
+        const ip = await IpAddress.findByAddress(ip_address);
+        if (!ip) {
+          result.validation_status = 'Fail';
+          result.validation_reason = 'IP address not found. Please create it first.';
+        } else if (existingIpIds.has(ip.id)) {
+          result.validation_status = 'Fail';
+          result.validation_reason = 'Already a member of this cluster';
+        } else if (seenInFile.has(ip.id)) {
+          result.validation_status = 'Fail';
+          result.validation_reason = 'Duplicate IP within this file';
+        } else {
+          seenInFile.add(ip.id);
+          result.ip_id = ip.id;
+        }
+      }
+      results.push(result);
+    }
+
+    const passCount = results.filter(r => r.validation_status === 'Pass').length;
+    const failCount = results.length - passCount;
+    const allPassed = failCount === 0;
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Validation Results');
+    worksheet.addRow([...MEMBER_FILE_HEADERS, 'Validation Status', 'Validation Reason']);
+    results.forEach(r => {
+      worksheet.addRow(sanitizeExcelRow([r.ip_address, r.role, r.validation_status, r.validation_reason]));
+    });
+    worksheet.columns.forEach(col => { col.width = 24; });
+
+    res.setHeader('X-Validation-Summary', JSON.stringify({ total: results.length, passed: passCount, failed: failCount, allPassed }));
+    // Only meaningful when allPassed - the client only acts on this to
+    // populate the member rows once the whole file has validated clean.
+    // HTTP headers are Latin-1 only, so a role containing non-ASCII text
+    // (Vietnamese, etc.) would otherwise throw ERR_INVALID_CHAR - percent-
+    // encode the JSON payload, decodeURIComponent it back on the client.
+    if (allPassed) {
+      res.setHeader('X-Resolved-Members', encodeURIComponent(JSON.stringify(
+        results.map(r => ({ ip_address_id: r.ip_id, ip: r.ip_address, role: r.role }))
+      )));
+    }
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="cluster_member_validation.xlsx"');
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (err) {
+    res.status(500).json({ error: 'Error validating file', detail: err.message });
+  } finally {
+    try { fs.unlinkSync(filePath); } catch (e) {}
+  }
+};
+
 // Dry-run: parses and validates the uploaded file without creating
 // anything, then streams back an Excel report (Validation Status/Reason per
 // row) plus an X-Validation-Summary header the client reads for pass/fail
@@ -378,7 +495,7 @@ clusterController.validateImportClusters = async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   const filePath = req.file.path;
   try {
-    const { rows, error } = await readImportRows(filePath);
+    const { rows, error } = await readImportRows(filePath, IMPORT_HEADERS);
     if (error) return res.status(400).json({ error });
 
     const results = rows.map((row, i) => toRowResult(row, i + 2));
@@ -410,7 +527,7 @@ clusterController.importClusters = async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
   const filePath = req.file.path;
   try {
-    const { rows, error } = await readImportRows(filePath);
+    const { rows, error } = await readImportRows(filePath, IMPORT_HEADERS);
     if (error) return res.status(400).json({ error });
 
     const results = rows.map((row, i) => toRowResult(row, i + 2));
@@ -481,6 +598,22 @@ clusterController.apiRoleOptions = async (req, res) => {
     res.json({ roles });
   } catch (err) {
     res.status(500).json({ error: 'Error loading roles', detail: err.message });
+  }
+};
+
+// AJAX: check on blur whether a cluster name is already taken, so the
+// Add/Edit form can warn immediately instead of waiting for a failed submit.
+// exclude_id lets Edit ignore the cluster's own current name.
+clusterController.apiCheckName = async (req, res) => {
+  try {
+    const name = (req.query.name || '').toString().trim();
+    if (!name) return res.json({ available: true });
+    const excludeId = req.query.exclude_id;
+    const existing = await Cluster.findByNameExact(name);
+    const clash = existing.some(c => String(c.id) !== String(excludeId));
+    res.json({ available: !clash });
+  } catch (err) {
+    res.status(500).json({ error: 'Error checking cluster name', detail: err.message });
   }
 };
 

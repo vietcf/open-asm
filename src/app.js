@@ -31,6 +31,7 @@ import { siteConfig } from './utils/siteConfig.js';
 import { loadPermissions } from './middlewares/permissions.middleware.js';
 import requirePasswordChange from './middlewares/requirePasswordChange.middleware.js';
 import require2fa from './middlewares/require2fa.middleware.js';
+import sessionIdleTimeout from './middlewares/sessionIdleTimeout.middleware.js';
 // import accessLog from './middlewares/accessLog.middleware.js'; // Disabled
 
 // =========================
@@ -97,7 +98,10 @@ app.use(session({
 // Flash middleware for session messages
 app.use(flash());
 
-// 4.1. Access logging middleware (after session, before other middleware)
+// 4.1. Auto-expire session after inactivity (must run after session/flash, before routes)
+app.use(sessionIdleTimeout);
+
+// 4.2. Access logging middleware (after session, before other middleware)
 // app.use(accessLog); // Disabled to reduce console output
 
 // 5. Global template variables (res.locals)

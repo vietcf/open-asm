@@ -43,6 +43,13 @@ class Cluster {
     return result.rows;
   }
 
+  // IP address ids already in this cluster - used to reject re-adding a
+  // member the Edit form's bulk file-import already has.
+  static async getMemberIpIds(clusterId) {
+    const result = await pool.query('SELECT ip_address_id FROM cluster_members WHERE cluster_id = $1', [clusterId]);
+    return result.rows.map(r => r.ip_address_id);
+  }
+
   static async setMembers(clusterId, members, client) {
     const executor = client || pool;
     await executor.query('DELETE FROM cluster_members WHERE cluster_id = $1', [clusterId]);

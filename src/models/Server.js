@@ -171,7 +171,7 @@ class Server {
     }
     if (location) {
       whereClauses.push(`s.location ILIKE $${idx}`);
-      params.push(`%${location}%`);
+      params.push(location);
       idx++;
     }
     if (tags && tags.length > 0) {
@@ -268,7 +268,7 @@ class Server {
     }
     if (location) {
       whereClauses.push(`s.location ILIKE $${idx}`);
-      params.push(`%${location}%`);
+      params.push(location);
       idx++;
     }
     if (tags && tags.length > 0) {

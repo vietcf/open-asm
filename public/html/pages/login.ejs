@@ -3,120 +3,153 @@
   <!--begin::Head-->
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title><%= siteName %> | Login Page</title>
-    <!--begin::Primary Meta Tags-->
+    <title><%= siteName %> | Login</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="title" content="AdminLTE 4 | Login Page" />
-    <meta name="author" content="ColorlibHQ" />
-    <meta
-      name="description"
-      content="AdminLTE is a Free Bootstrap 5 Admin Dashboard, 30 example pages using Vanilla JS."
-    />
-    <meta
-      name="keywords"
-      content="bootstrap 5, bootstrap, bootstrap 5 admin dashboard, bootstrap 5 dashboard, bootstrap 5 charts, bootstrap 5 calendar, bootstrap 5 datepicker, bootstrap 5 tables, bootstrap 5 datatable, vanilla js datatable, colorlibhq, colorlibhq dashboard, colorlibhq admin dashboard"
-    />
-    <!--end::Primary Meta Tags-->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <!--begin::Fonts-->
-    <link rel="stylesheet" href="/vendor/source-sans-3.css" />
+    <link rel="stylesheet" href="/css/source-sans-3.css" />
     <!--end::Fonts-->
-    <!--begin::Third Party Plugin(OverlayScrollbars)-->
-    <link rel="stylesheet" href="/vendor/overlayscrollbars.min.css" />
-    <!--end::Third Party Plugin(OverlayScrollbars)-->
     <!--begin::Third Party Plugin(Bootstrap Icons)-->
-    <link rel="stylesheet" href="/vendor/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="/css/bootstrap-icons.min.css" />
     <!--end::Third Party Plugin(Bootstrap Icons)-->
     <!--begin::Required Plugin(AdminLTE)-->
-    <!-- Set the path for CSS dynamically, keep the file name fixed -->
     <link rel="stylesheet" href="<%= cssPath %>adminlte.css" />
     <!--end::Required Plugin(AdminLTE)-->
+    <style>
+      body.login-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f4f6f9;
+        font-family: var(--bs-body-font-family);
+      }
+      .login-shell {
+        width: 100%;
+        max-width: 420px;
+        margin: 2rem;
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.15);
+        background: #fff;
+      }
+      .login-form-panel {
+        padding: 2.75rem 2.5rem;
+      }
+      .login-form-panel h2 {
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+      }
+      .login-form-panel .form-control {
+        height: 3rem;
+        border-radius: 0.5rem;
+      }
+      .login-form-panel .input-group-text {
+        border-radius: 0.5rem;
+        background: transparent;
+        border-left: none;
+        color: #adb5bd;
+      }
+      .login-form-panel .input-group .form-control {
+        border-right: none;
+      }
+      .login-form-panel .input-group:focus-within .form-control,
+      .login-form-panel .input-group:focus-within .input-group-text {
+        border-color: #86b7fe;
+      }
+      .login-form-panel .btn-primary {
+        height: 3rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+      }
+      .login-form-panel .forgot-link {
+        font-size: 0.9rem;
+      }
+      @media (max-width: 767.98px) {
+        .login-shell {
+          margin: 1rem;
+        }
+        .login-form-panel {
+          padding: 2rem 1.75rem;
+        }
+      }
+    </style>
   </head>
   <!--end::Head-->
   <!--begin::Body-->
-  <body class="login-page bg-body-secondary">
-    <div class="login-box">
-      <div class="login-logo">
-        <!-- <a href="../index2.html"><b>Admin</b>LTE</a> -->
+  <body class="login-page">
+    <div class="login-shell">
+      <!--begin::Form panel-->
+      <div class="login-form-panel">
+        <h2>Sign In</h2>
+        <% if (errorMessage) { %>
+          <div class="alert alert-danger py-2" role="alert">
+            <%= errorMessage %>
+          </div>
+        <% } %>
+        <form action="/login" method="post" id="loginForm" novalidate>
+          <div class="mb-3">
+            <label class="form-label" for="username">Username</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-person"></i></span>
+              <input type="text" id="username" name="username" class="form-control" placeholder="Enter your username" autofocus required />
+            </div>
+            <div class="invalid-feedback d-block d-none" id="usernameError">Please enter your username.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="password">Password</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+              <input type="password" id="password" name="password" class="form-control" placeholder="Enter your password" required />
+            </div>
+            <div class="invalid-feedback d-block d-none" id="passwordError">Please enter your password.</div>
+          </div>
+          <div class="text-end mb-3">
+            <a href="forgot-password.html" class="forgot-link text-decoration-none">Forgot password?</a>
+          </div>
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary">Sign In</button>
+          </div>
+        </form>
       </div>
-      <!-- /.login-logo -->
-      <div class="card">
-        <div class="card-body login-card-body">
-          <% if (errorMessage) { %>
-            <div class="alert alert-danger text-center mb-3" role="alert">
-              <%= errorMessage %>
-            </div>
-          <% } %>
-          <p class="login-box-msg">Sign in to start your session</p>
-          <form action="/login" method="post">
-            <div class="input-group mb-3">
-              <input type="text" name="username" class="form-control" placeholder="Username" />
-              <div class="input-group-text"><span class="bi bi-person"></span></div>
-            </div>
-            <div class="input-group mb-3">
-              <input type="password" name="password" class="form-control" placeholder="Password" />
-              <div class="input-group-text"><span class="bi bi-lock-fill"></span></div>
-            </div>
-            <!--begin::Row-->
-            <div class="row">
-              <div class="col-8">
-                <div class="form-check">
-                  <input class="form-check-input" type="checkbox" value="" id="flexCheckDefault" />
-                  <label class="form-check-label" for="flexCheckDefault"> Remember Me </label>
-                </div>
-              </div>
-              <!-- /.col -->
-              <div class="col-4">
-                <div class="d-grid gap-2">
-                  <button type="submit" class="btn btn-primary">Sign In</button>
-                </div>
-              </div>
-              <!-- /.col -->
-            </div>
-            <!--end::Row-->
-          </form>
-          <p class="mb-1"><a href="forgot-password.html">I forgot my password</a></p>
-        </div>
-        <!-- /.login-card-body -->
-      </div>
+      <!--end::Form panel-->
     </div>
-    <!-- /.login-box -->
-    <!--begin::Third Party Plugin(OverlayScrollbars)-->
-    <script src="/vendor/overlayscrollbars.browser.es6.min.js"></script>
-    <!--end::Third Party Plugin(OverlayScrollbars)-->
+    <!-- /.login-shell -->
     <!--begin::Required Plugin(popperjs for Bootstrap 5)-->
     <script src="/vendor/popper.min.js"></script>
     <!--end::Required Plugin(popperjs for Bootstrap 5)-->
     <!--begin::Required Plugin(Bootstrap 5)-->
     <script src="/vendor/bootstrap.min.js"></script>
-    <!--end::Required Plugin(Bootstrap 5)--><!--begin::Required Plugin(AdminLTE)-->
-    <!-- Set the path for JS dynamically, keep the file name fixed -->
-    <script src="<%= jsPath %>adminlte.min.js"></script>
-    <!--end::Script-->
-    <!--begin::OverlayScrollbars Configure-->
+    <!--end::Required Plugin(Bootstrap 5)-->
     <script>
-      const SELECTOR_SIDEBAR_WRAPPER = '.sidebar-wrapper';
-      const Default = {
-        scrollbarTheme: 'os-theme-light',
-        scrollbarAutoHide: 'leave',
-        scrollbarClickScroll: true,
-      };
-      document.addEventListener('DOMContentLoaded', function () {
-        const sidebarWrapper = document.querySelector(SELECTOR_SIDEBAR_WRAPPER);
-        if (sidebarWrapper && typeof OverlayScrollbarsGlobal?.OverlayScrollbars !== 'undefined') {
-          OverlayScrollbarsGlobal.OverlayScrollbars(sidebarWrapper, {
-            scrollbars: {
-              theme: Default.scrollbarTheme,
-              autoHide: Default.scrollbarAutoHide,
-              clickScroll: Default.scrollbarClickScroll,
-            },
-          });
+      document.getElementById('loginForm').addEventListener('submit', function (e) {
+        const username = document.getElementById('username');
+        const password = document.getElementById('password');
+        const usernameError = document.getElementById('usernameError');
+        const passwordError = document.getElementById('passwordError');
+
+        const usernameEmpty = username.value.trim() === '';
+        const passwordEmpty = password.value.trim() === '';
+
+        usernameError.classList.toggle('d-none', !usernameEmpty);
+        username.classList.toggle('is-invalid', usernameEmpty);
+        passwordError.classList.toggle('d-none', !passwordEmpty);
+        password.classList.toggle('is-invalid', passwordEmpty);
+
+        if (usernameEmpty || passwordEmpty) {
+          e.preventDefault();
         }
       });
+
+      ['username', 'password'].forEach(function (id) {
+        document.getElementById(id).addEventListener('input', function () {
+          if (this.value.trim() !== '') {
+            this.classList.remove('is-invalid');
+            document.getElementById(id + 'Error').classList.add('d-none');
+          }
+        });
+      });
     </script>
-    <!--end::OverlayScrollbars Configure-->
-    <!-- Load local JS file -->
-    <script src="<%= jsPath %>adminlte.min.js"></script>
-    <!--end::Script-->
   </body>
   <!--end::Body-->
 </html>
