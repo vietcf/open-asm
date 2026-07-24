@@ -100,6 +100,7 @@
                   <th>Email</th>
                   <th>Full Name</th>
                   <th>Role</th>
+                  <th>Auth</th>
                   <th>2FA</th>
                   <th>Status</th>
                   <th class="text-end">Actions</th>
@@ -114,6 +115,13 @@
                       <td><%= user.email %></td>
                       <td><%= user.fullname || '-' %></td>
                       <td><%= user.role_name || '-' %></td>
+                      <td>
+                        <% if (user.auth_source === 'ldap') { %>
+                          <span class="badge bg-info text-dark">LDAP</span>
+                        <% } else { %>
+                          <span class="badge bg-secondary">Local</span>
+                        <% } %>
+                      </td>
                       <td>
                         <% if (user.require_twofa) { %>
                           <span class="badge bg-success">Enabled</span>
@@ -143,7 +151,7 @@
                     </tr>
                   <% }) %>
                 <% } else { %>
-                  <tr><td colspan="8" class="text-center">No data</td></tr>
+                  <tr><td colspan="9" class="text-center">No data</td></tr>
                 <% } %>
               </tbody>
             </table>
@@ -232,6 +240,14 @@
               </select>
             </div>
             <div class="mb-3">
+              <label class="form-label">Authentication Method <span class="text-danger">*</span></label>
+              <select class="form-select auth-source-select" name="auth_source">
+                <option value="local" selected>Local</option>
+                <option value="ldap">LDAP (Active Directory)</option>
+              </select>
+              <div class="form-text">LDAP users authenticate against AD using their sAMAccountName as username; no local password is stored.</div>
+            </div>
+            <div class="mb-3 auth-source-password-field">
               <label class="form-label">Password <span class="text-danger">*</span></label>
               <input type="password" class="form-control" name="password" required minlength="4" placeholder="Enter password">
             </div>
@@ -242,7 +258,7 @@
                 <label class="form-check-label">Enable Two-Factor Authentication</label>
               </div>
             </div>
-            <div class="mb-3">
+            <div class="mb-3 auth-source-mcp-field">
               <label class="form-label">Must Change Password</label>
               <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" name="must_change_password">
@@ -296,10 +312,18 @@
                   </select>
                 </div>
                 <div class="mb-3">
+                  <label class="form-label">Authentication Method <span class="text-danger">*</span></label>
+                  <select class="form-select auth-source-select" name="auth_source">
+                    <option value="local" <%= user.auth_source !== 'ldap' ? 'selected' : '' %>>Local</option>
+                    <option value="ldap" <%= user.auth_source === 'ldap' ? 'selected' : '' %>>LDAP (Active Directory)</option>
+                  </select>
+                  <div class="form-text">LDAP users authenticate against AD using their sAMAccountName as username; no local password is stored.</div>
+                </div>
+                <div class="mb-3 auth-source-password-field">
                   <label class="form-label">New Password</label>
                   <input type="password" class="form-control" name="password" placeholder="Leave blank to keep current password" minlength="4">
                 </div>
-                <div class="mb-3">
+                <div class="mb-3 auth-source-password-field">
                   <label class="form-label">Repeat Password</label>
                   <input type="password" class="form-control" name="repeat_password" placeholder="Repeat new password" minlength="4">
                 </div>
@@ -310,7 +334,7 @@
                     <label class="form-check-label">Enable Two-Factor Authentication</label>
                   </div>
                 </div>
-                <div class="mb-3">
+                <div class="mb-3 auth-source-mcp-field">
                   <label class="form-label">Must Change Password</label>
                   <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" name="must_change_password" <%= user.must_change_password ? 'checked' : '' %>>
@@ -387,6 +411,39 @@ $(document).on('input', '[id^="userEditModal-"] form input[name="password"]', fu
     $checkbox.prop('checked', true);
   }
 });
+
+// LDAP accounts have no local password: grey out the password field(s) and
+// "must change password" toggle whenever LDAP is selected, since AD owns
+// authentication for these users, not this app.
+function applyAuthSourceState($form) {
+  const isLdap = $form.find('select[name="auth_source"]').val() === 'ldap';
+  const $passwordFields = $form.find('.auth-source-password-field');
+  const $mcpCheckbox = $form.find('.auth-source-mcp-field input[name="must_change_password"]');
+
+  $passwordFields.find('input').prop('disabled', isLdap);
+  $passwordFields.toggleClass('opacity-50', isLdap);
+  if (isLdap) {
+    $passwordFields.find('input').val('');
+  }
+
+  $mcpCheckbox.prop('disabled', isLdap);
+  $mcpCheckbox.closest('.auth-source-mcp-field').toggleClass('opacity-50', isLdap);
+  if (isLdap) {
+    $mcpCheckbox.prop('checked', false);
+  }
+}
+
+$(document).on('change', '.auth-source-select', function() {
+  applyAuthSourceState($(this).closest('form'));
+});
+
+$(function() {
+  $('form').each(function() {
+    if ($(this).find('.auth-source-select').length) {
+      applyAuthSourceState($(this));
+    }
+  });
+});
 </script>
 
 <!-- Responsive Tables CSS -->
@@ -399,21 +456,22 @@ $(document).on('input', '[id^="userEditModal-"] form input[name="password"]', fu
 #userTable thead th {
   white-space: nowrap;
 }
-#userTable th:nth-child(1), #userTable td:nth-child(1) { width: 5%; }
-#userTable th:nth-child(2), #userTable td:nth-child(2) { width: 13%; }
-#userTable th:nth-child(3), #userTable td:nth-child(3) { width: 20%; }
-#userTable th:nth-child(4), #userTable td:nth-child(4) { width: 15%; }
-#userTable th:nth-child(5), #userTable td:nth-child(5) { width: 12%; }
-#userTable th:nth-child(6), #userTable td:nth-child(6) { width: 10%; }
-#userTable th:nth-child(7), #userTable td:nth-child(7) { width: 10%; }
-#userTable th:nth-child(8), #userTable td:nth-child(8) { width: 15%; }
+#userTable th:nth-child(1), #userTable td:nth-child(1) { width: 4%; }
+#userTable th:nth-child(2), #userTable td:nth-child(2) { width: 12%; }
+#userTable th:nth-child(3), #userTable td:nth-child(3) { width: 18%; }
+#userTable th:nth-child(4), #userTable td:nth-child(4) { width: 13%; }
+#userTable th:nth-child(5), #userTable td:nth-child(5) { width: 11%; }
+#userTable th:nth-child(6), #userTable td:nth-child(6) { width: 9%; }
+#userTable th:nth-child(7), #userTable td:nth-child(7) { width: 9%; }
+#userTable th:nth-child(8), #userTable td:nth-child(8) { width: 9%; }
+#userTable th:nth-child(9), #userTable td:nth-child(9) { width: 15%; }
 
 #userTable td:nth-child(2),
 #userTable td:nth-child(3),
 #userTable td:nth-child(4) {
   overflow-wrap: break-word;
 }
-#userTable td:nth-child(8) {
+#userTable td:nth-child(9) {
   white-space: nowrap;
   vertical-align: middle;
 }
