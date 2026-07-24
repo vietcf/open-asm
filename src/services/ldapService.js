@@ -35,8 +35,19 @@ export function authenticateLdap(username, password) {
     const finish = (fn, arg) => {
       if (settled) return;
       settled = true;
-      client.removeAllListeners();
+      // client.destroy() marks the client as destroyed so any in-flight
+      // connect-retry callback (ldapjs retries the initial connection via
+      // an internal backoff loop even without `reconnect` configured)
+      // becomes a no-op instead of emitting a late 'error'. Keeping a
+      // permanent no-op 'error' listener is a second line of defense —
+      // Node treats an 'error' event with zero listeners as a fatal,
+      // process-crashing exception, and a stray async error here would
+      // otherwise take down the whole app, not just this request.
+      client.removeAllListeners('error');
+      client.removeAllListeners('connectTimeout');
+      client.on('error', () => {});
       client.unbind(() => {});
+      client.destroy();
       fn(arg);
     };
 

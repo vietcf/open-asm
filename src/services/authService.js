@@ -20,7 +20,11 @@ export async function verifyCredentials(username, password) {
       ok = await authenticateLdap(user.username, password);
     } catch (err) {
       if (err instanceof LdapUnavailableError) {
-        throw new ServiceUnavailableError('Authentication server is temporarily unavailable. Please try again later.');
+        // Keep the generic message user-facing, but pass the real LDAP
+        // error (ECONNREFUSED, TLS failure, etc.) through as `details` so
+        // the server log (see authController's catch block) can show what
+        // actually went wrong instead of just the generic wording.
+        throw new ServiceUnavailableError('Authentication server is temporarily unavailable. Please try again later.', err);
       }
       throw err;
     }

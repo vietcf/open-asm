@@ -82,6 +82,9 @@ export const postLogin = async (req, res) => {
       return res.redirect('/login?error=Account%20is%20inactive');
     }
     if (err.code === 'SERVICE_UNAVAILABLE') {
+      // Log the real cause server-side (ECONNREFUSED, TLS failure, timeout,
+      // etc.) — the user-facing message stays generic on purpose.
+      console.error('LDAP authentication server unavailable:', err.details ? err.details.message : err.message);
       await writeLog({ action: 'login', description: 'Login failed: LDAP server unavailable', status: 'failed', req });
       return res.redirect('/login?error=Authentication%20server%20is%20temporarily%20unavailable.%20Please%20try%20again%20later.');
     }

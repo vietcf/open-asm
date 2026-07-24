@@ -48,8 +48,8 @@ export class ForbiddenError extends ServiceError {
 }
 
 export class ServiceUnavailableError extends ServiceError {
-  constructor(message = 'Service unavailable') {
-    super(message, 'SERVICE_UNAVAILABLE');
+  constructor(message = 'Service unavailable', details) {
+    super(message, 'SERVICE_UNAVAILABLE', details);
     this.name = 'ServiceUnavailableError';
   }
 }
