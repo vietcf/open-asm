@@ -1,5 +1,7 @@
 import Subnet from '../models/Subnet.js';
 import Tag from '../models/Tag.js';
+import Device from '../models/Device.js';
+import Cluster from '../models/Cluster.js';
 import { ValidationError, NotFoundError, ConflictError } from './errors.js';
 import { withTransaction } from './transaction.js';
 
@@ -27,6 +29,27 @@ export async function validateTagIds(tagIds) {
     }
   }
   return validTagIds;
+}
+
+// Gateway is optional and mutually exclusive: a subnet's gateway is either
+// one Device or one Cluster (an HA pair/group, via the existing Cluster
+// feature), never both — mirrors the subnets_gateway_exclusive_check
+// constraint, checked here too so the error is a clean ValidationError
+// instead of a raw DB constraint violation.
+async function resolveGateway(input) {
+  const gateway_device_id = input.gateway_device_id ? Number(input.gateway_device_id) : null;
+  const gateway_cluster_id = input.gateway_cluster_id ? Number(input.gateway_cluster_id) : null;
+
+  if (gateway_device_id && gateway_cluster_id) {
+    throw new ValidationError('Gateway must be either a Device or a Cluster, not both');
+  }
+  if (gateway_device_id && !(await Device.exists(gateway_device_id))) {
+    throw new ValidationError('Selected gateway device no longer exists. Please refresh and select again.');
+  }
+  if (gateway_cluster_id && !(await Cluster.exists(gateway_cluster_id))) {
+    throw new ValidationError('Selected gateway cluster no longer exists. Please refresh and select again.');
+  }
+  return { gateway_device_id, gateway_cluster_id };
 }
 
 export async function listSubnets(filter) {
@@ -66,13 +89,14 @@ export async function createSubnet(input, client) {
   await assertAddressAvailable(address);
 
   const tags = await validateTagIds(toIdArray(input.tags));
+  const { gateway_device_id, gateway_cluster_id } = await resolveGateway(input);
 
   const description = typeof input.description === 'string' ? input.description.trim() : (input.description || '');
   const zone = typeof input.zone === 'string' ? input.zone.trim() : (input.zone || '');
   const environment = typeof input.environment === 'string' ? input.environment.trim() : (input.environment || '');
 
   const subnet = await withTransaction(client, async (c) => {
-    const created = await Subnet.create({ address, description, zone, environment, updated_by: input.updated_by || '' }, c);
+    const created = await Subnet.create({ address, description, zone, environment, gateway_device_id, gateway_cluster_id, updated_by: input.updated_by || '' }, c);
     await Subnet.setTags(created.id, tags, c);
     return created;
   });
@@ -99,18 +123,27 @@ export async function updateSubnet(id, input, client) {
     ? (typeof input.environment === 'string' ? input.environment.trim() : '')
     : current.environment;
 
+  // Written together, same as description/zone/environment: if either key is
+  // present the form is actively setting/clearing the gateway (only one
+  // field is ever populated depending on the selected type), so both are
+  // resolved from input rather than mixing one new value with a stale one.
+  const gatewayChanged = has('gateway_device_id') || has('gateway_cluster_id');
+  const { gateway_device_id, gateway_cluster_id } = gatewayChanged
+    ? await resolveGateway(input)
+    : { gateway_device_id: current.gateway_device_id, gateway_cluster_id: current.gateway_cluster_id };
+
   let tags = null;
   if (has('tags')) {
     tags = await validateTagIds(toIdArray(input.tags));
   }
 
-  if (!has('description') && !has('zone') && !has('environment') && !has('tags')) {
+  if (!has('description') && !has('zone') && !has('environment') && !gatewayChanged && !has('tags')) {
     throw new ValidationError('No fields to update');
   }
 
   await withTransaction(client, async (c) => {
-    if (has('description') || has('zone') || has('environment')) {
-      await Subnet.update(id, { description, zone, environment, updated_by: input.updated_by || '' }, c);
+    if (has('description') || has('zone') || has('environment') || gatewayChanged) {
+      await Subnet.update(id, { description, zone, environment, gateway_device_id, gateway_cluster_id, updated_by: input.updated_by || '' }, c);
     }
     if (tags) await Subnet.setTags(id, tags, c);
   });

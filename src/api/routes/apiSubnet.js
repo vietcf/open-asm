@@ -202,6 +202,14 @@ apiSubnetRouter.get('/:id', authorizePermissionJWT('subnet.read'), apiSubnetCont
  *                 items:
  *                   type: integer
  *                 description: List of tag IDs (optional)
+ *               gateway_device_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 description: Gateway Device ID (optional). Mutually exclusive with gateway_cluster_id — a subnet's gateway is either one Device or one Cluster, never both.
+ *               gateway_cluster_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 description: Gateway Cluster ID (optional). Mutually exclusive with gateway_device_id.
  *     responses:
  *       201:
  *         description: Created subnet
@@ -210,7 +218,7 @@ apiSubnetRouter.get('/:id', authorizePermissionJWT('subnet.read'), apiSubnetCont
  *             schema:
  *               $ref: '#/components/schemas/Subnet'
  *       400:
- *         description: Validation error
+ *         description: Validation error (including gateway_device_id and gateway_cluster_id both set, or referencing a Device/Cluster that doesn't exist)
  *       409:
  *         description: Duplicate subnet address
  */
@@ -220,7 +228,7 @@ apiSubnetRouter.post('/', authorizePermissionJWT('subnet.create'), apiSubnetCont
  * @swagger
  * /api/v1/subnets/{id}:
  *   put:
- *     summary: Update a subnet (partial update — description, zone, environment, tags; address is immutable)
+ *     summary: Update a subnet (partial update — description, zone, environment, tags, gateway; address is immutable)
  *     tags: [Subnet]
  *     security:
  *       - bearerAuth: []
@@ -252,6 +260,14 @@ apiSubnetRouter.post('/', authorizePermissionJWT('subnet.create'), apiSubnetCont
  *                 items:
  *                   type: integer
  *                 description: List of tag IDs (optional)
+ *               gateway_device_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 description: Gateway Device ID (optional). Send an empty value to clear it. Mutually exclusive with gateway_cluster_id — if either gateway field is present in the request, both are resolved from this request (the other is cleared unless also provided).
+ *               gateway_cluster_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 description: Gateway Cluster ID (optional). Send an empty value to clear it. Mutually exclusive with gateway_device_id.
  *     responses:
  *       200:
  *         description: Updated subnet
@@ -260,7 +276,7 @@ apiSubnetRouter.post('/', authorizePermissionJWT('subnet.create'), apiSubnetCont
  *             schema:
  *               $ref: '#/components/schemas/Subnet'
  *       400:
- *         description: Validation error
+ *         description: Validation error (including gateway_device_id and gateway_cluster_id both set, or referencing a Device/Cluster that doesn't exist)
  *       404:
  *         description: Not found
  */
@@ -306,6 +322,30 @@ apiSubnetRouter.delete('/:id', authorizePermissionJWT('subnet.delete'), apiSubne
  *           type: string
  *         environment:
  *           type: string
+ *         gateway_device_id:
+ *           type: integer
+ *           nullable: true
+ *           description: Set when the gateway is a single Device. Mutually exclusive with gateway_cluster_id.
+ *         gateway_device_name:
+ *           type: string
+ *           nullable: true
+ *           description: Read-only, joined from the referenced Device.
+ *         gateway_device_type:
+ *           type: string
+ *           nullable: true
+ *           description: Read-only, the referenced Device's device_type name (e.g. Firewall, Switch).
+ *         gateway_cluster_id:
+ *           type: integer
+ *           nullable: true
+ *           description: Set when the gateway is a Cluster (HA pair/group). Mutually exclusive with gateway_device_id.
+ *         gateway_cluster_name:
+ *           type: string
+ *           nullable: true
+ *           description: Read-only, joined from the referenced Cluster.
+ *         gateway_cluster_member_count:
+ *           type: integer
+ *           nullable: true
+ *           description: Read-only, number of members in the referenced Cluster.
  *         tags:
  *           type: array
  *           items:

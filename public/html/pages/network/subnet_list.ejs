@@ -347,7 +347,11 @@ function buildExportUrl() {
                                   data-description="<%= subnet.description || '' %>"
                                   data-zone="<%= subnet.zone || '' %>"
                                   data-environment="<%= subnet.environment || '' %>"
-                                  data-tags="<%= JSON.stringify(subnet.tags || []) %>">
+                                  data-tags="<%= JSON.stringify(subnet.tags || []) %>"
+                                  data-gateway-device-id="<%= subnet.gateway_device_id || '' %>"
+                                  data-gateway-device-name="<%= subnet.gateway_device_name || '' %>"
+                                  data-gateway-cluster-id="<%= subnet.gateway_cluster_id || '' %>"
+                                  data-gateway-cluster-name="<%= subnet.gateway_cluster_name || '' %>">
                             <i class="bi bi-pencil"></i>
                           </button>
                         <% } %>
@@ -499,6 +503,22 @@ function buildExportUrl() {
               <label for="addSubnetTags" class="form-label">Tags</label>
               <select id="addSubnetTags" name="tags[]" class="form-control" multiple></select>
             </div>
+            <div class="mb-3">
+              <label for="subnetGatewayType" class="form-label">Gateway Type</label>
+              <select class="form-select subnet-gateway-type" id="subnetGatewayType" name="gateway_type">
+                <option value="none" selected>None</option>
+                <option value="device">Device</option>
+                <option value="cluster">Cluster</option>
+              </select>
+            </div>
+            <div class="mb-3 subnet-gateway-device-field" style="display:none;">
+              <label for="subnetGatewayDevice" class="form-label">Gateway Device</label>
+              <select id="subnetGatewayDevice" name="gateway_device_id" class="form-control"></select>
+            </div>
+            <div class="mb-3 subnet-gateway-cluster-field" style="display:none;">
+              <label for="subnetGatewayCluster" class="form-label">Gateway Cluster</label>
+              <select id="subnetGatewayCluster" name="gateway_cluster_id" class="form-control"></select>
+            </div>
           </form>
           </div>
         <div class="modal-footer d-flex justify-content-end">
@@ -565,7 +585,25 @@ function buildExportUrl() {
                 <!-- Options will be loaded via AJAX -->
               </select>
             </div>
-            
+
+            <!-- Gateway -->
+            <div class="col-12">
+              <label for="editSubnetGatewayType" class="form-label">Gateway Type</label>
+              <select class="form-select subnet-gateway-type" id="editSubnetGatewayType" name="gateway_type">
+                <option value="none">None</option>
+                <option value="device">Device</option>
+                <option value="cluster">Cluster</option>
+              </select>
+            </div>
+            <div class="col-12 subnet-gateway-device-field" style="display:none;">
+              <label for="editSubnetGatewayDevice" class="form-label">Gateway Device</label>
+              <select id="editSubnetGatewayDevice" name="gateway_device_id" class="form-select"></select>
+            </div>
+            <div class="col-12 subnet-gateway-cluster-field" style="display:none;">
+              <label for="editSubnetGatewayCluster" class="form-label">Gateway Cluster</label>
+              <select id="editSubnetGatewayCluster" name="gateway_cluster_id" class="form-select"></select>
+            </div>
+
           </div>
         </div>
         <div class="modal-footer">
@@ -819,11 +857,66 @@ $(function() {
     },
   });
 
+  // Gateway Type select2 - Bootstrap 5 theme (fixed options already in the HTML)
+  $('#subnetGatewayType').select2({
+    theme: 'bootstrap-5',
+    width: '100%',
+    minimumResultsForSearch: -1,
+    dropdownParent: $('#addSubnetModal')
+  });
+
+  // Gateway Device select2 AJAX - Bootstrap 5 theme
+  $('#subnetGatewayDevice').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select gateway device',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#addSubnetModal'),
+    ajax: {
+      url: '/device/api/device',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({ q: params.term }),
+      processResults: data => ({ results: data }),
+      cache: true
+    }
+  });
+
+  // Gateway Cluster select2 AJAX - Bootstrap 5 theme
+  $('#subnetGatewayCluster').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select gateway cluster',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#addSubnetModal'),
+    ajax: {
+      url: '/cluster/api/search',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({ q: params.term }),
+      processResults: data => ({ results: data }),
+      cache: true
+    }
+  });
+
+  // Toggle which gateway picker shows based on the selected Gateway Type -
+  // "None"/"Device"/"Cluster" are mutually exclusive (see
+  // subnets_gateway_exclusive_check), so only one select is ever active.
+  function toggleGatewayFields($scope) {
+    const type = $scope.find('.subnet-gateway-type').val();
+    $scope.find('.subnet-gateway-device-field').toggle(type === 'device');
+    $scope.find('.subnet-gateway-cluster-field').toggle(type === 'cluster');
+  }
+  $(document).on('change', '.subnet-gateway-type', function() {
+    toggleGatewayFields($(this).closest('form'));
+  });
 
   // Reset form when modal is hidden
   $('#addSubnetModal').on('hidden.bs.modal', function() {
     $('#addSubnetForm')[0].reset();
-    $('#addSubnetTags, #subnetZone, #subnetEnvironment').val(null).trigger('change');
+    $('#addSubnetTags, #subnetZone, #subnetEnvironment, #subnetGatewayDevice, #subnetGatewayCluster').val(null).trigger('change');
+    $('#subnetGatewayType').trigger('change');
+    toggleGatewayFields($('#addSubnetForm'));
   });
 
 
@@ -1049,6 +1142,48 @@ $(function() {
     }
   });
 
+  // Gateway Type select2 - Bootstrap 5 theme (fixed options already in the HTML)
+  $('#editSubnetGatewayType').select2({
+    theme: 'bootstrap-5',
+    width: '100%',
+    minimumResultsForSearch: -1,
+    dropdownParent: $('#editSubnetModal')
+  });
+
+  // Gateway Device select2 AJAX - Bootstrap 5 theme
+  $('#editSubnetGatewayDevice').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select gateway device',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#editSubnetModal'),
+    ajax: {
+      url: '/device/api/device',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({ q: params.term }),
+      processResults: data => ({ results: data }),
+      cache: true
+    }
+  });
+
+  // Gateway Cluster select2 AJAX - Bootstrap 5 theme
+  $('#editSubnetGatewayCluster').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select gateway cluster',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#editSubnetModal'),
+    ajax: {
+      url: '/cluster/api/search',
+      dataType: 'json',
+      delay: 250,
+      data: params => ({ q: params.term }),
+      processResults: data => ({ results: data }),
+      cache: true
+    }
+  });
+
 
   // Edit Subnet Modal - Load data when shown
   $('#editSubnetModal').on('show.bs.modal', function(event) {
@@ -1059,7 +1194,11 @@ $(function() {
     const zone = button.data('zone');
     const environment = button.data('environment');
     const tags = button.data('tags');
-    
+    const gatewayDeviceId = button.data('gateway-device-id');
+    const gatewayDeviceName = button.data('gateway-device-name');
+    const gatewayClusterId = button.data('gateway-cluster-id');
+    const gatewayClusterName = button.data('gateway-cluster-name');
+
     // Set form action
     $('#editSubnetForm').attr('action', '/network/subnet-address/' + subnetId);
     
@@ -1094,12 +1233,27 @@ $(function() {
       } catch (e) {
       }
     }
+
+    // Load gateway - clear existing options first to avoid duplicates
+    $('#editSubnetGatewayDevice, #editSubnetGatewayCluster').empty();
+    if (gatewayDeviceId) {
+      $('#editSubnetGatewayType').val('device').trigger('change');
+      $('#editSubnetGatewayDevice').append(new Option(gatewayDeviceName, gatewayDeviceId, true, true)).trigger('change');
+    } else if (gatewayClusterId) {
+      $('#editSubnetGatewayType').val('cluster').trigger('change');
+      $('#editSubnetGatewayCluster').append(new Option(gatewayClusterName, gatewayClusterId, true, true)).trigger('change');
+    } else {
+      $('#editSubnetGatewayType').val('none').trigger('change');
+    }
+    toggleGatewayFields($('#editSubnetForm'));
   });
 
   // Edit Subnet Modal - Reset form when hidden
   $('#editSubnetModal').on('hidden.bs.modal', function() {
     $('#editSubnetForm')[0].reset();
-    $('#editSubnetTags, #editSubnetZone, #editSubnetEnvironment').val(null).trigger('change');
+    $('#editSubnetTags, #editSubnetZone, #editSubnetEnvironment, #editSubnetGatewayDevice, #editSubnetGatewayCluster').val(null).trigger('change');
+    $('#editSubnetGatewayType').trigger('change');
+    toggleGatewayFields($('#editSubnetForm'));
   });
 
   // Edit Subnet Form submission
@@ -1537,6 +1691,23 @@ function showSubnetDetail(subnetId) {
   html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + escapeHtml(subnet.description || 'N/A') + '</pre></dd>';
   html += '<dt class="col-sm-4">Zone</dt><dd class="col-sm-8">' + escapeHtml(subnet.zone || 'N/A') + '</dd>';
   html += '<dt class="col-sm-4">Environment</dt><dd class="col-sm-8">' + escapeHtml(subnet.environment || 'N/A') + '</dd>';
+
+  html += '<dt class="col-sm-4">Gateway</dt><dd class="col-sm-8">';
+  if (subnet.gateway_device_id) {
+    const searchUrl = '/device/device?page=1&search=' + encodeURIComponent(subnet.gateway_device_name || '');
+    html += '<a href="' + escapeHtml(searchUrl) + '" class="text-decoration-none fw-semibold text-primary subnet-gateway-link" target="_blank">' +
+            '<i class="bi bi-hdd-network me-1"></i>' + escapeHtml(subnet.gateway_device_name || '') + '</a>' +
+            (subnet.gateway_device_type ? ' <span class="badge bg-secondary">' + escapeHtml(subnet.gateway_device_type) + '</span>' : '');
+  } else if (subnet.gateway_cluster_id) {
+    const searchUrl = '/cluster?page=1&search=' + encodeURIComponent(subnet.gateway_cluster_name || '');
+    const memberCount = parseInt(subnet.gateway_cluster_member_count, 10) || 0;
+    html += '<a href="' + escapeHtml(searchUrl) + '" class="text-decoration-none fw-semibold text-primary subnet-gateway-link" target="_blank">' +
+            '<i class="bi bi-diagram-3 me-1"></i>' + escapeHtml(subnet.gateway_cluster_name || '') + '</a>' +
+            ' <span class="badge bg-secondary">Cluster · ' + memberCount + ' member' + (memberCount === 1 ? '' : 's') + '</span>';
+  } else {
+    html += '<span class="text-muted">N/A</span>';
+  }
+  html += '</dd>';
 
   if (subnet.tags && subnet.tags.length > 0) {
     html += '<dt class="col-sm-4">Tags</dt><dd class="col-sm-8">';

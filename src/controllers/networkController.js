@@ -311,12 +311,25 @@ networkController.listSubnet = async (req, res) => {
   }
 };
 
+// Only one of the two ever applies, based on which "Gateway Type" the form
+// has selected — resolving here (instead of trusting whatever the browser
+// happened to submit) keeps a stray leftover value from the other field out
+// of the request even if the client-side toggle didn't clear it.
+function resolveGatewayFromBody(body) {
+  const gatewayType = body.gateway_type || 'none';
+  return {
+    gateway_device_id: gatewayType === 'device' ? (body.gateway_device_id || '') : '',
+    gateway_cluster_id: gatewayType === 'cluster' ? (body.gateway_cluster_id || '') : ''
+  };
+}
+
 // Handle creating a new subnet (with transaction)
 networkController.createSubnet = async (req, res) => {
   try {
     const { address, description, zone, environment, tags } = req.body;
+    const { gateway_device_id, gateway_cluster_id } = resolveGatewayFromBody(req.body);
     await createSubnetService({
-      address, description, zone, environment, tags,
+      address, description, zone, environment, tags, gateway_device_id, gateway_cluster_id,
       updated_by: req.session.user?.username || ''
     });
     req.flash('success', 'Subnet added successfully!');
@@ -341,10 +354,13 @@ networkController.createSubnet = async (req, res) => {
 networkController.updateSubnet = async (req, res) => {
   try {
     const { description, zone, environment, page, tags } = req.body;
+    const { gateway_device_id, gateway_cluster_id } = resolveGatewayFromBody(req.body);
     await updateSubnetService(req.params.id, {
       description: description || '',
       zone: zone || '',
       environment: environment || '',
+      gateway_device_id,
+      gateway_cluster_id,
       tags: tags ? (Array.isArray(tags) ? tags : [tags]) : [],
       updated_by: req.session.user?.username || ''
     });
@@ -1374,7 +1390,7 @@ networkController.exportSubnetList = async (req, res) => {
     
     // Định nghĩa các cột xuất Excel
     const headers = [
-      'ID', 'Subnet Address', 'Description', 'Zone', 'Environment', 'Tags', 'Created At', 'Updated At', 'Updated By'
+      'ID', 'Subnet Address', 'Description', 'Zone', 'Environment', 'Tags', 'Gateway', 'Created At', 'Updated At', 'Updated By'
     ];
     const rows = subnetList.map(subnet => [
       subnet.id,
@@ -1383,6 +1399,7 @@ networkController.exportSubnetList = async (req, res) => {
       subnet.zone || '',
       subnet.environment || '',
       (subnet.tags && subnet.tags.length ? subnet.tags.map(t => t.name).join(', ') : ''),
+      subnet.gateway_device_name || subnet.gateway_cluster_name || '',
       subnet.created_at ? new Date(subnet.created_at).toLocaleString('en-GB') : '',
       subnet.updated_at ? new Date(subnet.updated_at).toLocaleString('en-GB') : '',
       subnet.updated_by || ''

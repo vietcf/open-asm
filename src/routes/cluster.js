@@ -53,5 +53,6 @@ router.post('/:id/delete', requirePermission('cluster.delete'), clusterControlle
 router.get('/api/roles', requirePermission('cluster.read'), clusterController.apiRoleOptions);
 router.get('/api/by-system', requirePermission('cluster.read'), clusterController.apiClustersBySystem);
 router.get('/api/check-name', requirePermission('cluster.create', 'cluster.update'), clusterController.apiCheckName);
+router.get('/api/search', requirePermission('cluster.read'), clusterController.apiClusterSearch);
 
 export default router;
