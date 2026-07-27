@@ -12,6 +12,12 @@ export default async (pool) => {
       updated_by VARCHAR(255) DEFAULT NULL
     );
   `);
+  // gateway_device_id/gateway_cluster_id are added later by
+  // migrations/alters/0005_add_subnet_gateway.js, not here — at this point
+  // in init_all_tables.js, devices doesn't exist yet (created after subnets)
+  // and clusters doesn't exist at all (only created by alters/0003, which
+  // runs after this whole script). The alters step always runs after
+  // init_all_tables.js, so both FK targets are guaranteed to exist by then.
   
   // Create index for updated_at to optimize sorting
   await pool.query(`

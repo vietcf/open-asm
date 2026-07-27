@@ -38,6 +38,21 @@ class Cluster {
     return result.rowCount > 0;
   }
 
+  // Select2 AJAX search (id/text pairs), same shape as Device.select2Search —
+  // used by the Subnet Add/Edit form's "Gateway: Cluster" picker.
+  static async select2Search(search = '', limit = 20) {
+    let sql = 'SELECT id, name FROM clusters';
+    let params = [];
+    if (search) {
+      sql += ' WHERE LOWER(name) LIKE $1';
+      params.push(`%${search.toLowerCase()}%`);
+    }
+    sql += ' ORDER BY name LIMIT $' + (params.length + 1);
+    params.push(limit);
+    const result = await pool.query(sql, params);
+    return result.rows.map(row => ({ id: row.id, text: row.name }));
+  }
+
   static async findByNameExact(name) {
     const result = await pool.query('SELECT * FROM clusters WHERE LOWER(name) = LOWER($1) ORDER BY id', [name]);
     return result.rows;

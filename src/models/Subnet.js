@@ -9,15 +9,32 @@ class Subnet {
     return result.rows;
   }
 
+  // Joined onto every subnet SELECT that needs to display the gateway
+  // (device or cluster, mutually exclusive - see subnets_gateway_exclusive_check).
+  // gateway_cluster_member_count is a correlated scalar subquery rather than
+  // a JOIN so it doesn't fan out rows under the existing GROUP BY s.id.
+  static GATEWAY_JOIN = `
+    LEFT JOIN devices gwd ON gwd.id = s.gateway_device_id
+    LEFT JOIN device_types gwdt ON gwdt.id = gwd.device_type_id
+    LEFT JOIN clusters gwc ON gwc.id = s.gateway_cluster_id
+  `;
+  static GATEWAY_SELECT = `
+    gwd.name AS gateway_device_name, gwdt.name AS gateway_device_type,
+    gwc.name AS gateway_cluster_name,
+    (SELECT COUNT(*) FROM cluster_members cm WHERE cm.cluster_id = s.gateway_cluster_id) AS gateway_cluster_member_count
+  `;
+
   // Get a subnet by ID (with tags)
   static async findById(id) {
     const result = await pool.query(
-      `SELECT s.*, COALESCE(json_agg(json_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags
+      `SELECT s.*, ${Subnet.GATEWAY_SELECT},
+         COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags
        FROM subnets s
        LEFT JOIN tag_object tobj ON tobj.object_type = 'subnet' AND tobj.object_id = s.id
        LEFT JOIN tags t ON tobj.tag_id = t.id
+       ${Subnet.GATEWAY_JOIN}
        WHERE s.id = $1
-       GROUP BY s.id`,
+       GROUP BY s.id, gwd.name, gwdt.name, gwc.name`,
       [id]
     );
     return result.rows[0];
@@ -30,10 +47,10 @@ class Subnet {
   }
 
   // Create a new subnet (only fields in subnets table)
-  static async create({ address, description, zone, environment, updated_by = '' }, client) {
+  static async create({ address, description, zone, environment, gateway_device_id = null, gateway_cluster_id = null, updated_by = '' }, client) {
     const result = await client.query(
-      'INSERT INTO subnets (address, description, zone, environment, updated_by) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [address, description, zone, environment, updated_by]
+      'INSERT INTO subnets (address, description, zone, environment, gateway_device_id, gateway_cluster_id, updated_by) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+      [address, description, zone, environment, gateway_device_id, gateway_cluster_id, updated_by]
     );
     return result.rows[0];
   }
@@ -57,10 +74,10 @@ class Subnet {
   }
 
   // Update subnet description by ID (transaction client optional)
-  static async update(id, { description, zone, environment, updated_by = '' }, client = pool) {
+  static async update(id, { description, zone, environment, gateway_device_id = null, gateway_cluster_id = null, updated_by = '' }, client = pool) {
     await client.query(
-      'UPDATE subnets SET description = $1, zone = $2, environment = $3, updated_by = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5',
-      [description, zone, environment, updated_by, id]
+      'UPDATE subnets SET description = $1, zone = $2, environment = $3, gateway_device_id = $4, gateway_cluster_id = $5, updated_by = $6, updated_at = CURRENT_TIMESTAMP WHERE id = $7',
+      [description, zone, environment, gateway_device_id, gateway_cluster_id, updated_by, id]
     );
   }
 
@@ -76,11 +93,13 @@ class Subnet {
   static async findPage(page, pageSize) {
     const offset = (page - 1) * pageSize;
     const result = await pool.query(
-      `SELECT s.*, COALESCE(json_agg(json_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags
+      `SELECT s.*, ${Subnet.GATEWAY_SELECT},
+         COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags
        FROM subnets s
        LEFT JOIN tag_object tobj ON tobj.object_type = 'subnet' AND tobj.object_id = s.id
        LEFT JOIN tags t ON tobj.tag_id = t.id
-       GROUP BY s.id
+       ${Subnet.GATEWAY_JOIN}
+       GROUP BY s.id, gwd.name, gwdt.name, gwc.name
        ORDER BY s.updated_at DESC
        LIMIT $1 OFFSET $2`,
       [pageSize, offset]
@@ -139,12 +158,14 @@ class Subnet {
     }
     
     const result = await pool.query(
-      `SELECT s.*, COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags
+      `SELECT s.*, ${Subnet.GATEWAY_SELECT},
+         COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags
        FROM subnets s
        LEFT JOIN tag_object tobj ON tobj.object_type = 'subnet' AND tobj.object_id = s.id
        LEFT JOIN tags t ON tobj.tag_id = t.id
+       ${Subnet.GATEWAY_JOIN}
        ${whereClause}
-       GROUP BY s.id
+       GROUP BY s.id, gwd.name, gwdt.name, gwc.name
        ${orderBy}
        LIMIT $${idx} OFFSET $${idx + 1}`,
       [...params, pageSize, offset]

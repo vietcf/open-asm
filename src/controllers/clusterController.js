@@ -617,4 +617,15 @@ clusterController.apiCheckName = async (req, res) => {
   }
 };
 
+// Select2 AJAX search — used by Subnet Add/Edit's "Gateway: Cluster" picker.
+clusterController.apiClusterSearch = async (req, res) => {
+  try {
+    const search = req.query.q ? req.query.q.trim() : '';
+    const results = await Cluster.select2Search(search);
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: 'Error searching clusters', detail: err.message });
+  }
+};
+
 export default clusterController;
