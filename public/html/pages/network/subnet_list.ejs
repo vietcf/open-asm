@@ -857,6 +857,14 @@ $(function() {
     },
   });
 
+  // Gateway Type select2 - Bootstrap 5 theme (fixed options already in the HTML)
+  $('#subnetGatewayType').select2({
+    theme: 'bootstrap-5',
+    width: '100%',
+    minimumResultsForSearch: -1,
+    dropdownParent: $('#addSubnetModal')
+  });
+
   // Gateway Device select2 AJAX - Bootstrap 5 theme
   $('#subnetGatewayDevice').select2({
     theme: 'bootstrap-5',
@@ -907,6 +915,7 @@ $(function() {
   $('#addSubnetModal').on('hidden.bs.modal', function() {
     $('#addSubnetForm')[0].reset();
     $('#addSubnetTags, #subnetZone, #subnetEnvironment, #subnetGatewayDevice, #subnetGatewayCluster').val(null).trigger('change');
+    $('#subnetGatewayType').trigger('change');
     toggleGatewayFields($('#addSubnetForm'));
   });
 
@@ -1133,6 +1142,14 @@ $(function() {
     }
   });
 
+  // Gateway Type select2 - Bootstrap 5 theme (fixed options already in the HTML)
+  $('#editSubnetGatewayType').select2({
+    theme: 'bootstrap-5',
+    width: '100%',
+    minimumResultsForSearch: -1,
+    dropdownParent: $('#editSubnetModal')
+  });
+
   // Gateway Device select2 AJAX - Bootstrap 5 theme
   $('#editSubnetGatewayDevice').select2({
     theme: 'bootstrap-5',
@@ -1220,13 +1237,13 @@ $(function() {
     // Load gateway - clear existing options first to avoid duplicates
     $('#editSubnetGatewayDevice, #editSubnetGatewayCluster').empty();
     if (gatewayDeviceId) {
-      $('#editSubnetGatewayType').val('device');
+      $('#editSubnetGatewayType').val('device').trigger('change');
       $('#editSubnetGatewayDevice').append(new Option(gatewayDeviceName, gatewayDeviceId, true, true)).trigger('change');
     } else if (gatewayClusterId) {
-      $('#editSubnetGatewayType').val('cluster');
+      $('#editSubnetGatewayType').val('cluster').trigger('change');
       $('#editSubnetGatewayCluster').append(new Option(gatewayClusterName, gatewayClusterId, true, true)).trigger('change');
     } else {
-      $('#editSubnetGatewayType').val('none');
+      $('#editSubnetGatewayType').val('none').trigger('change');
     }
     toggleGatewayFields($('#editSubnetForm'));
   });
@@ -1235,6 +1252,7 @@ $(function() {
   $('#editSubnetModal').on('hidden.bs.modal', function() {
     $('#editSubnetForm')[0].reset();
     $('#editSubnetTags, #editSubnetZone, #editSubnetEnvironment, #editSubnetGatewayDevice, #editSubnetGatewayCluster').val(null).trigger('change');
+    $('#editSubnetGatewayType').trigger('change');
     toggleGatewayFields($('#editSubnetForm'));
   });
 

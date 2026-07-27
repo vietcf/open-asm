@@ -243,12 +243,14 @@ class Subnet {
   // Find subnet by exact address, with tags joined (for the /find API, matching the Subnet swagger schema)
   static async findByAddressWithDetails(address) {
     const result = await pool.query(
-      `SELECT s.*, COALESCE(json_agg(json_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags
+      `SELECT s.*, ${Subnet.GATEWAY_SELECT},
+         COALESCE(json_agg(json_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags
        FROM subnets s
        LEFT JOIN tag_object tobj ON tobj.object_type = 'subnet' AND tobj.object_id = s.id
        LEFT JOIN tags t ON tobj.tag_id = t.id
+       ${Subnet.GATEWAY_JOIN}
        WHERE s.address = $1
-       GROUP BY s.id`,
+       GROUP BY s.id, gwd.name, gwdt.name, gwc.name`,
       [address]
     );
     return result.rows[0];
