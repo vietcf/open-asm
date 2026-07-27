@@ -1390,7 +1390,7 @@ networkController.exportSubnetList = async (req, res) => {
     
     // Định nghĩa các cột xuất Excel
     const headers = [
-      'ID', 'Subnet Address', 'Description', 'Zone', 'Environment', 'Tags', 'Created At', 'Updated At', 'Updated By'
+      'ID', 'Subnet Address', 'Description', 'Zone', 'Environment', 'Tags', 'Gateway', 'Created At', 'Updated At', 'Updated By'
     ];
     const rows = subnetList.map(subnet => [
       subnet.id,
@@ -1399,6 +1399,7 @@ networkController.exportSubnetList = async (req, res) => {
       subnet.zone || '',
       subnet.environment || '',
       (subnet.tags && subnet.tags.length ? subnet.tags.map(t => t.name).join(', ') : ''),
+      subnet.gateway_device_name || subnet.gateway_cluster_name || '',
       subnet.created_at ? new Date(subnet.created_at).toLocaleString('en-GB') : '',
       subnet.updated_at ? new Date(subnet.updated_at).toLocaleString('en-GB') : '',
       subnet.updated_by || ''

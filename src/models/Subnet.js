@@ -5,7 +5,12 @@ import { pool } from '../../config/config.js';
 class Subnet {
   // Get all subnets
   static async findAll() {
-    const result = await pool.query('SELECT * FROM subnets ORDER BY updated_at DESC');
+    const result = await pool.query(
+      `SELECT s.*, ${Subnet.GATEWAY_SELECT}
+       FROM subnets s
+       ${Subnet.GATEWAY_JOIN}
+       ORDER BY s.updated_at DESC`
+    );
     return result.rows;
   }
 
