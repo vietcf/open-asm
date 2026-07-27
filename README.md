@@ -489,7 +489,15 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.4.1 (Latest)
+### Version 1.4.2 (Latest)
+- ✨ Subnets can now record their gateway as either a single Device or a
+  Cluster (HA pair/group), shown on Subnet Detail with a link to the
+  Device/Cluster page, exposed in the API, and included as a single
+  "Gateway" column in the subnet Excel export.
+- 🐛 Fixed IP Address Detail showing the assigned System(s) twice under two
+  different labels.
+
+### Version 1.4.1
 - ✨ Added LDAP / Active Directory login support: admin sets each user's
   auth method (Local or LDAP) when creating/editing them, matched to the
   AD `sAMAccountName`. LDAP users still get full 2FA support and skip the

@@ -8,7 +8,7 @@ x-logging: &default-logging
 services:
   app:
     build: .
-    image: openasm_app:1.4.1
+    image: openasm_app:1.4.2
     container_name: openasm_app
     restart: always
     logging: *default-logging
@@ -58,7 +58,7 @@ services:
     networks:
       - openasm_net
   migration:
-    image: openasm_app:1.4.1
+    image: openasm_app:1.4.2
     container_name: openasm_migration
     working_dir: /app
     logging: *default-logging
