@@ -96,8 +96,11 @@ function buildExportUrl() {
               <i class="bi bi-plus"></i> Add Privileged Role
               </button>
         <% } %>
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterPrivRoleModal">
-        <i class="bi bi-funnel"></i> Filter
+          <%
+            const hasActivePrivRoleFilter = !!(system_id && system_id !== '');
+          %>
+          <button type="button" class="btn btn-sm <%= hasActivePrivRoleFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterPrivRoleModal">
+        <i class="bi bi-funnel<%= hasActivePrivRoleFilter ? '-fill' : '' %>"></i> Filter<%= hasActivePrivRoleFilter ? ' (Filtered)' : '' %>
       </button>
           <% if (hasPermission('priv_role.read')) { %>
             <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">

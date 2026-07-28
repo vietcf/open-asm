@@ -311,7 +311,7 @@ serverController.addServerForm = async (req, res) => {
 serverController.updateServer = async (req, res) => {
   try {
     const id = req.params.id;
-    const { name, os, status, location, type, managers, systems, agents, services, tags, ip_addresses, description } = req.body || {};
+    const { name, os, status, location, type, managers, systems, agents, services, tags, ip_addresses, vip_ip_addresses, description } = req.body || {};
     const username = req.session && req.session.user && req.session.user.username ? req.session.user.username : 'admin';
 
     // The edit form always fully replaces every association on submit, so
@@ -326,6 +326,7 @@ serverController.updateServer = async (req, res) => {
       services: services || [],
       tags: tags || [],
       ip_addresses,
+      vip_ip_addresses: vip_ip_addresses || [],
       updated_by: username
     });
     req.flash('success', 'Server updated successfully');

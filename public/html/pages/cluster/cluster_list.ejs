@@ -64,8 +64,14 @@ function buildClusterQuery(overrides) {
               <i class="bi bi-upload"></i> Import
             </button>
           <% } %>
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterClusterModal">
-            <i class="bi bi-funnel"></i> Filter
+          <%
+            const hasActiveClusterFilter = !!(
+              (filterRole && filterRole.length > 0) ||
+              (filterSystemId && filterSystemId.length > 0)
+            );
+          %>
+          <button type="button" class="btn btn-sm <%= hasActiveClusterFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterClusterModal">
+            <i class="bi bi-funnel<%= hasActiveClusterFilter ? '-fill' : '' %>"></i> Filter<%= hasActiveClusterFilter ? ' (Filtered)' : '' %>
           </button>
         </div>
       </div>

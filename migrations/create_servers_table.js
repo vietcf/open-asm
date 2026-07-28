@@ -48,6 +48,4 @@ export default async (db) => {
       PRIMARY KEY (server_id, service_id)
     );
   `);
-  // Remove the server_ip table if it exists (no longer needed)
-  await db.query('DROP TABLE IF EXISTS server_ip CASCADE;');
 };

@@ -177,11 +177,18 @@ function buildExportUrl() {
           <% } %>
           
           <!-- Filter Button -->
-          <button type="button" 
-                  class="btn btn-secondary btn-sm" 
-                  data-bs-toggle="modal" 
+          <%
+            const hasActiveSubnetFilter = !!(
+              (filterZone && filterZone !== '') ||
+              (filterEnvironment && filterEnvironment !== '') ||
+              (filterTags && filterTags.length > 0)
+            );
+          %>
+          <button type="button"
+                  class="btn btn-sm <%= hasActiveSubnetFilter ? 'btn-primary' : 'btn-outline-secondary' %>"
+                  data-bs-toggle="modal"
                   data-bs-target="#filterSubnetModal">
-            <i class="bi bi-funnel"></i> Filter
+            <i class="bi bi-funnel<%= hasActiveSubnetFilter ? '-fill' : '' %>"></i> Filter<%= hasActiveSubnetFilter ? ' (Filtered)' : '' %>
           </button>
           
           <!-- Export Button -->

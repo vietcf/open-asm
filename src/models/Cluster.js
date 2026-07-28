@@ -114,8 +114,10 @@ class Cluster {
       LEFT JOIN systems s ON s.id = cs.system_id
       LEFT JOIN cluster_members cm ON cm.cluster_id = cl.id
       LEFT JOIN ip_addresses ip ON ip.id = cm.ip_address_id
-      LEFT JOIN servers srv ON srv.id = ip.server_id
-      LEFT JOIN devices dev ON dev.id = ip.device_id
+      LEFT JOIN server_ip svi ON svi.ip_id = ip.id AND svi.role = 'normal'
+      LEFT JOIN servers srv ON srv.id = svi.server_id
+      LEFT JOIN device_ip di ON di.ip_id = ip.id AND di.role = 'normal'
+      LEFT JOIN devices dev ON dev.id = di.device_id
       WHERE cl.id = $1
       GROUP BY cl.id
     `;
@@ -137,8 +139,10 @@ class Cluster {
       JOIN cluster_system cs ON cs.cluster_id = cl.id AND cs.system_id = $1
       LEFT JOIN cluster_members cm ON cm.cluster_id = cl.id
       LEFT JOIN ip_addresses ip ON ip.id = cm.ip_address_id
-      LEFT JOIN servers srv ON srv.id = ip.server_id
-      LEFT JOIN devices dev ON dev.id = ip.device_id
+      LEFT JOIN server_ip svi ON svi.ip_id = ip.id AND svi.role = 'normal'
+      LEFT JOIN servers srv ON srv.id = svi.server_id
+      LEFT JOIN device_ip di ON di.ip_id = ip.id AND di.role = 'normal'
+      LEFT JOIN devices dev ON dev.id = di.device_id
       GROUP BY cl.id
       ORDER BY cl.id DESC
     `;
@@ -181,8 +185,10 @@ class Cluster {
       LEFT JOIN systems s ON s.id = cs.system_id
       LEFT JOIN cluster_members cm ON cm.cluster_id = cl.id
       LEFT JOIN ip_addresses ip ON ip.id = cm.ip_address_id
-      LEFT JOIN servers srv ON srv.id = ip.server_id
-      LEFT JOIN devices dev ON dev.id = ip.device_id
+      LEFT JOIN server_ip svi ON svi.ip_id = ip.id AND svi.role = 'normal'
+      LEFT JOIN servers srv ON srv.id = svi.server_id
+      LEFT JOIN device_ip di ON di.ip_id = ip.id AND di.role = 'normal'
+      LEFT JOIN devices dev ON dev.id = di.device_id
       WHERE ${where}
       GROUP BY cl.id
       ORDER BY cl.id DESC

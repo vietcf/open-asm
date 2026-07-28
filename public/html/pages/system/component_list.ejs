@@ -46,8 +46,16 @@
               <i class="bi bi-plus"></i> Add Component
             </a>
           <% } %>
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterComponentModal">
-            <i class="bi bi-funnel"></i> Filter
+          <%
+            const hasActiveComponentFilter = !!(
+              (filterTags && filterTags.length > 0) ||
+              (filterContacts && filterContacts.length > 0) ||
+              (filterSystemId && filterSystemId.length > 0) ||
+              (filterAppType && filterAppType.length > 0)
+            );
+          %>
+          <button type="button" class="btn btn-sm <%= hasActiveComponentFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterComponentModal">
+            <i class="bi bi-funnel<%= hasActiveComponentFilter ? '-fill' : '' %>"></i> Filter<%= hasActiveComponentFilter ? ' (Filtered)' : '' %>
           </button>
         </div>
       </div>
@@ -638,13 +646,14 @@
             tooltipText += `\nStatus: ${ipInfo.status}`;
           }
           
-          if (ipInfo.server_name) {
-            tooltipText += `\nServer: ${ipInfo.server_name}`;
-          }
-          
-          if (ipInfo.device_name) {
-            tooltipText += `\nDevice: ${ipInfo.device_name}`;
-          }
+          // List EVERY owner — an IP can have more than one device/server
+          // once VIP sharing is involved, not just a single primary owner.
+          (ipInfo.servers || []).forEach(function(s) {
+            tooltipText += `\nServer: ${s.name}${s.role === 'vip' ? ' (VIP)' : ''}`;
+          });
+          (ipInfo.devices || []).forEach(function(d) {
+            tooltipText += `\nDevice: ${d.name}${d.role === 'vip' ? ' (VIP)' : ''}`;
+          });
           
           // Add tags information
           if (ipInfo.tags && ipInfo.tags.length > 0) {

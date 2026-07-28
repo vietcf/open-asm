@@ -359,7 +359,7 @@ deviceController.createDevice = async (req, res) => {
 // Update a device (with manufacturer)
 deviceController.updateDevice = async (req, res) => {
   try {
-    const { name, manufacturer, device_role, os, type, description, tags, ip_addresses, location, serial_number, management_address, managers } = req.body;
+    const { name, manufacturer, device_role, os, type, description, tags, ip_addresses, vip_ip_addresses, location, serial_number, management_address, managers } = req.body;
 
     // Same free-text-type-name auto-create convenience as createDevice; only
     // touch device_type_id if a type was actually submitted (leaves the
@@ -397,6 +397,7 @@ deviceController.updateDevice = async (req, res) => {
       management: management_address,
       tags: Array.isArray(tags) ? tags : (tags ? [tags] : []),
       contacts: Array.isArray(managers) ? managers : (managers ? [managers] : []),
+      vip_ip_addresses: Array.isArray(vip_ip_addresses) ? vip_ip_addresses : (vip_ip_addresses ? [vip_ip_addresses] : []),
       updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
     };
     if (deviceTypeId !== undefined) input.device_type_id = deviceTypeId;

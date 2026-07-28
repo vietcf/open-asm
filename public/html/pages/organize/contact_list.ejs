@@ -102,8 +102,14 @@ function buildPaginationUrl(targetPage) {
               <i class="bi bi-plus"></i> Add Contact
             </button>
           <% } %>
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterContactModal">
-            <i class="bi bi-funnel"></i> Filter
+          <%
+            const hasActiveContactFilter = !!(
+              (filterUnitId && filterUnitId !== '') ||
+              (filterPosition && filterPosition !== '')
+            );
+          %>
+          <button type="button" class="btn btn-sm <%= hasActiveContactFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterContactModal">
+            <i class="bi bi-funnel<%= hasActiveContactFilter ? '-fill' : '' %>"></i> Filter<%= hasActiveContactFilter ? ' (Filtered)' : '' %>
           </button>
           <% if (hasPermission && hasPermission('contact.create')) { %>
             <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importContactModal">

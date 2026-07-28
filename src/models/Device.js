@@ -1,5 +1,6 @@
 // Device model for CRUD operations
 import { pool } from '../../config/config.js';
+import IpAddress from './IpAddress.js';
 
 
 class Device {
@@ -63,12 +64,29 @@ class Device {
   static async remove(id, client = pool, { deleteIp = false } = {}) {
     await client.query('DELETE FROM device_contact WHERE device_id = $1', [id]);
     await client.query('DELETE FROM tag_object WHERE object_type = $1 AND object_id = $2', ['device', id]);
-    if (deleteIp) {
-      await client.query('DELETE FROM ip_addresses WHERE device_id = $1', [id]);
-    } else {
-      await client.query("UPDATE ip_addresses SET device_id = NULL, status = 'reserved' WHERE device_id = $1", [id]);
-    }
+
+    const { rows: ipRows } = await client.query('SELECT ip_id FROM device_ip WHERE device_id = $1', [id]);
+    const ipIds = ipRows.map(r => r.ip_id);
+
+    // device_ip rows for this device are removed automatically (ON DELETE CASCADE)
     await client.query('DELETE FROM devices WHERE id = $1', [id]);
+
+    if (ipIds.length > 0) {
+      // Only touch IPs that have no other device/server (primary or VIP) left
+      if (deleteIp) {
+        await client.query(
+          `DELETE FROM ip_addresses WHERE id = ANY($1)
+           AND id NOT IN (SELECT ip_id FROM device_ip UNION SELECT ip_id FROM server_ip)`,
+          [ipIds]
+        );
+      } else {
+        await client.query(
+          `UPDATE ip_addresses SET status = 'reserved' WHERE id = ANY($1)
+           AND id NOT IN (SELECT ip_id FROM device_ip UNION SELECT ip_id FROM server_ip)`,
+          [ipIds]
+        );
+      }
+    }
   }
 
   static async findPage(page = 1, pageSize = 5) {
@@ -94,11 +112,48 @@ class Device {
     return parseInt(result.rows[0].count, 10);
   }
 
+  // Replaces the device's PRIMARY IP assignments only — VIP links (role='vip')
+  // added via setVipIps are left untouched.
   static async setIpAddresses(deviceId, ipIds, client = pool) {
-    await client.query('UPDATE ip_addresses SET device_id = NULL, status = NULL WHERE device_id = $1', [deviceId]);
+    const { rows: oldRows } = await client.query(
+      "SELECT ip_id FROM device_ip WHERE device_id = $1 AND role = 'normal'",
+      [deviceId]
+    );
+    const oldIpIds = oldRows.map(r => r.ip_id);
+    await client.query("DELETE FROM device_ip WHERE device_id = $1 AND role = 'normal'", [deviceId]);
+    if (oldIpIds.length > 0) {
+      await client.query('UPDATE ip_addresses SET status = NULL WHERE id = ANY($1)', [oldIpIds]);
+    }
     if (ipIds && ipIds.length > 0) {
       for (const ipId of ipIds) {
-        await client.query("UPDATE ip_addresses SET device_id = $1, status = 'assigned' WHERE id = $2", [deviceId, ipId]);
+        await client.query(
+          `INSERT INTO device_ip (device_id, ip_id, role) VALUES ($1, $2, 'normal')
+           ON CONFLICT (device_id, ip_id) DO UPDATE SET role = 'normal'`,
+          [deviceId, ipId]
+        );
+        await client.query("UPDATE ip_addresses SET status = 'assigned' WHERE id = $1", [ipId]);
+      }
+    }
+  }
+
+  // Replaces the device's VIP ('vip'-role) IP links — the IPs may already
+  // have a primary owner elsewhere; that's the whole point of a shared/VIP
+  // IP. Same "full replace" semantics as setIpAddresses, but for role='vip'.
+  static async setVipIps(deviceId, vipIpIds, updated_by, client = pool) {
+    const { rows: oldRows } = await client.query(
+      "SELECT ip_id FROM device_ip WHERE device_id = $1 AND role = 'vip'",
+      [deviceId]
+    );
+    const oldIds = oldRows.map(r => r.ip_id);
+    const newIds = (vipIpIds || []).map(id => Number(id));
+    for (const ipId of oldIds) {
+      if (!newIds.includes(ipId)) {
+        await IpAddress.removeVipLink({ ip_id: ipId, device_id: deviceId }, client);
+      }
+    }
+    for (const ipId of newIds) {
+      if (!oldIds.includes(ipId)) {
+        await IpAddress.addVipLink({ ip_id: ipId, device_id: deviceId, updated_by }, client);
       }
     }
   }
@@ -129,7 +184,9 @@ class Device {
 
   static async getIpAddresses(deviceId) {
     const ipResult = await pool.query(
-      'SELECT id, ip_address FROM ip_addresses WHERE device_id = $1',
+      `SELECT ip.id, ip.ip_address, di.role FROM device_ip di
+       JOIN ip_addresses ip ON ip.id = di.ip_id
+       WHERE di.device_id = $1`,
       [deviceId]
     );
     return ipResult.rows;
@@ -153,7 +210,8 @@ class Device {
     let whereClauses = [];
     let joinClauses = [];
     let idx = 1;
-    joinClauses.push('LEFT JOIN ip_addresses ip ON ip.device_id = d.id');
+    joinClauses.push('LEFT JOIN device_ip di ON di.device_id = d.id');
+    joinClauses.push('LEFT JOIN ip_addresses ip ON ip.id = di.ip_id');
     joinClauses.push("LEFT JOIN tag_object tobj ON tobj.object_type = 'device' AND tobj.object_id = d.id");
     joinClauses.push('LEFT JOIN tags t ON t.id = tobj.tag_id');
     if (device_type_id) {
@@ -202,7 +260,7 @@ class Device {
       idx++;
     }
     let sql = `SELECT d.*, dt.name AS device_type_name, p.name AS platform_name,
-      COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address, 'role', di.role)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
       COALESCE((
         SELECT json_agg(jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email))
@@ -228,7 +286,8 @@ class Device {
     let whereClauses = [];
     let joinClauses = [];
     let idx = 1;
-    joinClauses.push('LEFT JOIN ip_addresses ip ON ip.device_id = d.id');
+    joinClauses.push('LEFT JOIN device_ip di ON di.device_id = d.id');
+    joinClauses.push('LEFT JOIN ip_addresses ip ON ip.id = di.ip_id');
     joinClauses.push("LEFT JOIN tag_object tobj ON tobj.object_type = 'device' AND tobj.object_id = d.id");
     joinClauses.push('LEFT JOIN tags t ON t.id = tobj.tag_id');
     if (device_type_id) {
@@ -288,13 +347,14 @@ class Device {
   static async getFullDetail(id) {
     const result = await pool.query(
       `SELECT d.*, dt.name AS device_type_name, p.name AS platform_name,
-        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address, 'role', di.role)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email)) FILTER (WHERE c.id IS NOT NULL), '[]') AS contacts
        FROM devices d
        LEFT JOIN device_types dt ON d.device_type_id = dt.id
        LEFT JOIN platforms p ON d.platform_id = p.id
-       LEFT JOIN ip_addresses ip ON ip.device_id = d.id
+       LEFT JOIN device_ip di ON di.device_id = d.id
+       LEFT JOIN ip_addresses ip ON ip.id = di.ip_id
        LEFT JOIN tag_object tobj ON tobj.object_type = 'device' AND tobj.object_id = d.id
        LEFT JOIN tags t ON t.id = tobj.tag_id
        LEFT JOIN device_contact dc ON dc.device_id = d.id
@@ -357,7 +417,7 @@ class Device {
     }
 
     if (criteria.ip_address) {
-      whereClauses.push(`d.id IN (SELECT device_id FROM ip_addresses WHERE ip_address = $${idx})`);
+      whereClauses.push(`d.id IN (SELECT di.device_id FROM device_ip di JOIN ip_addresses ip2 ON ip2.id = di.ip_id WHERE ip2.ip_address = $${idx})`);
       params.push(criteria.ip_address);
       idx++;
     }
@@ -368,13 +428,14 @@ class Device {
 
     const sql = `
       SELECT d.*, dt.name AS device_type_name, p.name AS platform_name,
-        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address, 'description', ip.description, 'status', ip.status)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address, 'description', ip.description, 'status', ip.status, 'role', di.role)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name, 'description', t.description)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email, 'phone', c.phone)) FILTER (WHERE c.id IS NOT NULL), '[]') AS contacts
       FROM devices d
       LEFT JOIN device_types dt ON d.device_type_id = dt.id
       LEFT JOIN platforms p ON d.platform_id = p.id
-      LEFT JOIN ip_addresses ip ON ip.device_id = d.id
+      LEFT JOIN device_ip di ON di.device_id = d.id
+      LEFT JOIN ip_addresses ip ON ip.id = di.ip_id
       LEFT JOIN tag_object tobj ON tobj.object_type = 'device' AND tobj.object_id = d.id
       LEFT JOIN tags t ON t.id = tobj.tag_id
       LEFT JOIN device_contact dc ON dc.device_id = d.id

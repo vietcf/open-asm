@@ -14,6 +14,15 @@ const toIdArray = v => {
   if (v === undefined || v === null) return [];
   return Array.isArray(v) ? v : [v];
 };
+// An IP can't be this device's own (normal) IP and a shared (vip) one at the
+// same time — that's a contradiction, not just a redundant selection.
+const assertNoOverlap = (normalIds, vipIds) => {
+  const normalSet = new Set((normalIds || []).map(String));
+  const overlap = (vipIds || []).filter(id => normalSet.has(String(id)));
+  if (overlap.length > 0) {
+    throw new ValidationError(`IP(s) cannot be both a normal and a VIP IP for the same device: ${overlap.join(', ')}`);
+  }
+};
 
 export async function getLocationOptions() {
   let locationOptions = [];
@@ -83,8 +92,11 @@ export async function validateIpAddressIds(ipIds, excludeDeviceId, client) {
     const ip = await IpAddress.findById(ipId, client);
     if (!ip) {
       invalidIps.push(ipId);
-    } else if (ip.status === 'assigned' && (excludeDeviceId == null || String(ip.device_id) !== String(excludeDeviceId))) {
-      assignedIps.push(`IP ${ip.ip_address} (ID: ${ipId})`);
+    } else if (ip.status === 'assigned') {
+      const { deviceId } = await IpAddress.getPrimaryOwnerIds(ipId, client);
+      if (excludeDeviceId == null || String(deviceId) !== String(excludeDeviceId)) {
+        assignedIps.push(`IP ${ip.ip_address} (ID: ${ipId})`);
+      }
     }
   }
   if (invalidIps.length > 0) throw new ValidationError(`Invalid IP address IDs: ${invalidIps.join(', ')}`);
@@ -165,7 +177,7 @@ export async function createDevice(input, client) {
 // array) clears/replaces the association; key absent leaves it untouched.
 const UPDATABLE_FIELDS = [
   'name', 'manufacturer', 'device_role', 'platform_id', 'device_type_id', 'location',
-  'serial', 'management', 'description', 'tags', 'contacts', 'ip_addresses', 'updated_by'
+  'serial', 'management', 'description', 'tags', 'contacts', 'ip_addresses', 'vip_ip_addresses', 'updated_by'
 ];
 
 export async function updateDevice(id, input, client) {
@@ -209,6 +221,22 @@ export async function updateDevice(id, input, client) {
     await validateIpAddressIds(ipAddresses, id, client);
   }
 
+  // VIP IPs may already belong to another device/server — that's the whole
+  // point of a shared IP, so these are NOT run through validateIpAddressIds.
+  let vipIpAddresses = null;
+  if (has('vip_ip_addresses')) {
+    vipIpAddresses = toIdArray(input.vip_ip_addresses);
+    for (const ipId of vipIpAddresses) {
+      if (!(await IpAddress.exists(ipId))) throw new ValidationError(`Invalid VIP IP address ID: ${ipId}`);
+    }
+    // Compare against whichever normal IP list is in effect after this update
+    // (the one just submitted, or the device's current one if untouched).
+    const effectiveNormalIds = ipAddresses !== null
+      ? ipAddresses
+      : (current.ip_addresses || []).filter(ip => ip.role !== 'vip').map(ip => ip.id);
+    assertNoOverlap(effectiveNormalIds, vipIpAddresses);
+  }
+
   let tags = null;
   if (has('tags')) {
     tags = toIdArray(input.tags);
@@ -228,6 +256,7 @@ export async function updateDevice(id, input, client) {
       await Device.updatePartial(id, updateFields, c);
     }
     if (ipAddresses) await Device.setIpAddresses(id, ipAddresses, c);
+    if (vipIpAddresses) await Device.setVipIps(id, vipIpAddresses, input.updated_by || null, c);
     if (tags) await Device.setTags(id, tags, c);
     if (contacts) await Device.setContacts(id, contacts, c);
   });

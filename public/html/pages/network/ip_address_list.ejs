@@ -155,8 +155,16 @@ function buildExportUrl() {
               <i class="bi bi-plus"></i> Add IP Address
               </button>
         <% } %>
-      <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterIpModal">
-        <i class="bi bi-funnel"></i> Filter
+      <%
+        const hasActiveIpFilter = !!(
+          (filterStatus && filterStatus !== '') ||
+          (filterTags && filterTags.length > 0) ||
+          (filterSystems && filterSystems.length > 0) ||
+          (filterContacts && filterContacts.length > 0)
+        );
+      %>
+      <button type="button" class="btn btn-sm <%= hasActiveIpFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterIpModal">
+        <i class="bi bi-funnel<%= hasActiveIpFilter ? '-fill' : '' %>"></i> Filter<%= hasActiveIpFilter ? ' (Filtered)' : '' %>
       </button>
           <% if (hasPermission && hasPermission('network.read')) { %>
             <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">
@@ -251,23 +259,22 @@ function buildExportUrl() {
                       <span data-bs-toggle="tooltip" data-bs-placement="top" title="<%= cleanDescription %>" style="cursor: help; word-break: break-word;"><%= shortDescription %></span>
                     </td>
                     <td>
-                      <% if (ip.server_name || ip.device_name) { %>
-                        <div class="fw-bold">
-                          <% if (ip.server_name) { %>
-                            <a href="/server/server/list?page=1&search=<%= encodeURIComponent(ip.server_name) %>" class="text-decoration-none" target="_blank"><%= ip.server_name %></a>
-                          <% } %>
-                          <% if (ip.server_name && ip.device_name) { %> / <% } %>
-                          <% if (ip.device_name) { %>
-                            <a href="/device/device?page=1&search=<%= encodeURIComponent(ip.device_name) %>" class="text-decoration-none" target="_blank"><%= ip.device_name %></a>
-                          <% } %>
-                        </div>
-                        <% if (ip.server_name && ip.device_name) { %>
-                          <small class="text-muted">Server / Device</small>
-                        <% } else if (ip.server_name) { %>
-                          <small class="text-muted">Server</small>
-                        <% } else { %>
-                          <small class="text-muted">Device</small>
-                        <% } %>
+                      <%
+                        const owners = [].concat(
+                          (ip.servers || []).map(o => Object.assign({}, o, { kind: 'Server', url: '/server/server/list?page=1&search=' + encodeURIComponent(o.name) })),
+                          (ip.devices || []).map(o => Object.assign({}, o, { kind: 'Device', url: '/device/device?page=1&search=' + encodeURIComponent(o.name) }))
+                        );
+                      %>
+                      <% if (owners.length > 0) { %>
+                        <% owners.forEach(function(o, idx) { %>
+                          <div class="<%= idx > 0 ? 'mt-1' : '' %>">
+                            <a href="<%= o.url %>" class="text-decoration-none" target="_blank"><%= o.name %></a>
+                            <small class="text-muted"><%= o.kind %></small>
+                            <% if (o.role === 'vip') { %>
+                              <span class="badge bg-warning text-dark ms-1">VIP</span>
+                            <% } %>
+                          </div>
+                        <% }) %>
                       <% } else { %>
                         <span class="text-muted">-</span>
                       <% } %>
@@ -419,12 +426,13 @@ function buildExportUrl() {
             <div class="col-12">
               <label for="ipStatus" class="form-label">Status</label>
               <select class="form-select" id="ipStatus" name="status">
+                <option value="" selected>-- None (unassigned) --</option>
                 <% if (typeof ipStatusOptions !== 'undefined' && ipStatusOptions.length > 0) { %>
                   <% ipStatusOptions.forEach(function(option) { %>
-                    <option value="<%= option.value %>" <%= option.value === 'reserved' ? 'selected' : '' %>><%= option.label %></option>
+                    <option value="<%= option.value %>"><%= option.label %></option>
                   <% }); %>
                               <% } else { %>
-                  <option value="reserved" selected>Reserved</option>
+                  <option value="reserved">Reserved</option>
                   <option value="assigned">Assigned</option>
                   <option value="inactive">Inactive</option>
                               <% } %>
@@ -483,6 +491,7 @@ function buildExportUrl() {
             <div class="col-12">
               <label for="editIpStatus" class="form-label">Status</label>
               <select class="form-select" id="editIpStatus" name="status">
+                <option value="">-- None (unassigned) --</option>
                 <% if (typeof ipStatusOptions !== 'undefined' && ipStatusOptions.length > 0) { %>
                   <% ipStatusOptions.forEach(function(option) { %>
                     <option value="<%= option.value %>"><%= option.label %></option>
@@ -561,6 +570,7 @@ function buildExportUrl() {
               <label for="filterIpStatus" class="form-label">Status</label>
               <select class="form-control" id="filterIpStatus" name="status">
                 <option value="">All Status</option>
+                <option value="__none__" <%= filterStatus === '__none__' ? 'selected' : '' %>>-- None (unassigned) --</option>
                 <% if (typeof ipStatusOptions !== 'undefined' && ipStatusOptions.length > 0) { %>
                   <% ipStatusOptions.forEach(function(option) { %>
                     <option value="<%= option.value %>" <%= filterStatus === option.value ? 'selected' : '' %>><%= option.label %></option>
@@ -916,7 +926,10 @@ function buildExportUrl() {
     const ipId = button.data('ip-id');
     const ipAddress = button.data('ip-address');
     const description = button.data('description') || '';
-    const status = button.data('status') || 'active';
+    // 'active' isn't even a valid ip_address_status value (reserved/assigned/
+    // inactive are) — an unset status must map to the "None" option, not a
+    // fallback value that doesn't exist among the dropdown's options.
+    const status = button.data('status') || '';
     const tags = button.data('tags') || [];
     const systems = button.data('systems') || [];
     const contacts = button.data('contacts') || [];
@@ -1501,22 +1514,19 @@ function showIpDetail(ipId) {
   html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + escapeHtml(ip.description || 'N/A') + '</pre></dd>';
   html += '<dt class="col-sm-4">Status</dt><dd class="col-sm-8">' + escapeHtml(ip.status || 'N/A') + '</dd>';
 
-  // Add Server/Device information with search links
+  // Add Server/Device information with search links — lists EVERY owner
+  // (an IP can have more than one device/server once VIP sharing is involved)
   html += '<dt class="col-sm-4">Server/Device</dt><dd class="col-sm-8">';
-  if (ip.server_name || ip.device_name) {
-    if (ip.server_name) {
-      const searchUrl = '/server/server/list?page=1&search=' + encodeURIComponent(ip.server_name);
-      html += '<a href="' + escapeHtml(searchUrl) + '" class="text-decoration-none" target="_blank">' + escapeHtml(ip.server_name) + '</a>';
-    }
-
-    if (ip.server_name && ip.device_name) {
-      html += ' / ';
-    }
-
-    if (ip.device_name) {
-      const searchUrl = '/device/device?page=1&search=' + encodeURIComponent(ip.device_name);
-      html += '<a href="' + escapeHtml(searchUrl) + '" class="text-decoration-none" target="_blank">' + escapeHtml(ip.device_name) + '</a>';
-    }
+  const detailOwners = []
+    .concat((ip.servers || []).map(o => Object.assign({}, o, { kind: 'Server', url: '/server/server/list?page=1&search=' + encodeURIComponent(o.name) })))
+    .concat((ip.devices || []).map(o => Object.assign({}, o, { kind: 'Device', url: '/device/device?page=1&search=' + encodeURIComponent(o.name) })));
+  if (detailOwners.length > 0) {
+    html += detailOwners.map(o =>
+      '<div><a href="' + escapeHtml(o.url) + '" class="text-decoration-none" target="_blank">' + escapeHtml(o.name) + '</a>' +
+      ' <small class="text-muted">' + o.kind + '</small>' +
+      (o.role === 'vip' ? ' <span class="badge bg-warning text-dark">VIP</span>' : '') +
+      '</div>'
+    ).join('');
   } else {
     html += '<span class="text-muted">N/A</span>';
   }

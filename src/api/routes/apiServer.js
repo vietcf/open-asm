@@ -316,7 +316,7 @@ apiServerRouter.get('/config', authorizePermissionJWT('server.read'), apiServerC
  *                 type: array
  *                 items:
  *                   type: integer
- *                 description: List of IP address IDs (at least one required)
+ *                 description: List of IP address IDs (at least one required). Each ID must exist and not already be the 'normal' (exclusive) IP of another server. VIP (shared) IP links can only be added afterwards, via PUT.
  *               description:
  *                 type: string
  *     responses:
@@ -447,7 +447,12 @@ apiServerRouter.get('/:id', authorizePermissionJWT('server.read'), apiServerCont
  *                 type: array
  *                 items:
  *                   type: integer
- *                 description: List of IP address IDs. If provided, must be non-empty — a server must always have at least one IP address.
+ *                 description: List of IP address IDs. If provided, must be non-empty — a server must always have at least one IP address. Fully replaces the server's 'normal' (exclusive) IPs; its VIP links are untouched.
+ *               vip_ip_addresses:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 description: Optional list of IP address IDs to link as VIP (shared) IPs — MAY already belong to another device/server. If provided (even as []), fully replaces the server's VIP links. An ID cannot appear in both ip_addresses and vip_ip_addresses.
  *               description:
  *                 type: string
  *                 description: Server description
@@ -625,6 +630,10 @@ apiServerRouter.delete('/:id', authorizePermissionJWT('server.delete'), apiServe
  *                 type: string
  *               status:
  *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [normal, vip]
+ *                 description: normal = this server's own (exclusive) IP; vip = an IP shared with another device/server.
  *         managers:
  *           type: array
  *           items:

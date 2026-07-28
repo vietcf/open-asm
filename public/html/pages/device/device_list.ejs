@@ -164,8 +164,18 @@ function buildExportUrl() {
               <i class="bi bi-plus"></i> Add Device
             </a>
           <% } %>
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterDeviceModal">
-            <i class="bi bi-funnel"></i> Filter
+          <%
+            const hasActiveDeviceFilter = !!(
+              (device_type_id && device_type_id !== '') ||
+              (platform_id && platform_id !== '') ||
+              (location && location !== '') ||
+              (manufacturer && manufacturer !== '') ||
+              (device_role && device_role !== '') ||
+              (tags && tags.length > 0)
+            );
+          %>
+          <button type="button" class="btn btn-sm <%= hasActiveDeviceFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterDeviceModal">
+            <i class="bi bi-funnel<%= hasActiveDeviceFilter ? '-fill' : '' %>"></i> Filter<%= hasActiveDeviceFilter ? ' (Filtered)' : '' %>
           </button>
           <% if (hasPermission && hasPermission('device.read')) { %>
             <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">
@@ -623,7 +633,11 @@ function showDeviceDetail(deviceId) {
     device.ip_addresses.forEach(function(ip) {
       const ipValue = (typeof ip === 'string' ? ip : ip.ip_address);
       const searchUrl = '/network/ip-address?page=1&search=' + encodeURIComponent(ipValue);
-      html += '<li><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' + escapeHtml(ipValue) + '</a></li>';
+      html += '<li><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' + escapeHtml(ipValue) + '</a>';
+      if (typeof ip !== 'string' && ip.role === 'vip') {
+        html += ' <span class="badge bg-warning text-dark">VIP</span>';
+      }
+      html += '</li>';
     });
     html += '</ul>';
   } else {

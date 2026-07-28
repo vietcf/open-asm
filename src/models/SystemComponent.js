@@ -211,7 +211,8 @@ class SystemComponent {
       LEFT JOIN contacts c ON c.id = scc.contact_id
       LEFT JOIN system_component_ip sci ON sci.component_id = sc.id
       LEFT JOIN ip_addresses ip ON ip.id = sci.ip_id
-      LEFT JOIN servers srv ON ip.server_id = srv.id
+      LEFT JOIN server_ip svi ON svi.ip_id = ip.id AND svi.role = 'normal'
+      LEFT JOIN servers srv ON srv.id = svi.server_id
       WHERE ${where}
       GROUP BY sc.id, s.name
       ORDER BY sc.id DESC
@@ -335,7 +336,8 @@ class SystemComponent {
       LEFT JOIN contacts c ON c.id = scc.contact_id
       LEFT JOIN system_component_ip sci ON sci.component_id = sc.id
       LEFT JOIN ip_addresses ip ON ip.id = sci.ip_id
-      LEFT JOIN servers srv ON ip.server_id = srv.id
+      LEFT JOIN server_ip svi ON svi.ip_id = ip.id AND svi.role = 'normal'
+      LEFT JOIN servers srv ON srv.id = svi.server_id
       WHERE sc.id = $1
       GROUP BY sc.id, s.name
       LIMIT 1

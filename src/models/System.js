@@ -339,7 +339,8 @@ class System {
       LEFT JOIN contacts c ON c.id = sc.contact_id
       LEFT JOIN system_ip sip ON sip.system_id = s.id
       LEFT JOIN ip_addresses ip ON ip.id = sip.ip_id
-      LEFT JOIN servers srv ON ip.server_id = srv.id
+      LEFT JOIN server_ip svi ON svi.ip_id = ip.id AND svi.role = 'normal'
+      LEFT JOIN servers srv ON srv.id = svi.server_id
       LEFT JOIN LATERAL (
         SELECT zone, environment
         FROM subnets sub

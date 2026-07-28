@@ -1,4 +1,5 @@
 import { pool } from '../../config/config.js';
+import IpAddress from './IpAddress.js';
 
 class Server {
   static async create({ name, os, status, location, type, description, username, client }) {
@@ -17,7 +18,7 @@ class Server {
   static async findById(id) {
     const res = await pool.query(`
       SELECT s.*, p.name AS platform_name,
-        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address, 'role', svi.role)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name)) FILTER (WHERE c.id IS NOT NULL), '[]') AS managers,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', sys.id, 'name', sys.name)) FILTER (WHERE sys.id IS NOT NULL), '[]') AS systems,
@@ -25,7 +26,8 @@ class Server {
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', ag.id, 'name', ag.name, 'version', ag.version)) FILTER (WHERE ag.id IS NOT NULL), '[]') AS agents
       FROM servers s
       LEFT JOIN platforms p ON p.id = s.os_id
-      LEFT JOIN ip_addresses ip ON ip.server_id = s.id
+      LEFT JOIN server_ip svi ON svi.server_id = s.id
+      LEFT JOIN ip_addresses ip ON ip.id = svi.ip_id
       LEFT JOIN tag_object tobj ON tobj.object_type = 'server' AND tobj.object_id = s.id
       LEFT JOIN tags t ON t.id = tobj.tag_id
       LEFT JOIN server_contact sc ON sc.server_id = s.id
@@ -63,18 +65,72 @@ class Server {
     await client.query('DELETE FROM server_system WHERE server_id = $1', [id]);
     await client.query('DELETE FROM server_agents WHERE server_id = $1', [id]);
     await client.query('DELETE FROM server_services WHERE server_id = $1', [id]);
-    if (deleteIp) {
-      await client.query('DELETE FROM ip_addresses WHERE server_id = $1', [id]);
-    } else {
-      await client.query("UPDATE ip_addresses SET server_id = NULL, status = 'reserved' WHERE server_id = $1", [id]);
-    }
+
+    const { rows: ipRows } = await client.query('SELECT ip_id FROM server_ip WHERE server_id = $1', [id]);
+    const ipIds = ipRows.map(r => r.ip_id);
+
+    // server_ip rows for this server are removed automatically (ON DELETE CASCADE)
     await client.query('DELETE FROM servers WHERE id = $1', [id]);
+
+    if (ipIds.length > 0) {
+      // Only touch IPs that have no other device/server (primary or VIP) left
+      if (deleteIp) {
+        await client.query(
+          `DELETE FROM ip_addresses WHERE id = ANY($1)
+           AND id NOT IN (SELECT ip_id FROM device_ip UNION SELECT ip_id FROM server_ip)`,
+          [ipIds]
+        );
+      } else {
+        await client.query(
+          `UPDATE ip_addresses SET status = 'reserved' WHERE id = ANY($1)
+           AND id NOT IN (SELECT ip_id FROM device_ip UNION SELECT ip_id FROM server_ip)`,
+          [ipIds]
+        );
+      }
+    }
   }
 
+  // Replaces the server's PRIMARY IP assignments only — VIP links (role='vip')
+  // added via setVipIps are left untouched.
   static async setIpAddresses(serverId, ipIds, client) {
-    await client.query('UPDATE ip_addresses SET server_id = NULL, status = NULL WHERE server_id = $1', [serverId]);
+    const { rows: oldRows } = await client.query(
+      "SELECT ip_id FROM server_ip WHERE server_id = $1 AND role = 'normal'",
+      [serverId]
+    );
+    const oldIpIds = oldRows.map(r => r.ip_id);
+    await client.query("DELETE FROM server_ip WHERE server_id = $1 AND role = 'normal'", [serverId]);
+    if (oldIpIds.length > 0) {
+      await client.query('UPDATE ip_addresses SET status = NULL WHERE id = ANY($1)', [oldIpIds]);
+    }
     for (const ipId of ipIds) {
-      await client.query('UPDATE ip_addresses SET server_id = $1, status = $2 WHERE id = $3', [serverId, 'assigned', ipId]);
+      await client.query(
+        `INSERT INTO server_ip (server_id, ip_id, role) VALUES ($1, $2, 'normal')
+         ON CONFLICT (server_id, ip_id) DO UPDATE SET role = 'normal'`,
+        [serverId, ipId]
+      );
+      await client.query('UPDATE ip_addresses SET status = $1 WHERE id = $2', ['assigned', ipId]);
+    }
+  }
+
+  // Replaces the server's VIP ('vip'-role) IP links — the IPs may already
+  // have a primary owner elsewhere; that's the whole point of a shared/VIP
+  // IP. Same "full replace" semantics as setIpAddresses, but for role='vip'.
+  static async setVipIps(serverId, vipIpIds, updated_by, client = pool) {
+    const { rows: oldRows } = await client.query(
+      "SELECT ip_id FROM server_ip WHERE server_id = $1 AND role = 'vip'",
+      [serverId]
+    );
+    const oldIds = oldRows.map(r => r.ip_id);
+    const newIds = (vipIpIds || []).map(id => Number(id));
+    for (const ipId of oldIds) {
+      if (!newIds.includes(ipId)) {
+        await IpAddress.removeVipLink({ ip_id: ipId, server_id: serverId }, client);
+      }
+    }
+    for (const ipId of newIds) {
+      if (!oldIds.includes(ipId)) {
+        await IpAddress.addVipLink({ ip_id: ipId, server_id: serverId, updated_by }, client);
+      }
     }
   }
 
@@ -127,7 +183,12 @@ class Server {
   }
 
   static async getIpAddresses(serverId) {
-    const result = await pool.query('SELECT ip_address FROM ip_addresses WHERE server_id = $1', [serverId]);
+    const result = await pool.query(
+      `SELECT ip.ip_address FROM server_ip sv
+       JOIN ip_addresses ip ON ip.id = sv.ip_id
+       WHERE sv.server_id = $1`,
+      [serverId]
+    );
     return result.rows.map(r => r.ip_address);
   }
 
@@ -141,7 +202,8 @@ class Server {
     let whereClauses = [];
     let joinClauses = [];
     let idx = 1;
-    joinClauses.push('LEFT JOIN ip_addresses ip ON ip.server_id = s.id');
+    joinClauses.push('LEFT JOIN server_ip svi ON svi.server_id = s.id');
+    joinClauses.push('LEFT JOIN ip_addresses ip ON ip.id = svi.ip_id');
     joinClauses.push('LEFT JOIN server_system ss ON ss.server_id = s.id');
     joinClauses.push('LEFT JOIN systems sys ON sys.id = ss.system_id');
     joinClauses.push('LEFT JOIN server_contact sc ON sc.server_id = s.id');
@@ -180,7 +242,7 @@ class Server {
       idx++;
     }
     if (ip && ip.length > 0) {
-      whereClauses.push(`s.id IN (SELECT server_id FROM ip_addresses WHERE id = ANY($${idx}))`);
+      whereClauses.push(`s.id IN (SELECT server_id FROM server_ip WHERE ip_id = ANY($${idx}))`);
       params.push(ip);
       idx++;
     }
@@ -200,7 +262,7 @@ class Server {
       idx++;
     }
     if (search) {
-      whereClauses.push(`(LOWER(s.name) LIKE $${idx} OR LOWER(s.description) LIKE $${idx} OR s.id IN (SELECT server_id FROM ip_addresses WHERE ip_address::text ILIKE $${idx}))`);
+      whereClauses.push(`(LOWER(s.name) LIKE $${idx} OR LOWER(s.description) LIKE $${idx} OR s.id IN (SELECT sv.server_id FROM server_ip sv JOIN ip_addresses ip3 ON ip3.id = sv.ip_id WHERE ip3.ip_address::text ILIKE $${idx}))`);
       params.push(`%${search}%`);
       idx++;
     }
@@ -209,7 +271,7 @@ class Server {
     const offset = (page - 1) * pageSize;
     // Sử dụng json_agg để tổng hợp các trường liên quan
     const sql = `SELECT s.*, p.name AS platform_name,
-      COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address, 'role', svi.role)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email)) FILTER (WHERE c.id IS NOT NULL), '[]') AS managers,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', sys.id, 'name', sys.name)) FILTER (WHERE sys.id IS NOT NULL), '[]') AS systems,
@@ -238,7 +300,8 @@ class Server {
     let whereClauses = [];
     let joinClauses = [];
     let idx = 1;
-    joinClauses.push('LEFT JOIN ip_addresses ip ON ip.server_id = s.id');
+    joinClauses.push('LEFT JOIN server_ip svi ON svi.server_id = s.id');
+    joinClauses.push('LEFT JOIN ip_addresses ip ON ip.id = svi.ip_id');
     joinClauses.push('LEFT JOIN server_system ss ON ss.server_id = s.id');
     joinClauses.push('LEFT JOIN systems sys ON sys.id = ss.system_id');
     joinClauses.push('LEFT JOIN server_contact sc ON sc.server_id = s.id');
@@ -277,7 +340,7 @@ class Server {
       idx++;
     }
     if (ip && ip.length > 0) {
-      whereClauses.push(`s.id IN (SELECT server_id FROM ip_addresses WHERE id = ANY($${idx}))`);
+      whereClauses.push(`s.id IN (SELECT server_id FROM server_ip WHERE ip_id = ANY($${idx}))`);
       params.push(ip);
       idx++;
     }
@@ -297,7 +360,7 @@ class Server {
       idx++;
     }
     if (search) {
-      whereClauses.push(`(LOWER(s.name) LIKE $${idx} OR LOWER(s.description) LIKE $${idx} OR s.id IN (SELECT server_id FROM ip_addresses WHERE ip_address::text ILIKE $${idx}))`);
+      whereClauses.push(`(LOWER(s.name) LIKE $${idx} OR LOWER(s.description) LIKE $${idx} OR s.id IN (SELECT sv.server_id FROM server_ip sv JOIN ip_addresses ip3 ON ip3.id = sv.ip_id WHERE ip3.ip_address::text ILIKE $${idx}))`);
       params.push(`%${search}%`);
       idx++;
     }
@@ -312,7 +375,7 @@ class Server {
   static async getFullDetail(id) {
     const res = await pool.query(`
       SELECT s.*, p.name AS platform_name,
-        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address, 'role', svi.role)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email)) FILTER (WHERE c.id IS NOT NULL), '[]') AS managers,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', sys.id, 'name', sys.name)) FILTER (WHERE sys.id IS NOT NULL), '[]') AS systems,
@@ -320,7 +383,8 @@ class Server {
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', ag.id, 'name', ag.name, 'version', ag.version, 'description', ag.description)) FILTER (WHERE ag.id IS NOT NULL), '[]') AS agents
       FROM servers s
       LEFT JOIN platforms p ON p.id = s.os_id
-      LEFT JOIN ip_addresses ip ON ip.server_id = s.id
+      LEFT JOIN server_ip svi ON svi.server_id = s.id
+      LEFT JOIN ip_addresses ip ON ip.id = svi.ip_id
       LEFT JOIN tag_object tobj ON tobj.object_type = 'server' AND tobj.object_id = s.id
       LEFT JOIN tags t ON t.id = tobj.tag_id
       LEFT JOIN server_contact sc ON sc.server_id = s.id
@@ -371,7 +435,7 @@ class Server {
     }
 
     if (criteria.ip_address) {
-      whereClauses.push(`s.id IN (SELECT server_id FROM ip_addresses WHERE ip_address = $${idx})`);
+      whereClauses.push(`s.id IN (SELECT sv.server_id FROM server_ip sv JOIN ip_addresses ip3 ON ip3.id = sv.ip_id WHERE ip3.ip_address = $${idx})`);
       params.push(criteria.ip_address);
       idx++;
     }
@@ -382,7 +446,7 @@ class Server {
 
     const sql = `
       SELECT s.*, p.name AS os_name, p.description AS os_description,
-        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address, 'description', ip.description, 'status', ip.status)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address, 'description', ip.description, 'status', ip.status, 'role', svi.role)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name, 'description', t.description)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email, 'phone', c.phone)) FILTER (WHERE c.id IS NOT NULL), '[]') AS managers,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', sys.id, 'name', sys.name, 'system_id', sys.system_id, 'description', sys.description)) FILTER (WHERE sys.id IS NOT NULL), '[]') AS systems,
@@ -390,7 +454,8 @@ class Server {
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', ag.id, 'name', ag.name, 'version', ag.version, 'description', ag.description)) FILTER (WHERE ag.id IS NOT NULL), '[]') AS agents
       FROM servers s
       LEFT JOIN platforms p ON p.id = s.os_id
-      LEFT JOIN ip_addresses ip ON ip.server_id = s.id
+      LEFT JOIN server_ip svi ON svi.server_id = s.id
+      LEFT JOIN ip_addresses ip ON ip.id = svi.ip_id
       LEFT JOIN tag_object tobj ON tobj.object_type = 'server' AND tobj.object_id = s.id
       LEFT JOIN tags t ON t.id = tobj.tag_id
       LEFT JOIN server_contact sc ON sc.server_id = s.id
@@ -455,7 +520,7 @@ class Server {
   static async findByIdWithDetails(id) {
     const sql = `
       SELECT s.*, p.name AS os_name, p.description AS os_description,
-        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address, 'description', ip.description, 'status', ip.status)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
+        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address, 'description', ip.description, 'status', ip.status, 'role', svi.role)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name, 'description', t.description)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email, 'phone', c.phone)) FILTER (WHERE c.id IS NOT NULL), '[]') AS managers,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', sys.id, 'name', sys.name, 'system_id', sys.system_id, 'description', sys.description)) FILTER (WHERE sys.id IS NOT NULL), '[]') AS systems,
@@ -463,7 +528,8 @@ class Server {
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', ag.id, 'name', ag.name, 'version', ag.version, 'description', ag.description)) FILTER (WHERE ag.id IS NOT NULL), '[]') AS agents
       FROM servers s
       LEFT JOIN platforms p ON p.id = s.os_id
-      LEFT JOIN ip_addresses ip ON ip.server_id = s.id
+      LEFT JOIN server_ip svi ON svi.server_id = s.id
+      LEFT JOIN ip_addresses ip ON ip.id = svi.ip_id
       LEFT JOIN tag_object tobj ON tobj.object_type = 'server' AND tobj.object_id = s.id
       LEFT JOIN tags t ON t.id = tobj.tag_id
       LEFT JOIN server_contact sc ON sc.server_id = s.id
@@ -514,7 +580,8 @@ class Server {
     const res = await pool.query(`
       SELECT DISTINCT s.id, s.name 
       FROM servers s 
-      INNER JOIN ip_addresses ip ON ip.server_id = s.id 
+      INNER JOIN server_ip svi ON svi.server_id = s.id
+      INNER JOIN ip_addresses ip ON ip.id = svi.ip_id
       WHERE ip.ip_address = $1
     `, [ipAddress]);
     return res.rows[0] || null;

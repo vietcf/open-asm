@@ -171,11 +171,18 @@ function buildExportUrl() {
           <% } %>
           
           <!-- Filter Button -->
+          <%
+            const hasActiveDomainFilter = !!(
+              (filterStatus && filterStatus !== '') ||
+              (filterTags && filterTags.length > 0) ||
+              (filterSystems && filterSystems.length > 0)
+            );
+          %>
           <button type="button"
-                  class="btn btn-secondary btn-sm"
+                  class="btn btn-sm <%= hasActiveDomainFilter ? 'btn-primary' : 'btn-outline-secondary' %>"
                   data-bs-toggle="modal"
                   data-bs-target="#filterDomainModal">
-            <i class="bi bi-funnel"></i> Filter
+            <i class="bi bi-funnel<%= hasActiveDomainFilter ? '-fill' : '' %>"></i> Filter<%= hasActiveDomainFilter ? ' (Filtered)' : '' %>
           </button>
 
           <!-- Export Button -->

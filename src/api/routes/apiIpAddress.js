@@ -396,6 +396,57 @@ apiIpAddressRouter.delete('/:id', authorizePermissionJWT('ip_address.delete'), a
  *                 type: string
  *               system_id:
  *                 type: string
+ *         ip_type:
+ *           type: string
+ *           enum: [physical, vip]
+ *           readOnly: true
+ *           description: Derived automatically from how many devices/servers are linked to this IP — never set directly. 'vip' means the IP is shared by more than one device/server.
+ *         devices:
+ *           type: array
+ *           readOnly: true
+ *           description: Every device linked to this IP. At most one entry has role 'normal' (this IP's own device); any others have role 'vip' (shared).
+ *           items:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: integer
+ *               name:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [normal, vip]
+ *         servers:
+ *           type: array
+ *           readOnly: true
+ *           description: Every server linked to this IP. At most one entry has role 'normal' (this IP's own server); any others have role 'vip' (shared).
+ *           items:
+ *             type: object
+ *             properties:
+ *               id:
+ *                 type: integer
+ *               name:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [normal, vip]
+ *         device:
+ *           type: object
+ *           readOnly: true
+ *           description: Deprecated convenience alias for the role='normal' entry in `devices` (or the first entry if none is 'normal'). Prefer `devices`.
+ *           properties:
+ *             id:
+ *               type: integer
+ *             name:
+ *               type: string
+ *         server:
+ *           type: object
+ *           readOnly: true
+ *           description: Deprecated convenience alias for the role='normal' entry in `servers` (or the first entry if none is 'normal'). Prefer `servers`.
+ *           properties:
+ *             id:
+ *               type: integer
+ *             name:
+ *               type: string
  */
 
 

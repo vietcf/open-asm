@@ -108,7 +108,7 @@
  *                 type: array
  *                 items:
  *                   type: integer
- *                 description: List of IP address IDs (required, at least one). Each ID must exist and not already be assigned to another device.
+ *                 description: List of IP address IDs (required, at least one). Each ID must exist and not already be the 'normal' (exclusive) IP of another device. VIP (shared) IP links can only be added afterwards, via PUT.
  *               platform_id:
  *                 type: integer
  *                 description: Platform (OS) ID (optional)
@@ -281,7 +281,13 @@
  *                 items:
  *                   type: integer
  *                 description: |
- *                   List of IP address IDs. Not required, but if provided, must not be empty.
+ *                   List of IP address IDs. Not required, but if provided, must not be empty. Fully replaces the device's 'normal' (exclusive) IPs; its VIP links are untouched.
+ *               vip_ip_addresses:
+ *                 type: array
+ *                 items:
+ *                   type: integer
+ *                 description: |
+ *                   Optional list of IP address IDs to link as VIP (shared) IPs — MAY already belong to another device/server. If provided (even as []), fully replaces the device's VIP links. An ID cannot appear in both ip_addresses and vip_ip_addresses.
  *               platform_id:
  *                 type: integer
  *                 description: Platform (OS) ID (optional)
@@ -408,6 +414,10 @@
  *                 type: integer
  *               ip_address:
  *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [normal, vip]
+ *                 description: normal = this device's own (exclusive) IP; vip = an IP shared with another device/server.
  *         tags:
  *           type: array
  *           items:

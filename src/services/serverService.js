@@ -16,6 +16,15 @@ const toIdArray = v => {
   const arr = Array.isArray(v) ? v : [v];
   return arr.map(Number).filter(x => !isNaN(x));
 };
+// An IP can't be this server's own (normal) IP and a shared (vip) one at the
+// same time — that's a contradiction, not just a redundant selection.
+const assertNoOverlap = (normalIds, vipIds) => {
+  const normalSet = new Set((normalIds || []).map(String));
+  const overlap = (vipIds || []).filter(id => normalSet.has(String(id)));
+  if (overlap.length > 0) {
+    throw new ValidationError(`IP(s) cannot be both a normal and a VIP IP for the same server: ${overlap.join(', ')}`);
+  }
+};
 
 // Server location reuses the same 'device_location' config key as Device, so
 // this re-exports deviceService's loader rather than duplicating it.
@@ -80,8 +89,11 @@ async function validateIpAddressIds(ids, excludeServerId, client) {
     const details = await IpAddress.findById(id, client);
     if (!details) {
       invalid.push(id);
-    } else if (details.status === 'assigned' && (excludeServerId == null || String(details.server_id) !== String(excludeServerId))) {
-      assigned.push(`IP ${details.ip_address} (ID: ${id})`);
+    } else if (details.status === 'assigned') {
+      const { serverId } = await IpAddress.getPrimaryOwnerIds(id, client);
+      if (excludeServerId == null || String(serverId) !== String(excludeServerId)) {
+        assigned.push(`IP ${details.ip_address} (ID: ${id})`);
+      }
     }
   }
   if (invalid.length) throw new ValidationError(`Invalid IP address IDs: ${invalid.join(', ')}`);
@@ -160,7 +172,7 @@ export async function createServer(input, client) {
 
 const UPDATABLE_FIELDS = [
   'name', 'description', 'os', 'status', 'type', 'location',
-  'tags', 'managers', 'systems', 'agents', 'services', 'ip_addresses'
+  'tags', 'managers', 'systems', 'agents', 'services', 'ip_addresses', 'vip_ip_addresses'
 ];
 const ARRAY_FIELD_SPECS = [
   { key: 'tags', validate: validateTagIds, set: Server.setTags },
@@ -217,6 +229,19 @@ export async function updateServer(id, input, client) {
     normalizedArrays.ip_addresses = arr;
   }
 
+  // VIP IPs may already belong to another device/server — that's the whole
+  // point of a shared IP, so these are NOT run through validateIpAddressIds.
+  if (has('vip_ip_addresses')) {
+    const arr = toIdArray(input.vip_ip_addresses);
+    for (const ipId of arr) {
+      if (!(await IpAddress.exists(ipId))) throw new ValidationError(`Invalid VIP IP address ID: ${ipId}`);
+    }
+    normalizedArrays.vip_ip_addresses = arr;
+  }
+  if (has('ip_addresses') && has('vip_ip_addresses')) {
+    assertNoOverlap(normalizedArrays.ip_addresses, normalizedArrays.vip_ip_addresses);
+  }
+
   const username = input.updated_by || 'admin';
 
   await withTransaction(client, async (c) => {
@@ -225,6 +250,7 @@ export async function updateServer(id, input, client) {
       if (has(key)) await set(id, normalizedArrays[key], c);
     }
     if (has('ip_addresses')) await Server.setIpAddresses(id, normalizedArrays.ip_addresses, c);
+    if (has('vip_ip_addresses')) await Server.setVipIps(id, normalizedArrays.vip_ip_addresses, username, c);
   });
 
   return Server.findByIdWithDetails(id);

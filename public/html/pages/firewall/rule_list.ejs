@@ -127,8 +127,20 @@ function buildExportUrl() {
             <i class="bi bi-upload"></i> Import
           </button>
         <% } %>
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterRuleModal">
-          <i class="bi bi-funnel"></i> Filter
+        <%
+          const hasActiveRuleFilter = !!(
+            (firewall_name && firewall_name !== '') ||
+            (filterUnitId && filterUnitId !== '') ||
+            (filterTagIds && filterTagIds.length > 0) ||
+            (filterContactIds && filterContactIds.length > 0) ||
+            (violation_type && violation_type !== '') ||
+            (status && status !== '') ||
+            (audit_batch && audit_batch !== '') ||
+            (work_order && work_order !== '')
+          );
+        %>
+        <button type="button" class="btn btn-sm <%= hasActiveRuleFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterRuleModal">
+          <i class="bi bi-funnel<%= hasActiveRuleFilter ? '-fill' : '' %>"></i> Filter<%= hasActiveRuleFilter ? ' (Filtered)' : '' %>
         </button>
           <% if (hasPermission('rule.read')) { %>
             <a href="<%= buildExportUrl() %>" class="btn btn-warning btn-sm">

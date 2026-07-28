@@ -632,6 +632,9 @@ networkController.apiGetIPDetail = async (req, res) => {
       server_name: ipDetail.server?.name,
       device_id: ipDetail.device?.id,
       device_name: ipDetail.device?.name,
+      ip_type: ipDetail.ip_type,
+      devices: ipDetail.devices || [],
+      servers: ipDetail.servers || [],
       tags: ipDetail.tags ? ipDetail.tags.map(tag => tag.name || tag) : [],
       contacts: ipDetail.contacts ? ipDetail.contacts.map(contact => contact.name || contact) : [],
       systems: ipDetail.systems ? ipDetail.systems.map(system => system.name || system) : [],
@@ -675,6 +678,27 @@ networkController.apiSearchUnassignedIPAddresses = async (req, res) => {
   } catch (err) {
     console.error('API /network/api/ip-addresses/unassigned error:', err);
     res.status(500).json({ error: 'Error searching unassigned IP addresses', detail: err.message });
+  }
+};
+
+// API: Search ALL IP addresses (assigned or not) for the "Assign VIP IP"
+// picker — unlike /api/ip-addresses/unassigned this intentionally includes
+// IPs that already have an owner, since VIP assignment means adding a
+// second owner to an existing IP.
+networkController.apiSearchAllIp = async (req, res) => {
+  try {
+    const search = req.query.search || '';
+    const limit = parseInt(req.query.limit) || 20;
+    const excludeDeviceId = req.query.exclude_device_id || undefined;
+    const excludeServerId = req.query.exclude_server_id || undefined;
+    const ips = await IpAddress.searchAllForVip({ search, excludeDeviceId, excludeServerId, limit });
+    res.json(ips.map(ip => ({
+      id: ip.id,
+      text: ip.owner_label ? `${ip.ip_address} (đã gán: ${ip.owner_label})` : ip.ip_address
+    })));
+  } catch (err) {
+    console.error('API /network/api/ip-addresses/search-all error:', err);
+    res.status(500).json({ error: 'Error searching IP addresses', detail: err.message });
   }
 };
 
@@ -804,7 +828,9 @@ networkController.validateImportIPs = async (req, res) => {
         row: rowNumber,
         ip_address: row['IPAddress (Require, one per row)'] || '',
         description: row['Description (Optional)'] || row['Description'] || '',
-        status: row['Status (Optional)'] || row['Status'] || 'reserved',
+        // Blank cell stays blank — createIpAddressService treats a blank/
+        // missing status as unset (NULL), not 'reserved'.
+        status: row['Status (Optional)'] || row['Status'] || '',
         tags: row['Tag (Optional, comma-separated if multiple)'] || row['Tag (comma-separated if multiple)'] || row['Tags'] || '',
         contacts: row['Contact (Optional, Email or Email prefix, comma-separated if multiple)'] || row['Contact (Email or Email prefix, comma-separated if multiple)'] || row['Contact (Email, comma-separated if multiple)'] || row['Contacts'] || '',
         system: row['System Name (Optional, comma-separated if multiple)'] || row['System Name (comma-separated if multiple)'] || row['System'] || '',
@@ -948,7 +974,7 @@ networkController.validateImportIPs = async (req, res) => {
         const row = [
           result.ip_address,                                                    // IPAddress (Require, one per row)
           result.description || '',                                            // Description
-          result.status || 'reserved',                                         // Status
+          result.status || '',                                                 // Status
           result.tags || '',                                                   // Tag (comma-separated if multiple)
           result.contacts || '',                                               // Contact (Email, comma-separated if multiple)
           result.system || '',                                                 // System Name (comma-separated if multiple)
@@ -1118,7 +1144,9 @@ networkController.importIPs = async (req, res) => {
         row: rowNumber,
         ip_address: (row['IPAddress (Require, one per row)'] || '').toString().trim(),
         description: row['Description (Optional)'] || row['Description'] || '',
-        status: row['Status (Optional)'] || row['Status'] || 'reserved',
+        // Blank cell stays blank — createIpAddressService treats a blank/
+        // missing status as unset (NULL), not 'reserved'.
+        status: row['Status (Optional)'] || row['Status'] || '',
         tags: row['Tag (Optional, comma-separated if multiple)'] || row['Tag (comma-separated if multiple)'] || row['Tags'] || '',
         contacts: row['Contact (Optional, Email or Email prefix, comma-separated if multiple)'] || row['Contact (Email or Email prefix, comma-separated if multiple)'] || row['Contact (Email, comma-separated if multiple)'] || row['Contacts'] || '',
         system: row['System Name (Optional, comma-separated if multiple)'] || row['System Name (comma-separated if multiple)'] || row['System'] || '',
@@ -1231,7 +1259,7 @@ networkController.importIPs = async (req, res) => {
         const row = [
           result.ip_address,                                                    // IPAddress (Require, one per row)
           result.description || '',                                            // Description
-          result.status || 'reserved',                                         // Status
+          result.status || '',                                                 // Status
           result.tags || '',                                                   // Tag (comma-separated if multiple)
           result.contacts || '',                                               // Contact (Email or Email prefix, comma-separated if multiple)
           result.system || '',                                                 // System Name (comma-separated if multiple)
@@ -3125,16 +3153,19 @@ networkController.apiGetSubnetIpAddresses = async (req, res) => {
     
     // Get IP addresses in this subnet
     const query = `
-      SELECT 
+      SELECT
         ip.id,
         ip.ip_address,
         ip.description,
         ip.status,
+        ip.ip_type,
         s.name as server_name,
         d.name as device_name
       FROM ip_addresses ip
-      LEFT JOIN servers s ON ip.server_id = s.id
-      LEFT JOIN devices d ON ip.device_id = d.id
+      LEFT JOIN server_ip svi ON svi.ip_id = ip.id AND svi.role = 'normal'
+      LEFT JOIN servers s ON s.id = svi.server_id
+      LEFT JOIN device_ip di ON di.ip_id = ip.id AND di.role = 'normal'
+      LEFT JOIN devices d ON d.id = di.device_id
       WHERE ip.ip_address::inet <<= (SELECT address FROM subnets WHERE id = $1)
       ORDER BY ip.ip_address::inet
     `;

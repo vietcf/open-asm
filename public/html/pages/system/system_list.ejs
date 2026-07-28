@@ -75,8 +75,18 @@ function buildSystemExportUrl() {
               <i class="bi bi-plus"></i> Add System
             </a>
           <% } %>
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterSystemModal">
-            <i class="bi bi-funnel"></i> Filter
+          <%
+            const hasActiveSystemFilter = !!(
+              (filterTags && filterTags.length > 0) ||
+              (filterContacts && filterContacts.length > 0) ||
+              (filterScopes && filterScopes.length > 0) ||
+              (filterArchitecture && filterArchitecture.length > 0) ||
+              (filterLevel && filterLevel !== '') ||
+              (filterDepartment && filterDepartment !== '')
+            );
+          %>
+          <button type="button" class="btn btn-sm <%= hasActiveSystemFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterSystemModal">
+            <i class="bi bi-funnel<%= hasActiveSystemFilter ? '-fill' : '' %>"></i> Filter<%= hasActiveSystemFilter ? ' (Filtered)' : '' %>
           </button>
           <% if (hasPermission && hasPermission('system.read')) { %>
             <a href="<%= buildSystemExportUrl() %>" class="btn btn-info btn-sm">
@@ -895,13 +905,14 @@ function buildSystemExportUrl() {
               tooltipText += `\nStatus: ${ipInfo.status}`;
             }
             
-            if (ipInfo.server_name) {
-              tooltipText += `\nServer: ${ipInfo.server_name}`;
-            }
-            
-            if (ipInfo.device_name) {
-              tooltipText += `\nDevice: ${ipInfo.device_name}`;
-            }
+            // List EVERY owner — an IP can have more than one device/server
+            // once VIP sharing is involved, not just a single primary owner.
+            (ipInfo.servers || []).forEach(function(s) {
+              tooltipText += `\nServer: ${s.name}${s.role === 'vip' ? ' (VIP)' : ''}`;
+            });
+            (ipInfo.devices || []).forEach(function(d) {
+              tooltipText += `\nDevice: ${d.name}${d.role === 'vip' ? ' (VIP)' : ''}`;
+            });
             
             // Add tags information
             if (ipInfo.tags && ipInfo.tags.length > 0) {

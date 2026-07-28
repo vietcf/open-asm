@@ -63,11 +63,12 @@ class IpAddress {
    * @returns {Promise<Object|null>}
    */
   static async findByIdWithDetails(id) {
-    const sql = `SELECT ip.*, 
+    const sql = `SELECT ip.*,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email, 'phone', c.phone)) FILTER (WHERE c.id IS NOT NULL), '[]') AS contacts,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', s.id, 'name', s.name, 'system_id', s.system_id)) FILTER (WHERE s.id IS NOT NULL), '[]') AS systems,
-      d.id AS device_id, d.name AS device_name, srv.id AS server_id, srv.name AS server_name
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', d.id, 'name', d.name, 'role', di.role)) FILTER (WHERE d.id IS NOT NULL), '[]') AS devices,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', srv.id, 'name', srv.name, 'role', svi.role)) FILTER (WHERE srv.id IS NOT NULL), '[]') AS servers
       FROM ip_addresses ip
       LEFT JOIN tag_object tobj ON tobj.object_type = 'ip_address' AND tobj.object_id = ip.id
       LEFT JOIN tags t ON t.id = tobj.tag_id
@@ -75,27 +76,17 @@ class IpAddress {
       LEFT JOIN contacts c ON c.id = ic.contact_id
       LEFT JOIN system_ip si ON si.ip_id = ip.id
       LEFT JOIN systems s ON s.id = si.system_id
-      LEFT JOIN devices d ON d.id = ip.device_id
-      LEFT JOIN servers srv ON srv.id = ip.server_id
+      LEFT JOIN device_ip di ON di.ip_id = ip.id
+      LEFT JOIN devices d ON d.id = di.device_id
+      LEFT JOIN server_ip svi ON svi.ip_id = ip.id
+      LEFT JOIN servers srv ON srv.id = svi.server_id
       WHERE ip.id = $1
-      GROUP BY ip.id, d.id, srv.id`;
-    
+      GROUP BY ip.id`;
+
     const result = await pool.query(sql, [id]);
     if (result.rows.length === 0) return null;
-    
-    const row = result.rows[0];
-    // Map device/server info into IP object
-    if (row.device_id) {
-      row.device = { id: row.device_id, name: row.device_name };
-    }
-    if (row.server_id) {
-      row.server = { id: row.server_id, name: row.server_name };
-    }
-    delete row.device_id;
-    delete row.device_name;
-    delete row.server_id;
-    delete row.server_name;
-    return row;
+
+    return IpAddress._attachOwners(result.rows[0]);
   }
 
   /**
@@ -114,11 +105,12 @@ class IpAddress {
    * @returns {Promise<Object|null>}
    */
   static async findByAddressWithDetails(address) {
-    const sql = `SELECT ip.*, 
+    const sql = `SELECT ip.*,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email, 'phone', c.phone)) FILTER (WHERE c.id IS NOT NULL), '[]') AS contacts,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', s.id, 'name', s.name, 'system_id', s.system_id)) FILTER (WHERE s.id IS NOT NULL), '[]') AS systems,
-      d.id AS device_id, d.name AS device_name, srv.id AS server_id, srv.name AS server_name
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', d.id, 'name', d.name, 'role', di.role)) FILTER (WHERE d.id IS NOT NULL), '[]') AS devices,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', srv.id, 'name', srv.name, 'role', svi.role)) FILTER (WHERE srv.id IS NOT NULL), '[]') AS servers
       FROM ip_addresses ip
       LEFT JOIN tag_object tobj ON tobj.object_type = 'ip_address' AND tobj.object_id = ip.id
       LEFT JOIN tags t ON t.id = tobj.tag_id
@@ -126,27 +118,17 @@ class IpAddress {
       LEFT JOIN contacts c ON c.id = ic.contact_id
       LEFT JOIN system_ip si ON si.ip_id = ip.id
       LEFT JOIN systems s ON s.id = si.system_id
-      LEFT JOIN devices d ON d.id = ip.device_id
-      LEFT JOIN servers srv ON srv.id = ip.server_id
+      LEFT JOIN device_ip di ON di.ip_id = ip.id
+      LEFT JOIN devices d ON d.id = di.device_id
+      LEFT JOIN server_ip svi ON svi.ip_id = ip.id
+      LEFT JOIN servers srv ON srv.id = svi.server_id
       WHERE ip.ip_address = $1
-      GROUP BY ip.id, d.id, srv.id`;
-    
+      GROUP BY ip.id`;
+
     const result = await pool.query(sql, [address]);
     if (result.rows.length === 0) return null;
-    
-    const row = result.rows[0];
-    // Map device/server info into IP object
-    if (row.device_id) {
-      row.device = { id: row.device_id, name: row.device_name };
-    }
-    if (row.server_id) {
-      row.server = { id: row.server_id, name: row.server_name };
-    }
-    delete row.device_id;
-    delete row.device_name;
-    delete row.server_id;
-    delete row.server_name;
-    return row;
+
+    return IpAddress._attachOwners(result.rows[0]);
   }
 
 
@@ -184,12 +166,13 @@ class IpAddress {
     // Check if IP is assigned to any server or device
     const assignment = await this.checkAssignment(id);
     if (assignment) {
-      let assignedTo = [];
-      if (assignment.server) assignedTo.push(`server "${assignment.server.name}"`);
-      if (assignment.device) assignedTo.push(`device "${assignment.device.name}"`);
+      const assignedTo = [
+        ...assignment.servers.map(s => `server "${s.name}"`),
+        ...assignment.devices.map(d => `device "${d.name}"`)
+      ];
       throw new Error(`Cannot delete IP address: it is assigned to ${assignedTo.join(' and ')}`);
     }
-    
+
     await client.query('DELETE FROM ip_addresses WHERE id = $1', [id]);
   }
 
@@ -262,7 +245,10 @@ class IpAddress {
    * @returns {Promise<Array>}
    */
   static async findByServerId(serverId) {
-    const res = await pool.query('SELECT * FROM ip_addresses WHERE server_id = $1 ORDER BY id', [serverId]);
+    const res = await pool.query(
+      'SELECT ip.* FROM ip_addresses ip JOIN server_ip sv ON sv.ip_id = ip.id WHERE sv.server_id = $1 ORDER BY ip.id',
+      [serverId]
+    );
     return res.rows;
   }
 
@@ -303,17 +289,23 @@ class IpAddress {
     // Join system_ip/systems
     joinClauses.push('LEFT JOIN system_ip si ON si.ip_id = ip.id');
     joinClauses.push('LEFT JOIN systems s ON s.id = si.system_id');
-    // Join device and server
-    joinClauses.push('LEFT JOIN devices d ON d.id = ip.device_id');
-    joinClauses.push('LEFT JOIN servers srv ON srv.id = ip.server_id');
+    // Join device and server (many-to-many via device_ip/server_ip)
+    joinClauses.push('LEFT JOIN device_ip di ON di.ip_id = ip.id');
+    joinClauses.push('LEFT JOIN devices d ON d.id = di.device_id');
+    joinClauses.push('LEFT JOIN server_ip svi ON svi.ip_id = ip.id');
+    joinClauses.push('LEFT JOIN servers srv ON srv.id = svi.server_id');
     // Filter by tags (all selected tags must be present)
     if (tags && tags.length > 0) {
       whereClauses.push(`ip.id IN (SELECT object_id FROM tag_object WHERE object_type = 'ip_address' AND tag_id = ANY($${idx}))`);
       params.push(tags);
       idx++;
     }
-    // Filter by status
-    if (status && status !== '') {
+    // Filter by status — '__none__' means "no status set" (IS NULL), which
+    // can't be expressed via ip.status = $n since SQL NULL never equals
+    // anything, not even itself.
+    if (status === '__none__') {
+      whereClauses.push('ip.status IS NULL');
+    } else if (status && status !== '') {
       whereClauses.push(`ip.status = $${idx}`);
       params.push(status);
       idx++;
@@ -342,36 +334,29 @@ class IpAddress {
       params.push(`%${search}%`);
       idx++;
     }
-    let sql = `SELECT ip.*, 
+    let sql = `SELECT ip.*,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email, 'phone', c.phone)) FILTER (WHERE c.id IS NOT NULL), '[]') AS contacts,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', s.id, 'name', s.name, 'system_id', s.system_id)) FILTER (WHERE s.id IS NOT NULL), '[]') AS systems,
-      d.id AS device_id, d.name AS device_name, srv.id AS server_id, srv.name AS server_name
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', d.id, 'name', d.name, 'role', di.role)) FILTER (WHERE d.id IS NOT NULL), '[]') AS devices,
+      COALESCE(json_agg(DISTINCT jsonb_build_object('id', srv.id, 'name', srv.name, 'role', svi.role)) FILTER (WHERE srv.id IS NOT NULL), '[]') AS servers
       FROM ip_addresses ip
       ${joinClauses.join(' ')}
       ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''}
-      GROUP BY ip.id, d.id, srv.id
+      GROUP BY ip.id
       ORDER BY ip.updated_at DESC
       LIMIT $${idx} OFFSET $${idx + 1}`;
     params.push(pageSize, (page - 1) * pageSize);
     const result = await pool.query(sql, params);
-    
+
     // Get subnet information for each IP
     const ipsWithSubnet = await Promise.all(result.rows.map(async (row) => {
-      // Map device/server info into each IP object
-      if (row.device_id) {
-        row.device = { id: row.device_id, name: row.device_name };
-        // Keep device_name for easy access in frontend
-        row.device_name = row.device_name;
-      }
-      if (row.server_id) {
-        row.server = { id: row.server_id, name: row.server_name };
-        // Keep server_name for easy access in frontend
-        row.server_name = row.server_name;
-      }
-      delete row.device_id;
-      delete row.server_id;
-      
+      // Map device/server info into each IP object (devices[]/servers[] plus
+      // legacy single device/server = primary owner)
+      IpAddress._attachOwners(row);
+      row.device_name = row.device ? row.device.name : null;
+      row.server_name = row.server ? row.server.name : null;
+
       // Get subnet information for this IP
       const subnetInfo = await IpAddress.getSubnetInfo(row.ip_address);
       if (subnetInfo) {
@@ -414,7 +399,9 @@ class IpAddress {
       params.push(tags);
       idx++;
     }
-    if (status && status !== '') {
+    if (status === '__none__') {
+      whereClauses.push('ip.status IS NULL');
+    } else if (status && status !== '') {
       whereClauses.push(`ip.status = $${idx}`);
       params.push(status);
       idx++;
@@ -514,30 +501,171 @@ class IpAddress {
   }
 
   /**
-   * Check if IP address is assigned to any server or device
+   * Check if IP address is assigned to any server or device (primary or VIP)
    * @param {number} id - IP address ID
-   * @returns {Promise<Object|null>} Returns object with assignment info or null if not assigned
+   * @returns {Promise<Object|null>} { devices: [...], servers: [...] } or null if not assigned to anything
    */
   static async checkAssignment(id) {
-    const result = await pool.query(`
-      SELECT 
-        server_id, 
-        device_id,
-        s.name AS server_name,
-        d.name AS device_name
-      FROM ip_addresses ip
-      LEFT JOIN servers s ON s.id = ip.server_id
-      LEFT JOIN devices d ON d.id = ip.device_id
-      WHERE ip.id = $1 AND (ip.server_id IS NOT NULL OR ip.device_id IS NOT NULL)
-    `, [id]);
-    
-    if (result.rows.length === 0) return null;
-    
-    const row = result.rows[0];
+    const { devices, servers } = await IpAddress.getOwners(id);
+    if (devices.length === 0 && servers.length === 0) return null;
+    return { devices, servers };
+  }
+
+  /**
+   * Get every device/server currently linked to an IP address (primary + VIP)
+   * @param {number} ipId
+   * @returns {Promise<{devices: Array, servers: Array}>}
+   */
+  static async getOwners(ipId, client = pool) {
+    const [deviceRes, serverRes] = await Promise.all([
+      client.query(
+        `SELECT d.id, d.name, di.role FROM device_ip di JOIN devices d ON d.id = di.device_id WHERE di.ip_id = $1 ORDER BY di.role = 'normal' DESC, d.name`,
+        [ipId]
+      ),
+      client.query(
+        `SELECT srv.id, srv.name, sv.role FROM server_ip sv JOIN servers srv ON srv.id = sv.server_id WHERE sv.ip_id = $1 ORDER BY sv.role = 'normal' DESC, srv.name`,
+        [ipId]
+      )
+    ]);
+    return { devices: deviceRes.rows, servers: serverRes.rows };
+  }
+
+  /**
+   * Get the primary (role='normal') device/server id for an IP, if any.
+   * Used to validate "is this IP already the primary assignment of a
+   * DIFFERENT device/server" without relying on the deprecated scalar
+   * ip_addresses.device_id/server_id columns.
+   * @param {number} ipId
+   * @param {object} [client=pool]
+   * @returns {Promise<{deviceId: number|null, serverId: number|null}>}
+   */
+  static async getPrimaryOwnerIds(ipId, client = pool) {
+    const [d, s] = await Promise.all([
+      client.query(`SELECT device_id FROM device_ip WHERE ip_id = $1 AND role = 'normal' LIMIT 1`, [ipId]),
+      client.query(`SELECT server_id FROM server_ip WHERE ip_id = $1 AND role = 'normal' LIMIT 1`, [ipId])
+    ]);
     return {
-      server: row.server_id ? { id: row.server_id, name: row.server_name } : null,
-      device: row.device_id ? { id: row.device_id, name: row.device_name } : null
+      deviceId: d.rows[0] ? d.rows[0].device_id : null,
+      serverId: s.rows[0] ? s.rows[0].server_id : null
     };
+  }
+
+  /**
+   * Recompute ip_addresses.ip_type from the real device_ip/server_ip link
+   * count. Not user-editable — always derived, called after any VIP link
+   * add/remove so it can never drift out of sync.
+   * @param {number} ipId
+   * @param {object} [client=pool]
+   */
+  static async recomputeIpType(ipId, client = pool) {
+    await client.query(`
+      UPDATE ip_addresses SET ip_type = CASE WHEN (
+        (SELECT COUNT(*) FROM device_ip WHERE ip_id = $1) +
+        (SELECT COUNT(*) FROM server_ip WHERE ip_id = $1)
+      ) > 1 THEN 'vip' ELSE 'physical' END
+      WHERE id = $1
+    `, [ipId]);
+  }
+
+  /**
+   * Add a secondary ('vip') device or server link to an IP that already has
+   * a primary owner elsewhere. Exactly one of device_id/server_id must be set.
+   * @param {Object} params
+   * @param {number} params.ip_id
+   * @param {number} [params.device_id]
+   * @param {number} [params.server_id]
+   * @param {string} [params.updated_by]
+   * @param {object} [client=pool]
+   */
+  static async addVipLink({ ip_id, device_id, server_id, updated_by }, client = pool) {
+    if (device_id) {
+      await client.query(
+        `INSERT INTO device_ip (device_id, ip_id, role, updated_by) VALUES ($1, $2, 'vip', $3) ON CONFLICT (device_id, ip_id) DO NOTHING`,
+        [device_id, ip_id, updated_by]
+      );
+    }
+    if (server_id) {
+      await client.query(
+        `INSERT INTO server_ip (server_id, ip_id, role, updated_by) VALUES ($1, $2, 'vip', $3) ON CONFLICT (server_id, ip_id) DO NOTHING`,
+        [server_id, ip_id, updated_by]
+      );
+    }
+    await IpAddress.recomputeIpType(ip_id, client);
+  }
+
+  /**
+   * Remove a device or server link from an IP (used to detach a VIP link).
+   * Exactly one of device_id/server_id must be set.
+   * @param {Object} params
+   * @param {number} params.ip_id
+   * @param {number} [params.device_id]
+   * @param {number} [params.server_id]
+   * @param {object} [client=pool]
+   */
+  static async removeVipLink({ ip_id, device_id, server_id }, client = pool) {
+    if (device_id) {
+      await client.query('DELETE FROM device_ip WHERE device_id = $1 AND ip_id = $2', [device_id, ip_id]);
+    }
+    if (server_id) {
+      await client.query('DELETE FROM server_ip WHERE server_id = $1 AND ip_id = $2', [server_id, ip_id]);
+    }
+    await IpAddress.recomputeIpType(ip_id, client);
+  }
+
+  /**
+   * Search across ALL IP addresses (assigned or not) for the "Assign VIP IP"
+   * picker — unlike findUnassignIP this intentionally includes IPs that
+   * already have an owner, since VIP assignment means adding a second owner.
+   * @param {Object} params
+   * @param {string} [params.search='']
+   * @param {number} [params.excludeDeviceId] - hide IPs already linked to this device
+   * @param {number} [params.excludeServerId] - hide IPs already linked to this server
+   * @param {number} [params.limit=20]
+   * @returns {Promise<Array<{id:number, ip_address:string, owner_label:string|null}>>}
+   */
+  static async searchAllForVip({ search = '', excludeDeviceId, excludeServerId, limit = 20 }) {
+    const params = [`%${search}%`];
+    let idx = 2;
+    let excludeClause = '';
+    if (excludeDeviceId) {
+      excludeClause += ` AND NOT EXISTS (SELECT 1 FROM device_ip WHERE ip_id = ip.id AND device_id = $${idx})`;
+      params.push(excludeDeviceId);
+      idx++;
+    }
+    if (excludeServerId) {
+      excludeClause += ` AND NOT EXISTS (SELECT 1 FROM server_ip WHERE ip_id = ip.id AND server_id = $${idx})`;
+      params.push(excludeServerId);
+      idx++;
+    }
+    params.push(limit);
+    const sql = `
+      SELECT ip.id, ip.ip_address,
+        (SELECT d.name FROM device_ip di JOIN devices d ON d.id = di.device_id WHERE di.ip_id = ip.id AND di.role = 'normal' LIMIT 1) AS owner_device,
+        (SELECT srv.name FROM server_ip sv JOIN servers srv ON srv.id = sv.server_id WHERE sv.ip_id = ip.id AND sv.role = 'normal' LIMIT 1) AS owner_server
+      FROM ip_addresses ip
+      WHERE ip.ip_address::text ILIKE $1 ${excludeClause}
+      ORDER BY ip.ip_address
+      LIMIT $${idx}
+    `;
+    const result = await pool.query(sql, params);
+    return result.rows.map(row => ({
+      id: row.id,
+      ip_address: row.ip_address,
+      owner_label: row.owner_device || row.owner_server || null
+    }));
+  }
+
+  /**
+   * Derive row.device/row.server (single, primary-owner) from the aggregated
+   * row.devices/row.servers arrays. Mutates and returns row.
+   * @param {Object} row
+   */
+  static _attachOwners(row) {
+    row.devices = Array.isArray(row.devices) ? row.devices : JSON.parse(row.devices || '[]');
+    row.servers = Array.isArray(row.servers) ? row.servers : JSON.parse(row.servers || '[]');
+    row.device = row.devices.find(o => o.role === 'normal') || row.devices[0] || null;
+    row.server = row.servers.find(o => o.role === 'normal') || row.servers[0] || null;
+    return row;
   }
 
   /**

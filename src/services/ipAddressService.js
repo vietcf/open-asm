@@ -149,10 +149,12 @@ export async function updateIpAddress(id, input, client) {
     ? input.description.trim()
     : current.description;
 
+  // A blank status explicitly clears it back to unset (NULL) — distinct from
+  // the key being absent entirely, which leaves the current status untouched.
   let status = current.status;
-  if (has('status') && typeof input.status === 'string' && input.status.trim()) {
-    status = input.status.trim();
-    await validateStatus(status);
+  if (has('status') && typeof input.status === 'string') {
+    status = input.status.trim() || null;
+    if (status) await validateStatus(status);
   }
 
   let tags = null;

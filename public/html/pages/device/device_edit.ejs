@@ -65,7 +65,13 @@
                 <button type="button" class="btn btn-outline-success btn-sm" id="add-ip-btn" title="Add new IP"><i class="bi bi-plus-circle"></i> Add IP</button>
               </div>
             </div>
-            
+
+            <!-- 2b. VIP IP Address(es) -->
+            <div class="mb-3">
+              <label class="form-label">VIP IP Address(es) <small class="text-muted">(dùng chung với thiết bị/máy chủ khác)</small></label>
+              <select id="vip-ip-select" name="vip_ip_addresses[]" class="form-control" multiple></select>
+            </div>
+
             <!-- 3. Device Name -->
             <div class="mb-3">
               <label class="form-label">Device Name <span class="text-danger">*</span></label>
@@ -183,6 +189,8 @@
 </style>
 
 <script>
+const DEVICE_ID = <%= device.id %>;
+
 $(document).ready(function() {
   // Type select2 - Bootstrap 5 theme
   $('select[name="type"]').select2({
@@ -230,6 +238,28 @@ $(document).ready(function() {
             };
           })
         };
+      },
+      cache: true
+    }
+  });
+
+  // VIP IP Address Select2 with AJAX — unlike #ip-select, this searches ALL
+  // IPs (including ones already assigned elsewhere), since sharing an
+  // existing IP as a VIP is the whole point of this field.
+  $('#vip-ip-select').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select VIP IP address(es)',
+    allowClear: true,
+    width: '100%',
+    ajax: {
+      url: '/network/api/ip-addresses/search-all',
+      dataType: 'json',
+      delay: 250,
+      data: function (params) {
+        return { search: params.term, exclude_device_id: DEVICE_ID };
+      },
+      processResults: function (data) {
+        return { results: data.map(function(item) { return { id: item.id, text: item.text }; }) };
       },
       cache: true
     }
@@ -464,10 +494,14 @@ function loadDeviceExistingValues() {
     }
     console.log('==========================================');
     
-    // Load IP addresses
-    if (deviceData.ip && deviceData.ip.length > 0) {
+    // Load IP addresses — only role='normal' ones belong in this primary
+    // multi-select; 'vip' links are managed separately below so re-submitting
+    // this form (without touching the field) never demotes a VIP link back
+    // to a normal (exclusive) one.
+    const normalIps = (deviceData.ip || []).filter(function(ip) { return ip.role !== 'vip'; });
+    if (normalIps.length > 0) {
       console.log('Loading IP addresses into Select2...');
-      deviceData.ip.forEach(function(ip) {
+      normalIps.forEach(function(ip) {
         console.log('Adding IP option:', ip.ip_address, 'with ID:', ip.id);
         const option = new Option(ip.ip_address, ip.id, true, true);
         $('#ip-select').append(option);
@@ -477,6 +511,16 @@ function loadDeviceExistingValues() {
       console.log('IP select value after change:', $('#ip-select').val());
     } else {
       console.log('No IP addresses to load');
+    }
+
+    // Load VIP IP addresses (role='vip')
+    const vipIps = (deviceData.ip || []).filter(function(ip) { return ip.role === 'vip'; });
+    if (vipIps.length > 0) {
+      vipIps.forEach(function(ip) {
+        const option = new Option(ip.ip_address, ip.id, true, true);
+        $('#vip-ip-select').append(option);
+      });
+      $('#vip-ip-select').trigger('change');
     }
 
     // Load Platform (OS)

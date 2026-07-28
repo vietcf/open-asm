@@ -235,8 +235,20 @@ function buildExportUrl() {
               <i class="bi bi-plus"></i> Add Server
             </a>
           <% } %>
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#filterServerModal">
-            <i class="bi bi-funnel"></i> Filter
+          <%
+            const hasActiveServerFilter = !!(
+              (filterStatus && filterStatus !== '') ||
+              (filterType && filterType !== '') ||
+              (filterLocation && filterLocation !== '') ||
+              (filterTags && filterTags.length > 0) ||
+              (filterManager && filterManager.length > 0) ||
+              (filterSystems && filterSystems.length > 0) ||
+              (filterServices && filterServices.length > 0) ||
+              (filterOs && filterOs.length > 0)
+            );
+          %>
+          <button type="button" class="btn btn-sm <%= hasActiveServerFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterServerModal">
+            <i class="bi bi-funnel<%= hasActiveServerFilter ? '-fill' : '' %>"></i> Filter<%= hasActiveServerFilter ? ' (Filtered)' : '' %>
           </button>
           <% if (hasPermission && hasPermission('server.read')) { %>
             <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">
@@ -345,7 +357,7 @@ function buildExportUrl() {
                         <td>
                           <% if (server.ip && server.ip.length > 0) { %>
                             <% server.ip.forEach(function(ip) { %>
-                              <span class="badge bg-success me-1"><%= typeof ip === 'string' ? ip : ip.ip_address %></span>
+                              <span class="badge bg-success me-1"><%= typeof ip === 'string' ? ip : ip.ip_address %><% if (typeof ip !== 'string' && ip.role === 'vip') { %> (VIP)<% } %></span>
                             <% }) %>
                           <% } else { %>
                             <span class="text-muted">No IP</span>
@@ -1108,7 +1120,11 @@ function showServerDetail(serverId) {
     server.ip.forEach(function(ip) {
       const ipValue = (typeof ip === 'string' ? ip : ip.ip_address);
       const searchUrl = '/network/ip-address?page=1&search=' + encodeURIComponent(ipValue);
-      html += '<div><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' + escapeHtml(ipValue) + '</a></div>';
+      html += '<div><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' + escapeHtml(ipValue) + '</a>';
+      if (typeof ip !== 'string' && ip.role === 'vip') {
+        html += ' <span class="badge bg-warning text-dark">VIP</span>';
+      }
+      html += '</div>';
     });
   } else {
     html += 'N/A';
