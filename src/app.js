@@ -1,0 +1,265 @@
+// Main application entry point for the Express server
+// Sets up middleware, session, view engine, static files, and routes
+
+// =========================
+// Core Node.js modules
+// =========================
+import fs from 'fs';
+import path, { dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// =========================
+// Third-party modules
+// =========================
+import express from 'express';
+import bodyParser from 'body-parser';
+import session from 'express-session';
+import methodOverride from 'method-override';
+import flash from 'connect-flash';
+import bcrypt from 'bcrypt';
+import ejs from 'ejs';
+import expressLayouts from 'express-ejs-layouts';
+
+// =========================
+// Project modules (config, utils, middlewares)
+// =========================
+import { config } from '../config/config.js';
+import { siteConfig } from './utils/siteConfig.js';
+import { loadPermissions } from './middlewares/permissions.middleware.js';
+import requirePasswordChange from './middlewares/requirePasswordChange.middleware.js';
+import require2fa from './middlewares/require2fa.middleware.js';
+import sessionIdleTimeout from './middlewares/sessionIdleTimeout.middleware.js';
+// import accessLog from './middlewares/accessLog.middleware.js'; // Disabled
+
+// =========================
+// Routers
+// =========================
+import authRouter from './routes/auth.js';
+import dashboardRouter from './routes/dashboard.js';
+import requireLogin from './middlewares/requireLogin.middleware.js';
+import networkRouter from './routes/network.js';
+import systemRouter from './routes/system.js';
+import pentestRouter from './routes/pentest.js';
+import clusterRouter from './routes/cluster.js';
+import privAccountRouter from './routes/privAccount.js';
+import serverRouter from './routes/server.js';
+import serverController from './controllers/serverController.js';
+import organizeRouter from './routes/organize.js';
+import administratorRouter from './routes/administrator.js';
+import deviceRoutes from './routes/device.js';
+import uploadRouter from './routes/upload.js';
+import firewallRouter from './routes/firewall.js';
+import twofaRouter from './routes/twofa.js';
+import changePasswordRouter from './routes/changePassword.js';
+
+// API Routers
+// import apiContactRouter from './api/routes/apiContact.js';
+// import apiUnitRouter from './api/routes/apiUnit.js';
+// import apiRuleRouter from './api/routes/apiRule.js';
+// import apiServerRouter from './api/routes/apiServer.js';
+// import apiIpAddressRouter from './api/routes/apiIpAddress.js';
+// import apiAuthRouter from './api/routes/apiAuth.js';
+import apiSwaggerRouter from './api/routes/apiSwagger.js';
+import apiRouter from './api/routes/index.js';
+// Remove unused controller import since we're using router pattern
+
+
+// =========================
+// EXPRESS APP INITIALIZATION
+// =========================
+const app = express();
+
+// 1. Site configuration (load from DB at startup)
+await siteConfig.initialize();
+
+// 2. Trust proxy for HTTPS (Nginx/Proxy setups)
+app.set('trust proxy', 1);
+
+// 3. Core middleware
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(methodOverride('_method', { methods: ['POST', 'GET'] }));
+
+// 4. Session and flash
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'VcbS3cr3teeee',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: false, // SSL handled by Nginx
+    httpOnly: true,
+    sameSite: 'lax'
+  }
+}));
+
+// Flash middleware for session messages
+app.use(flash());
+
+// 4.1. Auto-expire session after inactivity (must run after session/flash, before routes)
+app.use(sessionIdleTimeout);
+
+// 4.2. Access logging middleware (after session, before other middleware)
+// app.use(accessLog); // Disabled to reduce console output
+
+// 5. Global template variables (res.locals)
+// 5.1. Load permissions for every request (after session, before routes)
+app.use(loadPermissions);
+
+// 5.2. Global template variables (res.locals)
+app.use((req, res, next) => {
+  // User/session
+  res.locals.user = req.session.user || null;
+  // Asset paths
+  res.locals.cssPath = config.cssPath;
+  res.locals.jsPath = config.jsPath;
+  res.locals.imgPath = config.imgPath;
+  // Site config
+  res.locals.siteName = siteConfig.getSiteName();
+  res.locals.pageSizeOptions = siteConfig.getPageSizeOptions();
+  res.locals.defaultPageSize = siteConfig.getDefaultPageSize();
+  // Permission helper
+  res.locals.hasPermission = (perm) => {
+    const user = res.locals.user;
+    if (!user) return false;
+    if (user.role_name === 'superadmin') return true;
+    
+    if (req.permissions && Array.isArray(req.permissions)) {
+      return req.permissions.includes(perm);
+    }
+    return false;
+  };
+  next();
+});
+
+// 6. View engine and layouts
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, '../public/html'));
+app.use(expressLayouts);
+app.set('layout', 'layouts/layout');
+// app.set('layout extractScripts', true);
+// app.set('layout extractStyles', true);
+
+// 7. Static files
+// User-uploaded documents (system/server/device attachments etc.) are served
+// as forced downloads with sniffing disabled — they're arbitrary files
+// uploaded by any authenticated user, so this closes the stored-XSS vector
+// (a .html/.svg upload would otherwise render/execute in the app's origin).
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads'), {
+  setHeaders: (res, filePath) => {
+    res.setHeader('Content-Disposition', `attachment; filename="${path.basename(filePath)}"`);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+  }
+}));
+app.use(express.static(path.join(__dirname, '../public')));
+
+// Smart redirect for root URL - handles both authenticated and anonymous users
+app.get(['/', '/index.html'], (req, res) => {
+  // If user is logged in, redirect to dashboard
+  if (req.session.user) {
+    return res.redirect('/dashboard');
+  }
+  // If not logged in, redirect to login
+  res.redirect('/login');
+});
+
+
+// ===========================================
+// PUBLIC ROUTES (No authentication required)
+// ===========================================
+app.use('/', authRouter); // /login, /logout, /login/2fa
+
+
+
+
+// ===========================================
+// MIDDLEWARES AFTER SESSION, BEFORE ROUTES
+// ===========================================
+
+// Enforce password change for users with must_change_password flag (after session, before routes)
+app.use(requirePasswordChange);
+
+
+// ===========================================
+// PROTECTED ROUTES (Authentication required)
+// ===========================================
+
+// Change password route (requires login + 2FA)
+app.use('/change-password', requireLogin, changePasswordRouter);
+
+// // 2FA setup/disable routes (requires login only)
+app.use('/2fa', requireLogin, twofaRouter); 
+
+app.use('/dashboard', requireLogin, require2fa, dashboardRouter);
+app.use('/system', requireLogin, require2fa, systemRouter);
+app.use('/pentest', requireLogin, require2fa, pentestRouter);
+app.use('/cluster', requireLogin, require2fa, clusterRouter);
+app.use('/network', requireLogin, require2fa, networkRouter);
+// Public template download route (no auth required)
+app.get('/server/server/template', serverController.downloadServerTemplate);
+app.use('/server', requireLogin, require2fa, serverRouter);
+app.use('/organize', requireLogin, require2fa, organizeRouter);
+app.use('/device', requireLogin, require2fa, deviceRoutes);
+app.use('/priv-account', requireLogin, require2fa, privAccountRouter);
+app.use('/firewall', requireLogin, require2fa, firewallRouter);
+app.use('/administrator', requireLogin, require2fa, administratorRouter);
+
+// //Upload route to get upload patch file
+app.use('/api/upload', requireLogin, uploadRouter); 
+
+// ===========================================
+// API ROUTES
+// ===========================================
+
+//  Swagger API documentation (public)
+app.use('/api-docs', requireLogin, apiSwaggerRouter);
+
+// // API v1 routes (authentication handled internally)
+app.use('/api/v1', apiRouter);
+
+// Start the server
+const PORT = parseInt(process.env.PORT) || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on 0.0.0.0:${PORT}`);
+    console.log('🔒 App is using reverse proxy (Nginx)');
+});
+
+// Start scheduled cleanup job for system logs
+try {
+  const cleanupLogsJob = await import('./utils/cleanupLogs.js');
+  if (cleanupLogsJob.default && typeof cleanupLogsJob.default.start === 'function') {
+    cleanupLogsJob.default.start();
+  }
+} catch (err) {
+  console.log('Cleanup logs job not available:', err.message);
+}
+
+// Start scheduled cleanup job for temp files
+try {
+  const { runCleanup } = await import('./utils/cleanupTempFiles.js');
+  
+  // Run cleanup immediately on startup
+  runCleanup();
+  
+  // Run cleanup every 6 hours
+  setInterval(() => {
+    runCleanup();
+  }, 6 * 60 * 60 * 1000); // 6 hours
+  
+  console.log('✅ Temp files cleanup job started (every 6 hours)');
+} catch (err) {
+  console.log('Temp files cleanup job not available:', err.message);
+}
+
+// Start scheduled backup job for database
+try {
+  const backupJob = await import('./utils/backupJob.js');
+  if (backupJob.default && typeof backupJob.default.start === 'function') {
+    backupJob.default.start();
+    console.log('✅ Database backup job started');
+  }
+} catch (err) {
+  console.log('Database backup job not available:', err.message);
+}

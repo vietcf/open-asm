@@ -1,0 +1,610 @@
+/* ========== MINIMAL CUSTOM CSS - AdminLTE 4 Compatible ========== */
+/* Cache buster: 2025-01-20 10:45:00 - Minimal custom styles for AdminLTE 4 */
+
+/* ========== UNIFIED PLACEHOLDER STYLE (ALL fields, native + select2) ========== */
+/* One color, one italic style, everywhere: plain text inputs/textareas
+   (native ::placeholder) and select2's own placeholder span (which isn't
+   a real ::placeholder, so it needs its own matching rule). */
+.form-control::placeholder,
+textarea.form-control::placeholder,
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__placeholder,
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__placeholder,
+.select2-container--bootstrap-5 .select2-search--inline .select2-search__field::placeholder {
+  color: #6c757d !important;
+  font-style: italic !important;
+  opacity: 1 !important;
+}
+
+/* ========== DETAIL MODAL STYLES ========== */
+/* Canonical layout for every "Show/Detail" modal's body: a definition list
+   with label/value pairs, one pair per row, consistent spacing and a
+   subtle divider so long lists of fields stay readable. */
+.detail-dl {
+  margin-bottom: 0;
+}
+.detail-dl > dt,
+.detail-dl > dd {
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 0;
+}
+.detail-dl > dt {
+  font-weight: 600;
+  color: #495057;
+}
+.detail-dl > dd {
+  word-break: break-word;
+}
+.detail-dl > dt:last-of-type,
+.detail-dl > dd:last-of-type {
+  border-bottom: none;
+}
+
+/* ========== SYSTEM LIST STYLES ========== */
+/* IP hover tooltip styling */
+.ip-hover-link {
+  cursor: pointer;
+  border-bottom: 1px dotted #007bff;
+  text-decoration: none;
+}
+
+.ip-hover-link:hover {
+  text-decoration: none;
+  border-bottom: 1px dotted #0056b3;
+}
+
+/* Custom tooltip styling for better readability */
+.ip-hover-link[title] {
+  position: relative;
+}
+
+/* Ensure tooltips are visible above modals */
+.modal .ip-hover-link[title] {
+  z-index: 1060;
+}
+
+/* ========== SELECT2 SINGLE SELECT STYLING ========== */
+/* AdminLTE 4 compatible Select2 single select styling */
+
+/* Container styling */
+.select2-container--bootstrap-5 {
+  width: 100% !important;
+}
+
+/* Single select styling - match Bootstrap 5 form-select */
+.select2-container--bootstrap-5 .select2-selection--single {
+  height: 38px !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 0.375rem !important;
+  background-color: #fff !important;
+  display: flex !important;
+  align-items: center !important;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+  padding: 0 !important;
+  position: relative !important;
+}
+
+/* Single select hover state */
+.select2-container--bootstrap-5 .select2-selection--single:hover {
+  border-color: #86b7fe !important;
+}
+
+/* Single select focus state */
+.select2-container--bootstrap-5.select2-container--focus .select2-selection--single {
+  border-color: #86b7fe !important;
+  outline: 0 !important;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+}
+
+/* Rendered text styling - match Bootstrap 5 form-select */
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+  color: #495057 !important;
+  line-height: 1.5 !important;
+  padding: 0.375rem 3rem 0.375rem 0.75rem !important;
+  display: flex !important;
+  align-items: center !important;
+  height: 100% !important;
+    width: 100% !important;
+  vertical-align: middle !important;
+  font-size: 1rem !important;
+}
+
+/* Arrow styling */
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
+  height: 36px !important;
+  position: absolute !important;
+  top: 1px !important;
+  right: 1px !important;
+  width: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow b {
+  border-color: #6c757d transparent transparent transparent !important;
+  border-style: solid !important;
+  border-width: 5px 4px 0 4px !important;
+  height: 0 !important;
+  left: 50% !important;
+  margin-left: -4px !important;
+  margin-top: -2px !important;
+  position: absolute !important;
+  top: 50% !important;
+  width: 0 !important;
+}
+
+/* Clear button styling - positioned on the right */
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__clear {
+  color: #6c757d !important;
+  cursor: pointer !important;
+  position: absolute !important;
+  right: 30px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  font-weight: bold !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 20px !important;
+  width: 20px !important;
+  font-size: 16px !important;
+  z-index: 10 !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__clear:hover {
+  color: #dc3545 !important;
+}
+
+/* Dropdown styling */
+.select2-dropdown {
+  border: 1px solid #ced4da !important;
+  border-radius: 0.375rem !important;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+  background-color: #fff !important;
+}
+
+/* Search input in dropdown */
+.select2-search--dropdown .select2-search__field {
+  border: 1px solid #ced4da !important;
+  border-radius: 0.375rem !important;
+  padding: 0.375rem 0.75rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  color: #495057 !important;
+  background-color: #fff !important;
+}
+
+.select2-search--dropdown .select2-search__field:focus {
+  border-color: #86b7fe !important;
+  outline: 0 !important;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+}
+
+/* Option styling */
+.select2-results__option {
+  padding: 0.5rem 0.75rem !important;
+  color: #495057 !important;
+  font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+}
+
+.select2-results__option--highlighted {
+  background-color: #0d6efd !important;
+  color: #fff !important;
+}
+
+.select2-results__option--selected {
+  background-color: #e9ecef !important;
+  color: #495057 !important;
+}
+
+/* Loading state */
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered .select2-selection__placeholder {
+  color: #6c757d !important;
+}
+
+/* Disabled state */
+.select2-container--bootstrap-5.select2-container--disabled .select2-selection--single {
+  background-color: #e9ecef !important;
+  color: #6c757d !important;
+  cursor: not-allowed !important;
+  opacity: 0.65 !important;
+}
+
+/* ========== SELECT2 MULTI-SELECT STYLING ========== */
+/* AdminLTE 4 compatible Select2 multi-select styling */
+
+/* Multi-select container - match Bootstrap 5 form-select exactly */
+.select2-container--bootstrap-5 .select2-selection--multiple {
+  height: 38px !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 0.375rem !important;
+  background-color: #fff !important;
+  padding: 0.375rem 0.75rem !important;
+    display: flex !important;
+    align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 0.25rem !important;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+    overflow: hidden !important;
+}
+
+/* Multi-select hover state */
+.select2-container--bootstrap-5 .select2-selection--multiple:hover {
+  border-color: #86b7fe !important;
+}
+
+/* Multi-select focus state */
+.select2-container--bootstrap-5.select2-container--focus .select2-selection--multiple {
+  border-color: #86b7fe !important;
+  outline: 0 !important;
+  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
+}
+
+/* Rendered container for multi-select - match Bootstrap 5 form-select exactly */
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered {
+    display: flex !important;
+    align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 0.25rem !important;
+  width: auto !important;
+  min-width: 0 !important;
+    padding: 0 !important;
+  margin: 0 !important;
+  list-style: none !important;
+  height: 100% !important;
+  vertical-align: middle !important;
+  flex-direction: row !important;
+    overflow: hidden !important;
+  flex-shrink: 0 !important;
+}
+  
+/* Individual choice styling - match form-select height */
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+  background-color: #0d6efd !important;
+  border: 1px solid #0d6efd !important;
+  border-radius: 0.25rem !important;
+  color: #fff !important;
+  padding: 0.25rem 0.5rem !important;
+  margin: 0 !important;
+  display: inline-flex !important;
+    align-items: center !important;
+  gap: 0.25rem !important;
+    font-size: 0.875rem !important;
+  line-height: 1.5 !important;
+  cursor: default !important;
+  flex-shrink: 0 !important;
+  order: 1 !important;
+  white-space: nowrap !important;
+  height: 24px !important;
+  max-height: 24px !important;
+}
+
+/* Choice hover effect */
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice:hover {
+  background-color: #0b5ed7 !important;
+  border-color: #0b5ed7 !important;
+}
+
+/* Remove button styling */
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
+  color: #fff !important;
+  cursor: pointer !important;
+  font-weight: bold !important;
+  margin-left: 0.25rem !important;
+  border: none !important;
+  background: none !important;
+  padding: 0 !important;
+  font-size: 16px !important;
+  line-height: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  width: 16px !important;
+  height: 16px !important;
+    border-radius: 50% !important;
+  transition: background-color 0.15s ease-in-out !important;
+}
+
+/* Remove button hover effect */
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: #fff !important;
+}
+
+/* Placeholder styling for multi-select - match Bootstrap 5 form-select exactly */
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__placeholder {
+    color: #6c757d !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 0 !important;
+    margin: 0 !important;
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+  height: 24px !important;
+  vertical-align: middle !important;
+  order: 1 !important;
+  white-space: nowrap !important;
+  max-height: 24px !important;
+}
+
+/* Search input in multi-select - match form-select height */
+.select2-container--bootstrap-5 .select2-search--inline {
+  display: inline-flex !important;
+  align-items: center !important;
+    flex: 1 !important;
+  min-width: 40px !important;
+  height: 24px !important;
+  max-height: 24px !important;
+  vertical-align: middle !important;
+  order: 2 !important;
+  flex-shrink: 1 !important;
+}
+
+.select2-container--bootstrap-5 .select2-search--inline .select2-search__field {
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+    color: #495057 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-size: 1rem !important;
+  line-height: 1.5 !important;
+    width: 100% !important;
+  min-width: 40px !important;
+  height: 24px !important;
+  max-height: 24px !important;
+  vertical-align: middle !important;
+}
+
+.select2-container--bootstrap-5 .select2-search--inline .select2-search__field::placeholder {
+    color: #6c757d !important;
+}
+
+/* Clear all button for multi-select - match form-select height */
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__clear {
+  color: #6c757d !important;
+  cursor: pointer !important;
+  font-weight: bold !important;
+  margin: 0 !important;
+  border: none !important;
+  background: none !important;
+  padding: 0.25rem 0.5rem !important;
+  border-radius: 0.25rem !important;
+  transition: all 0.15s ease-in-out !important;
+  font-size: 16px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+  order: 3 !important;
+  height: 24px !important;
+  max-height: 24px !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+}
+
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__clear:hover {
+  color: #dc3545 !important;
+  background-color: rgba(220, 53, 69, 0.1) !important;
+}
+
+/* Disabled state for multi-select */
+.select2-container--bootstrap-5.select2-container--disabled .select2-selection--multiple {
+  background-color: #e9ecef !important;
+  color: #6c757d !important;
+  cursor: not-allowed !important;
+  opacity: 0.65 !important;
+}
+
+.select2-container--bootstrap-5.select2-container--disabled .select2-selection--multiple .select2-selection__choice {
+  background-color: #6c757d !important;
+  border-color: #6c757d !important;
+  color: #fff !important;
+}
+
+.select2-container--bootstrap-5.select2-container--disabled .select2-selection--multiple .select2-selection__choice__remove {
+  display: none !important;
+}
+
+/* Multi-select dropdown specific styling */
+.select2-container--bootstrap-5 .select2-results__option[aria-selected="true"] {
+  background-color: #0d6efd !important;
+  color: #fff !important;
+}
+
+.select2-container--bootstrap-5 .select2-results__option[aria-selected="true"]:hover {
+  background-color: #0b5ed7 !important;
+  color: #fff !important;
+}
+
+/* ========== SELECT2 MULTI-SELECT AUTO-WRAP STYLING ========== */
+/* Auto-wrap and expand height for multi-selection - keep original colors */
+
+/* Multi-select container - auto-expand height
+   position:relative + padding-right reserves space so the clear (x) button
+   below can be pinned to the top-right corner instead of flowing as a flex
+   item — needed once the box grows to multiple lines. */
+.select2-container--bootstrap-5 .select2-selection--multiple {
+  height: auto !important;
+  min-height: 38px !important;
+  max-height: none !important;
+  overflow: visible !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  position: relative !important;
+  padding-right: 2rem !important;
+}
+
+/* Rendered container - flex-wrap for auto-wrap
+   (overrides height: 100%, width: auto and flex-shrink: 0 from the base
+   styling block above — those forced the list to size to fit all choices
+   on one row without ever shrinking, which is what prevented wrapping and
+   caused horizontal clipping instead) */
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: flex-start !important;
+  gap: 4px !important;
+  height: auto !important;
+  width: 100% !important;
+  flex-shrink: 1 !important;
+  overflow: visible !important;
+}
+
+/* Clear (x) button - pin to the top-right corner of the container instead
+   of flowing inline, since it otherwise gets pushed onto its own line once
+   the choices wrap to multiple rows. */
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__clear {
+  position: absolute !important;
+  top: 0.375rem !important;
+  right: 0.5rem !important;
+  order: initial !important;
+  z-index: 1 !important;
+}
+
+/* Individual choice styling - auto-wrap friendly, keep original colors */
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+  white-space: normal !important;
+  word-wrap: break-word !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: 24px !important;
+  flex-shrink: 0 !important;
+}
+
+/* Search input field styling - auto-wrap friendly
+   min-width kept small (not ~100-120px like the base rule above) so the
+   caret sits right after the last chip on its row instead of being forced
+   onto its own new line whenever that row has less than the min-width of
+   free space left. */
+.select2-container--bootstrap-5 .select2-search--inline .select2-search__field {
+  min-width: 40px !important;
+  height: auto !important;
+  min-height: 24px !important;
+  flex: 1 !important;
+}
+
+/* ========================================
+   SIDEBAR SCROLL FIX
+   ======================================== */
+/* AdminLTE constrains .sidebar-wrapper to a fixed height
+   (100vh minus header height) via .layout-fixed but never sets
+   overflow-y, so on short viewports the menu content silently
+   spills out below the sidebar instead of scrolling. */
+.app-sidebar .sidebar-wrapper {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+/* ========================================
+   FOOTER STYLING
+   ======================================== */
+
+.app-footer {
+  background-color: var(--bs-body-bg) !important;
+  color: var(--bs-secondary-color) !important;
+  border-top: 1px solid var(--bs-border-color) !important;
+  padding: 1rem !important;
+  margin-top: auto !important;
+}
+
+.app-footer .container-fluid {
+  padding: 0 20px !important;
+}
+
+.app-footer .text-muted {
+  color: var(--bs-secondary-color) !important;
+  font-size: 14px !important;
+  line-height: 1.5 !important;
+}
+
+.app-footer strong {
+  color: var(--bs-body-color) !important;
+  font-weight: 600 !important;
+}
+
+.app-footer small {
+  color: var(--bs-secondary-color) !important;
+  font-size: 12px !important;
+}
+
+.app-footer i {
+  margin-right: 5px !important;
+  opacity: 0.8 !important;
+}
+
+
+/* Responsive footer */
+@media (max-width: 768px) {
+  .app-footer .col-md-6 {
+    text-align: center !important;
+    margin-bottom: 10px !important;
+  }
+  
+  .app-footer .text-end {
+    text-align: center !important;
+  }
+}
+
+/* ========== MODAL BUTTONS RESPONSIVE STYLES ========== */
+/* Common responsive styles for all modal buttons (Add/Edit IP, Subnet, Domain) */
+
+/* Mobile responsive for modal buttons - Force override */
+@media (max-width: 991.98px) {
+  .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  .modal-footer .btn,
+  .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  .modal-footer .btn:first-child,
+  .modal-footer button:first-child {
+    order: 2 !important;
+  }
+  
+  .modal-footer .btn:last-child,
+  .modal-footer button:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  .modal-footer .btn.btn-secondary,
+  .modal-footer .btn.btn-primary,
+  .modal-footer .btn.btn-outline-secondary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+
+/* Client-side column sort toggle (see custom.js) */
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.sortable-th:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+.sort-icon {
+  font-size: 0.75em;
+}
+
+

@@ -1,0 +1,209 @@
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item"><a href="/system/component">Component List</a></li>
+          <li class="breadcrumb-item active">Edit Component</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main content -->
+<section class="app-content">
+  <div class="container-fluid">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 col-md-10 col-sm-12">
+      <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Edit Component</h5>
+        </div>
+        <form id="editComponentForm" action="/system/component/<%= component.id %>/edit" method="POST">
+          <div class="card-body">
+            <div class="mb-3">
+              <label class="form-label">Component Name <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" value="<%= component.name %>" placeholder="Enter component name" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Description</label>
+              <textarea name="description" class="form-control" rows="4" placeholder="Please provide the following information: 1) What business functions/features does this component provide? 2) What components does it include? 3) Who are the target users of this component?"><%= component.description || '' %></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">System <span class="text-danger">*</span></label>
+              <select id="system-select" name="system_id" class="form-select" required>
+                <% if (component.system_id && component.system_name) { %>
+                  <option value="<%= component.system_id %>" selected><%= component.system_name %></option>
+                <% } %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">App Type</label>
+              <select name="app_type" class="form-select" data-placeholder="Select app type">
+                <option value="">-- Select App Type --</option>
+                <% if (typeof appTypeOptions !== 'undefined' && Array.isArray(appTypeOptions)) { %>
+                  <% appTypeOptions.forEach(function(opt) { %>
+                    <option value="<%= opt.id || opt.value %>" <%= component.app_type === (opt.id || opt.value) ? 'selected' : '' %>><%= opt.text || opt.label %></option>
+                  <% }) %>
+                <% } else { %>
+                  <option value="web" <%= component.app_type === 'web' ? 'selected' : '' %>>Web App</option>
+                  <option value="mobile" <%= component.app_type === 'mobile' ? 'selected' : '' %>>Mobile App</option>
+                  <option value="api" <%= component.app_type === 'api' ? 'selected' : '' %>>API</option>
+                  <option value="service" <%= component.app_type === 'service' ? 'selected' : '' %>>Service</option>
+                  <option value="database" <%= component.app_type === 'database' ? 'selected' : '' %>>Database</option>
+                <% } %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">FQDN / Domain / IP / URL (comma separated)</label>
+              <textarea name="fqdn" class="form-control" rows="3" placeholder="Example: http://domain:8443, https://domain.com, http://192.168.1.3:8443, ..."><%= Array.isArray(component.fqdn) ? component.fqdn.join(', ') : (component.fqdn || '') %></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Contacts</label>
+              <select id="contact-select" name="contacts[]" class="form-select" multiple data-placeholder="Select contacts">
+                <% if (component.contacts && Array.isArray(component.contacts)) { %>
+                  <% component.contacts.forEach(function(c) { %>
+                    <option value="<%= c.id || c %>" selected>
+                      <%= c.name || c.email || c.id || c %>
+                    </option>
+                  <% }); %>
+                <% } %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">IP Addresses</label>
+              <select id="ip-select" name="ips[]" class="form-select" multiple data-placeholder="Select IP addresses">
+               <% if (component.ips && Array.isArray(component.ips)) { %>
+                 <% component.ips.forEach(function(ip) { %>
+                   <% if (ip && typeof ip === 'object' && (ip.ip_address || ip.ip)) { %>
+                     <option value="<%= ip.id %>" selected><%= ip.ip_address || ip.ip %></option>
+                   <% } else if (ip) { %>
+                     <option value="<%= ip %>" selected><%= ip %></option>
+                   <% } %>
+                 <% }); %>
+               <% } %>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Tags</label>
+              <select id="tag-select" name="tags[]" class="form-select" multiple data-placeholder="Select tags">
+                <% if (component.tags && Array.isArray(component.tags)) { %>
+                  <% component.tags.filter(function(tag) { return tag && tag.id && tag.name; }).forEach(function(tag) { %>
+                    <option value="<%= tag.id %>" selected><%= tag.name %></option>
+                  <% }); %>
+                <% } %>
+              </select>
+            </div>
+          </div>
+          <div class="card-footer d-flex justify-content-end">
+            <a href="/system/component" class="btn btn-secondary btn-sm me-2">Cancel</a>
+            <button type="submit" class="btn btn-primary btn-sm">Update Component</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+/* Match Add IP Address modal: stack action buttons full-width on mobile,
+   with the primary action above Cancel. */
+@media (max-width: 991.98px) {
+  .card-footer.d-flex.justify-content-end {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    align-items: stretch !important;
+  }
+  .card-footer.d-flex.justify-content-end .btn {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  .card-footer.d-flex.justify-content-end .btn:first-child {
+    order: 2 !important;
+  }
+  .card-footer.d-flex.justify-content-end .btn:last-child {
+    order: 1 !important;
+  }
+}
+</style>
+
+<script src="/vendor/jquery-3.6.0.min.js"></script>
+<link href="/css/select2.min.css" rel="stylesheet" />
+<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
+<script src="/vendor/select2.min.js"></script>
+<script src="/vendor/bootstrap.min.js"></script>
+
+<script>
+  window.selectedTags = <%- JSON.stringify((component.tags || []).map(t => t && t.id && t.name ? {id: t.id, name: t.name} : t)) %>;
+</script>
+
+<script>
+  $(function() {
+    $('#system-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select system',
+      allowClear: true,
+      width: '100%',
+      ajax: {
+        url: '/system/api/system',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      }
+    });
+    $('select[name="app_type"]').select2({
+      theme: 'bootstrap-5',
+      placeholder: 'Select app type',
+      allowClear: true,
+      width: '100%'
+    });
+    $('#contact-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: $('#contact-select').data('placeholder'),
+      allowClear: true,
+      width: '100%',
+      ajax: {
+        url: '/organize/api/contact',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      }
+    });
+    $('#ip-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: $('#ip-select').data('placeholder'),
+      allowClear: true,
+      width: '100%',
+      ajax: {
+        url: '/network/api/ip-addresses',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      }
+    });
+    $('#tag-select').select2({
+      theme: 'bootstrap-5',
+      placeholder: $('#tag-select').data('placeholder'),
+      allowClear: true,
+      width: '100%',
+      ajax: {
+        url: '/organize/api/tag',
+        dataType: 'json',
+        delay: 250,
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data }),
+        cache: true
+      }
+    });
+    // Selected tags are rendered as <option> in EJS; no AJAX append needed.
+  });
+</script>

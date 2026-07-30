@@ -1,0 +1,5 @@
+# wait-for-it.sh runs inside a Linux container and needs a working
+# #!/usr/bin/env bash shebang — force LF regardless of core.autocrlf on
+# checkout, otherwise Windows clones silently ship a CRLF-corrupted copy
+# that fails at container startup with "bash\r: No such file or directory".
+*.sh text eol=lf

@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+  <!--begin::Head-->
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title><%= siteName %> | Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <!--begin::Fonts-->
+    <link rel="stylesheet" href="/css/source-sans-3.css" />
+    <!--end::Fonts-->
+    <!--begin::Third Party Plugin(Bootstrap Icons)-->
+    <link rel="stylesheet" href="/css/bootstrap-icons.min.css" />
+    <!--end::Third Party Plugin(Bootstrap Icons)-->
+    <!--begin::Required Plugin(AdminLTE)-->
+    <link rel="stylesheet" href="<%= cssPath %>adminlte.css" />
+    <!--end::Required Plugin(AdminLTE)-->
+    <style>
+      body.login-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f4f6f9;
+        font-family: var(--bs-body-font-family);
+      }
+      .login-shell {
+        width: 100%;
+        max-width: 420px;
+        margin: 2rem;
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.15);
+        background: #fff;
+      }
+      .login-form-panel {
+        padding: 2.75rem 2.5rem;
+      }
+      .login-form-panel h2 {
+        font-weight: 700;
+        margin-bottom: 1.5rem;
+      }
+      .login-form-panel .form-control {
+        height: 3rem;
+        border-radius: 0.5rem;
+      }
+      .login-form-panel .input-group-text {
+        border-radius: 0.5rem;
+        background: transparent;
+        border-left: none;
+        color: #adb5bd;
+      }
+      .login-form-panel .input-group .form-control {
+        border-right: none;
+      }
+      .login-form-panel .input-group:focus-within .form-control,
+      .login-form-panel .input-group:focus-within .input-group-text {
+        border-color: #86b7fe;
+      }
+      .login-form-panel .btn-primary {
+        height: 3rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+      }
+      .login-form-panel .forgot-link {
+        font-size: 0.9rem;
+      }
+      @media (max-width: 767.98px) {
+        .login-shell {
+          margin: 1rem;
+        }
+        .login-form-panel {
+          padding: 2rem 1.75rem;
+        }
+      }
+      .auth-method-toggle {
+        display: flex;
+        border: 1px solid #dee2e6;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+      }
+      .auth-method-toggle button {
+        flex: 1 1 0;
+        border: none;
+        background: #fff;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #6c757d;
+        cursor: pointer;
+      }
+      .auth-method-toggle button.active {
+        background: #0d6efd;
+        color: #fff;
+      }
+    </style>
+  </head>
+  <!--end::Head-->
+  <!--begin::Body-->
+  <body class="login-page">
+    <div class="login-shell">
+      <!--begin::Form panel-->
+      <div class="login-form-panel">
+        <h2>Sign In</h2>
+        <% if (errorMessage) { %>
+          <div class="alert alert-danger py-2" role="alert">
+            <%= errorMessage %>
+          </div>
+        <% } %>
+        <% const initialMethod = (typeof selectedMethod !== 'undefined' && selectedMethod === 'ldap') ? 'ldap' : 'local'; %>
+        <form action="/login" method="post" id="loginForm" novalidate>
+          <% if (typeof ldapEnabled !== 'undefined' && ldapEnabled) { %>
+          <!-- Cosmetic only: the server always determines the real auth method
+               from the account's own record, regardless of this toggle. It
+               exists so users know which credentials (local vs. AD) they're
+               about to type in. Hidden entirely when LDAP_ENABLED is off. -->
+          <div class="auth-method-toggle" role="group" aria-label="Login method">
+            <button type="button" class="<%= initialMethod === 'local' ? 'active' : '' %>" data-method="local" id="methodLocalBtn">Local Account</button>
+            <button type="button" class="<%= initialMethod === 'ldap' ? 'active' : '' %>" data-method="ldap" id="methodLdapBtn">LDAP (AD)</button>
+          </div>
+          <input type="hidden" name="loginMethod" id="loginMethod" value="<%= initialMethod %>" />
+          <% } %>
+          <div class="mb-3">
+            <label class="form-label" for="username" id="usernameLabel"><%= initialMethod === 'ldap' ? 'AD Username' : 'Username' %></label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-person"></i></span>
+              <input type="text" id="username" name="username" class="form-control" placeholder="<%= initialMethod === 'ldap' ? 'Enter your AD username' : 'Enter your username' %>" autofocus required />
+            </div>
+            <div class="invalid-feedback d-block d-none" id="usernameError">Please enter your username.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="password">Password</label>
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+              <input type="password" id="password" name="password" class="form-control" placeholder="Enter your password" required />
+            </div>
+            <div class="invalid-feedback d-block d-none" id="passwordError">Please enter your password.</div>
+          </div>
+          <div class="text-end mb-3">
+            <a href="forgot-password.html" class="forgot-link text-decoration-none">Forgot password?</a>
+          </div>
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary">Sign In</button>
+          </div>
+        </form>
+      </div>
+      <!--end::Form panel-->
+    </div>
+    <!-- /.login-shell -->
+    <!--begin::Required Plugin(popperjs for Bootstrap 5)-->
+    <script src="/vendor/popper.min.js"></script>
+    <!--end::Required Plugin(popperjs for Bootstrap 5)-->
+    <!--begin::Required Plugin(Bootstrap 5)-->
+    <script src="/vendor/bootstrap.min.js"></script>
+    <!--end::Required Plugin(Bootstrap 5)-->
+    <script>
+      document.getElementById('loginForm').addEventListener('submit', function (e) {
+        const username = document.getElementById('username');
+        const password = document.getElementById('password');
+        const usernameError = document.getElementById('usernameError');
+        const passwordError = document.getElementById('passwordError');
+
+        const usernameEmpty = username.value.trim() === '';
+        const passwordEmpty = password.value.trim() === '';
+
+        usernameError.classList.toggle('d-none', !usernameEmpty);
+        username.classList.toggle('is-invalid', usernameEmpty);
+        passwordError.classList.toggle('d-none', !passwordEmpty);
+        password.classList.toggle('is-invalid', passwordEmpty);
+
+        if (usernameEmpty || passwordEmpty) {
+          e.preventDefault();
+        }
+      });
+
+      ['username', 'password'].forEach(function (id) {
+        document.getElementById(id).addEventListener('input', function () {
+          if (this.value.trim() !== '') {
+            this.classList.remove('is-invalid');
+            document.getElementById(id + 'Error').classList.add('d-none');
+          }
+        });
+      });
+
+      // Purely cosmetic: switches the label/placeholder so users know which
+      // credentials they're entering. The server ignores this value and
+      // always authenticates against the account's real configured method.
+      // The toggle markup itself is omitted server-side when LDAP_ENABLED is
+      // off, so guard against that here too.
+      var methodLocalBtn = document.getElementById('methodLocalBtn');
+      var methodLdapBtn = document.getElementById('methodLdapBtn');
+
+      if (methodLocalBtn && methodLdapBtn) {
+        var loginMethodInput = document.getElementById('loginMethod');
+        var usernameLabel = document.getElementById('usernameLabel');
+        var usernameInput = document.getElementById('username');
+
+        function setLoginMethod(method) {
+          loginMethodInput.value = method;
+          var isLdap = method === 'ldap';
+          methodLdapBtn.classList.toggle('active', isLdap);
+          methodLocalBtn.classList.toggle('active', !isLdap);
+          usernameLabel.textContent = isLdap ? 'AD Username' : 'Username';
+          usernameInput.placeholder = isLdap ? 'Enter your AD username' : 'Enter your username';
+        }
+
+        methodLocalBtn.addEventListener('click', function () { setLoginMethod('local'); });
+        methodLdapBtn.addEventListener('click', function () { setLoginMethod('ldap'); });
+      }
+    </script>
+  </body>
+  <!--end::Body-->
+</html>

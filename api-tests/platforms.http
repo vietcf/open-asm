@@ -1,0 +1,338 @@
+# ========================================
+# 🖥️ PLATFORMS API TESTS (MINIMAL)
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+# Environment: development (change in VS Code status bar)
+# ========================================
+
+### 0. Login to get JWT Token (Run this first!)
+# @name platformAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+# ========================================
+# 📋 BASIC PLATFORM CRUD OPERATIONS
+# ========================================
+
+### 1. Get All Platforms
+GET {{baseUrl}}/{{apiVersion}}/platforms
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+### 2. Get Platform by ID
+GET {{baseUrl}}/{{apiVersion}}/platforms/1
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+### 3. Create New Platform
+# @name createPlatform
+POST {{baseUrl}}/{{apiVersion}}/platforms
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+{
+  "name": "Test Platform",
+  "description": "Test platform for API testing"
+}
+
+### 4. Update Platform (Complete Update)
+PUT {{baseUrl}}/{{apiVersion}}/platforms/{{createPlatform.response.body.data.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+{
+  "name": "Test Platform Updated",
+  "description": "Updated test platform description"
+}
+
+### 5. Update Platform (Name Only)
+PUT {{baseUrl}}/{{apiVersion}}/platforms/{{createPlatform.response.body.data.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+{
+  "name": "Test Platform Name Only"
+}
+
+### 6. Update Platform (Description Only)
+PUT {{baseUrl}}/{{apiVersion}}/platforms/{{createPlatform.response.body.data.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+{
+  "description": "Updated description only"
+}
+
+### 7. Delete Platform
+DELETE {{baseUrl}}/{{apiVersion}}/platforms/{{createPlatform.response.body.data.id}}
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+# ========================================
+# 🔍 SEARCH & FIND OPERATIONS
+# ========================================
+
+### 8. Find Platform by Exact Name
+GET {{baseUrl}}/{{apiVersion}}/platforms/find?name=windows
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+### 9. Find Platform with Case Sensitivity Test
+GET {{baseUrl}}/{{apiVersion}}/platforms/find?name=windows server 2019
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+### 10. Find Platform - Multiple Results
+GET {{baseUrl}}/{{apiVersion}}/platforms/find?name=w
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+# ========================================
+# ❌ ERROR HANDLING TESTS
+# ========================================
+
+### 11. Get Non-existent Platform (404)
+GET {{baseUrl}}/{{apiVersion}}/platforms/99999
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+### 12. Find without Name Parameter (400)
+GET {{baseUrl}}/{{apiVersion}}/platforms/find
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+### 13. Find with Empty Name (400)
+GET {{baseUrl}}/{{apiVersion}}/platforms/find?name=
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+### 14. Create Platform with Invalid Data (400)
+POST {{baseUrl}}/{{apiVersion}}/platforms
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+{
+  "description": "Missing required name field"
+}
+
+### 15. Create Platform with Empty Name (400)
+POST {{baseUrl}}/{{apiVersion}}/platforms
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+{
+  "name": "",
+  "description": "Empty name should fail"
+}
+
+### 16. Create Platform with Duplicate Name (409)
+POST {{baseUrl}}/{{apiVersion}}/platforms
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+{
+  "name": "Windows Server 2019",
+  "description": "Duplicate name test"
+}
+
+### 17. Update Non-existent Platform (404)
+PUT {{baseUrl}}/{{apiVersion}}/platforms/99999
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+{
+  "name": "non-existent-platform"
+}
+
+### 18. Update Platform with Empty Body (400)
+PUT {{baseUrl}}/{{apiVersion}}/platforms/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+{}
+
+### 19. Update Platform with Duplicate Name (409)
+PUT {{baseUrl}}/{{apiVersion}}/platforms/1
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+{
+  "name": "linux"
+}
+
+### 20. Delete Non-existent Platform (404)
+DELETE {{baseUrl}}/{{apiVersion}}/platforms/99999
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+### 20.1. Create Platform for Delete-In-Use Test
+# @name platformInUse
+POST {{baseUrl}}/{{apiVersion}}/platforms
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+{
+  "name": "Platform In Use Test"
+}
+
+### 20.2. Create Device Referencing the Platform
+# @name deviceUsingPlatform
+POST {{baseUrl}}/{{apiVersion}}/devices
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+{
+  "name": "device for platform delete test",
+  "platform_id": {{platformInUse.response.body.data.id}}
+}
+
+### 20.3. Delete Platform In Use (Should Fail - 409)
+DELETE {{baseUrl}}/{{apiVersion}}/platforms/{{platformInUse.response.body.data.id}}
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+### 20.4. Cleanup - Delete the Referencing Device
+DELETE {{baseUrl}}/{{apiVersion}}/devices/{{deviceUsingPlatform.response.body.data.id}}
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+### 20.5. Cleanup - Delete Platform (Should Succeed Now)
+DELETE {{baseUrl}}/{{apiVersion}}/platforms/{{platformInUse.response.body.data.id}}
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+# ========================================
+# 🔒 AUTH & CONTENT-TYPE TESTS
+# ========================================
+
+### 20.6. Test Authentication (No Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/platforms
+
+### 20.7. Test Authentication (Invalid Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/platforms
+Authorization: Bearer invalid_token
+
+### 20.8. Test Content Type (Wrong Content Type - Should Fail)
+POST {{baseUrl}}/{{apiVersion}}/platforms
+Authorization: Bearer {{platformAuth.response.body.token}}
+Content-Type: text/plain
+
+{
+  "name": "Wrong Content Type Platform"
+}
+
+# ========================================
+# 🧪 ADVANCED PLATFORM TESTS
+# ========================================
+
+### 21. Create Platform with Minimal Data
+POST {{baseUrl}}/{{apiVersion}}/platforms
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+{
+  "name": "Minimal Platform"
+}
+
+### 22. Create Platform with Long Name
+POST {{baseUrl}}/{{apiVersion}}/platforms
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+{
+  "name": "Very Long Platform Name To Test Maximum Length Constraints In The API Validation Rules",
+  "description": "Testing maximum length constraints for platform names"
+}
+
+### 23. Update Platform with Null Description
+PUT {{baseUrl}}/{{apiVersion}}/platforms/2
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+{
+  "name": "Platform With Null Description",
+  "description": null
+}
+
+### 24. Find Platform with Special Characters
+GET {{baseUrl}}/{{apiVersion}}/platforms/find?name=Red Hat Enterprise Linux 8.5
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+### 25. Create Platform with Special Characters
+POST {{baseUrl}}/{{apiVersion}}/platforms
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{platformAuth.response.body.token}}
+
+{
+  "name": "macOS Monterey 12.6.1",
+  "description": "Apple macOS Monterey version 12.6.1 (Build: 21G217)"
+}
+
+# ========================================
+# ✅ BASIC PLATFORMS API TEST CHECKLIST
+# ========================================
+# 
+# BASIC CRUD OPERATIONS:
+# ⏳ GET /api/v1/platforms (get all platforms)
+# ⏳ GET /api/v1/platforms/:id (get platform by ID)
+# ⏳ POST /api/v1/platforms (create new platform)
+# ⏳ PUT /api/v1/platforms/:id (update platform)
+# ⏳ DELETE /api/v1/platforms/:id (delete platform)
+#
+# SEARCH & FIND:
+# ⏳ GET /api/v1/platforms/find?name=exact_name (find by exact name)
+#
+# API STRUCTURE NOTES:
+# ✅ Direct GET /api/v1/platforms endpoint exists
+# ✅ Find endpoint requires 'name' parameter
+# ✅ Response returns direct array/object (simple format)
+# ✅ Create response returns direct platform object
+#
+# FIELD VALIDATION:
+# ⏳ Required fields: name
+# ⏳ Optional fields: description
+# ⏳ Unique name constraint
+# ⏳ Name length validation
+#
+# ERROR HANDLING:
+# ⏳ 400 - Invalid data/missing fields
+# ⏳ 401 - Unauthorized
+# ⏳ 404 - Platform not found
+# ⏳ 409 - Duplicate name/conflict
+# ⏳ 500 - Internal server error
+#
+# PARTIAL UPDATE TESTS:
+# ⏳ Update name only
+# ⏳ Update description only
+# ⏳ Update with null description
+#
+# SPECIAL CASES:
+# ⏳ Case sensitivity in find
+# ⏳ Special characters in names
+# ⏳ Long name validation
+# ⏳ Minimal required data
+#
+# ========================================

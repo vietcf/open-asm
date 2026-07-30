@@ -1,0 +1,21 @@
+# Exclude EJS template files from ESLint
+public/html/**/*.ejs
+public/**/*.ejs
+
+# Exclude other non-JS files
+*.ejs
+*.html
+*.css
+*.scss
+*.less
+
+# Exclude directories
+node_modules/
+public/
+logs/
+migrations/
+uploads/
+pgdata/
+ssl/
+docker-images/
+docker-compose/

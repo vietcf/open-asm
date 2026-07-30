@@ -1,0 +1,4 @@
+<%- include('ip_address_list', { ipList, page, pageSize, totalPages }) %>
+                    <td><%= ip.ip_address %></td>
+                            <dd class="col-sm-8"><%= ip.ip_address %></dd>
+                              <input type="text" class="form-control form-control-sm" id="editIpAddress-<%= ip.id %>" name="address" value="<%= ip.ip_address %>" readonly>

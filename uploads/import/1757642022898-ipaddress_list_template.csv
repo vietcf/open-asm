@@ -1,0 +1,3 @@
+"IPAddress (Require, comma-separated if multiple)",Description,Tag (comma-separated if multiple),"Contact (Email, comma-separated if multiple)",System Name (comma-separated if multiple)
+192.168.192.101,MGMT: MGMT Network + Firewall,"REST-Test-Tag,PCI-CDE","toannn1.ho,longhv.ho","Test System Minimal,Quản lý công việc"
+192.168.1.103,MGMT: MGMT Network,REST-Test-Tag,toannn1.ho,

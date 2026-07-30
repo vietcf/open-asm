@@ -1,0 +1,886 @@
+
+<%
+// ==========================================
+// HELPER FUNCTIONS
+// ==========================================
+
+// Helper function to build pagination URL with all query parameters
+function buildPaginationUrl(targetPage) {
+  const params = new URLSearchParams();
+  
+  // Add page
+  params.set('page', targetPage);
+  
+  // Add search if exists
+  if (typeof search !== 'undefined' && search) {
+    params.set('search', search);
+  }
+  
+  // Add pageSize if exists
+  if (typeof pageSize !== 'undefined' && pageSize) {
+    params.set('pageSize', pageSize);
+  }
+
+  // Preserve active filters
+  if (typeof filterUnitId !== 'undefined' && filterUnitId) {
+    params.set('unit_id', filterUnitId);
+  }
+  if (typeof filterPosition !== 'undefined' && filterPosition) {
+    params.set('position', filterPosition);
+  }
+
+  return '?' + params.toString();
+}
+%>
+
+<!-- ========================================== -->
+<!-- MAIN CONTENT -->
+<!-- ========================================== -->
+
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">Contact List</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main content -->
+<div class="app-content">
+  <div class="container-fluid">
+    <!-- ========================================== -->
+    <!-- SEARCH AND FILTER SECTION -->
+    <!-- ========================================== -->
+    
+    <!-- Search and Page Size Row -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end align-items-center gap-2">
+          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/organize/contact">
+            <!-- Hidden inputs to preserve filter values -->
+            <input type="hidden" name="page" value="1">
+            <% if (typeof filterUnitId !== 'undefined' && filterUnitId) { %>
+              <input type="hidden" name="unit_id" value="<%= filterUnitId %>">
+            <% } %>
+            <% if (typeof filterPosition !== 'undefined' && filterPosition) { %>
+              <input type="hidden" name="position" value="<%= filterPosition %>">
+            <% } %>
+
+            <div class="input-group input-group-sm" style="width: 250px;">
+              <input class="form-control form-control-sm" type="search" name="search" placeholder="Search Contact Name..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+              <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
+            </div>
+            <div class="d-flex align-items-center gap-1">
+              <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+              <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
+                <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
+                  <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
+                <% }) %>
+              </select>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- ACTION BUTTONS SECTION -->
+    <!-- ========================================== -->
+    
+    <!-- Action Buttons -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end gap-2">
+          <% if (hasPermission && hasPermission('contact.create')) { %>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addContactModal">
+              <i class="bi bi-plus"></i> Add Contact
+            </button>
+          <% } %>
+          <%
+            const hasActiveContactFilter = !!(
+              (filterUnitId && filterUnitId !== '') ||
+              (filterPosition && filterPosition !== '')
+            );
+          %>
+          <button type="button" class="btn btn-sm <%= hasActiveContactFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterContactModal">
+            <i class="bi bi-funnel<%= hasActiveContactFilter ? '-fill' : '' %>"></i> Filter<%= hasActiveContactFilter ? ' (Filtered)' : '' %>
+          </button>
+          <% if (hasPermission && hasPermission('contact.create')) { %>
+            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importContactModal">
+              <i class="bi bi-upload"></i> Import Contact
+            </button>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- FILTER DATA AND FLASH MESSAGES -->
+    <!-- ========================================== -->
+    
+    <!-- Flash Messages -->
+    <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+      <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
+        <i class="bi bi-check-circle me-2"></i><%= successMessage %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <script>
+        // Auto-hide success message after 5 seconds
+        setTimeout(function() {
+          const alert = document.getElementById('successAlert');
+          if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+          }
+        }, 5000);
+      </script>
+    <% } %>
+    
+    <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+      <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
+        <i class="bi bi-exclamation-triangle me-2"></i><%= errorMessage %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <script>
+        // Auto-hide error message after 8 seconds (longer for errors)
+        setTimeout(function() {
+          const alert = document.getElementById('errorAlert');
+          if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+          }
+        }, 8000);
+      </script>
+    <% } %>
+
+    <!-- ========================================== -->
+    <!-- CONTACT LIST TABLE -->
+    <!-- ========================================== -->
+    
+    <!-- Contact List Table -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title mb-0">Contact List</h3>
+          </div>
+          <div class="card-body table-responsive p-0" style="overflow-x: auto;">
+            <table class="table table-hover" id="contactTable">
+              <thead>
+                <tr>
+                  <th>No.</th>
+                  <th data-sort-type="text">Name</th>
+                  <th data-sort-type="text">Email</th>
+                  <th data-sort-type="text">Phone</th>
+                  <th data-sort-type="text">Position</th>
+                  <th data-sort-type="text">Organization</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (contactList && contactList.length > 0) { %>
+                  <% contactList.forEach(function(contact, idx) { %>
+                    <tr>
+                      <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                      <td><%= contact.name %></td>
+                      <td><%= contact.email || '-' %></td>
+                      <td><%= contact.phone || '-' %></td>
+                      <td><%= contact.position || '-' %></td>
+                      <td>
+                        <% if (contact.unit_name) { %>
+                          <span class="org-tooltip" data-unit-id="<%= contact.unit_id %>" title="Loading..." style="cursor: help;"><%= contact.unit_name %></span>
+                        <% } else { %>
+                          -
+                        <% } %>
+                      </td>
+                      <td class="text-end">
+                        <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showContactDetail('<%= contact.id %>')" data-contact='<%= JSON.stringify(contact) %>'><i class="bi bi-eye"></i></button>
+                        <% if (hasPermission('contact.update')) { %>
+                          <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editContactModal" data-contact-id="<%= contact.id %>" data-contact-name="<%= contact.name %>" data-contact-email="<%= contact.email || '' %>" data-contact-position="<%= contact.position || '' %>" data-contact-phone="<%= contact.phone || '' %>" data-contact-unit-id="<%= contact.unit_id || '' %>" data-contact-description="<%= contact.description || '' %>" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                        <% } %>
+                        <% if (hasPermission('contact.delete')) { %>
+                          <form action="/organize/contact/<%= contact.id %>?_method=DELETE" method="POST" style="display:inline !important;" onsubmit="return confirmDeleteContact(this, '<%= contact.name %>')">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Delete" style="display: inline-block !important; visibility: visible !important; position: relative !important;">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </form>
+                        <% } %>
+                      </td>
+                    </tr>
+                  <% }) %>
+                <% } else { %>
+                  <tr><td colspan="7" class="text-center">No contacts found</td></tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+          <div class="card-footer clearfix">
+            <div class="d-flex justify-content-between align-items-center px-3 py-2">
+              <div>
+                <% 
+                  // Calculate pagination range
+                  const contactStartPage = Math.max(1, page - 2);
+                  const contactEndPage = Math.min(totalPages, page + 2);
+                %>
+                <span>Showing <%= startItem %> - <%= endItem %> of <%= totalCount %> contacts</span>
+              </div>
+              <ul class="pagination pagination-sm m-0 float-end">
+                <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                  <a class="page-link" href="<%= buildPaginationUrl(page - 1) %>" tabindex="-1">Previous</a>
+                </li>
+                <% if (contactStartPage > 1) { %>
+                  <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(1) %>">1</a></li>
+                  <% if (contactStartPage > 2) { %>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <% } %>
+                <% } %>
+                <% for (let i = contactStartPage; i <= contactEndPage; i++) { %>
+                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="<%= buildPaginationUrl(i) %>"><%= i %></a></li>
+                <% } %>
+                <% if (contactEndPage < totalPages) { %>
+                  <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(totalPages) %>"><%= totalPages %></a></li>
+                <% } %>
+                <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                  <a class="page-link" href="<%= buildPaginationUrl(page + 1) %>">Next</a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODALS SECTION -->
+<!-- ========================================== -->
+
+<!-- Contact Detail Modal -->
+<div class="modal fade" id="contactDetailModal" tabindex="-1" aria-labelledby="contactDetailModalLabel">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="contactDetailModalLabel">Contact Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="contactDetailContent">
+        <!-- Content will be loaded here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Contact Modal -->
+<div class="modal fade" id="addContactModal" tabindex="-1" aria-labelledby="addContactModalLabel">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addContactModalLabel">Add Contact</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="/organize/contact" method="POST">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="contactName" class="form-label">Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="contactName" name="name" placeholder="Enter contact name" required>
+          </div>
+          <div class="mb-3">
+            <label for="contactEmail" class="form-label">Email <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" id="contactEmail" name="email" placeholder="Enter email address" required>
+          </div>
+          <div class="mb-3">
+            <label for="contactPosition" class="form-label">Position <span class="text-danger">*</span></label>
+            <select class="form-select" id="contactPosition" name="position" required>
+              <option value="">Select Position</option>
+              <% if (positionOptions && positionOptions.length > 0) { %>
+                <% positionOptions.forEach(function(position) { %>
+                  <option value="<%= position.value %>"><%= position.label %></option>
+                <% }) %>
+              <% } %>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="contactPhone" class="form-label">Phone</label>
+            <input type="text" class="form-control" id="contactPhone" name="phone" placeholder="Enter phone number">
+          </div>
+          <div class="mb-3">
+            <label for="contactUnit" class="form-label">Organization</label>
+            <select class="form-select" id="contactUnit" name="unit_id">
+              <option value="">Select Organization</option>
+              <% if (units && units.length > 0) { %>
+                <% units.forEach(function(unit) { %>
+                  <option value="<%= unit.id %>"><%= unit.name %></option>
+                <% }) %>
+              <% } %>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-end">
+          <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Add Contact</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Contact Modal -->
+<div class="modal fade" id="editContactModal" tabindex="-1" aria-labelledby="editContactModalLabel">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editContactModalLabel">Edit Contact</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editContactForm" action="" method="POST">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="editContactName" class="form-label">Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="editContactName" name="name" placeholder="Enter contact name" required>
+          </div>
+          <div class="mb-3">
+            <label for="editContactEmail" class="form-label">Email <span class="text-danger">*</span></label>
+            <input type="email" class="form-control" id="editContactEmail" name="email" placeholder="Enter email address" required>
+          </div>
+          <div class="mb-3">
+            <label for="editContactPosition" class="form-label">Position <span class="text-danger">*</span></label>
+            <select class="form-select" id="editContactPosition" name="position" required>
+              <option value="">Select Position</option>
+              <% if (positionOptions && positionOptions.length > 0) { %>
+                <% positionOptions.forEach(function(position) { %>
+                  <option value="<%= position.value %>"><%= position.label %></option>
+                <% }) %>
+              <% } %>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="editContactPhone" class="form-label">Phone</label>
+            <input type="text" class="form-control" id="editContactPhone" name="phone" placeholder="Enter phone number">
+          </div>
+          <div class="mb-3">
+            <label for="editContactDescription" class="form-label">Description</label>
+            <textarea class="form-control" id="editContactDescription" name="description" rows="3" placeholder="Enter contact description"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="editContactUnit" class="form-label">Organization</label>
+            <select class="form-select" id="editContactUnit" name="unit_id">
+              <option value="">Select Organization</option>
+              <% if (units && units.length > 0) { %>
+                <% units.forEach(function(unit) { %>
+                  <option value="<%= unit.id %>"><%= unit.name %></option>
+                <% }) %>
+              <% } %>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-end">
+          <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Update Contact</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Filter Contact Modal -->
+<div class="modal fade" id="filterContactModal" tabindex="-1" aria-labelledby="filterContactModalLabel">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="filterContactModalLabel">Filter Contacts</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="GET" action="/organize/contact" id="filterContactForm">
+        <input type="hidden" name="page" value="1">
+        <% if (typeof search !== 'undefined' && search) { %>
+          <input type="hidden" name="search" value="<%= search %>">
+        <% } %>
+        <% if (typeof pageSize !== 'undefined' && pageSize) { %>
+          <input type="hidden" name="pageSize" value="<%= pageSize %>">
+        <% } %>
+        <div class="modal-body">
+          <div class="row g-2">
+            <!-- Organization Filter -->
+            <div class="col-12 mb-2">
+              <label for="filterContactUnit" class="form-label">Organization</label>
+              <select class="form-select" id="filterContactUnit" name="unit_id">
+                <option value="">All Organizations</option>
+                <% if (units && units.length > 0) { %>
+                  <% units.forEach(function(unit) { %>
+                    <option value="<%= unit.id %>" <%= (typeof filterUnitId !== 'undefined' && String(filterUnitId) === String(unit.id)) ? 'selected' : '' %>><%= unit.name %></option>
+                  <% }) %>
+                <% } %>
+              </select>
+            </div>
+
+            <!-- Position Filter -->
+            <div class="col-12 mb-2">
+              <label for="filterContactPosition" class="form-label">Position</label>
+              <select class="form-select" id="filterContactPosition" name="position">
+                <option value="">All Positions</option>
+                <% if (positionOptions && positionOptions.length > 0) { %>
+                  <% positionOptions.forEach(function(position) { %>
+                    <option value="<%= position.value %>" <%= (typeof filterPosition !== 'undefined' && filterPosition === position.value) ? 'selected' : '' %>><%= position.label %></option>
+                  <% }) %>
+                <% } %>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-danger" id="clearFilterBtnContact">Clear All Filters</button>
+          <div>
+            <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Import Contact Modal -->
+<div class="modal fade" id="importContactModal" tabindex="-1" aria-labelledby="importContactModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="importContactModalLabel">Import Contacts</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="importContactForm" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label for="contactImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="file"
+                     class="form-control"
+                     id="contactImportFile"
+                     name="file"
+                     accept=".xlsx,.xls"
+                     required>
+              <a href="/organize/contact/template" class="btn btn-outline-info" download>
+                <i class="bi bi-download"></i> Download Template
+              </a>
+            </div>
+            <div class="form-text">Supported format: Excel (.xlsx, .xls). Maximum file size: 10MB</div>
+          </div>
+
+          <div class="mb-3">
+            <div class="alert alert-info">
+              <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
+              <ul class="mb-0">
+                <li>Click "Download Template" to get the Excel template with correct format</li>
+                <li>Fill the template with your contact data</li>
+                <li>Name, Email, and Position (Required, one per row) must not already exist</li>
+                <li>Phone, Org Unit, and Description are optional</li>
+                <li>Select your filled template file and validate before importing</li>
+              </ul>
+            </div>
+          </div>
+
+          <div id="contactImportProgress" class="progress mb-3" style="display: none;">
+            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+          </div>
+
+          <div id="contactImportResults" class="alert" style="display: none;"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning btn-sm" id="validateContactBtn" disabled>Validate File</button>
+        <button type="button" class="btn btn-success btn-sm" id="importContactBtn" style="display: none;">Import Contacts</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// JAVASCRIPT FUNCTIONS
+// ==========================================
+
+// Edit contact function
+function editContact(id, name, email, position, phone, unitId, description) {
+  document.getElementById('editContactForm').action = '/organize/contact/' + id + '?_method=PUT';
+  document.getElementById('editContactName').value = name;
+  document.getElementById('editContactEmail').value = email;
+  document.getElementById('editContactPhone').value = phone;
+  document.getElementById('editContactDescription').value = description || '';
+  $('#editContactPosition').val(position).trigger('change');
+  $('#editContactUnit').val(unitId || '').trigger('change');
+}
+
+$(function() {
+  // Position select2 - Bootstrap 5 theme
+  $('#contactPosition').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select position',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#addContactModal')
+  });
+  $('#editContactPosition').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select position',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#editContactModal')
+  });
+
+  // Organization select2 - Bootstrap 5 theme
+  $('#contactUnit').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select organization (optional)',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#addContactModal')
+  });
+  $('#editContactUnit').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select organization (optional)',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#editContactModal')
+  });
+
+  // Reset Add Contact form (and select2 fields) when modal is hidden
+  $('#addContactModal').on('hidden.bs.modal', function() {
+    $('#addContactModal').find('form')[0].reset();
+    $('#contactPosition, #contactUnit').val(null).trigger('change');
+  });
+
+  // Organization/Position filter select2 - Bootstrap 5 theme
+  $('#filterContactUnit').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'All Organizations',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterContactModal')
+  });
+  $('#filterContactPosition').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'All Positions',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterContactModal')
+  });
+
+  $('#clearFilterBtnContact').on('click', function() {
+    // Clear all select2 values
+    $('#filterContactUnit, #filterContactPosition').val(null).trigger('change');
+
+    // Close modal
+    $('#filterContactModal').modal('hide');
+
+    // Redirect to clean URL but preserve pageSize and search
+    const currentPageSize = $('select[name="pageSize"]').val() || '10';
+    const currentSearch = $('input[name="search"]').val() || '';
+    let cleanUrl = '/organize/contact';
+    const params = [];
+    if (currentPageSize && currentPageSize !== '10') params.push('pageSize=' + encodeURIComponent(currentPageSize));
+    if (currentSearch) params.push('search=' + encodeURIComponent(currentSearch));
+    if (params.length > 0) cleanUrl += '?' + params.join('&');
+    window.location.href = cleanUrl;
+  });
+
+  // ==========================================
+  // IMPORT CONTACT
+  // ==========================================
+  let selectedContactFile = null;
+
+  $(document).on('change', '#contactImportFile', function() {
+    selectedContactFile = this.files[0];
+    if (selectedContactFile) {
+      $('#validateContactBtn').prop('disabled', false);
+      $('#importContactBtn').hide();
+      $('#contactImportResults').hide();
+    } else {
+      $('#validateContactBtn').prop('disabled', true);
+      $('#importContactBtn').hide();
+    }
+  });
+
+  $(document).on('click', '#validateContactBtn', function() {
+    if (!selectedContactFile) {
+      alert('Please select a file first');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', selectedContactFile);
+
+    $('#contactImportProgress').show();
+    $('#contactImportResults').text('Validating file...');
+    $('.progress-bar').css('width', '30%');
+
+    $.ajax({
+      url: '/organize/contact/validate-import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      success: function(data) {
+        $('.progress-bar').css('width', '100%');
+        const resultsDiv = $('#contactImportResults');
+        const summary = data.summary || {};
+        if (summary.allPassed) {
+          resultsDiv.removeClass('alert-danger').addClass('alert-success')
+            .html(`<strong>Validation Complete!</strong><br>
+                   <small>Total: ${summary.totalRows}, Passed: ${summary.passedRows}, Failed: ${summary.failedRows}</small><br>
+                   <a href="${data.validation_file}" target="_blank">Download validation results</a>`);
+          $('#importContactBtn').show();
+        } else {
+          resultsDiv.removeClass('alert-success').addClass('alert-danger')
+            .html(`<strong>Validation Failed!</strong><br>
+                   <small>Total: ${summary.totalRows}, Passed: ${summary.passedRows}, Failed: ${summary.failedRows}</small><br>
+                   <a href="${data.validation_file}" target="_blank">Download validation results</a> to see errors.`);
+        }
+        resultsDiv.show();
+      },
+      error: function(xhr) {
+        $('.progress-bar').css('width', '100%').text('Validation Failed');
+        extractImportErrorMessage(xhr).then(function(msg) {
+          $('#contactImportResults').removeClass('alert-success').addClass('alert-danger')
+            .html('<strong>Validation Error!</strong><br>' + msg)
+            .show();
+        });
+      },
+      complete: function() {
+        $('#validateContactBtn').prop('disabled', false);
+        setTimeout(() => { $('#contactImportProgress').hide(); }, 2000);
+      }
+    });
+  });
+
+  $(document).on('click', '#importContactBtn', function() {
+    if (!selectedContactFile) {
+      alert('Please select a file first');
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', selectedContactFile);
+
+    $('#contactImportProgress').show();
+    $('#contactImportResults').text('Importing contacts...');
+    $('.progress-bar').css('width', '30%').text('Importing...');
+    $('#importContactBtn').prop('disabled', true);
+
+    $.ajax({
+      url: '/organize/contact/import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      success: function(data) {
+        $('#contactImportProgress .progress-bar').css('width', '100%').text('Import Complete');
+        const resultsDiv = $('#contactImportResults');
+        const summary = data.summary || {};
+        if (summary.failedRows > 0) {
+          resultsDiv.removeClass('alert-success').addClass('alert-danger')
+            .html(`<strong>Import Completed with Errors!</strong><br>
+                   <small>Total: ${summary.totalRows}, Success: ${summary.successRows}, Skipped: ${summary.skippedRows}, Failed: ${summary.failedRows}</small><br>
+                   <a href="${data.import_file}" target="_blank">Download import results</a><br>
+                   <small>Page will refresh to show updated data.</small>`);
+        } else {
+          resultsDiv.removeClass('alert-danger').addClass('alert-success')
+            .html(`<strong>Import Completed!</strong><br>
+                   <small>Total: ${summary.totalRows}, Success: ${summary.successRows}, Skipped: ${summary.skippedRows}</small><br>
+                   <a href="${data.import_file}" target="_blank">Download import results</a><br>
+                   <small>Page will refresh to show updated data.</small>`);
+        }
+        resultsDiv.show();
+        $('#importContactBtn').hide();
+        setTimeout(() => { window.location.reload(); }, 2500);
+      },
+      error: function(xhr) {
+        $('#contactImportProgress .progress-bar').css('width', '100%').text('Import Failed');
+        extractImportErrorMessage(xhr).then(function(msg) {
+          $('#contactImportResults').removeClass('alert-success').addClass('alert-danger')
+            .html('<strong>Import Error!</strong><br>' + msg)
+            .show();
+        });
+      },
+      complete: function() {
+        $('#importContactBtn').prop('disabled', false);
+        setTimeout(() => { $('#contactImportProgress').hide(); }, 2000);
+      }
+    });
+  });
+
+  $('#importContactModal').on('hidden.bs.modal', function() {
+    $('#importContactForm')[0].reset();
+    selectedContactFile = null;
+    $('#validateContactBtn').prop('disabled', true);
+    $('#importContactBtn').hide();
+    $('#contactImportProgress').hide();
+    $('#contactImportResults').hide();
+    $('.progress-bar').css('width', '0%').text('');
+  });
+});
+
+// Handle edit button click
+$(document).on('click', 'button[data-bs-target="#editContactModal"]', function() {
+  const id = $(this).data('contact-id');
+  const name = $(this).data('contact-name');
+  const email = $(this).data('contact-email');
+  const position = $(this).data('contact-position');
+  const phone = $(this).data('contact-phone');
+  const unitId = $(this).data('contact-unit-id');
+  const description = $(this).data('contact-description');
+  editContact(id, name, email, position, phone, unitId, description);
+});
+
+// Show contact detail
+// name/email/phone/position/description are user-editable free text not
+// HTML-stripped server-side — must be escaped before going into innerHTML.
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function showContactDetail(contactId) {
+  const button = document.querySelector(`button[onclick="showContactDetail('${contactId}')"]`);
+  const contactData = JSON.parse(button.getAttribute('data-contact'));
+
+  const modalElement = document.getElementById('contactDetailModal');
+  const content = document.getElementById('contactDetailContent');
+
+  let html = '<dl class="row detail-dl">';
+  html += '<dt class="col-sm-4">Contact ID</dt><dd class="col-sm-8">' + (contactData.id || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Name</dt><dd class="col-sm-8">' + escapeHtml(contactData.name || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Email</dt><dd class="col-sm-8">' + escapeHtml(contactData.email || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Phone</dt><dd class="col-sm-8">' + escapeHtml(contactData.phone || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Position</dt><dd class="col-sm-8">' + escapeHtml(contactData.position || '-') + '</dd>';
+  if (contactData.unit_name) {
+    html += '<dt class="col-sm-4">Organization</dt><dd class="col-sm-8"><span class="org-tooltip" data-unit-id="' + escapeHtml(contactData.unit_id) + '" title="Loading..." style="cursor: help;">' + escapeHtml(contactData.unit_name) + '</span></dd>';
+  } else {
+    html += '<dt class="col-sm-4">Organization</dt><dd class="col-sm-8">-</dd>';
+  }
+  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + (contactData.created_at ? new Date(contactData.created_at).toLocaleDateString() : '-') + '</dd>';
+  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + (contactData.updated_at ? new Date(contactData.updated_at).toLocaleDateString() : '-') + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (contactData.description ? '<div style="white-space: pre-wrap; word-wrap: break-word; max-width: 100%;">' + escapeHtml(contactData.description) + '</div>' : '-') + '</dd>';
+  html += '</dl>';
+
+  if (contactData.phone) {
+    html += '<div class="text-center mt-3">';
+    html += '<div class="text-muted small mb-2">Scan to add to your phone contacts</div>';
+    html += '<img id="contactQrImage" alt="Contact QR code" style="width:160px;height:160px;">';
+    html += '</div>';
+  }
+
+  content.innerHTML = html;
+  initOrgTooltips(content);
+
+  if (contactData.phone) {
+    fetch('/organize/api/contact/' + contactId + '/qrcode')
+      .then(response => response.json())
+      .then(data => {
+        const img = document.getElementById('contactQrImage');
+        if (img && data && data.image) {
+          img.src = 'data:' + (data.mime || 'image/png') + ';base64,' + data.image;
+        }
+      })
+      .catch(error => console.error('Error loading contact QR code:', error));
+  }
+
+  const modal = new bootstrap.Modal(modalElement);
+  modal.show();
+}
+
+// Confirm delete contact
+function confirmDeleteContact(form, contactName) {
+  return confirm(`Are you sure you want to delete contact "${contactName}"? This action cannot be undone.`);
+}
+
+// Helper function to build export URL
+function buildExportUrl() {
+  const params = new URLSearchParams();
+  
+  // Add search if exists
+  if (typeof search !== 'undefined' && search) {
+    params.set('search', search);
+  }
+  
+  // Add pageSize if exists
+  if (typeof pageSize !== 'undefined' && pageSize) {
+    params.set('pageSize', pageSize);
+  }
+  
+  return '/organize/contact/export' + (params.toString() ? '?' + params.toString() : '');
+}
+
+// Organization/Unit hover tooltip — lazily fetches the unit's description
+// via AJAX on first hover instead of carrying it through every query that
+// shows a unit reference. Cached across elements sharing the same unit id.
+const unitInfoCache = {};
+function initOrgTooltips(scopeEl) {
+  (scopeEl || document).querySelectorAll('.org-tooltip').forEach(function(el) {
+    if (el.dataset.tooltipInit) return;
+    el.dataset.tooltipInit = '1';
+    const unitId = el.getAttribute('data-unit-id');
+    if (!unitId) return;
+    const tooltip = new bootstrap.Tooltip(el, { title: 'Loading...' });
+    el.addEventListener('show.bs.tooltip', function() {
+      if (unitInfoCache[unitId]) {
+        tooltip.setContent({ '.tooltip-inner': unitInfoCache[unitId] });
+        return;
+      }
+      fetch('/organize/api/unit/' + encodeURIComponent(unitId) + '/detail')
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          const desc = (data && data.description) ? data.description : 'No description';
+          unitInfoCache[unitId] = desc;
+          tooltip.setContent({ '.tooltip-inner': desc });
+        })
+        .catch(function() {
+          tooltip.setContent({ '.tooltip-inner': 'Error loading info' });
+        });
+    });
+  });
+}
+
+$(document).ready(function() {
+  initOrgTooltips(document);
+});
+</script>
+
+<!-- Responsive Tables CSS -->
+<style>
+/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
+#contactTable {
+  table-layout: fixed;
+  min-width: 1050px;
+}
+#contactTable thead th {
+  white-space: nowrap;
+}
+#contactTable th:nth-child(1), #contactTable td:nth-child(1) { width: 5%; }
+#contactTable th:nth-child(2), #contactTable td:nth-child(2) { width: 15%; }
+#contactTable th:nth-child(3), #contactTable td:nth-child(3) { width: 18%; }
+#contactTable th:nth-child(4), #contactTable td:nth-child(4) { width: 12%; }
+#contactTable th:nth-child(5), #contactTable td:nth-child(5) { width: 13%; }
+#contactTable th:nth-child(6), #contactTable td:nth-child(6) { width: 19%; }
+#contactTable th:nth-child(7), #contactTable td:nth-child(7) { width: 18%; }
+
+#contactTable td:nth-child(2),
+#contactTable td:nth-child(6) {
+  overflow-wrap: break-word;
+}
+#contactTable td:nth-child(7) {
+  white-space: nowrap;
+  vertical-align: middle;
+}
+</style>

@@ -1,0 +1,228 @@
+# ========================================
+# 🔧 SERVICES API TESTS
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+# Environment: development (change in VS Code status bar)
+# ========================================
+
+### 0. Login to get JWT Token (Run this first!)
+# @name serviceAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+### 1. Get All Services
+GET {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 2. Create Service
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "Test Service",
+  "description": "Test service for API testing"
+}
+
+### 3. Create Service (Minimal)
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "Minimal Service"
+}
+
+### 4. Create Service (Duplicate Name - Should Fail)
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "Test Service",
+  "description": "Duplicate service"
+}
+
+### 5. Create Service (Missing Name - Should Fail)
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "description": "Missing name"
+}
+
+### 6. Create Service (Empty Name - Should Fail)
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "",
+  "description": "Empty name"
+}
+
+### 7. Get Service by ID
+GET {{baseUrl}}/{{apiVersion}}/services/1
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 8. Get Non-existent Service (Should Fail)
+GET {{baseUrl}}/{{apiVersion}}/services/99999
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 9. Update Service (Full Update)
+PUT {{baseUrl}}/{{apiVersion}}/services/1
+Authorization: Bearer {{serviceAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "Updated Test Service",
+  "description": "Updated description"
+}
+
+### 10. Update Service (Partial Update - Name Only)
+PUT {{baseUrl}}/{{apiVersion}}/services/1
+Authorization: Bearer {{serviceAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "Partially Updated Service"
+}
+
+### 11. Update Service (Partial Update - Description Only)
+PUT {{baseUrl}}/{{apiVersion}}/services/1
+Authorization: Bearer {{serviceAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "description": "Only description updated"
+}
+
+### 12. Update Service (Empty Body - Should Return Current Service)
+PUT {{baseUrl}}/{{apiVersion}}/services/1
+Authorization: Bearer {{serviceAuth.response.body.token}}
+Content-Type: application/json
+
+{}
+
+### 13. Update Service (Empty Name - Should Fail)
+PUT {{baseUrl}}/{{apiVersion}}/services/1
+Authorization: Bearer {{serviceAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": ""
+}
+
+### 14. Update Non-existent Service (Should Fail)
+PUT {{baseUrl}}/{{apiVersion}}/services/99999
+Authorization: Bearer {{serviceAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "Updated Name"
+}
+
+### 15. Find Services by Exact Name
+GET {{baseUrl}}/{{apiVersion}}/services/find?name=Test Service
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 16. Find Services by Exact Name (Case Insensitive)
+GET {{baseUrl}}/{{apiVersion}}/services/find?name=test service
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 17. Find Services (Missing Name Parameter - Should Fail)
+GET {{baseUrl}}/{{apiVersion}}/services/find
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 18. Find Services (Empty Name Parameter - Should Fail)
+GET {{baseUrl}}/{{apiVersion}}/services/find?name=
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 19. Find Non-existent Service
+GET {{baseUrl}}/{{apiVersion}}/services/find?name=NonExistentService
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 20. Delete Service
+DELETE {{baseUrl}}/{{apiVersion}}/services/1
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 21. Delete Non-existent Service (Should Fail)
+DELETE {{baseUrl}}/{{apiVersion}}/services/99999
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 22. Delete Service in Use (Should Fail - if service is referenced by servers)
+DELETE {{baseUrl}}/{{apiVersion}}/services/2
+Authorization: Bearer {{serviceAuth.response.body.token}}
+
+### 23. Test Authentication (No Token - Should Fail)
+GET {{baseUrl}}/{{apiVersion}}/services
+
+### 24. Test Authentication (Invalid Token - Should Fail)
+GET {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer invalid_token
+
+### 25. Test Content Type (Wrong Content Type - Should Fail)
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
+Content-Type: text/plain
+
+{
+  "name": "Wrong Content Type"
+}
+
+### 26. Test Large Description
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "Service with Large Description",
+  "description": "This is a very long description that tests the system's ability to handle large text fields. It contains multiple sentences and should be properly stored and retrieved without any issues. The description field should support long text content and maintain proper formatting when displayed. This service provides various functionalities and can be used in different environments."
+}
+
+### 27. Test Special Characters in Name
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "Service with Special Chars: @#$%^&*()",
+  "description": "Testing special characters in service name"
+}
+
+### 28. Test Unicode Characters
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "Service with Unicode: 测试服务",
+  "description": "Testing Unicode characters in service name and description"
+}
+
+### 29. Test Whitespace Handling
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "  Service with Whitespace  ",
+  "description": "  Description with whitespace  "
+}
+
+### 30. Test Null Values
+POST {{baseUrl}}/{{apiVersion}}/services
+Authorization: Bearer {{serviceAuth.response.body.token}}
+Content-Type: application/json
+
+{
+  "name": "Service with Null Description",
+  "description": null
+}

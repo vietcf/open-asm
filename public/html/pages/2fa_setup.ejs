@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>2FA Setup</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/css/source-sans-3.css" />
+    <link rel="stylesheet" href="/css/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="<%= cssPath %>adminlte.css" />
+    <style>
+      body.login-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f4f6f9;
+        font-family: var(--bs-body-font-family);
+      }
+      .login-shell {
+        width: 100%;
+        max-width: 420px;
+        margin: 2rem;
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.15);
+        background: #fff;
+      }
+      .login-form-panel {
+        padding: 2.75rem 2.5rem;
+      }
+      .login-form-panel h2 {
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+      }
+      .login-form-panel .subtitle {
+        color: #6c757d;
+        margin-bottom: 1.5rem;
+      }
+      .login-form-panel .form-control {
+        height: 3rem;
+        border-radius: 0.5rem;
+      }
+      .login-form-panel .input-group-text {
+        border-radius: 0.5rem;
+        background: transparent;
+        border-left: none;
+        color: #adb5bd;
+      }
+      .login-form-panel .input-group .form-control {
+        border-right: none;
+      }
+      .login-form-panel .input-group:focus-within .form-control,
+      .login-form-panel .input-group:focus-within .input-group-text {
+        border-color: #86b7fe;
+      }
+      .login-form-panel .btn-primary {
+        height: 3rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+      }
+      .qr-wrap img {
+        width: 180px;
+        height: 180px;
+      }
+      .secret-wrap {
+        word-break: break-all;
+        white-space: pre-line;
+        display: inline-block;
+        max-width: 100%;
+        text-align: left;
+        letter-spacing: 1px;
+      }
+      @media (max-width: 767.98px) {
+        .login-shell {
+          margin: 1rem;
+        }
+        .login-form-panel {
+          padding: 2rem 1.75rem;
+        }
+      }
+    </style>
+  </head>
+  <body class="login-page">
+    <div class="login-shell">
+      <div class="login-form-panel">
+        <h2>2FA Setup</h2>
+        <p class="subtitle">Enable Two-Factor Authentication for your account</p>
+        <% if (error) { %>
+          <div class="alert alert-danger py-2" role="alert"><%= error %></div>
+        <% } %>
+        <% if (qr) { %>
+          <div class="text-center qr-wrap mb-3">
+            <img src="<%= qr %>" alt="QR Code" class="img-fluid rounded border bg-white p-2" />
+          </div>
+          <p class="text-muted small text-center mb-3">
+            Scan this QR code with <strong>Google Authenticator</strong>,
+            <strong>Microsoft Authenticator</strong>, or any TOTP app.
+          </p>
+          <div class="text-center mb-3">
+            <div class="text-muted small mb-1">Or enter this secret manually:</div>
+            <span class="badge bg-light text-dark border px-3 py-2 secret-wrap"><%= secret.replace(/(.{4})/g, '$1 ').trim() %></span>
+          </div>
+          <form method="POST" action="/2fa/verify" autocomplete="off">
+            <div class="mb-3">
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+                <input type="text" class="form-control text-center" id="token" name="token" maxlength="6" required pattern="[0-9]{6}" placeholder="Enter 6-digit code" autofocus />
+              </div>
+            </div>
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-circle me-1"></i> Verify &amp; Enable 2FA
+              </button>
+            </div>
+          </form>
+        <% } else { %>
+          <div class="alert alert-warning text-center">No QR code available. Please try again.</div>
+        <% } %>
+      </div>
+    </div>
+    <script src="/vendor/popper.min.js"></script>
+    <script src="/vendor/bootstrap.min.js"></script>
+  </body>
+</html>

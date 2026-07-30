@@ -1,0 +1,249 @@
+# ========================================
+# 🏷️ TAGS API TESTS (MINIMAL)
+# ========================================
+# ✅ Uses centralized environment variables from .vscode/settings.json
+# Variables: {{baseUrl}}, {{apiVersion}}, {{username}}, {{password}}
+# Environment: development (change in VS Code status bar)
+# ========================================
+
+### 0. Login to get JWT Token (Run this first!)
+# @name tagAuth
+POST {{baseUrl}}/{{apiVersion}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+
+# ========================================
+# 📋 BASIC TAG CRUD OPERATIONS
+# ========================================
+
+### 1. Get All Tags
+GET {{baseUrl}}/{{apiVersion}}/tags
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+### 2. Get Tag by ID
+GET {{baseUrl}}/{{apiVersion}}/tags/5
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+### 3. Create New Tag
+# @name createTag
+POST {{baseUrl}}/{{apiVersion}}/tags
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+{
+  "name": "test-tag",
+  "description": "Test tag for API testing"
+}
+
+### 4. Update Tag (Complete Update)
+PUT {{baseUrl}}/{{apiVersion}}/tags/{{createTag.response.body.data.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+{
+  "name": "test-tag-updated",
+  "description": "Updated test tag"
+}
+
+### 5. Update Tag (Name Only)
+PUT {{baseUrl}}/{{apiVersion}}/tags/{{createTag.response.body.data.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+{
+  "name": "test-tag-name-only"
+}
+
+### 6. Update Tag (Description Only)
+PUT {{baseUrl}}/{{apiVersion}}/tags/{{createTag.response.body.data.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+{
+  "description": "Updated description only"
+}
+
+### 7. Delete Tag
+DELETE {{baseUrl}}/{{apiVersion}}/tags/{{createTag.response.body.data.id}}
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+# ========================================
+# 🔍 SEARCH & FIND OPERATIONS
+# ========================================
+
+### 8. Search Tags with Pagination
+GET {{baseUrl}}/{{apiVersion}}/tags/search?page=1&pageSize=5
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+### 9. Search Tags by Keyword
+GET {{baseUrl}}/{{apiVersion}}/tags/search?search=REST
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+### 10. Find Tag by Exact Name
+GET {{baseUrl}}/{{apiVersion}}/tags/find?name=produCtion
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+### 10.1. Find Tag (Missing Name Parameter - Should Fail - 400)
+GET {{baseUrl}}/{{apiVersion}}/tags/find
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+### 10.2. Find Tag (Empty Name Parameter - Should Fail - 400)
+GET {{baseUrl}}/{{apiVersion}}/tags/find?name=
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+# ========================================
+# ❌ ERROR HANDLING TESTS
+# ========================================
+
+### 11. Get Non-existent Tag (404)
+GET {{baseUrl}}/{{apiVersion}}/tags/99999
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+### 12. Create Tag with Invalid Data (400)
+POST {{baseUrl}}/{{apiVersion}}/tags
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+{
+  "description": "Missing required name field"
+}
+
+### 13. Create Tag with Empty Name (400)
+POST {{baseUrl}}/{{apiVersion}}/tags
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+{
+  "name": "",
+  "description": "Empty name should fail"
+}
+
+### 14. Update Non-existent Tag (404)
+PUT {{baseUrl}}/{{apiVersion}}/tags/99999
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+{
+  "name": "non-existent-tag"
+}
+
+### 15. Delete Non-existent Tag (404)
+DELETE {{baseUrl}}/{{apiVersion}}/tags/99999
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+### 16. Create Tag for Duplicate-Name Test
+# @name dupTagBase
+POST {{baseUrl}}/{{apiVersion}}/tags
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+{
+  "name": "duplicate-test-tag"
+}
+
+### 17. Create Tag with Duplicate Name (409)
+POST {{baseUrl}}/{{apiVersion}}/tags
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+{
+  "name": "duplicate-test-tag",
+  "description": "This should fail - name already exists"
+}
+
+### 18. Create Second Tag for Update-Duplicate Test
+# @name dupTagSecond
+POST {{baseUrl}}/{{apiVersion}}/tags
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+{
+  "name": "duplicate-test-tag-2"
+}
+
+### 19. Update Tag to a Name That Already Exists (409)
+PUT {{baseUrl}}/{{apiVersion}}/tags/{{dupTagSecond.response.body.data.id}}
+Content-Type: application/json
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+{
+  "name": "duplicate-test-tag"
+}
+
+### 20. Cleanup - Delete Duplicate-Test Tags
+DELETE {{baseUrl}}/{{apiVersion}}/tags/{{dupTagBase.response.body.data.id}}
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+### 21. Cleanup - Delete Second Duplicate-Test Tag
+DELETE {{baseUrl}}/{{apiVersion}}/tags/{{dupTagSecond.response.body.data.id}}
+Accept: application/json
+Authorization: Bearer {{tagAuth.response.body.token}}
+
+# ========================================
+# 🔒 AUTH & CONTENT-TYPE TESTS
+# ========================================
+
+### 22. Test Authentication (No Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/tags
+
+### 23. Test Authentication (Invalid Token - Should Fail - 401)
+GET {{baseUrl}}/{{apiVersion}}/tags
+Authorization: Bearer invalid_token
+
+### 24. Test Content Type (Wrong Content Type - Should Fail)
+POST {{baseUrl}}/{{apiVersion}}/tags
+Authorization: Bearer {{tagAuth.response.body.token}}
+Content-Type: text/plain
+
+{
+  "name": "wrong-content-type-tag"
+}
+
+# ========================================
+# ✅ BASIC TAGS API TEST CHECKLIST
+# ========================================
+# 
+# BASIC CRUD OPERATIONS:
+# ⏳ GET /api/v1/tags (get all tags)
+# ⏳ GET /api/v1/tags/:id (get tag by ID)
+# ⏳ POST /api/v1/tags (create new tag)
+# ⏳ PUT /api/v1/tags/:id (update tag)
+# ⏳ DELETE /api/v1/tags/:id (delete tag)
+#
+# SEARCH & FIND:
+# ⏳ GET /api/v1/tags/search (search with pagination)
+# ⏳ GET /api/v1/tags/find (find by exact name)
+#
+# ERROR HANDLING:
+# ⏳ 400 - Invalid data/missing fields
+# ⏳ 404 - Tag not found
+# ⏳ 409 - Duplicate name/conflict
+#
+# ========================================

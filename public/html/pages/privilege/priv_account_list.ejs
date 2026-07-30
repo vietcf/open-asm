@@ -1,0 +1,1263 @@
+<%
+// Helper function to build pagination URL with all query parameters
+function buildPaginationUrl(targetPage) {
+  const params = new URLSearchParams();
+  
+  // Add page
+  params.set('page', targetPage);
+  
+  // Add search if exists
+  if (typeof search !== 'undefined' && search) {
+    params.set('search', search);
+  }
+  
+  // Add pageSize if exists
+  if (typeof pageSize !== 'undefined' && pageSize) {
+    params.set('pageSize', pageSize);
+  }
+  
+  // Add organize_id filter if exists
+  if (typeof organize_id !== 'undefined' && organize_id) {
+    params.set('organize_id', organize_id);
+  }
+  
+  // Add system_ids filter if exists
+  if (typeof system_ids !== 'undefined' && system_ids && system_ids.length) {
+    system_ids.forEach(function(id) {
+      params.append('system_ids[]', id);
+    });
+  }
+  
+  // Add contact_ids filter if exists
+  if (typeof contact_ids !== 'undefined' && contact_ids && contact_ids.length) {
+    contact_ids.forEach(function(id) {
+      params.append('contact_ids[]', id);
+    });
+  }
+  
+  return '?' + params.toString();
+}
+
+// Helper function to build export URL with all query parameters
+function buildExportUrl() {
+  const params = new URLSearchParams();
+  
+  // Add search if exists
+  if (typeof search !== 'undefined' && search) {
+    params.set('search', search);
+  }
+  
+  // Add organize_id filter if exists
+  if (typeof organize_id !== 'undefined' && organize_id) {
+    params.set('organize_id', organize_id);
+  }
+  
+  // Add system_ids filter if exists
+  if (typeof system_ids !== 'undefined' && system_ids && system_ids.length) {
+    system_ids.forEach(function(id) {
+      params.append('system_ids[]', id);
+    });
+  }
+  
+  // Add contact_ids filter if exists
+  if (typeof contact_ids !== 'undefined' && contact_ids && contact_ids.length) {
+    contact_ids.forEach(function(id) {
+      params.append('contact_ids[]', id);
+    });
+  }
+  
+  return '/priv-account/account/export' + (params.toString() ? '?' + params.toString() : '');
+}
+%>
+
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">Privileged Account List</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main content -->
+<div class="app-content">
+  <div class="container-fluid">
+    <!-- Search and Page Size Row -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end align-items-center gap-2">
+          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/priv-account/account">
+            <!-- Hidden inputs to preserve filter values -->
+            <input type="hidden" name="page" value="1">
+            <% if (typeof organize_id !== 'undefined' && organize_id) { %>
+              <input type="hidden" name="organize_id" value="<%= organize_id %>">
+            <% } %>
+            <% if (typeof system_ids !== 'undefined' && system_ids && system_ids.length) { %>
+              <% system_ids.forEach(function(id) { %>
+                <input type="hidden" name="system_ids[]" value="<%= id %>">
+              <% }) %>
+            <% } %>
+            <% if (typeof contact_ids !== 'undefined' && contact_ids && contact_ids.length) { %>
+              <% contact_ids.forEach(function(id) { %>
+                <input type="hidden" name="contact_ids[]" value="<%= id %>">
+              <% }) %>
+            <% } %>
+            
+            <div class="input-group input-group-sm" style="width: 250px;">
+              <input class="form-control form-control-sm" type="search" name="search" placeholder="Search Account or Description..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+              <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
+            </div>
+            <div class="d-flex align-items-center gap-1">
+              <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+              <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
+                <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
+                  <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
+                <% }) %>
+              </select>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end gap-2">
+          <% if (hasPermission('priv_account.create')) { %>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addPrivUserModal">
+              <i class="bi bi-plus"></i> Add Privileged Account
+            </button>
+          <% } %>
+          <%
+            const hasActivePrivAccountFilter = !!(
+              (system_ids && system_ids.length > 0) ||
+              (organize_id && organize_id !== '') ||
+              (contact_ids && contact_ids.length > 0)
+            );
+          %>
+          <button type="button" class="btn btn-sm <%= hasActivePrivAccountFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterPrivAccountModal">
+            <i class="bi bi-funnel<%= hasActivePrivAccountFilter ? '-fill' : '' %>"></i> Filter<%= hasActivePrivAccountFilter ? ' (Filtered)' : '' %>
+          </button>
+          <% if (hasPermission('priv_account.read')) { %>
+            <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">
+              <i class="bi bi-download"></i> Export
+            </a>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter values for JS -->
+    <div id="filter-account-data"
+          data-organize-id='<%= JSON.stringify(organize_id || '') %>'
+          data-system-ids='<%= JSON.stringify(system_ids || []) %>'
+          data-contact-ids='<%= JSON.stringify(contact_ids || []) %>' style="display:none"></div>
+
+    <!-- Flash Messages -->
+    <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+      <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
+        <i class="bi bi-check-circle me-2"></i><%= successMessage %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <script>
+      // Auto-hide success message after 5 seconds
+      setTimeout(function() {
+        const alert = document.getElementById('successAlert');
+        if (alert) {
+          const bsAlert = new bootstrap.Alert(alert);
+          bsAlert.close();
+        }
+      }, 5000);
+      </script>
+    <% } %>
+    
+    <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+      <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
+        <i class="bi bi-exclamation-triangle me-2"></i><%= errorMessage %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <script>
+      // Auto-hide error message after 5 seconds
+      setTimeout(function() {
+        const alert = document.getElementById('errorAlert');
+        if (alert) {
+          const bsAlert = new bootstrap.Alert(alert);
+          bsAlert.close();
+        }
+      }, 5000);
+      </script>
+    <% } %>
+
+    <!-- Data Table -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title mb-0">Privileged Account List</h3>
+          </div>
+          <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
+            <table class="table table-hover" id="privAccountTable" style="table-layout: fixed; min-width: 800px;">
+              <thead>
+                <tr>
+                  <th>No.</th>
+                  <th data-sort-type="text">Account Name</th>
+                  <th data-sort-type="text">Description</th>
+                  <th data-sort-type="text">Systems</th>
+                  <th data-sort-type="date">Created At</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (privUserList && privUserList.length > 0) { %>
+                  <% privUserList.forEach(function(account, idx) { %>
+                    <tr>
+                      <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                      <td><%= account.username %></td>
+                      <td><%= account.description %></td>
+                      <td>
+                        <% if (account.systems && account.systems.length) { %>
+                          <%= account.systems.map(s => s.name).join(', ') %>
+                        <% } else { %>
+                          <span class="text-muted">-</span>
+                        <% } %>
+                      </td>
+                      <td data-sort-value="<%= account.created_at || '' %>"><%= account.created_at ? account.created_at.toLocaleString() : '' %></td>
+                      <td class="text-end">
+                        <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showAccountDetail('<%= account.id %>')" data-account-id="<%= account.id %>" data-account='<%= JSON.stringify(account) %>'><i class="bi bi-eye"></i></button>
+                        <% if (hasPermission('priv_account.update')) { %>
+                        <button type="button" class="btn btn-warning btn-sm" title="Edit" 
+                                data-bs-toggle="modal" data-bs-target="#editPrivAccountModal"
+                                data-account-id="<%= account.id %>"
+                                data-account-username="<%= account.username %>"
+                                data-account-description="<%= account.description || '' %>"
+                                data-account-contacts="<%= JSON.stringify(account.contacts || []) %>"
+                                data-account-organize="<%= JSON.stringify(account.organize || {}) %>"
+                                data-account-type="<%= account.account_type %>"
+                                data-account-servers="<%= JSON.stringify(account.servers || []) %>"
+                                data-account-app-url="<%= account.app_url || '' %>"
+                                data-account-systems="<%= JSON.stringify(account.systems || []) %>"
+                                data-account-manage-type="<%= account.manage_type %>"
+                                data-account-role="<%= JSON.stringify(account.role || {}) %>">
+                          <i class="bi bi-pencil"></i>
+                        </button>
+                        <% } %>
+                        <% if (hasPermission('priv_account.delete')) { %>
+                        <form action="/priv-account/account/<%= account.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteAccount(this, '<%= account.username %>')">
+                          <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </form>
+                        <% } %>
+                      </td>
+                    </tr>
+                  <% }) %>
+                <% } else { %>
+                  <tr><td colspan="6" class="text-center">No data</td></tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+          <div class="card-footer clearfix">
+            <div class="d-flex justify-content-between align-items-center px-3 py-2">
+              <div>
+                <span>Showing <%= startItem %> - <%= endItem %> of <%= totalCount %> accounts</span>
+              </div>
+              <ul class="pagination pagination-sm m-0">
+                <% 
+                  let startPage = 1;
+                  let endPage = totalPages;
+                  if (totalPages > 10) {
+                    if (page <= 6) {
+                      startPage = 1;
+                      endPage = 10;
+                    } else if (page + 4 >= totalPages) {
+                      startPage = totalPages - 9;
+                      endPage = totalPages;
+                    } else {
+                      startPage = page - 5;
+                      endPage = page + 4;
+                    }
+                  }
+                %>
+                <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                  <a class="page-link" href="<%= buildPaginationUrl(page - 1) %>">Previous</a>
+                </li>
+                <% if (startPage > 1) { %>
+                  <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(1) %>">1</a></li>
+                  <% if (startPage > 2) { %>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <% } %>
+                <% } %>
+                <% for (let i = startPage; i <= endPage; i++) { %>
+                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="<%= buildPaginationUrl(i) %>"><%= i %></a></li>
+                <% } %>
+                <% if (endPage < totalPages) { %>
+                  <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(totalPages) %>"><%= totalPages %></a></li>
+                <% } %>
+                <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                  <a class="page-link" href="<%= buildPaginationUrl(page + 1) %>">Next</a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Privileged Account Modal -->
+<div class="modal fade" id="addPrivUserModal" tabindex="-1" aria-labelledby="addPrivUserModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addPrivUserModalLabel">Add Privileged Account</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addPrivUserForm" action="/priv-account/account" method="POST" autocomplete="off">
+          <div class="mb-3">
+            <label for="privUserUsername" class="form-label">Account Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="privUserUsername" name="username" placeholder="Account Name" required>
+          </div>
+          <div class="mb-3">
+            <label for="privUserDescription" class="form-label">Description</label>
+            <textarea class="form-control" id="privUserDescription" name="description" placeholder="Description" rows="3" style="min-height:70px;"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="privUserContacts" class="form-label">Assign Contacts <span class="text-danger">*</span></label>
+            <select id="privUserContacts" name="contacts[]" class="form-control" multiple style="width:100%" required></select>
+          </div>
+          <div class="mb-3">
+            <label for="privUserOrganize" class="form-label">Organize Unit <span class="text-danger">*</span></label>
+            <select id="privUserOrganize" name="organize_id" class="form-select" style="width:100%" required></select>
+          </div>
+          <div class="mb-3">
+            <label for="privUserType" class="form-label">Account Type <span class="text-danger">*</span></label>
+            <select id="privUserType" name="account_type" class="form-control" required style="width:100%">
+              <option value="">-- Select Type --</option>
+              <% (accountTypes || []).forEach(function(opt) { %>
+                <option value="<%= opt.value %>"><%= opt.label %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="mb-3 d-none" id="privUserServerGroup">
+            <label for="privUserServers" class="form-label">Server(s) <span class="text-danger">*</span></label>
+            <select id="privUserServers" name="server_ids[]" class="form-control" multiple style="width:100%" required></select>
+          </div>
+          <div class="mb-3 d-none" id="privUserAppUrlGroup">
+            <label for="privUserAppUrl" class="form-label">Application URL <span class="text-danger">*</span></label>
+            <input type="text" id="privUserAppUrl" name="app_url" class="form-control" placeholder="https://example.com/app" required>
+          </div>
+          <div class="mb-3" id="privUserSystemGroup">
+            <label for="privUserSystem" class="form-label">System(s) <span class="text-danger">*</span></label>
+            <select id="privUserSystem" name="system_ids[]" class="form-control" multiple required style="width:100%"></select>
+          </div>
+          <div class="mb-3">
+            <label for="privUserManageType" class="form-label">Management Method <span class="text-danger">*</span></label>
+            <select id="privUserManageType" name="manage_type" class="form-control" required style="width:100%">
+              <option value="">-- Select Method --</option>
+              <% (manageTypes || []).forEach(function(opt) { %>
+                <option value="<%= opt.value %>"><%= opt.label %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="privUserRole" class="form-label">Role <span class="text-danger">*</span></label>
+            <select id="privUserRole" name="role_id" class="form-select" required style="width:100%"></select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" form="addPrivUserForm">Add User</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Privileged Account Modal -->
+<div class="modal fade" id="editPrivAccountModal" tabindex="-1" aria-labelledby="editPrivAccountModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editPrivAccountModalLabel">Edit Privileged Account</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="editPrivAccountForm" method="POST" autocomplete="off">
+          <input type="hidden" id="editAccountId" name="id">
+          <div class="mb-3">
+            <label for="editAccountUsername" class="form-label">Account Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="editAccountUsername" name="username" placeholder="Account Name" required>
+          </div>
+          <div class="mb-3">
+            <label for="editAccountDescription" class="form-label">Description</label>
+            <textarea class="form-control" id="editAccountDescription" name="description" placeholder="Description" rows="3" style="min-height:70px;"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="editAccountContacts" class="form-label">Assign Contacts <span class="text-danger">*</span></label>
+            <select id="editAccountContacts" name="contacts[]" class="form-control" multiple style="width:100%" required></select>
+          </div>
+          <div class="mb-3">
+            <label for="editAccountOrganize" class="form-label">Organize Unit <span class="text-danger">*</span></label>
+            <select id="editAccountOrganize" name="organize_id" class="form-select" style="width:100%" required></select>
+          </div>
+          <div class="mb-3">
+            <label for="editAccountType" class="form-label">Account Type <span class="text-danger">*</span></label>
+            <select id="editAccountType" name="account_type" class="form-control" required style="width:100%">
+              <option value="">-- Select Type --</option>
+              <% (accountTypes || []).forEach(function(opt) { %>
+                <option value="<%= opt.value %>"><%= opt.label %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="mb-3 d-none" id="editAccountServerGroup">
+            <label for="editAccountServers" class="form-label">Server(s) <span class="text-danger">*</span></label>
+            <select id="editAccountServers" name="server_ids[]" class="form-control" multiple style="width:100%" required></select>
+          </div>
+          <div class="mb-3 d-none" id="editAccountAppUrlGroup">
+            <label for="editAccountAppUrl" class="form-label">Application URL <span class="text-danger">*</span></label>
+            <input type="text" id="editAccountAppUrl" name="app_url" class="form-control" placeholder="https://example.com/app" required>
+          </div>
+          <div class="mb-3" id="editAccountSystemGroup">
+            <label for="editAccountSystem" class="form-label">System(s) <span class="text-danger">*</span></label>
+            <select id="editAccountSystem" name="system_ids[]" class="form-control" multiple required style="width:100%"></select>
+          </div>
+          <div class="mb-3">
+            <label for="editAccountManageType" class="form-label">Management Method <span class="text-danger">*</span></label>
+            <select id="editAccountManageType" name="manage_type" class="form-control" required style="width:100%">
+              <option value="">-- Select Method --</option>
+              <% (manageTypes || []).forEach(function(opt) { %>
+                <option value="<%= opt.value %>"><%= opt.label %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="editAccountRole" class="form-label">Role <span class="text-danger">*</span></label>
+            <select id="editAccountRole" name="role_id" class="form-select" required style="width:100%"></select>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary btn-sm" form="editPrivAccountForm">Save Changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filter Modal -->
+<div class="modal fade" id="filterPrivAccountModal" tabindex="-1" aria-labelledby="filterPrivAccountModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="filterPrivAccountModalLabel">Filter Privileged Accounts</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="get" action="/priv-account/account">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="filterSystem" class="form-label">System(s)</label>
+            <select id="filterSystem" name="system_ids[]" class="form-control" multiple style="width:100%"></select>
+          </div>
+          <div class="mb-3">
+            <label for="filterOrganize" class="form-label">Organize Unit</label>
+            <select id="filterOrganize" name="organize_id" class="form-select" style="width:100%">
+              <option value="">All Organize Units</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="filterContacts" class="form-label">Contacts</label>
+            <select id="filterContacts" name="contact_ids[]" class="form-control" multiple style="width:100%"></select>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-warning btn-sm" id="clearPrivAccountFilterBtn">Clear Filter</button>
+          <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function showToast(msg, type) {
+  const toast = document.createElement('div');
+  toast.className = `alert alert-${type}`;
+  toast.style.position = 'fixed';
+  toast.style.top = '16px';
+  toast.style.right = '16px';
+  toast.style.zIndex = 9999;
+  toast.style.minWidth = '200px';
+  toast.innerText = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function showAccountDetail(accountId) {
+  console.log('showAccountDetail called with accountId:', accountId);
+  
+  // Get account data from button (specifically the show button)
+  const button = document.querySelector(`button[data-account-id="${accountId}"][title="Show"]`);
+  if (!button) {
+    console.error('Button not found for accountId:', accountId);
+    return;
+  }
+  
+  console.log('Button found:', button);
+  
+  const accountData = button.getAttribute('data-account');
+  if (!accountData) {
+    console.error('No account data found for accountId:', accountId);
+    return;
+  }
+  
+  let account;
+  try {
+    account = JSON.parse(accountData);
+  } catch (e) {
+    console.error('Error parsing account data:', e);
+    return;
+  }
+  
+  // Create modal HTML
+  const modalId = `accountDetailModal-${accountId}`;
+  const modalHtml = `
+    <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="${modalId}Label">Privileged Account Information</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <dl class="row detail-dl">
+              <dt class="col-sm-4">Account Name</dt>
+              <dd class="col-sm-8">${account.username || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Description</dt>
+              <dd class="col-sm-8">${account.description || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Contacts</dt>
+              <dd class="col-sm-8">
+                ${account.contacts && account.contacts.length 
+                  ? account.contacts.map(c => {
+                      const name = c.name || c.text || '';
+                      const email = c.email || '';
+                      if (email) {
+                        const shortEmail = email.split('@')[0];
+                        return `${name} (${shortEmail})`;
+                      }
+                      return name;
+                    }).join('<br>')
+                  : '<span class="text-muted">N/A</span>'
+                }
+              </dd>
+              <dt class="col-sm-4">Organize Unit</dt>
+              <dd class="col-sm-8">${account.organize ? (account.organize.name || account.organize.text) : '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Account Type</dt>
+              <dd class="col-sm-8">${account.account_type || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Server(s)</dt>
+              <dd class="col-sm-8">
+                ${account.servers && account.servers.length 
+                  ? account.servers.map(s => s.name || s.text).join('<br>')
+                  : '<span class="text-muted">N/A</span>'
+                }
+              </dd>
+              <dt class="col-sm-4">Application URL</dt>
+              <dd class="col-sm-8">${account.app_url || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">System(s)</dt>
+              <dd class="col-sm-8">
+                ${account.systems && account.systems.length 
+                  ? account.systems.map(s => s.name || s.text).join('<br>')
+                  : '<span class="text-muted">N/A</span>'
+                }
+              </dd>
+              <dt class="col-sm-4">Management Method</dt>
+              <dd class="col-sm-8">${account.manage_type || '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Role</dt>
+              <dd class="col-sm-8">${account.role ? (account.role.name || account.role.text) : '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Created At</dt>
+              <dd class="col-sm-8">${account.created_at ? new Date(account.created_at).toLocaleString() : '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Updated At</dt>
+              <dd class="col-sm-8">${account.updated_date ? new Date(account.updated_date).toLocaleString() : '<span class="text-muted">No data</span>'}</dd>
+              <dt class="col-sm-4">Updated By</dt>
+              <dd class="col-sm-8">${account.updated_by || '<span class="text-muted">No data</span>'}</dd>
+            </dl>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Remove existing modal if any
+  const existingModal = document.getElementById(modalId);
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  // Add modal to body
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  
+  // Show modal
+  const modal = new bootstrap.Modal(document.getElementById(modalId));
+  modal.show();
+  
+  // Remove modal from DOM when hidden
+  document.getElementById(modalId).addEventListener('hidden.bs.modal', function() {
+    this.remove();
+  });
+}
+
+function confirmDeleteAccount(form, accountName) {
+  return confirm(`Are you sure you want to delete account "${accountName}"?`);
+}
+</script>
+
+<% if (success) { %>
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      showToast('<%= success %>', 'success');
+    });
+  </script>
+<% } %>
+<% if (error) { %>
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      showToast('<%= error %>', 'danger');
+    });
+  </script>
+<% } %>
+
+<script>
+$(function() {
+  // Utility Functions
+  function showToast(msg, type) {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type}`;
+    toast.style.position = 'fixed';
+    toast.style.top = '16px';
+    toast.style.right = '16px';
+    toast.style.zIndex = 9999;
+    toast.style.minWidth = '200px';
+    toast.innerText = msg;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
+  // Initialize Select2 with common options
+  function initSelect2(selector, options) {
+    const defaultOptions = {
+      theme: 'bootstrap-5',
+      width: '100%',
+      allowClear: true,
+      delay: 250,
+      cache: true
+    };
+    return $(selector).select2({...defaultOptions, ...options});
+  }
+
+  // Pre-populate select2 with data
+  function prePopulateSelect2(selector, data) {
+    if (!data || !data.length) return;
+    
+    const $select = $(selector);
+    data.forEach(item => {
+      const option = new Option(item.text || item.name, item.id, true, true);
+      $select.append(option);
+    });
+    $select.trigger('change');
+  }
+
+  // AJAX endpoints configuration
+  const API_ENDPOINTS = {
+    system: '/system/api/system',
+    server: '/server/api/server',
+    contact: '/organize/api/contact',
+    unit: '/organize/api/unit',
+    roleBySystem: '/priv-account/api/role/by-system'
+  };
+
+  // Initialize System select2
+  function initSystemSelect2(selector, modalParent) {
+    return initSelect2(selector, {
+      placeholder: 'Select system(s)',
+      multiple: true,
+      dropdownParent: modalParent,
+      ajax: {
+        url: API_ENDPOINTS.system,
+        dataType: 'json',
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data })
+      }
+    });
+  }
+
+  // Initialize Server select2
+  function initServerSelect2(selector, modalParent) {
+    return initSelect2(selector, {
+      placeholder: 'Select server(s)',
+      multiple: true,
+      dropdownParent: modalParent,
+      ajax: {
+        url: API_ENDPOINTS.server,
+        dataType: 'json',
+        data: params => ({ search: params.term }),
+        processResults: function(data) {
+          if (Array.isArray(data)) return { results: data };
+          if (Array.isArray(data.results)) {
+            return { results: data.results.map(x => ({ id: x.id, text: x.text || x.name })) };
+          }
+          return { results: [] };
+        }
+      }
+    });
+  }
+
+  // Initialize Contact select2
+  function initContactSelect2(selector, modalParent) {
+    return initSelect2(selector, {
+      placeholder: 'Select contact(s)',
+      multiple: true,
+      dropdownParent: modalParent,
+      ajax: {
+        url: API_ENDPOINTS.contact,
+        dataType: 'json',
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data })
+      }
+    });
+  }
+
+  // Initialize Organize Unit select2
+  function initOrganizeSelect2(selector, modalParent) {
+    return initSelect2(selector, {
+      placeholder: 'Select organize unit',
+      dropdownParent: modalParent,
+      ajax: {
+        url: API_ENDPOINTS.unit,
+        dataType: 'json',
+        data: params => ({ search: params.term }),
+        processResults: data => ({ results: data })
+      }
+    });
+  }
+
+  // Initialize Role select2 (only by system)
+  function initRoleSelect2(selector, modalParent, systemSelector) {
+    if ($(selector).hasClass('select2-hidden-accessible')) {
+      $(selector).select2('destroy');
+    }
+
+    return initSelect2(selector, {
+      placeholder: 'Select role',
+      dropdownParent: modalParent,
+      ajax: {
+        url: API_ENDPOINTS.roleBySystem,
+        type: 'POST',
+        contentType: 'application/json',
+        dataType: 'json',
+        data: function(params) {
+          const systemIds = $(systemSelector).val()?.filter(Boolean) || [];
+          if (!systemIds.length) {
+            return JSON.stringify({ system_ids: [] });
+          }
+          return JSON.stringify({ system_ids: systemIds });
+        },
+        processResults: data => ({ results: data })
+      }
+    });
+  }
+
+  // Add Privileged Account Modal Functionality
+  function initAddPrivAccountModal() {
+    const modalElement = $('#addPrivUserModal');
+    const modalContent = modalElement.find('.modal-content');
+
+    // Initialize select2 components
+    initSystemSelect2('#privUserSystem', modalElement);
+    initServerSelect2('#privUserServers', modalElement);
+    initContactSelect2('#privUserContacts', modalElement);
+    initOrganizeSelect2('#privUserOrganize', modalElement);
+    initSelect2('#privUserType', { placeholder: 'Select account type', dropdownParent: modalElement });
+    initSelect2('#privUserManageType', { placeholder: 'Select management method', dropdownParent: modalElement });
+
+    // Initialize and handle Role select2
+    function initPrivUserRoleSelect2() {
+      initRoleSelect2('#privUserRole', modalContent, '#privUserSystem');
+    }
+
+    // Handle system selection change
+    $('#privUserSystem').on('change', function() {
+      $('#privUserRole').val(null).trigger('change');
+      initPrivUserRoleSelect2();
+      // Force reload options
+      setTimeout(() => {
+        $('#privUserRole').select2('open');
+        setTimeout(() => $('#privUserRole').select2('close'), 0);
+      }, 0);
+    });
+
+    // Initialize role select2
+    initPrivUserRoleSelect2();
+
+    // Handle account type changes
+    function updateAccountTypeFields() {
+      const val = $('#privUserType').val();
+      const isOSorDB = val === 'OS' || val === 'DB';
+      const isAPP = val === 'APP';
+
+      // Toggle server fields
+      $('#privUserServerGroup').toggleClass('d-none', !isOSorDB);
+      $('#privUserServers').prop('required', isOSorDB);
+
+      // Toggle app URL fields
+      $('#privUserAppUrlGroup').toggleClass('d-none', !isAPP);
+      $('#privUserAppUrl').prop('required', isAPP);
+    }
+
+    $('#privUserType').on('change', updateAccountTypeFields);
+    updateAccountTypeFields(); // Initial state
+  }
+
+  // Filter Modal Functionality
+  function initFilterModal() {
+    const modalElement = $('#filterPrivAccountModal');
+
+    // Initialize select2 components
+    initSystemSelect2('#filterSystem', modalElement);
+    initOrganizeSelect2('#filterOrganize', modalElement);
+    initContactSelect2('#filterContacts', modalElement);
+
+    // When modal filter is opened, clear and append selected options if any
+    modalElement.on('shown.bs.modal', function() {
+      // Get filter data from hidden div
+      const filterData = document.getElementById('filter-account-data');
+      if (!filterData) return;
+      
+      // SYSTEMS
+      $('#filterSystem').val(null).empty().trigger('change');
+      const systemIds = filterData.getAttribute('data-system-ids');
+      if (systemIds && systemIds !== '[]') {
+        try {
+          const systemIdsArray = JSON.parse(systemIds);
+          if (systemIdsArray && systemIdsArray.length) {
+            // Load systems by IDs
+            systemIdsArray.forEach(systemId => {
+              $.ajax({
+                url: '/system/api/system',
+                data: { id: systemId },
+                dataType: 'json',
+                success: function(systems) {
+                  if (systems && systems.length) {
+                    const system = systems[0];
+                    const option = new Option(system.text || system.name, system.id, true, true);
+                    $('#filterSystem').append(option).trigger('change');
+                  }
+                }
+              });
+            });
+          }
+        } catch (e) {
+          console.error('Error parsing system IDs:', e);
+        }
+      }
+      
+      // ORGANIZE
+      $('#filterOrganize').val(null).empty().trigger('change');
+      const organizeId = filterData.getAttribute('data-organize-id');
+      if (organizeId && organizeId !== '""' && organizeId !== '') {
+        try {
+          const organizeIdValue = JSON.parse(organizeId);
+          if (organizeIdValue) {
+            $.ajax({
+              url: '/organize/api/unit',
+              data: { id: organizeIdValue },
+              dataType: 'json',
+              success: function(units) {
+                if (units && units.length) {
+                  const unit = units[0];
+                  const option = new Option(unit.text || unit.name, unit.id, true, true);
+                  $('#filterOrganize').append(option).trigger('change');
+                }
+              }
+            });
+          }
+        } catch (e) {
+          console.error('Error parsing organize ID:', e);
+        }
+      }
+      
+      // CONTACTS
+      $('#filterContacts').val(null).empty().trigger('change');
+      const contactIds = filterData.getAttribute('data-contact-ids');
+      if (contactIds && contactIds !== '[]') {
+        try {
+          const contactIdsArray = JSON.parse(contactIds);
+          if (contactIdsArray && contactIdsArray.length) {
+            // Load contacts by IDs
+            contactIdsArray.forEach(contactId => {
+              $.ajax({
+                url: '/organize/api/contact',
+                data: { id: contactId },
+                dataType: 'json',
+                success: function(contacts) {
+                  if (contacts && contacts.length) {
+                    const contact = contacts[0];
+                    const option = new Option(contact.text || contact.name, contact.id, true, true);
+                    $('#filterContacts').append(option).trigger('change');
+                  }
+                }
+              });
+            });
+          }
+        } catch (e) {
+          console.error('Error parsing contact IDs:', e);
+        }
+      }
+    });
+  }
+
+  // Edit Modal Functionality
+  function initEditPrivAccountModal() {
+    const modalElement = $('#editPrivAccountModal');
+    const modalContent = modalElement.find('.modal-content');
+
+    // Initialize all select2 components
+    const systemSelect = initSystemSelect2('#editAccountSystem', modalElement);
+    const serverSelect = initServerSelect2('#editAccountServers', modalElement);
+    const contactSelect = initContactSelect2('#editAccountContacts', modalElement);
+    const organizeSelect = initOrganizeSelect2('#editAccountOrganize', modalElement);
+    const roleSelect = initRoleSelect2('#editAccountRole', modalContent, '#editAccountSystem');
+    initSelect2('#editAccountType', { placeholder: 'Select account type', dropdownParent: modalElement });
+    initSelect2('#editAccountManageType', { placeholder: 'Select management method', dropdownParent: modalElement });
+
+    // Handle account type changes
+    function updateEditModalFields() {
+      const val = $('#editAccountType').val();
+      const serverGroup = $('#editAccountServerGroup');
+      const appUrlGroup = $('#editAccountAppUrlGroup');
+      const servers = $('#editAccountServers');
+      const appUrl = $('#editAccountAppUrl');
+
+      if (val === 'OS' || val === 'DB') {
+        serverGroup.removeClass('d-none');
+        appUrlGroup.addClass('d-none');
+        servers.prop('required', true);
+        appUrl.prop('required', false);
+      } else if (val === 'APP') {
+        serverGroup.addClass('d-none');
+        appUrlGroup.removeClass('d-none');
+        servers.prop('required', false);
+        appUrl.prop('required', true);
+      } else {
+        serverGroup.addClass('d-none');
+        appUrlGroup.addClass('d-none');
+        servers.prop('required', false);
+        appUrl.prop('required', false);
+      }
+    }
+
+    // Bind events
+    $('#editAccountType').on('change', updateEditModalFields);
+    
+    // Handle system selection change for role updates
+    $('#editAccountSystem').on('change', function() {
+      $('#editAccountRole').val(null).trigger('change');
+      roleSelect.trigger('change');
+    });
+
+    // When Edit button is clicked, populate the edit modal
+    $(document).on('click', '[data-bs-target="#editPrivAccountModal"]', function() {
+      const accountId = $(this).data('account-id');
+      const accountUsername = $(this).data('account-username');
+      const accountDescription = $(this).data('account-description');
+      const accountContacts = $(this).data('account-contacts');
+      const accountOrganize = $(this).data('account-organize');
+      const accountType = $(this).data('account-type');
+      const accountServers = $(this).data('account-servers');
+      const accountAppUrl = $(this).data('account-app-url');
+      const accountSystems = $(this).data('account-systems');
+      const accountManageType = $(this).data('account-manage-type');
+      const accountRole = $(this).data('account-role');
+      
+      // Populate form fields
+      $('#editAccountId').val(accountId);
+      $('#editAccountUsername').val(accountUsername);
+      $('#editAccountDescription').val(accountDescription);
+      $('#editAccountType').val(accountType).trigger('change');
+      $('#editAccountAppUrl').val(accountAppUrl);
+      $('#editAccountManageType').val(accountManageType).trigger('change');
+      
+      // Set form action
+      $('#editPrivAccountForm').attr('action', '/priv-account/account/' + accountId + '?_method=PUT');
+      
+      // Clear and populate system select
+      const $systemSelect = $('#editAccountSystem');
+      $systemSelect.val(null).trigger('change');
+      $systemSelect.find('option').remove();
+      if (accountSystems && accountSystems.length) {
+        prePopulateSelect2('#editAccountSystem', 
+          accountSystems.map(sys => ({ id: sys.id, text: sys.name }))
+        );
+      }
+
+      // Clear and populate server select
+      const $serverSelect = $('#editAccountServers');
+      $serverSelect.val(null).trigger('change');
+      $serverSelect.find('option').remove();
+      if (accountServers && accountServers.length) {
+        prePopulateSelect2('#editAccountServers', 
+          accountServers.map(srv => ({ id: srv.id, text: srv.name }))
+        );
+      }
+
+      // Clear and populate contact select
+      const $contactSelect = $('#editAccountContacts');
+      $contactSelect.val(null).trigger('change');
+      $contactSelect.find('option').remove();
+      if (accountContacts && accountContacts.length) {
+        prePopulateSelect2('#editAccountContacts', 
+          accountContacts.map(contact => ({ id: contact.id, text: contact.name }))
+        );
+      }
+
+      // Clear and populate organize select
+      const $organizeSelect = $('#editAccountOrganize');
+      $organizeSelect.val(null).trigger('change');
+      $organizeSelect.find('option').remove();
+      if (accountOrganize && accountOrganize.id && accountOrganize.name) {
+        prePopulateSelect2('#editAccountOrganize', [{
+          id: accountOrganize.id,
+          text: accountOrganize.name
+        }]);
+      }
+
+      // Clear and populate role select
+      const $roleSelect = $('#editAccountRole');
+      $roleSelect.val(null).trigger('change');
+      $roleSelect.find('option').remove();
+      if (accountRole && accountRole.id && accountRole.name) {
+        prePopulateSelect2('#editAccountRole', [{
+          id: accountRole.id,
+          text: accountRole.name
+        }]);
+      }
+
+      // Update fields visibility based on account type
+      updateEditModalFields();
+    });
+  }
+
+  // Initialize everything
+  initAddPrivAccountModal();
+  initFilterModal();
+  initEditPrivAccountModal();
+
+  // Clear filter button
+  $('#clearPrivAccountFilterBtn').on('click', function() {
+    window.location.href = '/priv-account/account';
+  });
+});
+</script>
+
+<!-- Responsive Tables CSS -->
+<style>
+#privAccountTable thead th {
+  white-space: nowrap;
+}
+/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
+#privAccountTable th:nth-child(1), #privAccountTable td:nth-child(1) { width: 4%; }
+#privAccountTable th:nth-child(2), #privAccountTable td:nth-child(2) { width: 15%; }
+#privAccountTable th:nth-child(3), #privAccountTable td:nth-child(3) { width: 25%; }
+#privAccountTable th:nth-child(4), #privAccountTable td:nth-child(4) { width: 20%; }
+#privAccountTable th:nth-child(5), #privAccountTable td:nth-child(5) { width: 16%; }
+#privAccountTable th:nth-child(6), #privAccountTable td:nth-child(6) { width: 20%; }
+
+/* Mobile responsive styles for Privileged Account List */
+@media (max-width: 768px) {
+  .table-responsive {
+    display: block !important;
+    overflow-x: scroll !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  
+  .table {
+    display: table !important;
+    min-width: 800px !important;
+    width: 100% !important;
+  }
+  
+  .card-body,
+  .card,
+  .col-12,
+  .container-fluid,
+  .row {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  .col-12 {
+    position: relative !important;
+    z-index: 1 !important;
+    width: 100% !important;
+    padding: 0 15px !important;
+  }
+  
+  /* Button responsive */
+  .btn-sm {
+    font-size: 0.75rem !important;
+    padding: 0.25rem 0.5rem !important;
+  }
+  
+  /* Search form responsive */
+  .input-group {
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  
+  .input-group .form-control {
+    font-size: 0.875rem !important;
+  }
+  
+  .input-group .form-select {
+    font-size: 0.75rem !important;
+    width: 80px !important;
+  }
+}
+
+/* Force override for Add Privileged Account modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #addPrivUserModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #addPrivUserModal .modal-footer .btn,
+  #addPrivUserModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #addPrivUserModal .modal-footer .btn:first-child,
+  #addPrivUserModal .modal-footer button:first-child {
+    order: 2 !important;
+  }
+  
+  #addPrivUserModal .modal-footer .btn:last-child,
+  #addPrivUserModal .modal-footer button:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #addPrivUserModal .modal-footer .btn.btn-secondary,
+  #addPrivUserModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+
+/* Force override for Edit Privileged Account modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #editPrivAccountModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #editPrivAccountModal .modal-footer .btn,
+  #editPrivAccountModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #editPrivAccountModal .modal-footer .btn:first-child,
+  #editPrivAccountModal .modal-footer button:first-child {
+    order: 2 !important;
+  }
+  
+  #editPrivAccountModal .modal-footer .btn:last-child,
+  #editPrivAccountModal .modal-footer button:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #editPrivAccountModal .modal-footer .btn.btn-secondary,
+  #editPrivAccountModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+
+/* Force override for Filter Privileged Account modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #filterPrivAccountModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #filterPrivAccountModal .modal-footer .btn,
+  #filterPrivAccountModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #filterPrivAccountModal .modal-footer .btn:first-child {
+    order: 2 !important;
+  }
+  
+  #filterPrivAccountModal .modal-footer .btn:last-child {
+    order: 1 !important;
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #filterPrivAccountModal .modal-footer .btn.btn-outline-danger,
+  #filterPrivAccountModal .modal-footer .btn.btn-secondary,
+  #filterPrivAccountModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+</style>

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Two-Factor Authentication</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/css/source-sans-3.css" />
+    <link rel="stylesheet" href="/css/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="<%= cssPath %>adminlte.css" />
+    <style>
+      body.login-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f4f6f9;
+        font-family: var(--bs-body-font-family);
+      }
+      .login-shell {
+        width: 100%;
+        max-width: 420px;
+        margin: 2rem;
+        border-radius: 1rem;
+        overflow: hidden;
+        box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.15);
+        background: #fff;
+      }
+      .login-form-panel {
+        padding: 2.75rem 2.5rem;
+      }
+      .login-form-panel h2 {
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+      }
+      .login-form-panel .subtitle {
+        color: #6c757d;
+        margin-bottom: 1.5rem;
+      }
+      .login-form-panel .form-control {
+        height: 3rem;
+        border-radius: 0.5rem;
+      }
+      .login-form-panel .input-group-text {
+        border-radius: 0.5rem;
+        background: transparent;
+        border-left: none;
+        color: #adb5bd;
+      }
+      .login-form-panel .input-group .form-control {
+        border-right: none;
+      }
+      .login-form-panel .input-group:focus-within .form-control,
+      .login-form-panel .input-group:focus-within .input-group-text {
+        border-color: #86b7fe;
+      }
+      .login-form-panel .btn-primary {
+        height: 3rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+      }
+      @media (max-width: 767.98px) {
+        .login-shell {
+          margin: 1rem;
+        }
+        .login-form-panel {
+          padding: 2rem 1.75rem;
+        }
+      }
+    </style>
+  </head>
+  <body class="login-page">
+    <div class="login-shell">
+      <div class="login-form-panel">
+        <h2>2FA Verification</h2>
+        <p class="subtitle">Enter the 6-digit code from your authenticator app</p>
+        <% if (error) { %>
+          <div class="alert alert-danger py-2" role="alert"><%= error %></div>
+        <% } %>
+        <form action="/login/2fa" method="post" autocomplete="off">
+          <div class="mb-3">
+            <div class="input-group">
+              <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
+              <input type="text" name="token" class="form-control text-center" maxlength="6" required pattern="[0-9]{6}" placeholder="Enter 6-digit code" autofocus />
+            </div>
+          </div>
+          <div class="d-grid mb-3">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-circle me-1"></i> Verify
+            </button>
+          </div>
+        </form>
+        <p class="mb-0 text-center">
+          <a href="/logout" class="text-muted text-decoration-none">Back to Login</a>
+        </p>
+      </div>
+    </div>
+    <script src="/vendor/popper.min.js"></script>
+    <script src="/vendor/bootstrap.min.js"></script>
+  </body>
+</html>

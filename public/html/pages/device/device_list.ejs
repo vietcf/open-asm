@@ -1,0 +1,1413 @@
+<%
+// ==========================================
+// HELPER FUNCTIONS
+// ==========================================
+
+// Helper function to build pagination URL with all query parameters
+function buildPaginationUrl(targetPage) {
+  const params = new URLSearchParams();
+  
+  // Add page
+  params.set('page', targetPage);
+  
+  // Add search if exists
+  if (typeof search !== 'undefined' && search) {
+    params.set('search', search);
+  }
+  
+  // Add pageSize if exists
+  if (typeof pageSize !== 'undefined' && pageSize) {
+    params.set('pageSize', pageSize);
+  }
+  
+  // Add status filter if exists
+  if (typeof filterStatus !== 'undefined' && filterStatus) {
+    params.set('status', filterStatus);
+  }
+  
+  // Add type filter if exists
+  if (typeof filterType !== 'undefined' && filterType) {
+    params.set('type', filterType);
+  }
+  
+  // Add location filter if exists
+  if (typeof filterLocation !== 'undefined' && filterLocation) {
+    params.set('location', filterLocation);
+  }
+  
+  return '?' + params.toString();
+}
+
+// Helper function to build export URL with all query parameters
+function buildExportUrl() {
+  const params = new URLSearchParams();
+  
+  // Add search if exists
+  if (typeof search !== 'undefined' && search) {
+    params.set('search', search);
+  }
+  
+  // Add device_type_id filter if exists
+  if (typeof device_type_id !== 'undefined' && device_type_id) {
+    params.set('device_type_id', device_type_id);
+  }
+  
+  // Add tags filter if exists
+  if (typeof tags !== 'undefined' && tags && tags.length > 0) {
+    tags.forEach(tag => params.append('tags[]', tag));
+  }
+  
+  // Add platform_id filter if exists
+  if (typeof platform_id !== 'undefined' && platform_id) {
+    params.set('platform_id', platform_id);
+  }
+  
+  // Add location filter if exists
+  if (typeof location !== 'undefined' && location) {
+    params.set('location', location);
+  }
+  
+  // Add manufacturer filter if exists
+  if (typeof manufacturer !== 'undefined' && manufacturer) {
+    params.set('manufacturer', manufacturer);
+  }
+  
+  // Add device_role filter if exists
+  if (typeof device_role !== 'undefined' && device_role) {
+    params.set('device_role', device_role);
+  }
+  
+  return '/device/device/export' + (params.toString() ? '?' + params.toString() : '');
+}
+%>
+
+<!-- ========================================== -->
+<!-- MAIN CONTENT -->
+<!-- ========================================== -->
+
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">Device List</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main content -->
+<div class="app-content">
+  <div class="container-fluid">
+    <!-- ========================================== -->
+    <!-- SEARCH AND FILTER SECTION -->
+    <!-- ========================================== -->
+    
+    <!-- Search and Page Size Row -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end align-items-center gap-2">
+          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/device/device">
+            <!-- Hidden inputs to preserve filter values -->
+            <input type="hidden" name="page" value="1">
+            <% if (typeof device_type_id !== 'undefined' && device_type_id) { %>
+              <input type="hidden" name="device_type_id" value="<%= device_type_id %>">
+            <% } %>
+            <% if (typeof platform_id !== 'undefined' && platform_id) { %>
+              <input type="hidden" name="platform_id" value="<%= platform_id %>">
+            <% } %>
+            <% if (typeof location !== 'undefined' && location) { %>
+              <input type="hidden" name="location" value="<%= location %>">
+            <% } %>
+            <% if (typeof manufacturer !== 'undefined' && manufacturer) { %>
+              <input type="hidden" name="manufacturer" value="<%= manufacturer %>">
+            <% } %>
+            <% if (typeof device_role !== 'undefined' && device_role) { %>
+              <input type="hidden" name="device_role" value="<%= device_role %>">
+            <% } %>
+            <% if (typeof tags !== 'undefined' && tags && tags.length > 0) { %>
+              <% tags.forEach(function(tag) { %>
+                <input type="hidden" name="tags[]" value="<%= tag %>">
+              <% }); %>
+            <% } %>
+            
+            <div class="input-group input-group-sm" style="width: 250px;">
+              <input class="form-control form-control-sm" type="search" name="search" placeholder="Search Device Name..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+              <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
+            </div>
+            <div class="d-flex align-items-center gap-1">
+              <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+              <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
+                <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
+                  <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
+                <% }) %>
+              </select>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- ACTION BUTTONS SECTION -->
+    <!-- ========================================== -->
+    
+    <!-- Action Buttons -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end gap-2">
+          <% if (hasPermission && hasPermission('device.create')) { %>
+            <a href="/device/device/add" class="btn btn-primary btn-sm">
+              <i class="bi bi-plus"></i> Add Device
+            </a>
+          <% } %>
+          <%
+            const hasActiveDeviceFilter = !!(
+              (device_type_id && device_type_id !== '') ||
+              (platform_id && platform_id !== '') ||
+              (location && location !== '') ||
+              (manufacturer && manufacturer !== '') ||
+              (device_role && device_role !== '') ||
+              (tags && tags.length > 0)
+            );
+          %>
+          <button type="button" class="btn btn-sm <%= hasActiveDeviceFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterDeviceModal">
+            <i class="bi bi-funnel<%= hasActiveDeviceFilter ? '-fill' : '' %>"></i> Filter<%= hasActiveDeviceFilter ? ' (Filtered)' : '' %>
+          </button>
+          <% if (hasPermission && hasPermission('device.read')) { %>
+            <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">
+              <i class="bi bi-download"></i> Export
+            </a>
+          <% } %>
+          <% if (hasPermission && hasPermission('device.create')) { %>
+            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importDeviceModal">
+              <i class="bi bi-upload"></i> Import Device
+            </button>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- FILTER DATA AND FLASH MESSAGES -->
+    <!-- ========================================== -->
+    
+    <!-- Filter values for JS -->
+    <div id="filter-device-data"
+         data-device-type-id='<%= typeof device_type_id !== 'undefined' ? device_type_id : '' %>'
+         data-tags='<%= JSON.stringify(selectedTags || []) %>'
+         data-platform-id='<%= typeof platform_id !== 'undefined' ? platform_id : '' %>'
+         data-location='<%= typeof location !== 'undefined' ? location : '' %>'
+         data-manufacturer='<%= typeof manufacturer !== 'undefined' ? manufacturer : '' %>'
+         data-device-role='<%= typeof device_role !== 'undefined' ? device_role : '' %>'
+         style="display:none"></div>
+    
+    <!-- Flash Messages -->
+    <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+      <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
+        <i class="bi bi-check-circle me-2"></i><%= successMessage %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <script>
+        // Auto-hide success message after 5 seconds
+        setTimeout(function() {
+          const alert = document.getElementById('successAlert');
+          if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+          }
+        }, 5000);
+      </script>
+    <% } %>
+    
+    <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+      <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
+        <i class="bi bi-exclamation-triangle me-2"></i><%= errorMessage %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <script>
+        // Auto-hide error message after 8 seconds (longer for errors)
+        setTimeout(function() {
+          const alert = document.getElementById('errorAlert');
+          if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+          }
+        }, 8000);
+      </script>
+    <% } %>
+
+    <!-- ========================================== -->
+    <!-- DEVICE LIST TABLE -->
+    <!-- ========================================== -->
+    
+    <!-- Device List Table -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title mb-0">Device List</h3>
+          </div>
+          <div class="card-body table-responsive p-0" style="overflow-x: auto;">
+            <table class="table table-hover" id="deviceTable">
+              <thead>
+                <tr>
+                  <th>No.</th>
+                  <th data-sort-type="text">Device Name</th>
+                  <th data-sort-type="text">Description</th>
+                  <th data-sort-type="text">Device Type</th>
+                  <th data-sort-type="text">Location</th>
+                  <th data-sort-type="text">IP Address(es)</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (deviceList && deviceList.length > 0) { %>
+                  <% deviceList.forEach(function(device, idx) { %>
+                    <tr>
+                      <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                      <td><%= device.name %></td>
+                      <td>
+                        <%
+                          const cleanDescription = (device.description || '-').trim();
+                          const shortDescription = cleanDescription.length > 50 ? cleanDescription.substring(0, 50) + '…' : cleanDescription;
+                        %>
+                        <span data-bs-toggle="tooltip" data-bs-placement="top" title="<%= cleanDescription %>" style="cursor: help; word-break: break-word;"><%= shortDescription %></span>
+                      </td>
+                      <td><%= device.device_type_name || '-' %></td>
+                      <td><%= device.location || '-' %></td>
+                      <td>
+                        <% if (device.ip_addresses && device.ip_addresses.length > 0) { %>
+                          <% device.ip_addresses.slice(0, 3).forEach(function(ip, index) { %>
+                            <%= ip.ip_address %><% if (index < Math.min(device.ip_addresses.length, 3) - 1) { %>, <% } %>
+                          <% }) %>
+                          <% if (device.ip_addresses.length > 3) { %>
+                            <br><small class="text-muted">+<%= device.ip_addresses.length - 3 %> more</small>
+                          <% } %>
+                        <% } else { %>
+                          -
+                        <% } %>
+                      </td>
+                      <td class="text-end">
+                        <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showDeviceDetail('<%= device.id %>')" data-device='<%= JSON.stringify(device) %>'>
+                          <i class="bi bi-eye"></i>
+                        </button>
+                        <% if (hasPermission('device.update')) { %>
+                          <a href="/device/device/edit/<%= device.id %>" class="btn btn-warning btn-sm" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                          </a>
+                        <% } %>
+                        <% if (hasPermission('device.delete')) { %>
+                          <form action="/device/device/<%= device.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteDevice(this, '<%= device.name %>')">
+                            <input type="hidden" name="delete_ip" value="false">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </form>
+                        <% } %>
+                      </td>
+                    </tr>
+                  <% }) %>
+                <% } else { %>
+                  <tr><td colspan="7" class="text-center">No devices found</td></tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+          <div class="card-footer clearfix">
+            <div class="d-flex justify-content-between align-items-center px-3 py-2">
+              <div>
+                <% 
+                  // Calculate pagination range
+                  const deviceStartItem = (page - 1) * pageSize + 1;
+                  const deviceEndItem = Math.min(page * pageSize, totalCount || 0);
+                  const deviceStartPage = Math.max(1, page - 2);
+                  const deviceEndPage = Math.min(totalPages, page + 2);
+                %>
+                <span>Showing <%= deviceStartItem %> - <%= deviceEndItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> devices</span>
+              </div>
+              <ul class="pagination pagination-sm m-0 float-end">
+                <% 
+                  function buildDeviceFilterQuery() {
+                    let params = [];
+                    if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+                    if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
+                    if (typeof device_type_id !== 'undefined' && device_type_id) params.push('device_type_id=' + encodeURIComponent(device_type_id));
+                    if (typeof platform_id !== 'undefined' && platform_id) params.push('platform_id=' + encodeURIComponent(platform_id));
+                    if (typeof location !== 'undefined' && location) params.push('location=' + encodeURIComponent(location));
+                    if (typeof manufacturer !== 'undefined' && manufacturer) params.push('manufacturer=' + encodeURIComponent(manufacturer));
+                    if (typeof device_role !== 'undefined' && device_role) params.push('device_role=' + encodeURIComponent(device_role));
+                    if (typeof tags !== 'undefined' && tags && tags.length > 0) {
+                      tags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag)); });
+                    }
+                    return params.join('&');
+                  }
+                  const deviceFilterQuery = buildDeviceFilterQuery();
+                %>
+                <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                  <a class="page-link" href="?page=<%= page - 1 %><%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>" tabindex="-1">Previous</a>
+                </li>
+                <% if (deviceStartPage > 1) { %>
+                  <li class="page-item"><a class="page-link" href="?page=1<%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>">1</a></li>
+                  <% if (deviceStartPage > 2) { %>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <% } %>
+                <% } %>
+                <% for (let i = deviceStartPage; i <= deviceEndPage; i++) { %>
+                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>"><%= i %></a></li>
+                <% } %>
+                <% if (deviceEndPage < totalPages) { %>
+                  <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>"><%= totalPages %></a></li>
+                <% } %>
+                <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                  <a class="page-link" href="?page=<%= page + 1 %><%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>">Next</a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODALS SECTION -->
+<!-- ========================================== -->
+
+<!-- Device Detail Modal -->
+<div class="modal fade" id="deviceDetailModal" tabindex="-1" aria-labelledby="deviceDetailModalLabel">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deviceDetailModalLabel">Device Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="deviceDetailContent">
+        <!-- Content will be loaded here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Device Modal -->
+<div class="modal fade" id="deleteDeviceModal" tabindex="-1" aria-labelledby="deleteDeviceModalLabel">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteDeviceModalLabel">Delete Device</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete the device <strong id="deleteDeviceName"></strong>?</p>
+        <p class="mb-2">What should happen to its IP address(es)?</p>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="deleteDeviceIpChoice" id="deleteDeviceIpReserve" value="false" checked>
+          <label class="form-check-label" for="deleteDeviceIpReserve">
+            Release IP(s) back to <strong>Reserved</strong> status (default)
+          </label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="deleteDeviceIpChoice" id="deleteDeviceIpDelete" value="true">
+          <label class="form-check-label" for="deleteDeviceIpDelete">
+            Delete the IP address(es) permanently
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger btn-sm" id="deleteDeviceConfirmBtn">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filter Device Modal -->
+<div class="modal fade" id="filterDeviceModal" tabindex="-1" aria-labelledby="filterDeviceModalLabel">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="filterDeviceModalLabel">Filter Devices</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form method="GET" action="/device/device" id="filterDeviceForm">
+        <input type="hidden" name="page" value="1">
+        <% if (typeof pageSize !== 'undefined' && pageSize) { %>
+          <input type="hidden" name="pageSize" value="<%= pageSize %>">
+        <% } %>
+        <div class="modal-body">
+          <div class="row g-2">
+            <!-- Device Type Filter -->
+            <div class="col-12 mb-2">
+              <label class="form-label">Device Type</label>
+              <select id="filterDeviceTypeId" name="device_type_id" class="form-control">
+                <option value="">All Device Types</option>
+                <!-- Options will be loaded via AJAX -->
+              </select>
+            </div>
+            
+            <!-- Tags Filter -->
+            <div class="col-12 mb-2">
+              <label class="form-label">Tags</label>
+              <select id="filterDeviceTags" name="tags[]" class="form-control" multiple></select>
+            </div>
+            
+            <!-- Platform Filter -->
+            <div class="col-12 mb-2">
+              <label class="form-label">Platform</label>
+              <select id="filterDevicePlatform" name="platform_id" class="form-control">
+                <option value="">All Platforms</option>
+                <!-- Options will be loaded via AJAX -->
+              </select>
+            </div>
+            
+            <!-- Location Filter -->
+            <div class="col-12 mb-2">
+              <label for="filterDeviceLocation" class="form-label">Location</label>
+              <select class="form-control" id="filterDeviceLocation" name="location">
+                <option value="">All Locations</option>
+                <% if (typeof locationOptions !== 'undefined' && locationOptions.length > 0) { %>
+                  <% locationOptions.forEach(function(option) { %>
+                    <option value="<%= option.value %>" <%= (typeof location !== 'undefined' && location === option.value) ? 'selected' : '' %>><%= option.label %></option>
+                  <% }); %>
+                <% } %>
+              </select>
+            </div>
+            
+            <!-- Manufacturer Filter -->
+            <div class="col-12 mb-2">
+              <label for="filterDeviceManufacturer" class="form-label">Manufacturer</label>
+              <select id="filterDeviceManufacturer" name="manufacturer" class="form-control">
+                <option value="">All Manufacturers</option>
+                <!-- Options will be loaded via AJAX -->
+              </select>
+            </div>
+            
+            <!-- Device Role Filter -->
+            <div class="col-12 mb-2">
+              <label for="filterDeviceRole" class="form-label">Device Role</label>
+              <select id="filterDeviceRole" name="device_role" class="form-control">
+                <option value="">All Device Roles</option>
+                <!-- Options will be loaded via AJAX -->
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-between">
+          <button type="button" class="btn btn-outline-danger" id="clearFilterBtnDevice">Clear All Filters</button>
+          <div>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Import Device Modal -->
+<div class="modal fade" id="importDeviceModal" tabindex="-1" aria-labelledby="importDeviceModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="importDeviceModalLabel">Import Devices</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="importDeviceForm" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label for="deviceImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="file" class="form-control" id="deviceImportFile" name="file" accept=".xlsx,.xls" required>
+              <a href="/device/device/template" class="btn btn-outline-info" download>
+                <i class="bi bi-download"></i> Download Template
+              </a>
+            </div>
+            <div class="form-text">Supported format: Excel (.xlsx, .xls). Maximum file size: 10MB</div>
+          </div>
+          
+          <div class="mb-3">
+            <div class="alert alert-info">
+              <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
+              <ul class="mb-0">
+                <li>Click "Download Template" to get the Excel template with correct format</li>
+                <li>Fill the template with your device data</li>
+                <li><strong>Required fields:</strong> IP Address, Device Type</li>
+                <li><strong>Optional fields:</strong> Name (auto-generated if empty), Platform, Location, Serial Number, Management Address, Manufacturer, Device Role, Manager, Tags, Description</li>
+                <li>Select your filled template file and validate before importing</li>
+              </ul>
+            </div>
+          </div>
+          
+          <!-- Progress bar -->
+          <div id="deviceImportProgress" class="progress mb-3" style="display: none;">
+            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+          </div>
+          
+          <!-- Results display -->
+          <div id="deviceImportResults" class="alert" style="display: none;"></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning btn-sm" id="validateDeviceBtn">Validate File</button>
+        <button type="button" class="btn btn-success btn-sm" id="importDeviceBtn" style="display: none;">Import Devices</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// JAVASCRIPT FUNCTIONS
+// ==========================================
+
+// Show device detail
+// Manufacturer/Device Role are free-text (autocomplete, not a fixed enum),
+// and name/description/serial_number/management_address/tags/contacts are
+// all user-editable — none are HTML-stripped server-side, so they must be
+// escaped before going into innerHTML or a crafted value executes script
+// in the browser of anyone who opens this detail modal.
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function showDeviceDetail(deviceId) {
+  const buttons = document.querySelectorAll('button[data-device]');
+  let targetButton = null;
+  
+  for (let button of buttons) {
+    const data = button.getAttribute('data-device');
+    if (data) {
+      try {
+        const device = JSON.parse(data);
+        if (device.id == deviceId) {
+          targetButton = button;
+          break;
+        }
+      } catch (e) {
+        console.error('Error parsing device data:', e);
+      }
+    }
+  }
+  
+  if (!targetButton) {
+    alert('Device data not found');
+    return;
+  }
+  
+  const deviceData = targetButton.getAttribute('data-device');
+  let device;
+  try {
+    device = JSON.parse(deviceData);
+  } catch (e) {
+    alert('Error parsing device data: ' + e.message);
+    return;
+  }
+  
+  const modalElement = document.getElementById('deviceDetailModal');
+  const modal = new bootstrap.Modal(modalElement);
+  const content = document.getElementById('deviceDetailContent');
+  
+  let html = '<dl class="row detail-dl">';
+  html += '<dt class="col-sm-4">Device Name</dt><dd class="col-sm-8">' + escapeHtml(device.name || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Type</dt><dd class="col-sm-8">' + escapeHtml(device.device_type_name || device.type || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Location</dt><dd class="col-sm-8">' + escapeHtml(device.location || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Platform (OS)</dt><dd class="col-sm-8">' + escapeHtml(device.platform_name || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Serial Number</dt><dd class="col-sm-8">' + escapeHtml(device.serial_number || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Manufacturer</dt><dd class="col-sm-8">' + escapeHtml(device.manufacturer || 'N/A') + '</dd>';
+  html += '<dt class="col-sm-4">Device Role</dt><dd class="col-sm-8">' + escapeHtml(device.device_role || 'N/A') + '</dd>';
+
+  html += '<dt class="col-sm-4">IP Addresses</dt><dd class="col-sm-8">';
+  if (device.ip_addresses && device.ip_addresses.length > 0) {
+    html += '<ul class="mb-0 ps-3">';
+    device.ip_addresses.forEach(function(ip) {
+      const ipValue = (typeof ip === 'string' ? ip : ip.ip_address);
+      const searchUrl = '/network/ip-address?page=1&search=' + encodeURIComponent(ipValue);
+      html += '<li><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' + escapeHtml(ipValue) + '</a>';
+      if (typeof ip !== 'string' && ip.role === 'vip') {
+        html += ' <span class="badge bg-warning text-dark">VIP</span>';
+      }
+      html += '</li>';
+    });
+    html += '</ul>';
+  } else {
+    html += 'N/A';
+  }
+  html += '</dd>';
+
+  html += '<dt class="col-sm-4">Management Address</dt><dd class="col-sm-8">';
+  if (device.management_address && device.management_address.trim() !== '') {
+    const managementAddresses = device.management_address.split(',').map(addr => addr.trim()).filter(addr => addr);
+    if (managementAddresses.length > 1) {
+      html += '<ul class="mb-0 ps-3">';
+      managementAddresses.forEach(function(addr) {
+        html += '<li>' + escapeHtml(addr) + '</li>';
+      });
+      html += '</ul>';
+    } else {
+      html += escapeHtml(device.management_address);
+    }
+  } else {
+    html += 'N/A';
+  }
+  html += '</dd>';
+
+  if (device.contacts && device.contacts.length > 0) {
+    html += '<dt class="col-sm-4">Managers</dt><dd class="col-sm-8"><ul class="mb-0 ps-3">';
+    device.contacts.forEach(function(manager) {
+      const managerName = (typeof manager === 'string' ? manager : manager.name);
+      const managerEmail = (typeof manager === 'string' ? '' : manager.email);
+      const searchUrl = '/organize/contact?page=1&search=' + encodeURIComponent(managerName);
+      html += '<li><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' + escapeHtml(managerName);
+      if (managerEmail) {
+        html += ' (' + escapeHtml(managerEmail) + ')';
+      }
+      html += '</a></li>';
+    });
+    html += '</ul></dd>';
+  }
+
+  if (device.tags && device.tags.length > 0) {
+    html += '<dt class="col-sm-4">Tags</dt><dd class="col-sm-8">';
+    device.tags.forEach(function(tag) {
+      const tagValue = (typeof tag === 'string' ? tag : tag.name);
+      html += '<span class="badge bg-primary me-1 mb-1">' + escapeHtml(tagValue) + '</span>';
+    });
+    html += '</dd>';
+  }
+
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + escapeHtml(device.description || 'N/A') + '</pre></dd>';
+
+  const deviceCreated = (device.created_at || 'N/A');
+  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + escapeHtml(deviceCreated) + '</dd>';
+  const deviceUpdated = (device.updated_at || 'N/A');
+  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + escapeHtml(deviceUpdated) + '</dd>';
+  if (device.updated_by) {
+    html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + escapeHtml(device.updated_by) + '</dd>';
+  }
+  html += '</dl>';
+  content.innerHTML = html;
+  modal.show();
+}
+
+// Confirm delete device
+let pendingDeleteDeviceForm = null;
+function confirmDeleteDevice(form, deviceName) {
+  pendingDeleteDeviceForm = form;
+  document.getElementById('deleteDeviceName').textContent = deviceName;
+  document.getElementById('deleteDeviceIpReserve').checked = true;
+  const modal = new bootstrap.Modal(document.getElementById('deleteDeviceModal'));
+  modal.show();
+  return false;
+}
+
+document.getElementById('deleteDeviceConfirmBtn').addEventListener('click', function () {
+  if (!pendingDeleteDeviceForm) return;
+  const deleteIp = document.querySelector('input[name="deleteDeviceIpChoice"]:checked').value;
+  pendingDeleteDeviceForm.querySelector('input[name="delete_ip"]').value = deleteIp;
+  bootstrap.Modal.getInstance(document.getElementById('deleteDeviceModal')).hide();
+  pendingDeleteDeviceForm.submit();
+});
+
+// ==========================================
+// FILTER DEVICE MODAL JAVASCRIPT
+// ==========================================
+
+// Initialize window variables for Select2
+window.selectedDeviceType = <%- JSON.stringify(selectedDeviceType || null) %>;
+window.selectedTags = <%- JSON.stringify(selectedTags || []) %>;
+window.selectedPlatform = <%- JSON.stringify(selectedPlatform || null) %>;
+
+// Debug log
+console.log('Device List - window.selectedTags initialized:', window.selectedTags);
+console.log('Device List - window.selectedDeviceType initialized:', window.selectedDeviceType);
+console.log('Device List - window.selectedPlatform initialized:', window.selectedPlatform);
+
+$(document).ready(function() {
+  console.log('Document ready - initializing Select2 fields');
+  
+  // Initialize Select2 for Device Type
+  $('#filterDeviceTypeId').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select device type',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterDeviceModal'),
+    ajax: {
+      url: '/device/api/device-type',
+      dataType: 'json',
+      delay: 250,
+      data: function(params) {
+        return { search: params.term };
+      },
+      processResults: function(data) {
+        return { results: data };
+      },
+      cache: true
+    }
+  });
+
+  // Initialize Select2 for Tags
+  $('#filterDeviceTags').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select tag(s)',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterDeviceModal'),
+    ajax: {
+      url: '/organize/api/tag',
+      dataType: 'json',
+      delay: 250,
+      data: function(params) {
+        return { search: params.term };
+      },
+      processResults: function(data) {
+        return { results: data };
+      },
+      cache: true
+    }
+  });
+
+  // Initialize Select2 for Platform
+  $('#filterDevicePlatform').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select platform',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterDeviceModal'),
+    ajax: {
+      url: '/device/api/platform',
+      dataType: 'json',
+      delay: 250,
+      data: function(params) {
+        return { search: params.term };
+      },
+      processResults: function(data) {
+        return { results: data };
+      },
+      cache: true
+    }
+  });
+
+  // Initialize Select2 for Manufacturer
+  $('#filterDeviceManufacturer').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select or type manufacturer',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterDeviceModal'),
+    tags: true,
+    ajax: {
+      url: '/device/api/manufacturer',
+      dataType: 'json',
+      delay: 250,
+      data: function(params) {
+        return { search: params.term };
+      },
+      processResults: function(data) {
+        return { results: data };
+      },
+      cache: true
+    },
+    createTag: function(params) {
+      var term = $.trim(params.term);
+      if (term === '') {
+        return null;
+      }
+      return {
+        id: term,
+        text: term,
+        newTag: true
+      };
+    }
+  });
+
+  // Initialize Select2 for Device Role
+  $('#filterDeviceRole').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'Select or type device role',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterDeviceModal'),
+    tags: true,
+    ajax: {
+      url: '/device/api/device-role',
+      dataType: 'json',
+      delay: 250,
+      data: function(params) {
+        return { search: params.term };
+      },
+      processResults: function(data) {
+        return { results: data };
+      },
+      cache: true
+    },
+    createTag: function(params) {
+      var term = $.trim(params.term);
+      if (term === '') {
+        return null;
+      }
+      return {
+        id: term,
+        text: term,
+        newTag: true
+      };
+    }
+  });
+
+  // Initialize Select2 for Location — options are already rendered
+  // server-side (locationOptions), so no ajax needed, just the Bootstrap 5
+  // styling to match the other filter fields in this modal.
+  $('#filterDeviceLocation').select2({
+    theme: 'bootstrap-5',
+    placeholder: 'All Locations',
+    allowClear: true,
+    width: '100%',
+    dropdownParent: $('#filterDeviceModal')
+  });
+
+  console.log('All Select2 fields initialized');
+
+  // Clear all filters - use event delegation
+  $(document).on('click', '#clearFilterBtnDevice', function() {
+    console.log('Clear All Filters button clicked');
+
+    // Clear Select2 fields
+    $('#filterDeviceTypeId').val(null).trigger('change');
+    $('#filterDeviceTags').val(null).trigger('change');
+    $('#filterDevicePlatform').val(null).trigger('change');
+    $('#filterDeviceManufacturer').val(null).trigger('change');
+    $('#filterDeviceRole').val(null).trigger('change');
+    $('#filterDeviceLocation').val(null).trigger('change');
+
+    // Also try using Select2 API to clear
+    $('#filterDeviceTypeId').select2('val', null);
+    $('#filterDeviceTags').select2('val', null);
+    $('#filterDevicePlatform').select2('val', null);
+    $('#filterDeviceManufacturer').select2('val', null);
+    $('#filterDeviceRole').select2('val', null);
+    $('#filterDeviceLocation').select2('val', null);
+
+    // Close modal
+    $('#filterDeviceModal').modal('hide');
+
+    // Redirect to clean URL but preserve pageSize and search
+    const currentPageSize = $('select[name="pageSize"]').val() || '10';
+    const currentSearch = $('input[name="search"]').val() || '';
+    let cleanUrl = '/device/device';
+    const params = [];
+    if (currentPageSize && currentPageSize !== '10') params.push('pageSize=' + encodeURIComponent(currentPageSize));
+    if (currentSearch) params.push('search=' + encodeURIComponent(currentSearch));
+    if (params.length > 0) cleanUrl += '?' + params.join('&');
+    window.location.href = cleanUrl;
+
+    console.log('All filters cleared');
+  });
+
+  // Load existing filter values when modal is shown
+  $('#filterDeviceModal').on('show.bs.modal', function() {
+    console.log('Filter Device Modal opened');
+    
+    // Load existing filter values
+    setTimeout(() => {
+      loadFilterExistingValues();
+    }, 100);
+  });
+
+  // Reset filters when modal is hidden
+  $('#filterDeviceModal').on('hidden.bs.modal', function() {
+    console.log('Filter Device Modal hidden, resetting form');
+    $('#filterDeviceForm')[0].reset();
+    $('#filterDeviceTypeId, #filterDeviceTags, #filterDevicePlatform, #filterDeviceManufacturer, #filterDeviceRole').val(null).trigger('change');
+  });
+});
+
+function loadFilterExistingValues() {
+  console.log('Loading existing filter values...');
+  
+  // Get filter data from hidden div
+  const filterDataEl = document.getElementById('filter-device-data');
+  if (!filterDataEl) {
+    console.log('Filter data element not found');
+    return;
+  }
+  
+  try {
+    const filterDeviceTypeId = filterDataEl.dataset.deviceTypeId || '';
+    const filterTags = JSON.parse(filterDataEl.dataset.tags || '[]');
+    const filterPlatformId = filterDataEl.dataset.platformId || '';
+    const filterLocation = filterDataEl.dataset.location || '';
+    const filterManufacturer = filterDataEl.dataset.manufacturer || '';
+    const filterDeviceRole = filterDataEl.dataset.deviceRole || '';
+    
+    console.log('Filter data:', { filterDeviceTypeId, filterTags, filterPlatformId, filterLocation, filterManufacturer, filterDeviceRole });
+    
+    // Clear existing options first to avoid duplicates
+    $('#filterDeviceTags').find('option').remove();
+    
+    // Load device type from window variables (preferred) or from filter data (backup)
+    const deviceTypeToLoad = window.selectedDeviceType || (filterDeviceTypeId ? { id: filterDeviceTypeId, text: filterDeviceTypeId } : null);
+    if (deviceTypeToLoad && deviceTypeToLoad.id) {
+      console.log('Loading device type:', deviceTypeToLoad);
+      // For Select2, we need to fetch the device type data first
+      $.ajax({
+        url: '/device/api/device-type',
+        data: { search: '' },
+        success: function(data) {
+          const deviceType = data.find(item => item.id == deviceTypeToLoad.id);
+          if (deviceType) {
+            const option = new Option(deviceType.text, deviceType.id, true, true);
+            $('#filterDeviceTypeId').append(option).trigger('change');
+          }
+        }
+      });
+    }
+    
+    // Load tags from window variables (preferred) or from filter data (backup)
+    const tagsToLoad = window.selectedTags && window.selectedTags.length > 0 ? window.selectedTags : filterTags;
+    if (tagsToLoad && tagsToLoad.length > 0) {
+      console.log('Loading tags:', tagsToLoad);
+      tagsToLoad.forEach(tag => {
+        // Handle both object format {id, name} and simple format
+        const tagId = typeof tag === 'object' ? tag.id : tag;
+        const tagName = typeof tag === 'object' ? tag.name : tag;
+        const option = new Option(tagName, tagId, true, true);
+        $('#filterDeviceTags').append(option);
+      });
+      $('#filterDeviceTags').trigger('change');
+    }
+    
+    // Load platform from window variables (preferred) or from filter data (backup)
+    const platformToLoad = window.selectedPlatform || (filterPlatformId ? { id: filterPlatformId, text: filterPlatformId } : null);
+    if (platformToLoad && platformToLoad.id) {
+      console.log('Loading platform:', platformToLoad);
+      $.ajax({
+        url: '/device/api/platform',
+        data: { search: '' },
+        success: function(data) {
+          const platform = data.find(item => item.id == platformToLoad.id);
+          if (platform) {
+            const option = new Option(platform.text, platform.id, true, true);
+            $('#filterDevicePlatform').append(option).trigger('change');
+          }
+        }
+      });
+    }
+    
+    // Load simple fields
+    if (filterLocation) {
+      $('#filterDeviceLocation').val(filterLocation);
+    }
+    
+    // Load Manufacturer (Select2 with tag creation)
+    if (filterManufacturer) {
+      console.log('Loading manufacturer:', filterManufacturer);
+      // For Select2 with tags, we can directly set the value
+      const option = new Option(filterManufacturer, filterManufacturer, true, true);
+      $('#filterDeviceManufacturer').append(option).trigger('change');
+    }
+    
+    // Load Device Role (Select2 with tag creation)
+    if (filterDeviceRole) {
+      console.log('Loading device role:', filterDeviceRole);
+      // For Select2 with tags, we can directly set the value
+      const option = new Option(filterDeviceRole, filterDeviceRole, true, true);
+      $('#filterDeviceRole').append(option).trigger('change');
+    }
+    
+  } catch (e) {
+    console.error('Error loading filter values:', e);
+  }
+}
+
+// ==========================================
+// DEVICE IMPORT FUNCTIONALITY
+// ==========================================
+
+console.log('Device import JavaScript loaded');
+
+// Check if elements exist
+console.log('Validate button exists:', $('#validateDeviceBtn').length > 0);
+console.log('Import button exists:', $('#importDeviceBtn').length > 0);
+console.log('File input exists:', $('#deviceImportFile').length > 0);
+console.log('Progress bar exists:', $('#deviceImportProgress').length > 0);
+console.log('Results div exists:', $('#deviceImportResults').length > 0);
+
+// Track selected file
+let selectedDeviceFile = null;
+
+// Handle file selection
+console.log('Binding file input change handler');
+$('#deviceImportFile').on('change', function() {
+  console.log('Device file input changed');
+  selectedDeviceFile = this.files[0];
+  if (selectedDeviceFile) {
+    console.log('Device file selected:', selectedDeviceFile.name, 'Size:', selectedDeviceFile.size);
+    $('#validateDeviceBtn').prop('disabled', false);
+    console.log('Validate button enabled');
+  } else {
+    console.log('No file selected');
+    $('#validateDeviceBtn').prop('disabled', true);
+    $('#importDeviceBtn').hide();
+    console.log('Validate button disabled, import button hidden');
+  }
+});
+
+// Handle validate button click
+console.log('Binding validate button click handler');
+$(document).on('click', '#validateDeviceBtn', function() {
+  console.log('Validate button clicked');
+  console.log('Selected file:', selectedDeviceFile);
+  
+  if (!selectedDeviceFile) {
+    console.log('No file selected, showing alert');
+    alert('Please select a file first');
+    return;
+  }
+  
+  console.log('Creating FormData with file:', selectedDeviceFile.name);
+  const formData = new FormData();
+  formData.append('file', selectedDeviceFile);
+  
+  // Show progress
+  console.log('Showing progress bar');
+  $('#deviceImportProgress').show();
+  $('#deviceImportResults').text('Validating file...');
+  $('.progress-bar').css('width', '30%');
+  
+  console.log('Starting AJAX request to:', '/device/device/validate-import');
+  let nativeXhr;
+  $.ajax({
+    url: '/device/device/validate-import',
+    type: 'POST',
+    data: formData,
+    processData: false,
+    contentType: false,
+    xhr: function() {
+      console.log('Creating XHR with blob response type');
+      nativeXhr = new window.XMLHttpRequest();
+      nativeXhr.responseType = 'blob'; // Important for file download
+      return nativeXhr;
+    },
+    success: function(data, status, xhr) {
+      console.log('AJAX success - Validation completed');
+      console.log('Response status:', status);
+      console.log('Response data type:', typeof data);
+      console.log('Response data size:', data ? data.size : 'no data');
+      
+      $('#deviceImportProgress .progress-bar').css('width', '100%').text('Validation Complete');
+      
+      // Handle file download
+      const contentType = xhr.getResponseHeader('Content-Type');
+      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+      console.log('Content-Type:', contentType);
+      console.log('Content-Disposition:', contentDisposition);
+      
+      if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+        // Create blob link and trigger download
+        const blob = new Blob([data], { type: contentType });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        
+        // Extract filename from Content-Disposition header
+        let filename = 'device_validation_results.xlsx';
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+          if (filenameMatch) {
+            filename = filenameMatch[1];
+          }
+        }
+        
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        // Try to get validation summary from response headers so the
+        // result banner reflects pass/fail instead of always showing green.
+        const resultsDiv = $('#deviceImportResults');
+        let summary = null;
+        try {
+          const summaryHeader = xhr.getResponseHeader('X-Validation-Summary');
+          console.log('Raw validation summary header:', summaryHeader);
+          if (summaryHeader) {
+            summary = JSON.parse(summaryHeader);
+            console.log('Parsed validation summary:', summary);
+          }
+        } catch (e) {
+          console.error('Error parsing validation summary header:', e);
+        }
+
+        if (summary) {
+          if (summary.allPassed) {
+            resultsDiv.removeClass('alert-danger').addClass('alert-success')
+              .html(`<strong>Validation Complete!</strong><br>
+                     <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
+                     <small>Validation file downloaded. Review results before importing.</small>`);
+            $('#importDeviceBtn').show();
+          } else {
+            resultsDiv.removeClass('alert-success').addClass('alert-danger')
+              .html(`<strong>Validation Failed!</strong><br>
+                     <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
+                     <small>Validation file downloaded. Please fix the errors before importing.</small>`);
+          }
+        } else {
+          // No summary header available - fall back to a neutral message
+          resultsDiv.removeClass('alert-danger').addClass('alert-success')
+            .html(`<strong>Validation Complete!</strong><br>
+                   <small>Validation file downloaded. Review results before importing.</small>`);
+          $('#importDeviceBtn').show();
+        }
+        resultsDiv.show();
+      }
+    },
+    error: function(xhr, status, error) {
+      console.error('AJAX error - Device validation failed');
+      console.error('XHR object:', xhr);
+      console.error('Status:', status);
+      console.error('Error:', error);
+      console.error('Response status:', xhr.status);
+      console.error('Response text:', xhr.responseText);
+      console.error('Response JSON:', xhr.responseJSON);
+      
+      $('.progress-bar').css('width', '100%').text('Validation Failed');
+
+      extractImportErrorMessage(nativeXhr || xhr).then(function(errorMessage) {
+        const resultsDiv = $('#deviceImportResults');
+        resultsDiv.removeClass('alert-success').addClass('alert-danger')
+          .html(`<strong>Validation Failed!</strong><br>${errorMessage}`);
+        resultsDiv.show();
+      });
+    },
+    complete: function() {
+      console.log('AJAX complete - Validation request finished');
+      $('#validateDeviceBtn').prop('disabled', false);
+      setTimeout(() => {
+        console.log('Hiding progress bar');
+        $('#deviceImportProgress').hide();
+      }, 2000);
+    }
+  });
+});
+
+// Handle import button click
+$(document).on('click', '#importDeviceBtn', function() {
+  if (!selectedDeviceFile) {
+    alert('Please select a file first');
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('file', selectedDeviceFile);
+  
+  // Show progress
+  $('#deviceImportProgress').show();
+  $('#deviceImportResults').text('Importing devices...');
+  $('.progress-bar').css('width', '30%').text('Importing...');
+  $('#importDeviceBtn').prop('disabled', true);
+  
+  let nativeXhr;
+  $.ajax({
+    url: '/device/device/import',
+    type: 'POST',
+    data: formData,
+    processData: false,
+    contentType: false,
+    xhr: function() {
+      nativeXhr = new window.XMLHttpRequest();
+      nativeXhr.responseType = 'blob'; // Important for file download
+      return nativeXhr;
+    },
+    success: function(data, status, xhr) {
+      $('#deviceImportProgress .progress-bar').css('width', '100%').text('Import Complete');
+      
+      // Handle file download
+      const contentType = xhr.getResponseHeader('Content-Type');
+      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
+      
+      if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+        // Create blob link and trigger download
+        const blob = new Blob([data], { type: contentType });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        
+        // Extract filename from Content-Disposition header
+        let filename = 'device_import_results.xlsx';
+        if (contentDisposition) {
+          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+          if (filenameMatch) {
+            filename = filenameMatch[1];
+          }
+        }
+        
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        // Show results - reflect actual success/failure counts, not just "it downloaded"
+        const resultsDiv = $('#deviceImportResults');
+        let importSummary = null;
+        try {
+          const summaryHeader = xhr.getResponseHeader('X-Import-Summary');
+          if (summaryHeader) importSummary = JSON.parse(summaryHeader);
+        } catch (e) {}
+
+        if (importSummary && importSummary.failed > 0) {
+          resultsDiv.removeClass('alert-success').addClass('alert-danger')
+            .html(`<strong>Import Completed with Errors!</strong><br>
+                   <small>Total: ${importSummary.total}, Success: ${importSummary.success}, Failed: ${importSummary.failed}</small><br>
+                   <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
+        } else {
+          resultsDiv.removeClass('alert-danger').addClass('alert-success')
+            .html(`<strong>Import Complete!</strong><br>
+                   <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
+        }
+        resultsDiv.show();
+        
+        // Refresh page after a delay
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      }
+    },
+    error: function(xhr, status, error) {
+      console.error('Device import error:', xhr);
+      console.error('Status:', xhr.status);
+      console.error('Error:', error);
+      
+      $('.progress-bar').css('width', '100%').text('Import Failed');
+
+      extractImportErrorMessage(nativeXhr || xhr).then(function(errorMessage) {
+        const resultsDiv = $('#deviceImportResults');
+        resultsDiv.removeClass('alert-success').addClass('alert-danger')
+          .html(`<strong>Import Failed!</strong><br>${errorMessage}`);
+        resultsDiv.show();
+      });
+    },
+    complete: function() {
+      $('#importDeviceBtn').prop('disabled', false);
+      setTimeout(() => {
+        $('#deviceImportProgress').hide();
+      }, 2000);
+    }
+  });
+});
+
+// Initialize tooltips
+$(document).ready(function() {
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+});
+
+</script>
+
+<style>
+/* Custom tooltip styles for multi-line descriptions */
+.tooltip .tooltip-inner {
+  white-space: pre-wrap;
+  max-width: 400px;
+  text-align: left;
+}
+
+/* Fixed proportional column widths — see ip_address_list.ejs for rationale:
+   table-layout: fixed makes width depend only on these percentages, not on
+   cell content, so a long Description can never shift other columns. */
+#deviceTable {
+  table-layout: fixed;
+  min-width: 900px;
+}
+#deviceTable thead th {
+  white-space: nowrap;
+}
+#deviceTable th:nth-child(1), #deviceTable td:nth-child(1) { width: 5%; }
+#deviceTable th:nth-child(2), #deviceTable td:nth-child(2) { width: 15%; }
+#deviceTable th:nth-child(3), #deviceTable td:nth-child(3) { width: 19%; }
+#deviceTable th:nth-child(4), #deviceTable td:nth-child(4) { width: 13%; }
+#deviceTable th:nth-child(5), #deviceTable td:nth-child(5) { width: 12%; }
+#deviceTable th:nth-child(6), #deviceTable td:nth-child(6) { width: 18%; }
+#deviceTable th:nth-child(7), #deviceTable td:nth-child(7) { width: 18%; }
+
+/* Description column alignment */
+#deviceTable td:nth-child(3) {
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+
+/* Force override for Filter Devices modal buttons on mobile */
+@media (max-width: 991.98px) {
+  #filterDeviceModal .modal-footer {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    justify-content: stretch !important;
+    align-items: stretch !important;
+    width: 100% !important;
+  }
+  
+  #filterDeviceModal .modal-footer .btn,
+  #filterDeviceModal .modal-footer button {
+    width: 100% !important;
+    margin: 0 !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: block !important;
+  }
+  
+  #filterDeviceModal .modal-footer > div {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    width: 100% !important;
+  }
+  
+  #filterDeviceModal .modal-footer > div .btn {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+  
+  /* Order: Apply Filters trên, Cancel giữa, Clear All Filters dưới */
+  #filterDeviceModal .modal-footer .btn:first-child {
+    order: 3 !important; /* Clear All Filters dưới */
+  }
+  
+  #filterDeviceModal .modal-footer > div .btn:first-child {
+    order: 2 !important; /* Cancel giữa */
+  }
+  
+  #filterDeviceModal .modal-footer > div .btn:last-child {
+    order: 1 !important; /* Apply Filters trên */
+  }
+  
+  /* Force override any Bootstrap or AdminLTE styles */
+  #filterDeviceModal .modal-footer .btn.btn-outline-danger,
+  #filterDeviceModal .modal-footer .btn.btn-secondary,
+  #filterDeviceModal .modal-footer .btn.btn-primary {
+    width: 100% !important;
+    flex: 1 1 0% !important;
+    min-height: 38px !important;
+  }
+}
+
+</style>
+
+

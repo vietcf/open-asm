@@ -1,0 +1,523 @@
+
+<%
+// ==========================================
+// HELPER FUNCTIONS
+// ==========================================
+
+// Helper function to build pagination URL with all query parameters
+function buildPaginationUrl(targetPage) {
+  const params = new URLSearchParams();
+  
+  // Add page
+  params.set('page', targetPage);
+  
+  // Add search if exists
+  if (typeof search !== 'undefined' && search) {
+    params.set('search', search);
+  }
+  
+  // Add pageSize if exists
+  if (typeof pageSize !== 'undefined' && pageSize) {
+    params.set('pageSize', pageSize);
+  }
+  
+  return '?' + params.toString();
+}
+%>
+
+<!-- ========================================== -->
+<!-- MAIN CONTENT -->
+<!-- ========================================== -->
+
+<!-- Content Header -->
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="row">
+      <div class="col-12">
+        <ol class="breadcrumb">
+          <li class="breadcrumb-item"><a href="/">Home</a></li>
+          <li class="breadcrumb-item active">Organization Unit List</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main content -->
+<div class="app-content">
+  <div class="container-fluid">
+    <!-- ========================================== -->
+    <!-- SEARCH AND FILTER SECTION -->
+    <!-- ========================================== -->
+    
+    <!-- Search and Page Size Row -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end align-items-center gap-2">
+          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/organize/unit">
+            <!-- Hidden inputs to preserve filter values -->
+            <input type="hidden" name="page" value="1">
+            
+            <div class="input-group input-group-sm" style="width: 250px;">
+              <input class="form-control form-control-sm" type="search" name="search" placeholder="Search Unit Name..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+              <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
+            </div>
+            <div class="d-flex align-items-center gap-1">
+              <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+              <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
+                <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
+                  <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
+                <% }) %>
+              </select>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- ACTION BUTTONS SECTION -->
+    <!-- ========================================== -->
+    
+    <!-- Action Buttons -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <div class="d-flex justify-content-end gap-2">
+          <% if (hasPermission && hasPermission('unit.create')) { %>
+            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addUnitModal">
+              <i class="bi bi-plus"></i> Add Unit
+            </button>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- FILTER DATA AND FLASH MESSAGES -->
+    <!-- ========================================== -->
+    
+    <!-- Flash Messages -->
+    <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+      <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
+        <i class="bi bi-check-circle me-2"></i><%= successMessage %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <script>
+        // Auto-hide success message after 5 seconds
+        setTimeout(function() {
+          const alert = document.getElementById('successAlert');
+          if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+          }
+        }, 5000);
+      </script>
+    <% } %>
+    
+    <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
+      <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
+        <i class="bi bi-exclamation-triangle me-2"></i><%= errorMessage %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>
+      <script>
+        // Auto-hide error message after 8 seconds (longer for errors)
+        setTimeout(function() {
+          const alert = document.getElementById('errorAlert');
+          if (alert) {
+            const bsAlert = new bootstrap.Alert(alert);
+            bsAlert.close();
+          }
+        }, 8000);
+      </script>
+    <% } %>
+
+    <!-- ========================================== -->
+    <!-- UNIT LIST TABLE -->
+    <!-- ========================================== -->
+    
+    <!-- Unit List Table -->
+    <div class="row">
+      <div class="col-12">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title mb-0">Organization Unit List</h3>
+          </div>
+          <div class="card-body table-responsive p-0" style="overflow-x: auto;">
+            <table class="table table-hover" id="unitTable">
+              <thead>
+                <tr>
+                  <th>No.</th>
+                  <th data-sort-type="text">Unit Name</th>
+                  <th data-sort-type="text">Description</th>
+                  <th class="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (unitList && unitList.length > 0) { %>
+                  <% unitList.forEach(function(unit, idx) { %>
+                    <tr>
+                      <td><%= (page - 1) * pageSize + idx + 1 %></td>
+                      <td><%= unit.name %></td>
+                      <td>
+                        <%
+                          const cleanDescription = (unit.description || '-').trim();
+                          const shortDescription = cleanDescription.length > 50 ? cleanDescription.substring(0, 50) + '…' : cleanDescription;
+                        %>
+                        <span data-bs-toggle="tooltip" data-bs-placement="top" title="<%= cleanDescription %>" style="cursor: help; word-break: break-word;"><%= shortDescription %></span>
+                      </td>
+                      <td class="text-end">
+                        <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showUnitDetail('<%= unit.id %>')" data-unit='<%= JSON.stringify(unit) %>'><i class="bi bi-eye"></i></button>
+                        <% if (hasPermission('unit.update')) { %>
+                          <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editUnitModal" data-unit-id="<%= unit.id %>" data-unit-name="<%= unit.name %>" data-unit-description="<%= unit.description || '' %>" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                          </button>
+                        <% } %>
+                        <% if (hasPermission('unit.delete')) { %>
+                          <form action="/organize/unit/<%= unit.id %>?_method=DELETE" method="POST" style="display:inline !important;" onsubmit="return confirmDeleteUnit(this, '<%= unit.name %>')">
+                            <button type="submit" class="btn btn-danger btn-sm" title="Delete" style="display: inline-block !important; visibility: visible !important; position: relative !important;">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </form>
+                        <% } %>
+                      </td>
+                    </tr>
+                  <% }) %>
+                <% } else { %>
+                  <tr><td colspan="4" class="text-center">No units found</td></tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+          <div class="card-footer clearfix">
+            <div class="d-flex justify-content-between align-items-center px-3 py-2">
+              <div>
+                <% 
+                  // Calculate pagination range
+                  const unitStartItem = (page - 1) * pageSize + 1;
+                  const unitEndItem = Math.min(page * pageSize, totalCount || 0);
+                  const unitStartPage = Math.max(1, page - 2);
+                  const unitEndPage = Math.min(totalPages, page + 2);
+                %>
+                <span>Showing <%= unitStartItem %> - <%= unitEndItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> units</span>
+              </div>
+              <ul class="pagination pagination-sm m-0 float-end">
+                <% 
+                  function buildUnitFilterQuery() {
+                    let params = [];
+                    if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
+                    if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
+                    return params.join('&');
+                  }
+                  const unitFilterQuery = buildUnitFilterQuery();
+                %>
+                <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                  <a class="page-link" href="?page=<%= page - 1 %><%= unitFilterQuery ? '&' + unitFilterQuery : '' %>" tabindex="-1">Previous</a>
+                </li>
+                <% if (unitStartPage > 1) { %>
+                  <li class="page-item"><a class="page-link" href="?page=1<%= unitFilterQuery ? '&' + unitFilterQuery : '' %>">1</a></li>
+                  <% if (unitStartPage > 2) { %>
+                    <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <% } %>
+                <% } %>
+                <% for (let i = unitStartPage; i <= unitEndPage; i++) { %>
+                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= unitFilterQuery ? '&' + unitFilterQuery : '' %>"><%= i %></a></li>
+                <% } %>
+                <% if (unitEndPage < totalPages) { %>
+                  <li class="page-item disabled"><span class="page-link">...</span></li>
+                  <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= unitFilterQuery ? '&' + unitFilterQuery : '' %>"><%= totalPages %></a></li>
+                <% } %>
+                <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
+                  <a class="page-link" href="?page=<%= page + 1 %><%= unitFilterQuery ? '&' + unitFilterQuery : '' %>">Next</a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODALS SECTION -->
+<!-- ========================================== -->
+
+<!-- Unit Detail Modal -->
+<div class="modal fade" id="unitDetailModal" tabindex="-1" aria-labelledby="unitDetailModalLabel">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="unitDetailModalLabel">Unit Detail</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="unitDetailContent">
+        <!-- Content will be loaded here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Unit Modal -->
+<div class="modal fade" id="addUnitModal" tabindex="-1" aria-labelledby="addUnitModalLabel">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="addUnitModalLabel">Add Unit</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form action="/organize/unit" method="POST">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="unitName" class="form-label">Unit Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="unitName" name="name" placeholder="Enter unit name" required>
+          </div>
+          <div class="mb-3">
+            <label for="unitDescription" class="form-label">Description</label>
+            <textarea class="form-control" id="unitDescription" name="description" rows="3" placeholder="Enter unit description"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-end">
+          <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Add Unit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Unit Modal -->
+<div class="modal fade" id="editUnitModal" tabindex="-1" aria-labelledby="editUnitModalLabel">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="editUnitModalLabel">Edit Unit</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="editUnitForm" action="" method="POST">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="editUnitName" class="form-label">Unit Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="editUnitName" name="name" placeholder="Enter unit name" required>
+          </div>
+          <div class="mb-3">
+            <label for="editUnitDescription" class="form-label">Description</label>
+            <textarea class="form-control" id="editUnitDescription" name="description" rows="3" placeholder="Enter unit description"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer d-flex justify-content-end">
+          <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-sm">Update Unit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+<script>
+// ==========================================
+// JAVASCRIPT FUNCTIONS
+// ==========================================
+
+// Show unit detail
+// name/description are free text not HTML-stripped server-side — must be
+// escaped before going into innerHTML.
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function showUnitDetail(unitId) {
+  const button = document.querySelector(`button[onclick="showUnitDetail('${unitId}')"]`);
+  const unitData = JSON.parse(button.getAttribute('data-unit'));
+
+  const modalElement = document.getElementById('unitDetailModal');
+  const content = document.getElementById('unitDetailContent');
+
+  let html = '<dl class="row detail-dl">';
+  html += '<dt class="col-sm-4">Unit ID</dt><dd class="col-sm-8">' + (unitData.id || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Unit Name</dt><dd class="col-sm-8">' + escapeHtml(unitData.name || '-') + '</dd>';
+  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + (unitData.created_at ? new Date(unitData.created_at).toLocaleDateString() : '-') + '</dd>';
+  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (unitData.description ? '<div style="white-space: pre-wrap;">' + escapeHtml(unitData.description) + '</div>' : '-') + '</dd>';
+  html += '</dl>';
+  
+  content.innerHTML = html;
+  
+  const modal = new bootstrap.Modal(modalElement);
+  modal.show();
+}
+
+// Handle edit button click with data attributes
+$(document).on('click', 'button[data-bs-target="#editUnitModal"]', function() {
+  const id = $(this).data('unit-id');
+  const name = $(this).data('unit-name');
+  const description = $(this).data('unit-description');
+  editUnit(id, name, description);
+});
+
+// Edit unit function
+function editUnit(id, name, description) {
+  document.getElementById('editUnitForm').action = '/organize/unit/' + id + '?_method=PUT';
+  document.getElementById('editUnitName').value = name;
+  document.getElementById('editUnitDescription').value = description;
+}
+
+// Confirm delete unit
+function confirmDeleteUnit(form, unitName) {
+  return confirm(`Are you sure you want to delete unit "${unitName}"? This action cannot be undone.`);
+}
+
+// Helper function to build export URL
+function buildExportUrl() {
+  const params = new URLSearchParams();
+  
+  // Add search if exists
+  if (typeof search !== 'undefined' && search) {
+    params.set('search', search);
+  }
+  
+  // Add pageSize if exists
+  if (typeof pageSize !== 'undefined' && pageSize) {
+    params.set('pageSize', pageSize);
+  }
+  
+  return '/organize/unit/export' + (params.toString() ? '?' + params.toString() : '');
+}
+
+// Unit Import functionality
+$(document).ready(function() {
+  console.log('Unit Import - JavaScript loaded');
+  
+  // Validate file button handler
+  $('#validateUnitFile').on('click', function() {
+    console.log('Unit Import - Validate button clicked');
+    const fileInput = $('#unitImportFile')[0];
+    
+    if (!fileInput.files.length) {
+      alert('Please select a file first');
+      return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    
+    console.log('Unit Import - Sending validation request');
+    $.ajax({
+      url: '/organize/unit/validate',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      xhr: function() {
+        const xhr = new window.XMLHttpRequest();
+        xhr.responseType = 'blob';
+        return xhr;
+      },
+      success: function(data, status, xhr) {
+        console.log('Unit Import - Validation success');
+        const validationSummary = xhr.getResponseHeader('X-Validation-Summary');
+        console.log('Unit Import - Validation summary:', validationSummary);
+        
+        if (validationSummary) {
+          const summary = JSON.parse(validationSummary);
+          if (summary.total > 0 && summary.valid === summary.total) {
+            $('#importUnitBtn').show();
+            alert('Validation successful! All records are valid. You can now import.');
+          } else {
+            $('#importUnitBtn').hide();
+            alert(`Validation completed. ${summary.valid}/${summary.total} records are valid. Please check the downloaded file for details.`);
+          }
+        }
+        
+        // Download validation results
+        const blob = new Blob([data]);
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'unit_validation_results.xlsx';
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      },
+      error: function(xhr, status, error) {
+        console.error('Unit Import - Validation error:', error);
+        alert('Validation failed: ' + error);
+      }
+    });
+  });
+  
+  // Import button handler
+  $('#importUnitBtn').on('click', function() {
+    console.log('Unit Import - Import button clicked');
+    const fileInput = $('#unitImportFile')[0];
+    
+    if (!fileInput.files.length) {
+      alert('Please select a file first');
+      return;
+    }
+    
+    const formData = new FormData();
+    formData.append('file', fileInput.files[0]);
+    
+    console.log('Unit Import - Sending import request');
+    $.ajax({
+      url: '/organize/unit/import',
+      type: 'POST',
+      data: formData,
+      processData: false,
+      contentType: false,
+      success: function(data) {
+        console.log('Unit Import - Import success');
+        alert('Import completed successfully!');
+        location.reload();
+      },
+      error: function(xhr, status, error) {
+        console.error('Unit Import - Import error:', error);
+        alert('Import failed: ' + error);
+      }
+    });
+  });
+});
+
+// Initialize tooltips
+$(document).ready(function() {
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+});
+</script>
+
+<style>
+/* Custom tooltip styles for multi-line descriptions */
+.tooltip .tooltip-inner {
+  white-space: pre-wrap;
+  max-width: 400px;
+  text-align: left;
+}
+
+/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
+#unitTable {
+  table-layout: fixed;
+  min-width: 600px;
+}
+#unitTable thead th {
+  white-space: nowrap;
+}
+#unitTable th:nth-child(1), #unitTable td:nth-child(1) { width: 8%; }
+#unitTable th:nth-child(2), #unitTable td:nth-child(2) { width: 22%; }
+#unitTable th:nth-child(3), #unitTable td:nth-child(3) { width: 43%; }
+#unitTable th:nth-child(4), #unitTable td:nth-child(4) { width: 27%; }
+
+/* Description column alignment */
+#unitTable td:nth-child(3) {
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: break-word;
+}
+</style>
