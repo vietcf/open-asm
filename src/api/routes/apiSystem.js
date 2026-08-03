@@ -47,11 +47,11 @@ const router = express.Router();
  *           items:
  *             type: integer
  *           description: List of domain IDs
- *         managers:
+ *         contacts:
  *           type: array
  *           items:
- *             type: integer
- *           description: List of manager (contact) IDs
+ *             type: object
+ *           description: List of contacts assigned to this system, as {id, name, email}. On POST/PUT, pass an array of contact IDs (or {id,...} objects — GET's shape round-trips directly).
  *         ip_addresses:
  *           type: array
  *           items:
@@ -98,7 +98,7 @@ const router = express.Router();
  *         level: 2
  *         department_id: 3
  *         domains: [1, 2]
- *         managers: [5, 7]
+ *         contacts: [{ id: 5, name: "Jane Doe", email: "jane@example.com" }]
  *         ip_addresses: [101, 102]
  *         tags: [1, 2]
  *         fqdn: ["main.company.com", "api.company.com"]
@@ -169,10 +169,11 @@ const router = express.Router();
  *                 type: array
  *                 items:
  *                   type: integer
- *               managers:
+ *               contacts:
  *                 type: array
  *                 items:
  *                   type: integer
+ *                 description: List of contact IDs (also accepts {id,...} objects, matching the shape GET returns)
  *               ip_addresses:
  *                 type: array
  *                 items:
@@ -256,10 +257,11 @@ const router = express.Router();
  *                 type: array
  *                 items:
  *                   type: integer
- *               managers:
+ *               contacts:
  *                 type: array
  *                 items:
  *                   type: integer
+ *                 description: List of contact IDs (also accepts {id,...} objects, matching the shape GET returns)
  *               ip_addresses:
  *                 type: array
  *                 items:
