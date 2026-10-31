@@ -11,10 +11,15 @@ import Configuration from '../models/Configuration.js';
 import { ValidationError, NotFoundError, ConflictError } from './errors.js';
 import { withTransaction } from './transaction.js';
 
+// Accepts either plain IDs or {id, ...} objects, so the {id, name, email}
+// shape GET /systems (list) returns for `contacts` round-trips straight
+// back into create/update without the caller pre-flattening it.
 const toIdArray = v => {
   if (v === undefined || v === null) return [];
   const arr = Array.isArray(v) ? v : [v];
-  return arr.map(Number).filter(x => !isNaN(x));
+  return arr
+    .map(item => (item && typeof item === 'object') ? Number(item.id) : Number(item))
+    .filter(x => !isNaN(x));
 };
 const toStringList = v => {
   if (v === undefined || v === null || v === '') return [];
@@ -70,7 +75,7 @@ async function validateIds(ids, existsFn, label) {
   }
   if (invalid.length) throw new ValidationError(`Invalid ${label} IDs: ${invalid.join(', ')}`);
 }
-const validateManagerIds = ids => validateIds(ids, id => Contact.exists(id), 'manager (contact)');
+const validateContactIds = ids => validateIds(ids, id => Contact.exists(id), 'contact');
 const validateIpAddressIds = ids => validateIds(ids, id => IpAddress.exists(id), 'IP address');
 const validateDomainIds = ids => validateIds(ids, id => Domain.exists(id), 'domain');
 const validateTagIds = ids => validateIds(ids, id => Tag.exists(id), 'tag');
@@ -122,7 +127,7 @@ export async function getSystem(id) {
 }
 
 // input: {system_id, name, level?, department_id?, alias?, description?, fqdn?,
-//         managers?, ip_addresses?, domains?, tags?, scopes?, architecture?, updated_by?}
+//         contacts?, ip_addresses?, domains?, tags?, scopes?, architecture?, updated_by?}
 // Existence/uniqueness validation here was previously API-only (the frontend
 // only caught the system_id unique-constraint error, mislabeling name
 // conflicts as "System ID already exists" since it never checked err.constraint) —
@@ -140,8 +145,8 @@ export async function createSystem(input, client) {
   const department_id = input.department_id === undefined || input.department_id === null || input.department_id === '' ? null : input.department_id;
   await validateDepartmentId(department_id);
 
-  const managers = toIdArray(input.managers);
-  if (managers.length) await validateManagerIds(managers);
+  const contacts = toIdArray(input.contacts);
+  if (contacts.length) await validateContactIds(contacts);
   const ip_addresses = toIdArray(input.ip_addresses);
   if (ip_addresses.length) await validateIpAddressIds(ip_addresses);
   const domains = toIdArray(input.domains);
@@ -162,7 +167,7 @@ export async function createSystem(input, client) {
       alias: alias.length ? alias : null,
       description, fqdn, scopes, architecture, updated_by: username
     }, c);
-    await System.setContacts(created.id, managers, c);
+    await System.setContacts(created.id, contacts, c);
     await System.setIPs(created.id, ip_addresses, c);
     await System.setDomains(created.id, domains, c);
     await System.setTags(created.id, tags, c);
@@ -172,16 +177,16 @@ export async function createSystem(input, client) {
 
 const UPDATABLE_FIELDS = [
   'system_id', 'name', 'level', 'department_id', 'alias', 'description', 'fqdn',
-  'scopes', 'architecture', 'managers', 'ip_addresses', 'domains', 'tags'
+  'scopes', 'architecture', 'contacts', 'ip_addresses', 'domains', 'tags'
 ];
 
 // Partial update (has-key semantics), matching the API's original design —
 // the frontend's version of this looked like it preserved untouched
 // associations when a field was omitted, but System.findById() (used to load
-// "current" values) never selects managers/ip_addresses/domains, so that
+// "current" values) never selects contacts/ip_addresses/domains, so that
 // fallback silently resolved to [] and cleared them on every submit that
 // omitted the field. Callers that want the classic "edit form always fully
-// replaces associations" UX should pass managers/ip_addresses/domains/tags
+// replaces associations" UX should pass contacts/ip_addresses/domains/tags
 // explicitly (even as []), same as the Server precedent.
 export async function updateSystem(id, input, client) {
   const current = await System.findById(id);
@@ -211,10 +216,10 @@ export async function updateSystem(id, input, client) {
   if (has('department_id')) await validateDepartmentId(department_id);
 
   const normalizedArrays = {};
-  if (has('managers')) {
-    const arr = toIdArray(input.managers);
-    if (arr.length) await validateManagerIds(arr);
-    normalizedArrays.managers = arr;
+  if (has('contacts')) {
+    const arr = toIdArray(input.contacts);
+    if (arr.length) await validateContactIds(arr);
+    normalizedArrays.contacts = arr;
   }
   if (has('ip_addresses')) {
     const arr = toIdArray(input.ip_addresses);
@@ -245,7 +250,7 @@ export async function updateSystem(id, input, client) {
       alias: (Array.isArray(alias) && alias.length) ? alias : null,
       description, fqdn, scopes, architecture, updated_by: username
     }, c);
-    if (has('managers')) await System.setContacts(id, normalizedArrays.managers, c);
+    if (has('contacts')) await System.setContacts(id, normalizedArrays.contacts, c);
     if (has('ip_addresses')) await System.setIPs(id, normalizedArrays.ip_addresses, c);
     if (has('domains')) await System.setDomains(id, normalizedArrays.domains, c);
     if (has('tags')) await System.setTags(id, normalizedArrays.tags, c);

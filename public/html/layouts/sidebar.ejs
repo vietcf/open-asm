@@ -11,7 +11,16 @@
     <nav class="mt-2">
       <% function isMenuOpen(keys) { return keys.includes(activeMenu); } %>
       <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu" data-accordion="false">
+        <% if (
+          hasPermission('system.read') ||
+          hasPermission('ip_address.read') || hasPermission('subnet.read') || hasPermission('domain.read') ||
+          hasPermission('server.read') || hasPermission('service.read') || hasPermission('agent.read') ||
+          hasPermission('device.read') || hasPermission('device_type.read') || hasPermission('platform.read') ||
+          hasPermission('cluster.read') ||
+          hasPermission('contact.read') || hasPermission('unit.read') || hasPermission('tag.read')
+        ) { %>
         <li class="nav-header">ASSET MANAGEMENT</li>
+        <% } %>
         <!-- System Management -->
         <% if (hasPermission('system.read')) { %>
         <li class="nav-item<%= isMenuOpen(['system','system-component']) ? ' menu-open' : '' %>">
@@ -214,7 +223,13 @@
           </ul>
         </li>
         <% } %>
+        <% if (
+          hasPermission('priv_account.read') || hasPermission('priv_role.read') || hasPermission('priv_permission.read') ||
+          hasPermission('rule.read') || hasPermission('rule.create') || hasPermission('rule.update') || hasPermission('rule.delete') ||
+          hasPermission('pentest.read')
+        ) { %>
         <li class="nav-header">SECURITY</li>
+        <% } %>
         <!-- Privileged Account Management -->
         <% if (
           hasPermission('priv_account.read') ||
@@ -304,12 +319,17 @@
         <% } %>
         <!-- ADMINISTRATION -->
         <% if (
+          hasPermission('user.read') || hasPermission('role.read') || hasPermission('permission.read') ||
+          hasPermission('system_log.read') || hasPermission('configuration.read')
+        ) { %>
+        <li class="nav-header">ADMINISTRATION</li>
+        <% } %>
+        <% if (
           hasPermission('user.read') ||
           hasPermission('role.read') ||
           hasPermission('permission.read')
         ) { %>
-        <li class="nav-header">ADMINISTRATION</li>
-        <li class="nav-item has-treeview<%= isMenuOpen(['user-management', 'role-management', 'permission-management']) ? ' menu-open' : '' %>"> 
+        <li class="nav-item has-treeview<%= isMenuOpen(['user-management', 'role-management', 'permission-management']) ? ' menu-open' : '' %>">
           <a href="#" class="nav-link<%= isMenuOpen(['user-management', 'role-management', 'permission-management']) ? ' active' : '' %>" style="<%= isMenuOpen(['user-management', 'role-management', 'permission-management']) ? 'background-color: #495057;' : '' %>">
             <i class="nav-icon bi bi-person-gear"></i>
             <p>

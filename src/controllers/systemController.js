@@ -376,7 +376,7 @@ systemController.updateSystem = async (req, res) => {
     await client.query('BEGIN');
     const id = req.params.id;
     let {
-      system_id, name, level, department_id, alias, managers, ip_addresses,
+      system_id, name, level, department_id, alias, contacts, ip_addresses,
       tags, domains, description, fqdn, scopes, architecture
     } = req.body;
 
@@ -386,7 +386,7 @@ systemController.updateSystem = async (req, res) => {
     // service's has-key semantics — same fix applied to Server's controller.
     const updatedSystem = await systemService.updateSystem(id, {
       system_id, name, level, department_id, alias,
-      managers: managers || [],
+      contacts: contacts || [],
       ip_addresses: ip_addresses || [],
       tags: tags || [],
       domains: domains || [],
@@ -488,12 +488,12 @@ systemController.addSystem = async (req, res) => {
   try {
     await client.query('BEGIN');
     let {
-      system_id, name, level, department_id, alias, managers, ip_addresses,
+      system_id, name, level, department_id, alias, contacts, ip_addresses,
       tags, domains, description, fqdn, scopes, architecture
     } = req.body;
 
     const newSystem = await systemService.createSystem({
-      system_id, name, level, department_id, alias, managers, ip_addresses,
+      system_id, name, level, department_id, alias, contacts, ip_addresses,
       tags, domains, description, fqdn, scopes, architecture,
       updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
     }, client);
