@@ -87,4 +87,4 @@ public/uploads/tmp/
 #IDE and editor files
 .cursor/
 .cursorrules
-trash/
+trash/data/

@@ -110,7 +110,10 @@ means the first install:
 
 - `ADMIN_USERNAME` (default `admin`) and `ADMIN_EMAIL` (default `admin@localhost`).
 - `ADMIN_PASSWORD`: if empty, a random password is generated and printed
-  **once** to the log (`docker compose logs app | grep -A3 "administrator account"`).
+  **once** to the log. In Docker it is also saved to
+  `data/initial-admin-password.txt` (via `INITIAL_ADMIN_PASSWORD_FILE`),
+  which is deleted automatically on the first start after the admin has
+  changed that password.
 - The account is always flagged "must change password" at first login.
 - Changing these variables later has no effect. Use the UI, or
   `npm run admin:reset-password` if the password is lost.

@@ -58,52 +58,57 @@ A comprehensive network and system management platform built with Node.js, Expre
 
 ### Docker Compose Installation (Recommended)
 
-1. **Clone the repository**:
 ```bash
 git clone https://github.com/vietcf/open-asm.git
 cd open-asm
+docker compose up -d
 ```
 
-2. **Create environment file**:
+That's it — no configuration needed. Then open **https://localhost** (self-signed
+certificate: accept the browser warning) and log in with the initial admin account:
+
 ```bash
-cp .env.docker.sample .env.docker
-# Edit .env.docker with your configuration
+cat data/initial-admin-password.txt
 ```
 
-3. **Start the application**:
+You must change that password at first login; the file is deleted automatically
+on the next start after that. (The password is also printed once in
+`docker compose logs app`.)
+
+What happens on the first start (all automatic, all skipped on later starts):
+
+| Step | Result |
+|---|---|
+| Postgres starts, healthcheck waits until it accepts connections | `./pgdata/` |
+| `SESSION_SECRET` / `JWT_SECRET` generated | `./data/secrets.env` |
+| Self-signed TLS certificate generated for nginx (if `./ssl/` has none) | `./ssl/nginx-selfsigned.{crt,key}` |
+| Database schema, default data, initial admin (`migrations/migrate.js up`) | see [`migrations/README.md`](migrations/README.md) |
+| App starts; nginx starts once the app is healthy | ports 80 → 443 |
+
+If anything fails the app does not start: `docker compose logs app`.
+
+**Configuration (optional).** Defaults live in `docker/defaults.env`. To change
+anything — DB password, admin username/email/password, LDAP, S3, backups… —
+create `.env.docker`; every variable in it overrides the default:
+
 ```bash
-docker compose up --build -d
+cp .env.docker.sample .env.docker   # then edit; only keep what you want to change
+docker compose up -d
 ```
 
-> ⚠️ **After any rebuild** (`--build`), also restart nginx: `docker restart openasm_nginx`.
-> Nginx resolves the `app` container's IP once at startup; when `app` is recreated by a
-> rebuild it gets a new IP, and nginx will keep routing to the old one (502 errors) until
-> it's restarted. This is not needed for a plain `docker compose up -d` with no rebuild.
+> Set `POSTGRES_PASSWORD` / `ADMIN_*` **before the first start**: Postgres and
+> the admin account are created once, from the values present at that moment.
 
-The database schema, default data and the initial admin account are created
-automatically: the `app` container runs `node migrations/migrate.js up` before
-starting the server (waits for Postgres, idempotent, a no-op when nothing has
-changed). If it fails, the app does not start — check `docker compose logs app`.
+- Your own certificate: put it in `./ssl/` as `nginx-selfsigned.crt` / `nginx-selfsigned.key`, then `docker compose restart nginx`.
+- Lost the admin password: `docker compose exec app npm run admin:reset-password`
+- Update to a new version: `git pull && docker compose up -d --build` (migrations run automatically; no nginx restart needed).
+- Requires Docker Compose ≥ 2.24 (for the optional `.env.docker`).
 
-4. **Get the initial admin account**:
-- Username: `ADMIN_USERNAME` from `.env.docker` (default `admin`).
-- Password: `ADMIN_PASSWORD` if you set one; if left empty, a random password is
-  generated on the first start and printed **once** in the log:
-```bash
-docker compose logs app | grep -A3 "administrator account"
-```
-- The first login always forces a password change. The account is created only
-  on the first start against an empty database; editing these variables later
-  has no effect.
-- Lost the password? Generate a new one (printed once, forced change at login):
-```bash
-docker compose exec app npm run admin:reset-password
-```
-
-5. **Access the application**:
+**Access:**
 - Web Interface: https://localhost
 - API Documentation: https://localhost/api-docs
 - PgAdmin: http://localhost:8888
+- Postgres: `127.0.0.1:5432` on the Docker host only
 
 ### Local Development Installation
 
@@ -177,9 +182,9 @@ SSL_KEY_PATH=./ssl/key.pem
 
 ### Docker Configuration
 
-For Docker deployment, use `.env.docker` (start from `.env.docker.sample`,
-see Installation above). The key difference from local development's `.env`:
-`POSTGRES_HOST` must be `db` — the Postgres service name in
+Docker needs no configuration file: defaults come from `docker/defaults.env`,
+and an optional `.env.docker` (start from `.env.docker.sample`) overrides any of
+them. `POSTGRES_HOST` must stay `db` — the Postgres service name in
 `docker-compose.yml` — not `localhost`/`127.0.0.1`.
 
 ## 🐳 Docker Commands
@@ -188,9 +193,6 @@ see Installation above). The key difference from local development's `.env`:
 ```bash
 # Build and start all services
 docker compose up --build -d
-
-# Restart nginx after any rebuild above — see warning in Installation section
-docker restart openasm_nginx
 
 # Build specific service
 docker compose build app
@@ -356,15 +358,11 @@ open-asm/
 git clone https://github.com/vietcf/open-asm.git
 cd open-asm
 
-# Configure environment
+# Optional: override defaults (DB password, admin account, ...) BEFORE first start
 cp .env.docker.sample .env.docker
-# Edit .env.docker
 
 # Deploy
-docker compose up --build -d
-
-# Restart nginx so it picks up the app container's IP (see warning above)
-docker restart openasm_nginx
+docker compose up -d
 ```
 
 **Updating an existing deployment** (after pulling new code):
@@ -372,7 +370,6 @@ docker restart openasm_nginx
 git pull
 docker compose up --build -d   # rebuilds/recreates the app container; it runs
                                 # migrations automatically before starting (idempotent)
-docker restart openasm_nginx   # required after every rebuild, see warning above
 ```
 
 2. **Using PM2**:
@@ -476,7 +473,6 @@ gunzip -c backups/backup_20260101_120000.sql.gz | docker exec -i openasm_db psql
 
 # 5. Bring the app back up
 docker compose up -d app
-docker restart openasm_nginx   # required after any app/db disruption, see warning above
 ```
 
 ```bash

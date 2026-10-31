@@ -54,6 +54,38 @@ function failOnProblems(problems) {
   throw new MigrationError(`Database and migration files disagree:\n  - ${problems.join('\n  - ')}`);
 }
 
+// Optional (set by the Docker entrypoint): also write a generated initial
+// admin password to a file, so it can be read without digging through logs.
+// The file is deleted automatically on a later start once the admin has
+// changed that password.
+async function handleInitialPasswordFile(client, admin) {
+  const file = process.env.INITIAL_ADMIN_PASSWORD_FILE;
+  if (!file) return;
+  if (admin.created && admin.generated) {
+    fs.writeFileSync(file, [
+      'Open ASM - initial administrator account',
+      `username: ${admin.username}`,
+      `password: ${admin.password}`,
+      '',
+      'You must change this password at first login.',
+      'This file is deleted automatically on the next start after that.',
+      '',
+    ].join('\n'), { mode: 0o600 });
+    console.log(`[migrate] initial admin password also saved to ${file}`);
+    return;
+  }
+  if (fs.existsSync(file)) {
+    const { rows } = await client.query(
+      `SELECT 1 FROM users u JOIN roles r ON r.id = u.role_id
+       WHERE r.name = 'superadmin' AND u.must_change_password LIMIT 1`
+    );
+    if (!rows.length) {
+      fs.unlinkSync(file);
+      console.log(`[migrate] initial admin password was changed -> removed ${file}`);
+    }
+  }
+}
+
 // ---------------------------------------------------------------- commands
 
 async function up({ dryRun }) {
@@ -86,6 +118,7 @@ async function up({ dryRun }) {
 
     const admin = await runSeeds(client);
     printAdminBanner(admin);
+    await handleInitialPasswordFile(client, admin);
     console.log('[migrate] done');
   }));
 }
