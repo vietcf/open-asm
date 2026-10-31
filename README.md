@@ -80,7 +80,27 @@ docker compose up --build -d
 > rebuild it gets a new IP, and nginx will keep routing to the old one (502 errors) until
 > it's restarted. This is not needed for a plain `docker compose up -d` with no rebuild.
 
-4. **Access the application**:
+The database schema, default data and the initial admin account are created
+automatically: the `app` container runs `node migrations/migrate.js up` before
+starting the server (waits for Postgres, idempotent, a no-op when nothing has
+changed). If it fails, the app does not start — check `docker compose logs app`.
+
+4. **Get the initial admin account**:
+- Username: `ADMIN_USERNAME` from `.env.docker` (default `admin`).
+- Password: `ADMIN_PASSWORD` if you set one; if left empty, a random password is
+  generated on the first start and printed **once** in the log:
+```bash
+docker compose logs app | grep -A3 "administrator account"
+```
+- The first login always forces a password change. The account is created only
+  on the first start against an empty database; editing these variables later
+  has no effect.
+- Lost the password? Generate a new one (printed once, forced change at login):
+```bash
+docker compose exec app npm run admin:reset-password
+```
+
+5. **Access the application**:
 - Web Interface: https://localhost
 - API Documentation: https://localhost/api-docs
 - PgAdmin: http://localhost:8888
@@ -92,23 +112,21 @@ docker compose up --build -d
 npm install
 ```
 
-2. **Setup database**:
-```bash
-# Create PostgreSQL database
-createdb open_asm
-
-# Fresh install: create the schema (already includes every change from
-# migrations/alters/, so alters/run.js is not needed here) and seed data
-node migrations/init_all_tables.js
-node migrations/init_data.js
-```
-> `migrations/alters/run.js` is only for updating an **existing** database
-> after pulling new code — see Database Management below.
-
-3. **Configure environment**:
+2. **Configure environment**:
 ```bash
 cp .env.sample .env
-# Edit .env with your configuration
+# Edit .env with your configuration (POSTGRES_*, ADMIN_*)
+```
+
+3. **Setup database**:
+```bash
+# Create PostgreSQL database (name must match POSTGRES_DB in .env)
+createdb openasm
+
+# Create schema, apply pending migrations, seed data + initial admin (prints
+# the generated admin password once if ADMIN_PASSWORD is empty).
+# Run it again after every `git pull`; no-op when up to date.
+npm run migrate
 ```
 
 4. **Start the application**:
@@ -352,8 +370,8 @@ docker restart openasm_nginx
 **Updating an existing deployment** (after pulling new code):
 ```bash
 git pull
-docker compose up --build -d   # also rebuilds/recreates the migration + app containers;
-                                # migrations run automatically and are safe to re-run
+docker compose up --build -d   # rebuilds/recreates the app container; it runs
+                                # migrations automatically before starting (idempotent)
 docker restart openasm_nginx   # required after every rebuild, see warning above
 ```
 
@@ -412,37 +430,26 @@ script yet.
 
 ### Database Management
 
-The `migrations/` folder has two parts:
-
-- **`create_*.js`** — the baseline schema (one file per table, `CREATE TABLE IF NOT EXISTS`). Run once via `init_all_tables.js` to set up a brand-new database with the full, up-to-date schema.
-- **`alters/`** — incremental schema changes made *after* the baseline, one numbered file per change (`000N_description.js`, exporting `default async (pool) => {...}`). A `schema_migrations` table tracks which ones have already run, so `run.js` only applies files it hasn't seen yet. As of **v1.1.0**, every prior alter has been folded into the baseline `create_*.js` files and removed, so `alters/` currently only contains `run.js` — an empty skeleton, ready for the next schema change. This is verified by an actual fresh-database test (create DB → `init_all_tables.js` → `init_data.js` → `alters/run.js` reports "No new migrations to run").
+Schema changes are versioned files in `migrations/versions/` (`0001_baseline.sql`,
+then one `NNNN_name.sql` per change), applied by `node migrations/migrate.js up`.
+Docker runs it before every app start; it is a no-op when nothing is pending.
 
 ```bash
-# Fresh database: create all tables (baseline already includes every
-# migrations/alters/ change up to the current version), then seed initial
-# data (roles, admin user, config)
-node migrations/init_all_tables.js
-node migrations/init_data.js
-
-# Existing/older database: apply any not-yet-run schema changes from
-# migrations/alters/ (safe to re-run — it skips what's already applied,
-# and is a no-op on a database that was just created fresh above)
-node migrations/alters/run.js
+npm run migrate                                   # apply pending migrations + seeds
+npm run migrate:status                            # applied / pending list
+npm run migrate:create -- add_owner_to_servers    # scaffold the next migration
 ```
 
-In Docker, run these inside the app/migration container, e.g. `docker compose run --rm migration node migrations/alters/run.js`. The `migration` service in `docker-compose.yml` already runs all three in sequence on every `docker compose up`, so this is normally automatic — see "Updating an existing deployment" above. The `app` service's `depends_on` uses `condition: service_completed_successfully` on `migration`, so `app` won't start until migration has actually finished (exit code 0), not just started.
-
-**Making a schema change (between releases):**
-1. Add a new file `migrations/alters/000N_description.js` (start at `0001` again, since the folder was just emptied — next number after the last one once more files accumulate), exporting `default async (pool) => { await pool.query('ALTER TABLE ...'); }`. Use `IF NOT EXISTS`/`IF EXISTS` guards so it's safe to re-run.
-2. Run `node migrations/alters/run.js` — it applies only the new file and records it in `schema_migrations`.
-3. Also update the matching `create_*.js` baseline with the same change, so a brand-new database created via `init_all_tables.js` already has it (the `alters/` file then only matters for databases created before your change).
+Each migration runs once, in its own transaction, with checksum,
+ordering and locking safety checks. **Full guide, including how to write an
+alter: [`migrations/README.md`](migrations/README.md).**
 
 **Releasing a new version:**
 1. Bump the version in **both** places, together — they must always match:
    - `package.json` → `"version"` field (also drives the API doc version shown at `/api-docs`, read dynamically — no separate place to update there).
-   - `docker-compose.yml` → the `image: openasm_app:X.Y.Z` tag (appears twice, on the `app` and `migration` services).
+   - `docker-compose.yml` → the `image: openasm_app:X.Y.Z` tag (on the `app` service).
 2. Add a new `### Version X.Y.Z (Latest)` entry at the top of the Changelog below, and relabel the previous "(Latest)" entry.
-3. Optional cleanup (do this occasionally, not every release): once accumulated `migrations/alters/*.js` files are safely folded into every baseline `create_*.js` (verify with a fresh-database test like the one described above), delete the numbered alter files and keep just `run.js` — same reset done for v1.1.0.
+3. Run `npm run test:migrations` against a local Postgres.
 
 **Backup & Restore:**
 
@@ -456,7 +463,7 @@ A scheduled job already does this automatically — see "Scheduled Maintenance J
 docker exec openasm_db pg_dump -U postgres -d openasm | gzip > backups/backup_$(date +%Y%m%d_%H%M%S).sql.gz
 
 # 2. To restore: stop the app first so nothing writes during the restore
-docker compose stop app migration
+docker compose stop app
 
 # 3. Take a fresh safety backup of the current state before overwriting it —
 #    skip only if you're deliberately discarding everything since the last backup
@@ -468,7 +475,7 @@ docker exec openasm_db psql -U postgres -c "CREATE DATABASE openasm;"
 gunzip -c backups/backup_20260101_120000.sql.gz | docker exec -i openasm_db psql -U postgres -d openasm
 
 # 5. Bring the app back up
-docker compose up -d app migration
+docker compose up -d app
 docker restart openasm_nginx   # required after any app/db disruption, see warning above
 ```
 

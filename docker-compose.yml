@@ -19,14 +19,14 @@ services:
     volumes:
       - ./public/uploads:/app/public/uploads
       - ./backups:/app/backups
-      - ./wait-for-it.sh:/app/wait-for-it.sh:ro
     depends_on:
       db:
-        condition: service_started
-      migration:
-        condition: service_completed_successfully
-    command: >
-      sh -c "/app/wait-for-it.sh db:5432 --timeout=60 --strict -- npm start"
+        condition: service_healthy
+    # Database migrations run before the app on every start (no-op when up to
+    # date): schema on first install, pending migrations/versions/* files,
+    # default data and the initial admin account. If they fail the app does
+    # not start — see `docker compose logs app`. Details: migrations/README.md
+    command: sh -c "node migrations/migrate.js up && exec npm start"
     networks:
       - openasm_net
   db:
@@ -38,6 +38,11 @@ services:
       - .env.docker
     volumes:
       - ./pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
     ports:
       - "5432:5432"
     networks:
@@ -55,22 +60,6 @@ services:
       - "8888:80"
     depends_on:
       - db
-    networks:
-      - openasm_net
-  migration:
-    image: openasm_app:1.1.0
-    container_name: openasm_migration
-    working_dir: /app
-    logging: *default-logging
-    depends_on:
-      - db
-    env_file:
-      - .env.docker
-    environment:
-      - NODE_ENV=production
-    command: >
-      sh -c "/app/wait-for-it.sh db:5432 --timeout=60 --strict -- node migrations/init_all_tables.js && node migrations/alters/run.js && node migrations/init_data.js"
-    restart: "no"
     networks:
       - openasm_net
   nginx:

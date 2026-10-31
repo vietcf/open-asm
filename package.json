@@ -4,7 +4,12 @@
   "type": "module",
   "scripts": {
     "start": "node src/app.js",
-    "dev": "node --watch src/app.js"
+    "dev": "node --watch src/app.js",
+    "migrate": "node migrations/migrate.js up",
+    "migrate:status": "node migrations/migrate.js status",
+    "migrate:create": "node migrations/migrate.js create",
+    "admin:reset-password": "node migrations/tools/reset_admin_password.js",
+    "test:migrations": "node --test migrations/test/migrate.test.js"
   },
   "dependencies": {
     "accesscontrol": "^2.2.1",

@@ -1,25 +1,13 @@
-// migrations/init_data.js
-// Khởi tạo dữ liệu mẫu cho user, permission, role, configure
-import { pool } from '../config/config.js';
+// Idempotent seed data: roles/permissions, default configuration and the
+// initial administrator account. Every insert is ON CONFLICT DO NOTHING (or
+// guarded by an existence check), so this runs safely on every deploy and
+// never overwrites anything changed later through the UI.
+import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 
-async function seedUsers(pool) {
-  // Lấy id của role superadmin
-  const { rows } = await pool.query(`SELECT id FROM roles WHERE name = 'superadmin' LIMIT 1`);
-  if (!rows.length) throw new Error('Role superadmin not found');
-  const superadminRoleId = rows[0].id;
-  // Seed admin user
-  const hashedPassword = await bcrypt.hash('admin', 10);
-  await pool.query(`
-    INSERT INTO users (username, password_hash, email, fullname, role_id)
-    VALUES ('admin', '${hashedPassword}', 'admin@example.com', 'Administrator', $1)
-    ON CONFLICT (username) DO NOTHING;
-  `, [superadminRoleId]);
-}
-
-async function seedPermissionsAndRoles(pool) {
+export async function seedPermissionsAndRoles(db) {
   // Seed roles
-  await pool.query(`
+  await db.query(`
     INSERT INTO roles (name, description) VALUES
       ('superadmin', 'Full system administrator'),
       ('admin', 'System administrator'),
@@ -42,7 +30,7 @@ async function seedPermissionsAndRoles(pool) {
       permissionValues.push(`('${entity}.${action}', '${action.charAt(0).toUpperCase() + action.slice(1)} ${entity.replace('_', ' ')}')`);
     }
   }
-  await pool.query(`
+  await db.query(`
     INSERT INTO permissions (name, description) VALUES
       ${permissionValues.join(',\n      ')}
     ON CONFLICT (name) DO NOTHING;
@@ -50,14 +38,14 @@ async function seedPermissionsAndRoles(pool) {
 
   // Map role to permission
   // Get role ids
-  const { rows: roleRows } = await pool.query('SELECT id, name FROM roles');
-  const { rows: permRows } = await pool.query('SELECT id, name FROM permissions');
+  const { rows: roleRows } = await db.query('SELECT id, name FROM roles');
+  const { rows: permRows } = await db.query('SELECT id, name FROM permissions');
   const roleMap = Object.fromEntries(roleRows.map(r => [r.name, r.id]));
   const permMap = Object.fromEntries(permRows.map(p => [p.name, p.id]));
 
   // Superadmin: all permissions
   for (const permId of Object.values(permMap)) {
-    await pool.query(
+    await db.query(
       'INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
       [roleMap['superadmin'], permId]
     );
@@ -65,7 +53,7 @@ async function seedPermissionsAndRoles(pool) {
   // Admin: all except user, role, permission
   for (const permName of Object.keys(permMap)) {
     if (!permName.startsWith('user.') && !permName.startsWith('role.') && !permName.startsWith('permission.')) {
-      await pool.query(
+      await db.query(
         'INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
         [roleMap['admin'], permMap[permName]]
       );
@@ -74,7 +62,7 @@ async function seedPermissionsAndRoles(pool) {
   // Viewer: chỉ quyền đọc, trừ user, role, permission
   for (const permName of Object.keys(permMap)) {
     if (permName.endsWith('.read') && !permName.startsWith('user.') && !permName.startsWith('role.') && !permName.startsWith('permission.')) {
-      await pool.query(
+      await db.query(
         'INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
         [roleMap['viewer'], permMap[permName]]
       );
@@ -82,13 +70,12 @@ async function seedPermissionsAndRoles(pool) {
   }
 }
 
-async function seedConfiguration(pool) {
-  // Thêm cấu hình mặc định nếu cần
-  try {
-  await pool.query(`INSERT INTO configuration (key, value, description) VALUES ('site_name', 'VCB ASM', 'Cấu hình sitename') ON CONFLICT (key) DO NOTHING;`);
-  await pool.query(`INSERT INTO configuration (key, value, description) VALUES ('page_size', '10,20,50', 'Cấu hình page size') ON CONFLICT (key) DO NOTHING;`);
-  await pool.query(`INSERT INTO configuration (key, value, description) VALUES ('log_level', 'info', 'Cấu hình level log') ON CONFLICT (key) DO NOTHING;`);
-  await pool.query(`INSERT INTO configuration (key, value, description) VALUES ('log_retention_days', '30', 'Số ngày lưu log') ON CONFLICT (key) DO NOTHING;`);
+export async function seedConfiguration(db) {
+  // Thêm cấu hình mặc định nếu cần (ON CONFLICT DO NOTHING: never overwrites values edited in the UI)
+  await db.query(`INSERT INTO configuration (key, value, description) VALUES ('site_name', 'VCB ASM', 'Cấu hình sitename') ON CONFLICT (key) DO NOTHING;`);
+  await db.query(`INSERT INTO configuration (key, value, description) VALUES ('page_size', '10,20,50', 'Cấu hình page size') ON CONFLICT (key) DO NOTHING;`);
+  await db.query(`INSERT INTO configuration (key, value, description) VALUES ('log_level', 'info', 'Cấu hình level log') ON CONFLICT (key) DO NOTHING;`);
+  await db.query(`INSERT INTO configuration (key, value, description) VALUES ('log_retention_days', '30', 'Số ngày lưu log') ON CONFLICT (key) DO NOTHING;`);
 
 
     // Chèn trực tiếp các giá trị JSON khởi tạo cho các cấu hình động
@@ -287,36 +274,92 @@ async function seedConfiguration(pool) {
     ];
     for (const conf of dynamicConfigs) {
       if (conf.description) {
-        await pool.query(
+        await db.query(
           `INSERT INTO configuration (key, value, description) VALUES ($1, $2, $3) ON CONFLICT (key) DO NOTHING;`,
           [conf.key, JSON.stringify(conf.value), conf.description]
         );
       } else {
-        await pool.query(
+        await db.query(
           `INSERT INTO configuration (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING;`,
           [conf.key, JSON.stringify(conf.value)]
         );
       }
     }
 
-    console.log('Default configuration seeded.');
-  } catch (err) {
-    console.error('Seed configuration failed:', err);
-  }
 }
 
-async function initData() {
+// Creates the initial administrator account — only when the database has no
+// superadmin user at all (i.e. the first install). Never touches an existing
+// account, so changing the admin password in the UI is permanent.
+//
+//   ADMIN_USERNAME  default "admin"
+//   ADMIN_EMAIL     default "admin@localhost"
+//   ADMIN_PASSWORD  if empty, a random password is generated and printed once
+//                   to the log (docker compose logs app)
+//
+// Either way the account is flagged must_change_password, so the first login
+// forces the operator to pick their own password.
+export async function ensureAdminUser(db, env = process.env) {
+  const { rows: roleRows } = await db.query(`SELECT id FROM roles WHERE name = 'superadmin' LIMIT 1`);
+  if (!roleRows.length) throw new Error('Role superadmin not found');
+  const superadminRoleId = roleRows[0].id;
+
+  const { rows: existing } = await db.query(
+    'SELECT username FROM users WHERE role_id = $1 LIMIT 1',
+    [superadminRoleId]
+  );
+  if (existing.length) {
+    return { created: false, username: existing[0].username };
+  }
+
+  const username = (env.ADMIN_USERNAME || 'admin').trim().toLowerCase();
+  const email = (env.ADMIN_EMAIL || 'admin@localhost').trim().toLowerCase();
+  const fromEnv = Boolean(env.ADMIN_PASSWORD);
+  const password = fromEnv ? env.ADMIN_PASSWORD : crypto.randomBytes(12).toString('base64url');
+  const passwordHash = await bcrypt.hash(password, 10);
+
+  // ON CONFLICT on username/email: an account with that name already exists
+  // but is not superadmin — promote nothing, just report it.
+  const { rowCount } = await db.query(
+    `INSERT INTO users (username, password_hash, email, fullname, role_id, must_change_password, auth_source)
+     VALUES ($1, $2, $3, 'Administrator', $4, TRUE, 'local')
+     ON CONFLICT DO NOTHING`,
+    [username, passwordHash, email, superadminRoleId]
+  );
+  if (!rowCount) {
+    throw new Error(`Cannot create admin "${username}": that username or email (${email}) is already used by a non-superadmin account. Set ADMIN_USERNAME / ADMIN_EMAIL to other values.`);
+  }
+  return { created: true, username, password: fromEnv ? null : password, generated: !fromEnv };
+}
+
+export function printAdminBanner(result) {
+  if (!result.created) return;
+  const lines = [
+    result.title || 'Initial administrator account created',
+    `  username : ${result.username}`,
+    result.generated
+      ? `  password : ${result.password}`
+      : '  password : (value of ADMIN_PASSWORD)',
+    'You will be asked to change this password at first login.',
+  ];
+  if (result.generated) lines.push('This password is shown only once — save it now.');
+  const width = Math.max(...lines.map(l => l.length)) + 2;
+  const bar = '='.repeat(width + 2);
+  console.log(`\n${bar}\n${lines.map(l => ` ${l.padEnd(width)} `).join('\n')}\n${bar}\n`);
+}
+
+// All seeds in one transaction. Runs after every `migrate.js up`, so new
+// permissions/config keys added to this file reach existing databases too.
+export async function runSeeds(db) {
+  await db.query('BEGIN');
   try {
-    await seedPermissionsAndRoles(pool); // Seed roles/permissions trước
-    await seedUsers(pool); // Sau đó mới seed user admin
-    await seedConfiguration(pool);
-    console.log('Initial data seeded for users, permissions, roles, configuration.');
+    await seedPermissionsAndRoles(db);
+    await seedConfiguration(db);
+    const admin = await ensureAdminUser(db);
+    await db.query('COMMIT');
+    return admin;
   } catch (err) {
-    console.error('Seeding initial data failed:', err);
-  } finally {
-    await pool.end();
-    console.log('Database connection closed.');
+    await db.query('ROLLBACK').catch(() => {});
+    throw new Error(`Seeding failed and was rolled back: ${err.message}`, { cause: err });
   }
 }
-
-initData();
