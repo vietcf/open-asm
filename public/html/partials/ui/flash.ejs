@@ -1,0 +1,18 @@
+<%#
+  Standard flash messages. Reads successMessage/errorMessage (or success/error)
+  from the view locals; messages are translated here. Success auto-hides.
+%>
+<% const flashSuccess = locals.successMessage || locals.success; %>
+<% const flashError = locals.errorMessage || locals.error; %>
+<% if (flashSuccess) { %>
+  <div class="alert alert-success alert-dismissible fade show" role="status" data-autohide="5000">
+    <i class="bi bi-check-circle me-2"></i><%= t(flashSuccess) %>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
+  </div>
+<% } %>
+<% if (flashError) { %>
+  <div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <i class="bi bi-exclamation-triangle me-2"></i><%= t(flashError) %>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
+  </div>
+<% } %>

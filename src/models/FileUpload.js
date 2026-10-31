@@ -18,15 +18,11 @@ class FileUpload {
       [object_type, object_id]
     );
     if (process.env.FILE_UPLOAD_DRIVER !== 's3') {
-      // Use UPLOADS_DIR from env, fallback to 'public/uploads'
-      const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
       for (const file of files) {
         if (file.file_path) {
-          // Remove leading slash if present
-          const relPath = file.file_path.replace(/^\/+/, '');
-          const filePath = path.resolve(process.cwd(), uploadsDir, relPath.replace(/^uploads\//, ''));
+          const filePath = FileUpload.safeLocalPath(file.file_path);
           try {
-            if (fs.existsSync(filePath)) {
+            if (filePath && fs.existsSync(filePath)) {
               fs.unlinkSync(filePath);
             }
           } catch (e) {
@@ -53,6 +49,23 @@ class FileUpload {
     return result.rows[0] || null;
   }
 
+  static async findByObjects(object_type, object_ids) {
+    const result = await pool.query(
+      `SELECT * FROM file_uploads WHERE object_type = $1 AND object_id = ANY($2::int[]) ORDER BY id`,
+      [object_type, object_ids]
+    );
+    return result.rows;
+  }
+
+  // Absolute path of a stored local file, or null if it would fall outside
+  // the uploads directory (never unlink anything else).
+  static safeLocalPath(file_path) {
+    const uploadsDir = path.resolve(process.cwd(), process.env.UPLOADS_DIR || 'public/uploads');
+    const relPath = String(file_path || '').replace(/^\/+/, '').replace(/^uploads\//, '');
+    const filePath = path.resolve(uploadsDir, relPath);
+    return filePath.startsWith(uploadsDir + path.sep) ? filePath : null;
+  }
+
   static async findByObject(object_type, object_id) {
     const result = await pool.query(
       `SELECT * FROM file_uploads WHERE object_type = $1 AND object_id = $2 ORDER BY uploaded_at DESC`,
@@ -68,13 +81,9 @@ class FileUpload {
     );
     const file = result.rows[0];
     if (file && process.env.FILE_UPLOAD_DRIVER !== 's3' && file.file_path) {
-      // __dirname is not available in ESM by default, so use process.cwd()
-      const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
-      // Remove leading slash if present
-      const relPath = file.file_path.replace(/^\/+/, '');
-      const filePath = path.resolve(process.cwd(), uploadsDir, relPath.replace(/^uploads\//, ''));
+      const filePath = FileUpload.safeLocalPath(file.file_path);
       try {
-        if (fs.existsSync(filePath)) {
+        if (filePath && fs.existsSync(filePath)) {
           fs.unlinkSync(filePath);
         }
       } catch (e) {

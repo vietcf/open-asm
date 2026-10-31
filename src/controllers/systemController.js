@@ -14,6 +14,8 @@ import { sanitizeExcelRow } from '../utils/excelSafe.js';
 const { getLevelOptions, getScopeOptions, getArchitectureOptions } = systemService;
 const { getAppTypeOptions } = systemComponentService;
 
+import { attachTmpUploads, deleteObjectFiles } from '../services/fileService.js';
+
 const systemController = {};
 // System Component list page
 systemController.listSystemComponent = async (req, res) => {
@@ -394,59 +396,9 @@ systemController.updateSystem = async (req, res) => {
       updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
     }, client);
 
-    // Handle file deletion if requested
-    let filesToDelete = [];
-    if (req.body.delete_files) {
-      try {
-        filesToDelete = JSON.parse(req.body.delete_files);
-      } catch (e) { filesToDelete = []; }
-    }
-    if (Array.isArray(filesToDelete) && filesToDelete.length > 0) {
-      for (const fileId of filesToDelete) {
-        await FileUpload.deleteById(fileId);
-      }
-    }
-    // Handle new file uploads (multiple files supported)
-    if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        let filePath = file.path || (file.location ? file.location : null);
-        await FileUpload.create({
-          object_type: 'system',
-          object_id: id,
-          original_name: file.originalname,
-          file_path: filePath,
-          mime_type: file.mimetype,
-          size: file.size,
-          uploaded_by: req.session.user ? req.session.user.id : null
-        }, client);
-      }
-    }
-    // Handle uploaded files from AJAX (hidden input: uploaded_docs_edit)
-    let uploadedDocsEdit = [];
-    if (req.body.uploaded_docs_edit) {
-      try {
-        uploadedDocsEdit = JSON.parse(req.body.uploaded_docs_edit);
-      } catch (e) { uploadedDocsEdit = []; }
-    }
-    if (Array.isArray(uploadedDocsEdit) && uploadedDocsEdit.length > 0) {
-      for (const doc of uploadedDocsEdit) {
-        // Move file from tmp to system folder if using local storage (now via FileUpload helper)
-        let finalPath = FileUpload.moveFromTmpToSystem(doc.url);
-        // Validate file info before saving to the database
-        if (!finalPath || !(doc.originalname || doc.name) || !doc.mimetype || !doc.size) {
-          continue;
-        }
-        await FileUpload.create({
-          object_type: 'system',
-          object_id: id,
-          original_name: doc.originalname || doc.name,
-          file_path: finalPath,
-          mime_type: doc.mimetype,
-          size: doc.size,
-          uploaded_by: req.session.user ? req.session.user.id : null
-        }, client);
-      }
-    }
+    // Attachments: delete only files of this system; accept only genuine tmp uploads
+    await deleteObjectFiles('system', id, req.body.delete_files);
+    await attachTmpUploads('system', id, req.body.uploaded_docs_edit, req.session.user ? req.session.user.id : null, client);
     await client.query('COMMIT');
     req.flash('success', 'System updated successfully');
     return res.redirect('/system/system');
@@ -498,32 +450,7 @@ systemController.addSystem = async (req, res) => {
       updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
     }, client);
 
-    // Handle uploaded files from AJAX (hidden input: uploaded_docs)
-    let uploadedDocs = [];
-    if (req.body.uploaded_docs) {
-      try {
-        uploadedDocs = JSON.parse(req.body.uploaded_docs);
-      } catch (e) { uploadedDocs = []; }
-    }
-    if (Array.isArray(uploadedDocs) && uploadedDocs.length > 0) {
-      for (const doc of uploadedDocs) {
-        // Validate file info before saving to the database
-        if (!(doc.url && (doc.originalname || doc.name) && doc.mimetype && doc.size)) {
-          continue;
-        }
-        // Move file from tmp to system folder if using local storage (now via FileUpload helper)
-        let finalPath = FileUpload.moveFromTmpToSystem(doc.url);
-        await FileUpload.create({
-          object_type: 'system',
-          object_id: newSystem.id,
-          original_name: doc.originalname,
-          file_path: finalPath,
-          mime_type: doc.mimetype,
-          size: doc.size,
-          uploaded_by: req.session.user ? req.session.user.id : null
-        }, client);
-      }
-    }
+    await attachTmpUploads('system', newSystem.id, req.body.uploaded_docs, req.session.user ? req.session.user.id : null, client);
     await client.query('COMMIT');
     req.flash('success', 'System added successfully');
     return res.redirect('/system/system');

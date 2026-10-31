@@ -9,6 +9,17 @@ export class ServiceError extends Error {
     this.name = 'ServiceError';
     this.code = code;
     this.details = details;
+    this.template = message; // untranslated English key (see withParams)
+    this.params = undefined;
+  }
+
+  // Message with {placeholders}: the English template stays the i18n key,
+  // err.message gets the values filled in (what the API returns).
+  //   throw new ConflictError("System ID '{id}' already exists").withParams({ id })
+  withParams(params) {
+    this.params = params;
+    this.message = this.template.replace(/\{(\w+)\}/g, (m, k) => (params[k] !== undefined ? String(params[k]) : m));
+    return this;
   }
 }
 

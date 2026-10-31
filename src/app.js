@@ -147,6 +147,19 @@ app.use((req, res, next) => {
   res.locals.jsonSafe = (value) => JSON.stringify(value === undefined ? null : value)
     .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026')
     .replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+  // URL of the current list page with ?page=N (keeps search/filters/pageSize)
+  res.locals.pageUrl = (n) => {
+    const url = new URL(req.originalUrl, 'http://x');
+    url.searchParams.set('page', n);
+    url.searchParams.delete('lang');
+    return url.pathname + url.search;
+  };
+  // Current query string without page/lang, for export links etc.
+  res.locals.currentQuery = (() => {
+    const url = new URL(req.originalUrl, 'http://x');
+    ['page', 'lang'].forEach(k => url.searchParams.delete(k));
+    return url.search;
+  })();
   // Permission helper
   res.locals.hasPermission = (perm) => {
     const user = res.locals.user;

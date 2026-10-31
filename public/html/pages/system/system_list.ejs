@@ -1,169 +1,166 @@
 <%
-// Helper function to build export URL with all current filter query parameters
-function buildSystemExportUrl() {
-  const params = new URLSearchParams();
-  if (typeof search !== 'undefined' && search) {
-    params.set('search', search);
-  }
-  if (typeof filterTags !== 'undefined' && filterTags && filterTags.length > 0) {
-    filterTags.forEach(id => params.append('tags[]', id));
-  }
-  if (typeof filterContacts !== 'undefined' && filterContacts && filterContacts.length > 0) {
-    filterContacts.forEach(id => params.append('contacts[]', id));
-  }
-  if (typeof filterScopes !== 'undefined' && filterScopes && filterScopes.length > 0) {
-    filterScopes.forEach(v => params.append('scopes[]', v));
-  }
-  if (typeof filterArchitecture !== 'undefined' && filterArchitecture && filterArchitecture.length > 0) {
-    filterArchitecture.forEach(v => params.append('architectures[]', v));
-  }
-  if (typeof filterLevel !== 'undefined' && filterLevel) {
-    params.set('level', filterLevel);
-  }
-  if (typeof filterDepartment !== 'undefined' && filterDepartment) {
-    params.set('department_id', filterDepartment);
-  }
-  return '/system/system/export' + (params.toString() ? '?' + params.toString() : '');
-}
+  const hasActiveFilter = !!(filterTags.length || filterContacts.length || filterScopes.length ||
+    filterArchitecture.length || filterLevel || filterDepartment);
+  const activeFilterCount = [filterTags.length, filterContacts.length, filterScopes.length,
+    filterArchitecture.length, filterLevel ? 1 : 0, filterDepartment ? 1 : 0].filter(Boolean).length;
 %>
+<%- include('../../partials/ui/page_header', { title: 'System List', breadcrumbs: [{ label: 'System Management' }, { label: 'System List' }] }) %>
 
-<!-- Content Header -->
-<div class="app-content-header">
+<div class="app-content">
   <div class="container-fluid">
-    <div class="row">
-      <div class="col-12">
-        <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/"><%= t('Home') %></a></li>
-          <li class="breadcrumb-item active"><%= t('System List') %></li>
-        </ol>
+    <%- include('../../partials/ui/flash') %>
+
+    <div class="card list-card">
+      <form class="list-filter-form" method="get" action="/system/system">
+        <input type="hidden" name="pageSize" value="<%= pageSize %>">
+        <div class="card-header list-toolbar">
+          <div class="input-group list-search">
+            <input class="form-control" type="search" name="search" value="<%= search || '' %>" placeholder="<%= t('Search by name, system ID...') %>" aria-label="<%= t('Search') %>">
+            <button class="btn btn-outline-secondary" type="submit" title="<%= t('Search') %>"><i class="bi bi-search"></i></button>
+          </div>
+          <button type="button" class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#systemFilters" aria-expanded="<%= hasActiveFilter %>">
+            <i class="bi bi-funnel"></i> <%= t('Filter') %><% if (activeFilterCount) { %> <span class="badge rounded-pill"><%= activeFilterCount %></span><% } %>
+          </button>
+          <div class="list-actions">
+            <a href="/system/system/export<%= currentQuery %>" class="btn btn-outline-secondary"><i class="bi bi-download"></i> <%= t('Export') %></a>
+            <% if (hasPermission('system.create')) { %>
+              <a href="/system/system/add" class="btn btn-primary"><i class="bi bi-plus-lg"></i> <%= t('Add System') %></a>
+            <% } %>
+          </div>
+        </div>
+        <div class="collapse<%= hasActiveFilter ? ' show' : '' %>" id="systemFilters">
+          <div class="list-filters">
+            <div class="row g-2">
+              <div class="col-md-6 col-xl-4">
+                <label class="form-label small"><%= t('Tags') %></label>
+                <select name="tags[]" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"
+                        data-ajax-url="/organize/api/tag" data-ids-url="/organize/api/tag/ids" data-selected='<%= JSON.stringify(filterTags) %>'></select>
+              </div>
+              <div class="col-md-6 col-xl-4">
+                <label class="form-label small"><%= t('Contacts') %></label>
+                <select name="contacts[]" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>" data-none-option="true"
+                        data-ajax-url="/organize/api/contact" data-ids-url="/organize/api/contact/ids" data-selected='<%= JSON.stringify(filterContacts) %>'></select>
+              </div>
+              <div class="col-md-6 col-xl-4">
+                <label class="form-label small"><%= t('Department') %></label>
+                <select name="department_id" class="form-select js-filter" data-placeholder="<%= t('All Departments') %>">
+                  <option value=""></option>
+                  <option value="__none__" <%= filterDepartment === '__none__' ? 'selected' : '' %>><%= t('(Not set)') %></option>
+                  <% (departments || []).forEach(function (dept) { %>
+                    <option value="<%= dept.id %>" <%= String(filterDepartment) === String(dept.id) ? 'selected' : '' %>><%= dept.name %></option>
+                  <% }); %>
+                </select>
+              </div>
+              <div class="col-md-6 col-xl-4">
+                <label class="form-label small"><%= t('Scope user access') %></label>
+                <select name="scopes[]" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>">
+                  <option value="__none__" <%= filterScopes.includes('__none__') ? 'selected' : '' %>><%= t('(Not set)') %></option>
+                  <% (scopeOptions || []).forEach(function (o) { %>
+                    <option value="<%= o.id %>" <%= filterScopes.includes(String(o.id)) ? 'selected' : '' %>><%= o.text %></option>
+                  <% }); %>
+                </select>
+              </div>
+              <div class="col-md-6 col-xl-4">
+                <label class="form-label small"><%= t('Architecture') %></label>
+                <select name="architectures[]" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>">
+                  <option value="__none__" <%= filterArchitecture.includes('__none__') ? 'selected' : '' %>><%= t('(Not set)') %></option>
+                  <% (architectureOptions || []).forEach(function (o) { %>
+                    <option value="<%= o.id %>" <%= filterArchitecture.includes(String(o.id)) ? 'selected' : '' %>><%= o.text %></option>
+                  <% }); %>
+                </select>
+              </div>
+              <div class="col-md-6 col-xl-4">
+                <label class="form-label small"><%= t('Level') %></label>
+                <select name="level" class="form-select js-filter" data-placeholder="<%= t('All Levels') %>">
+                  <option value=""></option>
+                  <option value="__none__" <%= filterLevel === '__none__' ? 'selected' : '' %>><%= t('(Not set)') %></option>
+                  <% (levelOptions || []).forEach(function (level) { %>
+                    <option value="<%= level.id %>" <%= String(filterLevel) === String(level.id) ? 'selected' : '' %>><%= level.text %></option>
+                  <% }); %>
+                </select>
+              </div>
+            </div>
+            <% if (hasActiveFilter) { %>
+              <div class="mt-2 text-end"><a href="#" class="small" data-clear-filters><i class="bi bi-x-circle me-1"></i><%= t('Clear All Filters') %></a></div>
+            <% } %>
+          </div>
+        </div>
+      </form>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle" id="systemTable">
+          <thead>
+            <tr>
+              <th class="col-index">#</th>
+              <th><%= t('System Code') %></th>
+              <th><%= t('Name') %></th>
+              <th><%= t('Description') %></th>
+              <th><%= t('Alias') %></th>
+              <th><%= t('Tags') %></th>
+              <th><%= t('Scope user access') %></th>
+              <th><%= t('Architecture') %></th>
+              <th class="col-actions"><%= t('Actions') %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (systemList && systemList.length) { %>
+              <% systemList.forEach(function (system, idx) { %>
+                <tr>
+                  <td class="col-index"><%= (page - 1) * pageSize + idx + 1 %></td>
+                  <td class="text-nowrap"><%= system.system_id %></td>
+                  <td class="fw-medium"><%= system.name %></td>
+                  <td>
+                    <% const desc = (system.description || '').trim(); %>
+                    <% if (desc) { %><span class="cell-clip" title="<%= desc %>"><%= desc %></span><% } else { %><span class="text-secondary">—</span><% } %>
+                  </td>
+                  <td>
+                    <% const aliases = Array.isArray(system.alias) ? system.alias : (system.alias ? [system.alias] : []); %>
+                    <%= aliases.length ? aliases.join(', ') : '—' %>
+                  </td>
+                  <td>
+                    <% if (system.tags && system.tags.length) { %>
+                      <div class="chip-list"><% system.tags.forEach(function (tag) { %><span class="badge tag"><%= tag.name %></span><% }); %></div>
+                    <% } else { %><span class="text-secondary">—</span><% } %>
+                  </td>
+                  <td>
+                    <% if (system.scopes && system.scopes.length) { %>
+                      <div class="chip-list"><% system.scopes.forEach(function (scope) { %><span class="badge tag"><%= scope %></span><% }); %></div>
+                    <% } else { %><span class="text-secondary">—</span><% } %>
+                  </td>
+                  <td>
+                    <% if (system.architecture && system.architecture.length) { %>
+                      <div class="chip-list"><% system.architecture.forEach(function (arch) { %><span class="badge tag"><%= arch %></span><% }); %></div>
+                    <% } else { %><span class="text-secondary">—</span><% } %>
+                  </td>
+                  <td class="col-actions">
+                    <div class="row-actions">
+                      <button type="button" class="btn btn-sm btn-outline-secondary" title="<%= t('Detail') %>" onclick="showSystemDetail(<%= JSON.stringify(system.id) %>)" data-system='<%= JSON.stringify(system) %>'><i class="bi bi-eye"></i></button>
+                      <% if (hasPermission('system.update')) { %>
+                        <a href="/system/system/<%= system.id %>/edit" class="btn btn-sm btn-outline-secondary" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
+                      <% } %>
+                      <% if (hasPermission('system.delete')) { %>
+                        <form action="/system/system/<%= system.id %>/delete" method="POST" onsubmit="return confirmDeleteSystem(this, <%= JSON.stringify(system.name) %>)">
+                          <button type="submit" class="btn btn-sm btn-outline-secondary btn-delete" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
+                        </form>
+                      <% } %>
+                    </div>
+                  </td>
+                </tr>
+              <% }); %>
+            <% } else { %>
+              <tr><td colspan="9">
+                <%- include('../../partials/ui/empty_state', { icon: 'bi-hdd-stack', message: 'No systems found', filtered: hasActiveFilter || !!search, clearUrl: '/system/system',
+                      actionUrl: hasPermission('system.create') ? '/system/system/add' : null, actionLabel: 'Add System' }) %>
+              </td></tr>
+            <% } %>
+          </tbody>
+        </table>
       </div>
+
+      <%- include('../../partials/ui/pagination', { page, totalPages, totalCount, pageSize, count: (systemList || []).length, summary: 'Showing {1} - {2} of {3} systems' }) %>
     </div>
   </div>
 </div>
-
-<!-- Main content -->
-<div class="app-content">
-  <div class="container-fluid">
-  <!-- Search and Page Size Row -->
-  <div class="row mb-3">
-    <div class="col-12">
-      <div class="d-flex justify-content-end align-items-center gap-2">
-        <form class="d-flex align-items-center gap-2" role="search" method="get" action="/system/system">
-          <div class="input-group input-group-sm" style="width: 250px;">
-            <input class="form-control form-control-sm" type="search" name="search" placeholder="<%= t('Search by name, system ID...') %>" aria-label="<%= t('Search') %>" value="<%= typeof search !== 'undefined' ? search : '' %>">
-            <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
-          </div>
-          <div class="d-flex align-items-center gap-1">
-            <label class="form-label form-label-sm mb-0 text-muted"><%= t('Show:') %></label>
-            <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
-              <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
-                <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
-              <% }) %>
-            </select>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-    <!-- Action Buttons -->
-    <div class="row mb-3">
-      <div class="col-12">
-        <div class="d-flex justify-content-end gap-2">
-          <% if (hasPermission && hasPermission('system.create')) { %>
-            <a href="/system/system/add" class="btn btn-primary btn-sm">
-              <i class="bi bi-plus"></i> <%= t('Add System') %>
-            </a>
-          <% } %>
-          <%
-            const hasActiveSystemFilter = !!(
-              (filterTags && filterTags.length > 0) ||
-              (filterContacts && filterContacts.length > 0) ||
-              (filterScopes && filterScopes.length > 0) ||
-              (filterArchitecture && filterArchitecture.length > 0) ||
-              (filterLevel && filterLevel !== '') ||
-              (filterDepartment && filterDepartment !== '')
-            );
-          %>
-          <button type="button" class="btn btn-sm <%= hasActiveSystemFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterSystemModal">
-            <i class="bi bi-funnel<%= hasActiveSystemFilter ? '-fill' : '' %>"></i> <%= t('Filter{1}', { 1: hasActiveSystemFilter ? ' (Filtered)' : '' }) %>
-          </button>
-          <% if (hasPermission && hasPermission('system.read')) { %>
-            <a href="<%= buildSystemExportUrl() %>" class="btn btn-info btn-sm">
-              <i class="bi bi-download"></i> <%= t('Export') %>
-            </a>
-          <% } %>
-        </div>
-      </div>
-    </div>
-      <!-- Filter Modal -->
-      <div class="modal fade" id="filterSystemModal" tabindex="-1" aria-labelledby="filterSystemModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <form id="systemFilterForm" method="get" action="/system/system">
-              <!-- Preserve current pageSize and search -->
-              <input type="hidden" name="pageSize" value="<%= typeof pageSize !== 'undefined' ? pageSize : 10 %>">
-              <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-              <div class="modal-header">
-                <h5 class="modal-title" id="filterSystemModalLabel"><%= t('Filter System List') %></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
-              </div>
-              <div class="modal-body">
-                <div class="row g-2">
-                  <div class="col-12 mb-2">
-                    <label class="form-label"><%= t('Tags') %></label>
-                    <select id="filterSystemTags" name="tags[]" class="form-control" multiple></select>
-                  </div>
-                  <div class="col-12 mb-2">
-                    <label class="form-label"><%= t('Contacts') %></label>
-                    <select id="filterSystemContacts" name="contacts[]" class="form-control" multiple></select>
-                  </div>
-                  <div class="col-12 mb-2">
-                    <label class="form-label"><%= t('Scope user access') %></label>
-                    <select id="filterSystemScopes" name="scopes[]" class="form-control" multiple></select>
-                  </div>
-                  <div class="col-12 mb-2">
-                    <label class="form-label"><%= t('Architecture') %></label>
-                    <select id="filterSystemArchitecture" name="architectures[]" class="form-control" multiple></select>
-                  </div>
-                  <div class="col-12 mb-2">
-                    <label class="form-label"><%= t('Level') %></label>
-                    <select id="filterSystemLevel" name="level" class="form-select">
-                      <option value=""><%= t('All Levels') %></option>
-                      <option value="__none__" <%= (typeof filterLevel !== 'undefined' && filterLevel === '__none__') ? 'selected' : '' %>><%= t('(Not set)') %></option>
-                      <% if (levelOptions && levelOptions.length > 0) { %>
-                        <% levelOptions.forEach(function(level) { %>
-                          <option value="<%= level.id %>" <%= (typeof filterLevel !== 'undefined' && filterLevel === level.id) ? 'selected' : '' %>><%= level.text %></option>
-                        <% }) %>
-                      <% } %>
-                    </select>
-                  </div>
-                  <div class="col-12 mb-2">
-                    <label class="form-label"><%= t('Department') %></label>
-                    <select id="filterSystemDepartment" name="department_id" class="form-select">
-                      <option value=""><%= t('All Departments') %></option>
-                      <option value="__none__" <%= (typeof filterDepartment !== 'undefined' && filterDepartment === '__none__') ? 'selected' : '' %>><%= t('(Not set)') %></option>
-                      <% if (departments && departments.length > 0) { %>
-                        <% departments.forEach(function(dept) { %>
-                          <option value="<%= dept.id %>" <%= (typeof filterDepartment !== 'undefined' && String(filterDepartment) === String(dept.id)) ? 'selected' : '' %>><%= dept.name %></option>
-                        <% }) %>
-                      <% } %>
-                    </select>
-                  </div>
-                </div>
-              </div>
-              <div class="modal-footer d-flex justify-content-between">
-                <button type="button" id="clearFilterBtnSystem" class="btn btn-outline-danger btn-sm"><%= t('Clear All Filters') %></button>
-                <div>
-                  <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal"><%= t('Cancel') %></button>
-                  <button type="submit" class="btn btn-primary btn-sm"><%= t('Apply Filter') %></button>
-                </div>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
-
     <!-- System Detail Modal -->
     <div class="modal fade" id="systemDetailModal" tabindex="-1" aria-labelledby="systemDetailModalLabel" aria-hidden="true">
       <div class="modal-dialog modal-lg">
@@ -207,347 +204,6 @@ function buildSystemExportUrl() {
     </div>
 
   <!-- Filter values for JS (safe for strict EJS, same as IP Address List) -->
-  <div id="filter-system-data"
-    data-tags='<%= JSON.stringify(filterTags || []) %>'
-    data-contacts='<%= JSON.stringify(filterContacts || []) %>'
-    data-scopes='<%= JSON.stringify(filterScopes || []) %>'
-    data-architecture='<%= JSON.stringify(filterArchitecture || []) %>' style="display:none"></div>
-
-  <% // Declare pagination variables ONCE before the table, to avoid duplicate declaration errors and ReferenceError %>
-  <% 
-    let sysStartItem = (page - 1) * pageSize + 1;
-    let sysEndItem = sysStartItem + (systemList ? systemList.length : 0) - 1;
-    if (!systemList || systemList.length === 0) {
-      sysStartItem = 0;
-      sysEndItem = 0;
-    }
-    let sysStartPage = 1;
-    let sysEndPage = totalPages;
-    if (totalPages > 10) {
-      if (page <= 5) {
-        sysStartPage = 1;
-        sysEndPage = 10;
-      } else if (page + 4 >= totalPages) {
-        sysStartPage = totalPages - 9;
-        sysEndPage = totalPages;
-      } else {
-        sysStartPage = page - 5 + 1;
-        sysEndPage = page + 4;
-      }
-    }
-  %>
-
-  <!-- Flash Messages -->
-  <!-- Debug: successMessage = <%= typeof successMessage !== 'undefined' ? successMessage : 'undefined' %> -->
-  <!-- Debug: errorMessage = <%= typeof errorMessage !== 'undefined' ? errorMessage : 'undefined' %> -->
-  <% if (typeof successMessage !== 'undefined' && successMessage) { %>
-    <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
-      <i class="bi bi-check-circle me-2"></i><%= t(successMessage) %>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
-    </div>
-    <script>
-      // Auto-hide success message after 5 seconds
-      setTimeout(function() {
-        const alert = document.getElementById('successAlert');
-        if (alert) {
-          const bsAlert = new bootstrap.Alert(alert);
-          bsAlert.close();
-        }
-      }, 5000);
-    </script>
-  <% } %>
-  
-  <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
-      <i class="bi bi-exclamation-triangle me-2"></i><%= t(errorMessage) %>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
-    </div>
-    <script>
-      // Auto-hide error message after 8 seconds (longer for errors)
-      setTimeout(function() {
-        const alert = document.getElementById('errorAlert');
-        if (alert) {
-          const bsAlert = new bootstrap.Alert(alert);
-          bsAlert.close();
-        }
-      }, 8000);
-    </script>
-  <% } %>
-
-  <!-- System List Table -->
-  <div class="row">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title mb-0"><%= t('System List') %></h3>
-        </div>
-        <div class="card-body table-responsive p-0" style="overflow-x: auto;">
-          <table class="table table-hover" id="systemTable">
-            <thead>
-              <tr>
-                <th><%= t('No.') %></th>
-                <th data-sort-type="text"><%= t('System Code') %></th>
-                <th data-sort-type="text"><%= t('Name') %></th>
-                <th data-sort-type="text"><%= t('Description') %></th>
-                <th data-sort-type="text"><%= t('Alias') %></th>
-                <th data-sort-type="text"><%= t('Tags') %></th>
-                <th data-sort-type="text"><%= t('Scope user access') %></th>
-                <th data-sort-type="text"><%= t('Architecture') %></th>
-                <th class="text-end"><%= t('Actions') %></th>
-              </tr>
-            </thead>
-            <tbody>
-              <% if (systemList && systemList.length > 0) { %>
-                <% systemList.forEach(function(system, idx) { %>
-                  <tr>
-                    <td><%= (page - 1) * pageSize + idx + 1 %></td>
-                    <td><%= system.system_id %></td>
-                    <td><%= system.name %></td>
-                    <td>
-                      <% if (system.description && system.description.trim()) { %>
-                        <%
-                          const cleanDescription = system.description.trim();
-                          const shortDescription = cleanDescription.length > 100 ? cleanDescription.substring(0, 100) + '…' : cleanDescription;
-                        %>
-                        <span data-bs-toggle="tooltip" data-bs-placement="top" title="<%= cleanDescription %>" style="cursor: help; word-break: break-word;">
-                          <%= shortDescription %>
-                        </span>
-                      <% } else { %>
-                        <span class="text-muted">-</span>
-                      <% } %>
-                    </td>
-                    <td>
-                      <% if (Array.isArray(system.alias) && system.alias.length > 0) { %>
-                        <%= system.alias.join(', ') %>
-                      <% } else if (system.alias) { %>
-                        <%= system.alias %>
-                      <% } else { %>
-                        <span class="text-muted"><%= t('No alias') %></span>
-                      <% } %>
-                    </td>
-                    <td>
-                      <% if (system.tags && system.tags.length > 0) { %>
-                        <div style="line-height: 1.4;">
-                          <% system.tags.forEach(function(tag, idx) { %>
-                            <span class="badge bg-primary text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;">
-                              <%= tag.name %>
-                            </span>
-                            <% if ((idx + 1) % 2 === 0 && idx < system.tags.length - 1) { %>
-                              <br>
-                            <% } %>
-                          <% }) %>
-                        </div>
-                      <% } else { %>
-                        <span class="text-muted"><%= t('No tags') %></span>
-                      <% } %>
-                    </td>
-                    <td>
-                      <% if (system.scopes && system.scopes.length > 0) { %>
-                        <div style="line-height: 1.4;">
-                          <% system.scopes.forEach(function(scope, idx) { %>
-                            <span class="badge bg-info text-white" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;">
-                              <%= scope %>
-                            </span>
-                            <% if ((idx + 1) % 2 === 0 && idx < system.scopes.length - 1) { %>
-                              <br>
-                            <% } %>
-                          <% }) %>
-                        </div>
-                      <% } else { %>
-                        <span class="text-muted"><%= t('No scope') %></span>
-                      <% } %>
-                    </td>
-                    <td>
-                      <% if (system.architecture && system.architecture.length > 0) { %>
-                        <div style="line-height: 1.4;">
-                          <% system.architecture.forEach(function(arch, idx) { %>
-                            <span class="badge bg-warning text-dark" style="font-size:1rem; font-weight:500; padding:0.15em 0.5em; margin: 0.1em 0.1em; display: inline-block;">
-                              <%= arch %>
-                            </span>
-                            <% if ((idx + 1) % 2 === 0 && idx < system.architecture.length - 1) { %>
-                              <br>
-                            <% } %>
-                          <% }) %>
-                        </div>
-                      <% } else { %>
-                        <span class="text-muted"><%= t('No architecture') %></span>
-                      <% } %>
-                    </td>
-
-                    <td class="text-end">
-                      <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showSystemDetail(<%= JSON.stringify(system.id) %>)" data-system='<%= JSON.stringify(system) %>'><i class="bi bi-eye"></i></button>
-                      <% if (hasPermission('system.update')) { %>
-                      <a href="/system/system/<%= system.id %>/edit" class="btn btn-warning btn-sm" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
-                      <% } %>
-                      <% if (hasPermission('system.delete')) { %>
-                      <form action="/system/system/<%= system.id %>/delete" method="POST" style="display:inline" onsubmit="return confirmDeleteSystem(this, <%= JSON.stringify(system.name) %>)">
-                        <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
-                          <i class="bi bi-trash"></i>
-                        </button>
-                      </form>
-                      <% } %>
-                    </td>
-                  </tr>
-
-                <% }) %>
-              <% } else { %>
-                <tr><td colspan="9" class="text-center"><%= t('No data') %></td></tr>
-              <% } %>
-            </tbody>
-          </table>
-        </div>
-        
-        <!-- Mobile Cards Layout -->
-        <div class="mobile-cards d-none" id="systemMobileCards">
-          <% if (systemList && systemList.length > 0) { %>
-            <% systemList.forEach(function(system, idx) { %>
-              <div class="mobile-card">
-                <div class="mobile-card-header">
-                  <h6 class="mb-0"><%= system.name %></h6>
-                  <small class="text-muted">#<%= (page - 1) * pageSize + idx + 1 %></small>
-                </div>
-                <div class="mobile-card-body">
-                  <div class="mobile-card-row">
-                    <span class="mobile-card-label"><%= t('System Code:') %></span>
-                    <span class="mobile-card-value"><%= system.system_id %></span>
-                  </div>
-                  <% if (system.description && system.description.trim()) { %>
-                      <%
-                        const cleanDescription = system.description.trim();
-                        const shortDescription = cleanDescription.length > 80 ? cleanDescription.substring(0, 80) + '…' : cleanDescription;
-                      %>
-                    <div class="mobile-card-row">
-                      <span class="mobile-card-label"><%= t('Description:') %></span>
-                      <span class="mobile-card-value" data-bs-toggle="tooltip" data-bs-placement="top" title="<%= cleanDescription %>" style="cursor: help;"><%= shortDescription %></span>
-                    </div>
-                  <% } %>
-                  <% if (system.alias && (Array.isArray(system.alias) ? system.alias.length > 0 : system.alias)) { %>
-                    <div class="mobile-card-row">
-                      <span class="mobile-card-label"><%= t('Alias:') %></span>
-                      <span class="mobile-card-value"><%= Array.isArray(system.alias) ? system.alias.join(', ') : system.alias %></span>
-                    </div>
-                  <% } %>
-                  <% if (system.tags && system.tags.length > 0) { %>
-                    <div class="mobile-card-row">
-                      <span class="mobile-card-label"><%= t('Tags:') %></span>
-                      <span class="mobile-card-value">
-                        <% system.tags.slice(0, 2).forEach(function(tag) { %>
-                          <span class="badge bg-primary text-white me-1" style="font-size:0.8rem;"><%= tag.name %></span>
-                        <% }) %>
-                        <% if (system.tags.length > 2) { %>
-                          <span class="text-muted"><%= t('+{1} more', { 1: system.tags.length - 2 }) %></span>
-                        <% } %>
-                      </span>
-                    </div>
-                  <% } %>
-                  <% if (system.scopes && system.scopes.length > 0) { %>
-                    <div class="mobile-card-row">
-                      <span class="mobile-card-label"><%= t('Scope:') %></span>
-                      <span class="mobile-card-value">
-                        <% system.scopes.slice(0, 1).forEach(function(scope) { %>
-                          <span class="badge bg-info text-white me-1" style="font-size:0.8rem;"><%= scope %></span>
-                        <% }) %>
-                        <% if (system.scopes.length > 1) { %>
-                          <span class="text-muted"><%= t('+{1} more', { 1: system.scopes.length - 1 }) %></span>
-                        <% } %>
-                      </span>
-                    </div>
-                  <% } %>
-                  <% if (system.architecture && system.architecture.length > 0) { %>
-                    <div class="mobile-card-row">
-                      <span class="mobile-card-label"><%= t('Architecture:') %></span>
-                      <span class="mobile-card-value">
-                        <% system.architecture.slice(0, 1).forEach(function(arch) { %>
-                          <span class="badge bg-warning text-dark me-1" style="font-size:0.8rem;"><%= arch %></span>
-                        <% }) %>
-                        <% if (system.architecture.length > 1) { %>
-                          <span class="text-muted"><%= t('+{1} more', { 1: system.architecture.length - 1 }) %></span>
-                        <% } %>
-                      </span>
-                    </div>
-                  <% } %>
-                </div>
-                <div class="mobile-card-actions">
-                  <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showSystemDetail(<%= JSON.stringify(system.id) %>)" data-system='<%= JSON.stringify(system) %>'>
-                    <i class="bi bi-eye"></i>
-                  </button>
-                  <% if (hasPermission('system.update')) { %>
-                    <a href="/system/system/<%= system.id %>/edit" class="btn btn-warning btn-sm" title="<%= t('Edit') %>">
-                      <i class="bi bi-pencil"></i>
-                    </a>
-                  <% } %>
-                  <% if (hasPermission('system.delete')) { %>
-                    <form action="/system/system/<%= system.id %>/delete" method="POST" style="display:inline" onsubmit="return confirmDeleteSystem(this, <%= JSON.stringify(system.name) %>)">
-                      <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
-                        <i class="bi bi-trash"></i>
-                      </button>
-                    </form>
-                  <% } %>
-                </div>
-              </div>
-            <% }) %>
-          <% } else { %>
-            <div class="mobile-card">
-              <div class="mobile-card-body text-center">
-                <span class="text-muted"><%= t('No data') %></span>
-              </div>
-            </div>
-          <% } %>
-        </div>
-        <div class="card-footer clearfix">
-          <div class="d-flex justify-content-between align-items-center px-3 py-2">
-            <div>
-              <% 
-                // Only declare these variables ONCE at the top of the file or before the table, not here again
-                // So here, just use sysStartItem, sysEndItem, sysStartPage, sysEndPage if already declared
-              %>
-              <span><%= t('Showing {1} - {2} of {3} systems', { 1: sysStartItem, 2: sysEndItem, 3: typeof totalCount !== 'undefined' ? totalCount : 0 }) %></span>
-            </div>
-            <ul class="pagination pagination-sm m-0 float-end">
-              <% 
-                function buildFilterQuery() {
-                  let params = [];
-                  if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
-                  if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
-                  if (typeof filterTags !== 'undefined' && filterTags.length) filterTags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag)); });
-                  if (typeof filterContacts !== 'undefined' && filterContacts.length) filterContacts.forEach(function(c) { params.push('contacts[]=' + encodeURIComponent(c)); });
-                  if (typeof filterScopes !== 'undefined' && filterScopes.length) filterScopes.forEach(function(scope) { params.push('scopes[]=' + encodeURIComponent(scope)); });
-                  if (typeof filterArchitecture !== 'undefined' && filterArchitecture.length) filterArchitecture.forEach(function(arch) { params.push('architectures[]=' + encodeURIComponent(arch)); });
-                  if (typeof filterLevel !== 'undefined' && filterLevel) params.push('level=' + encodeURIComponent(filterLevel));
-                  if (typeof filterDepartment !== 'undefined' && filterDepartment) params.push('department_id=' + encodeURIComponent(filterDepartment));
-                  return params.join('&');
-                }
-                const filterQuery = buildFilterQuery();
-              %>
-              <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page - 1 %><%= filterQuery ? '&' + filterQuery : '' %>" tabindex="-1"><%= t('Previous') %></a>
-              </li>
-              <% if (sysStartPage > 1) { %>
-                <li class="page-item"><a class="page-link" href="?page=1<%= filterQuery ? '&' + filterQuery : '' %>">1</a></li>
-                <% if (sysStartPage > 2) { %>
-                  <li class="page-item disabled"><span class="page-link">...</span></li>
-                <% } %>
-              <% } %>
-              <% for (let i = sysStartPage; i <= sysEndPage; i++) { %>
-                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= filterQuery ? '&' + filterQuery : '' %>"><%= i %></a></li>
-              <% } %>
-              <% if (sysEndPage < totalPages) { %>
-                <li class="page-item disabled"><span class="page-link">...</span></li>
-                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= filterQuery ? '&' + filterQuery : '' %>"><%= totalPages %></a></li>
-              <% } %>
-              <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page + 1 %><%= filterQuery ? '&' + filterQuery : '' %>"><%= t('Next') %></a>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-
 <!-- Data attributes for JavaScript -->
 <div id="system-data" 
      data-scope-options='<%= JSON.stringify(scopeOptions || []) %>'
@@ -1161,262 +817,6 @@ function buildSystemExportUrl() {
     }
 
     // Filter modal select2 logic
-    function restoreSelect2Value($el, values, url) {
-      if (!values || !values.length) {
-        return;
-      }
-
-      // '__none__' is a synthetic "not set" sentinel, not a real record id -
-      // it can't be resolved via the ids-lookup endpoint, so add its display
-      // option directly and only look up the real ids via AJAX.
-      var hasNone = values.indexOf('__none__') !== -1;
-      var realValues = values.filter(function(v) { return v !== '__none__'; });
-      if (hasNone && $el.find('option[value="__none__"]').length === 0) {
-        $el.append(new Option('-- None (not set) --', '__none__', true, true));
-      }
-
-      if (!realValues.length) {
-        setTimeout(function() {
-          $el.val(values).trigger('change');
-        }, 100);
-        return;
-      }
-
-      $.ajax({
-        url: url,
-        data: { ids: realValues },
-        dataType: 'json',
-        traditional: true,
-        xhrFields: {
-          withCredentials: true
-        },
-        success: function(data) {
-          if (!data || !Array.isArray(data)) {
-            return;
-          }
-
-          data.forEach(function(item) {
-            if ($el.find('option[value="' + item.id + '"]').length === 0) {
-              var option = new Option(item.text || item.name, item.id, true, true);
-              $el.append(option);
-            }
-          });
-
-          // Use setTimeout to ensure options are added before setting values
-          setTimeout(function() {
-            $el.val(values).trigger('change');
-          }, 100);
-        },
-        error: function(xhr, status, error) {
-          // Silent error handling
-        }
-      });
-    }
-
-
-    $(function() {
-      
-      var $filterModal = $('#filterSystemModal');
-      var $modalContent = $filterModal.find('.modal-content');
-      
-      var filterValues = {
-        tags: JSON.parse(document.getElementById('filter-system-data').dataset.tags || '[]'),
-        contacts: JSON.parse(document.getElementById('filter-system-data').dataset.contacts || '[]'),
-        scopes: JSON.parse(document.getElementById('filter-system-data').dataset.scopes || '[]'),
-        architecture: JSON.parse(document.getElementById('filter-system-data').dataset.architecture || '[]')
-      };
-      
-      $('#filterSystemTags').select2({
-        theme: 'bootstrap-5',
-        placeholder: t('Select tag(s)'),
-        allowClear: true,
-        width: '100%',
-        dropdownParent: $modalContent,
-        ajax: {
-          url: '/organize/api/tag',
-          dataType: 'json',
-          delay: 250,
-          data: params => ({ search: params.term }),
-          processResults: data => ({ results: data })
-        }
-      });
-      $('#filterSystemContacts').select2({
-        theme: 'bootstrap-5',
-        placeholder: t('Select contact(s)'),
-        allowClear: true,
-        width: '100%',
-        dropdownParent: $modalContent,
-        ajax: {
-          url: '/organize/api/contact',
-          dataType: 'json',
-          delay: 250,
-          data: params => ({ search: params.term }),
-          // "(Not set)" isn't a real contact, so it can't come from the
-          // contact-search endpoint - prepend it client-side, only while not
-          // actively searching, so it stays the default first option.
-          processResults: (data, params) => {
-            const results = data || [];
-            if (!params.term) {
-              return { results: [{ id: '__none__', text: '-- None (not set) --' }, ...results] };
-            }
-            return { results: results };
-          }
-        }
-      });
-      // Build Select2 directly from the backend data
-      $('#filterSystemScopes').select2({
-        theme: 'bootstrap-5',
-        placeholder: t('Select scope(s)'),
-        allowClear: true,
-        width: '100%',
-        dropdownParent: $modalContent,
-        data: [{ id: '__none__', text: '-- None (not set) --' }, ...(window.scopeOptionsData || [])],
-        // Uses Select2's default {id, text} format
-      });
-
-      // Build Select2 directly from the backend data
-      $('#filterSystemArchitecture').select2({
-        theme: 'bootstrap-5',
-        placeholder: t('Select architecture(s)'),
-        allowClear: true,
-        width: '100%',
-        dropdownParent: $modalContent,
-        data: [{ id: '__none__', text: '-- None (not set) --' }, ...(window.architectureOptionsData || [])],
-        // Uses Select2's default {id, text} format
-      });
-
-      // Level and Department: plain single-selects, options + selected
-      // state already rendered server-side, so no restore step needed.
-      $('#filterSystemLevel').select2({
-        theme: 'bootstrap-5',
-        placeholder: t('All Levels'),
-        allowClear: true,
-        width: '100%',
-        dropdownParent: $modalContent
-      });
-      $('#filterSystemDepartment').select2({
-        theme: 'bootstrap-5',
-        placeholder: t('All Departments'),
-        allowClear: true,
-        width: '100%',
-        dropdownParent: $modalContent
-      });
-
-
-      // Restore all filter values with proper timing
-      setTimeout(function() {
-        // Restore tags
-        if (filterValues.tags && filterValues.tags.length > 0) {
-          restoreSelect2Value($('#filterSystemTags'), filterValues.tags, '/organize/api/tag/ids');
-        }
-        
-        // Restore contacts
-        if (filterValues.contacts && filterValues.contacts.length > 0) {
-          restoreSelect2Value($('#filterSystemContacts'), filterValues.contacts, '/organize/api/contact/ids');
-        }
-      }, 500);
-      
-      
-      // Also restore when modal is shown
-      $filterModal.on('shown.bs.modal', function() {
-        setTimeout(function() {
-          // Restore tags
-          if (filterValues.tags && filterValues.tags.length > 0) {
-            restoreSelect2Value($('#filterSystemTags'), filterValues.tags, '/organize/api/tag/ids');
-          }
-          
-          // Restore contacts
-          if (filterValues.contacts && filterValues.contacts.length > 0) {
-            restoreSelect2Value($('#filterSystemContacts'), filterValues.contacts, '/organize/api/contact/ids');
-          }
-        }, 200);
-      });
-      
-      // Restore scope and architecture values - need to add options first
-      if (filterValues.scopes && filterValues.scopes.length > 0) {
-        // Add options to scope select if they don't exist
-        filterValues.scopes.forEach(function(scopeValue) {
-          if ($('#filterSystemScopes').find('option[value="' + scopeValue + '"]').length === 0) {
-            const option = new Option(scopeValue, scopeValue, true, true);
-            $('#filterSystemScopes').append(option);
-          }
-        });
-        // Use setTimeout to ensure Select2 is fully initialized
-        setTimeout(function() {
-          $('#filterSystemScopes').val(filterValues.scopes).trigger('change');
-        }, 100);
-      }
-      
-      if (filterValues.architecture && filterValues.architecture.length > 0) {
-        // Add options to architecture select if they don't exist
-        filterValues.architecture.forEach(function(archValue) {
-          if ($('#filterSystemArchitecture').find('option[value="' + archValue + '"]').length === 0) {
-            const option = new Option(archValue, archValue, true, true);
-            $('#filterSystemArchitecture').append(option);
-          }
-        });
-        // Use setTimeout to ensure Select2 is fully initialized
-        setTimeout(function() {
-          $('#filterSystemArchitecture').val(filterValues.architecture).trigger('change');
-        }, 100);
-      }
-      
-
-      // Clear Filter button
-      $('#clearFilterBtnSystem').on('click', function() {
-        // Clear all select2 values
-        $('#filterSystemTags').val(null).trigger('change');
-        $('#filterSystemContacts').val(null).trigger('change');
-        $('#filterSystemScopes').val(null).trigger('change');
-        $('#filterSystemArchitecture').val(null).trigger('change');
-        $('#filterSystemLevel').val(null).trigger('change');
-        $('#filterSystemDepartment').val(null).trigger('change');
-        // Close modal
-        $filterModal.modal('hide');
-        // Redirect to clean URL but preserve pageSize and search
-        const currentPageSize = $('select[name="pageSize"]').val() || '10';
-        const currentSearch = $('input[name="search"]').val() || '';
-        let cleanUrl = '/system/system';
-        const params = [];
-        if (currentPageSize && currentPageSize !== '10') params.push('pageSize=' + encodeURIComponent(currentPageSize));
-        if (currentSearch) params.push('search=' + encodeURIComponent(currentSearch));
-        if (params.length > 0) cleanUrl += '?' + params.join('&');
-        window.location.href = cleanUrl;
-      });
-      
-
-    });
-    
-    // Responsive layout handler
-    function handleResponsiveLayout() {
-      const width = window.innerWidth;
-      const table = document.getElementById('systemTable');
-      const mobileCards = document.getElementById('systemMobileCards');
-      
-      if (width <= 576) {
-        // Show mobile cards, hide table
-        if (table) table.closest('.table-responsive').style.display = 'none';
-        if (mobileCards) mobileCards.style.display = 'block';
-      } else {
-        // Show table, hide mobile cards
-        if (table) table.closest('.table-responsive').style.display = 'block';
-        if (mobileCards) mobileCards.style.display = 'none';
-      }
-    }
-    
-    // Initialize responsive layout
-    $(document).ready(function() {
-      handleResponsiveLayout();
-
-
-      // Handle window resize
-      let resizeTimeout;
-      $(window).on('resize', function() {
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(handleResponsiveLayout, 100);
-      });
-    });
-
     // Initialize tooltips
     $(document).ready(function() {
       var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -1505,120 +905,9 @@ function buildSystemExportUrl() {
 </script>
 
 <style>
-/* Custom tooltip styles for multi-line descriptions */
-.tooltip .tooltip-inner {
-  white-space: pre-wrap;
-  max-width: 400px;
-  text-align: left;
-}
-
-/* Component name row chevron rotates when its detail card is expanded */
-.component-name-row .component-toggle-icon {
-  transition: transform 0.2s ease-in-out;
-}
-.component-name-row[aria-expanded="true"] .component-toggle-icon {
-  transform: rotate(180deg);
-}
-
-/* Description column alignment - same as other columns */
-/* DISABLED TO USE DEFAULT TABLE STYLES */
-/*
-#systemTable td:nth-child(4) {
-  text-align: left;
-  vertical-align: top;
-}
-
-#systemTable td:nth-child(4) span {
-  text-align: left;
-  display: inline-block;
-  padding-top: 0;
-  margin-top: 0;
-  line-height: 1;
-}
-*/
-
-/* Fixed proportional column widths — see network/ip_address_list.ejs for
-   rationale. Description is column 4 here (No., System Code, Name precede it). */
-#systemTable {
-  table-layout: fixed;
-  min-width: 1200px;
-}
-#systemTable thead th {
-  white-space: nowrap;
-}
-#systemTable th:nth-child(1), #systemTable td:nth-child(1) { width: 4%; }
-#systemTable th:nth-child(2), #systemTable td:nth-child(2) { width: 9%; }
-#systemTable th:nth-child(3), #systemTable td:nth-child(3) { width: 12%; }
-#systemTable th:nth-child(4), #systemTable td:nth-child(4) { width: 15%; }
-#systemTable th:nth-child(5), #systemTable td:nth-child(5) { width: 10%; }
-#systemTable th:nth-child(6), #systemTable td:nth-child(6) { width: 11%; }
-#systemTable th:nth-child(7), #systemTable td:nth-child(7) { width: 12%; }
-#systemTable th:nth-child(8), #systemTable td:nth-child(8) { width: 13%; }
-/* Wide enough that the 3 action icons stay on one line — the table already
-   scrolls horizontally (min-width above), so there's no need to squeeze this
-   column narrow the way IP Address List's Actions column is. */
-#systemTable th:nth-child(9), #systemTable td:nth-child(9) { width: 14%; }
-#systemTable td:nth-child(4) {
-  text-align: left;
-  vertical-align: top;
-  overflow-wrap: break-word;
-}
-#systemTable td:nth-child(3) {
-  vertical-align: top;
-  overflow-wrap: break-word;
-}
-
-/* Filter modal footer has 3 buttons (Clear/Cancel/Apply), Cancel+Apply
-   nested in a sub-div - the site-wide .modal-footer rule only reaches
-   direct children, so this footer needs its own mobile stacking rule
-   (same pattern as device_list.ejs's filter modal). */
-@media (max-width: 768px) {
-  /* layout.ejs's generic mobile table rule keeps only column 2 + the last
-     column visible, assuming column 2 is "Name" - here column 2 is
-     "System Code" (Name is column 3), so it showed the wrong data. Swap
-     which column stays visible; #systemTable's ID specificity beats the
-     generic .table th/td:nth-child(2) class selector. */
-  #systemTable th:nth-child(2),
-  #systemTable td:nth-child(2) {
-    display: none !important;
-  }
-  #systemTable th:nth-child(3),
-  #systemTable td:nth-child(3) {
-    display: table-cell !important;
-    width: 70% !important;
-    max-width: 70% !important;
-    word-wrap: break-word;
-    word-break: break-word;
-  }
-  /* Match the site-standard "Name column" text style that the generic rule
-     applies to td:nth-child(2) - it doesn't reach column 3, so without this
-     the name here rendered in the browser's plain default font/size. */
-  #systemTable td:nth-child(3) {
-    font-size: 0.9rem;
-    line-height: 1.3;
-    padding: 8px 6px;
-  }
-}
-
-@media (max-width: 991.98px) {
-  #filterSystemModal .modal-footer > div {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0.5rem !important;
-    width: 100% !important;
-  }
-  #filterSystemModal .modal-footer > div .btn {
-    width: 100% !important;
-    margin: 0 !important;
-  }
-  #filterSystemModal .modal-footer .btn:first-child {
-    order: 3 !important; /* Clear All Filters at bottom */
-  }
-  #filterSystemModal .modal-footer > div .btn:first-child {
-    order: 2 !important; /* Cancel in middle */
-  }
-  #filterSystemModal .modal-footer > div .btn:last-child {
-    order: 1 !important; /* Apply Filter on top */
-  }
-}
+/* Multi-line tooltips (descriptions) */
+.tooltip .tooltip-inner { white-space: pre-wrap; max-width: 400px; text-align: left; }
+/* Component row chevron in the detail modal */
+.component-name-row .component-toggle-icon { transition: transform .2s ease-in-out; }
+.component-name-row[aria-expanded="true"] .component-toggle-icon { transform: rotate(180deg); }
 </style>

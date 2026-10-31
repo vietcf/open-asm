@@ -6,6 +6,7 @@
 //   npm run i18n:check -- --write add missing keys to the catalogs with an
 //                                 empty value ("" = falls back to English)
 //                                 and sort them, ready to be translated
+//   npm run i18n:check -- --prune remove catalog entries no longer used
 // Exit code 1 if any translation is missing (empty values count as missing).
 import fs from 'fs';
 import path from 'path';
@@ -47,13 +48,16 @@ const IMPLICIT_RE = [
   /[?&]error=([A-Z][A-Za-z0-9.]*%20[A-Za-z0-9%.]+)/g, // URL-encoded login errors
 ];
 const IMPLICIT_DIRS = ['src/controllers', 'src/middlewares', 'src/routes', 'src/app.js'];
+// Parameters of the shared UI partials (page_header, empty_state, pagination)
+const VIEW_PARAM_RE = /\b(?:title|label|message|summary|actionLabel)\s*:\s*'((?:[^'\\]|\\.)*)'/g;
 
 const used = new Map(); // text -> first location
 for (const { dir, ext, only } of SCAN) {
   for (const file of walk(dir, ext, only)) {
     if (SKIP.has(file)) continue;
     const src = fs.readFileSync(path.join(ROOT, file), 'utf8');
-    const implicit = IMPLICIT_DIRS.some(d => file.startsWith(d)) ? IMPLICIT_RE : [];
+    const implicit = IMPLICIT_DIRS.some(d => file.startsWith(d)) ? IMPLICIT_RE
+      : (file.endsWith('.ejs') ? [VIEW_PARAM_RE] : []);
     const matches = [...src.matchAll(CALL_RE)].map(m => [m, false])
       .concat(implicit.flatMap(re => [...src.matchAll(re)].map(m => [m, true])));
     for (const [m, isImplicit] of matches) {
@@ -67,6 +71,10 @@ for (const { dir, ext, only } of SCAN) {
 }
 
 const write = process.argv.includes('--write');
+const prune = process.argv.includes('--prune');
+// Strings only used dynamically (not visible to the scanner)
+const KEEP = new Set(['No results match your search or filters', 'Something went wrong. Please try again.']);
+for (const k of KEEP) if (!used.has(k)) used.set(k, '(dynamic)');
 let missingTotal = 0;
 for (const file of fs.readdirSync(LOCALES).filter(f => f.endsWith('.json'))) {
   const lang = path.basename(file, '.json');
@@ -79,8 +87,9 @@ for (const file of fs.readdirSync(LOCALES).filter(f => f.endsWith('.json'))) {
   for (const k of missing.slice(0, write ? 0 : 50)) console.log(`  missing: ${JSON.stringify(k)}  (${used.get(k)})`);
   if (!write && missing.length > 50) console.log(`  ... and ${missing.length - 50} more`);
   for (const k of unused.slice(0, 20)) console.log(`  unused:  ${JSON.stringify(k)}`);
-  if (write) {
-    for (const k of missing) if (!(k in catalog)) catalog[k] = '';
+  if (prune) for (const k of unused) delete catalog[k];
+  if (write || prune) {
+    if (write) for (const k of missing) if (!(k in catalog)) catalog[k] = '';
     const sorted = Object.fromEntries(Object.keys(catalog).sort((a, b) => a.localeCompare(b)).map(k => [k, catalog[k]]));
     fs.writeFileSync(catalogPath, JSON.stringify(sorted, null, 2) + '\n');
     console.log(`  wrote ${catalogPath}`);

@@ -621,36 +621,6 @@
         display: table-cell !important;
       }
       
-      /* Hide all columns except Name (2nd) and Actions (last) on mobile */
-      .table th:not(:nth-child(2)):not(:last-child),
-      .table td:not(:nth-child(2)):not(:last-child) {
-        display: none !important;
-      }
-      
-      /* Keep only Name column (2nd) and Actions column (last) */
-      .table th:nth-child(2),
-      .table td:nth-child(2),
-      .table th:last-child,
-      .table td:last-child {
-        display: table-cell !important;
-      }
-      
-      /* Adjust column widths for mobile */
-      .table th:nth-child(2),
-      .table td:nth-child(2) {
-        width: 70% !important;
-        max-width: 70% !important;
-        word-wrap: break-word;
-        word-break: break-word;
-      }
-      
-      .table th:last-child,
-      .table td:last-child {
-        width: 30% !important;
-        max-width: 30% !important;
-        text-align: center;
-      }
-      
       /* Mobile table container adjustments */
       .table-responsive table {
         max-width: 100%;
@@ -659,8 +629,6 @@
       
       .table {
         width: 100% !important;
-        max-width: 100% !important;
-        table-layout: fixed;
       }
       
       /* Mobile table cell content */
@@ -797,6 +765,7 @@
   <script src="/js/apexcharts.min.js"></script>
   <script src="<%= jsPath %>adminlte.min.js" crossorigin="anonymous"></script>
   <script src="<%= jsPath %>custom.js" crossorigin="anonymous"></script>
+  <script src="/js/list-filters.js"></script>
 
 </body>
 </html>

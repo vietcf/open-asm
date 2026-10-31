@@ -1,19 +1,4 @@
-/* ========== MINIMAL CUSTOM CSS - AdminLTE 4 Compatible ========== */
-/* Cache buster: 2025-01-20 10:45:00 - Minimal custom styles for AdminLTE 4 */
 
-/* ========== UNIFIED PLACEHOLDER STYLE (ALL fields, native + select2) ========== */
-/* One color, one italic style, everywhere: plain text inputs/textareas
-   (native ::placeholder) and select2's own placeholder span (which isn't
-   a real ::placeholder, so it needs its own matching rule). */
-.form-control::placeholder,
-textarea.form-control::placeholder,
-.select2-container--bootstrap-5 .select2-selection--single .select2-selection__placeholder,
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__placeholder,
-.select2-container--bootstrap-5 .select2-search--inline .select2-search__field::placeholder {
-  color: #6c757d !important;
-  font-style: italic !important;
-  opacity: 1 !important;
-}
 
 /* ========== DETAIL MODAL STYLES ========== */
 /* Canonical layout for every "Show/Detail" modal's body: a definition list
@@ -64,429 +49,6 @@ textarea.form-control::placeholder,
   z-index: 1060;
 }
 
-/* ========== SELECT2 SINGLE SELECT STYLING ========== */
-/* AdminLTE 4 compatible Select2 single select styling */
-
-/* Container styling */
-.select2-container--bootstrap-5 {
-  width: 100% !important;
-}
-
-/* Single select styling - match Bootstrap 5 form-select */
-.select2-container--bootstrap-5 .select2-selection--single {
-  height: 38px !important;
-  border: 1px solid #ced4da !important;
-  border-radius: 0.375rem !important;
-  background-color: #fff !important;
-  display: flex !important;
-  align-items: center !important;
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
-  padding: 0 !important;
-  position: relative !important;
-}
-
-/* Single select hover state */
-.select2-container--bootstrap-5 .select2-selection--single:hover {
-  border-color: #86b7fe !important;
-}
-
-/* Single select focus state */
-.select2-container--bootstrap-5.select2-container--focus .select2-selection--single {
-  border-color: #86b7fe !important;
-  outline: 0 !important;
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
-}
-
-/* Rendered text styling - match Bootstrap 5 form-select */
-.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
-  color: #495057 !important;
-  line-height: 1.5 !important;
-  padding: 0.375rem 3rem 0.375rem 0.75rem !important;
-  display: flex !important;
-  align-items: center !important;
-  height: 100% !important;
-    width: 100% !important;
-  vertical-align: middle !important;
-  font-size: 1rem !important;
-}
-
-/* Arrow styling */
-.select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
-  height: 36px !important;
-  position: absolute !important;
-  top: 1px !important;
-  right: 1px !important;
-  width: 20px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-}
-
-.select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow b {
-  border-color: #6c757d transparent transparent transparent !important;
-  border-style: solid !important;
-  border-width: 5px 4px 0 4px !important;
-  height: 0 !important;
-  left: 50% !important;
-  margin-left: -4px !important;
-  margin-top: -2px !important;
-  position: absolute !important;
-  top: 50% !important;
-  width: 0 !important;
-}
-
-/* Clear button styling - positioned on the right */
-.select2-container--bootstrap-5 .select2-selection--single .select2-selection__clear {
-  color: #6c757d !important;
-  cursor: pointer !important;
-  position: absolute !important;
-  right: 30px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-  font-weight: bold !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  height: 20px !important;
-  width: 20px !important;
-  font-size: 16px !important;
-  z-index: 10 !important;
-}
-
-.select2-container--bootstrap-5 .select2-selection--single .select2-selection__clear:hover {
-  color: #dc3545 !important;
-}
-
-/* Dropdown styling */
-.select2-dropdown {
-  border: 1px solid #ced4da !important;
-  border-radius: 0.375rem !important;
-  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
-  background-color: #fff !important;
-}
-
-/* Search input in dropdown */
-.select2-search--dropdown .select2-search__field {
-  border: 1px solid #ced4da !important;
-  border-radius: 0.375rem !important;
-  padding: 0.375rem 0.75rem !important;
-  font-size: 0.875rem !important;
-  line-height: 1.5 !important;
-  color: #495057 !important;
-  background-color: #fff !important;
-}
-
-.select2-search--dropdown .select2-search__field:focus {
-  border-color: #86b7fe !important;
-  outline: 0 !important;
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
-}
-
-/* Option styling */
-.select2-results__option {
-  padding: 0.5rem 0.75rem !important;
-  color: #495057 !important;
-  font-size: 0.875rem !important;
-  line-height: 1.5 !important;
-}
-
-.select2-results__option--highlighted {
-  background-color: #0d6efd !important;
-  color: #fff !important;
-}
-
-.select2-results__option--selected {
-  background-color: #e9ecef !important;
-  color: #495057 !important;
-}
-
-/* Loading state */
-.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered .select2-selection__placeholder {
-  color: #6c757d !important;
-}
-
-/* Disabled state */
-.select2-container--bootstrap-5.select2-container--disabled .select2-selection--single {
-  background-color: #e9ecef !important;
-  color: #6c757d !important;
-  cursor: not-allowed !important;
-  opacity: 0.65 !important;
-}
-
-/* ========== SELECT2 MULTI-SELECT STYLING ========== */
-/* AdminLTE 4 compatible Select2 multi-select styling */
-
-/* Multi-select container - match Bootstrap 5 form-select exactly */
-.select2-container--bootstrap-5 .select2-selection--multiple {
-  height: 38px !important;
-  border: 1px solid #ced4da !important;
-  border-radius: 0.375rem !important;
-  background-color: #fff !important;
-  padding: 0.375rem 0.75rem !important;
-    display: flex !important;
-    align-items: center !important;
-  flex-wrap: nowrap !important;
-  gap: 0.25rem !important;
-  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
-    overflow: hidden !important;
-}
-
-/* Multi-select hover state */
-.select2-container--bootstrap-5 .select2-selection--multiple:hover {
-  border-color: #86b7fe !important;
-}
-
-/* Multi-select focus state */
-.select2-container--bootstrap-5.select2-container--focus .select2-selection--multiple {
-  border-color: #86b7fe !important;
-  outline: 0 !important;
-  box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
-}
-
-/* Rendered container for multi-select - match Bootstrap 5 form-select exactly */
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered {
-    display: flex !important;
-    align-items: center !important;
-  flex-wrap: nowrap !important;
-  gap: 0.25rem !important;
-  width: auto !important;
-  min-width: 0 !important;
-    padding: 0 !important;
-  margin: 0 !important;
-  list-style: none !important;
-  height: 100% !important;
-  vertical-align: middle !important;
-  flex-direction: row !important;
-    overflow: hidden !important;
-  flex-shrink: 0 !important;
-}
-  
-/* Individual choice styling - match form-select height */
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
-  background-color: #0d6efd !important;
-  border: 1px solid #0d6efd !important;
-  border-radius: 0.25rem !important;
-  color: #fff !important;
-  padding: 0.25rem 0.5rem !important;
-  margin: 0 !important;
-  display: inline-flex !important;
-    align-items: center !important;
-  gap: 0.25rem !important;
-    font-size: 0.875rem !important;
-  line-height: 1.5 !important;
-  cursor: default !important;
-  flex-shrink: 0 !important;
-  order: 1 !important;
-  white-space: nowrap !important;
-  height: 24px !important;
-  max-height: 24px !important;
-}
-
-/* Choice hover effect */
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice:hover {
-  background-color: #0b5ed7 !important;
-  border-color: #0b5ed7 !important;
-}
-
-/* Remove button styling */
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
-  color: #fff !important;
-  cursor: pointer !important;
-  font-weight: bold !important;
-  margin-left: 0.25rem !important;
-  border: none !important;
-  background: none !important;
-  padding: 0 !important;
-  font-size: 16px !important;
-  line-height: 1 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  width: 16px !important;
-  height: 16px !important;
-    border-radius: 50% !important;
-  transition: background-color 0.15s ease-in-out !important;
-}
-
-/* Remove button hover effect */
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove:hover {
-  background-color: rgba(255, 255, 255, 0.2) !important;
-  color: #fff !important;
-}
-
-/* Placeholder styling for multi-select - match Bootstrap 5 form-select exactly */
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__placeholder {
-    color: #6c757d !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  padding: 0 !important;
-    margin: 0 !important;
-  font-size: 1rem !important;
-  line-height: 1.5 !important;
-  height: 24px !important;
-  vertical-align: middle !important;
-  order: 1 !important;
-  white-space: nowrap !important;
-  max-height: 24px !important;
-}
-
-/* Search input in multi-select - match form-select height */
-.select2-container--bootstrap-5 .select2-search--inline {
-  display: inline-flex !important;
-  align-items: center !important;
-    flex: 1 !important;
-  min-width: 40px !important;
-  height: 24px !important;
-  max-height: 24px !important;
-  vertical-align: middle !important;
-  order: 2 !important;
-  flex-shrink: 1 !important;
-}
-
-.select2-container--bootstrap-5 .select2-search--inline .select2-search__field {
-  border: none !important;
-  outline: none !important;
-  background: transparent !important;
-    color: #495057 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  font-size: 1rem !important;
-  line-height: 1.5 !important;
-    width: 100% !important;
-  min-width: 40px !important;
-  height: 24px !important;
-  max-height: 24px !important;
-  vertical-align: middle !important;
-}
-
-.select2-container--bootstrap-5 .select2-search--inline .select2-search__field::placeholder {
-    color: #6c757d !important;
-}
-
-/* Clear all button for multi-select - match form-select height */
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__clear {
-  color: #6c757d !important;
-  cursor: pointer !important;
-  font-weight: bold !important;
-  margin: 0 !important;
-  border: none !important;
-  background: none !important;
-  padding: 0.25rem 0.5rem !important;
-  border-radius: 0.25rem !important;
-  transition: all 0.15s ease-in-out !important;
-  font-size: 16px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  flex-shrink: 0 !important;
-  order: 3 !important;
-  height: 24px !important;
-  max-height: 24px !important;
-  vertical-align: middle !important;
-  white-space: nowrap !important;
-}
-
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__clear:hover {
-  color: #dc3545 !important;
-  background-color: rgba(220, 53, 69, 0.1) !important;
-}
-
-/* Disabled state for multi-select */
-.select2-container--bootstrap-5.select2-container--disabled .select2-selection--multiple {
-  background-color: #e9ecef !important;
-  color: #6c757d !important;
-  cursor: not-allowed !important;
-  opacity: 0.65 !important;
-}
-
-.select2-container--bootstrap-5.select2-container--disabled .select2-selection--multiple .select2-selection__choice {
-  background-color: #6c757d !important;
-  border-color: #6c757d !important;
-  color: #fff !important;
-}
-
-.select2-container--bootstrap-5.select2-container--disabled .select2-selection--multiple .select2-selection__choice__remove {
-  display: none !important;
-}
-
-/* Multi-select dropdown specific styling */
-.select2-container--bootstrap-5 .select2-results__option[aria-selected="true"] {
-  background-color: #0d6efd !important;
-  color: #fff !important;
-}
-
-.select2-container--bootstrap-5 .select2-results__option[aria-selected="true"]:hover {
-  background-color: #0b5ed7 !important;
-  color: #fff !important;
-}
-
-/* ========== SELECT2 MULTI-SELECT AUTO-WRAP STYLING ========== */
-/* Auto-wrap and expand height for multi-selection - keep original colors */
-
-/* Multi-select container - auto-expand height
-   position:relative + padding-right reserves space so the clear (x) button
-   below can be pinned to the top-right corner instead of flowing as a flex
-   item — needed once the box grows to multiple lines. */
-.select2-container--bootstrap-5 .select2-selection--multiple {
-  height: auto !important;
-  min-height: 38px !important;
-  max-height: none !important;
-  overflow: visible !important;
-  flex-wrap: wrap !important;
-  align-items: flex-start !important;
-  position: relative !important;
-  padding-right: 2rem !important;
-}
-
-/* Rendered container - flex-wrap for auto-wrap
-   (overrides height: 100%, width: auto and flex-shrink: 0 from the base
-   styling block above — those forced the list to size to fit all choices
-   on one row without ever shrinking, which is what prevented wrapping and
-   caused horizontal clipping instead) */
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  align-items: flex-start !important;
-  gap: 4px !important;
-  height: auto !important;
-  width: 100% !important;
-  flex-shrink: 1 !important;
-  overflow: visible !important;
-}
-
-/* Clear (x) button - pin to the top-right corner of the container instead
-   of flowing inline, since it otherwise gets pushed onto its own line once
-   the choices wrap to multiple rows. */
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__clear {
-  position: absolute !important;
-  top: 0.375rem !important;
-  right: 0.5rem !important;
-  order: initial !important;
-  z-index: 1 !important;
-}
-
-/* Individual choice styling - auto-wrap friendly, keep original colors */
-.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
-  white-space: normal !important;
-  word-wrap: break-word !important;
-  max-width: 100% !important;
-  height: auto !important;
-  min-height: 24px !important;
-  flex-shrink: 0 !important;
-}
-
-/* Search input field styling - auto-wrap friendly
-   min-width kept small (not ~100-120px like the base rule above) so the
-   caret sits right after the last chip on its row instead of being forced
-   onto its own new line whenever that row has less than the min-width of
-   free space left. */
-.select2-container--bootstrap-5 .select2-search--inline .select2-search__field {
-  min-width: 40px !important;
-  height: auto !important;
-  min-height: 24px !important;
-  flex: 1 !important;
-}
-
 /* ========================================
    SIDEBAR SCROLL FIX
    ======================================== */
@@ -535,7 +97,6 @@ textarea.form-control::placeholder,
   margin-right: 5px !important;
   opacity: 0.8 !important;
 }
-
 
 /* Responsive footer */
 @media (max-width: 768px) {
@@ -607,4 +168,147 @@ textarea.form-control::placeholder,
   font-size: 0.75em;
 }
 
+/* ==========================================================================
+   UI standard (shared by every module) - see public/html/partials/ui/
+   ========================================================================== */
+.page-title { font-size: 1.5rem; font-weight: 600; }
+.app-content-header { padding: 1rem 0 .75rem; }
+.app-content-header .breadcrumb { font-size: .875rem; }
 
+/* List card: toolbar in the header, table, footer with pagination */
+.list-card .card-header.list-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+  background: transparent;
+}
+.list-toolbar .list-search { flex: 1 1 260px; max-width: 360px; }
+.list-toolbar .list-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-left: auto; }
+.list-card .table { margin-bottom: 0; }
+.list-card .table > thead > tr > th {
+  font-size: .8125rem; font-weight: 600; text-transform: uppercase; letter-spacing: .02em;
+  color: var(--bs-secondary-color); background: var(--bs-tertiary-bg); white-space: nowrap;
+  vertical-align: middle;
+}
+.list-card .table > tbody > tr > td { vertical-align: middle; }
+.list-card .col-index { width: 3.5rem; color: var(--bs-secondary-color); }
+.list-card .col-actions { width: 1%; white-space: nowrap; text-align: right; }
+.list-card .cell-clip { max-width: 22rem; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.list-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; background: transparent; }
+.list-footer .page-size-form select { width: auto; }
+
+/* Row action buttons: compact icon buttons that never wrap */
+.row-actions { display: inline-flex; gap: .25rem; flex-wrap: nowrap; }
+.row-actions .btn { --bs-btn-padding-y: .2rem; --bs-btn-padding-x: .45rem; }
+.row-actions form { display: inline; margin: 0; }
+
+/* Tag-like value lists inside cells */
+.chip-list { display: flex; flex-wrap: wrap; gap: .25rem; }
+.chip-list .badge { font-weight: 500; font-size: .8125rem; }
+
+/* Empty state */
+.empty-state { padding: 2.5rem 1rem; text-align: center; color: var(--bs-secondary-color); }
+.empty-state > .bi { font-size: 2.25rem; display: block; margin-bottom: .5rem; opacity: .6; }
+.empty-state-title { font-size: 1rem; }
+
+/* Forms: grouped sections */
+.form-section + .form-section { border-top: 1px solid var(--bs-border-color); padding-top: 1.25rem; margin-top: 1.25rem; }
+.form-section-title { font-size: .8125rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--bs-secondary-color); margin-bottom: .75rem; }
+.form-actions { display: flex; justify-content: flex-end; gap: .5rem; }
+
+/* Auto-hiding alerts (flash partial) are handled in custom.js */
+
+/* --- Calm, consistent colours ------------------------------------------- */
+/* One primary (blue) action per screen; everything else is neutral. Legacy
+   colourful buttons used across older pages are toned down here. */
+.btn-info, .btn-warning, .btn-secondary, .btn-dark, .btn-light,
+.btn-outline-info, .btn-outline-warning, .btn-outline-primary:not(.active), .btn-outline-dark {
+  --bs-btn-color: var(--bs-body-color);
+  --bs-btn-bg: var(--bs-body-bg);
+  --bs-btn-border-color: var(--bs-border-color);
+  --bs-btn-hover-color: var(--bs-body-color);
+  --bs-btn-hover-bg: var(--bs-tertiary-bg);
+  --bs-btn-hover-border-color: var(--bs-border-color);
+  --bs-btn-active-color: var(--bs-body-color);
+  --bs-btn-active-bg: var(--bs-secondary-bg);
+  --bs-btn-active-border-color: var(--bs-border-color);
+}
+.btn-danger, .btn-success {
+  --bs-btn-color: var(--bs-body-color);
+  --bs-btn-bg: var(--bs-body-bg);
+  --bs-btn-border-color: var(--bs-border-color);
+  --bs-btn-hover-bg: var(--bs-tertiary-bg);
+  --bs-btn-hover-border-color: var(--bs-border-color);
+}
+.btn-danger { --bs-btn-hover-color: var(--bs-danger); }
+.btn-success { --bs-btn-hover-color: var(--bs-success); }
+/* Destructive actions inside modals/forms stay clearly red */
+.modal-footer .btn-danger, .btn-danger.btn-confirm {
+  --bs-btn-color: #fff; --bs-btn-bg: var(--bs-danger); --bs-btn-border-color: var(--bs-danger);
+  --bs-btn-hover-color: #fff; --bs-btn-hover-bg: #bb2d3b; --bs-btn-hover-border-color: #b02a37;
+}
+.row-actions .btn-delete:hover { color: var(--bs-danger); }
+
+/* Badges / tags: neutral chips; only status colours, and subtle ones */
+.badge.bg-primary, .badge.bg-info, .badge.bg-warning, .badge.bg-secondary, .badge.bg-dark, .badge.bg-light,
+.badge.text-bg-primary, .badge.text-bg-info, .badge.text-bg-warning, .badge.text-bg-secondary, .badge.text-bg-dark, .badge.text-bg-light,
+.badge.tag {
+  background: var(--bs-tertiary-bg) !important; color: var(--bs-body-color) !important;
+  border: 1px solid var(--bs-border-color); font-weight: 500;
+}
+.badge.bg-success, .badge.text-bg-success { background: var(--bs-success-bg-subtle) !important; color: var(--bs-success-text-emphasis) !important; border: 1px solid var(--bs-success-border-subtle); font-weight: 500; }
+.badge.bg-danger, .badge.text-bg-danger { background: var(--bs-danger-bg-subtle) !important; color: var(--bs-danger-text-emphasis) !important; border: 1px solid var(--bs-danger-border-subtle); font-weight: 500; }
+.badge { font-size: .8125rem !important; padding: .2em .5em !important; margin: 0 !important; }
+
+/* No movement on hover/focus */
+.btn, .badge, .card, .nav-link, .page-link, .table tr { transform: none !important; }
+.btn:hover, .card:hover { box-shadow: none; }
+.form-label { font-weight: 500; margin-bottom: .35rem; }
+.form-text { font-size: .8125rem; }
+textarea.form-control { min-height: 6rem; }
+
+/* Filter panel under the list toolbar */
+.list-filters { padding: .75rem 1rem 1rem; border-bottom: 1px solid var(--bs-border-color); background: var(--bs-tertiary-bg); }
+.list-filters .form-label { margin-bottom: .2rem; color: var(--bs-secondary-color); }
+.list-toolbar .badge.rounded-pill { background: var(--bs-primary) !important; color: #fff !important; border: 0; }
+
+/* --- Select2 (4.1, bootstrap-5 theme) aligned with .form-control -------- */
+.select2-container--bootstrap-5 .select2-selection {
+  min-height: calc(1.5em + .75rem + 2px); font-size: 1rem; line-height: 1.5;
+  background-color: var(--bs-body-bg); border: 1px solid var(--bs-border-color);
+}
+.select2-container--bootstrap-5 .select2-selection--single { padding: .375rem 2.25rem .375rem .75rem; }
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered { padding: 0; line-height: 1.5; color: var(--bs-body-color); }
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__placeholder { color: var(--bs-secondary-color); font-style: normal; }
+/* multiple: chips and the inline search field share one wrapping row */
+.select2-container--bootstrap-5 .select2-selection--multiple { display: flex; flex-wrap: wrap; align-items: center; padding: .1875rem .5rem; }
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered { display: contents; margin: 0; padding: 0; list-style: none; }
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+  display: inline-flex; align-items: center; gap: .25rem; margin: .125rem .25rem .125rem 0; padding: 0 .4rem;
+  font-size: .875rem; line-height: 1.5; color: var(--bs-body-color);
+  background: var(--bs-tertiary-bg); border: 1px solid var(--bs-border-color); border-radius: .25rem;
+}
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
+  position: static; order: 2; width: auto; height: auto; padding: 0; margin: 0; border: 0;
+  background: none; color: var(--bs-secondary-color); font-size: 1rem; line-height: 1;
+}
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove span { display: inline; }
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove:hover { color: var(--bs-danger); background: none; }
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-search--inline { flex: 1 1 6rem; display: inline-flex; }
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-search__field {
+  width: 100% !important; height: 1.5em; margin: .125rem 0 .125rem .25rem; padding: 0;
+  font-family: inherit; font-size: 1rem; line-height: 1.5; border: 0; outline: 0; resize: none;
+}
+.select2-container--bootstrap-5 .select2-selection { position: relative; }
+.select2-container--bootstrap-5 .select2-selection__clear {
+  position: absolute; top: 50%; transform: translateY(-50%) !important; right: 2rem; margin: 0;
+  width: auto; height: auto; padding: 0 .25rem; background: none; color: var(--bs-secondary-color); line-height: 1;
+}
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__clear { right: .5rem; }
+.select2-container--bootstrap-5 .select2-selection--multiple { padding-right: 1.75rem; }
+.select2-container--bootstrap-5 .select2-selection--multiple .select2-search__field::placeholder,
+.form-control::placeholder { color: var(--bs-secondary-color); font-style: normal; opacity: 1; }
+.select2-container--bootstrap-5.select2-container--focus .select2-selection,
+.select2-container--bootstrap-5.select2-container--open .select2-selection {
+  border-color: #86b7fe; box-shadow: 0 0 0 .2rem rgba(13,110,253,.15);
+}
+.select2-dropdown { border-color: var(--bs-border-color); font-size: 1rem; }
+.select2-container--bootstrap-5 .select2-results__option--highlighted { background: var(--bs-primary); color: #fff; }

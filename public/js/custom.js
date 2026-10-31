@@ -152,3 +152,13 @@ window.extractImportErrorMessage = function(xhr, fallback) {
   }
   return Promise.resolve(fallback);
 };
+
+// Flash alerts rendered by partials/ui/flash.ejs hide themselves after N ms.
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.alert[data-autohide]').forEach(function (el) {
+    setTimeout(function () {
+      if (window.bootstrap && bootstrap.Alert) bootstrap.Alert.getOrCreateInstance(el).close();
+      else el.remove();
+    }, Number(el.dataset.autohide) || 5000);
+  });
+});

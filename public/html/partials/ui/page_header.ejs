@@ -1,0 +1,24 @@
+<%#
+  Standard page header: title + breadcrumb.
+  include('../../partials/ui/page_header', {
+    title: 'System List',                       // English key, translated here
+    breadcrumbs: [{ label: 'System Management' }, { label: 'System List' }]  // optional href
+  })
+%>
+<div class="app-content-header">
+  <div class="container-fluid">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <h1 class="page-title mb-0"><%= t(title) %></h1>
+      <ol class="breadcrumb mb-0">
+        <li class="breadcrumb-item"><a href="/dashboard"><i class="bi bi-house-door"></i></a></li>
+        <% (locals.breadcrumbs || []).forEach(function (b, i, all) { %>
+          <% if (b.href && i < all.length - 1) { %>
+            <li class="breadcrumb-item"><a href="<%= b.href %>"><%= t(b.label) %></a></li>
+          <% } else { %>
+            <li class="breadcrumb-item<%= i === all.length - 1 ? ' active' : '' %>"<%- i === all.length - 1 ? ' aria-current="page"' : '' %>><%= t(b.label) %></li>
+          <% } %>
+        <% }); %>
+      </ol>
+    </div>
+  </div>
+</div>
