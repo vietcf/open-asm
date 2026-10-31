@@ -78,8 +78,8 @@ function buildExportUrl() {
     <div class="row">
       <div class="col-12">
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/">Home</a></li>
-          <li class="breadcrumb-item active">Domain List</li>
+          <li class="breadcrumb-item"><a href="/"><%= t('Home') %></a></li>
+          <li class="breadcrumb-item active"><%= t('Domain List') %></li>
         </ol>
       </div>
     </div>
@@ -127,8 +127,8 @@ function buildExportUrl() {
               <input class="form-control form-control-sm" 
                      type="search" 
                      name="search" 
-                     placeholder="Search Domain or Description..." 
-                     aria-label="Search" 
+                     placeholder="<%= t('Search Domain or Description...') %>" 
+                     aria-label="<%= t('Search') %>" 
                      value="<%= typeof search !== 'undefined' ? search : '' %>">
               <button class="btn btn-outline-secondary btn-sm" type="submit">
                 <i class="bi bi-search"></i>
@@ -137,7 +137,7 @@ function buildExportUrl() {
             
             <!-- Page Size Selector -->
             <div class="d-flex align-items-center gap-1">
-              <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+              <label class="form-label form-label-sm mb-0 text-muted"><%= t('Show:') %></label>
               <select class="form-select form-select-sm" 
                       name="pageSize" 
                       onchange="this.form.submit()" 
@@ -166,7 +166,7 @@ function buildExportUrl() {
                     class="btn btn-primary btn-sm" 
                     data-bs-toggle="modal" 
                     data-bs-target="#addDomainModal">
-          <i class="bi bi-plus"></i> Add Domain
+          <i class="bi bi-plus"></i> <%= t('Add Domain') %>
         </button>
           <% } %>
           
@@ -182,13 +182,13 @@ function buildExportUrl() {
                   class="btn btn-sm <%= hasActiveDomainFilter ? 'btn-primary' : 'btn-outline-secondary' %>"
                   data-bs-toggle="modal"
                   data-bs-target="#filterDomainModal">
-            <i class="bi bi-funnel<%= hasActiveDomainFilter ? '-fill' : '' %>"></i> Filter<%= hasActiveDomainFilter ? ' (Filtered)' : '' %>
+            <i class="bi bi-funnel<%= hasActiveDomainFilter ? '-fill' : '' %>"></i> <%= t('Filter{1}', { 1: hasActiveDomainFilter ? ' (Filtered)' : '' }) %>
           </button>
 
           <!-- Export Button -->
           <% if (hasPermission && hasPermission('domain.read')) { %>
             <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">
-              <i class="bi bi-download"></i> Export
+              <i class="bi bi-download"></i> <%= t('Export') %>
             </a>
           <% } %>
 
@@ -198,7 +198,7 @@ function buildExportUrl() {
                     class="btn btn-success btn-sm"
                     data-bs-toggle="modal"
                     data-bs-target="#importDomainModal">
-              <i class="bi bi-upload"></i> Import Domain
+              <i class="bi bi-upload"></i> <%= t('Import Domain') %>
             </button>
           <% } %>
 
@@ -223,7 +223,7 @@ function buildExportUrl() {
     <% if (typeof successMessage !== 'undefined' && successMessage) { %>
       <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
         <i class="bi bi-check-circle me-2"></i><%= t(successMessage) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
                 </div>
       <script>
         // Auto-hide success message after 5 seconds
@@ -241,7 +241,7 @@ function buildExportUrl() {
     <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
       <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
         <i class="bi bi-exclamation-triangle me-2"></i><%= t(errorMessage) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
                 </div>
       <script>
         // Auto-hide error message after 8 seconds (longer for errors)
@@ -262,21 +262,21 @@ function buildExportUrl() {
     <div class="col-12">
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title mb-0">Domain List</h3>
+          <h3 class="card-title mb-0"><%= t('Domain List') %></h3>
         </div>
           <div class="card-body table-responsive p-0" style="overflow-x: auto;">
             <table class="table table-hover" id="domainTable">
             <thead>
               <tr>
-                <th>No.</th>
-                <th data-sort-type="text">Domain</th>
-                <th data-sort-type="text">Description</th>
-                <th data-sort-type="ip">IP Address</th>
-                <th data-sort-type="text">Record Type</th>
-                  <th data-sort-type="text">Tags</th>
-                  <th data-sort-type="text">Systems</th>
-                  <th data-sort-type="text">Contacts</th>
-                <th class="text-end">Actions</th>
+                <th><%= t('No.') %></th>
+                <th data-sort-type="text"><%= t('Domain') %></th>
+                <th data-sort-type="text"><%= t('Description') %></th>
+                <th data-sort-type="ip"><%= t('IP Address') %></th>
+                <th data-sort-type="text"><%= t('Record Type') %></th>
+                  <th data-sort-type="text"><%= t('Tags') %></th>
+                  <th data-sort-type="text"><%= t('Systems') %></th>
+                  <th data-sort-type="text"><%= t('Contacts') %></th>
+                <th class="text-end"><%= t('Actions') %></th>
               </tr>
             </thead>
             <tbody>
@@ -304,7 +304,7 @@ function buildExportUrl() {
                         <% if (domain.ip && domain.ip.ip_address) { %>
                           <span class="badge bg-primary"><%= domain.ip.ip_address %></span>
                       <% } else { %>
-                          <span class="text-muted">No IP</span>
+                          <span class="text-muted"><%= t('No IP') %></span>
                       <% } %>
                     </td>
                       
@@ -320,7 +320,7 @@ function buildExportUrl() {
                             </span>
                           <% }) %>
                       <% } else { %>
-                          <span class="text-muted">No tags</span>
+                          <span class="text-muted"><%= t('No tags') %></span>
                       <% } %>
                     </td>
                       
@@ -333,7 +333,7 @@ function buildExportUrl() {
                             </span>
                         <% }) %>
                       <% } else { %>
-                          <span class="text-muted">No systems</span>
+                          <span class="text-muted"><%= t('No systems') %></span>
                       <% } %>
                     </td>
                       
@@ -346,7 +346,7 @@ function buildExportUrl() {
                             </span>
                           <% }) %>
                         <% } else { %>
-                          <span class="text-muted">No contacts</span>
+                          <span class="text-muted"><%= t('No contacts') %></span>
                         <% } %>
                       </td>
                       
@@ -355,7 +355,7 @@ function buildExportUrl() {
                         <!-- View Button -->
                         <button type="button" 
                                 class="btn btn-info btn-sm" 
-                                title="Show" 
+                                title="<%= t('Show') %>" 
                                 onclick="showDomainDetail('<%= domain.id %>')" 
                                 data-domain='<%= JSON.stringify(domain) %>'>
                           <i class="bi bi-eye"></i>
@@ -363,7 +363,7 @@ function buildExportUrl() {
                         
                         <!-- Edit Button -->
                         <% if (hasPermission('domain.update')) { %>
-                          <button type="button" class="btn btn-warning btn-sm" title="Edit" 
+                          <button type="button" class="btn btn-warning btn-sm" title="<%= t('Edit') %>" 
                                   data-bs-toggle="modal" data-bs-target="#editDomainModal"
                                   data-domain-id="<%= domain.id %>"
                                   data-domain="<%= domain.domain %>"
@@ -383,7 +383,7 @@ function buildExportUrl() {
                                 method="POST" 
                                 style="display:inline" 
                                 onsubmit="return confirmDeleteDomain(this, '<%= domain.domain %>')">
-                            <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                            <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
                               <i class="bi bi-trash"></i>
                             </button>
                       </form>
@@ -393,7 +393,7 @@ function buildExportUrl() {
                   <% }) %>
                 <% } else { %>
                   <tr>
-                    <td colspan="9" class="text-center">No data</td>
+                    <td colspan="9" class="text-center"><%= t('No data') %></td>
                   </tr>
                 <% } %>
               </tbody>
@@ -413,7 +413,7 @@ function buildExportUrl() {
                   const startPage = Math.max(1, page - 2);
                   const endPage = Math.min(totalPages, page + 2);
                 %>
-                <span>Showing <%= startItem %> - <%= endItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> domains</span>
+                <span><%= t('Showing {1} - {2} of {3} domains', { 1: startItem, 2: endItem, 3: typeof totalCount !== 'undefined' ? totalCount : 0 }) %></span>
               </div>
               
               <!-- Pagination Controls -->
@@ -436,7 +436,7 @@ function buildExportUrl() {
                 <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
                   <a class="page-link" 
                      href="?page=<%= page - 1 %><%= domainFilterQuery ? '&' + domainFilterQuery : '' %>" 
-                     tabindex="-1">Previous</a>
+                     tabindex="-1"><%= t('Previous') %></a>
                 </li>
                 
                 <!-- First Page -->
@@ -474,7 +474,7 @@ function buildExportUrl() {
                 <!-- Next Button -->
                 <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
                   <a class="page-link" 
-                     href="?page=<%= page + 1 %><%= domainFilterQuery ? '&' + domainFilterQuery : '' %>">Next</a>
+                     href="?page=<%= page + 1 %><%= domainFilterQuery ? '&' + domainFilterQuery : '' %>"><%= t('Next') %></a>
                 </li>
               </ul>
             </div>
@@ -497,35 +497,35 @@ function buildExportUrl() {
                       <div class="modal-content">
       <form id="addDomainForm" method="POST" action="/network/domain">
                         <div class="modal-header">
-          <h5 class="modal-title" id="addDomainModalLabel">Add Domain</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <h5 class="modal-title" id="addDomainModalLabel"><%= t('Add Domain') %></h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
                         </div>
                         <div class="modal-body">
           <div class="row g-3">
             <!-- Domain Name -->
             <div class="col-12">
-              <label for="domainName" class="form-label">Domain <span class="text-danger">*</span></label>
+              <label for="domainName" class="form-label"><%= t('Domain') %> <span class="text-danger">*</span></label>
               <input type="text" 
                      class="form-control" 
                      id="domainName" 
                      name="domain" 
                      required 
-                     placeholder="example.com">
+                     placeholder="<%= t('example.com') %>">
                                   </div>
             
             <!-- Description -->
             <div class="col-12">
-              <label for="domainDescription" class="form-label">Description</label>
+              <label for="domainDescription" class="form-label"><%= t('Description') %></label>
               <textarea class="form-control"
                         id="domainDescription"
                         name="description"
                         rows="3"
-                        placeholder="Enter domain description"></textarea>
+                        placeholder="<%= t('Enter domain description') %>"></textarea>
             </div>
             
             <!-- Record Type -->
             <div class="col-12">
-              <label for="domainRecordType" class="form-label">Record Type</label>
+              <label for="domainRecordType" class="form-label"><%= t('Record Type') %></label>
               <select class="form-select" id="domainRecordType" name="record_type">
                 <option value="A" selected>A</option>
                 <option value="AAAA">AAAA</option>
@@ -536,13 +536,13 @@ function buildExportUrl() {
                 <option value="SRV">SRV</option>
                 <option value="PTR">PTR</option>
                 <option value="SOA">SOA</option>
-                <option value="OTHER">Other</option>
+                <option value="OTHER"><%= t('Other') %></option>
               </select>
             </div>
             
             <!-- IP Address -->
             <div class="col-12">
-              <label for="domainIpId" class="form-label">IP Address</label>
+              <label for="domainIpId" class="form-label"><%= t('IP Address') %></label>
               <select id="domainIpId" name="ip_id" class="form-select">
                 <!-- Options will be loaded via AJAX -->
               </select>
@@ -550,7 +550,7 @@ function buildExportUrl() {
             
             <!-- Tags -->
             <div class="col-12">
-              <label for="domainTags" class="form-label">Tags</label>
+              <label for="domainTags" class="form-label"><%= t('Tags') %></label>
               <select id="domainTags" name="tags[]" class="form-select" multiple>
                 <!-- Options will be loaded via AJAX -->
               </select>
@@ -558,7 +558,7 @@ function buildExportUrl() {
             
             <!-- Systems -->
             <div class="col-12">
-              <label for="domainSystems" class="form-label">Systems</label>
+              <label for="domainSystems" class="form-label"><%= t('Systems') %></label>
               <select id="domainSystems" name="systems[]" class="form-select" multiple>
                 <!-- Options will be loaded via AJAX -->
               </select>
@@ -567,8 +567,8 @@ function buildExportUrl() {
           </div>
                         </div>
                         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary btn-sm">Add Domain</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+          <button type="submit" class="btn btn-primary btn-sm"><%= t('Add Domain') %></button>
                         </div>
       </form>
                       </div>
@@ -584,35 +584,35 @@ function buildExportUrl() {
       <form id="editDomainForm" method="POST" action="">
         <input type="hidden" name="page" value="<%= page %>">
                         <div class="modal-header">
-          <h5 class="modal-title" id="editDomainModalLabel">Edit Domain</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <h5 class="modal-title" id="editDomainModalLabel"><%= t('Edit Domain') %></h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
                         </div>
                           <div class="modal-body">
           <div class="row g-3">
             <!-- Domain Name (Read-only) -->
             <div class="col-12">
-              <label for="editDomainName" class="form-label">Domain <span class="text-danger">*</span></label>
+              <label for="editDomainName" class="form-label"><%= t('Domain') %> <span class="text-danger">*</span></label>
               <input type="text" 
                      class="form-control" 
                      id="editDomainName" 
                      name="domain" 
                      readonly>
-              <small class="form-text text-muted">Domain cannot be changed</small>
+              <small class="form-text text-muted"><%= t('Domain cannot be changed') %></small>
                             </div>
             
             <!-- Description -->
             <div class="col-12">
-              <label for="editDomainDescription" class="form-label">Description</label>
+              <label for="editDomainDescription" class="form-label"><%= t('Description') %></label>
               <textarea class="form-control"
                         id="editDomainDescription"
                         name="description"
                         rows="3"
-                        placeholder="Enter domain description"></textarea>
+                        placeholder="<%= t('Enter domain description') %>"></textarea>
                             </div>
             
             <!-- Record Type -->
             <div class="col-12">
-              <label for="editDomainRecordType" class="form-label">Record Type</label>
+              <label for="editDomainRecordType" class="form-label"><%= t('Record Type') %></label>
               <select class="form-select" id="editDomainRecordType" name="record_type">
                 <option value="A">A</option>
                 <option value="AAAA">AAAA</option>
@@ -623,13 +623,13 @@ function buildExportUrl() {
                 <option value="SRV">SRV</option>
                 <option value="PTR">PTR</option>
                 <option value="SOA">SOA</option>
-                <option value="OTHER">Other</option>
+                <option value="OTHER"><%= t('Other') %></option>
                               </select>
                             </div>
             
             <!-- IP Address -->
             <div class="col-12">
-              <label for="editDomainIpId" class="form-label">IP Address</label>
+              <label for="editDomainIpId" class="form-label"><%= t('IP Address') %></label>
               <select id="editDomainIpId" name="ip_id" class="form-select">
                 <!-- Options will be loaded via AJAX -->
                               </select>
@@ -637,7 +637,7 @@ function buildExportUrl() {
             
             <!-- Tags -->
             <div class="col-12">
-              <label for="editDomainTags" class="form-label">Tags</label>
+              <label for="editDomainTags" class="form-label"><%= t('Tags') %></label>
               <select id="editDomainTags" name="tags[]" class="form-select" multiple>
                 <!-- Options will be loaded via AJAX -->
               </select>
@@ -645,7 +645,7 @@ function buildExportUrl() {
             
             <!-- Systems -->
             <div class="col-12">
-              <label for="editDomainSystems" class="form-label">Systems</label>
+              <label for="editDomainSystems" class="form-label"><%= t('Systems') %></label>
               <select id="editDomainSystems" name="systems[]" class="form-select" multiple>
                 <!-- Options will be loaded via AJAX -->
               </select>
@@ -654,8 +654,8 @@ function buildExportUrl() {
                             </div>
                           </div>
                           <div class="modal-footer">
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary btn-sm">Update Domain</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+          <button type="submit" class="btn btn-primary btn-sm"><%= t('Update Domain') %></button>
                           </div>
                         </form>
                       </div>
@@ -669,14 +669,14 @@ function buildExportUrl() {
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="domainDetailModalLabel">Domain Detail</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="domainDetailModalLabel"><%= t('Domain Detail') %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
         </div>
       <div class="modal-body" id="domainDetailContent">
         <!-- Content will be loaded here -->
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Close') %></button>
       </div>
     </div>
   </div>
@@ -689,8 +689,8 @@ function buildExportUrl() {
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="filterDomainModalLabel">Filter Domains</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="filterDomainModalLabel"><%= t('Filter Domains') %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
       </div>
       <form method="GET" action="/network/domain" id="filterDomainForm">
         <input type="hidden" name="page" value="1">
@@ -704,9 +704,9 @@ function buildExportUrl() {
           <div class="row g-2">
             <!-- Record Type Filter -->
             <div class="col-12 mb-2">
-              <label for="filterDomainRecordType" class="form-label">Record Type</label>
+              <label for="filterDomainRecordType" class="form-label"><%= t('Record Type') %></label>
               <select class="form-control" id="filterDomainRecordType" name="status">
-                <option value="">All Record Types</option>
+                <option value=""><%= t('All Record Types') %></option>
                 <option value="A" <%= (filterStatus === 'A') ? 'selected' : '' %>>A</option>
                 <option value="AAAA" <%= (filterStatus === 'AAAA') ? 'selected' : '' %>>AAAA</option>
                 <option value="CNAME" <%= (filterStatus === 'CNAME') ? 'selected' : '' %>>CNAME</option>
@@ -716,29 +716,29 @@ function buildExportUrl() {
                 <option value="SRV" <%= (filterStatus === 'SRV') ? 'selected' : '' %>>SRV</option>
                 <option value="PTR" <%= (filterStatus === 'PTR') ? 'selected' : '' %>>PTR</option>
                 <option value="SOA" <%= (filterStatus === 'SOA') ? 'selected' : '' %>>SOA</option>
-                <option value="OTHER" <%= (filterStatus === 'OTHER') ? 'selected' : '' %>>Other</option>
+                <option value="OTHER" <%= (filterStatus === 'OTHER') ? 'selected' : '' %>><%= t('Other') %></option>
               </select>
             </div>
             
             <!-- Tags Filter -->
             <div class="col-12 mb-2">
-              <label class="form-label">Tags</label>
+              <label class="form-label"><%= t('Tags') %></label>
               <select id="filterDomainTags" name="tags[]" class="form-control" multiple></select>
             </div>
             
             <!-- Systems Filter -->
             <div class="col-12 mb-2">
-              <label class="form-label">Systems</label>
+              <label class="form-label"><%= t('Systems') %></label>
               <select id="filterDomainSystems" name="systems[]" class="form-control" multiple></select>
             </div>
             
           </div>
         </div>
         <div class="modal-footer d-flex justify-content-between">
-          <button type="button" class="btn btn-outline-danger" id="clearFilterBtnDomain">Clear All Filters</button>
+          <button type="button" class="btn btn-outline-danger" id="clearFilterBtnDomain"><%= t('Clear All Filters') %></button>
             <div>
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+            <button type="submit" class="btn btn-primary btn-sm"><%= t('Apply Filters') %></button>
             </div>
         </div>
       </form>
@@ -751,14 +751,14 @@ function buildExportUrl() {
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="importDomainModalLabel">Import Domains</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="importDomainModalLabel"><%= t('Import Domains') %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
       </div>
       <div class="modal-body">
         <form id="importDomainForm" enctype="multipart/form-data">
           <!-- File Selection -->
           <div class="mb-3">
-            <label for="domainImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
+            <label for="domainImportFile" class="form-label"><%= t('Select File') %> <span class="text-danger">*</span></label>
             <div class="input-group">
               <input type="file"
                      class="form-control"
@@ -767,23 +767,23 @@ function buildExportUrl() {
                      accept=".xlsx,.xls"
                      required>
               <a href="/network/domain/template" class="btn btn-outline-info" download>
-                <i class="bi bi-download"></i> Download Template
+                <i class="bi bi-download"></i> <%= t('Download Template') %>
               </a>
             </div>
-            <div class="form-text">Supported format: Excel (.xlsx, .xls). Maximum file size: 10MB</div>
+            <div class="form-text"><%= t('Supported format: Excel (.xlsx, .xls). Maximum file size: 10MB') %></div>
           </div>
 
           <!-- Import Instructions -->
           <div class="mb-3">
             <div class="alert alert-info">
-              <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
+              <h6><i class="bi bi-info-circle"></i> <%= t('Import Instructions:') %></h6>
               <ul class="mb-0">
-                <li>Click "Download Template" to get the Excel template with correct format</li>
-                <li>Fill the template with your domain data</li>
-                <li>Domain Name (Required, one per row) must not already exist</li>
-                <li>Description and Record Type are optional (Record Type defaults to A)</li>
-                <li>IP Address, System Name, and Tags are optional and can be comma-separated if multiple</li>
-                <li>Select your filled template file and validate before importing</li>
+                <li><%= t('Click "Download Template" to get the Excel template with correct format') %></li>
+                <li><%= t('Fill the template with your domain data') %></li>
+                <li><%= t('Domain Name (Required, one per row) must not already exist') %></li>
+                <li><%= t('Description and Record Type are optional (Record Type defaults to A)') %></li>
+                <li><%= t('IP Address, System Name, and Tags are optional and can be comma-separated if multiple') %></li>
+                <li><%= t('Select your filled template file and validate before importing') %></li>
               </ul>
             </div>
           </div>
@@ -798,9 +798,9 @@ function buildExportUrl() {
         </form>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-warning btn-sm" id="validateDomainBtn">Validate File</button>
-        <button type="button" class="btn btn-success btn-sm" id="importDomainBtn" style="display: none;">Import Domains</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+        <button type="button" class="btn btn-warning btn-sm" id="validateDomainBtn"><%= t('Validate File') %></button>
+        <button type="button" class="btn btn-success btn-sm" id="importDomainBtn" style="display: none;"><%= t('Import Domains') %></button>
       </div>
     </div>
   </div>
@@ -853,7 +853,7 @@ $(function() {
 
   $('#domainTags').select2({
     theme: 'bootstrap-5',
-    placeholder: 'Select tags (optional)',
+    placeholder: t('Select tags (optional)'),
     allowClear: true,
     width: '100%',
     multiple: true,
@@ -878,7 +878,7 @@ $(function() {
   console.log('Setting up Systems Select2...');
   $('#domainSystems').select2({
     theme: 'bootstrap-5',
-    placeholder: 'Select systems (optional)',
+    placeholder: t('Select systems (optional)'),
     allowClear: true,
     width: '100%',
     multiple: true,
@@ -904,7 +904,7 @@ $(function() {
   console.log('Setting up IP Address Select2...');
   $('#domainIpId').select2({
       theme: 'bootstrap-5',
-    placeholder: 'Select IP address (optional)',
+    placeholder: t('Select IP address (optional)'),
       allowClear: true,
       width: '100%',
     dropdownParent: $('#addDomainModal'),
@@ -1136,7 +1136,7 @@ $(function() {
   // needed, just the Bootstrap 5 Select2 styling to match Tags/Systems.
   $('#filterDomainRecordType').select2({
     theme: 'bootstrap-5',
-    placeholder: 'All Record Types',
+    placeholder: t('All Record Types'),
     allowClear: true,
     width: '100%',
     dropdownParent: $('#filterDomainModal')
@@ -1144,7 +1144,7 @@ $(function() {
 
   $('#filterDomainTags').select2({
             theme: 'bootstrap-5',
-            placeholder: 'Select tag(s)',
+            placeholder: t('Select tag(s)'),
             allowClear: true,
             width: '100%',
     dropdownParent: $('#filterDomainModal'),
@@ -1164,7 +1164,7 @@ $(function() {
 
   $('#filterDomainSystems').select2({
         theme: 'bootstrap-5',
-        placeholder: 'Select system(s)',
+        placeholder: t('Select system(s)'),
         allowClear: true,
         width: '100%',
     dropdownParent: $('#filterDomainModal'),
@@ -1241,7 +1241,7 @@ $(function() {
   // Handle validate button click
   $(document).on('click', '#validateDomainBtn', function() {
     if (!selectedDomainFile) {
-      alert('Please select a file first');
+      alert(t('Please select a file first'));
       return;
     }
 
@@ -1249,7 +1249,7 @@ $(function() {
     formData.append('file', selectedDomainFile);
 
     $('#domainImportProgress').show();
-    $('#domainImportResults').text('Validating file...');
+    $('#domainImportResults').text(t('Validating file...'));
     $('.progress-bar').css('width', '30%');
 
     let nativeXhr;
@@ -1266,7 +1266,7 @@ $(function() {
       },
       success: function(data, status, xhr) {
         $('.progress-bar').css('width', '100%');
-        $('#domainImportResults').text('Validation complete! Downloading results...');
+        $('#domainImportResults').text(t('Validation complete! Downloading results...'));
 
         const contentType = xhr.getResponseHeader('Content-Type');
         const contentDisposition = xhr.getResponseHeader('Content-Disposition');
@@ -1317,7 +1317,7 @@ $(function() {
         }
       },
       error: function(xhr, status, error) {
-        $('.progress-bar').css('width', '100%').text('Validation Failed');
+        $('.progress-bar').css('width', '100%').text(t('Validation Failed'));
         extractImportErrorMessage(nativeXhr || xhr).then(function(msg) {
           $('#domainImportResults').removeClass('alert-success').addClass('alert-danger')
             .html('<strong>Validation Error!</strong><br>' + msg)
@@ -1336,7 +1336,7 @@ $(function() {
   // Handle import button click
   $(document).on('click', '#importDomainBtn', function() {
     if (!selectedDomainFile) {
-      alert('Please select a file first');
+      alert(t('Please select a file first'));
       return;
     }
 
@@ -1344,8 +1344,8 @@ $(function() {
     formData.append('file', selectedDomainFile);
 
     $('#domainImportProgress').show();
-    $('#domainImportResults').text('Importing domains...');
-    $('.progress-bar').css('width', '30%').text('Importing...');
+    $('#domainImportResults').text(t('Importing domains...'));
+    $('.progress-bar').css('width', '30%').text(t('Importing...'));
     $('#importDomainBtn').prop('disabled', true);
 
     let nativeXhr;
@@ -1361,7 +1361,7 @@ $(function() {
         return nativeXhr;
       },
       success: function(data, status, xhr) {
-        $('#domainImportProgress .progress-bar').css('width', '100%').text('Import Complete');
+        $('#domainImportProgress .progress-bar').css('width', '100%').text(t('Import Complete'));
 
         const contentType = xhr.getResponseHeader('Content-Type');
         const contentDisposition = xhr.getResponseHeader('Content-Disposition');
@@ -1409,7 +1409,7 @@ $(function() {
         }, 2000);
       },
       error: function(xhr, status, error) {
-        $('#domainImportProgress .progress-bar').css('width', '100%').text('Import Failed');
+        $('#domainImportProgress .progress-bar').css('width', '100%').text(t('Import Failed'));
         extractImportErrorMessage(nativeXhr || xhr).then(function(msg) {
           $('#domainImportResults').removeClass('alert-success').addClass('alert-danger')
             .html('<strong>Import Error!</strong><br>' + msg)
@@ -1634,7 +1634,7 @@ function checkMultipleIPsExist(ipList, inputElement, errorDiv) {
 
         
 function confirmDeleteDomain(form, domain) {
-  if (confirm('Are you sure you want to delete the domain: ' + domain + '?')) {
+  if (confirm(t('Are you sure you want to delete the domain: ') + domain + '?')) {
     form._deleting = true;
     return true;
   }
@@ -1808,7 +1808,7 @@ function showDomainDetail(domainId) {
   }
   
   if (!targetButton) {
-    alert('Domain data not found');
+    alert(t('Domain data not found'));
     return;
   }
   
@@ -1817,7 +1817,7 @@ function showDomainDetail(domainId) {
   try {
     domain = JSON.parse(domainData);
   } catch (e) {
-    alert('Error parsing domain data: ' + e.message);
+    alert(t('Error parsing domain data: ') + e.message);
     return;
   }
   

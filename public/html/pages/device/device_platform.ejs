@@ -34,8 +34,8 @@ function buildPaginationUrl(targetPage) {
     <div class="row">
       <div class="col-12">
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/">Home</a></li>
-          <li class="breadcrumb-item active">Platform List</li>
+          <li class="breadcrumb-item"><a href="/"><%= t('Home') %></a></li>
+          <li class="breadcrumb-item active"><%= t('Platform List') %></li>
         </ol>
       </div>
     </div>
@@ -58,11 +58,11 @@ function buildPaginationUrl(targetPage) {
             <input type="hidden" name="page" value="1">
             
             <div class="input-group input-group-sm" style="width: 250px;">
-              <input class="form-control form-control-sm" type="search" name="search" placeholder="Search Platform..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+              <input class="form-control form-control-sm" type="search" name="search" placeholder="<%= t('Search Platform...') %>" aria-label="<%= t('Search') %>" value="<%= typeof search !== 'undefined' ? search : '' %>">
               <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
             </div>
             <div class="d-flex align-items-center gap-1">
-              <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+              <label class="form-label form-label-sm mb-0 text-muted"><%= t('Show:') %></label>
               <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
                 <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
                   <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
@@ -84,7 +84,7 @@ function buildPaginationUrl(targetPage) {
         <div class="d-flex justify-content-end gap-2">
           <% if (hasPermission && hasPermission('platform.create')) { %>
             <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addPlatformModal">
-              <i class="bi bi-plus"></i> Add Platform
+              <i class="bi bi-plus"></i> <%= t('Add Platform') %>
             </button>
           <% } %>
         </div>
@@ -102,7 +102,7 @@ function buildPaginationUrl(targetPage) {
     <% if (typeof successMessage !== 'undefined' && successMessage) { %>
       <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
         <i class="bi bi-check-circle me-2"></i><%= t(successMessage) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
       </div>
       <script>
         // Auto-hide success message after 5 seconds
@@ -119,7 +119,7 @@ function buildPaginationUrl(targetPage) {
     <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
       <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
         <i class="bi bi-exclamation-triangle me-2"></i><%= t(errorMessage) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
       </div>
       <script>
         // Auto-hide error message after 8 seconds (longer for errors)
@@ -142,16 +142,16 @@ function buildPaginationUrl(targetPage) {
       <div class="col-12">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title mb-0">Platform List</h3>
+            <h3 class="card-title mb-0"><%= t('Platform List') %></h3>
           </div>
           <div class="card-body table-responsive p-0" style="overflow-x: auto;">
             <table class="table table-hover" id="platformTable">
               <thead>
                 <tr>
-                  <th>No.</th>
-                  <th data-sort-type="text">Platform Name</th>
-                  <th data-sort-type="text">Description</th>
-                  <th class="text-end">Actions</th>
+                  <th><%= t('No.') %></th>
+                  <th data-sort-type="text"><%= t('Platform Name') %></th>
+                  <th data-sort-type="text"><%= t('Description') %></th>
+                  <th class="text-end"><%= t('Actions') %></th>
                 </tr>
               </thead>
               <tbody>
@@ -162,17 +162,17 @@ function buildPaginationUrl(targetPage) {
                       <td><%= platform.name %></td>
                       <td><%= platform.description || '-' %></td>
                       <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm me-1" title="Show" onclick="showPlatformDetail('<%= platform.id %>')" data-platform='<%= JSON.stringify(platform) %>'>
+                        <button type="button" class="btn btn-info btn-sm me-1" title="<%= t('Show') %>" onclick="showPlatformDetail('<%= platform.id %>')" data-platform='<%= JSON.stringify(platform) %>'>
                           <i class="bi bi-eye"></i>
                         </button>
                         <% if (hasPermission('platform.update')) { %>
-                          <button type="button" class="btn btn-warning btn-sm me-1" title="Edit" data-bs-toggle="modal" data-bs-target="#editPlatformModal" data-platform-id="<%= platform.id %>" data-platform-name="<%= platform.name %>" data-platform-description="<%= platform.description || '' %>">
+                          <button type="button" class="btn btn-warning btn-sm me-1" title="<%= t('Edit') %>" data-bs-toggle="modal" data-bs-target="#editPlatformModal" data-platform-id="<%= platform.id %>" data-platform-name="<%= platform.name %>" data-platform-description="<%= platform.description || '' %>">
                             <i class="bi bi-pencil"></i>
                           </button>
                         <% } %>
                         <% if (hasPermission('platform.delete') || (user && (user.role_name === 'superadmin' || user.role_name === 'admin'))) { %>
                           <form action="/device/platform/<%= platform.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeletePlatform(this, '<%= platform.name %>')">
-                            <button type="submit" class="btn btn-danger btn-sm" title="Delete" style="display: inline-block !important; visibility: visible !important;">
+                            <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>" style="display: inline-block !important; visibility: visible !important;">
                               <i class="bi bi-trash"></i>
                             </button>
                           </form>
@@ -181,7 +181,7 @@ function buildPaginationUrl(targetPage) {
                     </tr>
                   <% }) %>
                 <% } else { %>
-                  <tr><td colspan="4" class="text-center">No platforms found</td></tr>
+                  <tr><td colspan="4" class="text-center"><%= t('No platforms found') %></td></tr>
                 <% } %>
               </tbody>
             </table>
@@ -196,7 +196,7 @@ function buildPaginationUrl(targetPage) {
                   const platformStartPage = Math.max(1, page - 2);
                   const platformEndPage = Math.min(totalPages, page + 2);
                 %>
-                <span>Showing <%= platformStartItem %> - <%= platformEndItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> platforms</span>
+                <span><%= t('Showing {1} - {2} of {3} platforms', { 1: platformStartItem, 2: platformEndItem, 3: typeof totalCount !== 'undefined' ? totalCount : 0 }) %></span>
               </div>
               <ul class="pagination pagination-sm m-0 float-end">
                 <% 
@@ -209,7 +209,7 @@ function buildPaginationUrl(targetPage) {
                   const platformFilterQuery = buildPlatformFilterQuery();
                 %>
                 <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page - 1 %><%= platformFilterQuery ? '&' + platformFilterQuery : '' %>" tabindex="-1">Previous</a>
+                  <a class="page-link" href="?page=<%= page - 1 %><%= platformFilterQuery ? '&' + platformFilterQuery : '' %>" tabindex="-1"><%= t('Previous') %></a>
                 </li>
                 <% if (platformStartPage > 1) { %>
                   <li class="page-item"><a class="page-link" href="?page=1<%= platformFilterQuery ? '&' + platformFilterQuery : '' %>">1</a></li>
@@ -225,7 +225,7 @@ function buildPaginationUrl(targetPage) {
                   <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= platformFilterQuery ? '&' + platformFilterQuery : '' %>"><%= totalPages %></a></li>
                 <% } %>
                 <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page + 1 %><%= platformFilterQuery ? '&' + platformFilterQuery : '' %>">Next</a>
+                  <a class="page-link" href="?page=<%= page + 1 %><%= platformFilterQuery ? '&' + platformFilterQuery : '' %>"><%= t('Next') %></a>
                 </li>
               </ul>
             </div>
@@ -246,24 +246,24 @@ function buildPaginationUrl(targetPage) {
         <div class="modal-content">
           <form id="addPlatformForm" method="POST" action="/device/platform">
             <div class="modal-header">
-              <h5 class="modal-title" id="addPlatformModalLabel">Add Platform</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              <h5 class="modal-title" id="addPlatformModalLabel"><%= t('Add Platform') %></h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
             </div>
             <div class="modal-body">
               <div class="row g-3">
                 <div class="col-12">
-                  <label for="platformName" class="form-label">Platform Name <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" id="platformName" name="name" required placeholder="Enter platform name">
+                  <label for="platformName" class="form-label"><%= t('Platform Name') %> <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="platformName" name="name" required placeholder="<%= t('Enter platform name') %>">
                 </div>
                 <div class="col-12">
-                  <label for="platformDescription" class="form-label">Description</label>
-                  <textarea class="form-control" id="platformDescription" name="description" rows="3" placeholder="Enter platform description"></textarea>
+                  <label for="platformDescription" class="form-label"><%= t('Description') %></label>
+                  <textarea class="form-control" id="platformDescription" name="description" rows="3" placeholder="<%= t('Enter platform description') %>"></textarea>
                 </div>
               </div>
             </div>
             <div class="modal-footer d-flex justify-content-end">
-              <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" class="btn btn-primary btn-sm">Add Platform</button>
+              <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+              <button type="submit" class="btn btn-primary btn-sm"><%= t('Add Platform') %></button>
             </div>
           </form>
         </div>
@@ -276,24 +276,24 @@ function buildPaginationUrl(targetPage) {
         <div class="modal-content">
           <form id="editPlatformForm" method="POST" action="">
             <div class="modal-header">
-              <h5 class="modal-title" id="editPlatformModalLabel">Edit Platform</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              <h5 class="modal-title" id="editPlatformModalLabel"><%= t('Edit Platform') %></h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
             </div>
             <div class="modal-body">
               <div class="row g-3">
                 <div class="col-12">
-                  <label for="editPlatformName" class="form-label">Platform Name</label>
+                  <label for="editPlatformName" class="form-label"><%= t('Platform Name') %></label>
                   <input type="text" class="form-control" id="editPlatformName" name="name" readonly>
                 </div>
                 <div class="col-12">
-                  <label for="editPlatformDescription" class="form-label">Description</label>
-                  <textarea class="form-control" id="editPlatformDescription" name="description" rows="3" placeholder="Enter platform description"></textarea>
+                  <label for="editPlatformDescription" class="form-label"><%= t('Description') %></label>
+                  <textarea class="form-control" id="editPlatformDescription" name="description" rows="3" placeholder="<%= t('Enter platform description') %>"></textarea>
                 </div>
               </div>
             </div>
             <div class="modal-footer d-flex justify-content-end">
-              <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" class="btn btn-primary btn-sm">Update Platform</button>
+              <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+              <button type="submit" class="btn btn-primary btn-sm"><%= t('Update Platform') %></button>
             </div>
           </form>
         </div>
@@ -305,14 +305,14 @@ function buildPaginationUrl(targetPage) {
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="platformDetailModalLabel">Platform Detail</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <h5 class="modal-title" id="platformDetailModalLabel"><%= t('Platform Detail') %></h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
           </div>
           <div class="modal-body" id="platformDetailContent">
             <!-- Content will be loaded here -->
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Close') %></button>
           </div>
         </div>
       </div>

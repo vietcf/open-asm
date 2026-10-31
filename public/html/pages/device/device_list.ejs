@@ -91,8 +91,8 @@ function buildExportUrl() {
     <div class="row">
       <div class="col-12">
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/">Home</a></li>
-          <li class="breadcrumb-item active">Device List</li>
+          <li class="breadcrumb-item"><a href="/"><%= t('Home') %></a></li>
+          <li class="breadcrumb-item active"><%= t('Device List') %></li>
         </ol>
       </div>
     </div>
@@ -135,11 +135,11 @@ function buildExportUrl() {
             <% } %>
             
             <div class="input-group input-group-sm" style="width: 250px;">
-              <input class="form-control form-control-sm" type="search" name="search" placeholder="Search Device Name..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+              <input class="form-control form-control-sm" type="search" name="search" placeholder="<%= t('Search Device Name...') %>" aria-label="<%= t('Search') %>" value="<%= typeof search !== 'undefined' ? search : '' %>">
               <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
             </div>
             <div class="d-flex align-items-center gap-1">
-              <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+              <label class="form-label form-label-sm mb-0 text-muted"><%= t('Show:') %></label>
               <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
                 <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
                   <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
@@ -161,7 +161,7 @@ function buildExportUrl() {
         <div class="d-flex justify-content-end gap-2">
           <% if (hasPermission && hasPermission('device.create')) { %>
             <a href="/device/device/add" class="btn btn-primary btn-sm">
-              <i class="bi bi-plus"></i> Add Device
+              <i class="bi bi-plus"></i> <%= t('Add Device') %>
             </a>
           <% } %>
           <%
@@ -175,16 +175,16 @@ function buildExportUrl() {
             );
           %>
           <button type="button" class="btn btn-sm <%= hasActiveDeviceFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterDeviceModal">
-            <i class="bi bi-funnel<%= hasActiveDeviceFilter ? '-fill' : '' %>"></i> Filter<%= hasActiveDeviceFilter ? ' (Filtered)' : '' %>
+            <i class="bi bi-funnel<%= hasActiveDeviceFilter ? '-fill' : '' %>"></i> <%= t('Filter{1}', { 1: hasActiveDeviceFilter ? ' (Filtered)' : '' }) %>
           </button>
           <% if (hasPermission && hasPermission('device.read')) { %>
             <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">
-              <i class="bi bi-download"></i> Export
+              <i class="bi bi-download"></i> <%= t('Export') %>
             </a>
           <% } %>
           <% if (hasPermission && hasPermission('device.create')) { %>
             <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importDeviceModal">
-              <i class="bi bi-upload"></i> Import Device
+              <i class="bi bi-upload"></i> <%= t('Import Device') %>
             </button>
           <% } %>
         </div>
@@ -209,7 +209,7 @@ function buildExportUrl() {
     <% if (typeof successMessage !== 'undefined' && successMessage) { %>
       <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
         <i class="bi bi-check-circle me-2"></i><%= t(successMessage) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
       </div>
       <script>
         // Auto-hide success message after 5 seconds
@@ -226,7 +226,7 @@ function buildExportUrl() {
     <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
       <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
         <i class="bi bi-exclamation-triangle me-2"></i><%= t(errorMessage) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
       </div>
       <script>
         // Auto-hide error message after 8 seconds (longer for errors)
@@ -249,19 +249,19 @@ function buildExportUrl() {
       <div class="col-12">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title mb-0">Device List</h3>
+            <h3 class="card-title mb-0"><%= t('Device List') %></h3>
           </div>
           <div class="card-body table-responsive p-0" style="overflow-x: auto;">
             <table class="table table-hover" id="deviceTable">
               <thead>
                 <tr>
-                  <th>No.</th>
-                  <th data-sort-type="text">Device Name</th>
-                  <th data-sort-type="text">Description</th>
-                  <th data-sort-type="text">Device Type</th>
-                  <th data-sort-type="text">Location</th>
-                  <th data-sort-type="text">IP Address(es)</th>
-                  <th class="text-end">Actions</th>
+                  <th><%= t('No.') %></th>
+                  <th data-sort-type="text"><%= t('Device Name') %></th>
+                  <th data-sort-type="text"><%= t('Description') %></th>
+                  <th data-sort-type="text"><%= t('Device Type') %></th>
+                  <th data-sort-type="text"><%= t('Location') %></th>
+                  <th data-sort-type="text"><%= t('IP Address(es)') %></th>
+                  <th class="text-end"><%= t('Actions') %></th>
                 </tr>
               </thead>
               <tbody>
@@ -285,25 +285,25 @@ function buildExportUrl() {
                             <%= ip.ip_address %><% if (index < Math.min(device.ip_addresses.length, 3) - 1) { %>, <% } %>
                           <% }) %>
                           <% if (device.ip_addresses.length > 3) { %>
-                            <br><small class="text-muted">+<%= device.ip_addresses.length - 3 %> more</small>
+                            <br><small class="text-muted"><%= t('+{1} more', { 1: device.ip_addresses.length - 3 }) %></small>
                           <% } %>
                         <% } else { %>
                           -
                         <% } %>
                       </td>
                       <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showDeviceDetail('<%= device.id %>')" data-device='<%= JSON.stringify(device) %>'>
+                        <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showDeviceDetail('<%= device.id %>')" data-device='<%= JSON.stringify(device) %>'>
                           <i class="bi bi-eye"></i>
                         </button>
                         <% if (hasPermission('device.update')) { %>
-                          <a href="/device/device/edit/<%= device.id %>" class="btn btn-warning btn-sm" title="Edit">
+                          <a href="/device/device/edit/<%= device.id %>" class="btn btn-warning btn-sm" title="<%= t('Edit') %>">
                             <i class="bi bi-pencil"></i>
                           </a>
                         <% } %>
                         <% if (hasPermission('device.delete')) { %>
                           <form action="/device/device/<%= device.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteDevice(this, '<%= device.name %>')">
                             <input type="hidden" name="delete_ip" value="false">
-                            <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                            <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
                               <i class="bi bi-trash"></i>
                             </button>
                           </form>
@@ -312,7 +312,7 @@ function buildExportUrl() {
                     </tr>
                   <% }) %>
                 <% } else { %>
-                  <tr><td colspan="7" class="text-center">No devices found</td></tr>
+                  <tr><td colspan="7" class="text-center"><%= t('No devices found') %></td></tr>
                 <% } %>
               </tbody>
             </table>
@@ -327,7 +327,7 @@ function buildExportUrl() {
                   const deviceStartPage = Math.max(1, page - 2);
                   const deviceEndPage = Math.min(totalPages, page + 2);
                 %>
-                <span>Showing <%= deviceStartItem %> - <%= deviceEndItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> devices</span>
+                <span><%= t('Showing {1} - {2} of {3} devices', { 1: deviceStartItem, 2: deviceEndItem, 3: typeof totalCount !== 'undefined' ? totalCount : 0 }) %></span>
               </div>
               <ul class="pagination pagination-sm m-0 float-end">
                 <% 
@@ -348,7 +348,7 @@ function buildExportUrl() {
                   const deviceFilterQuery = buildDeviceFilterQuery();
                 %>
                 <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page - 1 %><%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>" tabindex="-1">Previous</a>
+                  <a class="page-link" href="?page=<%= page - 1 %><%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>" tabindex="-1"><%= t('Previous') %></a>
                 </li>
                 <% if (deviceStartPage > 1) { %>
                   <li class="page-item"><a class="page-link" href="?page=1<%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>">1</a></li>
@@ -364,7 +364,7 @@ function buildExportUrl() {
                   <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>"><%= totalPages %></a></li>
                 <% } %>
                 <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page + 1 %><%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>">Next</a>
+                  <a class="page-link" href="?page=<%= page + 1 %><%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>"><%= t('Next') %></a>
                 </li>
               </ul>
             </div>
@@ -384,14 +384,14 @@ function buildExportUrl() {
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="deviceDetailModalLabel">Device Detail</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="deviceDetailModalLabel"><%= t('Device Detail') %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
       </div>
       <div class="modal-body" id="deviceDetailContent">
         <!-- Content will be loaded here -->
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Close') %></button>
       </div>
     </div>
   </div>
@@ -402,28 +402,28 @@ function buildExportUrl() {
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="deleteDeviceModalLabel">Delete Device</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="deleteDeviceModalLabel"><%= t('Delete Device') %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
       </div>
       <div class="modal-body">
-        <p>Are you sure you want to delete the device <strong id="deleteDeviceName"></strong>?</p>
-        <p class="mb-2">What should happen to its IP address(es)?</p>
+        <p><%= t('Are you sure you want to delete the device') %> <strong id="deleteDeviceName"></strong>?</p>
+        <p class="mb-2"><%= t('What should happen to its IP address(es)?') %></p>
         <div class="form-check">
           <input class="form-check-input" type="radio" name="deleteDeviceIpChoice" id="deleteDeviceIpReserve" value="false" checked>
           <label class="form-check-label" for="deleteDeviceIpReserve">
-            Release IP(s) back to <strong>Reserved</strong> status (default)
+            <%= t('Release IP(s) back to') %> <strong><%= t('Reserved') %></strong> <%= t('status (default)') %>
           </label>
         </div>
         <div class="form-check">
           <input class="form-check-input" type="radio" name="deleteDeviceIpChoice" id="deleteDeviceIpDelete" value="true">
           <label class="form-check-label" for="deleteDeviceIpDelete">
-            Delete the IP address(es) permanently
+            <%= t('Delete the IP address(es) permanently') %>
           </label>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-danger btn-sm" id="deleteDeviceConfirmBtn">Delete</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+        <button type="button" class="btn btn-danger btn-sm" id="deleteDeviceConfirmBtn"><%= t('Delete') %></button>
       </div>
     </div>
   </div>
@@ -434,8 +434,8 @@ function buildExportUrl() {
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="filterDeviceModalLabel">Filter Devices</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="filterDeviceModalLabel"><%= t('Filter Devices') %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
       </div>
       <form method="GET" action="/device/device" id="filterDeviceForm">
         <input type="hidden" name="page" value="1">
@@ -446,33 +446,33 @@ function buildExportUrl() {
           <div class="row g-2">
             <!-- Device Type Filter -->
             <div class="col-12 mb-2">
-              <label class="form-label">Device Type</label>
+              <label class="form-label"><%= t('Device Type') %></label>
               <select id="filterDeviceTypeId" name="device_type_id" class="form-control">
-                <option value="">All Device Types</option>
+                <option value=""><%= t('All Device Types') %></option>
                 <!-- Options will be loaded via AJAX -->
               </select>
             </div>
             
             <!-- Tags Filter -->
             <div class="col-12 mb-2">
-              <label class="form-label">Tags</label>
+              <label class="form-label"><%= t('Tags') %></label>
               <select id="filterDeviceTags" name="tags[]" class="form-control" multiple></select>
             </div>
             
             <!-- Platform Filter -->
             <div class="col-12 mb-2">
-              <label class="form-label">Platform</label>
+              <label class="form-label"><%= t('Platform') %></label>
               <select id="filterDevicePlatform" name="platform_id" class="form-control">
-                <option value="">All Platforms</option>
+                <option value=""><%= t('All Platforms') %></option>
                 <!-- Options will be loaded via AJAX -->
               </select>
             </div>
             
             <!-- Location Filter -->
             <div class="col-12 mb-2">
-              <label for="filterDeviceLocation" class="form-label">Location</label>
+              <label for="filterDeviceLocation" class="form-label"><%= t('Location') %></label>
               <select class="form-control" id="filterDeviceLocation" name="location">
-                <option value="">All Locations</option>
+                <option value=""><%= t('All Locations') %></option>
                 <% if (typeof locationOptions !== 'undefined' && locationOptions.length > 0) { %>
                   <% locationOptions.forEach(function(option) { %>
                     <option value="<%= option.value %>" <%= (typeof location !== 'undefined' && location === option.value) ? 'selected' : '' %>><%= option.label %></option>
@@ -483,28 +483,28 @@ function buildExportUrl() {
             
             <!-- Manufacturer Filter -->
             <div class="col-12 mb-2">
-              <label for="filterDeviceManufacturer" class="form-label">Manufacturer</label>
+              <label for="filterDeviceManufacturer" class="form-label"><%= t('Manufacturer') %></label>
               <select id="filterDeviceManufacturer" name="manufacturer" class="form-control">
-                <option value="">All Manufacturers</option>
+                <option value=""><%= t('All Manufacturers') %></option>
                 <!-- Options will be loaded via AJAX -->
               </select>
             </div>
             
             <!-- Device Role Filter -->
             <div class="col-12 mb-2">
-              <label for="filterDeviceRole" class="form-label">Device Role</label>
+              <label for="filterDeviceRole" class="form-label"><%= t('Device Role') %></label>
               <select id="filterDeviceRole" name="device_role" class="form-control">
-                <option value="">All Device Roles</option>
+                <option value=""><%= t('All Device Roles') %></option>
                 <!-- Options will be loaded via AJAX -->
               </select>
             </div>
           </div>
         </div>
         <div class="modal-footer d-flex justify-content-between">
-          <button type="button" class="btn btn-outline-danger" id="clearFilterBtnDevice">Clear All Filters</button>
+          <button type="button" class="btn btn-outline-danger" id="clearFilterBtnDevice"><%= t('Clear All Filters') %></button>
           <div>
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+            <button type="submit" class="btn btn-primary btn-sm"><%= t('Apply Filters') %></button>
           </div>
         </div>
       </form>
@@ -517,31 +517,31 @@ function buildExportUrl() {
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="importDeviceModalLabel">Import Devices</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="importDeviceModalLabel"><%= t('Import Devices') %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
       </div>
       <div class="modal-body">
         <form id="importDeviceForm" enctype="multipart/form-data">
           <div class="mb-3">
-            <label for="deviceImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
+            <label for="deviceImportFile" class="form-label"><%= t('Select File') %> <span class="text-danger">*</span></label>
             <div class="input-group">
               <input type="file" class="form-control" id="deviceImportFile" name="file" accept=".xlsx,.xls" required>
               <a href="/device/device/template" class="btn btn-outline-info" download>
-                <i class="bi bi-download"></i> Download Template
+                <i class="bi bi-download"></i> <%= t('Download Template') %>
               </a>
             </div>
-            <div class="form-text">Supported format: Excel (.xlsx, .xls). Maximum file size: 10MB</div>
+            <div class="form-text"><%= t('Supported format: Excel (.xlsx, .xls). Maximum file size: 10MB') %></div>
           </div>
           
           <div class="mb-3">
             <div class="alert alert-info">
-              <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
+              <h6><i class="bi bi-info-circle"></i> <%= t('Import Instructions:') %></h6>
               <ul class="mb-0">
-                <li>Click "Download Template" to get the Excel template with correct format</li>
-                <li>Fill the template with your device data</li>
-                <li><strong>Required fields:</strong> IP Address, Device Type</li>
-                <li><strong>Optional fields:</strong> Name (auto-generated if empty), Platform, Location, Serial Number, Management Address, Manufacturer, Device Role, Manager, Tags, Description</li>
-                <li>Select your filled template file and validate before importing</li>
+                <li><%= t('Click "Download Template" to get the Excel template with correct format') %></li>
+                <li><%= t('Fill the template with your device data') %></li>
+                <li><strong><%= t('Required fields:') %></strong> <%= t('IP Address, Device Type') %></li>
+                <li><strong><%= t('Optional fields:') %></strong> <%= t('Name (auto-generated if empty), Platform, Location, Serial Number, Management Address, Manufacturer, Device Role, Manager, Tags, Description') %></li>
+                <li><%= t('Select your filled template file and validate before importing') %></li>
               </ul>
             </div>
           </div>
@@ -556,9 +556,9 @@ function buildExportUrl() {
         </form>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-warning btn-sm" id="validateDeviceBtn">Validate File</button>
-        <button type="button" class="btn btn-success btn-sm" id="importDeviceBtn" style="display: none;">Import Devices</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+        <button type="button" class="btn btn-warning btn-sm" id="validateDeviceBtn"><%= t('Validate File') %></button>
+        <button type="button" class="btn btn-success btn-sm" id="importDeviceBtn" style="display: none;"><%= t('Import Devices') %></button>
       </div>
     </div>
   </div>
@@ -601,7 +601,7 @@ function showDeviceDetail(deviceId) {
   }
   
   if (!targetButton) {
-    alert('Device data not found');
+    alert(t('Device data not found'));
     return;
   }
   
@@ -610,7 +610,7 @@ function showDeviceDetail(deviceId) {
   try {
     device = JSON.parse(deviceData);
   } catch (e) {
-    alert('Error parsing device data: ' + e.message);
+    alert(t('Error parsing device data: ') + e.message);
     return;
   }
   
@@ -739,7 +739,7 @@ $(document).ready(function() {
   // Initialize Select2 for Device Type
   $('#filterDeviceTypeId').select2({
     theme: 'bootstrap-5',
-    placeholder: 'Select device type',
+    placeholder: t('Select device type'),
     allowClear: true,
     width: '100%',
     dropdownParent: $('#filterDeviceModal'),
@@ -760,7 +760,7 @@ $(document).ready(function() {
   // Initialize Select2 for Tags
   $('#filterDeviceTags').select2({
     theme: 'bootstrap-5',
-    placeholder: 'Select tag(s)',
+    placeholder: t('Select tag(s)'),
     allowClear: true,
     width: '100%',
     dropdownParent: $('#filterDeviceModal'),
@@ -781,7 +781,7 @@ $(document).ready(function() {
   // Initialize Select2 for Platform
   $('#filterDevicePlatform').select2({
     theme: 'bootstrap-5',
-    placeholder: 'Select platform',
+    placeholder: t('Select platform'),
     allowClear: true,
     width: '100%',
     dropdownParent: $('#filterDeviceModal'),
@@ -802,7 +802,7 @@ $(document).ready(function() {
   // Initialize Select2 for Manufacturer
   $('#filterDeviceManufacturer').select2({
     theme: 'bootstrap-5',
-    placeholder: 'Select or type manufacturer',
+    placeholder: t('Select or type manufacturer'),
     allowClear: true,
     width: '100%',
     dropdownParent: $('#filterDeviceModal'),
@@ -835,7 +835,7 @@ $(document).ready(function() {
   // Initialize Select2 for Device Role
   $('#filterDeviceRole').select2({
     theme: 'bootstrap-5',
-    placeholder: 'Select or type device role',
+    placeholder: t('Select or type device role'),
     allowClear: true,
     width: '100%',
     dropdownParent: $('#filterDeviceModal'),
@@ -870,7 +870,7 @@ $(document).ready(function() {
   // styling to match the other filter fields in this modal.
   $('#filterDeviceLocation').select2({
     theme: 'bootstrap-5',
-    placeholder: 'All Locations',
+    placeholder: t('All Locations'),
     allowClear: true,
     width: '100%',
     dropdownParent: $('#filterDeviceModal')
@@ -1071,7 +1071,7 @@ $(document).on('click', '#validateDeviceBtn', function() {
   
   if (!selectedDeviceFile) {
     console.log('No file selected, showing alert');
-    alert('Please select a file first');
+    alert(t('Please select a file first'));
     return;
   }
   
@@ -1082,7 +1082,7 @@ $(document).on('click', '#validateDeviceBtn', function() {
   // Show progress
   console.log('Showing progress bar');
   $('#deviceImportProgress').show();
-  $('#deviceImportResults').text('Validating file...');
+  $('#deviceImportResults').text(t('Validating file...'));
   $('.progress-bar').css('width', '30%');
   
   console.log('Starting AJAX request to:', '/device/device/validate-import');
@@ -1105,7 +1105,7 @@ $(document).on('click', '#validateDeviceBtn', function() {
       console.log('Response data type:', typeof data);
       console.log('Response data size:', data ? data.size : 'no data');
       
-      $('#deviceImportProgress .progress-bar').css('width', '100%').text('Validation Complete');
+      $('#deviceImportProgress .progress-bar').css('width', '100%').text(t('Validation Complete'));
       
       // Handle file download
       const contentType = xhr.getResponseHeader('Content-Type');
@@ -1182,7 +1182,7 @@ $(document).on('click', '#validateDeviceBtn', function() {
       console.error('Response text:', xhr.responseText);
       console.error('Response JSON:', xhr.responseJSON);
       
-      $('.progress-bar').css('width', '100%').text('Validation Failed');
+      $('.progress-bar').css('width', '100%').text(t('Validation Failed'));
 
       extractImportErrorMessage(nativeXhr || xhr).then(function(errorMessage) {
         const resultsDiv = $('#deviceImportResults');
@@ -1205,7 +1205,7 @@ $(document).on('click', '#validateDeviceBtn', function() {
 // Handle import button click
 $(document).on('click', '#importDeviceBtn', function() {
   if (!selectedDeviceFile) {
-    alert('Please select a file first');
+    alert(t('Please select a file first'));
     return;
   }
   
@@ -1214,8 +1214,8 @@ $(document).on('click', '#importDeviceBtn', function() {
   
   // Show progress
   $('#deviceImportProgress').show();
-  $('#deviceImportResults').text('Importing devices...');
-  $('.progress-bar').css('width', '30%').text('Importing...');
+  $('#deviceImportResults').text(t('Importing devices...'));
+  $('.progress-bar').css('width', '30%').text(t('Importing...'));
   $('#importDeviceBtn').prop('disabled', true);
   
   let nativeXhr;
@@ -1231,7 +1231,7 @@ $(document).on('click', '#importDeviceBtn', function() {
       return nativeXhr;
     },
     success: function(data, status, xhr) {
-      $('#deviceImportProgress .progress-bar').css('width', '100%').text('Import Complete');
+      $('#deviceImportProgress .progress-bar').css('width', '100%').text(t('Import Complete'));
       
       // Handle file download
       const contentType = xhr.getResponseHeader('Content-Type');
@@ -1290,7 +1290,7 @@ $(document).on('click', '#importDeviceBtn', function() {
       console.error('Status:', xhr.status);
       console.error('Error:', error);
       
-      $('.progress-bar').css('width', '100%').text('Import Failed');
+      $('.progress-bar').css('width', '100%').text(t('Import Failed'));
 
       extractImportErrorMessage(nativeXhr || xhr).then(function(errorMessage) {
         const resultsDiv = $('#deviceImportResults');

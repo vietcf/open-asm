@@ -92,8 +92,8 @@ function buildExportUrl() {
     <div class="row">
     <div class="col-12">
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/">Home</a></li>
-          <li class="breadcrumb-item active">IP Address List</li>
+          <li class="breadcrumb-item"><a href="/"><%= t('Home') %></a></li>
+          <li class="breadcrumb-item active"><%= t('IP Address List') %></li>
         </ol>
         </div>
         </div>
@@ -130,11 +130,11 @@ function buildExportUrl() {
           <% } %>
           
           <div class="input-group input-group-sm" style="width: 250px;">
-            <input class="form-control form-control-sm" type="search" name="search" placeholder="Search IP or Description..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+            <input class="form-control form-control-sm" type="search" name="search" placeholder="<%= t('Search IP or Description...') %>" aria-label="<%= t('Search') %>" value="<%= typeof search !== 'undefined' ? search : '' %>">
             <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
             </div>
           <div class="d-flex align-items-center gap-1">
-            <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+            <label class="form-label form-label-sm mb-0 text-muted"><%= t('Show:') %></label>
             <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
               <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
                 <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
@@ -152,7 +152,7 @@ function buildExportUrl() {
         <div class="d-flex justify-content-end gap-2">
           <% if (hasPermission && hasPermission('network.create')) { %>
             <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addIpModal">
-              <i class="bi bi-plus"></i> Add IP Address
+              <i class="bi bi-plus"></i> <%= t('Add IP Address') %>
               </button>
         <% } %>
       <%
@@ -164,16 +164,16 @@ function buildExportUrl() {
         );
       %>
       <button type="button" class="btn btn-sm <%= hasActiveIpFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterIpModal">
-        <i class="bi bi-funnel<%= hasActiveIpFilter ? '-fill' : '' %>"></i> Filter<%= hasActiveIpFilter ? ' (Filtered)' : '' %>
+        <i class="bi bi-funnel<%= hasActiveIpFilter ? '-fill' : '' %>"></i> <%= t('Filter{1}', { 1: hasActiveIpFilter ? ' (Filtered)' : '' }) %>
       </button>
           <% if (hasPermission && hasPermission('network.read')) { %>
             <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">
-              <i class="bi bi-download"></i> Export
+              <i class="bi bi-download"></i> <%= t('Export') %>
             </a>
           <% } %>
           <% if (hasPermission && hasPermission('network.create')) { %>
             <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importIpModal">
-              <i class="bi bi-upload"></i> Import IP
+              <i class="bi bi-upload"></i> <%= t('Import IP') %>
             </button>
           <% } %>
       </div>
@@ -191,7 +191,7 @@ function buildExportUrl() {
   <% if (typeof successMessage !== 'undefined' && successMessage) { %>
     <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
       <i class="bi bi-check-circle me-2"></i><%= t(successMessage) %>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
     </div>
       <script>
       // Auto-hide success message after 5 seconds
@@ -208,7 +208,7 @@ function buildExportUrl() {
   <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
     <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
       <i class="bi bi-exclamation-triangle me-2"></i><%= t(errorMessage) %>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
     </div>
     <script>
       // Auto-hide error message after 8 seconds (longer for errors)
@@ -227,21 +227,21 @@ function buildExportUrl() {
     <div class="col-12">
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title mb-0">IP Address List</h3>
+          <h3 class="card-title mb-0"><%= t('IP Address List') %></h3>
         </div>
         <div class="card-body table-responsive p-0" style="overflow-x: auto;">
           <table class="table table-hover" id="ipTable">
             <thead>
               <tr>
-                <th>No.</th>
-                <th data-sort-type="ip">IP Address</th>
-                <th data-sort-type="text">Description</th>
-                <th data-sort-type="text">Server/Device</th>
-                <th data-sort-type="text">Status</th>
-                <th data-sort-type="text">Tags</th>
-                <th data-sort-type="text">Systems</th>
-                <th data-sort-type="text">Contacts</th>
-                <th class="text-end">Actions</th>
+                <th><%= t('No.') %></th>
+                <th data-sort-type="ip"><%= t('IP Address') %></th>
+                <th data-sort-type="text"><%= t('Description') %></th>
+                <th data-sort-type="text"><%= t('Server/Device') %></th>
+                <th data-sort-type="text"><%= t('Status') %></th>
+                <th data-sort-type="text"><%= t('Tags') %></th>
+                <th data-sort-type="text"><%= t('Systems') %></th>
+                <th data-sort-type="text"><%= t('Contacts') %></th>
+                <th class="text-end"><%= t('Actions') %></th>
               </tr>
             </thead>
             <tbody>
@@ -286,7 +286,7 @@ function buildExportUrl() {
                           <span class="badge bg-primary me-1"><%= typeof tag === 'string' ? tag : tag.name %></span>
                           <% }) %>
                       <% } else { %>
-                        <span class="text-muted">No tags</span>
+                        <span class="text-muted"><%= t('No tags') %></span>
                       <% } %>
                     </td>
                     <td>
@@ -295,7 +295,7 @@ function buildExportUrl() {
                           <span class="badge bg-info me-1"><%= typeof system === 'string' ? system : system.name %></span>
                           <% }) %>
                       <% } else { %>
-                        <span class="text-muted">No systems</span>
+                        <span class="text-muted"><%= t('No systems') %></span>
                             <% } %>
                     </td>
                     <td>
@@ -304,13 +304,13 @@ function buildExportUrl() {
                           <span class="badge bg-warning me-1"><%= typeof contact === 'string' ? contact : (contact.name || contact.email) %></span>
                           <% }) %>
                       <% } else { %>
-                                <span class="text-muted">No contacts</span>
+                                <span class="text-muted"><%= t('No contacts') %></span>
                       <% } %>
                     </td>
                     <td class="text-end">
-                      <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showIpDetail('<%= ip.id %>')" data-ip='<%= JSON.stringify(ip) %>'><i class="bi bi-eye"></i></button>
+                      <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showIpDetail('<%= ip.id %>')" data-ip='<%= JSON.stringify(ip) %>'><i class="bi bi-eye"></i></button>
                       <% if (hasPermission('network.update')) { %>
-                      <button type="button" class="btn btn-warning btn-sm" title="Edit" 
+                      <button type="button" class="btn btn-warning btn-sm" title="<%= t('Edit') %>" 
                               data-bs-toggle="modal" data-bs-target="#editIpModal"
                               data-ip-id="<%= ip.id %>"
                               data-ip-address="<%= ip.ip_address %>"
@@ -324,7 +324,7 @@ function buildExportUrl() {
                               <% } %>
                       <% if (hasPermission('network.delete')) { %>
                       <form action="/network/ip-address/<%= ip.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteIp(this, '<%= ip.ip_address %>')">
-                        <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                        <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
                           <i class="bi bi-trash"></i>
                         </button>
                       </form>
@@ -333,7 +333,7 @@ function buildExportUrl() {
                   </tr>
                 <% }) %>
                               <% } else { %>
-                <tr><td colspan="9" class="text-center">No data</td></tr>
+                <tr><td colspan="9" class="text-center"><%= t('No data') %></td></tr>
                               <% } %>
             </tbody>
           </table>
@@ -348,7 +348,7 @@ function buildExportUrl() {
                 const ipStartPage = Math.max(1, page - 2);
                 const ipEndPage = Math.min(totalPages, page + 2);
               %>
-              <span>Showing <%= ipStartItem %> - <%= ipEndItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> IP addresses</span>
+              <span><%= t('Showing {1} - {2} of {3} IP addresses', { 1: ipStartItem, 2: ipEndItem, 3: typeof totalCount !== 'undefined' ? totalCount : 0 }) %></span>
             </div>
             <ul class="pagination pagination-sm m-0 float-end">
               <% 
@@ -365,7 +365,7 @@ function buildExportUrl() {
                 const ipFilterQuery = buildIpFilterQuery();
               %>
               <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page - 1 %><%= ipFilterQuery ? '&' + ipFilterQuery : '' %>" tabindex="-1">Previous</a>
+                <a class="page-link" href="?page=<%= page - 1 %><%= ipFilterQuery ? '&' + ipFilterQuery : '' %>" tabindex="-1"><%= t('Previous') %></a>
               </li>
               <% if (ipStartPage > 1) { %>
                 <li class="page-item"><a class="page-link" href="?page=1<%= ipFilterQuery ? '&' + ipFilterQuery : '' %>">1</a></li>
@@ -381,7 +381,7 @@ function buildExportUrl() {
                 <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= ipFilterQuery ? '&' + ipFilterQuery : '' %>"><%= totalPages %></a></li>
               <% } %>
               <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page + 1 %><%= ipFilterQuery ? '&' + ipFilterQuery : '' %>">Next</a>
+                <a class="page-link" href="?page=<%= page + 1 %><%= ipFilterQuery ? '&' + ipFilterQuery : '' %>"><%= t('Next') %></a>
               </li>
             </ul>
           </div>
@@ -397,14 +397,14 @@ function buildExportUrl() {
                       <div class="modal-content">
       <form id="addIpForm" method="POST" action="/network/ip-address">
                         <div class="modal-header">
-          <h5 class="modal-title" id="addIpModalLabel">Add IP Address</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <h5 class="modal-title" id="addIpModalLabel"><%= t('Add IP Address') %></h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
                         </div>
                         <div class="modal-body">
           <div class="row g-3">
             <div class="col-12">
-              <label for="ipAddress" class="form-label">IP Address(es) <span class="text-danger">*</span></label>
-              <small class="form-text text-muted">Enter multiple IP addresses separated by commas</small>
+              <label for="ipAddress" class="form-label"><%= t('IP Address(es)') %> <span class="text-danger">*</span></label>
+              <small class="form-text text-muted"><%= t('Enter multiple IP addresses separated by commas') %></small>
               <div class="position-relative">
                 <input type="text" class="form-control" id="ipAddress" name="address" required placeholder="192.168.1.1, 192.168.1.2, 10.0.0.1">
                 <div class="position-absolute top-50 end-0 translate-middle-y me-3" id="ipValidationIcon" style="display: none; pointer-events: none;">
@@ -420,38 +420,38 @@ function buildExportUrl() {
               </div>
             </div>
             <div class="col-12">
-              <label for="ipDescription" class="form-label">Description</label>
-              <textarea class="form-control" id="ipDescription" name="description" rows="3" placeholder="Enter IP address description"></textarea>
+              <label for="ipDescription" class="form-label"><%= t('Description') %></label>
+              <textarea class="form-control" id="ipDescription" name="description" rows="3" placeholder="<%= t('Enter IP address description') %>"></textarea>
                             </div>
             <div class="col-12">
-              <label for="ipStatus" class="form-label">Status</label>
+              <label for="ipStatus" class="form-label"><%= t('Status') %></label>
               <select class="form-select" id="ipStatus" name="status">
-                <option value="" selected>-- None (unassigned) --</option>
+                <option value="" selected>-- <%= t('None (unassigned) --') %></option>
                 <% if (typeof ipStatusOptions !== 'undefined' && ipStatusOptions.length > 0) { %>
                   <% ipStatusOptions.forEach(function(option) { %>
                     <option value="<%= option.value %>"><%= option.label %></option>
                   <% }); %>
                               <% } else { %>
-                  <option value="reserved">Reserved</option>
-                  <option value="assigned">Assigned</option>
-                  <option value="inactive">Inactive</option>
+                  <option value="reserved"><%= t('Reserved') %></option>
+                  <option value="assigned"><%= t('Assigned') %></option>
+                  <option value="inactive"><%= t('Inactive') %></option>
                               <% } %>
                               </select>
                             </div>
             <div class="col-12">
-              <label for="ipTags" class="form-label">Tags</label>
+              <label for="ipTags" class="form-label"><%= t('Tags') %></label>
               <select id="ipTags" name="tags[]" class="form-select" multiple>
                 <!-- Options will be loaded via AJAX -->
               </select>
                             </div>
             <div class="col-12">
-              <label for="ipSystems" class="form-label">Systems</label>
+              <label for="ipSystems" class="form-label"><%= t('Systems') %></label>
               <select id="ipSystems" name="systems[]" class="form-select" multiple>
                 <!-- Options will be loaded via AJAX -->
               </select>
                             </div>
             <div class="col-12">
-              <label for="ipContacts" class="form-label">Contacts</label>
+              <label for="ipContacts" class="form-label"><%= t('Contacts') %></label>
               <select id="ipContacts" name="contacts[]" class="form-select" multiple>
                 <!-- Options will be loaded via AJAX -->
               </select>
@@ -459,8 +459,8 @@ function buildExportUrl() {
                           </div>
                         </div>
                         <div class="modal-footer d-flex justify-content-end">
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary btn-sm">Add IP Address</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+          <button type="submit" class="btn btn-primary btn-sm"><%= t('Add IP Address') %></button>
                         </div>
                         </form>
                       </div>
@@ -474,49 +474,49 @@ function buildExportUrl() {
       <form id="editIpForm" method="POST" action="">
         <input type="hidden" name="page" value="<%= page %>">
                         <div class="modal-header">
-          <h5 class="modal-title" id="editIpModalLabel">Edit IP Address</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <h5 class="modal-title" id="editIpModalLabel"><%= t('Edit IP Address') %></h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
                         </div>
                           <div class="modal-body">
           <div class="row g-3">
             <div class="col-12">
-              <label for="editIpAddress" class="form-label">IP Address <span class="text-danger">*</span></label>
+              <label for="editIpAddress" class="form-label"><%= t('IP Address') %> <span class="text-danger">*</span></label>
               <input type="text" class="form-control" id="editIpAddress" name="ip_address" readonly>
-              <small class="form-text text-muted">IP address cannot be changed</small>
+              <small class="form-text text-muted"><%= t('IP address cannot be changed') %></small>
                             </div>
             <div class="col-12">
-              <label for="editIpDescription" class="form-label">Description</label>
-              <textarea class="form-control" id="editIpDescription" name="description" rows="3" placeholder="Enter IP address description"></textarea>
+              <label for="editIpDescription" class="form-label"><%= t('Description') %></label>
+              <textarea class="form-control" id="editIpDescription" name="description" rows="3" placeholder="<%= t('Enter IP address description') %>"></textarea>
                             </div>
             <div class="col-12">
-              <label for="editIpStatus" class="form-label">Status</label>
+              <label for="editIpStatus" class="form-label"><%= t('Status') %></label>
               <select class="form-select" id="editIpStatus" name="status">
-                <option value="">-- None (unassigned) --</option>
+                <option value="">-- <%= t('None (unassigned) --') %></option>
                 <% if (typeof ipStatusOptions !== 'undefined' && ipStatusOptions.length > 0) { %>
                   <% ipStatusOptions.forEach(function(option) { %>
                     <option value="<%= option.value %>"><%= option.label %></option>
                   <% }); %>
                       <% } else { %>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="reserved">Reserved</option>
+                  <option value="active"><%= t('Active') %></option>
+                  <option value="inactive"><%= t('Inactive') %></option>
+                  <option value="reserved"><%= t('Reserved') %></option>
                       <% } %>
                               </select>
                             </div>
             <div class="col-12">
-              <label for="editIpTags" class="form-label">Tags</label>
+              <label for="editIpTags" class="form-label"><%= t('Tags') %></label>
               <select id="editIpTags" name="tags[]" class="form-select" multiple>
                 <!-- Options will be loaded via AJAX -->
               </select>
                             </div>
             <div class="col-12">
-              <label for="editIpSystems" class="form-label">Systems</label>
+              <label for="editIpSystems" class="form-label"><%= t('Systems') %></label>
               <select id="editIpSystems" name="systems[]" class="form-select" multiple>
                 <!-- Options will be loaded via AJAX -->
               </select>
                             </div>
             <div class="col-12">
-              <label for="editIpContacts" class="form-label">Contacts</label>
+              <label for="editIpContacts" class="form-label"><%= t('Contacts') %></label>
               <select id="editIpContacts" name="contacts[]" class="form-select" multiple>
                 <!-- Options will be loaded via AJAX -->
               </select>
@@ -524,8 +524,8 @@ function buildExportUrl() {
                           </div>
                 </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary btn-sm">Update IP Address</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+          <button type="submit" class="btn btn-primary btn-sm"><%= t('Update IP Address') %></button>
                           </div>
                         </form>
                       </div>
@@ -537,14 +537,14 @@ function buildExportUrl() {
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="ipDetailModalLabel">IP Address Detail</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="ipDetailModalLabel"><%= t('IP Address Detail') %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
                   </div>
       <div class="modal-body" id="ipDetailContent">
         <!-- Content will be loaded here -->
                   </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Close') %></button>
       </div>
     </div>
   </div>
@@ -555,8 +555,8 @@ function buildExportUrl() {
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="filterIpModalLabel">Filter IP Addresses</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="filterIpModalLabel"><%= t('Filter IP Addresses') %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
       </div>
       <form method="GET" action="/network/ip-address" id="filterIpForm">
         <input type="hidden" name="page" value="1">
@@ -567,46 +567,46 @@ function buildExportUrl() {
           <div class="row g-2">
             <!-- Status Filter -->
             <div class="col-12 mb-2">
-              <label for="filterIpStatus" class="form-label">Status</label>
+              <label for="filterIpStatus" class="form-label"><%= t('Status') %></label>
               <select class="form-control" id="filterIpStatus" name="status">
-                <option value="">All Status</option>
-                <option value="__none__" <%= filterStatus === '__none__' ? 'selected' : '' %>>-- None (unassigned) --</option>
+                <option value=""><%= t('All Status') %></option>
+                <option value="__none__" <%= filterStatus === '__none__' ? 'selected' : '' %>>-- <%= t('None (unassigned) --') %></option>
                 <% if (typeof ipStatusOptions !== 'undefined' && ipStatusOptions.length > 0) { %>
                   <% ipStatusOptions.forEach(function(option) { %>
                     <option value="<%= option.value %>" <%= filterStatus === option.value ? 'selected' : '' %>><%= option.label %></option>
                   <% }); %>
                       <% } else { %>
-                  <option value="active" <%= filterStatus === 'active' ? 'selected' : '' %>>Active</option>
-                  <option value="inactive" <%= filterStatus === 'inactive' ? 'selected' : '' %>>Inactive</option>
-                  <option value="reserved" <%= filterStatus === 'reserved' ? 'selected' : '' %>>Reserved</option>
+                  <option value="active" <%= filterStatus === 'active' ? 'selected' : '' %>><%= t('Active') %></option>
+                  <option value="inactive" <%= filterStatus === 'inactive' ? 'selected' : '' %>><%= t('Inactive') %></option>
+                  <option value="reserved" <%= filterStatus === 'reserved' ? 'selected' : '' %>><%= t('Reserved') %></option>
                       <% } %>
               </select>
                   </div>
                   
             <!-- Tags Filter -->
             <div class="col-12 mb-2">
-              <label class="form-label">Tags</label>
+              <label class="form-label"><%= t('Tags') %></label>
               <select id="filterIpTags" name="tags[]" class="form-control" multiple></select>
                   </div>
                   
             <!-- Systems Filter -->
             <div class="col-12 mb-2">
-              <label class="form-label">Systems</label>
+              <label class="form-label"><%= t('Systems') %></label>
               <select id="filterIpSystems" name="systems[]" class="form-control" multiple></select>
                   </div>
                   
             <!-- Contacts Filter -->
             <div class="col-12 mb-2">
-              <label class="form-label">Contacts</label>
+              <label class="form-label"><%= t('Contacts') %></label>
               <select id="filterIpContacts" name="contacts[]" class="form-control" multiple></select>
                   </div>
                 </div>
                 </div>
         <div class="modal-footer d-flex justify-content-between">
-          <button type="button" class="btn btn-outline-danger" id="clearFilterBtnIp">Clear All Filters</button>
+          <button type="button" class="btn btn-outline-danger" id="clearFilterBtnIp"><%= t('Clear All Filters') %></button>
           <div>
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-            <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+            <button type="submit" class="btn btn-primary btn-sm"><%= t('Apply Filters') %></button>
               </div>
         </div>
       </form>
@@ -619,33 +619,33 @@ function buildExportUrl() {
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="importIpModalLabel">Import IP Addresses</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="importIpModalLabel"><%= t('Import IP Addresses') %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
             </div>
       <div class="modal-body">
         <form id="importIpForm" enctype="multipart/form-data">
           <div class="mb-3">
-            <label for="ipImportFile" class="form-label">Select File <span class="text-danger">*</span></label>
+            <label for="ipImportFile" class="form-label"><%= t('Select File') %> <span class="text-danger">*</span></label>
             <div class="input-group">
               <input type="file" class="form-control" id="ipImportFile" name="file" accept=".xlsx,.xls" required>
               <a href="/network/ip-address/template" class="btn btn-outline-info" download>
-                <i class="bi bi-download"></i> Download Template
+                <i class="bi bi-download"></i> <%= t('Download Template') %>
               </a>
             </div>
-            <div class="form-text">Supported format: Excel (.xlsx, .xls). Maximum file size: 10MB</div>
+            <div class="form-text"><%= t('Supported format: Excel (.xlsx, .xls). Maximum file size: 10MB') %></div>
           </div>
           
           <div class="mb-3">
             <div class="alert alert-info">
-              <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
+              <h6><i class="bi bi-info-circle"></i> <%= t('Import Instructions:') %></h6>
               <ul class="mb-0">
-                <li>Click "Download Template" to get the Excel template with correct format</li>
-                <li>Fill the template with your IP addresses data</li>
-                <li>IPAddress (Require, one per row) is required and must be valid IP format</li>
-                <li>Description is optional</li>
-                <li>Status is optional (default: reserved)</li>
-                <li>Tags, Systems, and Contacts are optional and can be comma-separated if multiple</li>
-                <li>Select your filled template file and validate before importing</li>
+                <li><%= t('Click "Download Template" to get the Excel template with correct format') %></li>
+                <li><%= t('Fill the template with your IP addresses data') %></li>
+                <li><%= t('IPAddress (Require, one per row) is required and must be valid IP format') %></li>
+                <li><%= t('Description is optional') %></li>
+                <li><%= t('Status is optional (default: reserved)') %></li>
+                <li><%= t('Tags, Systems, and Contacts are optional and can be comma-separated if multiple') %></li>
+                <li><%= t('Select your filled template file and validate before importing') %></li>
             </ul>
           </div>
         </div>
@@ -660,9 +660,9 @@ function buildExportUrl() {
         </form>
     </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-warning btn-sm" id="validateIpBtn">Validate File</button>
-        <button type="button" class="btn btn-success btn-sm" id="importIpBtn" style="display: none;">Import IP Addresses</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+        <button type="button" class="btn btn-warning btn-sm" id="validateIpBtn"><%= t('Validate File') %></button>
+        <button type="button" class="btn btn-success btn-sm" id="importIpBtn" style="display: none;"><%= t('Import IP Addresses') %></button>
   </div>
 </div>
   </div>
@@ -693,7 +693,7 @@ function buildExportUrl() {
   // Status select2 - Bootstrap 5 theme (matches Tags/Systems/Contacts styling)
     $('#ipStatus').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select status',
+      placeholder: t('Select status'),
       allowClear: true,
       width: '100%',
       dropdownParent: $('#addIpModal')
@@ -702,7 +702,7 @@ function buildExportUrl() {
   // Tags select2 AJAX - Bootstrap 5 theme (clone from system_add.ejs)
     $('#ipTags').select2({
       theme: 'bootstrap-5',
-    placeholder: 'Select tags (optional)',
+    placeholder: t('Select tags (optional)'),
       allowClear: true,
       width: '100%',
     multiple: true,
@@ -724,7 +724,7 @@ function buildExportUrl() {
   // Systems select2 AJAX - Bootstrap 5 theme (clone from system_add.ejs)
   $('#ipSystems').select2({
       theme: 'bootstrap-5',
-    placeholder: 'Select systems (optional)',
+    placeholder: t('Select systems (optional)'),
       allowClear: true,
       width: '100%',
     multiple: true,
@@ -746,7 +746,7 @@ function buildExportUrl() {
   // Contacts select2 AJAX - Bootstrap 5 theme (clone from system_add.ejs)
   $('#ipContacts').select2({
       theme: 'bootstrap-5',
-    placeholder: 'Select contacts (optional)',
+    placeholder: t('Select contacts (optional)'),
       allowClear: true,
       width: '100%',
     multiple: true,
@@ -820,7 +820,7 @@ function buildExportUrl() {
     if (!ipInput) {
       e.preventDefault();
       $('#ipAddress').addClass('is-invalid');
-      $('#ipAddressError').text('Please enter at least one IP address');
+      $('#ipAddressError').text(t('Please enter at least one IP address'));
       return;
     }
     
@@ -851,7 +851,7 @@ function buildExportUrl() {
   // Status select2 - Bootstrap 5 theme (matches Tags/Systems/Contacts styling)
   $('#editIpStatus').select2({
     theme: 'bootstrap-5',
-    placeholder: 'Select status',
+    placeholder: t('Select status'),
     allowClear: true,
     width: '100%',
     dropdownParent: $('#editIpModal')
@@ -859,7 +859,7 @@ function buildExportUrl() {
 
   $('#editIpTags').select2({
             theme: 'bootstrap-5',
-    placeholder: 'Select tags (optional)',
+    placeholder: t('Select tags (optional)'),
     multiple: true,
             allowClear: true,
             width: '100%',
@@ -880,7 +880,7 @@ function buildExportUrl() {
 
   $('#editIpSystems').select2({
             theme: 'bootstrap-5',
-    placeholder: 'Select systems (optional)',
+    placeholder: t('Select systems (optional)'),
     multiple: true,
             allowClear: true,
             width: '100%',
@@ -901,7 +901,7 @@ function buildExportUrl() {
 
   $('#editIpContacts').select2({
             theme: 'bootstrap-5',
-    placeholder: 'Select contacts (optional)',
+    placeholder: t('Select contacts (optional)'),
     multiple: true,
             allowClear: true,
             width: '100%',
@@ -986,7 +986,7 @@ function buildExportUrl() {
   // Status select2 - Bootstrap 5 theme (matches Tags/Systems/Contacts styling)
   $('#filterIpStatus').select2({
     theme: 'bootstrap-5',
-    placeholder: 'All Status',
+    placeholder: t('All Status'),
     allowClear: true,
     width: '100%',
     dropdownParent: $('#filterIpModal')
@@ -994,7 +994,7 @@ function buildExportUrl() {
 
   $('#filterIpTags').select2({
             theme: 'bootstrap-5',
-            placeholder: 'Select tag(s)',
+            placeholder: t('Select tag(s)'),
             allowClear: true,
             width: '100%',
     dropdownParent: $('#filterIpModal'),
@@ -1014,7 +1014,7 @@ function buildExportUrl() {
 
   $('#filterIpSystems').select2({
             theme: 'bootstrap-5',
-    placeholder: 'Select system(s)',
+    placeholder: t('Select system(s)'),
             allowClear: true,
             width: '100%',
     dropdownParent: $('#filterIpModal'),
@@ -1041,7 +1041,7 @@ function buildExportUrl() {
 
   $('#filterIpContacts').select2({
             theme: 'bootstrap-5',
-    placeholder: 'Select contact(s)',
+    placeholder: t('Select contact(s)'),
             allowClear: true,
             width: '100%',
     dropdownParent: $('#filterIpModal'),
@@ -1317,7 +1317,7 @@ function checkMultipleIPsExist(ipList, inputElement, errorDiv) {
 
         
 function confirmDeleteIp(form, ip) {
-  if (confirm('Are you sure you want to delete the IP address: ' + ip + '?')) {
+  if (confirm(t('Are you sure you want to delete the IP address: ') + ip + '?')) {
     form._deleting = true;
     return true;
   }
@@ -1503,7 +1503,7 @@ function showIpDetail(ipId) {
   }
   
   if (!targetButton) {
-    alert('IP data not found');
+    alert(t('IP data not found'));
     return;
   }
   
@@ -1512,7 +1512,7 @@ function showIpDetail(ipId) {
   try {
     ip = JSON.parse(ipData);
   } catch (e) {
-    alert('Error parsing IP data: ' + e.message);
+    alert(t('Error parsing IP data: ') + e.message);
     return;
   }
   
@@ -1642,7 +1642,7 @@ $(document).on('change', '#ipImportFile', function() {
 // Handle validate button click
 $(document).on('click', '#validateIpBtn', function() {
   if (!selectedFile) {
-    alert('Please select a file first');
+    alert(t('Please select a file first'));
     return;
   }
   
@@ -1651,7 +1651,7 @@ $(document).on('click', '#validateIpBtn', function() {
   
   // Show progress
   $('#ipImportProgress').show();
-  $('#ipImportResults').text('Validating file...');
+  $('#ipImportResults').text(t('Validating file...'));
   $('.progress-bar').css('width', '30%');
   
   let nativeXhr;
@@ -1668,7 +1668,7 @@ $(document).on('click', '#validateIpBtn', function() {
     },
     success: function(data, status, xhr) {
       $('.progress-bar').css('width', '100%');
-      $('#ipImportResults').text('Validation complete! Downloading results...');
+      $('#ipImportResults').text(t('Validation complete! Downloading results...'));
       
       // Handle file download
       const contentType = xhr.getResponseHeader('Content-Type');
@@ -1734,7 +1734,7 @@ $(document).on('click', '#validateIpBtn', function() {
       console.error('Status:', xhr.status);
       console.error('Error:', error);
 
-      $('.progress-bar').css('width', '100%').text('Validation Failed');
+      $('.progress-bar').css('width', '100%').text(t('Validation Failed'));
       extractImportErrorMessage(nativeXhr || xhr).then(function(msg) {
         $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
           .html('<strong>Validation Error!</strong><br>' + msg)
@@ -1753,7 +1753,7 @@ $(document).on('click', '#validateIpBtn', function() {
 // Handle import button click
 $(document).on('click', '#importIpBtn', function() {
   if (!selectedFile) {
-    alert('Please select a file first');
+    alert(t('Please select a file first'));
     return;
   }
   
@@ -1762,8 +1762,8 @@ $(document).on('click', '#importIpBtn', function() {
   
   // Show progress
   $('#ipImportProgress').show();
-  $('#ipImportResults').text('Importing IP addresses...');
-  $('.progress-bar').css('width', '30%').text('Importing...');
+  $('#ipImportResults').text(t('Importing IP addresses...'));
+  $('.progress-bar').css('width', '30%').text(t('Importing...'));
   $('#importIpBtn').prop('disabled', true);
   
   let nativeXhr;
@@ -1779,7 +1779,7 @@ $(document).on('click', '#importIpBtn', function() {
       return nativeXhr;
     },
     success: function(data, status, xhr) {
-      $('#ipImportProgress .progress-bar').css('width', '100%').text('Import Complete');
+      $('#ipImportProgress .progress-bar').css('width', '100%').text(t('Import Complete'));
       
       // Handle file download
       const contentType = xhr.getResponseHeader('Content-Type');
@@ -1843,7 +1843,7 @@ $(document).on('click', '#importIpBtn', function() {
       console.error('Status:', xhr.status);
       console.error('Error:', error);
 
-      $('#ipImportProgress .progress-bar').css('width', '100%').text('Import Failed');
+      $('#ipImportProgress .progress-bar').css('width', '100%').text(t('Import Failed'));
       extractImportErrorMessage(nativeXhr || xhr).then(function(msg) {
         $('#ipImportResults').removeClass('alert-success').addClass('alert-danger')
           .html('<strong>Import Error!</strong><br>' + msg)

@@ -410,6 +410,28 @@ server {
 }
 ```
 
+## 🌐 Languages (Vietnamese / English)
+
+The UI is bilingual. Users switch with the **VI / EN** menu in the header (or the
+links under the login form); the choice is saved to their profile and applied at
+every login. Otherwise the browser language is used, then `DEFAULT_LANGUAGE`
+(`en` or `vi`). Data entered by users is never translated, and the REST API stays
+in English.
+
+How it works (gettext style — the English text is the key):
+
+- Templates: `<%= t('Add System') %>`, with placeholders `<%= t('Showing {1} - {2} of {3} systems', { 1: from, 2: to, 3: total }) %>`.
+- Server code: `req.t('...')`. Browser scripts: `window.t('...')` (loaded from `/i18n/<lang>.js`).
+- Page titles, flash and error messages are translated when displayed.
+- Vietnamese translations: `src/i18n/locales/vi.json` (`"English": "Tiếng Việt"`). A string without a translation simply shows in English.
+
+After adding or changing UI text:
+
+```bash
+npm run i18n:check             # lists strings that have no Vietnamese translation
+npm run i18n:check -- --write  # adds them to vi.json with an empty value, ready to translate
+```
+
 ## 🔧 Development
 
 ### Running Tests

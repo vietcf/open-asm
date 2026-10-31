@@ -53,11 +53,14 @@ for (const { dir, ext, only } of SCAN) {
   for (const file of walk(dir, ext, only)) {
     if (SKIP.has(file)) continue;
     const src = fs.readFileSync(path.join(ROOT, file), 'utf8');
-    const patterns = [CALL_RE, ...(IMPLICIT_DIRS.some(d => file.startsWith(d)) ? IMPLICIT_RE : [])];
-    for (const m of patterns.flatMap(re => [...src.matchAll(re)])) {
+    const implicit = IMPLICIT_DIRS.some(d => file.startsWith(d)) ? IMPLICIT_RE : [];
+    const matches = [...src.matchAll(CALL_RE)].map(m => [m, false])
+      .concat(implicit.flatMap(re => [...src.matchAll(re)].map(m => [m, true])));
+    for (const [m, isImplicit] of matches) {
       let text = unescape(m[1] ?? m[2] ?? m[3]);
       if (text.includes('%20')) text = decodeURIComponent(text);
-      if (!text.trim() || !/[A-Za-z]/.test(text) || !/^[A-Z]/.test(text.trim())) continue;
+      if (!text.trim() || !/[A-Za-zÀ-ỹ]/.test(text)) continue;
+      if (isImplicit && !/^[A-Z]/.test(text.trim())) continue; // titles/messages start with a capital
       if (!used.has(text)) used.set(text, `${file}:${src.slice(0, m.index).split('\n').length}`);
     }
   }

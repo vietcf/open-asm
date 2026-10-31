@@ -4,8 +4,8 @@
     <div class="row">
       <div class="col-12">
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/">Home</a></li>
-          <li class="breadcrumb-item active">Component List</li>
+          <li class="breadcrumb-item"><a href="/"><%= t('Home') %></a></li>
+          <li class="breadcrumb-item active"><%= t('Component List') %></li>
         </ol>
       </div>
     </div>
@@ -21,11 +21,11 @@
         <div class="d-flex justify-content-end align-items-center gap-2">
           <form class="d-flex align-items-center gap-2" role="search" method="get" action="/system/component">
             <div class="input-group input-group-sm" style="width: 250px;">
-              <input class="form-control form-control-sm" type="search" name="search" placeholder="Search by name, system..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+              <input class="form-control form-control-sm" type="search" name="search" placeholder="<%= t('Search by name, system...') %>" aria-label="<%= t('Search') %>" value="<%= typeof search !== 'undefined' ? search : '' %>">
               <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
             </div>
             <div class="d-flex align-items-center gap-1">
-              <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+              <label class="form-label form-label-sm mb-0 text-muted"><%= t('Show:') %></label>
               <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
                 <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
                   <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
@@ -43,7 +43,7 @@
         <div class="d-flex justify-content-end gap-2">
           <% if (hasPermission && hasPermission('system.create')) { %>
             <a href="/system/component/add" class="btn btn-primary btn-sm">
-              <i class="bi bi-plus"></i> Add Component
+              <i class="bi bi-plus"></i> <%= t('Add Component') %>
             </a>
           <% } %>
           <%
@@ -55,7 +55,7 @@
             );
           %>
           <button type="button" class="btn btn-sm <%= hasActiveComponentFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterComponentModal">
-            <i class="bi bi-funnel<%= hasActiveComponentFilter ? '-fill' : '' %>"></i> Filter<%= hasActiveComponentFilter ? ' (Filtered)' : '' %>
+            <i class="bi bi-funnel<%= hasActiveComponentFilter ? '-fill' : '' %>"></i> <%= t('Filter{1}', { 1: hasActiveComponentFilter ? ' (Filtered)' : '' }) %>
           </button>
         </div>
       </div>
@@ -69,34 +69,34 @@
               <input type="hidden" name="pageSize" value="<%= typeof pageSize !== 'undefined' ? pageSize : 10 %>">
               <input type="hidden" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>">
               <div class="modal-header">
-                <h5 class="modal-title" id="filterComponentModalLabel">Filter Component List</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="filterComponentModalLabel"><%= t('Filter Component List') %></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
               </div>
               <div class="modal-body">
                 <div class="row g-2">
                   <div class="col-12 mb-2">
-                    <label class="form-label">Tags</label>
+                    <label class="form-label"><%= t('Tags') %></label>
                     <select id="filterComponentTags" name="tags[]" class="form-control" multiple></select>
                   </div>
                   <div class="col-12 mb-2">
-                    <label class="form-label">Contacts</label>
+                    <label class="form-label"><%= t('Contacts') %></label>
                     <select id="filterComponentContacts" name="contacts[]" class="form-control" multiple></select>
                   </div>
                   <div class="col-12 mb-2">
-                    <label class="form-label">System</label>
+                    <label class="form-label"><%= t('System') %></label>
                     <select id="filterComponentSystem" name="system_id[]" class="form-control" multiple></select>
                   </div>
                   <div class="col-12 mb-2">
-                    <label class="form-label">App Type</label>
+                    <label class="form-label"><%= t('App Type') %></label>
                     <select id="filterComponentAppType" name="app_type[]" class="form-control" multiple></select>
                   </div>
                 </div>
               </div>
               <div class="modal-footer d-flex justify-content-between">
-                <button type="button" id="clearFilterBtnComponent" class="btn btn-outline-danger btn-sm">Clear All Filters</button>
+                <button type="button" id="clearFilterBtnComponent" class="btn btn-outline-danger btn-sm"><%= t('Clear All Filters') %></button>
                 <div>
-                  <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
-                  <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
+                  <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+                  <button type="submit" class="btn btn-primary btn-sm"><%= t('Apply Filter') %></button>
                 </div>
               </div>
             </form>
@@ -116,7 +116,7 @@
   <% if (typeof successMessage !== 'undefined' && successMessage) { %>
     <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
       <i class="bi bi-check-circle me-2"></i><%= t(successMessage) %>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
     </div>
     <script>
       // Auto-hide success message after 5 seconds
@@ -133,7 +133,7 @@
   <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
     <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
       <i class="bi bi-exclamation-triangle me-2"></i><%= t(errorMessage) %>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
     </div>
     <script>
       // Auto-hide error message after 8 seconds (longer for errors)
@@ -152,20 +152,20 @@
     <div class="col-12">
       <div class="card">
         <div class="card-header">
-          <h3 class="card-title mb-0">Component List</h3>
+          <h3 class="card-title mb-0"><%= t('Component List') %></h3>
         </div>
         <div class="card-body table-responsive p-0" style="overflow-x: auto;">
           <table class="table table-hover" id="componentTable">
             <!-- Table Header -->
             <thead>
               <tr>
-                <th>No.</th>
-                <th data-sort-type="text">Component Name</th>
-                <th data-sort-type="text">System</th>
-                <th data-sort-type="text">Description</th>
-                <th data-sort-type="text">Tags</th>
-                <th data-sort-type="text">App Type</th>
-                <th class="text-end">Actions</th>
+                <th><%= t('No.') %></th>
+                <th data-sort-type="text"><%= t('Component Name') %></th>
+                <th data-sort-type="text"><%= t('System') %></th>
+                <th data-sort-type="text"><%= t('Description') %></th>
+                <th data-sort-type="text"><%= t('Tags') %></th>
+                <th data-sort-type="text"><%= t('App Type') %></th>
+                <th class="text-end"><%= t('Actions') %></th>
               </tr>
             </thead>
             
@@ -213,7 +213,7 @@
                           <% }) %>
                         </div>
                       <% } else { %>
-                        <span class="text-muted">No tags</span>
+                        <span class="text-muted"><%= t('No tags') %></span>
                       <% } %>
                     </td>
                     
@@ -222,14 +222,14 @@
                       <% if (component.app_type) { %>
                         <%= component.app_type %>
                       <% } else { %>
-                        <span class="text-muted">No data</span>
+                        <span class="text-muted"><%= t('No data') %></span>
                       <% } %>
                     </td>
                     
                     <!-- Actions -->
                     <td class="text-end">
                       <!-- Show Button -->
-                      <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showComponentDetail('<%= component.id %>')" data-component='<%= JSON.stringify(component) %>'><i class="bi bi-eye"></i></button>
+                      <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showComponentDetail('<%= component.id %>')" data-component='<%= JSON.stringify(component) %>'><i class="bi bi-eye"></i></button>
                       
                       <!-- Edit Button -->
                       <% if (hasPermission && hasPermission('system.update')) { %>
@@ -256,7 +256,7 @@
                 <% }) %>
               <% } else { %>
                 <tr>
-                  <td colspan="7" class="text-center">No components found.</td>
+                  <td colspan="7" class="text-center"><%= t('No components found.') %></td>
                 </tr>
               <% } %>
             </tbody>
@@ -277,7 +277,7 @@
                   cEndItem = 0;
                 }
               %>
-              <span>Showing <%= cStartItem %> - <%= cEndItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> components</span>
+              <span><%= t('Showing {1} - {2} of {3} components', { 1: cStartItem, 2: cEndItem, 3: typeof totalCount !== 'undefined' ? totalCount : 0 }) %></span>
             </div>
             
             <!-- Pagination -->
@@ -332,7 +332,7 @@
                 <a class="page-link" 
                    href="?page=<%= page - 1 %><%= filterQuery ? '&' + filterQuery : '' %>" 
                    tabindex="-1">
-                  Previous
+                  <%= t('Previous') %>
                 </a>
               </li>
               
@@ -378,7 +378,7 @@
               <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
                 <a class="page-link" 
                    href="?page=<%= page + 1 %><%= filterQuery ? '&' + filterQuery : '' %>">
-                  Next
+                  <%= t('Next') %>
                 </a>
               </li>
             </ul>
@@ -394,8 +394,8 @@
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="componentDetailModalLabel">Component Detail</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="componentDetailModalLabel"><%= t('Component Detail') %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
       </div>
       <div class="modal-body" id="componentDetailContent">
         <!-- Content will be loaded here -->
@@ -403,10 +403,10 @@
       <div class="modal-footer">
         <% if (hasPermission && hasPermission('pentest.read')) { %>
           <button type="button" class="btn btn-outline-primary btn-sm me-auto" onclick="showPentestQuickView('system_component', window.currentDetailComponentId)">
-            <i class="bi bi-shield-check"></i> Pentest History
+            <i class="bi bi-shield-check"></i> <%= t('Pentest History') %>
           </button>
         <% } %>
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Close') %></button>
       </div>
     </div>
   </div>
@@ -417,15 +417,15 @@
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="pentestQuickViewModalLabel">Pentest History</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="pentestQuickViewModalLabel"><%= t('Pentest History') %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
       </div>
       <div class="modal-body" id="pentestQuickViewContent">
         <!-- Content will be loaded here -->
       </div>
       <div class="modal-footer">
-        <a id="pentestQuickViewManageLink" href="/pentest" class="btn btn-outline-primary btn-sm me-auto">Manage in Pentest page</a>
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+        <a id="pentestQuickViewManageLink" href="/pentest" class="btn btn-outline-primary btn-sm me-auto"><%= t('Manage in Pentest page') %></a>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Close') %></button>
       </div>
     </div>
   </div>
@@ -496,7 +496,7 @@
     // Initialize Tags Select2
     $('#filterComponentTags').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select tag(s)',
+      placeholder: t('Select tag(s)'),
       allowClear: true,
       width: '100%',
       dropdownParent: $modalContent,
@@ -512,7 +512,7 @@
     // Initialize Contacts Select2
     $('#filterComponentContacts').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select contact(s)',
+      placeholder: t('Select contact(s)'),
       allowClear: true,
       width: '100%',
       dropdownParent: $modalContent,
@@ -537,7 +537,7 @@
     // Initialize System Select2
     $('#filterComponentSystem').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select system(s)',
+      placeholder: t('Select system(s)'),
       allowClear: true,
       width: '100%',
       dropdownParent: $modalContent,
@@ -564,7 +564,7 @@
     ];
     $('#filterComponentAppType').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select app type(s)',
+      placeholder: t('Select app type(s)'),
       allowClear: true,
       width: '100%',
       dropdownParent: $modalContent,
@@ -736,7 +736,7 @@
     
     if (!targetButton) {
       console.error('Button not found for component ID:', componentId);
-      alert('Button not found for component ID: ' + componentId);
+      alert(t('Button not found for component ID: ') + componentId);
       return;
     }
     
@@ -748,14 +748,14 @@
     // Check if Bootstrap is available
     if (typeof bootstrap === 'undefined') {
       console.error('Bootstrap is not loaded');
-      alert('Bootstrap is not loaded');
+      alert(t('Bootstrap is not loaded'));
       return;
     }
     
     const modalElement = document.getElementById('componentDetailModal');
     if (!modalElement) {
       console.error('Modal element not found');
-      alert('Modal element not found');
+      alert(t('Modal element not found'));
       return;
     }
     

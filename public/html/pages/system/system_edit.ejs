@@ -5,9 +5,9 @@
     <div class="row">
       <div class="col-12">
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/">Home</a></li>
-          <li class="breadcrumb-item"><a href="/system/system">System List</a></li>
-          <li class="breadcrumb-item active">Edit System</li>
+          <li class="breadcrumb-item"><a href="/"><%= t('Home') %></a></li>
+          <li class="breadcrumb-item"><a href="/system/system"><%= t('System List') %></a></li>
+          <li class="breadcrumb-item active"><%= t('Edit System') %></li>
         </ol>
       </div>
     </div>
@@ -21,34 +21,34 @@
       <div class="col-lg-8 col-md-10 col-sm-12">
       <div class="card mt-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">Edit System</h5>
+          <h5 class="mb-0"><%= t('Edit System') %></h5>
         </div>
         <form id="editSystemForm" action="/system/system/<%= system.id %>/edit" method="POST" enctype="multipart/form-data">
           <div class="card-body">
             <div class="mb-3">
-              <label class="form-label">System ID <span class="text-danger">*</span></label>
-              <input type="text" name="system_id" class="form-control" value="<%= system.system_id %>" placeholder="Enter system ID" required>
+              <label class="form-label"><%= t('System ID') %> <span class="text-danger">*</span></label>
+              <input type="text" name="system_id" class="form-control" value="<%= system.system_id %>" placeholder="<%= t('Enter system ID') %>" required>
             </div>
             <div class="mb-3">
-              <label class="form-label">System Name <span class="text-danger">*</span></label>
-              <input type="text" name="name" class="form-control" value="<%= system.name %>" placeholder="Enter system name" required>
+              <label class="form-label"><%= t('System Name') %> <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" value="<%= system.name %>" placeholder="<%= t('Enter system name') %>" required>
             </div>
             <div class="mb-3">
-              <label class="form-label">Alias (comma separated)</label>
-              <input type="text" name="alias" class="form-control" value="<%= Array.isArray(system.alias) ? system.alias.join(', ') : (system.alias || '') %>" placeholder="e.g. alias1, alias2">
+              <label class="form-label"><%= t('Alias (comma separated)') %></label>
+              <input type="text" name="alias" class="form-control" value="<%= Array.isArray(system.alias) ? system.alias.join(', ') : (system.alias || '') %>" placeholder="<%= t('e.g. alias1, alias2') %>">
             </div>
             <div class="mb-3">
-              <label class="form-label">FQDN (comma separated, optional)</label>
-              <input type="text" name="fqdn" class="form-control" value="<%= Array.isArray(system.fqdn) ? system.fqdn.join(', ') : (system.fqdn || '') %>" placeholder="e.g. host1.example.com, host2.example.com">
+              <label class="form-label"><%= t('FQDN (comma separated, optional)') %></label>
+              <input type="text" name="fqdn" class="form-control" value="<%= Array.isArray(system.fqdn) ? system.fqdn.join(', ') : (system.fqdn || '') %>" placeholder="<%= t('e.g. host1.example.com, host2.example.com') %>">
             </div>
             <div class="mb-3">
-              <label class="form-label">Description</label>
-              <textarea name="description" class="form-control" rows="5" placeholder="Please provide the following information: 1) What business functions/features does this system provide? 2) What components does the system include? 3) Who are the target users of this system?"><%= system.description || '' %></textarea>
+              <label class="form-label"><%= t('Description') %></label>
+              <textarea name="description" class="form-control" rows="5" placeholder="<%= t('Please provide the following information: 1) What business functions/features does this system provide? 2) What components does the system include? 3) Who are the target users of this system?') %>"><%= system.description || '' %></textarea>
             </div>
             <div class="mb-3">
-              <label class="form-label">Level</label>
+              <label class="form-label"><%= t('Level') %></label>
               <select name="level" class="form-select">
-                <option value="">-- Select Level --</option>
+                <option value="">-- <%= t('Select Level --') %></option>
                 <% if (typeof levelOptions !== 'undefined' && Array.isArray(levelOptions)) { %>
                   <% levelOptions.forEach(function(opt) { %>
                     <option value="<%= opt.id %>" <%= system.level == opt.id ? 'selected' : '' %>><%= opt.text %></option>
@@ -57,7 +57,7 @@
               </select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Department (Unit)</label>
+              <label class="form-label"><%= t('Department (Unit)') %></label>
               <select id="unit-select" name="department_id" class="form-select">
                 <% if (system.department_id && system.department_name) { %>
                   <option value="<%= system.department_id %>" selected><%= system.department_name %></option>
@@ -65,23 +65,23 @@
               </select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Domains</label>
-              <select id="domain-select" name="domains[]" class="form-select" multiple data-placeholder="Select domains"></select>
+              <label class="form-label"><%= t('Domains') %></label>
+              <select id="domain-select" name="domains[]" class="form-select" multiple data-placeholder="<%= t('Select domains') %>"></select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Managers</label>
-              <select id="manager-select" name="contacts[]" class="form-select" multiple data-placeholder="Select contacts"></select>
+              <label class="form-label"><%= t('Managers') %></label>
+              <select id="manager-select" name="contacts[]" class="form-select" multiple data-placeholder="<%= t('Select contacts') %>"></select>
             </div>
             <div class="mb-3">
-              <label class="form-label">IP Addresses</label>
-              <select id="ip-select" name="ip_addresses[]" class="form-select" multiple data-placeholder="Select IP addresses"></select>
+              <label class="form-label"><%= t('IP Addresses') %></label>
+              <select id="ip-select" name="ip_addresses[]" class="form-select" multiple data-placeholder="<%= t('Select IP addresses') %>"></select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Tags</label>
-              <select id="tag-select" name="tags[]" class="form-select" multiple data-placeholder="Select tags"></select>
+              <label class="form-label"><%= t('Tags') %></label>
+              <select id="tag-select" name="tags[]" class="form-select" multiple data-placeholder="<%= t('Select tags') %>"></select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Scope user access</label>
+              <label class="form-label"><%= t('Scope user access') %></label>
               <select id="scope-select" name="scopes[]" class="form-select" multiple>
                 <% if (scopeOptions && scopeOptions.length > 0) { %>
                   <% scopeOptions.forEach(option => { %>
@@ -89,10 +89,10 @@
                   <% }) %>
                 <% } %>
               </select>
-              <div class="form-text">Select applicable scopes for this system. Leave empty if no specific scope is defined.</div>
+              <div class="form-text"><%= t('Select applicable scopes for this system. Leave empty if no specific scope is defined.') %></div>
             </div>
             <div class="mb-3">
-              <label class="form-label">System Architecture</label>
+              <label class="form-label"><%= t('System Architecture') %></label>
               <select id="architecture-select" name="architecture[]" class="form-select" multiple>
                 <% if (architectureOptions && architectureOptions.length > 0) { %>
                   <% architectureOptions.forEach(option => { %>
@@ -100,50 +100,50 @@
                   <% }) %>
                 <% } %>
               </select>
-              <div class="form-text">Select applicable architecture types for this system. Leave empty if no specific architecture is defined.</div>
+              <div class="form-text"><%= t('Select applicable architecture types for this system. Leave empty if no specific architecture is defined.') %></div>
             </div>
             <div id="existing-files-data" data-files='<%= JSON.stringify(system.docs || []) %>' style="display:none"></div>
             <div class="mb-3">
-              <label class="form-label">Attached Files</label>
+              <label class="form-label"><%= t('Attached Files') %></label>
               <ul id="uploaded-files-list" class="list-group mb-2"></ul>
               <input type="hidden" name="delete_files" id="delete_files" value="[]">
             </div>
             <div class="mb-3">
-              <label for="docs-upload-edit" class="form-label">Upload New Files</label>
+              <label for="docs-upload-edit" class="form-label"><%= t('Upload New Files') %></label>
               <input type="file" id="docs-upload-edit" class="form-control" multiple>
               <input type="hidden" name="uploaded_docs_edit" id="uploaded-docs-edit-hidden">
               <div id="selected-docs-list-edit" class="form-text"></div>
-              <small class="form-text text-muted">You can select multiple files.</small>
+              <small class="form-text text-muted"><%= t('You can select multiple files.') %></small>
             </div>
             <!-- Modal for adding new manager -->
             <div class="modal fade" id="addManagerModal" tabindex="-1" aria-labelledby="addManagerModalLabel" aria-hidden="true">
               <div class="modal-dialog">
                 <div class="modal-content">
                   <div class="modal-header">
-                    <h5 class="modal-title" id="addManagerModalLabel">Add New Manager</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title" id="addManagerModalLabel"><%= t('Add New Manager') %></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
                   </div>
                   <div class="modal-body">
                     <div class="mb-3">
-                      <label class="form-label">Name</label>
-                      <input type="text" class="form-control" id="new-manager-name" placeholder="Enter contact name">
+                      <label class="form-label"><%= t('Name') %></label>
+                      <input type="text" class="form-control" id="new-manager-name" placeholder="<%= t('Enter contact name') %>">
                     </div>
                     <div class="mb-3">
-                      <label class="form-label">Email</label>
-                      <input type="email" class="form-control" id="new-manager-email" placeholder="Enter email address">
+                      <label class="form-label"><%= t('Email') %></label>
+                      <input type="email" class="form-control" id="new-manager-email" placeholder="<%= t('Enter email address') %>">
                     </div>
                   </div>
                   <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary btn-sm" id="save-manager-btn">Add</button>
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+                    <button type="button" class="btn btn-primary btn-sm" id="save-manager-btn"><%= t('Add') %></button>
                   </div>
                 </div>
               </div>
             </div>
           </div>
           <div class="card-footer d-flex justify-content-end">
-            <a href="/system/system" class="btn btn-secondary btn-sm me-2">Cancel</a>
-            <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+            <a href="/system/system" class="btn btn-secondary btn-sm me-2"><%= t('Cancel') %></a>
+            <button type="submit" class="btn btn-primary btn-sm"><%= t('Save Changes') %></button>
           </div>
         </form>
       </div>
@@ -207,7 +207,7 @@
     });
     $('#server-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select server(s)',
+      placeholder: t('Select server(s)'),
       width: '100%',
       allowClear: true,
       ajax: {
@@ -263,19 +263,19 @@
     });
     $('#scope-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select scopes (optional)',
+      placeholder: t('Select scopes (optional)'),
       allowClear: true,
       width: '100%'
     });
     $('#architecture-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select architecture types (optional)',
+      placeholder: t('Select architecture types (optional)'),
       allowClear: true,
       width: '100%'
     });
     $('#unit-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select department',
+      placeholder: t('Select department'),
       allowClear: true,
       width: '100%',
       ajax: {
@@ -467,7 +467,7 @@ $(function() {
           }
         },
         error: function(xhr, status, error) {
-          alert('Upload failed!');
+          alert(t('Upload failed!'));
         },
         complete: function() {
           uploadCount++;

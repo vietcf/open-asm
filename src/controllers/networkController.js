@@ -692,7 +692,7 @@ networkController.apiSearchAllIp = async (req, res) => {
     const ips = await IpAddress.searchAllForVip({ search, excludeDeviceId, excludeServerId, subnet, limit });
     res.json(ips.map(ip => ({
       id: ip.id,
-      text: ip.owner_label ? `${ip.ip_address} (đã gán: ${ip.owner_label})` : ip.ip_address
+      text: ip.owner_label ? `${ip.ip_address} (${req.t('assigned: {owner}', { owner: ip.owner_label })})` : ip.ip_address
     })));
   } catch (err) {
     console.error('API /network/api/ip-addresses/search-all error:', err);

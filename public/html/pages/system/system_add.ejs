@@ -5,9 +5,9 @@
     <div class="row">
       <div class="col-12">
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/">Home</a></li>
-          <li class="breadcrumb-item"><a href="/system/system">System List</a></li>
-          <li class="breadcrumb-item active">Add System</li>
+          <li class="breadcrumb-item"><a href="/"><%= t('Home') %></a></li>
+          <li class="breadcrumb-item"><a href="/system/system"><%= t('System List') %></a></li>
+          <li class="breadcrumb-item active"><%= t('Add System') %></li>
         </ol>
       </div>
     </div>
@@ -21,34 +21,34 @@
       <div class="col-lg-8 col-md-10 col-sm-12">
       <div class="card mt-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">Add System</h5>
+          <h5 class="mb-0"><%= t('Add System') %></h5>
         </div>
         <form action="/system/system/add" method="POST" enctype="multipart/form-data">
           <div class="card-body">
             <div class="mb-3">
-              <label class="form-label">System ID <span class="text-danger">*</span></label>
-              <input type="text" name="system_id" class="form-control" placeholder="Enter system ID" required>
+              <label class="form-label"><%= t('System ID') %> <span class="text-danger">*</span></label>
+              <input type="text" name="system_id" class="form-control" placeholder="<%= t('Enter system ID') %>" required>
             </div>
             <div class="mb-3">
-              <label class="form-label">System Name <span class="text-danger">*</span></label>
-              <input type="text" name="name" class="form-control" placeholder="Enter system name" required>
+              <label class="form-label"><%= t('System Name') %> <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" placeholder="<%= t('Enter system name') %>" required>
             </div>
             <div class="mb-3">
-              <label class="form-label">Alias (comma separated)</label>
-              <input type="text" name="alias" class="form-control" placeholder="e.g. alias1, alias2">
+              <label class="form-label"><%= t('Alias (comma separated)') %></label>
+              <input type="text" name="alias" class="form-control" placeholder="<%= t('e.g. alias1, alias2') %>">
             </div>
             <div class="mb-3">
-              <label class="form-label">FQDN (comma separated, optional)</label>
-              <input type="text" name="fqdn" class="form-control" placeholder="e.g. host1.example.com, host2.example.com">
+              <label class="form-label"><%= t('FQDN (comma separated, optional)') %></label>
+              <input type="text" name="fqdn" class="form-control" placeholder="<%= t('e.g. host1.example.com, host2.example.com') %>">
             </div>
             <div class="mb-3">
-              <label class="form-label">Description</label>
-              <textarea name="description" class="form-control" rows="5" placeholder="Please provide the following information: 1) What business functions/features does this system provide? 2) What components does the system include? 3) Who are the target users of this system?"></textarea>
+              <label class="form-label"><%= t('Description') %></label>
+              <textarea name="description" class="form-control" rows="5" placeholder="<%= t('Please provide the following information: 1) What business functions/features does this system provide? 2) What components does the system include? 3) Who are the target users of this system?') %>"></textarea>
             </div>
             <div class="mb-4">
-              <label class="form-label">Level</label>
+              <label class="form-label"><%= t('Level') %></label>
               <select id="level-select" name="level" class="form-select">
-                <option value="">-- Select Level --</option>
+                <option value="">-- <%= t('Select Level --') %></option>
                 <% if (typeof levelOptions !== 'undefined' && Array.isArray(levelOptions)) { %>
                   <% levelOptions.forEach(function(opt) { %>
                     <option value="<%= opt.id %>"><%= opt.text %></option>
@@ -57,27 +57,27 @@
               </select>
             </div>
             <div class="mb-4">
-              <label class="form-label">Department (Unit)</label>
+              <label class="form-label"><%= t('Department (Unit)') %></label>
               <select id="unit-select" name="department_id" class="form-select"></select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Domains</label>
-              <select id="domain-select" name="domains[]" class="form-select" multiple data-placeholder="Select domains"></select>
+              <label class="form-label"><%= t('Domains') %></label>
+              <select id="domain-select" name="domains[]" class="form-select" multiple data-placeholder="<%= t('Select domains') %>"></select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Managers</label>
-              <select id="manager-select" name="contacts[]" class="form-select" multiple data-placeholder="Select contacts"></select>
+              <label class="form-label"><%= t('Managers') %></label>
+              <select id="manager-select" name="contacts[]" class="form-select" multiple data-placeholder="<%= t('Select contacts') %>"></select>
             </div>
             <div class="mb-3">
-              <label class="form-label">IP Addresses</label>
-              <select id="ip-select" name="ip_addresses[]" class="form-select" multiple data-placeholder="Select IP addresses"></select>
+              <label class="form-label"><%= t('IP Addresses') %></label>
+              <select id="ip-select" name="ip_addresses[]" class="form-select" multiple data-placeholder="<%= t('Select IP addresses') %>"></select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Tags</label>
-              <select id="tag-select" name="tags[]" class="form-select" multiple data-placeholder="Select tags"></select>
+              <label class="form-label"><%= t('Tags') %></label>
+              <select id="tag-select" name="tags[]" class="form-select" multiple data-placeholder="<%= t('Select tags') %>"></select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Scope user access</label>
+              <label class="form-label"><%= t('Scope user access') %></label>
               <select id="scope-select" name="scopes[]" class="form-select" multiple>
                 <% if (scopeOptions && scopeOptions.length > 0) { %>
                   <% scopeOptions.forEach(option => { %>
@@ -85,10 +85,10 @@
                   <% }) %>
                 <% } %>
               </select>
-              <div class="form-text">Select applicable scopes for this system. Leave empty if no specific scope is defined.</div>
+              <div class="form-text"><%= t('Select applicable scopes for this system. Leave empty if no specific scope is defined.') %></div>
             </div>
             <div class="mb-3">
-              <label class="form-label">System Architecture</label>
+              <label class="form-label"><%= t('System Architecture') %></label>
               <select id="architecture-select" name="architecture[]" class="form-select" multiple>
                 <% if (architectureOptions && architectureOptions.length > 0) { %>
                   <% architectureOptions.forEach(option => { %>
@@ -96,18 +96,18 @@
                   <% }) %>
                 <% } %>
               </select>
-              <div class="form-text">Select applicable architecture types for this system. Leave empty if no specific architecture is defined.</div>
+              <div class="form-text"><%= t('Select applicable architecture types for this system. Leave empty if no specific architecture is defined.') %></div>
             </div>
             <div class="mb-3">
-              <label class="form-label">System Documents</label>
+              <label class="form-label"><%= t('System Documents') %></label>
               <input type="file" id="docs-upload" class="form-control" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.zip,.rar">
               <div id="selected-docs-list" class="form-text"></div>
               <input type="hidden" name="uploaded_docs" id="uploaded-docs-hidden">
             </div>
           </div>
           <div class="card-footer d-flex justify-content-end">
-            <a href="/system/system" class="btn btn-secondary btn-sm me-2">Cancel</a>
-            <button type="submit" class="btn btn-primary btn-sm">Add System</button>
+            <a href="/system/system" class="btn btn-secondary btn-sm me-2"><%= t('Cancel') %></a>
+            <button type="submit" class="btn btn-primary btn-sm"><%= t('Add System') %></button>
           </div>
         </form>
       </div>
@@ -148,7 +148,7 @@
     // Level select2 (static data) - Bootstrap 5 theme
     $('#level-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select level',
+      placeholder: t('Select level'),
       allowClear: true,
       width: '100%',
       // minimumResultsForSearch: Infinity // Cho phép search
@@ -157,7 +157,7 @@
     // Department (Unit) select2 AJAX - Bootstrap 5 theme
     $('#unit-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select department',
+      placeholder: t('Select department'),
       allowClear: true,
       width: '100%',
       // minimumResultsForSearch: Infinity // Cho phép search
@@ -234,13 +234,13 @@
     });
     $('#scope-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select scopes (optional)',
+      placeholder: t('Select scopes (optional)'),
       allowClear: true,
       width: '100%'
     });
     $('#architecture-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select architecture types (optional)',
+      placeholder: t('Select architecture types (optional)'),
       allowClear: true,
       width: '100%'
     });
@@ -280,7 +280,7 @@
             }
           },
           error: function() {
-            alert('Upload failed!');
+            alert(t('Upload failed!'));
           }
         });
       });

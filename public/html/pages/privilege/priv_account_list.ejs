@@ -76,8 +76,8 @@ function buildExportUrl() {
     <div class="row">
       <div class="col-12">
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/">Home</a></li>
-          <li class="breadcrumb-item active">Privileged Account List</li>
+          <li class="breadcrumb-item"><a href="/"><%= t('Home') %></a></li>
+          <li class="breadcrumb-item active"><%= t('Privileged Account List') %></li>
         </ol>
       </div>
     </div>
@@ -109,11 +109,11 @@ function buildExportUrl() {
             <% } %>
             
             <div class="input-group input-group-sm" style="width: 250px;">
-              <input class="form-control form-control-sm" type="search" name="search" placeholder="Search Account or Description..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+              <input class="form-control form-control-sm" type="search" name="search" placeholder="<%= t('Search Account or Description...') %>" aria-label="<%= t('Search') %>" value="<%= typeof search !== 'undefined' ? search : '' %>">
               <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
             </div>
             <div class="d-flex align-items-center gap-1">
-              <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+              <label class="form-label form-label-sm mb-0 text-muted"><%= t('Show:') %></label>
               <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
                 <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
                   <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
@@ -131,7 +131,7 @@ function buildExportUrl() {
         <div class="d-flex justify-content-end gap-2">
           <% if (hasPermission('priv_account.create')) { %>
             <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addPrivUserModal">
-              <i class="bi bi-plus"></i> Add Privileged Account
+              <i class="bi bi-plus"></i> <%= t('Add Privileged Account') %>
             </button>
           <% } %>
           <%
@@ -142,11 +142,11 @@ function buildExportUrl() {
             );
           %>
           <button type="button" class="btn btn-sm <%= hasActivePrivAccountFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterPrivAccountModal">
-            <i class="bi bi-funnel<%= hasActivePrivAccountFilter ? '-fill' : '' %>"></i> Filter<%= hasActivePrivAccountFilter ? ' (Filtered)' : '' %>
+            <i class="bi bi-funnel<%= hasActivePrivAccountFilter ? '-fill' : '' %>"></i> <%= t('Filter{1}', { 1: hasActivePrivAccountFilter ? ' (Filtered)' : '' }) %>
           </button>
           <% if (hasPermission('priv_account.read')) { %>
             <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">
-              <i class="bi bi-download"></i> Export
+              <i class="bi bi-download"></i> <%= t('Export') %>
             </a>
           <% } %>
         </div>
@@ -163,7 +163,7 @@ function buildExportUrl() {
     <% if (typeof successMessage !== 'undefined' && successMessage) { %>
       <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
         <i class="bi bi-check-circle me-2"></i><%= t(successMessage) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
       </div>
       <script>
       // Auto-hide success message after 5 seconds
@@ -180,7 +180,7 @@ function buildExportUrl() {
     <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
       <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
         <i class="bi bi-exclamation-triangle me-2"></i><%= t(errorMessage) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
       </div>
       <script>
       // Auto-hide error message after 5 seconds
@@ -199,18 +199,18 @@ function buildExportUrl() {
       <div class="col-12">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title mb-0">Privileged Account List</h3>
+            <h3 class="card-title mb-0"><%= t('Privileged Account List') %></h3>
           </div>
           <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
             <table class="table table-hover" id="privAccountTable" style="table-layout: fixed; min-width: 800px;">
               <thead>
                 <tr>
-                  <th>No.</th>
-                  <th data-sort-type="text">Account Name</th>
-                  <th data-sort-type="text">Description</th>
-                  <th data-sort-type="text">Systems</th>
-                  <th data-sort-type="date">Created At</th>
-                  <th class="text-end">Actions</th>
+                  <th><%= t('No.') %></th>
+                  <th data-sort-type="text"><%= t('Account Name') %></th>
+                  <th data-sort-type="text"><%= t('Description') %></th>
+                  <th data-sort-type="text"><%= t('Systems') %></th>
+                  <th data-sort-type="date"><%= t('Created At') %></th>
+                  <th class="text-end"><%= t('Actions') %></th>
                 </tr>
               </thead>
               <tbody>
@@ -229,9 +229,9 @@ function buildExportUrl() {
                       </td>
                       <td data-sort-value="<%= account.created_at || '' %>"><%= account.created_at ? account.created_at.toLocaleString() : '' %></td>
                       <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showAccountDetail('<%= account.id %>')" data-account-id="<%= account.id %>" data-account='<%= JSON.stringify(account) %>'><i class="bi bi-eye"></i></button>
+                        <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showAccountDetail('<%= account.id %>')" data-account-id="<%= account.id %>" data-account='<%= JSON.stringify(account) %>'><i class="bi bi-eye"></i></button>
                         <% if (hasPermission('priv_account.update')) { %>
-                        <button type="button" class="btn btn-warning btn-sm" title="Edit" 
+                        <button type="button" class="btn btn-warning btn-sm" title="<%= t('Edit') %>" 
                                 data-bs-toggle="modal" data-bs-target="#editPrivAccountModal"
                                 data-account-id="<%= account.id %>"
                                 data-account-username="<%= account.username %>"
@@ -249,7 +249,7 @@ function buildExportUrl() {
                         <% } %>
                         <% if (hasPermission('priv_account.delete')) { %>
                         <form action="/priv-account/account/<%= account.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteAccount(this, '<%= account.username %>')">
-                          <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                          <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
                             <i class="bi bi-trash"></i>
                           </button>
                         </form>
@@ -258,7 +258,7 @@ function buildExportUrl() {
                     </tr>
                   <% }) %>
                 <% } else { %>
-                  <tr><td colspan="6" class="text-center">No data</td></tr>
+                  <tr><td colspan="6" class="text-center"><%= t('No data') %></td></tr>
                 <% } %>
               </tbody>
             </table>
@@ -266,7 +266,7 @@ function buildExportUrl() {
           <div class="card-footer clearfix">
             <div class="d-flex justify-content-between align-items-center px-3 py-2">
               <div>
-                <span>Showing <%= startItem %> - <%= endItem %> of <%= totalCount %> accounts</span>
+                <span><%= t('Showing {1} - {2} of {3} accounts', { 1: startItem, 2: endItem, 3: totalCount }) %></span>
               </div>
               <ul class="pagination pagination-sm m-0">
                 <% 
@@ -286,7 +286,7 @@ function buildExportUrl() {
                   }
                 %>
                 <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                  <a class="page-link" href="<%= buildPaginationUrl(page - 1) %>">Previous</a>
+                  <a class="page-link" href="<%= buildPaginationUrl(page - 1) %>"><%= t('Previous') %></a>
                 </li>
                 <% if (startPage > 1) { %>
                   <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(1) %>">1</a></li>
@@ -302,7 +302,7 @@ function buildExportUrl() {
                   <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(totalPages) %>"><%= totalPages %></a></li>
                 <% } %>
                 <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                  <a class="page-link" href="<%= buildPaginationUrl(page + 1) %>">Next</a>
+                  <a class="page-link" href="<%= buildPaginationUrl(page + 1) %>"><%= t('Next') %></a>
                 </li>
               </ul>
             </div>
@@ -318,66 +318,66 @@ function buildExportUrl() {
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="addPrivUserModalLabel">Add Privileged Account</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="addPrivUserModalLabel"><%= t('Add Privileged Account') %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
       </div>
       <div class="modal-body">
         <form id="addPrivUserForm" action="/priv-account/account" method="POST" autocomplete="off">
           <div class="mb-3">
-            <label for="privUserUsername" class="form-label">Account Name <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="privUserUsername" name="username" placeholder="Account Name" required>
+            <label for="privUserUsername" class="form-label"><%= t('Account Name') %> <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="privUserUsername" name="username" placeholder="<%= t('Account Name') %>" required>
           </div>
           <div class="mb-3">
-            <label for="privUserDescription" class="form-label">Description</label>
-            <textarea class="form-control" id="privUserDescription" name="description" placeholder="Description" rows="3" style="min-height:70px;"></textarea>
+            <label for="privUserDescription" class="form-label"><%= t('Description') %></label>
+            <textarea class="form-control" id="privUserDescription" name="description" placeholder="<%= t('Description') %>" rows="3" style="min-height:70px;"></textarea>
           </div>
           <div class="mb-3">
-            <label for="privUserContacts" class="form-label">Assign Contacts <span class="text-danger">*</span></label>
+            <label for="privUserContacts" class="form-label"><%= t('Assign Contacts') %> <span class="text-danger">*</span></label>
             <select id="privUserContacts" name="contacts[]" class="form-control" multiple style="width:100%" required></select>
           </div>
           <div class="mb-3">
-            <label for="privUserOrganize" class="form-label">Organize Unit <span class="text-danger">*</span></label>
+            <label for="privUserOrganize" class="form-label"><%= t('Organize Unit') %> <span class="text-danger">*</span></label>
             <select id="privUserOrganize" name="organize_id" class="form-select" style="width:100%" required></select>
           </div>
           <div class="mb-3">
-            <label for="privUserType" class="form-label">Account Type <span class="text-danger">*</span></label>
+            <label for="privUserType" class="form-label"><%= t('Account Type') %> <span class="text-danger">*</span></label>
             <select id="privUserType" name="account_type" class="form-control" required style="width:100%">
-              <option value="">-- Select Type --</option>
+              <option value="">-- <%= t('Select Type --') %></option>
               <% (accountTypes || []).forEach(function(opt) { %>
                 <option value="<%= opt.value %>"><%= opt.label %></option>
               <% }) %>
             </select>
           </div>
           <div class="mb-3 d-none" id="privUserServerGroup">
-            <label for="privUserServers" class="form-label">Server(s) <span class="text-danger">*</span></label>
+            <label for="privUserServers" class="form-label"><%= t('Server(s)') %> <span class="text-danger">*</span></label>
             <select id="privUserServers" name="server_ids[]" class="form-control" multiple style="width:100%" required></select>
           </div>
           <div class="mb-3 d-none" id="privUserAppUrlGroup">
-            <label for="privUserAppUrl" class="form-label">Application URL <span class="text-danger">*</span></label>
-            <input type="text" id="privUserAppUrl" name="app_url" class="form-control" placeholder="https://example.com/app" required>
+            <label for="privUserAppUrl" class="form-label"><%= t('Application URL') %> <span class="text-danger">*</span></label>
+            <input type="text" id="privUserAppUrl" name="app_url" class="form-control" placeholder="<%= t('https://example.com/app') %>" required>
           </div>
           <div class="mb-3" id="privUserSystemGroup">
-            <label for="privUserSystem" class="form-label">System(s) <span class="text-danger">*</span></label>
+            <label for="privUserSystem" class="form-label"><%= t('System(s)') %> <span class="text-danger">*</span></label>
             <select id="privUserSystem" name="system_ids[]" class="form-control" multiple required style="width:100%"></select>
           </div>
           <div class="mb-3">
-            <label for="privUserManageType" class="form-label">Management Method <span class="text-danger">*</span></label>
+            <label for="privUserManageType" class="form-label"><%= t('Management Method') %> <span class="text-danger">*</span></label>
             <select id="privUserManageType" name="manage_type" class="form-control" required style="width:100%">
-              <option value="">-- Select Method --</option>
+              <option value="">-- <%= t('Select Method --') %></option>
               <% (manageTypes || []).forEach(function(opt) { %>
                 <option value="<%= opt.value %>"><%= opt.label %></option>
               <% }) %>
             </select>
           </div>
           <div class="mb-3">
-            <label for="privUserRole" class="form-label">Role <span class="text-danger">*</span></label>
+            <label for="privUserRole" class="form-label"><%= t('Role') %> <span class="text-danger">*</span></label>
             <select id="privUserRole" name="role_id" class="form-select" required style="width:100%"></select>
           </div>
         </form>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-        <button type="submit" class="btn btn-primary btn-sm" form="addPrivUserForm">Add User</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+        <button type="submit" class="btn btn-primary btn-sm" form="addPrivUserForm"><%= t('Add User') %></button>
       </div>
     </div>
   </div>
@@ -388,67 +388,67 @@ function buildExportUrl() {
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="editPrivAccountModalLabel">Edit Privileged Account</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="editPrivAccountModalLabel"><%= t('Edit Privileged Account') %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
       </div>
       <div class="modal-body">
         <form id="editPrivAccountForm" method="POST" autocomplete="off">
           <input type="hidden" id="editAccountId" name="id">
           <div class="mb-3">
-            <label for="editAccountUsername" class="form-label">Account Name <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="editAccountUsername" name="username" placeholder="Account Name" required>
+            <label for="editAccountUsername" class="form-label"><%= t('Account Name') %> <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="editAccountUsername" name="username" placeholder="<%= t('Account Name') %>" required>
           </div>
           <div class="mb-3">
-            <label for="editAccountDescription" class="form-label">Description</label>
-            <textarea class="form-control" id="editAccountDescription" name="description" placeholder="Description" rows="3" style="min-height:70px;"></textarea>
+            <label for="editAccountDescription" class="form-label"><%= t('Description') %></label>
+            <textarea class="form-control" id="editAccountDescription" name="description" placeholder="<%= t('Description') %>" rows="3" style="min-height:70px;"></textarea>
           </div>
           <div class="mb-3">
-            <label for="editAccountContacts" class="form-label">Assign Contacts <span class="text-danger">*</span></label>
+            <label for="editAccountContacts" class="form-label"><%= t('Assign Contacts') %> <span class="text-danger">*</span></label>
             <select id="editAccountContacts" name="contacts[]" class="form-control" multiple style="width:100%" required></select>
           </div>
           <div class="mb-3">
-            <label for="editAccountOrganize" class="form-label">Organize Unit <span class="text-danger">*</span></label>
+            <label for="editAccountOrganize" class="form-label"><%= t('Organize Unit') %> <span class="text-danger">*</span></label>
             <select id="editAccountOrganize" name="organize_id" class="form-select" style="width:100%" required></select>
           </div>
           <div class="mb-3">
-            <label for="editAccountType" class="form-label">Account Type <span class="text-danger">*</span></label>
+            <label for="editAccountType" class="form-label"><%= t('Account Type') %> <span class="text-danger">*</span></label>
             <select id="editAccountType" name="account_type" class="form-control" required style="width:100%">
-              <option value="">-- Select Type --</option>
+              <option value="">-- <%= t('Select Type --') %></option>
               <% (accountTypes || []).forEach(function(opt) { %>
                 <option value="<%= opt.value %>"><%= opt.label %></option>
               <% }) %>
             </select>
           </div>
           <div class="mb-3 d-none" id="editAccountServerGroup">
-            <label for="editAccountServers" class="form-label">Server(s) <span class="text-danger">*</span></label>
+            <label for="editAccountServers" class="form-label"><%= t('Server(s)') %> <span class="text-danger">*</span></label>
             <select id="editAccountServers" name="server_ids[]" class="form-control" multiple style="width:100%" required></select>
           </div>
           <div class="mb-3 d-none" id="editAccountAppUrlGroup">
-            <label for="editAccountAppUrl" class="form-label">Application URL <span class="text-danger">*</span></label>
-            <input type="text" id="editAccountAppUrl" name="app_url" class="form-control" placeholder="https://example.com/app" required>
+            <label for="editAccountAppUrl" class="form-label"><%= t('Application URL') %> <span class="text-danger">*</span></label>
+            <input type="text" id="editAccountAppUrl" name="app_url" class="form-control" placeholder="<%= t('https://example.com/app') %>" required>
           </div>
           <div class="mb-3" id="editAccountSystemGroup">
-            <label for="editAccountSystem" class="form-label">System(s) <span class="text-danger">*</span></label>
+            <label for="editAccountSystem" class="form-label"><%= t('System(s)') %> <span class="text-danger">*</span></label>
             <select id="editAccountSystem" name="system_ids[]" class="form-control" multiple required style="width:100%"></select>
           </div>
           <div class="mb-3">
-            <label for="editAccountManageType" class="form-label">Management Method <span class="text-danger">*</span></label>
+            <label for="editAccountManageType" class="form-label"><%= t('Management Method') %> <span class="text-danger">*</span></label>
             <select id="editAccountManageType" name="manage_type" class="form-control" required style="width:100%">
-              <option value="">-- Select Method --</option>
+              <option value="">-- <%= t('Select Method --') %></option>
               <% (manageTypes || []).forEach(function(opt) { %>
                 <option value="<%= opt.value %>"><%= opt.label %></option>
               <% }) %>
             </select>
           </div>
           <div class="mb-3">
-            <label for="editAccountRole" class="form-label">Role <span class="text-danger">*</span></label>
+            <label for="editAccountRole" class="form-label"><%= t('Role') %> <span class="text-danger">*</span></label>
             <select id="editAccountRole" name="role_id" class="form-select" required style="width:100%"></select>
           </div>
         </form>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-        <button type="submit" class="btn btn-primary btn-sm" form="editPrivAccountForm">Save Changes</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+        <button type="submit" class="btn btn-primary btn-sm" form="editPrivAccountForm"><%= t('Save Changes') %></button>
       </div>
     </div>
   </div>
@@ -459,30 +459,30 @@ function buildExportUrl() {
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="filterPrivAccountModalLabel">Filter Privileged Accounts</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title" id="filterPrivAccountModalLabel"><%= t('Filter Privileged Accounts') %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
       </div>
       <form method="get" action="/priv-account/account">
         <div class="modal-body">
           <div class="mb-3">
-            <label for="filterSystem" class="form-label">System(s)</label>
+            <label for="filterSystem" class="form-label"><%= t('System(s)') %></label>
             <select id="filterSystem" name="system_ids[]" class="form-control" multiple style="width:100%"></select>
           </div>
           <div class="mb-3">
-            <label for="filterOrganize" class="form-label">Organize Unit</label>
+            <label for="filterOrganize" class="form-label"><%= t('Organize Unit') %></label>
             <select id="filterOrganize" name="organize_id" class="form-select" style="width:100%">
-              <option value="">All Organize Units</option>
+              <option value=""><%= t('All Organize Units') %></option>
             </select>
           </div>
           <div class="mb-3">
-            <label for="filterContacts" class="form-label">Contacts</label>
+            <label for="filterContacts" class="form-label"><%= t('Contacts') %></label>
             <select id="filterContacts" name="contact_ids[]" class="form-control" multiple style="width:100%"></select>
           </div>
         </div>
         <div class="modal-footer d-flex justify-content-end gap-2">
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-warning btn-sm" id="clearPrivAccountFilterBtn">Clear Filter</button>
-          <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+          <button type="button" class="btn btn-warning btn-sm" id="clearPrivAccountFilterBtn"><%= t('Clear Filter') %></button>
+          <button type="submit" class="btn btn-primary btn-sm"><%= t('Apply Filter') %></button>
         </div>
       </form>
     </div>
@@ -691,7 +691,7 @@ $(function() {
   // Initialize System select2
   function initSystemSelect2(selector, modalParent) {
     return initSelect2(selector, {
-      placeholder: 'Select system(s)',
+      placeholder: t('Select system(s)'),
       multiple: true,
       dropdownParent: modalParent,
       ajax: {
@@ -706,7 +706,7 @@ $(function() {
   // Initialize Server select2
   function initServerSelect2(selector, modalParent) {
     return initSelect2(selector, {
-      placeholder: 'Select server(s)',
+      placeholder: t('Select server(s)'),
       multiple: true,
       dropdownParent: modalParent,
       ajax: {
@@ -727,7 +727,7 @@ $(function() {
   // Initialize Contact select2
   function initContactSelect2(selector, modalParent) {
     return initSelect2(selector, {
-      placeholder: 'Select contact(s)',
+      placeholder: t('Select contact(s)'),
       multiple: true,
       dropdownParent: modalParent,
       ajax: {
@@ -742,7 +742,7 @@ $(function() {
   // Initialize Organize Unit select2
   function initOrganizeSelect2(selector, modalParent) {
     return initSelect2(selector, {
-      placeholder: 'Select organize unit',
+      placeholder: t('Select organize unit'),
       dropdownParent: modalParent,
       ajax: {
         url: API_ENDPOINTS.unit,
@@ -760,7 +760,7 @@ $(function() {
     }
 
     return initSelect2(selector, {
-      placeholder: 'Select role',
+      placeholder: t('Select role'),
       dropdownParent: modalParent,
       ajax: {
         url: API_ENDPOINTS.roleBySystem,
@@ -789,8 +789,8 @@ $(function() {
     initServerSelect2('#privUserServers', modalElement);
     initContactSelect2('#privUserContacts', modalElement);
     initOrganizeSelect2('#privUserOrganize', modalElement);
-    initSelect2('#privUserType', { placeholder: 'Select account type', dropdownParent: modalElement });
-    initSelect2('#privUserManageType', { placeholder: 'Select management method', dropdownParent: modalElement });
+    initSelect2('#privUserType', { placeholder: t('Select account type'), dropdownParent: modalElement });
+    initSelect2('#privUserManageType', { placeholder: t('Select management method'), dropdownParent: modalElement });
 
     // Initialize and handle Role select2
     function initPrivUserRoleSelect2() {
@@ -939,8 +939,8 @@ $(function() {
     const contactSelect = initContactSelect2('#editAccountContacts', modalElement);
     const organizeSelect = initOrganizeSelect2('#editAccountOrganize', modalElement);
     const roleSelect = initRoleSelect2('#editAccountRole', modalContent, '#editAccountSystem');
-    initSelect2('#editAccountType', { placeholder: 'Select account type', dropdownParent: modalElement });
-    initSelect2('#editAccountManageType', { placeholder: 'Select management method', dropdownParent: modalElement });
+    initSelect2('#editAccountType', { placeholder: t('Select account type'), dropdownParent: modalElement });
+    initSelect2('#editAccountManageType', { placeholder: t('Select management method'), dropdownParent: modalElement });
 
     // Handle account type changes
     function updateEditModalFields() {

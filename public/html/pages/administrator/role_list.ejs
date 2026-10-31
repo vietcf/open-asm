@@ -4,8 +4,8 @@
     <div class="row">
       <div class="col-12">
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/">Home</a></li>
-          <li class="breadcrumb-item active">Role List</li>
+          <li class="breadcrumb-item"><a href="/"><%= t('Home') %></a></li>
+          <li class="breadcrumb-item active"><%= t('Role List') %></li>
         </ol>
       </div>
     </div>
@@ -21,11 +21,11 @@
       <div class="d-flex justify-content-end align-items-center gap-2">
         <form class="d-flex align-items-center gap-2" role="search" method="get" action="/administrator/roles">
           <div class="input-group input-group-sm" style="width: 250px;">
-            <input class="form-control form-control-sm" type="search" name="search" placeholder="Search roles..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+            <input class="form-control form-control-sm" type="search" name="search" placeholder="<%= t('Search roles...') %>" aria-label="<%= t('Search') %>" value="<%= typeof search !== 'undefined' ? search : '' %>">
             <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
             </div>
           <div class="d-flex align-items-center gap-1">
-            <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+            <label class="form-label form-label-sm mb-0 text-muted"><%= t('Show:') %></label>
             <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
               <% (pageSizeOptions || [10,20,50,100]).forEach(function(size) { %>
                 <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
@@ -43,7 +43,7 @@
         <div class="d-flex justify-content-end gap-2">
           <% if (hasPermission('role.create')) { %>
           <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addRoleModal">
-            <i class="bi bi-plus"></i> Add Role
+            <i class="bi bi-plus"></i> <%= t('Add Role') %>
           </button>
           <% } %>
         </div>
@@ -54,7 +54,7 @@
     <% if (typeof success !== 'undefined' && success) { %>
       <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
         <i class="bi bi-check-circle me-2"></i><%= t(success) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
       </div>
       <script>
         // Auto-hide success message after 5 seconds
@@ -71,7 +71,7 @@
     <% if (typeof error !== 'undefined' && error) { %>
       <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
         <i class="bi bi-exclamation-triangle me-2"></i><%= t(error) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
       </div>
       <script>
         // Auto-hide error message after 8 seconds (longer for errors)
@@ -89,17 +89,17 @@
       <div class="col-12">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title mb-0">Role List</h3>
+            <h3 class="card-title mb-0"><%= t('Role List') %></h3>
           </div>
         <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
           <table class="table table-hover" id="roleTable">
             <thead>
               <tr>
-                <th>No.</th>
-                <th data-sort-type="text">Name</th>
-                <th data-sort-type="text">Description</th>
-                <th>Permissions</th>
-                <th class="text-end">Actions</th>
+                <th><%= t('No.') %></th>
+                <th data-sort-type="text"><%= t('Name') %></th>
+                <th data-sort-type="text"><%= t('Description') %></th>
+                <th><%= t('Permissions') %></th>
+                <th class="text-end"><%= t('Actions') %></th>
               </tr>
             </thead>
             <tbody>
@@ -135,25 +135,25 @@
                         <% } %>
                         <% if (sortedPerms.length > 3) { %>
                           <span class="badge bg-secondary">...</span>
-                          <a href="#" data-bs-toggle="modal" data-bs-target="#rolePermModal-<%= role.id %>">View all</a>
+                          <a href="#" data-bs-toggle="modal" data-bs-target="#rolePermModal-<%= role.id %>"><%= t('View all') %></a>
                         <% } %>
                       <% } else { %>
-                        <span class="text-muted">No permission</span>
+                        <span class="text-muted"><%= t('No permission') %></span>
                       <% } %>
                     </td>
                     <td class="text-end">
                       <% if (role.name !== 'superadmin') { %>
                         <% if (hasPermission('role.update')) { %>
-                        <a href="#" class="btn btn-warning btn-sm" title="Edit" data-bs-toggle="modal" data-bs-target="#roleEditModal-<%= role.id %>"><i class="bi bi-pencil"></i></a>
+                        <a href="#" class="btn btn-warning btn-sm" title="<%= t('Edit') %>" data-bs-toggle="modal" data-bs-target="#roleEditModal-<%= role.id %>"><i class="bi bi-pencil"></i></a>
                         <% } %>
                         <% if (hasPermission('role.delete')) { %>
                         <form action="/administrator/roles/<%= role.id %>?_method=DELETE" method="POST" style="display:inline">
                           <input type="hidden" name="_method" value="DELETE">
-                          <button type="submit" class="btn btn-danger btn-sm" title="Delete" onclick="return confirm('Are you sure you want to delete?')"><i class="bi bi-trash"></i></button>
+                          <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>" onclick="return confirm('Are you sure you want to delete?')"><i class="bi bi-trash"></i></button>
                         </form>
                         <% } %>
                       <% } else { %>
-                        <span class="text-muted">Protected</span>
+                        <span class="text-muted"><%= t('Protected') %></span>
                       <% } %>
                     </td>
                   </tr>
@@ -165,20 +165,20 @@
                           <form action="/administrator/roles/<%= role.id %>/edit?_method=PUT" method="POST">
                             <input type="hidden" name="_method" value="PUT">
                             <div class="modal-header">
-                              <h5 class="modal-title" id="roleEditModalLabel-<%= role.id %>">Edit Role</h5>
-                              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                              <h5 class="modal-title" id="roleEditModalLabel-<%= role.id %>"><%= t('Edit Role') %></h5>
+                              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
                             </div>
                             <div class="modal-body">
                               <div class="mb-3">
-                                <label class="form-label">Name <span class="text-danger">*</span></label>
-                                <input type="text" name="name" class="form-control" value="<%= role.name %>" placeholder="Enter role name" required>
+                                <label class="form-label"><%= t('Name') %> <span class="text-danger">*</span></label>
+                                <input type="text" name="name" class="form-control" value="<%= role.name %>" placeholder="<%= t('Enter role name') %>" required>
                               </div>
                               <div class="mb-3">
-                                <label class="form-label">Description</label>
-                                <input type="text" name="description" class="form-control" value="<%= role.description %>" placeholder="Enter role description">
+                                <label class="form-label"><%= t('Description') %></label>
+                                <input type="text" name="description" class="form-control" value="<%= role.description %>" placeholder="<%= t('Enter role description') %>">
                               </div>
                               <div class="mb-3">
-                                <label class="form-label">Permissions</label>
+                                <label class="form-label"><%= t('Permissions') %></label>
                                 <div>
                                   <% 
                                     // Group permissions by menu prefix (e.g., 'user', 'device', etc.)
@@ -221,8 +221,8 @@
                               </div>
                             </div>
                             <div class="modal-footer">
-                              <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-                              <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+                              <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+                              <button type="submit" class="btn btn-primary btn-sm"><%= t('Save Changes') %></button>
                             </div>
                           </form>
                         </div>
@@ -234,8 +234,8 @@
                     <div class="modal-dialog">
                       <div class="modal-content">
                         <div class="modal-header">
-                          <h5 class="modal-title" id="rolePermModalLabel-<%= role.id %>">Permissions of <%= role.name %></h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                          <h5 class="modal-title" id="rolePermModalLabel-<%= role.id %>"><%= t('Permissions of {1}', { 1: role.name }) %></h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
                         </div>
                         <div class="modal-body">
                           <% if (sortedPerms.length > 0) { %>
@@ -274,18 +274,18 @@
                               </div>
                             <% }); %>
                           <% } else { %>
-                            <span class="text-muted">No permission</span>
+                            <span class="text-muted"><%= t('No permission') %></span>
                           <% } %>
                         </div>
                         <div class="modal-footer">
-                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Close') %></button>
                         </div>
                       </div>
                     </div>
                   </div>
                 <% }) %>
               <% } else { %>
-                <tr><td colspan="5" class="text-center">No data</td></tr>
+                <tr><td colspan="5" class="text-center"><%= t('No data') %></td></tr>
               <% } %>
             </tbody>
           </table>
@@ -300,7 +300,7 @@
                 const roleStartPage = Math.max(1, page - 2);
                 const roleEndPage = Math.min(totalPages, page + 2);
               %>
-              <span>Showing <%= roleStartItem %> - <%= roleEndItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> roles</span>
+              <span><%= t('Showing {1} - {2} of {3} roles', { 1: roleStartItem, 2: roleEndItem, 3: typeof totalCount !== 'undefined' ? totalCount : 0 }) %></span>
             </div>
             <ul class="pagination pagination-sm m-0 float-end">
               <% 
@@ -313,7 +313,7 @@
                 const roleFilterQuery = buildRoleFilterQuery();
               %>
               <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page - 1 %><%= roleFilterQuery ? '&' + roleFilterQuery : '' %>" tabindex="-1">Previous</a>
+                <a class="page-link" href="?page=<%= page - 1 %><%= roleFilterQuery ? '&' + roleFilterQuery : '' %>" tabindex="-1"><%= t('Previous') %></a>
               </li>
               <% if (roleStartPage > 1) { %>
                 <li class="page-item"><a class="page-link" href="?page=1<%= roleFilterQuery ? '&' + roleFilterQuery : '' %>">1</a></li>
@@ -329,7 +329,7 @@
                 <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= roleFilterQuery ? '&' + roleFilterQuery : '' %>"><%= totalPages %></a></li>
               <% } %>
               <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page + 1 %><%= roleFilterQuery ? '&' + roleFilterQuery : '' %>">Next</a>
+                <a class="page-link" href="?page=<%= page + 1 %><%= roleFilterQuery ? '&' + roleFilterQuery : '' %>"><%= t('Next') %></a>
               </li>
             </ul>
           </div>
@@ -345,22 +345,22 @@
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="addRoleModalLabel">
-            <i class="bi bi-plus-circle me-2"></i>Add Role
+            <i class="bi bi-plus-circle me-2"></i><%= t('Add Role') %>
           </h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
         </div>
         <div class="modal-body">
           <form id="addRoleForm" action="/administrator/roles" method="POST">
             <div class="mb-3">
-              <label class="form-label">Name <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" name="name" placeholder="Enter role name" required>
+              <label class="form-label"><%= t('Name') %> <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="name" placeholder="<%= t('Enter role name') %>" required>
             </div>
             <div class="mb-3">
-              <label class="form-label">Description</label>
-              <input type="text" class="form-control" name="description" placeholder="Enter role description">
+              <label class="form-label"><%= t('Description') %></label>
+              <input type="text" class="form-control" name="description" placeholder="<%= t('Enter role description') %>">
             </div>
             <div class="mb-3">
-              <label class="form-label">Permissions</label>
+              <label class="form-label"><%= t('Permissions') %></label>
               <div>
                 <% 
                   // Group permissions by menu prefix (e.g., 'user', 'device', etc.)
@@ -403,8 +403,8 @@
           </form>
         </div>
         <div class="modal-footer d-flex justify-content-end">
-          <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary btn-sm" form="addRoleForm">Add Role</button>
+          <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+          <button type="submit" class="btn btn-primary btn-sm" form="addRoleForm"><%= t('Add Role') %></button>
         </div>
       </div>
     </div>

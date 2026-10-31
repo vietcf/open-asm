@@ -5,9 +5,9 @@
     <div class="row">
       <div class="col-12">
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/">Home</a></li>
-          <li class="breadcrumb-item"><a href="/server/server/list">Server List</a></li>
-          <li class="breadcrumb-item active">Edit Server</li>
+          <li class="breadcrumb-item"><a href="/"><%= t('Home') %></a></li>
+          <li class="breadcrumb-item"><a href="/server/server/list"><%= t('Server List') %></a></li>
+          <li class="breadcrumb-item active"><%= t('Edit Server') %></li>
         </ol>
       </div>
     </div>
@@ -21,79 +21,79 @@
       <div class="col-lg-8 col-md-10 col-sm-12">
       <div class="card mt-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">Edit Server</h5>
+          <h5 class="mb-0"><%= t('Edit Server') %></h5>
         </div>
         <form id="editServerForm" action="/server/server/<%= server.id %>/edit" method="POST">
           <div class="card-body">
             <div class="mb-3">
-              <label class="form-label">Server Name <span class="text-danger">*</span></label>
-              <input type="text" name="name" class="form-control" value="<%= server.name %>" placeholder="Enter server name" required>
+              <label class="form-label"><%= t('Server Name') %> <span class="text-danger">*</span></label>
+              <input type="text" name="name" class="form-control" value="<%= server.name %>" placeholder="<%= t('Enter server name') %>" required>
             </div>
             <div class="mb-3">
-              <label class="form-label">Description</label>
-              <textarea name="description" class="form-control" rows="3" placeholder="Enter server description and details"><%= server.description || '' %></textarea>
+              <label class="form-label"><%= t('Description') %></label>
+              <textarea name="description" class="form-control" rows="3" placeholder="<%= t('Enter server description and details') %>"><%= server.description || '' %></textarea>
             </div>
             <div class="mb-3">
-              <label class="form-label">IP Address(es)</label>
+              <label class="form-label"><%= t('IP Address(es)') %></label>
               <div class="d-flex align-items-center gap-2">
                 <select id="ip-select" name="ip_addresses[]" class="form-control flex-grow-1" multiple required></select>
-                <button type="button" class="btn btn-outline-success btn-sm" id="add-ip-btn" title="Add new IP"><i class="bi bi-plus-circle"></i> Add IP</button>
+                <button type="button" class="btn btn-outline-success btn-sm" id="add-ip-btn" title="<%= t('Add new IP') %>"><i class="bi bi-plus-circle"></i> <%= t('Add IP') %></button>
               </div>
             </div>
             <div class="mb-3">
-              <label class="form-label">VIP IP Address(es) <small class="text-muted">(dùng chung với thiết bị/máy chủ khác)</small></label>
+              <label class="form-label"><%= t('VIP IP Address(es)') %> <small class="text-muted"><%= t('(shared with other devices/servers)') %></small></label>
               <select id="vip-ip-select" name="vip_ip_addresses[]" class="form-control" multiple></select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Type</label>
-              <select name="type" class="form-select" data-placeholder="Select type">
-                <option value="">-- Select type --</option>
+              <label class="form-label"><%= t('Type') %></label>
+              <select name="type" class="form-select" data-placeholder="<%= t('Select type') %>">
+                <option value="">-- <%= t('Select type --') %></option>
                 <% (typesOptions || []).forEach(function(tp) { %>
                   <option value="<%= tp.value %>" <%= server.type == tp.value ? 'selected' : '' %>><%= tp.label %></option>
                 <% }) %>
               </select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Status</label>
-              <select name="status" class="form-select" data-placeholder="Select status">
-                <option value="">-- Select Status --</option>
+              <label class="form-label"><%= t('Status') %></label>
+              <select name="status" class="form-select" data-placeholder="<%= t('Select status') %>">
+                <option value="">-- <%= t('Select Status --') %></option>
                 <% (statusOptions || []).forEach(function(st) { %>
                   <option value="<%= st.value %>" <%= server.status == st.value ? 'selected' : '' %>><%= st.label %></option>
                 <% }) %>
               </select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Location</label>
-              <select name="location" class="form-select" data-placeholder="Select location">
-                <option value="">-- Select location --</option>
+              <label class="form-label"><%= t('Location') %></label>
+              <select name="location" class="form-select" data-placeholder="<%= t('Select location') %>">
+                <option value="">-- <%= t('Select location --') %></option>
                 <% (locations || []).forEach(function(loc) { %>
                   <option value="<%= loc.value %>" <%= server.location == loc.value ? 'selected' : '' %>><%= loc.label %></option>
                 <% }) %>
               </select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Platform (OS)</label>
-              <select id="platform-select" name="os" class="form-select" data-placeholder="Select platform"></select>
+              <label class="form-label"><%= t('Platform (OS)') %></label>
+              <select id="platform-select" name="os" class="form-select" data-placeholder="<%= t('Select platform') %>"></select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Managers</label>
-              <select id="manager-select" name="managers[]" class="form-select" multiple data-placeholder="Select managers"></select>
+              <label class="form-label"><%= t('Managers') %></label>
+              <select id="manager-select" name="managers[]" class="form-select" multiple data-placeholder="<%= t('Select managers') %>"></select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Systems</label>
-              <select id="system-select" name="systems[]" class="form-select" multiple data-placeholder="Select systems"></select>
+              <label class="form-label"><%= t('Systems') %></label>
+              <select id="system-select" name="systems[]" class="form-select" multiple data-placeholder="<%= t('Select systems') %>"></select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Agents</label>
-              <select id="agent-select" name="agents[]" class="form-select" multiple data-placeholder="Select agents"></select>
+              <label class="form-label"><%= t('Agents') %></label>
+              <select id="agent-select" name="agents[]" class="form-select" multiple data-placeholder="<%= t('Select agents') %>"></select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Services</label>
-              <select id="service-select" name="services[]" class="form-select" multiple data-placeholder="Select services"></select>
+              <label class="form-label"><%= t('Services') %></label>
+              <select id="service-select" name="services[]" class="form-select" multiple data-placeholder="<%= t('Select services') %>"></select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Tags</label>
-              <select id="tag-select" name="tags[]" class="form-select" multiple data-placeholder="Select tags"></select>
+              <label class="form-label"><%= t('Tags') %></label>
+              <select id="tag-select" name="tags[]" class="form-select" multiple data-placeholder="<%= t('Select tags') %>"></select>
             </div>
             <!-- Server data for JavaScript -->
             <div id="server-data" 
@@ -107,8 +107,8 @@
                  style="display:none"></div>
           </div>
           <div class="card-footer d-flex justify-content-end">
-            <a href="/server/server/list" class="btn btn-secondary btn-sm me-2">Cancel</a>
-            <button type="submit" class="btn btn-primary btn-sm">Save Changes</button>
+            <a href="/server/server/list" class="btn btn-secondary btn-sm me-2"><%= t('Cancel') %></a>
+            <button type="submit" class="btn btn-primary btn-sm"><%= t('Save Changes') %></button>
           </div>
         </form>
       </div>
@@ -155,7 +155,7 @@
     // IP Address select2 AJAX - Bootstrap 5 theme
     $('#ip-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select IP address(es)',
+      placeholder: t('Select IP address(es)'),
       allowClear: true,
       width: '100%',
       ajax: {
@@ -174,7 +174,7 @@
     // IP as a VIP is the whole point of this field.
     $('#vip-ip-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select VIP IP address(es)',
+      placeholder: t('Select VIP IP address(es)'),
       allowClear: true,
       width: '100%',
       ajax: {
@@ -254,7 +254,7 @@
     // Type select2 - Bootstrap 5 theme
     $('select[name="type"]').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select type',
+      placeholder: t('Select type'),
       allowClear: true,
       width: '100%'
     });
@@ -262,7 +262,7 @@
     // Status select2 - Bootstrap 5 theme
     $('select[name="status"]').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select status',
+      placeholder: t('Select status'),
       allowClear: true,
       width: '100%'
     });
@@ -270,7 +270,7 @@
     // Location select2 - Bootstrap 5 theme
     $('select[name="location"]').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select location',
+      placeholder: t('Select location'),
       allowClear: true,
       width: '100%'
     });
@@ -278,7 +278,7 @@
     // Platform (OS) select2 AJAX - Bootstrap 5 theme
     $('#platform-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select platform (OS)',
+      placeholder: t('Select platform (OS)'),
       allowClear: true,
       width: '100%',
       ajax: {

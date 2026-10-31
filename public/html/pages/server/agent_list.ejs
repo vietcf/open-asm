@@ -50,8 +50,8 @@ function buildPaginationUrl(targetPage) {
     <div class="row">
       <div class="col-12">
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/">Home</a></li>
-          <li class="breadcrumb-item active">Agent List</li>
+          <li class="breadcrumb-item"><a href="/"><%= t('Home') %></a></li>
+          <li class="breadcrumb-item active"><%= t('Agent List') %></li>
         </ol>
       </div>
     </div>
@@ -74,11 +74,11 @@ function buildPaginationUrl(targetPage) {
             <input type="hidden" name="page" value="1">
             
             <div class="input-group input-group-sm" style="width: 250px;">
-              <input class="form-control form-control-sm" type="search" name="search" placeholder="Search Agent Name..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+              <input class="form-control form-control-sm" type="search" name="search" placeholder="<%= t('Search Agent Name...') %>" aria-label="<%= t('Search') %>" value="<%= typeof search !== 'undefined' ? search : '' %>">
               <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
             </div>
             <div class="d-flex align-items-center gap-1">
-              <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+              <label class="form-label form-label-sm mb-0 text-muted"><%= t('Show:') %></label>
               <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
                 <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
                   <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
@@ -100,7 +100,7 @@ function buildPaginationUrl(targetPage) {
         <div class="d-flex justify-content-end gap-2">
           <% if (hasPermission && hasPermission('agent.create')) { %>
             <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAgentModal">
-              <i class="bi bi-plus"></i> Add Agent
+              <i class="bi bi-plus"></i> <%= t('Add Agent') %>
             </button>
           <% } %>
         </div>
@@ -115,14 +115,14 @@ function buildPaginationUrl(targetPage) {
     <% if (typeof success !== 'undefined' && success) { %>
       <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
         <i class="bi bi-check-circle me-2"></i><%= t(success) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
       </div>
     <% } %>
     
     <% if (typeof error !== 'undefined' && error) { %>
       <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
         <i class="bi bi-exclamation-triangle me-2"></i><%= t(error) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
       </div>
     <% } %>
 
@@ -135,17 +135,17 @@ function buildPaginationUrl(targetPage) {
       <div class="col-12">
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title mb-0">Agent List</h3>
+            <h3 class="card-title mb-0"><%= t('Agent List') %></h3>
           </div>
           <div class="card-body table-responsive p-0" style="overflow-x: auto;">
             <table class="table table-hover" id="agentTable">
               <thead>
                 <tr>
-                  <th>No.</th>
-                  <th data-sort-type="text">Agent Name</th>
-                  <th data-sort-type="text">Version</th>
-                  <th data-sort-type="text">Description</th>
-                  <th class="text-end">Actions</th>
+                  <th><%= t('No.') %></th>
+                  <th data-sort-type="text"><%= t('Agent Name') %></th>
+                  <th data-sort-type="text"><%= t('Version') %></th>
+                  <th data-sort-type="text"><%= t('Description') %></th>
+                  <th class="text-end"><%= t('Actions') %></th>
                 </tr>
               </thead>
               <tbody>
@@ -157,18 +157,18 @@ function buildPaginationUrl(targetPage) {
                       <td><%= agent.version || '-' %></td>
                       <td><%= agent.description || '-' %></td>
                       <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm me-1" title="Show" onclick="showAgentDetail('<%= agent.id %>')" data-agent='<%= JSON.stringify(agent) %>'>
+                        <button type="button" class="btn btn-info btn-sm me-1" title="<%= t('Show') %>" onclick="showAgentDetail('<%= agent.id %>')" data-agent='<%= JSON.stringify(agent) %>'>
                           <i class="bi bi-eye"></i>
                         </button>
                         <% if (hasPermission('agent.update')) { %>
-                          <button type="button" class="btn btn-warning btn-sm me-1" title="Edit" data-bs-toggle="modal" data-bs-target="#editAgentModal" 
+                          <button type="button" class="btn btn-warning btn-sm me-1" title="<%= t('Edit') %>" data-bs-toggle="modal" data-bs-target="#editAgentModal" 
                                   data-agent-id="<%= agent.id %>" data-agent-name="<%= agent.name %>" data-agent-version="<%= agent.version || '' %>" data-agent-description="<%= agent.description || '' %>">
                             <i class="bi bi-pencil"></i>
                           </button>
                         <% } %>
                         <% if (hasPermission('agent.delete')) { %>
                           <form action="/server/agent/<%= agent.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteAgent(this, '<%= agent.name %>')">
-                            <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                            <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
                               <i class="bi bi-trash"></i>
                             </button>
                           </form>
@@ -177,7 +177,7 @@ function buildPaginationUrl(targetPage) {
                     </tr>
                   <% }) %>
                 <% } else { %>
-                  <tr><td colspan="5" class="text-center">No agents found</td></tr>
+                  <tr><td colspan="5" class="text-center"><%= t('No agents found') %></td></tr>
                 <% } %>
               </tbody>
             </table>
@@ -192,7 +192,7 @@ function buildPaginationUrl(targetPage) {
                   const agentStartPage = Math.max(1, page - 2);
                   const agentEndPage = Math.min(totalPages, page + 2);
                 %>
-                <span>Showing <%= agentStartItem %> - <%= agentEndItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> agents</span>
+                <span><%= t('Showing {1} - {2} of {3} agents', { 1: agentStartItem, 2: agentEndItem, 3: typeof totalCount !== 'undefined' ? totalCount : 0 }) %></span>
               </div>
               <ul class="pagination pagination-sm m-0 float-end">
                 <% 
@@ -205,7 +205,7 @@ function buildPaginationUrl(targetPage) {
                   const agentFilterQuery = buildAgentFilterQuery();
                 %>
                 <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page - 1 %><%= agentFilterQuery ? '&' + agentFilterQuery : '' %>" tabindex="-1">Previous</a>
+                  <a class="page-link" href="?page=<%= page - 1 %><%= agentFilterQuery ? '&' + agentFilterQuery : '' %>" tabindex="-1"><%= t('Previous') %></a>
                 </li>
                 <% if (agentStartPage > 1) { %>
                   <li class="page-item"><a class="page-link" href="?page=1<%= agentFilterQuery ? '&' + agentFilterQuery : '' %>">1</a></li>
@@ -221,7 +221,7 @@ function buildPaginationUrl(targetPage) {
                   <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= agentFilterQuery ? '&' + agentFilterQuery : '' %>"><%= totalPages %></a></li>
                 <% } %>
                 <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page + 1 %><%= agentFilterQuery ? '&' + agentFilterQuery : '' %>">Next</a>
+                  <a class="page-link" href="?page=<%= page + 1 %><%= agentFilterQuery ? '&' + agentFilterQuery : '' %>"><%= t('Next') %></a>
                 </li>
               </ul>
             </div>
@@ -242,28 +242,28 @@ function buildPaginationUrl(targetPage) {
         <div class="modal-content">
           <form id="addAgentForm" method="POST" action="/server/agent/add">
             <div class="modal-header">
-              <h5 class="modal-title" id="addAgentModalLabel">Add Agent</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              <h5 class="modal-title" id="addAgentModalLabel"><%= t('Add Agent') %></h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
             </div>
             <div class="modal-body">
               <div class="row g-3">
                 <div class="col-12">
-                  <label for="agentName" class="form-label">Agent Name <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" id="agentName" name="name" required placeholder="Enter agent name">
+                  <label for="agentName" class="form-label"><%= t('Agent Name') %> <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="agentName" name="name" required placeholder="<%= t('Enter agent name') %>">
                 </div>
                 <div class="col-12">
-                  <label for="agentVersion" class="form-label">Version</label>
-                  <input type="text" class="form-control" id="agentVersion" name="version" placeholder="Enter agent version">
+                  <label for="agentVersion" class="form-label"><%= t('Version') %></label>
+                  <input type="text" class="form-control" id="agentVersion" name="version" placeholder="<%= t('Enter agent version') %>">
                 </div>
                 <div class="col-12">
-                  <label for="agentDescription" class="form-label">Description</label>
-                  <textarea class="form-control" id="agentDescription" name="description" rows="3" placeholder="Enter agent description"></textarea>
+                  <label for="agentDescription" class="form-label"><%= t('Description') %></label>
+                  <textarea class="form-control" id="agentDescription" name="description" rows="3" placeholder="<%= t('Enter agent description') %>"></textarea>
                 </div>
               </div>
             </div>
             <div class="modal-footer d-flex justify-content-end">
-              <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" class="btn btn-primary btn-sm">Add Agent</button>
+              <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+              <button type="submit" class="btn btn-primary btn-sm"><%= t('Add Agent') %></button>
             </div>
           </form>
         </div>
@@ -276,28 +276,28 @@ function buildPaginationUrl(targetPage) {
         <div class="modal-content">
           <form id="editAgentForm" method="POST" action="">
             <div class="modal-header">
-              <h5 class="modal-title" id="editAgentModalLabel">Edit Agent</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              <h5 class="modal-title" id="editAgentModalLabel"><%= t('Edit Agent') %></h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
             </div>
             <div class="modal-body">
               <div class="row g-3">
                 <div class="col-12">
-                  <label for="editAgentName" class="form-label">Agent Name <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" id="editAgentName" name="name" required placeholder="Enter agent name">
+                  <label for="editAgentName" class="form-label"><%= t('Agent Name') %> <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="editAgentName" name="name" required placeholder="<%= t('Enter agent name') %>">
                 </div>
                 <div class="col-12">
-                  <label for="editAgentVersion" class="form-label">Version</label>
-                  <input type="text" class="form-control" id="editAgentVersion" name="version" placeholder="Enter agent version">
+                  <label for="editAgentVersion" class="form-label"><%= t('Version') %></label>
+                  <input type="text" class="form-control" id="editAgentVersion" name="version" placeholder="<%= t('Enter agent version') %>">
                 </div>
                 <div class="col-12">
-                  <label for="editAgentDescription" class="form-label">Description</label>
-                  <textarea class="form-control" id="editAgentDescription" name="description" rows="3" placeholder="Enter agent description"></textarea>
+                  <label for="editAgentDescription" class="form-label"><%= t('Description') %></label>
+                  <textarea class="form-control" id="editAgentDescription" name="description" rows="3" placeholder="<%= t('Enter agent description') %>"></textarea>
                 </div>
               </div>
             </div>
             <div class="modal-footer d-flex justify-content-end">
-              <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal">Cancel</button>
-              <button type="submit" class="btn btn-primary btn-sm">Update Agent</button>
+              <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+              <button type="submit" class="btn btn-primary btn-sm"><%= t('Update Agent') %></button>
             </div>
           </form>
         </div>
@@ -309,14 +309,14 @@ function buildPaginationUrl(targetPage) {
       <div class="modal-dialog modal-lg">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="agentDetailModalLabel">Agent Detail</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <h5 class="modal-title" id="agentDetailModalLabel"><%= t('Agent Detail') %></h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
           </div>
           <div class="modal-body" id="agentDetailContent">
             <!-- Content will be loaded here -->
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Close') %></button>
           </div>
         </div>
       </div>
@@ -337,7 +337,7 @@ function showAgentDetail(agentId) {
                  document.querySelector(`button[onclick="showAgentDetail('${agentId}')"]`);
   
   if (!button || !button.dataset.agent) {
-    alert('Agent data not found');
+    alert(t('Agent data not found'));
     return;
   }
   
@@ -346,7 +346,7 @@ function showAgentDetail(agentId) {
     agent = JSON.parse(button.dataset.agent);
   } catch (error) {
     console.error('Error parsing agent data:', error);
-    alert('Error loading agent details');
+    alert(t('Error loading agent details'));
     return;
   }
   

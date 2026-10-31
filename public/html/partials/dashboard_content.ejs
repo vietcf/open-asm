@@ -21,7 +21,7 @@ const statTiles = stats ? [
   <div class="container-fluid">
 
     <% if (!stats) { %>
-      <div class="alert alert-warning">Unable to load dashboard statistics right now.</div>
+      <div class="alert alert-warning"><%= t('Unable to load dashboard statistics right now.') %></div>
     <% } else { %>
 
       <!-- ==========================================
@@ -57,12 +57,12 @@ const statTiles = stats ? [
           <div class="col-lg-6">
             <div class="card shadow-sm border-0 h-100">
               <div class="card-header bg-white border-0 pb-0">
-                <strong>IP Address Status</strong>
-                <span class="text-muted small ms-1">(<%= stats.counts.ipAddresses.toLocaleString() %> total)</span>
+                <strong><%= t('IP Address Status') %></strong>
+                <span class="text-muted small ms-1"><%= t('({1} total)', { 1: stats.counts.ipAddresses.toLocaleString() }) %></span>
               </div>
               <div class="card-body">
                 <% if (stats.ipStatusBreakdown.length === 0) { %>
-                  <div class="text-muted small">No IP addresses yet.</div>
+                  <div class="text-muted small"><%= t('No IP addresses yet.') %></div>
                 <% } else { %>
                   <% stats.ipStatusBreakdown.forEach(function(row) { %>
                     <% const color = IP_STATUS_COLORS[row.label] || 'secondary'; %>
@@ -89,12 +89,12 @@ const statTiles = stats ? [
           <div class="col-lg-6">
             <div class="card shadow-sm border-0 h-100">
               <div class="card-header bg-white border-0 pb-0">
-                <strong>Devices by Type</strong>
-                <span class="text-muted small ms-1">(<%= stats.counts.devices.toLocaleString() %> total)</span>
+                <strong><%= t('Devices by Type') %></strong>
+                <span class="text-muted small ms-1"><%= t('({1} total)', { 1: stats.counts.devices.toLocaleString() }) %></span>
               </div>
               <div class="card-body">
                 <% if (stats.deviceTypeBreakdown.length === 0) { %>
-                  <div class="text-muted small">No devices yet.</div>
+                  <div class="text-muted small"><%= t('No devices yet.') %></div>
                 <% } else { %>
                   <% stats.deviceTypeBreakdown.forEach(function(row, idx) { %>
                     <% const color = CATEGORICAL_COLORS[idx % CATEGORICAL_COLORS.length]; %>
@@ -123,12 +123,12 @@ const statTiles = stats ? [
           <div class="col-12">
             <div class="card shadow-sm border-0">
               <div class="card-header bg-white border-0 pb-0">
-                <strong>Subnet Utilization</strong>
-                <span class="text-muted small ms-1">(highest usage first)</span>
+                <strong><%= t('Subnet Utilization') %></strong>
+                <span class="text-muted small ms-1"><%= t('(highest usage first)') %></span>
               </div>
               <div class="card-body">
                 <% if (stats.subnetUsage.length === 0) { %>
-                  <div class="text-muted small">No subnets yet.</div>
+                  <div class="text-muted small"><%= t('No subnets yet.') %></div>
                 <% } else { %>
                   <% stats.subnetUsage.forEach(function(sn) { %>
                     <div class="dashboard-bar-row mb-2">

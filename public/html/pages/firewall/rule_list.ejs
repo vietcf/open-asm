@@ -70,8 +70,8 @@ function buildExportUrl() {
     <div class="row">
     <div class="col-12">
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/">Home</a></li>
-          <li class="breadcrumb-item active">Firewall Rules List</li>
+          <li class="breadcrumb-item"><a href="/"><%= t('Home') %></a></li>
+          <li class="breadcrumb-item active"><%= t('Firewall Rules List') %></li>
         </ol>
         </div>
         </div>
@@ -99,11 +99,11 @@ function buildExportUrl() {
           <% } %>
           
           <div class="input-group input-group-sm" style="width: 250px;">
-              <input class="form-control form-control-sm" type="search" name="search" placeholder="Search rule name, source, destination..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
+              <input class="form-control form-control-sm" type="search" name="search" placeholder="<%= t('Search rule name, source, destination...') %>" aria-label="<%= t('Search') %>" value="<%= typeof search !== 'undefined' ? search : '' %>">
             <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
             </div>
           <div class="d-flex align-items-center gap-1">
-            <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
+            <label class="form-label form-label-sm mb-0 text-muted"><%= t('Show:') %></label>
             <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
               <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
                 <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
@@ -121,10 +121,10 @@ function buildExportUrl() {
         <div class="d-flex justify-content-end gap-2">
         <% if (hasPermission('rule.create')) { %>
             <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addRuleModal">
-            <i class="bi bi-plus"></i> Add Rule
+            <i class="bi bi-plus"></i> <%= t('Add Rule') %>
           </button>
             <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importRuleModal">
-            <i class="bi bi-upload"></i> Import
+            <i class="bi bi-upload"></i> <%= t('Import') %>
           </button>
         <% } %>
         <%
@@ -140,11 +140,11 @@ function buildExportUrl() {
           );
         %>
         <button type="button" class="btn btn-sm <%= hasActiveRuleFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterRuleModal">
-          <i class="bi bi-funnel<%= hasActiveRuleFilter ? '-fill' : '' %>"></i> Filter<%= hasActiveRuleFilter ? ' (Filtered)' : '' %>
+          <i class="bi bi-funnel<%= hasActiveRuleFilter ? '-fill' : '' %>"></i> <%= t('Filter{1}', { 1: hasActiveRuleFilter ? ' (Filtered)' : '' }) %>
         </button>
           <% if (hasPermission('rule.read')) { %>
             <a href="<%= buildExportUrl() %>" class="btn btn-warning btn-sm">
-              <i class="bi bi-download"></i> Export
+              <i class="bi bi-download"></i> <%= t('Export') %>
             </a>
           <% } %>
       </div>
@@ -167,7 +167,7 @@ function buildExportUrl() {
   <% if (typeof successMessage !== 'undefined' && successMessage) { %>
     <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
       <i class="bi bi-check-circle me-2"></i><%= t(successMessage) %>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
     </div>
       <script>
       // Auto-hide success message after 5 seconds
@@ -184,7 +184,7 @@ function buildExportUrl() {
   <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
     <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
       <i class="bi bi-exclamation-triangle me-2"></i><%= t(errorMessage) %>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
     </div>
     <script>
       // Auto-hide error message after 8 seconds (longer for errors)
@@ -203,17 +203,17 @@ function buildExportUrl() {
     <div class="col-12">
       <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
-          <h3 class="card-title mb-0">Firewall Rules List</h3>
+          <h3 class="card-title mb-0"><%= t('Firewall Rules List') %></h3>
           <div class="d-flex align-items-center gap-2">
             <!-- View Toggle -->
-            <div class="btn-group" role="group" aria-label="View toggle">
+            <div class="btn-group" role="group" aria-label="<%= t('View toggle') %>">
               <input type="radio" class="btn-check" name="viewToggle" id="groupedView" autocomplete="off" checked>
               <label class="btn btn-outline-primary btn-sm" for="groupedView">
-                <i class="bi bi-collection"></i> Grouped
+                <i class="bi bi-collection"></i> <%= t('Grouped') %>
               </label>
               <input type="radio" class="btn-check" name="viewToggle" id="detailedView" autocomplete="off">
               <label class="btn btn-outline-primary btn-sm" for="detailedView">
-                <i class="bi bi-list"></i> Detailed
+                <i class="bi bi-list"></i> <%= t('Detailed') %>
               </label>
             </div>
           </div>
@@ -222,26 +222,26 @@ function buildExportUrl() {
             <table class="table table-hover" id="ruleTable" style="table-layout: fixed; min-width: 800px;">
             <thead>
               <tr id="detailedHeader">
-                <th>No.</th>
-                <th>Audit Batch</th>
-                <th>Firewall Name</th>
-                <th>Rule Name</th>
-                <th>Source</th>
-                <th>Destination</th>
-                <th>Action</th>
-                <th>Status</th>
-                <th class="text-end">Actions</th>
+                <th><%= t('No.') %></th>
+                <th><%= t('Audit Batch') %></th>
+                <th><%= t('Firewall Name') %></th>
+                <th><%= t('Rule Name') %></th>
+                <th><%= t('Source') %></th>
+                <th><%= t('Destination') %></th>
+                <th><%= t('Action') %></th>
+                <th><%= t('Status') %></th>
+                <th class="text-end"><%= t('Actions') %></th>
               </tr>
               <tr id="groupedHeader" style="display: none;">
-                <th>No.</th>
-                <th>Audit Batch</th>
-                <th>Firewall Name</th>
-                <th>Rule Name</th>
-                <th>Source</th>
-                <th>Destination</th>
-                <th>Service</th>
-                <th>Last Update</th>
-                <th class="text-end">Actions</th>
+                <th><%= t('No.') %></th>
+                <th><%= t('Audit Batch') %></th>
+                <th><%= t('Firewall Name') %></th>
+                <th><%= t('Rule Name') %></th>
+                <th><%= t('Source') %></th>
+                <th><%= t('Destination') %></th>
+                <th><%= t('Service') %></th>
+                <th><%= t('Last Update') %></th>
+                <th class="text-end"><%= t('Actions') %></th>
               </tr>
             </thead>
             <tbody id="rulesTableBody">
@@ -258,9 +258,9 @@ function buildExportUrl() {
                     <td><span class="badge bg-<%= rule.action === 'allow' ? 'success' : 'danger' %>"><%= rule.action %></span></td>
                     <td><span class="badge bg-<%= rule.status === 'active' ? 'success' : 'secondary' %>"><%= rule.status %></span></td>
                     <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showRuleDetail('<%= rule.id %>')" data-rule-id="<%= rule.id %>" data-rule='<%= JSON.stringify(rule) %>'><i class="bi bi-eye"></i></button>
+                        <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showRuleDetail('<%= rule.id %>')" data-rule-id="<%= rule.id %>" data-rule='<%= JSON.stringify(rule) %>'><i class="bi bi-eye"></i></button>
                       <% if (hasPermission('firewall.update')) { %>
-                      <button type="button" class="btn btn-warning btn-sm" title="Edit" 
+                      <button type="button" class="btn btn-warning btn-sm" title="<%= t('Edit') %>" 
                               data-bs-toggle="modal" data-bs-target="#editRuleModal"
                               data-rule-id="<%= rule.id %>"
                               data-rule='<%= JSON.stringify(rule) %>'>
@@ -269,7 +269,7 @@ function buildExportUrl() {
                       <% } %>
                       <% if (hasPermission('firewall.delete')) { %>
                         <form action="/firewall/rule/<%= rule.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteRule(this, '<%= rule.rulename %>')">
-                        <button type="submit" class="btn btn-danger btn-sm" title="Delete">
+                        <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
                           <i class="bi bi-trash"></i>
                         </button>
                       </form>
@@ -278,7 +278,7 @@ function buildExportUrl() {
                   </tr>
                 <% }) %>
               <% } else { %>
-                <tr><td colspan="9" class="text-center">No firewall rules found</td></tr>
+                <tr><td colspan="9" class="text-center"><%= t('No firewall rules found') %></td></tr>
               <% } %>
             </tbody>
           </table>
@@ -291,7 +291,7 @@ function buildExportUrl() {
                 const ruleStartItem = (page - 1) * pageSize + 1;
                 const ruleEndItem = Math.min(page * pageSize, totalCount || 0);
               %>
-              <span>Showing <%= ruleStartItem %> - <%= ruleEndItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> firewall rules</span>
+              <span><%= t('Showing {1} - {2} of {3} firewall rules', { 1: ruleStartItem, 2: ruleEndItem, 3: typeof totalCount !== 'undefined' ? totalCount : 0 }) %></span>
             </div>
               <ul class="pagination pagination-sm m-0">
                 <% 
@@ -311,7 +311,7 @@ function buildExportUrl() {
                   }
               %>
               <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                  <a class="page-link" href="<%= buildPaginationUrl(page - 1) %>">Previous</a>
+                  <a class="page-link" href="<%= buildPaginationUrl(page - 1) %>"><%= t('Previous') %></a>
               </li>
                 <% if (startPage > 1) { %>
                   <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(1) %>">1</a></li>
@@ -327,7 +327,7 @@ function buildExportUrl() {
                   <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(totalPages) %>"><%= totalPages %></a></li>
               <% } %>
               <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                  <a class="page-link" href="<%= buildPaginationUrl(page + 1) %>">Next</a>
+                  <a class="page-link" href="<%= buildPaginationUrl(page + 1) %>"><%= t('Next') %></a>
               </li>
             </ul>
             </div>
@@ -343,77 +343,77 @@ function buildExportUrl() {
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="addRuleModalLabel">Add Firewall Rule</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <h5 class="modal-title" id="addRuleModalLabel"><%= t('Add Firewall Rule') %></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
         </div>
         <div class="modal-body">
           <form id="addRuleForm" action="/firewall/rule" method="POST" onsubmit="return validateAddRuleForm()">
             <!-- Audit Batch -->
             <div class="mb-3">
-              <label for="audit_batch" class="form-label">Audit Batch <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="audit_batch" name="audit_batch" required placeholder="Audit Batch">
-              <div class="form-text">Enter audit batch name</div>
+              <label for="audit_batch" class="form-label"><%= t('Audit Batch') %> <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="audit_batch" name="audit_batch" required placeholder="<%= t('Audit Batch') %>">
+              <div class="form-text"><%= t('Enter audit batch name') %></div>
             </div>
             
             <div class="mb-3">
-              <label for="firewall_name" class="form-label">Firewall Name <span class="text-danger">*</span></label>
+              <label for="firewall_name" class="form-label"><%= t('Firewall Name') %> <span class="text-danger">*</span></label>
             <select class="form-control" id="firewall_name" name="firewall_name" required style="width:100%">
-                <option value="">-- Select Firewall Name --</option>
+                <option value="">-- <%= t('Select Firewall Name --') %></option>
                 <% (firewallNameOptions || []).forEach(function(fw) { %>
                   <option value="<%= fw.value %>"><%= fw.label %></option>
                 <% }) %>
               </select>
             </div>
             <div class="mb-3">
-              <label for="rulename" class="form-label">Rule Name <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="rulename" name="rulename" required placeholder="Rule Name">
+              <label for="rulename" class="form-label"><%= t('Rule Name') %> <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="rulename" name="rulename" required placeholder="<%= t('Rule Name') %>">
             </div>
             
             <!-- Source Section -->
             <div class="mb-3">
-              <label for="src_zone" class="form-label">Source Zone</label>
-            <input type="text" class="form-control" id="src_zone" name="src_zone" placeholder="Source Zone">
+              <label for="src_zone" class="form-label"><%= t('Source Zone') %></label>
+            <input type="text" class="form-control" id="src_zone" name="src_zone" placeholder="<%= t('Source Zone') %>">
             </div>
             <div class="mb-3">
-              <label for="src" class="form-label">Source <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="src" name="src" required placeholder="Source IP/Network">
+              <label for="src" class="form-label"><%= t('Source') %> <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="src" name="src" required placeholder="<%= t('Source IP/Network') %>">
             </div>
             <div class="mb-3">
-              <label for="src_detail" class="form-label">Source Detail</label>
-            <input type="text" class="form-control" id="src_detail" name="src_detail" placeholder="Source Detail">
+              <label for="src_detail" class="form-label"><%= t('Source Detail') %></label>
+            <input type="text" class="form-control" id="src_detail" name="src_detail" placeholder="<%= t('Source Detail') %>">
             </div>
             
             <!-- Destination Section -->
             <div class="mb-3">
-              <label for="dst_zone" class="form-label">Destination Zone</label>
-            <input type="text" class="form-control" id="dst_zone" name="dst_zone" placeholder="Destination Zone">
+              <label for="dst_zone" class="form-label"><%= t('Destination Zone') %></label>
+            <input type="text" class="form-control" id="dst_zone" name="dst_zone" placeholder="<%= t('Destination Zone') %>">
             </div>
             <div class="mb-3">
-              <label for="dst" class="form-label">Destination <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="dst" name="dst" required placeholder="Destination IP/Network">
+              <label for="dst" class="form-label"><%= t('Destination') %> <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="dst" name="dst" required placeholder="<%= t('Destination IP/Network') %>">
             </div>
             <div class="mb-3">
-              <label for="dst_detail" class="form-label">Destination Detail</label>
-            <input type="text" class="form-control" id="dst_detail" name="dst_detail" placeholder="Destination Detail">
+              <label for="dst_detail" class="form-label"><%= t('Destination Detail') %></label>
+            <input type="text" class="form-control" id="dst_detail" name="dst_detail" placeholder="<%= t('Destination Detail') %>">
             </div>
             
             <!-- Service Section -->
             <div class="mb-3">
-              <label for="services" class="form-label">Services</label>
-            <input type="text" class="form-control" id="services" name="services" placeholder="Service">
+              <label for="services" class="form-label"><%= t('Services') %></label>
+            <input type="text" class="form-control" id="services" name="services" placeholder="<%= t('Service') %>">
             </div>
             <div class="mb-3">
-              <label for="application" class="form-label">Application</label>
-            <input type="text" class="form-control" id="application" name="application" placeholder="Application">
+              <label for="application" class="form-label"><%= t('Application') %></label>
+            <input type="text" class="form-control" id="application" name="application" placeholder="<%= t('Application') %>">
             </div>
             <div class="mb-3">
               <label for="url" class="form-label">URL</label>
             <input type="text" class="form-control" id="url" name="url" placeholder="URL">
             </div>
             <div class="mb-3">
-              <label for="action" class="form-label">Action <span class="text-danger">*</span></label>
+              <label for="action" class="form-label"><%= t('Action') %> <span class="text-danger">*</span></label>
             <select class="form-control" id="action" name="action" required style="width:100%">
-                <option value="">-- Select Action --</option>
+                <option value="">-- <%= t('Select Action --') %></option>
                 <% (actionsOptions || []).forEach(function(act) { %>
                   <option value="<%= act.value %>"><%= act.label %></option>
                 <% }) %>
@@ -422,9 +422,9 @@ function buildExportUrl() {
             
             <!-- Violation Type -->
             <div class="mb-3">
-              <label for="violation_type" class="form-label">Violation Type</label>
+              <label for="violation_type" class="form-label"><%= t('Violation Type') %></label>
             <select class="form-control" id="violation_type" name="violation_type" style="width:100%">
-                <option value="">-- No violation --</option>
+                <option value="">-- <%= t('No violation --') %></option>
                 <% (violationTypeOptions || []).forEach(function(vt) { %>
                   <option value="<%= vt.value %>"><%= vt.label %></option>
                 <% }) %>
@@ -433,59 +433,59 @@ function buildExportUrl() {
             
             <!-- Violation Detail -->
             <div class="mb-3">
-              <label for="violation_detail" class="form-label">Violation Detail</label>
-            <textarea class="form-control" id="violation_detail" name="violation_detail" rows="2" placeholder="Violation Detail"></textarea>
+              <label for="violation_detail" class="form-label"><%= t('Violation Detail') %></label>
+            <textarea class="form-control" id="violation_detail" name="violation_detail" rows="2" placeholder="<%= t('Violation Detail') %>"></textarea>
             </div>
             
             <!-- OU (Organizational Unit) -->
             <div class="mb-3">
-              <label for="ou_id" class="form-label">OU (Organizational Unit)</label>
+              <label for="ou_id" class="form-label"><%= t('OU (Organizational Unit)') %></label>
             <select class="form-control" id="ou_id" name="ou_id" style="width:100%">
-                <option value="">-- Select OU --</option>
+                <option value="">-- <%= t('Select OU --') %></option>
               </select>
             </div>
             
             <!-- Contacts -->
             <div class="mb-3">
-              <label for="add-contact-select" class="form-label">Contacts</label>
+              <label for="add-contact-select" class="form-label"><%= t('Contacts') %></label>
               <select id="add-contact-select" name="contacts[]" class="form-control" multiple style="width:100%">
                 <!-- Selected contacts will be populated here -->
               </select>
-              <div class="form-text">Select contacts responsible for this rule</div>
+              <div class="form-text"><%= t('Select contacts responsible for this rule') %></div>
             </div>
             
             <!-- Tags -->
             <div class="mb-3">
-              <label for="add-tag-select" class="form-label">Tags</label>
+              <label for="add-tag-select" class="form-label"><%= t('Tags') %></label>
               <select id="add-tag-select" name="tags[]" class="form-control" multiple style="width:100%">
                 <!-- Selected tags will be populated here -->
               </select>
-              <div class="form-text">Select tags for this rule</div>
+              <div class="form-text"><%= t('Select tags for this rule') %></div>
             </div>
             
             <!-- Solution Proposal -->
             <div class="mb-3">
-              <label for="solution_proposal" class="form-label">Solution Proposal</label>
-            <textarea class="form-control" id="solution_proposal" name="solution_proposal" rows="2" placeholder="Solution Proposal"></textarea>
+              <label for="solution_proposal" class="form-label"><%= t('Solution Proposal') %></label>
+            <textarea class="form-control" id="solution_proposal" name="solution_proposal" rows="2" placeholder="<%= t('Solution Proposal') %>"></textarea>
             </div>
             
             <!-- Solution Confirm -->
             <div class="mb-3">
-              <label for="solution_confirm" class="form-label">Solution Confirm</label>
-            <textarea class="form-control" id="solution_confirm" name="solution_confirm" rows="2" placeholder="Solution Confirm"></textarea>
+              <label for="solution_confirm" class="form-label"><%= t('Solution Confirm') %></label>
+            <textarea class="form-control" id="solution_confirm" name="solution_confirm" rows="2" placeholder="<%= t('Solution Confirm') %>"></textarea>
             </div>
             
             <!-- Work Order -->
             <div class="mb-3">
-              <label for="work_order" class="form-label">Work Order</label>
-            <input type="text" class="form-control" id="work_order" name="work_order" placeholder="Work Order">
+              <label for="work_order" class="form-label"><%= t('Work Order') %></label>
+            <input type="text" class="form-control" id="work_order" name="work_order" placeholder="<%= t('Work Order') %>">
             </div>
             
             <!-- Status -->
             <div class="mb-3">
-              <label for="status" class="form-label">Status</label>
+              <label for="status" class="form-label"><%= t('Status') %></label>
             <select class="form-control" id="status" name="status" style="width:100%">
-                <option value="">-- No status --</option>
+                <option value="">-- <%= t('No status --') %></option>
                 <% (statusOptions || []).forEach(function(st) { %>
                   <option value="<%= st.value %>"><%= st.label %></option>
                 <% }) %>
@@ -494,21 +494,21 @@ function buildExportUrl() {
             
             <!-- Description -->
             <div class="mb-3">
-              <label for="description" class="form-label">Description</label>
-            <textarea class="form-control" id="description" name="description" rows="2" placeholder="Description"></textarea>
+              <label for="description" class="form-label"><%= t('Description') %></label>
+            <textarea class="form-control" id="description" name="description" rows="2" placeholder="<%= t('Description') %>"></textarea>
             </div>
             
             <!-- Raw Data -->
             <div class="mb-3">
-              <label for="raw_data" class="form-label">Raw Data</label>
-            <textarea class="form-control" id="raw_data" name="raw_data" rows="3" placeholder="Raw data from firewall device"></textarea>
-              <div class="form-text">Original raw data from firewall device (optional)</div>
+              <label for="raw_data" class="form-label"><%= t('Raw Data') %></label>
+            <textarea class="form-control" id="raw_data" name="raw_data" rows="3" placeholder="<%= t('Raw data from firewall device') %>"></textarea>
+              <div class="form-text"><%= t('Original raw data from firewall device (optional)') %></div>
             </div>
           </form>
         </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-        <button type="submit" class="btn btn-primary btn-sm" form="addRuleForm">Add Rule</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+        <button type="submit" class="btn btn-primary btn-sm" form="addRuleForm"><%= t('Add Rule') %></button>
         </div>
       </div>
     </div>
@@ -519,8 +519,8 @@ function buildExportUrl() {
     <div class="modal-dialog modal-xl">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="editRuleModalLabel">Edit Firewall Rule</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <h5 class="modal-title" id="editRuleModalLabel"><%= t('Edit Firewall Rule') %></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
         </div>
         <div class="modal-body">
         <form id="editRuleForm" method="POST" onsubmit="return validateEditRuleForm()">
@@ -528,69 +528,69 @@ function buildExportUrl() {
             <input type="hidden" id="editRuleId" name="id">
             
             <div class="mb-3">
-              <label for="edit_audit_batch" class="form-label">Audit Batch <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="edit_audit_batch" name="audit_batch" required placeholder="Audit Batch">
-              <div class="form-text">Enter audit batch name</div>
+              <label for="edit_audit_batch" class="form-label"><%= t('Audit Batch') %> <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="edit_audit_batch" name="audit_batch" required placeholder="<%= t('Audit Batch') %>">
+              <div class="form-text"><%= t('Enter audit batch name') %></div>
             </div>
             <div class="mb-3">
-              <label for="edit_firewall_name" class="form-label">Firewall Name <span class="text-danger">*</span></label>
+              <label for="edit_firewall_name" class="form-label"><%= t('Firewall Name') %> <span class="text-danger">*</span></label>
             <select class="form-control" id="edit_firewall_name" name="firewall_name" required style="width:100%">
-                <option value="">-- Select Firewall Name --</option>
+                <option value="">-- <%= t('Select Firewall Name --') %></option>
                 <% (firewallNameOptions || []).forEach(function(fw) { %>
                   <option value="<%= fw.value %>"><%= fw.label %></option>
                 <% }) %>
               </select>
             </div>
             <div class="mb-3">
-              <label for="edit_rulename" class="form-label">Rule Name <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="edit_rulename" name="rulename" required placeholder="Rule Name">
+              <label for="edit_rulename" class="form-label"><%= t('Rule Name') %> <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="edit_rulename" name="rulename" required placeholder="<%= t('Rule Name') %>">
             </div>
             
             <!-- Source Section -->
             <div class="mb-3">
-              <label for="edit_src_zone" class="form-label">Source Zone</label>
-            <input type="text" class="form-control" id="edit_src_zone" name="src_zone" placeholder="Source Zone">
+              <label for="edit_src_zone" class="form-label"><%= t('Source Zone') %></label>
+            <input type="text" class="form-control" id="edit_src_zone" name="src_zone" placeholder="<%= t('Source Zone') %>">
             </div>
             <div class="mb-3">
-              <label for="edit_src" class="form-label">Source <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="edit_src" name="src" required placeholder="Source IP/Network">
+              <label for="edit_src" class="form-label"><%= t('Source') %> <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="edit_src" name="src" required placeholder="<%= t('Source IP/Network') %>">
             </div>
             <div class="mb-3">
-              <label for="edit_src_detail" class="form-label">Source Detail</label>
-            <input type="text" class="form-control" id="edit_src_detail" name="src_detail" placeholder="Source Detail">
+              <label for="edit_src_detail" class="form-label"><%= t('Source Detail') %></label>
+            <input type="text" class="form-control" id="edit_src_detail" name="src_detail" placeholder="<%= t('Source Detail') %>">
             </div>
             
             <!-- Destination Section -->
             <div class="mb-3">
-              <label for="edit_dst_zone" class="form-label">Destination Zone</label>
-            <input type="text" class="form-control" id="edit_dst_zone" name="dst_zone" placeholder="Destination Zone">
+              <label for="edit_dst_zone" class="form-label"><%= t('Destination Zone') %></label>
+            <input type="text" class="form-control" id="edit_dst_zone" name="dst_zone" placeholder="<%= t('Destination Zone') %>">
             </div>
             <div class="mb-3">
-              <label for="edit_dst" class="form-label">Destination <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="edit_dst" name="dst" required placeholder="Destination IP/Network">
+              <label for="edit_dst" class="form-label"><%= t('Destination') %> <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="edit_dst" name="dst" required placeholder="<%= t('Destination IP/Network') %>">
             </div>
             <div class="mb-3">
-              <label for="edit_dst_detail" class="form-label">Destination Detail</label>
-            <input type="text" class="form-control" id="edit_dst_detail" name="dst_detail" placeholder="Destination Detail">
+              <label for="edit_dst_detail" class="form-label"><%= t('Destination Detail') %></label>
+            <input type="text" class="form-control" id="edit_dst_detail" name="dst_detail" placeholder="<%= t('Destination Detail') %>">
             </div>
             
             <!-- Service Section -->
             <div class="mb-3">
-              <label for="edit_services" class="form-label">Services</label>
-            <input type="text" class="form-control" id="edit_services" name="services" placeholder="Service">
+              <label for="edit_services" class="form-label"><%= t('Services') %></label>
+            <input type="text" class="form-control" id="edit_services" name="services" placeholder="<%= t('Service') %>">
             </div>
             <div class="mb-3">
-              <label for="edit_application" class="form-label">Application</label>
-            <input type="text" class="form-control" id="edit_application" name="application" placeholder="Application">
+              <label for="edit_application" class="form-label"><%= t('Application') %></label>
+            <input type="text" class="form-control" id="edit_application" name="application" placeholder="<%= t('Application') %>">
             </div>
             <div class="mb-3">
               <label for="edit_url" class="form-label">URL</label>
             <input type="text" class="form-control" id="edit_url" name="url" placeholder="URL">
             </div>
             <div class="mb-3">
-              <label for="edit_action" class="form-label">Action <span class="text-danger">*</span></label>
+              <label for="edit_action" class="form-label"><%= t('Action') %> <span class="text-danger">*</span></label>
             <select class="form-control" id="edit_action" name="action" required style="width:100%">
-                <option value="">-- Select Action --</option>
+                <option value="">-- <%= t('Select Action --') %></option>
                 <% (actionsOptions || []).forEach(function(act) { %>
                   <option value="<%= act.value %>"><%= act.label %></option>
                 <% }) %>
@@ -599,9 +599,9 @@ function buildExportUrl() {
             
             <!-- Violation Type -->
             <div class="mb-3">
-              <label for="edit_violation_type" class="form-label">Violation Type</label>
+              <label for="edit_violation_type" class="form-label"><%= t('Violation Type') %></label>
             <select class="form-control" id="edit_violation_type" name="violation_type" style="width:100%">
-                <option value="">-- No violation --</option>
+                <option value="">-- <%= t('No violation --') %></option>
                 <% (violationTypeOptions || []).forEach(function(vt) { %>
                   <option value="<%= vt.value %>"><%= vt.label %></option>
                 <% }) %>
@@ -610,57 +610,57 @@ function buildExportUrl() {
             
             <!-- Violation Detail -->
             <div class="mb-3">
-              <label for="edit_violation_detail" class="form-label">Violation Detail</label>
-            <textarea class="form-control" id="edit_violation_detail" name="violation_detail" rows="2" placeholder="Violation Detail"></textarea>
+              <label for="edit_violation_detail" class="form-label"><%= t('Violation Detail') %></label>
+            <textarea class="form-control" id="edit_violation_detail" name="violation_detail" rows="2" placeholder="<%= t('Violation Detail') %>"></textarea>
             </div>
             
             <!-- OU (Organizational Unit) -->
             <div class="mb-3">
-              <label for="edit_ou_id" class="form-label">OU (Organizational Unit)</label>
+              <label for="edit_ou_id" class="form-label"><%= t('OU (Organizational Unit)') %></label>
             <select class="form-control" id="edit_ou_id" name="ou_id" style="width:100%">
-                <option value="">-- Select OU --</option>
+                <option value="">-- <%= t('Select OU --') %></option>
               </select>
             </div>
             
             <!-- Contacts -->
             <div class="mb-3">
-              <label for="edit-contact-select" class="form-label">Contacts</label>
+              <label for="edit-contact-select" class="form-label"><%= t('Contacts') %></label>
               <select id="edit-contact-select" name="contacts[]" class="form-control" multiple style="width:100%">
                 <!-- Selected contacts will be populated here -->
               </select>
-              <div class="form-text">Select contacts responsible for this rule</div>
+              <div class="form-text"><%= t('Select contacts responsible for this rule') %></div>
             </div>
             
             <!-- Tags -->
             <div class="mb-3">
-              <label for="edit-tag-select" class="form-label">Tags</label>
+              <label for="edit-tag-select" class="form-label"><%= t('Tags') %></label>
               <select id="edit-tag-select" name="tags[]" class="form-control" multiple style="width:100%">
                 <!-- Selected tags will be populated here -->
               </select>
-              <div class="form-text">Select tags for this rule</div>
+              <div class="form-text"><%= t('Select tags for this rule') %></div>
             </div>
             
             <!-- Solution Section -->
             <div class="mb-3">
-              <label for="edit_solution_proposal" class="form-label">Solution Proposal</label>
-            <textarea class="form-control" id="edit_solution_proposal" name="solution_proposal" rows="2" placeholder="Solution Proposal"></textarea>
+              <label for="edit_solution_proposal" class="form-label"><%= t('Solution Proposal') %></label>
+            <textarea class="form-control" id="edit_solution_proposal" name="solution_proposal" rows="2" placeholder="<%= t('Solution Proposal') %>"></textarea>
             </div>
             <div class="mb-3">
-              <label for="edit_solution_confirm" class="form-label">Solution Confirm</label>
-            <textarea class="form-control" id="edit_solution_confirm" name="solution_confirm" rows="2" placeholder="Solution Confirm"></textarea>
+              <label for="edit_solution_confirm" class="form-label"><%= t('Solution Confirm') %></label>
+            <textarea class="form-control" id="edit_solution_confirm" name="solution_confirm" rows="2" placeholder="<%= t('Solution Confirm') %>"></textarea>
             </div>
             
             <!-- Work Order -->
             <div class="mb-3">
-              <label for="edit_work_order" class="form-label">Work Order</label>
-            <input type="text" class="form-control" id="edit_work_order" name="work_order" placeholder="Work Order">
+              <label for="edit_work_order" class="form-label"><%= t('Work Order') %></label>
+            <input type="text" class="form-control" id="edit_work_order" name="work_order" placeholder="<%= t('Work Order') %>">
             </div>
             
             <!-- Status -->
             <div class="mb-3">
-              <label for="edit_status" class="form-label">Status</label>
+              <label for="edit_status" class="form-label"><%= t('Status') %></label>
             <select class="form-control" id="edit_status" name="status" style="width:100%">
-                <option value="">-- No status --</option>
+                <option value="">-- <%= t('No status --') %></option>
                 <% (statusOptions || []).forEach(function(st) { %>
                   <option value="<%= st.value %>"><%= st.label %></option>
                 <% }) %>
@@ -669,21 +669,21 @@ function buildExportUrl() {
             
             <!-- Description -->
             <div class="mb-3">
-              <label for="edit_description" class="form-label">Description</label>
-            <textarea class="form-control" id="edit_description" name="description" rows="2" placeholder="Description"></textarea>
+              <label for="edit_description" class="form-label"><%= t('Description') %></label>
+            <textarea class="form-control" id="edit_description" name="description" rows="2" placeholder="<%= t('Description') %>"></textarea>
             </div>
             
             <!-- Raw Data -->
             <div class="mb-3">
-              <label for="edit_raw_data" class="form-label">Raw Data</label>
-            <textarea class="form-control" id="edit_raw_data" name="raw_data" rows="3" placeholder="Raw data from firewall device"></textarea>
-              <div class="form-text">Original raw data from firewall device (optional)</div>
+              <label for="edit_raw_data" class="form-label"><%= t('Raw Data') %></label>
+            <textarea class="form-control" id="edit_raw_data" name="raw_data" rows="3" placeholder="<%= t('Raw data from firewall device') %>"></textarea>
+              <div class="form-text"><%= t('Original raw data from firewall device (optional)') %></div>
             </div>
           </form>
           </div>
           <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-        <button type="submit" class="btn btn-primary btn-sm" form="editRuleForm">Update Rule</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+        <button type="submit" class="btn btn-primary btn-sm" form="editRuleForm"><%= t('Update Rule') %></button>
           </div>
         </div>
       </div>
@@ -694,75 +694,75 @@ function buildExportUrl() {
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="filterRuleModalLabel">Filter Firewall Rules</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <h5 class="modal-title" id="filterRuleModalLabel"><%= t('Filter Firewall Rules') %></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
         </div>
         <form method="get" action="/firewall/rule">
           <div class="modal-body">
             <div class="mb-3">
-              <label for="filterRuleAuditBatch" class="form-label">Audit Batch</label>
-              <input type="text" class="form-control" id="filterRuleAuditBatch" name="audit_batch" placeholder="Enter audit batch" value="<%= typeof audit_batch !== 'undefined' ? audit_batch : '' %>">
+              <label for="filterRuleAuditBatch" class="form-label"><%= t('Audit Batch') %></label>
+              <input type="text" class="form-control" id="filterRuleAuditBatch" name="audit_batch" placeholder="<%= t('Enter audit batch') %>" value="<%= typeof audit_batch !== 'undefined' ? audit_batch : '' %>">
             </div>
             <div class="mb-3">
-              <label for="filterRuleFirewallName" class="form-label">Firewall Name</label>
+              <label for="filterRuleFirewallName" class="form-label"><%= t('Firewall Name') %></label>
             <select class="form-control" id="filterRuleFirewallName" name="firewall_name" style="width:100%">
-                <option value="">-- All --</option>
+                <option value="">-- <%= t('All --') %></option>
                 <% (firewallNameOptions || []).forEach(function(fw) { %>
                   <option value="<%= fw.value %>" <%= typeof firewall_name !== 'undefined' && firewall_name === fw.value ? 'selected' : '' %>><%= fw.label %></option>
                 <% }) %>
               </select>
             </div>
             <div class="mb-3">
-              <label for="filterRuleViolationType" class="form-label">Violation Type</label>
+              <label for="filterRuleViolationType" class="form-label"><%= t('Violation Type') %></label>
             <select class="form-control" id="filterRuleViolationType" name="violation_type" style="width:100%">
-                <option value="">-- All --</option>
+                <option value="">-- <%= t('All --') %></option>
                 <% (violationTypeOptions || []).forEach(function(vt) { %>
                   <option value="<%= vt.value %>" <%= typeof violation_type !== 'undefined' && violation_type === vt.value ? 'selected' : '' %>><%= vt.label %></option>
                 <% }) %>
               </select>
             </div>
             <div class="mb-3">
-              <label for="filterRuleOU" class="form-label">OU (Organizational Unit)</label>
+              <label for="filterRuleOU" class="form-label"><%= t('OU (Organizational Unit)') %></label>
             <select class="form-control" id="filterRuleOU" name="ou_id" style="width:100%">
-                <option value="">-- All --</option>
+                <option value="">-- <%= t('All --') %></option>
               </select>
             </div>
             <div class="mb-3">
-              <label for="filterRuleContacts" class="form-label">Contacts</label>
+              <label for="filterRuleContacts" class="form-label"><%= t('Contacts') %></label>
             <select class="form-control" id="filterRuleContacts" name="contacts[]" multiple style="width:100%">
               </select>
             </div>
             <div class="mb-3">
-              <label for="filterRuleTags" class="form-label">Tags</label>
+              <label for="filterRuleTags" class="form-label"><%= t('Tags') %></label>
             <select class="form-control" id="filterRuleTags" name="tags[]" multiple style="width:100%">
               </select>
             </div>
             <div class="mb-3">
-              <label for="filterRuleWorkOrder" class="form-label">Work Order</label>
-              <input type="text" class="form-control" id="filterRuleWorkOrder" name="work_order" placeholder="Enter work order" value="<%= typeof work_order !== 'undefined' ? work_order : '' %>">
+              <label for="filterRuleWorkOrder" class="form-label"><%= t('Work Order') %></label>
+              <input type="text" class="form-control" id="filterRuleWorkOrder" name="work_order" placeholder="<%= t('Enter work order') %>" value="<%= typeof work_order !== 'undefined' ? work_order : '' %>">
             </div>
             <div class="mb-3">
-              <label for="filterRuleStatus" class="form-label">Status</label>
+              <label for="filterRuleStatus" class="form-label"><%= t('Status') %></label>
             <select class="form-control" id="filterRuleStatus" name="status" style="width:100%">
-                <option value="">-- All --</option>
+                <option value="">-- <%= t('All --') %></option>
                 <% (statusOptions || []).forEach(function(st) { %>
                   <option value="<%= st.value %>" <%= typeof status !== 'undefined' && status === st.value ? 'selected' : '' %>><%= st.label %></option>
                 <% }) %>
               </select>
             </div>
           <div class="mb-3">
-            <label for="filterRuleAction" class="form-label">Action</label>
+            <label for="filterRuleAction" class="form-label"><%= t('Action') %></label>
             <select class="form-control" id="filterRuleAction" name="action" style="width:100%">
-              <option value="">-- All --</option>
-              <option value="allow" <%= typeof action !== 'undefined' && action === 'allow' ? 'selected' : '' %>>Allow</option>
-              <option value="deny" <%= typeof action !== 'undefined' && action === 'deny' ? 'selected' : '' %>>Deny</option>
+              <option value="">-- <%= t('All --') %></option>
+              <option value="allow" <%= typeof action !== 'undefined' && action === 'allow' ? 'selected' : '' %>><%= t('Allow') %></option>
+              <option value="deny" <%= typeof action !== 'undefined' && action === 'deny' ? 'selected' : '' %>><%= t('Deny') %></option>
             </select>
           </div>
         </div>
         <div class="modal-footer d-flex justify-content-end gap-2">
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-warning btn-sm" id="clearRuleFilterBtn">Clear Filter</button>
-            <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+          <button type="button" class="btn btn-warning btn-sm" id="clearRuleFilterBtn"><%= t('Clear Filter') %></button>
+            <button type="submit" class="btn btn-primary btn-sm"><%= t('Apply Filter') %></button>
           </div>
         </form>
       </div>
@@ -774,33 +774,33 @@ function buildExportUrl() {
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title" id="importRuleModalLabel">Import Firewall Rules</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <h5 class="modal-title" id="importRuleModalLabel"><%= t('Import Firewall Rules') %></h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
         </div>
         <div class="modal-body">
           <form id="importRuleForm" enctype="multipart/form-data">
             <div class="mb-3">
-              <label for="ruleFile" class="form-label">Select File <span class="text-danger">*</span></label>
+              <label for="ruleFile" class="form-label"><%= t('Select File') %> <span class="text-danger">*</span></label>
               <div class="input-group">
                 <input type="file" class="form-control" id="ruleFile" name="file" accept=".xlsx,.xls" required>
                 <% if (hasPermission('rule.read')) { %>
                   <a href="/firewall/rule/template" class="btn btn-outline-info" download>
-                    <i class="bi bi-download"></i> Download Template
+                    <i class="bi bi-download"></i> <%= t('Download Template') %>
                   </a>
                 <% } %>
               </div>
-              <div class="form-text">Supported format: Excel (.xlsx, .xls). Maximum file size: 10MB</div>
+              <div class="form-text"><%= t('Supported format: Excel (.xlsx, .xls). Maximum file size: 10MB') %></div>
             </div>
           </form>
 
           <div class="mb-3">
             <div class="alert alert-info">
-              <h6><i class="bi bi-info-circle"></i> Import Instructions:</h6>
+              <h6><i class="bi bi-info-circle"></i> <%= t('Import Instructions:') %></h6>
               <ul class="mb-0">
-                <li>Click "Download Template" to get the Excel template with correct format</li>
-                <li>Fill the template with your firewall rule data</li>
-                <li>Select your filled template file and validate before importing</li>
-                <li>Only import if all validations pass</li>
+                <li><%= t('Click "Download Template" to get the Excel template with correct format') %></li>
+                <li><%= t('Fill the template with your firewall rule data') %></li>
+                <li><%= t('Select your filled template file and validate before importing') %></li>
+                <li><%= t('Only import if all validations pass') %></li>
               </ul>
             </div>
           </div>
@@ -810,7 +810,7 @@ function buildExportUrl() {
               <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
             </div>
             <div class="text-center mt-2">
-              <span id="importStatus">Processing...</span>
+              <span id="importStatus"><%= t('Processing...') %></span>
             </div>
           </div>
 
@@ -821,12 +821,12 @@ function buildExportUrl() {
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
           <button type="button" class="btn btn-warning btn-sm" id="validateBtn" disabled>
-            <i class="bi bi-check-circle"></i> Validate File
+            <i class="bi bi-check-circle"></i> <%= t('Validate File') %>
           </button>
           <button type="button" class="btn btn-success btn-sm" id="importBtn" style="display: none;">
-            <i class="bi bi-upload"></i> Import Rules
+            <i class="bi bi-upload"></i> <%= t('Import Rules') %>
           </button>
         </div>
       </div>
@@ -2124,7 +2124,7 @@ let selectedFile = null;
 // Handle validate button click
   $(document).on('click', '#validateBtn', function() {
   if (!selectedFile) {
-    alert('Please select a file first');
+    alert(t('Please select a file first'));
     return;
   }
   
@@ -2133,7 +2133,7 @@ let selectedFile = null;
   
   // Show progress
     $('#importProgress').show();
-    $('#importStatus').text('Validating file...');
+    $('#importStatus').text(t('Validating file...'));
   $('.progress-bar').css('width', '30%');
   
   let nativeXhr;
@@ -2150,7 +2150,7 @@ let selectedFile = null;
     },
       success: function(data, status, xhr) {
       $('.progress-bar').css('width', '100%');
-        $('#importStatus').text('Validation complete!');
+        $('#importStatus').text(t('Validation complete!'));
         
         // Get validation summary from headers
         const validationSummary = xhr.getResponseHeader('X-Validation-Summary');
@@ -2191,7 +2191,7 @@ let selectedFile = null;
         }
     },
     error: function(xhr, status, error) {
-      $('.progress-bar').css('width', '100%').text('Validation Failed');
+      $('.progress-bar').css('width', '100%').text(t('Validation Failed'));
         $('#importResults').show();
 
         extractImportErrorMessage(nativeXhr || xhr).then(function(errorMessage) {
@@ -2210,7 +2210,7 @@ let selectedFile = null;
 // Handle import button click
   $(document).on('click', '#importBtn', function() {
   if (!selectedFile) {
-    alert('Please select a file first');
+    alert(t('Please select a file first'));
     return;
   }
   
@@ -2219,8 +2219,8 @@ let selectedFile = null;
   
   // Show progress
     $('#importProgress').show();
-    $('#importStatus').text('Importing rules...');
-  $('.progress-bar').css('width', '30%').text('Importing...');
+    $('#importStatus').text(t('Importing rules...'));
+  $('.progress-bar').css('width', '30%').text(t('Importing...'));
     $('#importBtn').prop('disabled', true);
   
   let nativeXhr;
@@ -2236,7 +2236,7 @@ let selectedFile = null;
       return nativeXhr;
     },
       success: function(data, status, xhr) {
-        $('#importProgress .progress-bar').css('width', '100%').text('Import Complete');
+        $('#importProgress .progress-bar').css('width', '100%').text(t('Import Complete'));
         $('#importResults').show();
         
         // Get import summary from headers
@@ -2280,7 +2280,7 @@ let selectedFile = null;
       }, 2000);
     },
     error: function(xhr, status, error) {
-        $('#importProgress .progress-bar').css('width', '100%').text('Import Failed');
+        $('#importProgress .progress-bar').css('width', '100%').text(t('Import Failed'));
         $('#importResults').show();
         extractImportErrorMessage(nativeXhr || xhr).then(function(errorMessage) {
           $('#importMessage').html('<strong>Import Error!</strong><br>' + errorMessage);

@@ -4,9 +4,9 @@
     <div class="row">
       <div class="col-12">
         <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/">Home</a></li>
-          <li class="breadcrumb-item"><a href="/cluster">Cluster Management</a></li>
-          <li class="breadcrumb-item active">Add Cluster</li>
+          <li class="breadcrumb-item"><a href="/"><%= t('Home') %></a></li>
+          <li class="breadcrumb-item"><a href="/cluster"><%= t('Cluster Management') %></a></li>
+          <li class="breadcrumb-item active"><%= t('Add Cluster') %></li>
         </ol>
       </div>
     </div>
@@ -20,56 +20,56 @@
       <div class="col-lg-8 col-md-10 col-sm-12">
       <div class="card mt-4">
         <div class="card-header d-flex justify-content-between align-items-center">
-          <h5 class="mb-0">Add Cluster</h5>
+          <h5 class="mb-0"><%= t('Add Cluster') %></h5>
         </div>
         <form action="/cluster/add" method="POST">
           <div class="card-body">
             <div class="mb-3">
-              <label class="form-label">Cluster Name <span class="text-danger">*</span></label>
-              <input type="text" id="cluster-name-input" name="name" class="form-control" placeholder="e.g. OpenShift Production, Oracle RAC DB01" required>
+              <label class="form-label"><%= t('Cluster Name') %> <span class="text-danger">*</span></label>
+              <input type="text" id="cluster-name-input" name="name" class="form-control" placeholder="<%= t('e.g. OpenShift Production, Oracle RAC DB01') %>" required>
               <div id="cluster-name-feedback" class="invalid-feedback"></div>
             </div>
             <div class="mb-3">
-              <label class="form-label">Description</label>
-              <textarea name="description" class="form-control" rows="3" placeholder="Notes about this cluster..."></textarea>
+              <label class="form-label"><%= t('Description') %></label>
+              <textarea name="description" class="form-control" rows="3" placeholder="<%= t('Notes about this cluster...') %>"></textarea>
             </div>
             <div class="mb-3">
-              <label class="form-label">Systems</label>
-              <select id="system-select" name="systems[]" class="form-select" multiple data-placeholder="Select systems this cluster serves"></select>
+              <label class="form-label"><%= t('Systems') %></label>
+              <select id="system-select" name="systems[]" class="form-select" multiple data-placeholder="<%= t('Select systems this cluster serves') %>"></select>
             </div>
             <div class="mb-3">
-              <label class="form-label">Members</label>
+              <label class="form-label"><%= t('Members') %></label>
               <div id="member-rows"></div>
               <button type="button" id="add-member-row" class="btn btn-outline-primary btn-sm mt-1">
-                <i class="bi bi-plus"></i> Add Member
+                <i class="bi bi-plus"></i> <%= t('Add Member') %>
               </button>
-              <small class="d-block form-text text-muted mt-1">Each member is an IP address with a role in this cluster (e.g. master, worker, primary, standby). Type a new role to add it — it becomes suggested for future clusters too.</small>
+              <small class="d-block form-text text-muted mt-1"><%= t('Each member is an IP address with a role in this cluster (e.g. master, worker, primary, standby). Type a new role to add it — it becomes suggested for future clusters too.') %></small>
 
               <div class="border rounded p-2 mt-3">
-                <label class="form-label mb-1">Bulk-add members from a file</label>
+                <label class="form-label mb-1"><%= t('Bulk-add members from a file') %></label>
                 <div class="input-group input-group-sm">
                   <input type="file" id="member-file-input" class="form-control" accept=".xlsx,.xls">
                   <button type="button" id="validate-member-file-btn" class="btn btn-outline-warning" disabled>
-                    <i class="bi bi-check2-circle"></i> Validate File
+                    <i class="bi bi-check2-circle"></i> <%= t('Validate File') %>
                   </button>
                   <a href="/cluster/member-template" class="btn btn-outline-info" download>
-                    <i class="bi bi-download"></i> Template
+                    <i class="bi bi-download"></i> <%= t('Template') %>
                   </a>
                 </div>
-                <div class="form-text">2 columns: IP Address (Require), Role (Optional). Every IP must already exist — this never creates IPs. Rows are only added once every row in the file passes.</div>
+                <div class="form-text"><%= t('2 columns: IP Address (Require), Role (Optional). Every IP must already exist — this never creates IPs. Rows are only added once every row in the file passes.') %></div>
                 <span id="add-validated-members-pointer" class="mt-2" style="display: none;">
                   <i class="bi bi-hand-index-thumb-fill blink-hand"></i>
                 </span>
                 <button type="button" id="add-validated-members-btn" class="btn btn-success btn-sm mt-2" style="display: none;">
-                  <i class="bi bi-plus-circle"></i> Add Validated Members
+                  <i class="bi bi-plus-circle"></i> <%= t('Add Validated Members') %>
                 </button>
                 <div id="member-file-results" class="alert mt-2" style="display: none;"></div>
               </div>
             </div>
           </div>
           <div class="card-footer d-flex justify-content-end">
-            <a href="/cluster" class="btn btn-secondary btn-sm me-2">Cancel</a>
-            <button type="submit" class="btn btn-primary btn-sm">Add Cluster</button>
+            <a href="/cluster" class="btn btn-secondary btn-sm me-2"><%= t('Cancel') %></a>
+            <button type="submit" class="btn btn-primary btn-sm"><%= t('Add Cluster') %></button>
           </div>
         </form>
       </div>
@@ -122,7 +122,7 @@
   $(function() {
     $('#system-select').select2({
       theme: 'bootstrap-5',
-      placeholder: 'Select systems this cluster serves',
+      placeholder: t('Select systems this cluster serves'),
       allowClear: true,
       width: '100%',
       ajax: {
@@ -181,7 +181,7 @@
       const ipSelect = row.find('.member-ip-select');
       ipSelect.select2({
         theme: 'bootstrap-5',
-        placeholder: 'Select IP address',
+        placeholder: t('Select IP address'),
         allowClear: true,
         width: '100%',
         ajax: {
