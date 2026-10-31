@@ -19,7 +19,7 @@
           hasPermission('cluster.read') ||
           hasPermission('contact.read') || hasPermission('unit.read') || hasPermission('tag.read')
         ) { %>
-        <li class="nav-header">ASSET MANAGEMENT</li>
+        <li class="nav-header"><%= t('ASSET MANAGEMENT') %></li>
         <% } %>
         <!-- System Management -->
         <% if (hasPermission('system.read')) { %>
@@ -27,7 +27,7 @@
           <a href="#" class="nav-link">
             <i class="nav-icon bi bi-list-ul"></i>
             <p>
-              System Management
+              <%= t('System Management') %>
               <i class="nav-arrow bi bi-chevron-right"></i>
             </p>
           </a>
@@ -35,13 +35,13 @@
             <li class="nav-item">
               <a href="/system/system" class="nav-link<%= (activeMenu === 'system') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'system') ? ' text-primary' : '' %>"></i>
-                <p>System</p>
+                <p><%= t('System') %></p>
               </a>
             </li>
             <li class="nav-item">
               <a href="/system/component" class="nav-link<%= (activeMenu === 'system-component') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'system-component') ? ' text-primary' : '' %>"></i>
-                <p>Component</p>
+                <p><%= t('Component') %></p>
               </a>
             </li>
           </ul>
@@ -53,7 +53,7 @@
           <a href="#" class="nav-link">
             <i class="nav-icon bi bi-diagram-3"></i>
             <p>
-              Network
+              <%= t('Network') %>
               <i class="nav-arrow bi bi-chevron-right"></i>
             </p>
           </a>
@@ -62,7 +62,7 @@
             <li class="nav-item">
               <a href="/network/ip-address" class="nav-link<%= (activeMenu === 'ip-address') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'ip-address') ? ' text-primary' : '' %>"></i>
-                <p>IP Address</p>
+                <p><%= t('IP Address') %></p>
               </a>
             </li>
             <% } %>
@@ -70,7 +70,7 @@
             <li class="nav-item">
               <a href="/network/subnet-address" class="nav-link<%= (activeMenu === 'subnet-address') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'subnet-address') ? ' text-primary' : '' %>"></i>
-                <p>Subnet Address</p>
+                <p><%= t('Subnet Address') %></p>
               </a>
             </li>
             <% } %>
@@ -78,7 +78,7 @@
             <li class="nav-item">
               <a href="/network/domain" class="nav-link<%= (activeMenu === 'domain') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'domain') ? ' text-primary' : '' %>"></i>
-                <p>Domain</p>
+                <p><%= t('Domain') %></p>
               </a>
             </li>
             <% } %>
@@ -91,7 +91,7 @@
           <a href="#" class="nav-link<%= isMenuOpen(['server-list', 'service', 'agent']) ? ' active' : '' %>" style="<%= isMenuOpen(['server-list', 'service', 'agent']) ? 'background-color: #495057;' : '' %>">
             <i class="nav-icon bi bi-hdd-network"></i>
             <p>
-              Server
+              <%= t('Server') %>
               <i class="nav-arrow bi bi-chevron-right"></i>
             </p>
           </a>
@@ -100,7 +100,7 @@
             <li class="nav-item">
               <a href="/server/server/list" class="nav-link<%= (activeMenu === 'server-list') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'server-list') ? ' text-primary' : '' %>"></i>
-                <p>Server</p>
+                <p><%= t('Server') %></p>
               </a>
             </li>
             <% } %>
@@ -108,7 +108,7 @@
             <li class="nav-item">
               <a href="/server/service/list" class="nav-link<%= (activeMenu === 'service') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'service') ? ' text-primary' : '' %>"></i>
-                <p>Service</p>
+                <p><%= t('Service') %></p>
               </a>
             </li>
             <% } %>
@@ -116,7 +116,7 @@
             <li class="nav-item">
               <a href="/server/agent/list" class="nav-link<%= (activeMenu === 'agent') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'agent') ? ' text-primary' : '' %>"></i>
-                <p>Agent</p>
+                <p><%= t('Agent') %></p>
               </a>
             </li>
             <% } %>
@@ -129,7 +129,7 @@
           <a href="#" class="nav-link<%= isMenuOpen(['device', 'device-type', 'device-platform']) ? ' active' : '' %>" style="<%= isMenuOpen(['device', 'device-type', 'device-platform']) ? 'background-color: #495057;' : '' %>">
             <i class="nav-icon bi bi-cpu"></i>
             <p>
-              Device
+              <%= t('Device') %>
               <i class="nav-arrow bi bi-chevron-right"></i>
             </p>
           </a>
@@ -138,7 +138,7 @@
             <li class="nav-item">
               <a href="/device/device" class="nav-link<%= (activeMenu === 'device') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'device') ? ' text-primary' : '' %>"></i>
-                <p>Device List</p>
+                <p><%= t('Device List') %></p>
               </a>
             </li>
             <% } %>
@@ -146,7 +146,7 @@
             <li class="nav-item">
               <a href="/device/type" class="nav-link<%= (activeMenu === 'device-type') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'device-type') ? ' text-primary' : '' %>"></i>
-                <p>Device Type</p>
+                <p><%= t('Device Type') %></p>
               </a>
             </li>
             <% } %>
@@ -154,7 +154,7 @@
             <li class="nav-item">
               <a href="/device/platform" class="nav-link<%= (activeMenu === 'device-platform') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'device-platform') ? ' text-primary' : '' %>"></i>
-                <p>Device Platform</p>
+                <p><%= t('Device Platform') %></p>
               </a>
             </li>
             <% } %>
@@ -167,7 +167,7 @@
           <a href="#" class="nav-link<%= isMenuOpen(['cluster']) ? ' active' : '' %>" style="<%= isMenuOpen(['cluster']) ? 'background-color: #495057;' : '' %>">
             <i class="nav-icon bi bi-hdd-stack"></i>
             <p>
-              Cluster Management
+              <%= t('Cluster Management') %>
               <i class="nav-arrow bi bi-chevron-right"></i>
             </p>
           </a>
@@ -175,7 +175,7 @@
             <li class="nav-item">
               <a href="/cluster" class="nav-link<%= (activeMenu === 'cluster') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'cluster') ? ' text-primary' : '' %>"></i>
-                <p>Cluster</p>
+                <p><%= t('Cluster') %></p>
               </a>
             </li>
           </ul>
@@ -191,7 +191,7 @@
           <a href="#" class="nav-link">
             <i class="nav-icon bi bi-people"></i>
             <p>
-              Organization
+              <%= t('Organization') %>
               <i class="nav-arrow bi bi-chevron-right"></i>
             </p>
           </a>
@@ -200,7 +200,7 @@
             <li class="nav-item">
               <a href="/organize/contact" class="nav-link<%= (activeMenu === 'contact') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'contact') ? ' text-primary' : '' %>"></i>
-                <p>Contact</p>
+                <p><%= t('Contact') %></p>
               </a>
             </li>
             <% } %>
@@ -208,7 +208,7 @@
             <li class="nav-item">
               <a href="/organize/unit" class="nav-link<%= (activeMenu === 'unit') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'unit') ? ' text-primary' : '' %>"></i>
-                <p>Unit</p>
+                <p><%= t('Unit') %></p>
               </a>
             </li>
             <% } %>
@@ -216,7 +216,7 @@
             <li class="nav-item">
               <a href="/organize/tag" class="nav-link<%= (activeMenu === 'tag') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'tag') ? ' text-primary' : '' %>"></i>
-                <p>Tag</p>
+                <p><%= t('Tag') %></p>
               </a>
             </li>
             <% } %>
@@ -228,7 +228,7 @@
           hasPermission('rule.read') || hasPermission('rule.create') || hasPermission('rule.update') || hasPermission('rule.delete') ||
           hasPermission('pentest.read')
         ) { %>
-        <li class="nav-header">SECURITY</li>
+        <li class="nav-header"><%= t('SECURITY') %></li>
         <% } %>
         <!-- Privileged Account Management -->
         <% if (
@@ -240,7 +240,7 @@
           <a href="#" class="nav-link">
             <i class="nav-icon bi bi-person-lock"></i>
             <p>
-              Privileged Accounts
+              <%= t('Privileged Accounts') %>
               <i class="nav-arrow bi bi-chevron-right"></i>
             </p>
           </a>
@@ -249,7 +249,7 @@
             <li class="nav-item">
               <a href="/priv-account/account" class="nav-link<%= (activeMenu === 'priv-account-list') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'priv-account-list') ? ' text-primary' : '' %>"></i>
-                <p>Account List</p>
+                <p><%= t('Account List') %></p>
               </a>
             </li>
             <% } %>
@@ -257,7 +257,7 @@
             <li class="nav-item">
               <a href="/priv-account/role" class="nav-link<%= (activeMenu === 'priv-role-list') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'priv-role-list') ? ' text-primary' : '' %>"></i>
-                <p>Role List</p>
+                <p><%= t('Role List') %></p>
               </a>
             </li>
             <% } %>
@@ -265,7 +265,7 @@
             <li class="nav-item">
               <a href="/priv-account/permission" class="nav-link<%= (activeMenu === 'priv-permission-list') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'priv-permission-list') ? ' text-primary' : '' %>"></i>
-                <p>Permission List</p>
+                <p><%= t('Permission List') %></p>
               </a>
             </li>
             <% } %>
@@ -283,7 +283,7 @@
           <a href="#" class="nav-link">
             <i class="nav-icon bi bi-shield-exclamation"></i>
             <p>
-              Firewall Rules
+              <%= t('Firewall Rules') %>
               <i class="nav-arrow bi bi-chevron-right"></i>
             </p>
           </a>
@@ -291,7 +291,7 @@
             <li class="nav-item">
               <a href="/firewall/rule" class="nav-link<%= (activeMenu === 'firewall-rule') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'firewall-rule') ? ' text-primary' : '' %>"></i>
-                <p>Rule</p>
+                <p><%= t('Rule') %></p>
               </a>
             </li>
           </ul>
@@ -303,7 +303,7 @@
           <a href="#" class="nav-link">
             <i class="nav-icon bi bi-bug"></i>
             <p>
-              Vulnerabilities
+              <%= t('Vulnerabilities') %>
               <i class="nav-arrow bi bi-chevron-right"></i>
             </p>
           </a>
@@ -311,7 +311,7 @@
             <li class="nav-item">
               <a href="/pentest" class="nav-link<%= (activeMenu === 'pentest') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'pentest') ? ' text-primary' : '' %>"></i>
-                <p>Pentest</p>
+                <p><%= t('Pentest') %></p>
               </a>
             </li>
           </ul>
@@ -322,7 +322,7 @@
           hasPermission('user.read') || hasPermission('role.read') || hasPermission('permission.read') ||
           hasPermission('system_log.read') || hasPermission('configuration.read')
         ) { %>
-        <li class="nav-header">ADMINISTRATION</li>
+        <li class="nav-header"><%= t('ADMINISTRATION') %></li>
         <% } %>
         <% if (
           hasPermission('user.read') ||
@@ -333,7 +333,7 @@
           <a href="#" class="nav-link<%= isMenuOpen(['user-management', 'role-management', 'permission-management']) ? ' active' : '' %>" style="<%= isMenuOpen(['user-management', 'role-management', 'permission-management']) ? 'background-color: #495057;' : '' %>">
             <i class="nav-icon bi bi-person-gear"></i>
             <p>
-              User &amp; Permission
+              <%= t('User & Permission') %>
               <i class="nav-arrow bi bi-chevron-right"></i>
             </p>
           </a>
@@ -342,7 +342,7 @@
             <li class="nav-item">
               <a href="/administrator/users" class="nav-link<%= (activeMenu === 'user-management') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'user-management') ? ' text-primary' : '' %>"></i>
-                <p>User Management</p>
+                <p><%= t('User Management') %></p>
               </a>
             </li>
             <% } %>
@@ -350,7 +350,7 @@
             <li class="nav-item">
               <a href="/administrator/roles" class="nav-link<%= (activeMenu === 'role-management') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'role-management') ? ' text-primary' : '' %>"></i>
-                <p>Role Management</p>
+                <p><%= t('Role Management') %></p>
               </a>
             </li>
             <% } %>
@@ -358,7 +358,7 @@
             <li class="nav-item">
               <a href="/administrator/permissions" class="nav-link<%= (activeMenu === 'permission-management') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'permission-management') ? ' text-primary' : '' %>"></i>
-                <p>Permission Management</p>
+                <p><%= t('Permission Management') %></p>
               </a>
             </li>
             <% } %>
@@ -372,7 +372,7 @@
         <li class="nav-item">
           <a href="/administrator/log" class="nav-link<%= (activeMenu === 'system-log') ? ' active' : '' %>">
             <i class="nav-icon bi bi-journal-text"></i>
-            <p>System Log</p>
+            <p><%= t('System Log') %></p>
           </a>
         </li>
         <% } %>
@@ -383,7 +383,7 @@
         <li class="nav-item">
           <a href="/administrator/configuration" class="nav-link<%= (activeMenu === 'system-configuration') ? ' active' : '' %>">
             <i class="nav-icon bi bi-gear"></i>
-            <p>System Configuration</p>
+            <p><%= t('System Configuration') %></p>
           </a>
         </li>
         <% } %>

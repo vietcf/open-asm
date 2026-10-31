@@ -64,6 +64,8 @@ import changePasswordRouter from './routes/changePassword.js';
 // import apiAuthRouter from './api/routes/apiAuth.js';
 import apiSwaggerRouter from './api/routes/apiSwagger.js';
 import apiRouter from './api/routes/index.js';
+import i18n from './middlewares/i18n.middleware.js';
+import i18nRouter, { catalogVersion } from './routes/i18n.js';
 // Remove unused controller import since we're using router pattern
 
 
@@ -108,8 +110,13 @@ app.use(sessionIdleTimeout);
 // 5.1. Load permissions for every request (after session, before routes)
 app.use(loadPermissions);
 
+// 5.1b. UI language (req.t / res.locals.t, ?lang= switch) - see src/i18n/
+app.use(i18n);
+
 // 5.2. Global template variables (res.locals)
 app.use((req, res, next) => {
+  // Browser-side translation catalog: <script src="<%= i18nScript %>">
+  res.locals.i18nScript = `/i18n/${res.locals.lang}.js?v=${catalogVersion[res.locals.lang]}`;
   // User/session
   res.locals.user = req.session.user || null;
   // Asset paths
@@ -169,6 +176,7 @@ app.get(['/', '/index.html'], (req, res) => {
 // ===========================================
 // PUBLIC ROUTES (No authentication required)
 // ===========================================
+app.use('/i18n', i18nRouter); // /i18n/vi.js - translations for browser scripts
 app.use('/', authRouter); // /login, /logout, /login/2fa
 
 

@@ -3,6 +3,7 @@ import Role from '../models/Role.js';
 import { writeLog } from '../utils/logHelper.js';
 import { config } from '../../config/config.js';
 import { verifyCredentials, verifyTotp } from '../services/authService.js';
+import { applyUserLanguage } from '../middlewares/i18n.middleware.js';
 
 // Helper function to build user session object (no permissions)
 function buildSessionUser(user) {
@@ -17,7 +18,8 @@ function buildSessionUser(user) {
     twofa_secret: user.twofa_secret,
     require_twofa: user.require_twofa,
     must_change_password: user.must_change_password,
-    auth_source: user.auth_source
+    auth_source: user.auth_source,
+    language: user.language || null
   };
 }
 
@@ -50,6 +52,7 @@ export const postLogin = async (req, res) => {
 
     req.session.isLoggedIn = true; // Logined username and password successfully
     req.session.user = buildSessionUser(user); // Only store user info, not permissions
+    await applyUserLanguage(req, user);
 
 
     // Set default 2FA state

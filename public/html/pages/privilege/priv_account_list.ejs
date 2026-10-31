@@ -162,7 +162,7 @@ function buildExportUrl() {
     <!-- Flash Messages -->
     <% if (typeof successMessage !== 'undefined' && successMessage) { %>
       <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
-        <i class="bi bi-check-circle me-2"></i><%= successMessage %>
+        <i class="bi bi-check-circle me-2"></i><%= t(successMessage) %>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
       <script>
@@ -179,7 +179,7 @@ function buildExportUrl() {
     
     <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
       <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
-        <i class="bi bi-exclamation-triangle me-2"></i><%= errorMessage %>
+        <i class="bi bi-exclamation-triangle me-2"></i><%= t(errorMessage) %>
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
       </div>
       <script>
@@ -627,14 +627,14 @@ function confirmDeleteAccount(form, accountName) {
 <% if (success) { %>
   <script>
     window.addEventListener('DOMContentLoaded', function() {
-      showToast('<%= success %>', 'success');
+      showToast('<%= t(success) %>', 'success');
     });
   </script>
 <% } %>
 <% if (error) { %>
   <script>
     window.addEventListener('DOMContentLoaded', function() {
-      showToast('<%= error %>', 'danger');
+      showToast('<%= t(error) %>', 'danger');
     });
   </script>
 <% } %>

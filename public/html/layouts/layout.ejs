@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<%= lang %>">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title><%= title || 'Dashboard' %></title>
+  <title><%= t(title || 'Dashboard') %></title>
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   
   <!-- CSS Links - AdminLTE 4 Standard Order -->
@@ -685,6 +685,8 @@
   
   <!-- Load jQuery first -->
   <script src="/js/jquery-3.6.0.min.js"></script>
+  <!-- Translations for page scripts: window.t('Delete') -->
+  <script src="<%= i18nScript %>"></script>
 
 </head>
 <body class="layout-fixed sidebar-expand-lg sidebar-open">
@@ -702,28 +704,31 @@
             </a>
           </li>
           <li class="nav-item d-none d-md-block">
-            <a href="/" class="nav-link">Home</a>
+            <a href="/" class="nav-link"><%= t('Home') %></a>
           </li>
         </ul>
         <!--end::Start Navbar Links-->
 
         <!--begin::End Navbar Links-->
         <ul class="navbar-nav ms-auto">
+          <!--begin::Language Switcher-->
+          <%- include('../partials/language_switcher') %>
+          <!--end::Language Switcher-->
           <!--begin::User Account Menu-->
           <li class="nav-item dropdown">
             <a class="nav-link d-flex align-items-center" data-bs-toggle="dropdown" href="#" id="userDropdown" role="button" aria-expanded="false">
-              <img src="<%= typeof userAvatar !== 'undefined' ? userAvatar : (imgPath + 'avatar.png') %>" alt="User Avatar" class="rounded-circle me-2" style="width:32px;height:32px;object-fit:cover;">
-              <span class="d-none d-md-inline"><%= typeof user !== 'undefined' && user && user.username ? user.username : 'User' %></span>
+              <img src="<%= typeof userAvatar !== 'undefined' ? userAvatar : (imgPath + 'avatar.png') %>" alt="<%= t('User Avatar') %>" class="rounded-circle me-2" style="width:32px;height:32px;object-fit:cover;">
+              <span class="d-none d-md-inline"><%= typeof user !== 'undefined' && user && user.username ? user.username : t('User') %></span>
               <i class="bi bi-caret-down ms-1"></i>
             </a>
             <ul class="dropdown-menu dropdown-menu-end" style="min-width: 200px;">
               <!--begin::User Header-->
               <li class="dropdown-header bg-light border-bottom">
                 <div class="d-flex align-items-center">
-                  <img src="<%= typeof userAvatar !== 'undefined' ? userAvatar : (imgPath + 'avatar.png') %>" alt="User Avatar" class="rounded-circle me-3" style="width:40px;height:40px;object-fit:cover;">
+                  <img src="<%= typeof userAvatar !== 'undefined' ? userAvatar : (imgPath + 'avatar.png') %>" alt="<%= t('User Avatar') %>" class="rounded-circle me-3" style="width:40px;height:40px;object-fit:cover;">
                   <div>
-                    <div class="fw-bold text-dark"><%= typeof user !== 'undefined' && user && user.username ? user.username : 'User' %></div>
-                    <small class="text-muted">Administrator</small>
+                    <div class="fw-bold text-dark"><%= typeof user !== 'undefined' && user && user.username ? user.username : t('User') %></div>
+                    <small class="text-muted"><%= t('Administrator') %></small>
                   </div>
                 </div>
               </li>
@@ -735,14 +740,14 @@
               <li>
                 <a class="dropdown-item d-flex align-items-center py-2" href="/change-password">
                   <i class="bi bi-key me-3 text-primary"></i>
-                  <span>Change Password</span>
+                  <span><%= t('Change Password') %></span>
                 </a>
               </li>
               <% } %>
               <li>
                 <a class="dropdown-item d-flex align-items-center py-2" href="/logout">
                   <i class="bi bi-box-arrow-right me-3 text-danger"></i>
-                  <span>Logout</span>
+                  <span><%= t('Logout') %></span>
                 </a>
               </li>
               <!--end::Menu Items-->
@@ -771,12 +776,12 @@
         <div class="row">
           <div class="col-md-6">
             <div class="text-muted">
-              <i class="fas fa-copyright"></i> 2024 <strong>Open ASM</strong>. All rights reserved.
+              <i class="fas fa-copyright"></i> 2024 <strong>Open ASM</strong>. <%= t('All rights reserved.') %>
             </div>
           </div>
           <div class="col-md-6 text-end">
             <div class="text-muted">
-              <small>Made by <strong>Toan Nguyen</strong></small>
+              <small><%= t('Made by') %> <strong>Toan Nguyen</strong></small>
             </div>
           </div>
         </div>

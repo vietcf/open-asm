@@ -41,10 +41,11 @@ async function q(db, sql, params) {
   try { return (await c.query(sql, params)).rows; } finally { await c.end(); }
 }
 
-// Copy of versions/ plus extra files, so tests never touch the real folder.
+// Temp versions folder with ONLY the baseline plus the given extra files, so
+// runner-mechanics tests don't depend on (or collide with) real migrations.
 function versionsDir(extra = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'openasm-mig-'));
-  for (const f of fs.readdirSync(VERSIONS)) fs.copyFileSync(path.join(VERSIONS, f), path.join(dir, f));
+  fs.copyFileSync(path.join(VERSIONS, '0001_baseline.sql'), path.join(dir, '0001_baseline.sql'));
   for (const [f, body] of Object.entries(extra)) fs.writeFileSync(path.join(dir, f), body);
   return dir;
 }
@@ -71,6 +72,7 @@ test('fresh database: baseline + seeds + admin with generated password', async (
   const r = await migrate(db);
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /applying 0001_baseline\.sql/);
+  assert.match(r.out, /applying 0002_add_user_language\.sql/);
   assert.match(r.out, /password : \S{16}/);
   const [{ n }] = await q(db, `SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='public'`);
   assert.equal(n, 52); // 51 app tables + migrations_history
@@ -118,7 +120,7 @@ test('incomplete existing database is refused', async () => {
 
 test('new SQL migration is applied once and recorded', async () => {
   const db = await freshDb();
-  await migrate(db);
+  await migrate(db, [], { dir: versionsDir() });
   const dir = versionsDir({ '0002_add_agent_vendor.sql': 'ALTER TABLE agents ADD COLUMN vendor TEXT;' });
   let r = await migrate(db, [], { dir });
   assert.equal(r.code, 0, r.out);
@@ -130,7 +132,7 @@ test('new SQL migration is applied once and recorded', async () => {
 
 test('failing migration is rolled back entirely and stops later ones', async () => {
   const db = await freshDb();
-  await migrate(db);
+  await migrate(db, [], { dir: versionsDir() });
   const dir = versionsDir({
     '0002_broken.sql': 'ALTER TABLE agents ADD COLUMN half_done TEXT;\nSELECT * FROM no_such_table;',
     '0003_after.sql': 'ALTER TABLE agents ADD COLUMN after_col TEXT;',
@@ -145,7 +147,7 @@ test('failing migration is rolled back entirely and stops later ones', async () 
 
 test('JS migration with up(db) runs in a transaction', async () => {
   const db = await freshDb();
-  await migrate(db);
+  await migrate(db, [], { dir: versionsDir() });
   const dir = versionsDir({
     '0002_data_fix.js': `export async function up(db) { await db.query("INSERT INTO agents (name) VALUES ('from-js')"); }`,
   });
@@ -156,7 +158,7 @@ test('JS migration with up(db) runs in a transaction', async () => {
 
 test('no-transaction directive allows CREATE INDEX CONCURRENTLY', async () => {
   const db = await freshDb();
-  await migrate(db);
+  await migrate(db, [], { dir: versionsDir() });
   const dir = versionsDir({
     '0002_idx.sql': '-- migrate:no-transaction\nCREATE INDEX CONCURRENTLY idx_agents_version ON agents (version);',
   });
@@ -193,7 +195,7 @@ test('out-of-order and duplicate versions are refused', async () => {
 test('applied migration missing on disk is refused (code older than database)', async () => {
   const db = await freshDb();
   await migrate(db, [], { dir: versionsDir({ '0002_new.sql': 'SELECT 1;' }) });
-  const r = await migrate(db);
+  const r = await migrate(db, [], { dir: versionsDir() });
   assert.equal(r.code, 1);
   assert.match(r.out, /0002 \(new\) is applied in the database but its file is missing/);
 });

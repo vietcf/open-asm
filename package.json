@@ -9,7 +9,8 @@
     "migrate:status": "node migrations/migrate.js status",
     "migrate:create": "node migrations/migrate.js create",
     "admin:reset-password": "node migrations/tools/reset_admin_password.js",
-    "test:migrations": "node --test migrations/test/migrate.test.js"
+    "test:migrations": "node --test migrations/test/migrate.test.js",
+    "i18n:check": "node scripts/i18n-check.js"
   },
   "dependencies": {
     "accesscontrol": "^2.2.1",
