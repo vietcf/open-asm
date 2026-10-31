@@ -73,9 +73,10 @@ test('fresh database: baseline + seeds + admin with generated password', async (
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /applying 0001_baseline\.sql/);
   assert.match(r.out, /applying 0002_add_user_language\.sql/);
+  assert.match(r.out, /applying 0003_add_session_table\.sql/);
   assert.match(r.out, /password : \S{16}/);
   const [{ n }] = await q(db, `SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='public'`);
-  assert.equal(n, 52); // 51 app tables + migrations_history
+  assert.equal(n, 53); // 51 app tables + session + migrations_history
   const users = await q(db, 'SELECT username, must_change_password FROM users');
   assert.deepEqual(users, [{ username: 'admin', must_change_password: true }]);
 });
