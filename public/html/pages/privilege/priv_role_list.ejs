@@ -177,7 +177,7 @@ function buildExportUrl() {
                       <td><%= role.description %></td>
                       <td><%= role.system && role.system.name ? role.system.name : '' %></td>
                     <td class="text-end">
-                      <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showRoleDetail('<%= role.id %>')" data-role-id="<%= role.id %>" data-role='<%= JSON.stringify(role) %>'><i class="bi bi-eye"></i></button>
+                      <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showRoleDetail(<%= JSON.stringify(role.id) %>)" data-role-id="<%= role.id %>" data-role='<%= JSON.stringify(role) %>'><i class="bi bi-eye"></i></button>
                       <% if (hasPermission('priv_role.update')) { %>
                       <button type="button" class="btn btn-warning btn-sm" title="<%= t('Edit') %>" 
                                 data-bs-toggle="modal" data-bs-target="#editPrivRoleModal"
@@ -190,7 +190,7 @@ function buildExportUrl() {
                       </button>
                       <% } %>
                       <% if (hasPermission('priv_role.delete')) { %>
-                        <form action="/priv-account/role/<%= role.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteRole(this, '<%= role.name %>')">
+                        <form action="/priv-account/role/<%= role.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteRole(this, <%= JSON.stringify(role.name) %>)">
                         <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
                           <i class="bi bi-trash"></i>
                         </button>

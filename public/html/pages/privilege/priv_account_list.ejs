@@ -229,7 +229,7 @@ function buildExportUrl() {
                       </td>
                       <td data-sort-value="<%= account.created_at || '' %>"><%= account.created_at ? account.created_at.toLocaleString() : '' %></td>
                       <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showAccountDetail('<%= account.id %>')" data-account-id="<%= account.id %>" data-account='<%= JSON.stringify(account) %>'><i class="bi bi-eye"></i></button>
+                        <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showAccountDetail(<%= JSON.stringify(account.id) %>)" data-account-id="<%= account.id %>" data-account='<%= JSON.stringify(account) %>'><i class="bi bi-eye"></i></button>
                         <% if (hasPermission('priv_account.update')) { %>
                         <button type="button" class="btn btn-warning btn-sm" title="<%= t('Edit') %>" 
                                 data-bs-toggle="modal" data-bs-target="#editPrivAccountModal"
@@ -248,7 +248,7 @@ function buildExportUrl() {
                         </button>
                         <% } %>
                         <% if (hasPermission('priv_account.delete')) { %>
-                        <form action="/priv-account/account/<%= account.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteAccount(this, '<%= account.username %>')">
+                        <form action="/priv-account/account/<%= account.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteAccount(this, <%= JSON.stringify(account.username) %>)">
                           <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
                             <i class="bi bi-trash"></i>
                           </button>

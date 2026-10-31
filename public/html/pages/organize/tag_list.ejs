@@ -166,14 +166,14 @@ function buildPaginationUrl(targetPage) {
                         <span data-bs-toggle="tooltip" data-bs-placement="top" title="<%= cleanDescription %>" style="cursor: help; word-break: break-word;"><%= shortDescription %></span>
                       </td>
                       <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showTagDetail('<%= tag.id %>')" data-tag='<%= JSON.stringify(tag) %>'><i class="bi bi-eye"></i></button>
+                        <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showTagDetail(<%= JSON.stringify(tag.id) %>)" data-tag='<%= JSON.stringify(tag) %>'><i class="bi bi-eye"></i></button>
                         <% if (hasPermission('tag.update')) { %>
                           <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editTagModal" data-tag-id="<%= tag.id %>" data-tag-name="<%= tag.name %>" data-tag-description="<%= tag.description || '' %>" title="<%= t('Edit') %>">
                             <i class="bi bi-pencil"></i>
                           </button>
                         <% } %>
                         <% if (hasPermission('tag.delete')) { %>
-                          <form action="/organize/tag/<%= tag.id %>?_method=DELETE" method="POST" style="display:inline !important;" onsubmit="return confirmDeleteTag(this, '<%= tag.name %>')">
+                          <form action="/organize/tag/<%= tag.id %>?_method=DELETE" method="POST" style="display:inline !important;" onsubmit="return confirmDeleteTag(this, <%= JSON.stringify(tag.name) %>)">
                             <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>" style="display: inline-block !important; visibility: visible !important; position: relative !important;">
                               <i class="bi bi-trash"></i>
                             </button>

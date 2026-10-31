@@ -200,14 +200,14 @@ function buildPaginationUrl(targetPage) {
                         <% } %>
                       </td>
                       <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showContactDetail('<%= contact.id %>')" data-contact='<%= JSON.stringify(contact) %>'><i class="bi bi-eye"></i></button>
+                        <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showContactDetail(<%= JSON.stringify(contact.id) %>)" data-contact='<%= JSON.stringify(contact) %>'><i class="bi bi-eye"></i></button>
                         <% if (hasPermission('contact.update')) { %>
                           <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editContactModal" data-contact-id="<%= contact.id %>" data-contact-name="<%= contact.name %>" data-contact-email="<%= contact.email || '' %>" data-contact-position="<%= contact.position || '' %>" data-contact-phone="<%= contact.phone || '' %>" data-contact-unit-id="<%= contact.unit_id || '' %>" data-contact-description="<%= contact.description || '' %>" title="<%= t('Edit') %>">
                             <i class="bi bi-pencil"></i>
                           </button>
                         <% } %>
                         <% if (hasPermission('contact.delete')) { %>
-                          <form action="/organize/contact/<%= contact.id %>?_method=DELETE" method="POST" style="display:inline !important;" onsubmit="return confirmDeleteContact(this, '<%= contact.name %>')">
+                          <form action="/organize/contact/<%= contact.id %>?_method=DELETE" method="POST" style="display:inline !important;" onsubmit="return confirmDeleteContact(this, <%= JSON.stringify(contact.name) %>)">
                             <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>" style="display: inline-block !important; visibility: visible !important; position: relative !important;">
                               <i class="bi bi-trash"></i>
                             </button>

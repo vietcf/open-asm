@@ -383,7 +383,7 @@ function buildExportUrl() {
                           <% } %>
                         </td>
                         <td class="text-end">
-                          <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showServerDetail('<%= server.id %>')" data-server='<%= JSON.stringify(server) %>'>
+                          <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showServerDetail(<%= JSON.stringify(server.id) %>)" data-server='<%= JSON.stringify(server) %>'>
                             <i class="bi bi-eye"></i>
                           </button>
                           <% if (hasPermission('server.update')) { %>
@@ -392,7 +392,7 @@ function buildExportUrl() {
                             </a>
                           <% } %>
                           <% if (hasPermission('server.delete')) { %>
-                            <form action="/server/server/<%= server.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteServer(this, '<%= server.name %>')">
+                            <form action="/server/server/<%= server.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteServer(this, <%= JSON.stringify(server.name) %>)">
                               <input type="hidden" name="delete_ip" value="false">
                               <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
                                 <i class="bi bi-trash"></i>
@@ -754,11 +754,11 @@ function buildExportUrl() {
 
 <script>
   // Initialize window variables for Select2
-  window.selectedTags = <%- JSON.stringify(selectedTags || []) %>;
-  window.selectedSystems = <%- JSON.stringify(selectedSystems || []) %>;
-  window.selectedManagers = <%- JSON.stringify(selectedManagers || []) %>;
-  window.selectedServices = <%- JSON.stringify(selectedServices || []) %>;
-  window.selectedOS = <%- JSON.stringify(selectedOS || null) %>;
+  window.selectedTags = <%- jsonSafe(selectedTags || []) %>;
+  window.selectedSystems = <%- jsonSafe(selectedSystems || []) %>;
+  window.selectedManagers = <%- jsonSafe(selectedManagers || []) %>;
+  window.selectedServices = <%- jsonSafe(selectedServices || []) %>;
+  window.selectedOS = <%- jsonSafe(selectedOS || null) %>;
   
   $(function() {
   console.log('Initializing Select2...');

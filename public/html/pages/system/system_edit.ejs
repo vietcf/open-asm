@@ -185,7 +185,7 @@
 
 <script>
   window.existingFiles = JSON.parse(document.getElementById('existing-files-data').getAttribute('data-files') || '[]');
-  window.selectedTags = JSON.parse('<%- JSON.stringify(selectedTags || []) %>');
+  window.selectedTags = JSON.parse('<%- jsonSafe(selectedTags || []) %>');
   window.uploadedDocsEdit = [];
   window.deleteFiles = [];
 </script>

@@ -160,7 +160,7 @@ function buildPaginationUrl(targetPage) {
                       <td><%= deviceType.name %></td>
                       <td><%= deviceType.description || '-' %></td>
                       <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm me-1" title="<%= t('Show') %>" onclick="showDeviceTypeDetail('<%= deviceType.id %>')" data-device-type='<%= JSON.stringify(deviceType) %>'>
+                        <button type="button" class="btn btn-info btn-sm me-1" title="<%= t('Show') %>" onclick="showDeviceTypeDetail(<%= JSON.stringify(deviceType.id) %>)" data-device-type='<%= JSON.stringify(deviceType) %>'>
                           <i class="bi bi-eye"></i>
                         </button>
                         <% if (hasPermission('device_type.update')) { %>
@@ -169,7 +169,7 @@ function buildPaginationUrl(targetPage) {
                           </button>
                         <% } %>
                         <% if (hasPermission('device_type.delete') || (user && (user.role_name === 'superadmin' || user.role_name === 'admin'))) { %>
-                          <form action="/device/type/<%= deviceType.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteDeviceType(this, '<%= deviceType.name %>')">
+                          <form action="/device/type/<%= deviceType.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteDeviceType(this, <%= JSON.stringify(deviceType.name) %>)">
                             <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>" style="display: inline-block !important; visibility: visible !important;">
                               <i class="bi bi-trash"></i>
                             </button>

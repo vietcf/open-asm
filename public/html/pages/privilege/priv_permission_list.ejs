@@ -177,7 +177,7 @@ function buildExportUrl() {
                       <td><%= permission.description %></td>
                       <td><%= permission.system && permission.system.name ? permission.system.name : '' %></td>
                     <td class="text-end">
-                      <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showPermissionDetail('<%= permission.id %>')" data-permission-id="<%= permission.id %>" data-permission='<%= JSON.stringify(permission) %>'><i class="bi bi-eye"></i></button>
+                      <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showPermissionDetail(<%= JSON.stringify(permission.id) %>)" data-permission-id="<%= permission.id %>" data-permission='<%= JSON.stringify(permission) %>'><i class="bi bi-eye"></i></button>
                       <% if (hasPermission('priv_permission.update')) { %>
                       <button type="button" class="btn btn-warning btn-sm" title="<%= t('Edit') %>" 
                                 data-bs-toggle="modal" data-bs-target="#editPrivPermissionModal"
@@ -189,7 +189,7 @@ function buildExportUrl() {
                       </button>
                       <% } %>
                       <% if (hasPermission('priv_permission.delete')) { %>
-                        <form action="/priv-account/permission/<%= permission.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeletePermission(this, '<%= permission.name %>')">
+                        <form action="/priv-account/permission/<%= permission.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeletePermission(this, <%= JSON.stringify(permission.name) %>)">
                         <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
                           <i class="bi bi-trash"></i>
                         </button>

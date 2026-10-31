@@ -162,7 +162,7 @@ function buildPaginationUrl(targetPage) {
                       <td><%= platform.name %></td>
                       <td><%= platform.description || '-' %></td>
                       <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm me-1" title="<%= t('Show') %>" onclick="showPlatformDetail('<%= platform.id %>')" data-platform='<%= JSON.stringify(platform) %>'>
+                        <button type="button" class="btn btn-info btn-sm me-1" title="<%= t('Show') %>" onclick="showPlatformDetail(<%= JSON.stringify(platform.id) %>)" data-platform='<%= JSON.stringify(platform) %>'>
                           <i class="bi bi-eye"></i>
                         </button>
                         <% if (hasPermission('platform.update')) { %>
@@ -171,7 +171,7 @@ function buildPaginationUrl(targetPage) {
                           </button>
                         <% } %>
                         <% if (hasPermission('platform.delete') || (user && (user.role_name === 'superadmin' || user.role_name === 'admin'))) { %>
-                          <form action="/device/platform/<%= platform.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeletePlatform(this, '<%= platform.name %>')">
+                          <form action="/device/platform/<%= platform.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeletePlatform(this, <%= JSON.stringify(platform.name) %>)">
                             <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>" style="display: inline-block !important; visibility: visible !important;">
                               <i class="bi bi-trash"></i>
                             </button>

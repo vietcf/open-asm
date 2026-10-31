@@ -308,7 +308,7 @@ function buildExportUrl() {
                       <% } %>
                     </td>
                     <td class="text-end">
-                      <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showIpDetail('<%= ip.id %>')" data-ip='<%= JSON.stringify(ip) %>'><i class="bi bi-eye"></i></button>
+                      <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showIpDetail(<%= JSON.stringify(ip.id) %>)" data-ip='<%= JSON.stringify(ip) %>'><i class="bi bi-eye"></i></button>
                       <% if (hasPermission('network.update')) { %>
                       <button type="button" class="btn btn-warning btn-sm" title="<%= t('Edit') %>" 
                               data-bs-toggle="modal" data-bs-target="#editIpModal"
@@ -323,7 +323,7 @@ function buildExportUrl() {
                       </button>
                               <% } %>
                       <% if (hasPermission('network.delete')) { %>
-                      <form action="/network/ip-address/<%= ip.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteIp(this, '<%= ip.ip_address %>')">
+                      <form action="/network/ip-address/<%= ip.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteIp(this, <%= JSON.stringify(ip.ip_address) %>)">
                         <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
                           <i class="bi bi-trash"></i>
                         </button>

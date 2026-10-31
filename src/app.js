@@ -65,6 +65,8 @@ import changePasswordRouter from './routes/changePassword.js';
 import apiSwaggerRouter from './api/routes/apiSwagger.js';
 import apiRouter from './api/routes/index.js';
 import i18n from './middlewares/i18n.middleware.js';
+import connectPgSimple from 'connect-pg-simple';
+import { pool } from '../config/config.js';
 import i18nRouter, { catalogVersion } from './routes/i18n.js';
 // Remove unused controller import since we're using router pattern
 
@@ -80,20 +82,33 @@ await siteConfig.initialize();
 // 2. Trust proxy for HTTPS (Nginx/Proxy setups)
 app.set('trust proxy', 1);
 
+// Refuse to run in production with the built-in fallback secrets.
+if (process.env.NODE_ENV === 'production' && (!process.env.SESSION_SECRET || !process.env.JWT_SECRET)) {
+  console.error('SESSION_SECRET and JWT_SECRET must be set when NODE_ENV=production.');
+  process.exit(1);
+}
+
 // 3. Core middleware
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(methodOverride('_method', { methods: ['POST', 'GET'] }));
+// _method override only for POST forms: allowing it on GET would let a plain
+// link trigger PUT/DELETE (CSRF).
+app.use(methodOverride('_method', { methods: ['POST'] }));
 
 // 4. Session and flash
+// Sessions are stored in PostgreSQL (table "session", migration 0003).
+const PgSessionStore = connectPgSimple(session);
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'VcbS3cr3teeee',
+  store: new PgSessionStore({ pool, tableName: 'session', pruneSessionInterval: 15 * 60 }),
+  name: 'openasm.sid',
+  secret: process.env.SESSION_SECRET || 'dev-only-session-secret',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // SSL handled by Nginx
+    secure: 'auto', // Secure flag when the request came over HTTPS (via trust proxy)
     httpOnly: true,
-    sameSite: 'lax'
+    sameSite: 'lax',
+    maxAge: 12 * 60 * 60 * 1000 // absolute cap; idle timeout is handled separately
   }
 }));
 
@@ -127,6 +142,11 @@ app.use((req, res, next) => {
   res.locals.siteName = siteConfig.getSiteName();
   res.locals.pageSizeOptions = siteConfig.getPageSizeOptions();
   res.locals.defaultPageSize = siteConfig.getDefaultPageSize();
+  // Embed data in inline <script> safely (JSON.stringify alone does not
+  // escape "</script>"): <script>const x = <%- jsonSafe(data) %>;</script>
+  res.locals.jsonSafe = (value) => JSON.stringify(value === undefined ? null : value)
+    .replace(/</g, '\\u003c').replace(/>/g, '\\u003e').replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
   // Permission helper
   res.locals.hasPermission = (perm) => {
     const user = res.locals.user;
@@ -226,6 +246,25 @@ app.use('/api-docs', requireLogin, apiSwaggerRouter);
 
 // // API v1 routes (authentication handled internally)
 app.use('/api/v1', apiRouter);
+
+// ===========================================
+// 404 AND ERROR HANDLERS
+// ===========================================
+const wantsJson = (req) => req.xhr || req.path.startsWith('/api/') || req.accepts(['html', 'json']) === 'json';
+
+app.use((req, res) => {
+  if (wantsJson(req)) return res.status(404).json({ error: 'Not found' });
+  res.status(404).render('pages/error', { title: 'Page not found', status: 404, message: 'The page you are looking for does not exist.', layout: req.session?.user ? 'layouts/layout' : false, activeMenu: '' });
+});
+
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  if (res.headersSent) return;
+  const status = err.status || err.statusCode || 500;
+  if (wantsJson(req)) return res.status(status).json({ error: status === 500 ? 'Internal server error' : err.message });
+  res.status(status).render('pages/error', { title: 'Error', status, message: status === 500 ? 'Something went wrong. Please try again.' : err.message, layout: req.session?.user ? 'layouts/layout' : false, activeMenu: '' });
+});
 
 // Start the server
 const PORT = parseInt(process.env.PORT) || 3000;

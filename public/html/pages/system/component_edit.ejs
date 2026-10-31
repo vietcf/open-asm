@@ -137,7 +137,7 @@
 <script src="/vendor/bootstrap.min.js"></script>
 
 <script>
-  window.selectedTags = <%- JSON.stringify((component.tags || []).map(t => t && t.id && t.name ? {id: t.id, name: t.name} : t)) %>;
+  window.selectedTags = <%- jsonSafe((component.tags || []).map(t => t && t.id && t.name ? {id: t.id, name: t.name} : t)) %>;
 </script>
 
 <script>

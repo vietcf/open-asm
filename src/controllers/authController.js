@@ -4,6 +4,21 @@ import { writeLog } from '../utils/logHelper.js';
 import { config } from '../../config/config.js';
 import { verifyCredentials, verifyTotp } from '../services/authService.js';
 import { applyUserLanguage } from '../middlewares/i18n.middleware.js';
+import { isLocked, recordFailure, recordSuccess } from '../utils/loginThrottle.js';
+
+const MAX_OTP_FAILURES = 5;
+
+// New session id on login (prevents session fixation); keeps the UI language.
+function regenerateSession(req) {
+  const lang = req.session.lang;
+  return new Promise((resolve, reject) => {
+    req.session.regenerate((err) => {
+      if (err) return reject(err);
+      if (lang) req.session.lang = lang;
+      resolve();
+    });
+  });
+}
 
 // Helper function to build user session object (no permissions)
 function buildSessionUser(user) {
@@ -25,8 +40,10 @@ function buildSessionUser(user) {
 
 export const getLoginPage = (req, res) => {
   const errorMessage = req.query.error || null;
+  const successMessage = req.query.success || null;
   res.render('pages/login', {
     errorMessage,
+    successMessage,
     ldapEnabled: process.env.LDAP_ENABLED === 'true',
     selectedMethod: req.query.method === 'ldap' ? 'ldap' : 'local',
     layout: false // Disable layout for login page
@@ -47,36 +64,41 @@ export const postLogin = async (req, res) => {
     return res.redirect(`/login?error=Please%20enter%20both%20username%20and%20password${methodSuffix}`);
   }
   username = username.trim().toLowerCase();
+  const throttleKey = `${req.ip}|${username}`;
+  if (isLocked(throttleKey)) {
+    await writeLog({ action: 'login', description: 'Login blocked: too many failed attempts', status: 'failed', req });
+    return res.redirect(`/login?error=Too%20many%20failed%20login%20attempts.%20Please%20try%20again%20later.${methodSuffix}`);
+  }
   try {
     const user = await verifyCredentials(username, password);
+    recordSuccess(throttleKey);
 
-    req.session.isLoggedIn = true; // Logined username and password successfully
+    await regenerateSession(req);
+    req.session.isLoggedIn = true; // password accepted (2FA may still be pending)
     req.session.user = buildSessionUser(user); // Only store user info, not permissions
     await applyUserLanguage(req, user);
+    req.session.is2faVerified = true;
+    req.session.is2faPending = false;
 
-
-    // Set default 2FA state
-    req.session.is2faVerified = true; // 2FA verified by default
-    req.session.is2faPending = false; // no pending 2FA verification by default
-
-
-    // If required, check must_change_password
-    if (user.must_change_password) {
-      return res.redirect('/change-password');
-    }
-
-    // 1. 2FA required but not setup
-    if (user.require_twofa && !user.twofa_enabled) {
+    // 2FA comes first: until it is completed, requireLogin only allows the
+    // 2FA pages (see requireLogin.middleware.js).
+    // 1. 2FA required but not set up yet -> enrolment
+    if (user.require_twofa && !(user.twofa_enabled && user.twofa_secret)) {
       req.session.is2faPending = true;
-      req.session.is2faVerified = false; // Override default
+      req.session.is2faVerified = false;
       return res.redirect('/2fa/setup');
     }
 
-    // 2. 2FA required and enabled (OTP required)
-    if (user.require_twofa && user.twofa_enabled && user.twofa_secret) {
-      req.session.is2faPending = true;   // Override default
-      req.session.is2faVerified = false; // Override default
+    // 2. 2FA enabled -> OTP required
+    if (user.twofa_enabled && user.twofa_secret) {
+      req.session.is2faPending = true;
+      req.session.is2faVerified = false;
       return res.redirect('/login/2fa');
+    }
+
+    // 3. Forced password change (requirePasswordChange redirects everywhere else)
+    if (user.must_change_password) {
+      return res.redirect('/change-password');
     }
 
     // 3. No 2FA required - permissions loaded by global middleware
@@ -84,6 +106,7 @@ export const postLogin = async (req, res) => {
     return res.redirect('/dashboard');
   } catch (err) {
     if (err.code === 'UNAUTHORIZED') {
+      recordFailure(throttleKey);
       await writeLog({ action: 'login', description: 'Login failed: invalid username or password', status: 'failed', req });
       return res.redirect(`/login?error=Invalid%20username%20or%20password${methodSuffix}`);
     }
@@ -115,18 +138,26 @@ export const get2fa = (req, res) => {
 // POST /login/2fa - verify OTP
 export const post2fa = async (req, res) => {
   if (!req.session.is2faPending || !req.session.user || !req.session.user.twofa_enabled) {
-    // After a successful OTP check, reset the session to a fully logged-in state
+    // Not in the OTP step: reset and require a fresh login
     req.session.isLoggedIn = false;
     req.session.is2faVerified = false;
     req.session.is2faPending = false;
     return res.redirect('/login');
   }
-  const { token } = req.body;
+  const token = String(req.body.token || '').replace(/\s+/g, '');
   const secret = req.session.user.twofa_secret;
-  const verified = verifyTotp(secret, token);
+  const verified = /^\d{6}$/.test(token) && verifyTotp(secret, token);
   if (!verified) {
+    req.session.otpFailures = (req.session.otpFailures || 0) + 1;
+    await writeLog({ action: '2fa', description: '2FA code rejected', status: 'failed', req });
+    if (req.session.otpFailures >= MAX_OTP_FAILURES) {
+      return req.session.destroy(() => {
+        res.redirect('/login?error=Too%20many%20invalid%20codes.%20Please%20log%20in%20again.');
+      });
+    }
     return res.render('pages/2fa_login', { error: 'Invalid code. Please try again.', layout: false }); // Disable layout for 2FA page
   }
+  delete req.session.otpFailures;
   // 2FA success: set session as fully logged in
   req.session.isLoggedIn = true;
   req.session.is2faVerified = true;

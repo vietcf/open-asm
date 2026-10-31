@@ -157,7 +157,7 @@ function buildPaginationUrl(targetPage) {
                       <td><%= agent.version || '-' %></td>
                       <td><%= agent.description || '-' %></td>
                       <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm me-1" title="<%= t('Show') %>" onclick="showAgentDetail('<%= agent.id %>')" data-agent='<%= JSON.stringify(agent) %>'>
+                        <button type="button" class="btn btn-info btn-sm me-1" title="<%= t('Show') %>" onclick="showAgentDetail(<%= JSON.stringify(agent.id) %>)" data-agent='<%= JSON.stringify(agent) %>'>
                           <i class="bi bi-eye"></i>
                         </button>
                         <% if (hasPermission('agent.update')) { %>
@@ -167,7 +167,7 @@ function buildPaginationUrl(targetPage) {
                           </button>
                         <% } %>
                         <% if (hasPermission('agent.delete')) { %>
-                          <form action="/server/agent/<%= agent.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteAgent(this, '<%= agent.name %>')">
+                          <form action="/server/agent/<%= agent.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteAgent(this, <%= JSON.stringify(agent.name) %>)">
                             <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
                               <i class="bi bi-trash"></i>
                             </button>

@@ -1,6 +1,10 @@
 import speakeasy from 'speakeasy';
 import qrcode from 'qrcode';
 import User from '../models/User.js';
+import { siteConfig } from '../utils/siteConfig.js';
+
+// Issuer shown in authenticator apps
+const issuer = () => siteConfig.getSiteName() || 'Open ASM';
 
 const twofaController = {};
 
@@ -18,7 +22,7 @@ twofaController.setup = async (req, res) => {
     return res.redirect('/login/2fa?info=Please verify your 2FA code');
   }
   // Generate a new secret
-  const secret = speakeasy.generateSecret({ name: 'ASG Project (' + user.username + ')' });
+  const secret = speakeasy.generateSecret({ name: `${issuer()} (${user.username})` });
   // Store secret temporarily in session until verified
   req.session.tmp_twofa_secret = secret.base32;
   // Generate QR code
@@ -47,7 +51,7 @@ twofaController.verify = async (req, res) => {
   });
   if (!verified) {
     // regenerate QR code for the same secret
-    const otpauth_url = speakeasy.otpauthURL({ secret, label: 'ASG Project (' + user.username + ')', encoding: 'base32' });
+    const otpauth_url = speakeasy.otpauthURL({ secret, label: `${issuer()} (${user.username})`, encoding: 'base32' });
     const qr = await qrcode.toDataURL(otpauth_url);
     return res.render('pages/2fa_setup', { 
       qr, 
@@ -74,6 +78,18 @@ twofaController.verify = async (req, res) => {
 twofaController.disable = async (req, res) => {
   const user = req.session.user;
   if (!user) return res.status(401).send('Unauthorized');
+  // Disabling 2FA requires a valid current code, and is not allowed when an
+  // administrator requires 2FA for this account.
+  if (user.require_twofa) {
+    req.flash('error', 'Two-factor authentication is required for your account and cannot be disabled.');
+    return res.redirect('/dashboard');
+  }
+  const token = String(req.body.token || '').replace(/\s+/g, '');
+  if (!user.twofa_secret || !/^\d{6}$/.test(token) ||
+      !speakeasy.totp.verify({ secret: user.twofa_secret, encoding: 'base32', token })) {
+    req.flash('error', 'Invalid code. Please try again.');
+    return res.redirect('/dashboard');
+  }
   await User.updateTwoFA(user.id, null, false);
   req.session.user.twofa_enabled = false;
   req.session.user.twofa_secret = null;

@@ -104,6 +104,9 @@
       <!--begin::Form panel-->
       <div class="login-form-panel">
         <h2><%= t('Sign In') %></h2>
+        <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+          <div class="alert alert-success py-2" role="status"><%= t(successMessage) %></div>
+        <% } %>
         <% if (errorMessage) { %>
           <div class="alert alert-danger py-2" role="alert">
             <%= t(errorMessage) %>

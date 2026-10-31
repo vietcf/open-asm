@@ -166,14 +166,14 @@ function buildPaginationUrl(targetPage) {
                         <span data-bs-toggle="tooltip" data-bs-placement="top" title="<%= cleanDescription %>" style="cursor: help; word-break: break-word;"><%= shortDescription %></span>
                       </td>
                       <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showUnitDetail('<%= unit.id %>')" data-unit='<%= JSON.stringify(unit) %>'><i class="bi bi-eye"></i></button>
+                        <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showUnitDetail(<%= JSON.stringify(unit.id) %>)" data-unit='<%= JSON.stringify(unit) %>'><i class="bi bi-eye"></i></button>
                         <% if (hasPermission('unit.update')) { %>
                           <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editUnitModal" data-unit-id="<%= unit.id %>" data-unit-name="<%= unit.name %>" data-unit-description="<%= unit.description || '' %>" title="<%= t('Edit') %>">
                             <i class="bi bi-pencil"></i>
                           </button>
                         <% } %>
                         <% if (hasPermission('unit.delete')) { %>
-                          <form action="/organize/unit/<%= unit.id %>?_method=DELETE" method="POST" style="display:inline !important;" onsubmit="return confirmDeleteUnit(this, '<%= unit.name %>')">
+                          <form action="/organize/unit/<%= unit.id %>?_method=DELETE" method="POST" style="display:inline !important;" onsubmit="return confirmDeleteUnit(this, <%= JSON.stringify(unit.name) %>)">
                             <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>" style="display: inline-block !important; visibility: visible !important; position: relative !important;">
                               <i class="bi bi-trash"></i>
                             </button>

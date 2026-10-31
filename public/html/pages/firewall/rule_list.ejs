@@ -258,7 +258,7 @@ function buildExportUrl() {
                     <td><span class="badge bg-<%= rule.action === 'allow' ? 'success' : 'danger' %>"><%= rule.action %></span></td>
                     <td><span class="badge bg-<%= rule.status === 'active' ? 'success' : 'secondary' %>"><%= rule.status %></span></td>
                     <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showRuleDetail('<%= rule.id %>')" data-rule-id="<%= rule.id %>" data-rule='<%= JSON.stringify(rule) %>'><i class="bi bi-eye"></i></button>
+                        <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showRuleDetail(<%= JSON.stringify(rule.id) %>)" data-rule-id="<%= rule.id %>" data-rule='<%= JSON.stringify(rule) %>'><i class="bi bi-eye"></i></button>
                       <% if (hasPermission('firewall.update')) { %>
                       <button type="button" class="btn btn-warning btn-sm" title="<%= t('Edit') %>" 
                               data-bs-toggle="modal" data-bs-target="#editRuleModal"
@@ -268,7 +268,7 @@ function buildExportUrl() {
                       </button>
                       <% } %>
                       <% if (hasPermission('firewall.delete')) { %>
-                        <form action="/firewall/rule/<%= rule.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteRule(this, '<%= rule.rulename %>')">
+                        <form action="/firewall/rule/<%= rule.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteRule(this, <%= JSON.stringify(rule.rulename) %>)">
                         <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
                           <i class="bi bi-trash"></i>
                         </button>
@@ -1876,7 +1876,7 @@ $(function() {
   });
 
   // ===== GROUPED/DETAILED VIEW LOGIC =====
-  var originalRules = <%- JSON.stringify(ruleList || []) %>;
+  var originalRules = <%- jsonSafe(ruleList || []) %>;
   var currentView = 'grouped';
   
   // Debug: Log first rule to check audit_batch

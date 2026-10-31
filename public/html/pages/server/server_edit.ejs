@@ -146,7 +146,7 @@
 <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
 
 <script>
-  window.selectedTags = JSON.parse('<%- JSON.stringify(selectedTags || []) %>');
+  window.selectedTags = JSON.parse('<%- jsonSafe(selectedTags || []) %>');
   const SERVER_ID = <%= server.id %>;
 </script>
 

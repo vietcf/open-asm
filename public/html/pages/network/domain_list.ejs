@@ -356,7 +356,7 @@ function buildExportUrl() {
                         <button type="button" 
                                 class="btn btn-info btn-sm" 
                                 title="<%= t('Show') %>" 
-                                onclick="showDomainDetail('<%= domain.id %>')" 
+                                onclick="showDomainDetail(<%= JSON.stringify(domain.id) %>)" 
                                 data-domain='<%= JSON.stringify(domain) %>'>
                           <i class="bi bi-eye"></i>
                         </button>
@@ -382,7 +382,7 @@ function buildExportUrl() {
                           <form action="/network/domain/<%= domain.id %>?_method=DELETE" 
                                 method="POST" 
                                 style="display:inline" 
-                                onsubmit="return confirmDeleteDomain(this, '<%= domain.domain %>')">
+                                onsubmit="return confirmDeleteDomain(this, <%= JSON.stringify(domain.domain) %>)">
                             <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
                               <i class="bi bi-trash"></i>
                             </button>

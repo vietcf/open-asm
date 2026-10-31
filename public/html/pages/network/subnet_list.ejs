@@ -355,7 +355,7 @@ function buildExportUrl() {
                         <button type="button" 
                                 class="btn btn-info btn-sm" 
                                 title="<%= t('Show') %>" 
-                                onclick="showSubnetDetail('<%= subnet.id %>')" 
+                                onclick="showSubnetDetail(<%= JSON.stringify(subnet.id) %>)" 
                                 data-subnet='<%= JSON.stringify(subnet) %>'>
                           <i class="bi bi-eye"></i>
                         </button>
@@ -381,7 +381,7 @@ function buildExportUrl() {
                           <form action="/network/subnet-address/<%= subnet.id %>?_method=DELETE" 
                                 method="POST" 
                                 style="display:inline" 
-                                onsubmit="return confirmDeleteSubnet(this, '<%= subnet.address %>')">
+                                onsubmit="return confirmDeleteSubnet(this, <%= JSON.stringify(subnet.address) %>)">
                             <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
                               <i class="bi bi-trash"></i>
                             </button>

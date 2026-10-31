@@ -46,7 +46,7 @@ const IMPLICIT_RE = [
   /\b(?:title|error|success|message)\s*:\s*(?:'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\$]|\\.)*)`)/g,
   /[?&]error=([A-Z][A-Za-z0-9.]*%20[A-Za-z0-9%.]+)/g, // URL-encoded login errors
 ];
-const IMPLICIT_DIRS = ['src/controllers', 'src/middlewares', 'src/routes'];
+const IMPLICIT_DIRS = ['src/controllers', 'src/middlewares', 'src/routes', 'src/app.js'];
 
 const used = new Map(); // text -> first location
 for (const { dir, ext, only } of SCAN) {

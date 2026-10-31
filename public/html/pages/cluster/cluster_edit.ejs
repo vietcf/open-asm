@@ -119,8 +119,8 @@
 <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
 
 <script>
-  const existingSystems = <%- JSON.stringify((cluster.systems || []).map(s => ({ id: s.id, text: s.name }))) %>;
-  const existingMembers = <%- JSON.stringify((cluster.members || []).map(m => ({ ip_address_id: m.ip_address_id, ip: m.ip, role: m.role }))) %>;
+  const existingSystems = <%- jsonSafe((cluster.systems || []).map(s => ({ id: s.id, text: s.name }))) %>;
+  const existingMembers = <%- jsonSafe((cluster.members || []).map(m => ({ ip_address_id: m.ip_address_id, ip: m.ip, role: m.role }))) %>;
 
   $(function() {
     $('#system-select').select2({
@@ -208,7 +208,7 @@
     // already taken by another cluster, instead of only finding out after
     // submitting the form. exclude_id lets this cluster's own current name
     // pass the check.
-    const clusterId = <%- JSON.stringify(cluster.id) %>;
+    const clusterId = <%- jsonSafe(cluster.id) %>;
     let nameCheckSeq = 0;
     $('#cluster-name-input').on('blur', function() {
       const name = $(this).val().trim();

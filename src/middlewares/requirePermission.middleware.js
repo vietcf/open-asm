@@ -1,3 +1,13 @@
+// Responds 403: JSON for API/AJAX calls, the translated "Access Denied" page otherwise.
+export function forbidden(req, res) {
+  if (req.xhr || req.originalUrl.startsWith('/api/') || req.accepts(['html', 'json']) === 'json') {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+  return res.status(403).render('pages/error', {
+    title: 'Access Denied', status: 403, message: 'You do not have permission to access this feature.', activeMenu: ''
+  });
+}
+
 // Enhanced middleware for permission check - supports multiple permissions
 export default function requirePermission(...permissions) {
   return (req, res, next) => {
@@ -19,7 +29,7 @@ export default function requirePermission(...permissions) {
     });
     
     if (!hasAnyPermission) {
-      return res.status(403).send('Forbidden');
+      return forbidden(req, res);
     }
     
     next();
@@ -34,7 +44,7 @@ export function requireAllPermissions(...permissions) {
     });
     
     if (!hasAllPermissions) {
-      return res.status(403).send('Forbidden');
+      return forbidden(req, res);
     }
     
     next();

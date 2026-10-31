@@ -292,7 +292,7 @@ function buildExportUrl() {
                         <% } %>
                       </td>
                       <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showDeviceDetail('<%= device.id %>')" data-device='<%= JSON.stringify(device) %>'>
+                        <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showDeviceDetail(<%= JSON.stringify(device.id) %>)" data-device='<%= JSON.stringify(device) %>'>
                           <i class="bi bi-eye"></i>
                         </button>
                         <% if (hasPermission('device.update')) { %>
@@ -301,7 +301,7 @@ function buildExportUrl() {
                           </a>
                         <% } %>
                         <% if (hasPermission('device.delete')) { %>
-                          <form action="/device/device/<%= device.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteDevice(this, '<%= device.name %>')">
+                          <form action="/device/device/<%= device.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteDevice(this, <%= JSON.stringify(device.name) %>)">
                             <input type="hidden" name="delete_ip" value="false">
                             <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
                               <i class="bi bi-trash"></i>
@@ -724,9 +724,9 @@ document.getElementById('deleteDeviceConfirmBtn').addEventListener('click', func
 // ==========================================
 
 // Initialize window variables for Select2
-window.selectedDeviceType = <%- JSON.stringify(selectedDeviceType || null) %>;
-window.selectedTags = <%- JSON.stringify(selectedTags || []) %>;
-window.selectedPlatform = <%- JSON.stringify(selectedPlatform || null) %>;
+window.selectedDeviceType = <%- jsonSafe(selectedDeviceType || null) %>;
+window.selectedTags = <%- jsonSafe(selectedTags || []) %>;
+window.selectedPlatform = <%- jsonSafe(selectedPlatform || null) %>;
 
 // Debug log
 console.log('Device List - window.selectedTags initialized:', window.selectedTags);

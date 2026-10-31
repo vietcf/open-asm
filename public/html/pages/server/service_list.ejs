@@ -179,7 +179,7 @@ function buildPaginationUrl(targetPage) {
                       <td><%= service.name %></td>
                       <td><%= service.description || '-' %></td>
                       <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm me-1" title="<%= t('Show') %>" onclick="showServiceDetail('<%= service.id %>')" data-service='<%= JSON.stringify(service) %>'>
+                        <button type="button" class="btn btn-info btn-sm me-1" title="<%= t('Show') %>" onclick="showServiceDetail(<%= JSON.stringify(service.id) %>)" data-service='<%= JSON.stringify(service) %>'>
                           <i class="bi bi-eye"></i>
                         </button>
                         <% if (hasPermission('service.update')) { %>
@@ -189,7 +189,7 @@ function buildPaginationUrl(targetPage) {
                           </button>
                         <% } %>
                         <% if (hasPermission('service.delete')) { %>
-                          <form action="/server/service/<%= service.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteService(this, '<%= service.name %>')">
+                          <form action="/server/service/<%= service.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteService(this, <%= JSON.stringify(service.name) %>)">
                             <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
                               <i class="bi bi-trash"></i>
                             </button>

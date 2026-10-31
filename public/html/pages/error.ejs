@@ -1,0 +1,35 @@
+<%# Generic error page (403 / 404 / 500). Rendered inside the main layout for
+    logged-in users, standalone otherwise (layout: false). %>
+<% const icon = status === 403 ? 'bi-shield-lock' : status === 404 ? 'bi-signpost-split' : 'bi-exclamation-octagon'; %>
+<% const standalone = !locals.user; %>
+<% if (standalone) { %>
+<!doctype html>
+<html lang="<%= lang %>">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= t(title) %> | <%= siteName %></title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="stylesheet" href="/css/source-sans-3.css" />
+  <link rel="stylesheet" href="/css/bootstrap-icons.min.css" />
+  <link rel="stylesheet" href="<%= cssPath %>adminlte.css" />
+</head>
+<body class="bg-body-tertiary">
+<% } %>
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-6 text-center">
+      <div class="display-1 text-body-tertiary fw-bold mb-2"><%= status %></div>
+      <h1 class="h3 mb-3"><i class="bi <%= icon %> me-2 <%= status === 403 ? 'text-danger' : 'text-secondary' %>"></i><%= t(title) %></h1>
+      <p class="text-secondary mb-4"><%= t(message) %></p>
+      <div class="d-flex gap-2 justify-content-center">
+        <a href="javascript:history.back()" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i><%= t('Go back') %></a>
+        <a href="<%= standalone ? '/login' : '/dashboard' %>" class="btn btn-primary"><i class="bi bi-house me-1"></i><%= standalone ? t('Login') : t('Dashboard') %></a>
+      </div>
+    </div>
+  </div>
+</div>
+<% if (standalone) { %>
+</body>
+</html>
+<% } %>
