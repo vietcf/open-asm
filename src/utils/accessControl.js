@@ -9,8 +9,8 @@ async function buildAccessControl() {
     JOIN permissions p ON p.id = rp.permission_id
   `);
 
-  // Chuyển dữ liệu thành grants object cho accesscontrol
-  // Ví dụ: { admin: { user: { 'create:any': ['*'], ... } }, ... }
+  // Convert rows into an accesscontrol grants object
+  // Example: { admin: { user: { 'create:any': ['*'], ... } }, ... }
   const grants = {};
   rows.forEach(row => {
     // Trim whitespace from permission string before splitting

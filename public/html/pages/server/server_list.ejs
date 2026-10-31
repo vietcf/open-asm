@@ -268,7 +268,7 @@ function buildExportUrl() {
     <!-- FILTER DATA AND FLASH MESSAGES -->
     <!-- ========================================== -->
     
-    <!-- Filter values for JS (an toàn cho EJS strict, giống System List) -->
+    <!-- Filter values for JS (safe for strict EJS, same as System List) -->
     <div id="filter-server-data"
          data-tags='<%= JSON.stringify(filterTags || []) %>'
          data-systems='<%= JSON.stringify(filterSystems || []) %>'
@@ -728,17 +728,17 @@ function buildExportUrl() {
     margin: 0 !important;
   }
   
-  /* Order: Apply Filters trên, Cancel giữa, Clear All Filters dưới */
+  /* Order: Apply Filters on top, Cancel in the middle, Clear All Filters at the bottom */
   #filterServerModal .modal-footer .btn:first-child {
-    order: 3 !important; /* Clear All Filters dưới */
+    order: 3 !important; /* Clear All Filters at the bottom */
   }
   
   #filterServerModal .modal-footer > div .btn:first-child {
-    order: 2 !important; /* Cancel giữa */
+    order: 2 !important; /* Cancel in the middle */
   }
   
   #filterServerModal .modal-footer > div .btn:last-child {
-    order: 1 !important; /* Apply Filters trên */
+    order: 1 !important; /* Apply Filters on top */
   }
   
   /* Force override any Bootstrap or AdminLTE styles */

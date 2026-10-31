@@ -411,7 +411,7 @@ class IpAddress {
     joinClauses.push('LEFT JOIN contacts c ON c.id = ic.contact_id');
     joinClauses.push('LEFT JOIN system_ip si ON si.ip_id = ip.id');
     joinClauses.push('LEFT JOIN systems s ON s.id = si.system_id');
-    // XÓA các join device_ip/devices và server_ip/servers khỏi filterCount vì không dùng trong SELECT COUNT, tránh lỗi nếu bảng không tồn tại.
+    // The device_ip/devices and server_ip/servers joins are left out of filterCount: SELECT COUNT does not need them.
     if (tags && tags.length > 0) {
       whereClauses.push(`ip.id IN (SELECT object_id FROM tag_object WHERE object_type = 'ip_address' AND tag_id = ANY($${idx}))`);
       params.push(tags);

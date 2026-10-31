@@ -69,11 +69,11 @@ networkController.listIP = async (req, res) => {
     const normalizeArray = v => (Array.isArray(v) ? v : (v ? [v] : []));
     const search = req.query.search ? req.query.search.trim() : '';
     const page = parseInt(req.query.page, 10) || 1;
-    // pageSizeOptions đã có sẵn qua res.locals.pageSizeOptions
+    // pageSizeOptions is already available via res.locals.pageSizeOptions
     let pageSize = parseInt(req.query.pageSize, 10);
     const pageSizeOptions = res.locals.pageSizeOptions || [10, 20, 50];
     if (!pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
-    // Lấy filter từ query
+    // Read filters from the query string
     let filterTags = req.query['tags[]'] || req.query.tags || [];
     let filterStatus = req.query.status || '';
     let filterSystems = req.query['systems[]'] || req.query.systems || [];
@@ -83,7 +83,7 @@ networkController.listIP = async (req, res) => {
     filterSystems = normalizeArray(filterSystems).filter(x => x !== '');
     filterContacts = normalizeArray(filterContacts).filter(x => x !== '');
 
-    // Gọi service filter
+    // Call the filtering service
     const { items: ipList, totalCount } = await listIpAddressesService({
       search,
       tags: filterTags,
@@ -266,7 +266,7 @@ networkController.listSubnet = async (req, res) => {
     const pageSizeOptions = res.locals.pageSizeOptions || [10, 20, 50];
     if (!pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
     
-    // Lấy filter từ query
+    // Read filters from the query string
     let filterTags = req.query['tags[]'] || req.query.tags || [];
     filterTags = normalizeArray(filterTags).filter(x => x !== '');
     const filterZone = req.query.zone ? req.query.zone.trim() : '';
@@ -274,10 +274,10 @@ networkController.listSubnet = async (req, res) => {
 
     const { items: subnetList, totalCount } = await listSubnetsService({ search, tags: filterTags, zone: filterZone, environment: filterEnvironment, page, pageSize });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-    // Xây dựng cây subnet để hiển thị dạng cha-con
+    // Build the subnet tree for the parent/child view
     const subnetTree = Subnet.buildSubnetTree(subnetList);
     
-    // Lấy danh sách unique zones và environments cho filter
+    // Unique zones and environments for the filter dropdowns
     const uniqueZones = await Subnet.getUniqueZones();
     const uniqueEnvironments = await Subnet.getUniqueEnvironments();
     
@@ -295,7 +295,7 @@ networkController.listSubnet = async (req, res) => {
     const errorMessage = req.flash('error')[0];
     res.render('pages/network/subnet_list', {
       subnetList,
-      subnetTree, // truyền thêm biến này
+      subnetTree, // subnet tree for the view
       page,
       pageSize,
       totalPages,
@@ -308,7 +308,7 @@ networkController.listSubnet = async (req, res) => {
       uniqueEnvironments,
       successMessage,
       errorMessage,
-      // allowedPageSizes không cần truyền, đã có global
+      // allowedPageSizes is global, no need to pass it
       title: 'Subnet List',
       activeMenu: 'subnet-address'
     });
@@ -398,7 +398,7 @@ networkController.listDomain = async (req, res) => {
   try {
     const search = req.query.search ? req.query.search.trim() : '';
     const page = parseInt(req.query.page, 10) || 1;
-    // pageSizeOptions đã có sẵn qua res.locals.pageSizeOptions
+    // pageSizeOptions is already available via res.locals.pageSizeOptions
     let pageSize = parseInt(req.query.pageSize, 10);
     const pageSizeOptions = res.locals.pageSizeOptions || [10, 20, 50];
     if (!pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
@@ -410,7 +410,7 @@ networkController.listDomain = async (req, res) => {
     const filterSystems = Array.isArray(req.query['systems[]']) ? req.query['systems[]'] :
       (req.query['systems[]'] ? [req.query['systems[]']] : (Array.isArray(req.query.systems) ? req.query.systems : req.query.systems ? [req.query.systems] : []));
     
-    // Tìm kiếm domain với filters
+    // Search domains with filters
     const { items: domainList, totalCount } = await listDomainsService({
       search,
       tags: filterTags,
@@ -554,7 +554,7 @@ networkController.detailSubnet = async (req, res) => {
       );
       ip.tags = tagRows.rows.map(row => row.name);
     }
-  // Đã xóa debug log
+  // Debug log removed
 
     res.json(subnet);
   } catch (err) {
@@ -568,7 +568,7 @@ networkController.apiSearchIPAddresses = async (req, res) => {
   try {
     const { search = '', ids, limit } = req.query;
     if (ids) {
-      // ids có thể là mảng hoặc 1 giá trị
+      // ids may be an array or a single value
       const idArr = Array.isArray(ids) ? ids : [ids];
       if (idArr.length === 0) return res.json([]);
       const result = await pool.query(
@@ -660,7 +660,7 @@ networkController.apiDomainSearch = async (req, res) => {
   }
 };
 
-// API: Search IP addresses for select2 ajax (server add only, chỉ lấy IP chưa assigned)
+// API: Search IP addresses for select2 ajax (server add only: unassigned IPs only)
 networkController.apiSearchUnassignedIPAddresses = async (req, res) => {
   try {
     const search = req.query.search || '';
@@ -948,11 +948,11 @@ networkController.validateImportIPs = async (req, res) => {
     // Create validation results Excel file
     try {
       
-      // Tạo file Excel với kết quả validation
+      // Build an Excel file with the validation results
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Validation Results');
       
-      // Định nghĩa headers - đầy đủ các trường từ file ban đầu + 2 trường validation
+      // Headers: every column of the uploaded file + 2 validation columns
       const headers = [
         'IPAddress (Require, one per row)',
         'Description (Optional)',
@@ -967,7 +967,7 @@ networkController.validateImportIPs = async (req, res) => {
       // Add headers
       worksheet.addRow(headers);
       
-      // Add validation results - đảm bảo đúng thứ tự với headers
+      // Add validation results - same column order as the headers
       validationResults.forEach(result => {
         const row = [
           result.ip_address,                                                    // IPAddress (Require, one per row)
@@ -985,14 +985,14 @@ networkController.validateImportIPs = async (req, res) => {
       // Set column widths
       worksheet.columns.forEach(col => { col.width = 22; });
       
-      // Tạo thư mục temp nếu chưa có
+      // Create the temp directory if missing
       const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
       const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
       if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir, { recursive: true });
       }
       
-      // Tạo file Excel tạm với tên theo định dạng timestamp_filename_validated.xlsx
+      // Temporary Excel file named timestamp_filename_validated.xlsx
       // path.basename strips any directory components a crafted upload
       // filename could carry, before it's woven into a filesystem path.
       const originalFileName = path.basename(req.file.originalname).replace(/\.[^/.]+$/, ""); // Remove extension
@@ -1233,11 +1233,11 @@ networkController.importIPs = async (req, res) => {
     // Create import results Excel file (same as validation)
     try {
 
-      // Tạo file Excel với kết quả import
+      // Build an Excel file with the import results
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Import Results');
       
-      // Định nghĩa headers - đầy đủ các trường từ file ban đầu + 2 trường import
+      // Headers: every column of the uploaded file + 2 import columns
       const headers = [
         'IPAddress (Require, one per row)',
         'Description (Optional)',
@@ -1252,7 +1252,7 @@ networkController.importIPs = async (req, res) => {
       // Add headers
       worksheet.addRow(headers);
       
-      // Add import results - đảm bảo đúng thứ tự với headers
+      // Add import results - same column order as the headers
       importResults.forEach(result => {
         const row = [
           result.ip_address,                                                    // IPAddress (Require, one per row)
@@ -1270,14 +1270,14 @@ networkController.importIPs = async (req, res) => {
       // Set column widths
       worksheet.columns.forEach(col => { col.width = 22; });
       
-      // Tạo thư mục temp nếu chưa có
+      // Create the temp directory if missing
       const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
       const tempDir = path.join(process.cwd(), uploadsDir, 'temp');
       if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir, { recursive: true });
       }
       
-      // Tạo file Excel tạm với tên theo định dạng timestamp_filename_imported.xlsx
+      // Temporary Excel file named timestamp_filename_imported.xlsx
       const originalFileName = path.basename(req.file.originalname).replace(/\.[^/.]+$/, ""); // Remove extension
       const timestamp = Date.now();
       const excelFileName = `${timestamp}_${originalFileName}_imported.xlsx`;
@@ -1327,7 +1327,7 @@ networkController.importIPs = async (req, res) => {
 // Export IP Address List as Excel (filtered)
 networkController.exportIpAddressList = async (req, res) => {
   try {
-    // Chuẩn hóa filter giống listIP
+    // Normalize filters the same way as listIP
     const normalizeArray = v => (Array.isArray(v) ? v : (v ? [v] : []));
     const search = req.query.search ? req.query.search.trim() : '';
     let filterTags = req.query['tags[]'] || req.query.tags || [];
@@ -1339,7 +1339,7 @@ networkController.exportIpAddressList = async (req, res) => {
     filterTags = normalizeArray(filterTags).filter(x => x !== '');
     filterSystems = normalizeArray(filterSystems).filter(x => x !== '');
     filterContacts = normalizeArray(filterContacts).filter(x => x !== '');
-    // Lấy toàn bộ danh sách (không phân trang)
+    // Fetch the full list (no pagination)
     const ipList = await IpAddress.findFilteredList({
       search,
       tags: filterTags,
@@ -1351,7 +1351,7 @@ networkController.exportIpAddressList = async (req, res) => {
       page: 1,
       pageSize: 10000
     });
-    // Định nghĩa các cột xuất Excel
+    // Excel export columns
     const headers = [
       'ID', 'IP Address', 'Description', 'Status', 'Tags', 'Created At', 'Updated At', 'Updated By', 'Systems', 'Contacts'
     ];
@@ -1371,7 +1371,7 @@ networkController.exportIpAddressList = async (req, res) => {
         return emailUsername || c.name || '';
       }).join(', ') : '')
     ]);
-    // Tạo file Excel
+    // Build the Excel file
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('IP Address List');
     worksheet.addRow(headers);
@@ -1391,7 +1391,7 @@ networkController.exportIpAddressList = async (req, res) => {
 // Export Subnet List as Excel (filtered)
 networkController.exportSubnetList = async (req, res) => {
   try {
-    // Chuẩn hóa filter giống listSubnet
+    // Normalize filters the same way as listSubnet
     const normalizeArray = v => (Array.isArray(v) ? v : (v ? [v] : []));
     const search = req.query.search ? req.query.search.trim() : '';
     let filterTags = req.query['tags[]'] || req.query.tags || [];
@@ -1399,7 +1399,7 @@ networkController.exportSubnetList = async (req, res) => {
     const filterZone = req.query.zone ? req.query.zone.trim() : '';
     const filterEnvironment = req.query.environment ? req.query.environment.trim() : '';
     
-    // Lấy toàn bộ danh sách (không phân trang)
+    // Fetch the full list (no pagination)
     let subnetList = [];
     if (search || filterTags.length > 0 || filterZone || filterEnvironment) {
       subnetList = await Subnet.findFilteredList({ 
@@ -1414,7 +1414,7 @@ networkController.exportSubnetList = async (req, res) => {
       subnetList = await Subnet.findAll();
     }
     
-    // Định nghĩa các cột xuất Excel
+    // Excel export columns
     const headers = [
       'ID', 'Subnet Address', 'Description', 'Zone', 'Environment', 'Tags', 'Gateway', 'Created At', 'Updated At', 'Updated By'
     ];
@@ -1431,7 +1431,7 @@ networkController.exportSubnetList = async (req, res) => {
       subnet.updated_by || ''
     ]);
     
-    // Tạo file Excel
+    // Build the Excel file
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Subnet List');
     worksheet.addRow(headers);
@@ -1452,7 +1452,7 @@ networkController.exportSubnetList = async (req, res) => {
 // Export Domain List as Excel (filtered)
 networkController.exportDomainList = async (req, res) => {
   try {
-    // Chuẩn hóa filter giống listDomain
+    // Normalize filters the same way as listDomain
     const normalizeArray = v => (Array.isArray(v) ? v : (v ? [v] : []));
     const search = req.query.search ? req.query.search.trim() : '';
     let filterTags = req.query['tags[]'] || req.query.tags || [];
@@ -1462,7 +1462,7 @@ networkController.exportDomainList = async (req, res) => {
     filterTags = normalizeArray(filterTags).filter(x => x !== '');
     filterSystems = normalizeArray(filterSystems).filter(x => x !== '');
     
-    // Lấy toàn bộ danh sách (không phân trang)
+    // Fetch the full list (no pagination)
     const domainList = await Domain.findFilteredList({
       search,
       tags: filterTags,
@@ -1473,7 +1473,7 @@ networkController.exportDomainList = async (req, res) => {
       pageSize: 10000
     });
     
-    // Định nghĩa các cột xuất Excel
+    // Excel export columns
     const headers = [
       'ID', 'Domain Name', 'Description', 'Zone', 'Environment', 'Tags', 'Created At', 'Updated At', 'Updated By', 'Systems'
     ];
@@ -1490,7 +1490,7 @@ networkController.exportDomainList = async (req, res) => {
       (domain.systems && domain.systems.length ? domain.systems.map(s => s.name).join(', ') : '')
     ]);
     
-    // Tạo file Excel
+    // Build the Excel file
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Domain List');
     worksheet.addRow(headers);
@@ -1862,7 +1862,7 @@ networkController.validateImportSubnets = async (req, res) => {
           }
         }
         if (invalidTags.length > 0) {
-          // Tag không hợp lệ sẽ làm fail validation
+          // An invalid tag fails validation
           result.validation_status = 'Fail';
           result.validation_reason = (result.validation_reason ? result.validation_reason + '; ' : '') + `Tag(s) not found: ${invalidTags.join(', ')}`;
         }

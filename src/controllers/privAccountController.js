@@ -127,7 +127,7 @@ privAccountController.listAccounts = async (req, res) => {
       startItem,
       endItem,
       totalCount,
-      // allowedPageSizes: res.locals.pageSizeOptions, // Không cần truyền, đã có global
+      // allowedPageSizes: res.locals.pageSizeOptions, // global already, no need to pass
       title: 'Privileged Account',
       activeMenu: 'priv-account-list'
     });
@@ -654,7 +654,7 @@ privAccountController.exportPermissions = async (req, res) => {
     let where = [];
     let params = [];
     let idx = 1;
-    // Đồng bộ thứ tự với listPermissions: search trước, rồi system_id
+    // Same order as listPermissions: search first, then system_id
     if (search) {
       where.push('(name ILIKE $' + idx + ' OR description ILIKE $' + idx + ')');
       params.push(`%${search}%`);

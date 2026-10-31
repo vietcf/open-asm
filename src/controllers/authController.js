@@ -56,8 +56,8 @@ export const postLogin = async (req, res) => {
 
 
     // Set default 2FA state
-    req.session.is2faVerified = true; //Mac dinh da duoc verify 2FA
-    req.session.is2faPending = false; //Mac dinh khong pending 2FA Verify
+    req.session.is2faVerified = true; // 2FA verified by default
+    req.session.is2faPending = false; // no pending 2FA verification by default
 
 
     // If required, check must_change_password
@@ -115,7 +115,7 @@ export const get2fa = (req, res) => {
 // POST /login/2fa - verify OTP
 export const post2fa = async (req, res) => {
   if (!req.session.is2faPending || !req.session.user || !req.session.user.twofa_enabled) {
-    // Đảm bảo khi xác thực OTP thành công, session phải được set lại đúng trạng thái đăng nhập
+    // After a successful OTP check, reset the session to a fully logged-in state
     req.session.isLoggedIn = false;
     req.session.is2faVerified = false;
     req.session.is2faPending = false;
@@ -143,7 +143,7 @@ export const post2fa = async (req, res) => {
 };
 
 export const logout = async (req, res) => {
-  // Lấy thông tin user trước khi xóa session
+  // Read the user info before destroying the session
   const user = req.session && req.session.user ? req.session.user : null;
   await writeLog({
     action: 'logout',

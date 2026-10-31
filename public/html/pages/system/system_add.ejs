@@ -151,7 +151,7 @@
       placeholder: t('Select level'),
       allowClear: true,
       width: '100%',
-      // minimumResultsForSearch: Infinity // Cho phép search
+      // minimumResultsForSearch: Infinity // allow search
     });
     
     // Department (Unit) select2 AJAX - Bootstrap 5 theme
@@ -160,7 +160,7 @@
       placeholder: t('Select department'),
       allowClear: true,
       width: '100%',
-      // minimumResultsForSearch: Infinity // Cho phép search
+      // minimumResultsForSearch: Infinity // allow search
       ajax: {
         url: '/organize/api/unit',
         dataType: 'json',
@@ -271,7 +271,7 @@
           data: formData,
           processData: false,
           contentType: false,
-          xhrFields: { withCredentials: true }, // Đảm bảo gửi cookie/session
+          xhrFields: { withCredentials: true }, // send the session cookie
           success: function(res) {
             if (res.success && res.files && res.files.length > 0) {
               const uploaded = res.files[0];

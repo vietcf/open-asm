@@ -304,7 +304,7 @@ class Server {
     const where = whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : '';
     const joins = joinClauses.join(' ');
     const offset = (page - 1) * pageSize;
-    // Sử dụng json_agg để tổng hợp các trường liên quan
+    // Use json_agg to aggregate the related rows
     const sql = `SELECT s.*, p.name AS platform_name,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address, 'role', svi.role)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip,
       COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
@@ -318,7 +318,7 @@ class Server {
       LIMIT $${idx} OFFSET $${idx + 1}`;
     params.push(pageSize, offset);
     const res = await pool.query(sql, params);
-    // Parse các trường JSON nếu cần
+    // Parse JSON columns if needed
     return res.rows.map(server => {
       server.ip = Array.isArray(server.ip) ? server.ip : JSON.parse(server.ip);
       server.tags = Array.isArray(server.tags) ? server.tags : JSON.parse(server.tags);

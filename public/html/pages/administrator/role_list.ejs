@@ -229,7 +229,7 @@
                       </div>
                     </div>
                   <% } %>
-                  <!-- Modal hiển thị toàn bộ permission -->
+                  <!-- Modal listing every permission -->
                   <div class="modal fade" id="rolePermModal-<%= role.id %>" tabindex="-1" aria-labelledby="rolePermModalLabel-<%= role.id %>" aria-hidden="true">
                     <div class="modal-dialog">
                       <div class="modal-content">
@@ -446,9 +446,9 @@ function setupPermissionCheckboxLogic(modal) {
         if (anyChecked) {
           group['read'].checked = true;
         } else {
-          // Không ép buộc checked, giữ nguyên trạng thái read
+          // Do not force checked, keep the read state as is
         }
-        // Không disable read, cho phép chọn/bỏ chọn độc lập
+        // Do not disable read, it can be toggled independently
         group['read'].disabled = false;
       }
     };
@@ -457,8 +457,8 @@ function setupPermissionCheckboxLogic(modal) {
         group[action].addEventListener('change', updateReadState);
       }
     });
-    // Không cần xử lý đặc biệt cho read, cho phép chọn/bỏ chọn tự do
-    // Khởi tạo trạng thái ban đầu
+    // No special handling for read, it can be toggled freely
+    // Initialize the initial state
     updateReadState();
   });
 }

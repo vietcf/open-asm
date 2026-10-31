@@ -206,7 +206,7 @@ function buildSystemExportUrl() {
       </div>
     </div>
 
-  <!-- Filter values for JS (an toàn cho EJS strict, giống IP Address List) -->
+  <!-- Filter values for JS (safe for strict EJS, same as IP Address List) -->
   <div id="filter-system-data"
     data-tags='<%= JSON.stringify(filterTags || []) %>'
     data-contacts='<%= JSON.stringify(filterContacts || []) %>'
@@ -555,7 +555,7 @@ function buildSystemExportUrl() {
      style="display: none;"></div>
 
 <script>
-    // Khai báo data cho Select2 options - load động từ database
+    // Select2 option data, loaded from the database
     const systemDataEl = document.getElementById('system-data');
     window.scopeOptionsData = JSON.parse(systemDataEl.dataset.scopeOptions || '[]');
     window.architectureOptionsData = JSON.parse(systemDataEl.dataset.architectureOptions || '[]');
@@ -1263,7 +1263,7 @@ function buildSystemExportUrl() {
           }
         }
       });
-      // Tạo Select2 trực tiếp với data từ backend
+      // Build Select2 directly from the backend data
       $('#filterSystemScopes').select2({
         theme: 'bootstrap-5',
         placeholder: t('Select scope(s)'),
@@ -1271,10 +1271,10 @@ function buildSystemExportUrl() {
         width: '100%',
         dropdownParent: $modalContent,
         data: [{ id: '__none__', text: '-- None (not set) --' }, ...(window.scopeOptionsData || [])],
-        // Sử dụng format {id, text} mặc định của Select2
+        // Uses Select2's default {id, text} format
       });
 
-      // Tạo Select2 trực tiếp với data từ backend
+      // Build Select2 directly from the backend data
       $('#filterSystemArchitecture').select2({
         theme: 'bootstrap-5',
         placeholder: t('Select architecture(s)'),
@@ -1282,7 +1282,7 @@ function buildSystemExportUrl() {
         width: '100%',
         dropdownParent: $modalContent,
         data: [{ id: '__none__', text: '-- None (not set) --' }, ...(window.architectureOptionsData || [])],
-        // Sử dụng format {id, text} mặc định của Select2
+        // Uses Select2's default {id, text} format
       });
 
       // Level and Department: plain single-selects, options + selected

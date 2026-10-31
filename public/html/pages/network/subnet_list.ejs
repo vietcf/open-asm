@@ -858,7 +858,7 @@ $(function() {
   // Gateway IP select2 AJAX - searches ALL IPs (not just unassigned ones),
   // since a gateway is normally a VIP that's already assigned to a device —
   // same endpoint used by the "Assign VIP IP" picker, which already labels
-  // each result with its current owner (e.g. "10.0.0.1 (đã gán: fw-01)").
+  // each result with its current owner (e.g. "10.0.0.1 (assigned: fw-01)").
   // Scoped to whatever CIDR is currently typed into Subnet Address, since a
   // gateway only makes sense as an IP within the subnet itself (read live at
   // request time so it stays in sync as the user types).
@@ -2405,17 +2405,17 @@ $(document).on('inserted.bs.tooltip', '.gateway-ip-link', function() {
     margin: 0 !important;
   }
   
-  /* Order: Apply Filters trên, Cancel giữa, Clear All Filters dưới */
+  /* Order: Apply Filters on top, Cancel in the middle, Clear All Filters at the bottom */
   #filterSubnetModal .modal-footer .btn:first-child {
-    order: 3 !important; /* Clear All Filters dưới */
+    order: 3 !important; /* Clear All Filters at the bottom */
   }
   
   #filterSubnetModal .modal-footer > div .btn:first-child {
-    order: 2 !important; /* Cancel giữa */
+    order: 2 !important; /* Cancel in the middle */
   }
   
   #filterSubnetModal .modal-footer > div .btn:last-child {
-    order: 1 !important; /* Apply Filters trên */
+    order: 1 !important; /* Apply Filters on top */
   }
   
   /* Force override any Bootstrap or AdminLTE styles */

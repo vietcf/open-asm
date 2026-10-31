@@ -2,7 +2,7 @@ import { pool } from '../../config/config.js';
 
 const SystemLog = {
   /**
-   * Ghi log hệ thống với đầy đủ trường theo bảng system_log
+   * Write a system log entry with every system_log column
    * @param {Object} log
    * @param {string} log.action
    * @param {string} [log.object_type]

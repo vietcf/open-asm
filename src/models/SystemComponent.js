@@ -234,7 +234,7 @@ class SystemComponent {
       LIMIT $${idx} OFFSET $${idx + 1}
     `;
     const result = await pool.query(sql, params);
-    // Chuẩn hóa lại key cho giống cũ (contacts, ips, tags)
+    // Normalize keys to the legacy names (contacts, ips, tags)
     return result.rows.map(row => {
       row.ips = row.ip_addresses;
       delete row.ip_addresses;
@@ -350,7 +350,7 @@ class SystemComponent {
     return result.rows.map(row => ({ id: row.id, text: row.name }));
   }
 
-  // Lấy 1 component kèm đầy đủ tags, contacts, ip_addresses
+  // Get one component with its tags, contacts and ip_addresses
   static async findByIdWithRelations(id) {
     const sql = `
       SELECT sc.*,
@@ -374,7 +374,7 @@ class SystemComponent {
     `;
     const result = await pool.query(sql, [id]);
   if (!result.rows[0]) return null;
-  // Chuẩn hóa lại key cho giống cũ (contacts, ips, tags)
+  // Normalize keys to the legacy names (contacts, ips, tags)
   const row = result.rows[0];
   row.ips = row.ip_addresses || [];
   delete row.ip_addresses;

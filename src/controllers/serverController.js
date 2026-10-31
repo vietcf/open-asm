@@ -276,7 +276,7 @@ serverController.editServerForm = async (req, res) => {
     const selectedIPs = (server.ip || []).map(ip => ({ id: ip.id, text: ip.ip_address }));
     const selectedTags = (server.tags || []).map(tag => ({ id: tag.id, text: tag.name }));
     let selectedPlatform = server.os_id;
-    // Truyền platform đã chọn (id, text) cho select2 ajax pre-populate
+    // Pass the selected platform (id, text) to pre-populate the select2 ajax field
     const selectedPlatformObj = server.os_id && server.platform_name ? { id: server.os_id, text: server.platform_name } : null;
     const [locations, statusOptions, typesOptions] = await Promise.all([
       getServerLocationsFromConfig(),
@@ -365,7 +365,7 @@ serverController.updateServer = async (req, res) => {
 
 serverController.listService = async (req, res) => {
   try {
-    // pageSizeOptions đã có sẵn qua res.locals.pageSizeOptions
+    // pageSizeOptions is already available via res.locals.pageSizeOptions
     const pageSizeOptions = res.locals.pageSizeOptions || [10, 20, 50];
     let pageSize = parseInt(req.query.pageSize, 10) || pageSizeOptions[0];
     if (!pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
@@ -388,7 +388,7 @@ serverController.listService = async (req, res) => {
       totalCount,
       startItem,
       endItem,
-      // allowedPageSizes không cần truyền, đã có global
+      // allowedPageSizes is global, no need to pass it
       success,
       error,
       title: 'Service List',
@@ -444,14 +444,14 @@ serverController.deleteService = async (req, res) => {
 // List all agents with search and pagination
 serverController.listAgent = async (req, res) => {
   try {
-    // pageSizeOptions đã có sẵn qua res.locals.pageSizeOptions
+    // pageSizeOptions is already available via res.locals.pageSizeOptions
     const pageSizeOptions = res.locals.pageSizeOptions || [10, 20, 50];
     let pageSize = parseInt(req.query.pageSize, 10) || pageSizeOptions[0];
     if (!pageSizeOptions.includes(pageSize)) pageSize = pageSizeOptions[0];
     const page = parseInt(req.query.page, 10) || 1;
     const search = req.query.search ? req.query.search.trim() : '';
 
-    // Truy vấn agent list
+    // Query the agent list
     const { items: agentList, totalCount } = await listAgentsService({ search, page, pageSize });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
     const success = req.flash('success')[0];
@@ -465,7 +465,7 @@ serverController.listAgent = async (req, res) => {
       success, 
       error,
       title: 'Agent List',
-      activeMenu: 'agent' // Đặt đúng giá trị để sidebar.ejs nhận diện
+      activeMenu: 'agent' // value sidebar.ejs uses to highlight the menu
     });
   } catch (err) {
     res.status(500).send('Error loading agents: ' + err.message);
@@ -564,7 +564,7 @@ serverController.deleteServer = async (req, res) => {
 // Export server list as Excel (filtered)
 serverController.exportServerList = async (req, res) => {
   try {
-    // Chuẩn hóa các tham số filter (giống listServer)
+    // Normalize filter parameters (same as listServer)
     function normalizeFilterArray(val) {
       if (!val || val === 'undefined' || val === undefined) return [];
       if (Array.isArray(val)) return val.filter(v => v && v !== 'undefined' && v !== undefined).map(String);
@@ -585,7 +585,7 @@ serverController.exportServerList = async (req, res) => {
     
     console.log('Export filter params:', filterParams);
     
-    // Lấy toàn bộ danh sách (không phân trang)
+    // Fetch the full list (no pagination)
     const serverList = await Server.findFilteredList({
       search: filterParams.search,
       status: filterParams.status,
@@ -599,7 +599,7 @@ serverController.exportServerList = async (req, res) => {
       page: 1,
       pageSize: 10000
     });
-    // Định nghĩa các cột xuất Excel
+    // Excel export columns
     const headers = [
       'ID', 'Name', 'Description', 'IP Address(es)', 'Status', 'Location', 'Type',
       'Managers', 'Platform (OS)', 'Agents', 'Services', 'Systems', 'Tags',
@@ -623,7 +623,7 @@ serverController.exportServerList = async (req, res) => {
       server.updated_at ? new Date(server.updated_at).toLocaleString('en-GB') : '',
       server.updated_by || ''
     ]);
-    // Tạo file Excel
+    // Build the Excel file
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Server List');
     worksheet.addRow(headers);

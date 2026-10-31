@@ -59,7 +59,7 @@ export async function seedPermissionsAndRoles(db) {
       );
     }
   }
-  // Viewer: chỉ quyền đọc, trừ user, role, permission
+  // Viewer: read-only, except user, role, permission
   for (const permName of Object.keys(permMap)) {
     if (permName.endsWith('.read') && !permName.startsWith('user.') && !permName.startsWith('role.') && !permName.startsWith('permission.')) {
       await db.query(
@@ -71,220 +71,226 @@ export async function seedPermissionsAndRoles(db) {
 }
 
 export async function seedConfiguration(db) {
-  // Thêm cấu hình mặc định nếu cần (ON CONFLICT DO NOTHING: never overwrites values edited in the UI)
-  await db.query(`INSERT INTO configuration (key, value, description) VALUES ('site_name', 'VCB ASM', 'Cấu hình sitename') ON CONFLICT (key) DO NOTHING;`);
-  await db.query(`INSERT INTO configuration (key, value, description) VALUES ('page_size', '10,20,50', 'Cấu hình page size') ON CONFLICT (key) DO NOTHING;`);
-  await db.query(`INSERT INTO configuration (key, value, description) VALUES ('log_level', 'info', 'Cấu hình level log') ON CONFLICT (key) DO NOTHING;`);
-  await db.query(`INSERT INTO configuration (key, value, description) VALUES ('log_retention_days', '30', 'Số ngày lưu log') ON CONFLICT (key) DO NOTHING;`);
+  // Default configuration (ON CONFLICT DO NOTHING: never overwrites values edited in the UI)
+  const simpleConfigs = [
+    ['site_name', process.env.SITE_NAME || 'Open ASM', 'Site name shown in the header and page titles'],
+    ['page_size', '10,20,50', 'Page size options for list pages'],
+    ['log_level', 'info', 'Minimum level of system log entries (info, warning, critical)'],
+    ['log_retention_days', '30', 'Days to keep system log entries'],
+  ];
+  for (const [key, value, description] of simpleConfigs) {
+    await db.query(
+      'INSERT INTO configuration (key, value, description) VALUES ($1, $2, $3) ON CONFLICT (key) DO NOTHING',
+      [key, value, description]
+    );
+  }
 
-
-    // Chèn trực tiếp các giá trị JSON khởi tạo cho các cấu hình động
-    // Định nghĩa cấu hình động dạng JS object, dễ đọc và bảo trì
-    const dynamicConfigs = [
-      {
-        key: 'firewall_name',
-        value: [
-          { key: 'USER', label: 'USER' },
-          { key: 'SERVER', label: 'SERVER' },
-          { key: 'INTERNET-IN', label: 'INTERNET-IN' },
-          { key: 'INTERNET-OUT', label: 'INTERNET-OUT' },
-          { key: 'BACKBOND', label: 'BACKBOND' },
-          { key: 'DMZ', label: 'DMZ' },
-          { key: 'PARTNER', label: 'PARTNER' },
-          { key: 'DIGI', label: 'DIGI' }
-        ],
-        description: 'Tên firewall'
+  // Initial values for the list-type configurations
+  const dynamicConfigs = [
+    {
+      key: 'firewall_name',
+      value: [
+        { key: 'USER', label: 'USER' },
+        { key: 'SERVER', label: 'SERVER' },
+        { key: 'INTERNET-IN', label: 'INTERNET-IN' },
+        { key: 'INTERNET-OUT', label: 'INTERNET-OUT' },
+        { key: 'BACKBOND', label: 'BACKBOND' },
+        { key: 'DMZ', label: 'DMZ' },
+        { key: 'PARTNER', label: 'PARTNER' },
+        { key: 'DIGI', label: 'DIGI' }
+      ],
+      description: 'Firewall names'
+    },
+    {
+      key: 'priv_account_type',
+      value: [
+        { value: 'OS', label: 'Operating System (OS)' },
+        { value: 'APP', label: 'Application (APP)' },
+        { value: 'DB', label: 'Database (DB)' }
+      ],
+      description: 'Privileged account types'
+    },
+    {
+      key: 'priv_account_manage_type',
+      value: [
+        { value: 'SELF', label: 'Self-managed' },
+        { value: 'PAM', label: 'Managed by PAM' },
+        { value: 'ENVELOPE', label: 'Envelope method' }
+      ],
+      description: 'Privileged account management methods'
+    },
+    {
+      key: 'device_location',
+      value: [
+        { value: 'DC', label: 'Data Center DC' },
+        { value: 'DR', label: 'Data Center DR' },
+        { value: 'CMC', label: 'CMC Data Center' },
+        { value: 'BRANCH', label: 'Branch Office' }
+      ],
+      description: 'Server / device locations'
+    },
+    {
+      key: 'firewall_rule_action',
+      value: [
+        { value: 'ALLOW', label: 'Allow' },
+        { value: 'DENY', label: 'Deny' }
+      ],
+      description: 'Firewall rule actions'
+    },
+    {
+      key: 'firewall_rule_status',
+      value: [
+        { value: 'DONE', label: 'Done' },
+        { value: 'INPROCESS', label: 'Inprocess' }
+      ],
+      description: 'Firewall rule processing statuses'
+    },
+    {
+      key: 'firewall_rule_violation_type',
+      value: [
+        { value: 'SECURITY_VIOLATION', label: 'Security Violation' },
+        { value: 'POLICY_VIOLATION', label: 'Policy Violation' },
+        { value: 'COMPLIANCE_VIOLATION', label: 'Compliance Violation' },
+        { value: 'BEST_PRACTICE_VIOLATION', label: 'Best Practice Violation' }
+      ],
+      description: 'Firewall rule violation types'
+    },
+    {
+      key: 'ip_address_type',
+      value: [
+        { value: 'STATIC', label: 'Static' },
+        { value: 'DYNAMIC', label: 'Dynamic' }
+      ],
+      description: 'IP address types'
+    },
+    {
+      key: 'server_type',
+      value: [
+        { value: 'PHYSICAL', label: 'PHYSICAL' },
+        { value: 'VIRTUAL-MACHINE', label: 'VIRTUAL-MACHINE' },
+        { value: 'CLOUD-INSTANCE', label: 'CLOUD-INSTANCE' }
+      ],
+      description: 'Server types'
+    },
+    {
+      key: 'server_status',
+      value: [
+        { value: 'ONLINE', label: 'ONLINE' },
+        { value: 'OFFLINE', label: 'OFFLINE' },
+        { value: 'MAINTENANCE', label: 'MAINTENANCE' }
+      ],
+      description: 'Server statuses'
+    },
+    {
+      key: 'network_domain_record_type',
+      value: [
+        { value: 'A', label: 'A' },
+        { value: 'AAAA', label: 'AAAA' },
+        { value: 'CNAME', label: 'CNAME' },
+        { value: 'MX', label: 'MX' },
+        { value: 'TXT', label: 'TXT' },
+        { value: 'NS', label: 'NS' },
+        { value: 'SRV', label: 'SRV' },
+        { value: 'PTR', label: 'PTR' },
+        { value: 'SOA', label: 'SOA' },
+        { value: 'OTHER', label: 'Other' }
+      ],
+      description: 'DNS record types'
+    },
+    {
+      key: 'pentest_status',
+      value: [
+        { value: 'NOT_STARTED', label: 'Not Started' },
+        { value: 'IN_PROGRESS', label: 'In Progress' },
+        { value: 'COMPLETED_UNFIXED', label: 'Completed - Unfixed' },
+        { value: 'COMPLETED_FIXED', label: 'Completed - Fixed' }
+      ],
+      description: 'Pentest round statuses'
+    },
+    {
+      key: 'system_app_type',
+      value: [
+        { value: 'web', label: 'Web App' },
+        { value: 'mobile', label: 'Mobile App' }
+      ],
+      description: 'App types for system components'
+    },
+    {
+      key: 'system_level',
+      value: {
+        levels: [
+          { value: '1', label: 'Level 1' },
+          { value: '2', label: 'Level 2' },
+          { value: '3', label: 'Level 3' },
+          { value: '4', label: 'Level 4' },
+          { value: '5', label: 'Level 5' }
+        ]
       },
-      {
-        key: 'priv_account_type',
-        value: [
-          { value: 'OS', label: 'Operating System (OS)' },
-          { value: 'APP', label: 'Application (APP)' },
-          { value: 'DB', label: 'Database (DB)' }
-        ],
-        description: 'Loại tài khoản'
-      },
-      {
-        key: 'priv_account_manage_type',
-        value: [
-          { value: 'SELF', label: 'Self-managed' },
-          { value: 'PAM', label: 'Managed by PAM' },
-          { value: 'ENVELOPE', label: 'Envelope method' }
-        ],
-        description: 'Phương thức quản lý tài khoản'
-      },
-      {
-        key: 'device_location',
-        value: [
-          { value: 'DC', label: 'Data Center DR' },
-          { value: 'DR', label: 'Data Center DC' },
-          { value: 'CMC', label: 'CMC Data Center' },
-          { value: 'BRANCH', label: 'Branch Office' }
-        ],
-        description: 'Vị trí của Server hoặc Device'
-      },
-      {
-        key: 'firewall_rule_action',
-        value: [
-          { value: 'ALLOW', label: 'Allow' },
-          { value: 'DENY', label: 'Deny' }
-        ],
-        description: 'Action firewall rule'
-      },
-      {
-        key: 'firewall_rule_status',
-        value: [
-          { value: 'DONE', label: 'Done' },
-          { value: 'INPROCESS', label: 'Inprocess' }
-        ],
-        description: 'Trạng thái xử lý của rule fw'
-      },
-      {
-        key: 'firewall_rule_violation_type',
-        value: [
-          { value: 'SECURITY_VIOLATION', label: 'Security Violation' },
-          { value: 'POLICY_VIOLATION', label: 'Policy Violation' },
-          { value: 'COMPLIANCE_VIOLATION', label: 'Compliance Violation' },
-          { value: 'BEST_PRACTICE_VIOLATION', label: 'Best Practice Violation' }
-        ],
-        description: 'Firewall rule violation types'
-      },
-      {
-        key: 'ip_address_type',
-        value: [
-          { value: 'STATIC', label: 'Static' },
-          { value: 'DYNAMIC', label: 'Dynamic' }
-        ],
-        description: 'Kiểu IP address'
-      },
-      {
-        key: 'server_type',
-        value: [
-          { value: 'PHYSICAL', label: 'PHYSICAL' },
-          { value: 'VIRTUAL-MACHINE', label: 'VIRTUAL-MACHINE' },
-          { value: 'CLOUD-INSTANCE', label: 'CLOUD-INSTANCE' }
-        ],
-        description: 'Kiểu máy chủ'
-      },
-      {
-        key: 'server_status',
-        value: [
-          { value: 'ONLINE', label: 'ONLINE' },
-          { value: 'OFFLINE', label: 'OFFLINE' },
-          { value: 'MAINTENANCE', label: 'MAINTENANCE' }
-        ],
-        description: 'Trạng thái của máy chủ'
-      },
-      {
-        key: 'network_domain_record_type',
-        value: [
-          { value: 'A', label: 'A' },
-          { value: 'AAAA', label: 'AAAA' },
-          { value: 'CNAME', label: 'CNAME' },
-          { value: 'MX', label: 'MX' },
-          { value: 'TXT', label: 'TXT' },
-          { value: 'NS', label: 'NS' },
-          { value: 'SRV', label: 'SRV' },
-          { value: 'PTR', label: 'PTR' },
-          { value: 'SOA', label: 'SOA' },
-          { value: 'OTHER', label: 'Other' }
-        ],
-        description: 'Kiểu DNS record'
-      },
-      {
-        key: 'pentest_status',
-        value: [
-          { value: 'NOT_STARTED', label: 'Not Started' },
-          { value: 'IN_PROGRESS', label: 'In Progress' },
-          { value: 'COMPLETED_UNFIXED', label: 'Completed - Unfixed' },
-          { value: 'COMPLETED_FIXED', label: 'Completed - Fixed' }
-        ],
-        description: 'Trạng thái đợt pentest (có thể cấu hình trong System Configuration)'
-      },
-      {
-        key: 'system_app_type',
-        value: [
-          { value: 'web', label: 'Web App' },
-          { value: 'mobile', label: 'Mobile App' }
-        ],
-        description: 'Các loại App Type selection trong menu add/edit System Components'
-      },
-      {
-        key: 'system_level',
-        value: {
-          levels: [
-            { value: '1', label: 'Level 1' },
-            { value: '2', label: 'Level 2' },
-            { value: '3', label: 'Level 3' },
-            { value: '4', label: 'Level 4' },
-            { value: '5', label: 'Level 5' }
-          ]
-        },
-        description: 'Cấp độ hệ thống thông tin'
-      },
-      {
-        key: 'ip_address_status',
-        value: [
-          { value: 'reserved', label: 'Reserved' },
-          { value: 'assigned', label: 'Assigned' },
-          { value: 'inactive', label: 'Inactive' }
-        ],
-        description: 'Trạng thái IP Address'
-      },
-      {
-        key: 'system_user_scope',
-        value: [
-          { value: 'public-internet', label: 'Public Internet' },
-          { value: 'internal', label: 'Internal' },
-          { value: 'external-vpn', label: 'External VPN' },
-          { value: 'public-restricted-ip', label: 'Public Restricted IP' }
-        ],
-        description: 'Scope của System User'
-      },
-      {
-        key: 'system_arch',
-        value: [
-          { value: 'web', label: 'Web' },
-          { value: 'api', label: 'API' },
-          { value: 'job', label: 'Job' },
-          { value: 'service', label: 'Service' },
-          { value: 'mobile', label: 'Mobile' },
-          { value: 'desktop-db', label: 'Desktop DB' },
-          { value: 'desktop-ws-service', label: 'Desktop WS Service' },
-          { value: 'win-app', label: 'Windows App' }
-        ],
-        description: 'Kiến trúc của System'
-      },
-      {
-        key: 'contact_position',
-        value: [
-          { value: 'Manager', label: 'Manager' },
-          { value: 'Staff', label: 'Staff' },
-          { value: 'Accountant', label: 'Accountant' },
-          { value: 'Engineer', label: 'Engineer' },
-          { value: 'Technician', label: 'Technician' },
-          { value: 'Director', label: 'Director' },
-          { value: 'Supervisor', label: 'Supervisor' },
-          { value: 'Analyst', label: 'Analyst' },
-          { value: 'Developer', label: 'Developer' },
-          { value: 'Administrator', label: 'Administrator' }
-        ],
-        description: 'Chức vụ của Contact'
-      }
-    ];
-    for (const conf of dynamicConfigs) {
-      if (conf.description) {
-        await db.query(
-          `INSERT INTO configuration (key, value, description) VALUES ($1, $2, $3) ON CONFLICT (key) DO NOTHING;`,
-          [conf.key, JSON.stringify(conf.value), conf.description]
-        );
-      } else {
-        await db.query(
-          `INSERT INTO configuration (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING;`,
-          [conf.key, JSON.stringify(conf.value)]
-        );
-      }
+      description: 'Information system levels'
+    },
+    {
+      key: 'ip_address_status',
+      value: [
+        { value: 'reserved', label: 'Reserved' },
+        { value: 'assigned', label: 'Assigned' },
+        { value: 'inactive', label: 'Inactive' }
+      ],
+      description: 'IP address statuses'
+    },
+    {
+      key: 'system_user_scope',
+      value: [
+        { value: 'public-internet', label: 'Public Internet' },
+        { value: 'internal', label: 'Internal' },
+        { value: 'external-vpn', label: 'External VPN' },
+        { value: 'public-restricted-ip', label: 'Public Restricted IP' }
+      ],
+      description: 'System user scopes'
+    },
+    {
+      key: 'system_arch',
+      value: [
+        { value: 'web', label: 'Web' },
+        { value: 'api', label: 'API' },
+        { value: 'job', label: 'Job' },
+        { value: 'service', label: 'Service' },
+        { value: 'mobile', label: 'Mobile' },
+        { value: 'desktop-db', label: 'Desktop DB' },
+        { value: 'desktop-ws-service', label: 'Desktop WS Service' },
+        { value: 'win-app', label: 'Windows App' }
+      ],
+      description: 'System architectures'
+    },
+    {
+      key: 'contact_position',
+      value: [
+        { value: 'Manager', label: 'Manager' },
+        { value: 'Staff', label: 'Staff' },
+        { value: 'Accountant', label: 'Accountant' },
+        { value: 'Engineer', label: 'Engineer' },
+        { value: 'Technician', label: 'Technician' },
+        { value: 'Director', label: 'Director' },
+        { value: 'Supervisor', label: 'Supervisor' },
+        { value: 'Analyst', label: 'Analyst' },
+        { value: 'Developer', label: 'Developer' },
+        { value: 'Administrator', label: 'Administrator' }
+      ],
+      description: 'Contact positions'
     }
+  ];
+  for (const conf of dynamicConfigs) {
+    if (conf.description) {
+      await db.query(
+        `INSERT INTO configuration (key, value, description) VALUES ($1, $2, $3) ON CONFLICT (key) DO NOTHING;`,
+        [conf.key, JSON.stringify(conf.value), conf.description]
+      );
+    } else {
+      await db.query(
+        `INSERT INTO configuration (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING;`,
+        [conf.key, JSON.stringify(conf.value)]
+      );
+    }
+  }
 
 }
 

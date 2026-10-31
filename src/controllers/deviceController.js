@@ -87,7 +87,7 @@ async function getDeviceTypeOptionsFromConfig() {
   return options;
 }
 
-// Helper: Load allowed page sizes for device list from DB config (ưu tiên device_page_size, fallback page_size)
+// Helper: Load allowed page sizes for device list from DB config (device_page_size first, falls back to page_size)
 async function getPageSizeOptionsFromConfig() {
   let pageSizeOptions = [];
   let config = null;
@@ -116,7 +116,7 @@ const deviceController = {};
 // List all devices with search, filter, and pagination
 deviceController.listDevice = async (req, res) => {
   try {
-    // Chuẩn hóa các tham số filter (device_type_id, tags, platform_id, location, manufacturer, device_role, search)
+    // Normalize filter parameters (device_type_id, tags, platform_id, location, manufacturer, device_role, search)
     const filterParams = {
       search: req.query.search ? req.query.search.trim() : '',
       device_type_id: req.query.device_type_id ? Number(req.query.device_type_id) : undefined,
@@ -126,7 +126,7 @@ deviceController.listDevice = async (req, res) => {
       manufacturer: req.query.manufacturer ? req.query.manufacturer.trim() : undefined,
       device_role: req.query.device_role ? req.query.device_role.trim() : undefined
     };
-    // Chuẩn hóa tags về mảng số
+    // Normalize tags to an array of numbers
     if (typeof filterParams.tags === 'string') filterParams.tags = [filterParams.tags];
     filterParams.tags = (filterParams.tags || []).map(t => Number(t)).filter(Boolean);
     if (!filterParams.tags.length) delete filterParams.tags;
@@ -142,7 +142,7 @@ deviceController.listDevice = async (req, res) => {
     const successMessage = req.flash('success')[0] || req.query.success || null;
     // Load location options from DB config (shared helper)
     const locationOptions = await getLocationOptions();
-    // Đơn giản hóa truyền tags ra view (giống serverController)
+    // Pass tags to the view in a simple form (same as serverController)
     const tagsForView = Array.isArray(req.query['tags[]']) ? req.query['tags[]'] :
       (req.query['tags[]'] ? [req.query['tags[]']] : (Array.isArray(req.query.tags) ? req.query.tags : req.query.tags ? [req.query.tags] : []));
 
@@ -249,7 +249,7 @@ deviceController.addDeviceForm = async (req, res) => {
 // Render edit device form
 deviceController.editDeviceForm = async (req, res) => {
   try {
-    // Lấy device đủ thông tin chi tiết từ service
+    // Load the device with full details from the service
     let device;
     try {
       device = await getDeviceService(req.params.id);
@@ -258,7 +258,7 @@ deviceController.editDeviceForm = async (req, res) => {
       throw err;
     }
 
-    // Map serial_number và management_address cho view
+    // Map serial_number and management_address for the view
     device.serial = device.serial_number;
     device.management = device.management_address;
     const error = (req.flash('error') || [])[0];
@@ -632,7 +632,7 @@ deviceController.deleteDeviceType = async (req, res) => {
 // Export device list as CSV or Excel (filtered)
 deviceController.exportDeviceList = async (req, res) => {
   try {
-    // Chuẩn hóa các tham số filter (device_type_id, tags, platform_id, location, manufacturer, device_role, search)
+    // Normalize filter parameters (device_type_id, tags, platform_id, location, manufacturer, device_role, search)
     const filterParams = {
       search: req.query.search ? req.query.search.trim() : '',
       device_type_id: req.query.device_type_id ? Number(req.query.device_type_id) : undefined,
@@ -648,7 +648,7 @@ deviceController.exportDeviceList = async (req, res) => {
     
     console.log('Export filter params:', filterParams);
     
-    // Lấy toàn bộ danh sách (không phân trang)
+    // Fetch the full list (no pagination)
     const deviceList = await Device.findFilteredList({ ...filterParams, page: 1, pageSize: 10000 });
     const headers = [
       'ID', 'Name', 'Device Type', 'Platform (OS)', 'Manufacturer', 'Serial Number', 'Management Address',
@@ -670,7 +670,7 @@ deviceController.exportDeviceList = async (req, res) => {
       device.updated_by || '',
       device.updated_at ? new Date(device.updated_at).toLocaleString('en-GB') : ''
     ]);
-    // Luôn xuất file Excel
+    // Always export as Excel
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Device List');
     worksheet.addRow(headers);

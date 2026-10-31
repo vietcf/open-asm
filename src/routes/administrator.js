@@ -11,8 +11,8 @@ const router = express.Router();
 // User Management
 router.get('/users', requirePermission('user.read'), administratorController.listUsers);
 router.post('/users', requirePermission('user.create'), administratorController.createUser);
-router.put('/users/:id', requirePermission('user.update'), administratorController.updateUser); // dùng _method=PUT
-router.delete('/users/:id', requirePermission('user.delete'), administratorController.deleteUser); // dùng method DELETE cho đúng RESTful
+router.put('/users/:id', requirePermission('user.update'), administratorController.updateUser); // via _method=PUT
+router.delete('/users/:id', requirePermission('user.delete'), administratorController.deleteUser); // RESTful DELETE
 
 // Role Management
 router.get('/roles', requirePermission('role.read'), administratorController.listRoles);

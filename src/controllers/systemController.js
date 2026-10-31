@@ -109,7 +109,7 @@ systemController.editSystemComponentForm = async (req, res) => {
       req.flash('error', 'Component not found.');
       return res.redirect('/system/component');
     }
-    // Lấy options cho app_type
+    // Options for app_type
     const appTypeOptions = await getAppTypeOptions();
     res.render('pages/system/component_edit', {
       component,
@@ -279,7 +279,7 @@ systemController.exportSystemList = async (req, res) => {
     const filterLevel = req.query.level ? String(req.query.level).trim() : '';
     const filterDepartment = req.query.department_id ? String(req.query.department_id).trim() : '';
 
-    // Lấy toàn bộ danh sách phù hợp filter (không phân trang)
+    // Fetch every row matching the filters (no pagination)
     const { items: systemList } = await systemService.listSystems({
       search, page: 1, pageSize: 10000, filterTags, filterContacts, filterScopes, filterArchitecture, filterLevel, filterDepartment
     });
@@ -339,7 +339,7 @@ systemController.editSystemForm = async (req, res) => {
       url: FileUpload.getUrl(f)
     }));
 
-    // Lấy toàn bộ component thuộc system này
+    // All components of this system
     const componentList = await SystemComponent.findFilteredList({ system_id: id, pageSize: 1000 });
     // Get info of selected managers (contacts) for select2 selected options
     let selectedManagerObjects = [];

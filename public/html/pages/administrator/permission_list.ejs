@@ -104,7 +104,7 @@
             <tbody>
               <% if (permissionList && permissionList.length > 0) { %>
                 <% 
-                  // Gom nhóm theo entity (prefix trước dấu .)
+                  // Group by entity (prefix before the dot)
                   const permGroups = {};
                   permissionList.forEach(function(permission) {
                     const parts = permission.name.split('.');

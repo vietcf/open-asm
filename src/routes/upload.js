@@ -16,13 +16,13 @@ function safeUploadTmp(req, res, next) {
   });
 }
 
-// POST /api/upload - AJAX file upload (chỉ cho user đã đăng nhập)
+// POST /api/upload - AJAX file upload (logged-in users only)
 router.post('/', requireLogin, safeUploadTmp, async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
-    // Trả về thông tin file đã upload (có thể mở rộng lưu DB nếu muốn)
+    // Return the uploaded file info (could also be stored in the DB)
     const files = req.files.map(file => ({
       originalname: file.originalname,
       mimetype: file.mimetype,

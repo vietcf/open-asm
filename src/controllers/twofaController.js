@@ -8,13 +8,13 @@ const twofaController = {};
 twofaController.setup = async (req, res) => {
   const user = req.session.user;
   // if (!user) return res.status(401).send('Unauthorized');
-  // Chỉ cho phép user chưa setup 2FA hoặc setup chưa hoàn tất truy cập trang này
+  // Only users without a completed 2FA setup may access this page
   if (user.twofa_enabled === true && user.twofa_secret) {
-    // Nếu đã setup 2FA hoàn tất và đã verify → về dashboard
+    // 2FA fully set up and verified -> go to the dashboard
     if (req.session.is2faVerified) {
       return res.redirect('/dashboard?info=2FA is already enabled and verified');
     }
-    // Nếu đã setup nhưng chưa verify → về login/2fa để verify
+    // Set up but not verified yet -> go to login/2fa to verify
     return res.redirect('/login/2fa?info=Please verify your 2FA code');
   }
   // Generate a new secret
@@ -63,7 +63,7 @@ twofaController.verify = async (req, res) => {
   req.session.user.twofa_enabled = true;
   req.session.user.twofa_secret = secret;
   delete req.session.tmp_twofa_secret;
-  // Đảm bảo trạng thái đăng nhập đầy đủ
+  // Make sure the session is marked as fully logged in
   req.session.is2faVerified = true;
   req.session.is2faPending = false;
   // Note: Permissions will be loaded by global middleware

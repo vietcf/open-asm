@@ -3,14 +3,14 @@ import SystemLog from '../models/SystemLog.js';
 import os from 'os';
 
 /**
- * Ghi log hệ thống, tự động lấy các trường user, ip, user_agent nếu có trong req
+ * Write a system log entry; user, ip and user_agent are taken from req when present
  * @param {Object} options
- * @param {string} options.action - Hành động (login, logout, ...)
- * @param {string} [options.description] - Thông tin chi tiết
- * @param {Object} [options.req] - Request object (nếu có)
- * @param {string} [options.status] - Trạng thái (success, failed, ...)
- * @param {string} [options.object_type] - Loại đối tượng liên quan
- * @param {string|number} [options.object_id] - ID đối tượng liên quan
+ * @param {string} options.action - Action (login, logout, ...)
+ * @param {string} [options.description] - Details
+ * @param {Object} [options.req] - Request object (optional)
+ * @param {string} [options.status] - Status (success, failed, ...)
+ * @param {string} [options.object_type] - Related object type
+ * @param {string|number} [options.object_id] - Related object ID
  */
 async function writeLog({ action, description, req, status, object_type, object_id, username, user_id }) {
   let log = {

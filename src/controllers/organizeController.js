@@ -408,7 +408,7 @@ organizeController.apiContactQrVcard = async (req, res) => {
     const contactId = req.params.id;
     const contact = await Contact.findById(contactId);
     if (!contact) return res.status(404).json({ error: 'Contact not found' });
-    // Tách tên cho trường N:
+    // Split the name for the vCard N: field
     let nField = '';
     if (contact.name) {
       const parts = contact.name.trim().split(/\s+/);

@@ -288,7 +288,7 @@
         xhrFields: { withCredentials: true }
       }
     });
-    // Load selected tags for edit (nếu có)
+    // Load selected tags for edit (if any)
     if (window.selectedTags && Array.isArray(window.selectedTags) && window.selectedTags.length > 0) {
       $.ajax({
         url: '/organize/api/tag',
@@ -310,14 +310,14 @@
       });
     }
     
-    // Load selected IP addresses for edit (nếu có)
+    // Load selected IP addresses for edit (if any)
     <% if (typeof ipAddresses !== 'undefined' && ipAddresses && ipAddresses.length > 0) { %>
       <% ipAddresses.forEach(function(ip) { %>
         var ipOption = new Option('<%= ip.ip_address || ip.ip %>', '<%= ip.id %>', true, true);
         $('#ip-select').append(ipOption).trigger('change');
       <% }); %>
     <% } %>
-    // Load selected managers (contacts) for edit (nếu có)
+    // Load selected managers (contacts) for edit (if any)
     <% if (typeof selectedManagerObjects !== 'undefined' && selectedManagerObjects && selectedManagerObjects.length > 0) { %>
       <% selectedManagerObjects.forEach(function(contact) { %>
         var managerOption = new Option('<%= contact.name %> (<%= contact.email %>)', '<%= contact.id %>', true, true);
@@ -325,14 +325,14 @@
       <% }); %>
     <% } %>
     
-    // Load selected domains for edit (nếu có)
+    // Load selected domains for edit (if any)
     <% if (typeof selectedDomains !== 'undefined' && selectedDomains && selectedDomains.length > 0) { %>
       <% selectedDomains.forEach(function(domain) { %>
         var domainOption = new Option('<%= domain.name %>', '<%= domain.id %>', true, true);
         $('#domain-select').append(domainOption).trigger('change');
       <% }); %>
     <% } %>
-    // Add Manager button click (chỉ chạy nếu tồn tại nút add-manager-btn)
+    // Add Manager button click (only when the add-manager-btn button exists)
     var addBtn = document.getElementById('add-manager-btn');
     if (addBtn) {
       addBtn.addEventListener('click', function() {
@@ -449,7 +449,7 @@ $(function() {
         data: formData,
         processData: false,
         contentType: false,
-        xhrFields: { withCredentials: true }, // Đảm bảo gửi cookie/session
+        xhrFields: { withCredentials: true }, // send the session cookie
         success: function(res) {
           let uploaded = null;
           if (res.success && res.files && res.files.length > 0) {
@@ -458,7 +458,7 @@ $(function() {
             uploaded = res.file;
           }
           if (uploaded) {
-            // Chỉ kiểm tra trùng tên với file cũ (existingFiles)
+            // Only check name clashes against existing files (existingFiles)
             const isDup = window.existingFiles.some(f => (f.originalname || f.name) === (uploaded.originalname || uploaded.name));
             if (!isDup) {
               window.uploadedDocsEdit.push(uploaded);
