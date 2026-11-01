@@ -1,0 +1,74 @@
+<%#
+  Catalog list (agents, services, device types, platforms...), rendered by
+  src/shared/catalogWeb.js. Columns = the catalog's fields + usage count.
+%>
+<%
+  const c = catalog;
+  const COLUMNS = c.fields.map((f, i) => ({ key: f.key, label: f.label, def: true, fixed: i === 0 }))
+    .concat([{ key: 'usage_count', label: c.usageLabel, def: true }]);
+  const cell = (row, col, i) => {
+    if (col.key === 'usage_count') return row.usage_count ? `<span class="badge tag">${row.usage_count}</span>` : ui.dash;
+    const f = c.fields.find((x) => x.key === col.key);
+    if (i === 0) return ui.esc(row[col.key]);
+    return f.type === 'textarea' ? ui.clip(row[col.key]) : ui.text(row[col.key]);
+  };
+  const can = (action) => hasPermission(c.permission + '.' + action);
+%>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: c.labels.section }, { label: c.labels.list }] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
+
+    <div class="card list-card">
+      <form class="list-filter-form" method="get" action="<%= c.base %>">
+        <input type="hidden" name="pageSize" value="<%= pageSize %>">
+        <%- include('../../partials/ui/list_toolbar', {
+              search, searchPlaceholder: c.labels.search,
+              exportUrl: c.base + '/export' + currentQuery,
+              addUrl: can('create') ? c.base + '/add' : null, addLabel: c.labels.add }) %>
+      </form>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle table-stack">
+          <thead>
+            <tr>
+              <th class="col-index">#</th>
+              <% COLUMNS.forEach(function (col) { %><th><%= t(col.label) %></th><% }) %>
+              <th class="col-actions"><%= t('Actions') %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (items && items.length) { %>
+              <% items.forEach(function (row, idx) { %>
+                <tr>
+                  <td class="col-index"><%= (page - 1) * pageSize + idx + 1 %></td>
+                  <% COLUMNS.forEach(function (col, i) { %><td data-label="<%= t(col.label) %>"<%- i === 0 ? ' class="fw-medium"' : '' %>><%- cell(row, col, i) %></td><% }) %>
+                  <td class="col-actions">
+                    <div class="row-actions">
+                      <% if (can('update')) { %>
+                        <a href="<%= c.base %>/<%= row.id %>/edit" class="btn btn-sm btn-outline-secondary" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
+                      <% } %>
+                      <% if (can('delete')) { %>
+                        <form action="<%= c.base %>/<%= row.id %>/delete" method="POST" data-confirm="<%= t('Delete {1}?', { 1: row.name }) %>">
+                          <button type="submit" class="btn btn-sm btn-outline-secondary btn-delete" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
+                        </form>
+                      <% } %>
+                    </div>
+                  </td>
+                </tr>
+              <% }); %>
+            <% } else { %>
+              <tr><td colspan="<%= COLUMNS.length + 2 %>">
+                <%- include('../../partials/ui/empty_state', { icon: c.icon, message: c.labels.empty, filtered: !!search, clearUrl: c.base,
+                      actionUrl: can('create') ? c.base + '/add' : null, actionLabel: c.labels.add }) %>
+              </td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+
+      <%- include('../../partials/ui/pagination', { page, totalPages, totalCount, pageSize, count: (items || []).length, summary: c.labels.summary }) %>
+    </div>
+  </div>
+</div>

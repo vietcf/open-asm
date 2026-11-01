@@ -5,6 +5,7 @@
 //     name: 'contact',
 //     columns: [{ header: 'Name (Require)', key: 'name' }, ...],
 //     sample: async () => [{ name: 'John Doe', ... }],          // template rows
+//     prepare: async (req) => ({ ... }),                          // optional: shared lookups, user
 //     check: async (row, ctx) => ({ errors: [...], skip: 'reason' }), // per row, no writes
 //     save: async (row, client, ctx) => {},                       // import one row
 //     duplicateKeys: (row) => [row.email.toLowerCase()],          // optional: once per file
@@ -111,7 +112,7 @@ export function excelImport({ name, columns, sample, prepare = async () => ({}),
     async validate(req, res) {
       try {
         const rows = readRows(req.file, columns);
-        const ctx = await prepare();
+        const ctx = await prepare(req);
         const seen = new Set();
         const results = [];
         for (const row of rows) {
@@ -137,7 +138,7 @@ export function excelImport({ name, columns, sample, prepare = async () => ({}),
       const client = await pool.connect();
       try {
         const rows = readRows(req.file, columns);
-        const ctx = await prepare();
+        const ctx = await prepare(req);
         const seen = new Set();
         const results = [];
         await client.query('BEGIN');
@@ -188,4 +189,19 @@ export function excelImport({ name, columns, sample, prepare = async () => ({}),
       res.download(filePath, fileName, () => removeQuietly(filePath));
     },
   };
+}
+
+// "a, b,c" -> ['a', 'b', 'c']
+export const splitList = (value) => String(value || '').split(',').map((s) => s.trim()).filter(Boolean);
+
+// Names -> ids with a finder returning matching rows; unknown names are
+// reported as `${label} "name"` in missing.
+export async function resolveNames(names, find, label, missing) {
+  const ids = [];
+  for (const name of names) {
+    const rows = await find(name);
+    if (rows && rows.length) ids.push(rows[0].id);
+    else missing.push(`${label} "${name}"`);
+  }
+  return ids;
 }

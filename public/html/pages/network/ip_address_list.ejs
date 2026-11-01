@@ -261,7 +261,7 @@ function buildExportUrl() {
                     <td>
                       <%
                         const owners = [].concat(
-                          (ip.servers || []).map(o => Object.assign({}, o, { kind: 'Server', url: '/server/server/list?page=1&search=' + encodeURIComponent(o.name) })),
+                          (ip.servers || []).map(o => Object.assign({}, o, { kind: 'Server', url: '/server/server?page=1&search=' + encodeURIComponent(o.name) })),
                           (ip.devices || []).map(o => Object.assign({}, o, { kind: 'Device', url: '/device/device?page=1&search=' + encodeURIComponent(o.name) }))
                         );
                       %>
@@ -1529,7 +1529,7 @@ function showIpDetail(ipId) {
   // (an IP can have more than one device/server once VIP sharing is involved)
   html += '<dt class="col-sm-4">Server/Device</dt><dd class="col-sm-8">';
   const detailOwners = []
-    .concat((ip.servers || []).map(o => Object.assign({}, o, { kind: 'Server', url: '/server/server/list?page=1&search=' + encodeURIComponent(o.name) })))
+    .concat((ip.servers || []).map(o => Object.assign({}, o, { kind: 'Server', url: '/server/server?page=1&search=' + encodeURIComponent(o.name) })))
     .concat((ip.devices || []).map(o => Object.assign({}, o, { kind: 'Device', url: '/device/device?page=1&search=' + encodeURIComponent(o.name) })));
   if (detailOwners.length > 0) {
     html += detailOwners.map(o =>

@@ -1,270 +1,146 @@
+// Servers: validation and persistence shared by the web pages and the REST API.
 import Server from './server.model.js';
+import Agent from './agent.model.js';
+import Service from './service.model.js';
 import IpAddress from '../network/ip-address.model.js';
 import Platform from '../device/platform.model.js';
 import Contact from '../organize/contact.model.js';
-import System from '../system/system.model.js';
-import Agent from './agent.model.js';
-import Service from './service.model.js';
 import Tag from '../organize/tag.model.js';
-import Configuration from '../administrator/configuration.model.js';
+import System from '../system/system.model.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
-import { getLocationOptions as getServerLocationOptions } from '../device/device.service.js';
+import { toIdArray, hasKey, loadOptions, assertOption, assertIdsExist, resolveRelations, saveRelations } from '../../shared/service.js';
 
-const toIdArray = v => {
-  if (v === undefined || v === null) return [];
-  const arr = Array.isArray(v) ? v : [v];
-  return arr.map(Number).filter(x => !isNaN(x));
+const RELATIONS = {
+  managers: { label: 'manager (contact)', exists: (id) => Contact.exists(id), save: (id, ids, c) => Server.setManagers(id, ids, c) },
+  systems: { label: 'system', exists: (id) => System.exists(id), save: (id, ids, c) => Server.setSystems(id, ids, c) },
+  agents: { label: 'agent', exists: (id) => Agent.exists(id), save: (id, ids, c) => Server.setAgents(id, ids, c) },
+  services: { label: 'service', exists: (id) => Service.exists(id), save: (id, ids, c) => Server.setServices(id, ids, c) },
+  tags: { label: 'tag', exists: (id) => Tag.exists(id), save: (id, ids, c) => Server.setTags(id, ids, c) },
 };
-// An IP can't be this server's own (normal) IP and a shared (vip) one at the
-// same time — that's a contradiction, not just a redundant selection.
-const assertNoOverlap = (normalIds, vipIds) => {
-  const normalSet = new Set((normalIds || []).map(String));
-  const overlap = (vipIds || []).filter(id => normalSet.has(String(id)));
-  if (overlap.length > 0) {
-    throw new ValidationError(`IP(s) cannot be both a normal and a VIP IP for the same server: ${overlap.join(', ')}`);
-  }
-};
+const FIELDS = ['name', 'description', 'os', 'status', 'type', 'location', 'ip_addresses', 'vip_ip_addresses'];
 
-// Server location reuses the same 'device_location' config key as Device, so
-// this re-exports deviceService's loader rather than duplicating it.
-export { getServerLocationOptions };
+// ===== Options ({id, text}); location shares Device's list =====
+export const getServerLocationOptions = () => loadOptions('device_location');
+export const getServerStatusOptions = () => loadOptions('server_status');
+export const getServerTypeOptions = () => loadOptions('server_type');
 
-async function loadOptions(configKey) {
-  try {
-    const config = await Configuration.findById(configKey);
-    if (config && config.value) {
-      const parsed = JSON.parse(config.value);
-      if (Array.isArray(parsed)) {
-        return parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
-      }
-    }
-  } catch (e) { /* fall through to empty */ }
-  return [];
-}
-export async function getServerStatusOptions() {
-  return loadOptions('server_status');
-}
-export async function getServerTypeOptions() {
-  return loadOptions('server_type');
+export async function getFormOptions() {
+  const [locations, statusOptions, typesOptions] = await Promise.all([getServerLocationOptions(), getServerStatusOptions(), getServerTypeOptions()]);
+  return { locations, statusOptions, typesOptions };
 }
 
-async function validateLocation(location) {
-  if (!location) return;
-  const options = await getServerLocationOptions();
-  if (!options.length) return;
-  if (!options.some(o => o.value === location)) throw new ValidationError(`Invalid location: ${location}`);
-}
-async function validateStatus(status) {
-  if (!status) return;
-  const options = await getServerStatusOptions();
-  if (!options.length) return;
-  if (!options.some(o => o.value === status)) throw new ValidationError(`Invalid status: ${status}`);
-}
-async function validateOs(os) {
-  if (!os) return;
-  if (!(await Platform.exists(os))) throw new ValidationError(`Invalid platform (os) ID: ${os}`);
-}
-async function validateIds(ids, existsFn, label) {
-  const invalid = [];
-  for (const id of ids) {
-    if (!(await existsFn(id))) invalid.push(id);
-  }
-  if (invalid.length) throw new ValidationError(`Invalid ${label} IDs: ${invalid.join(', ')}`);
-}
-const validateManagerIds = ids => validateIds(ids, id => Contact.exists(id), 'manager (contact)');
-const validateSystemIds = ids => validateIds(ids, id => System.exists(id), 'system');
-const validateAgentIds = ids => validateIds(ids, id => Agent.exists(id), 'agent');
-const validateServiceIds = ids => validateIds(ids, id => Service.exists(id), 'service');
-const validateTagIds = ids => validateIds(ids, id => Tag.exists(id), 'tag');
-
-// excludeServerId: on update, an IP already assigned to THIS server is fine.
-// client is optional — pass the caller's transaction client so a newly
-// created IP address (not yet committed) is still visible here, instead of
-// falsely reporting it as an invalid ID via a plain pool read.
-async function validateIpAddressIds(ids, excludeServerId, client) {
-  const invalid = [];
-  const assigned = [];
-  for (const id of ids) {
-    const details = await IpAddress.findById(id, client);
-    if (!details) {
-      invalid.push(id);
-    } else if (details.status === 'assigned') {
-      const { serverId } = await IpAddress.getPrimaryOwnerIds(id, client);
-      if (excludeServerId == null || String(serverId) !== String(excludeServerId)) {
-        assigned.push(`IP ${details.ip_address} (ID: ${id})`);
-      }
-    }
-  }
-  if (invalid.length) throw new ValidationError(`Invalid IP address IDs: ${invalid.join(', ')}`);
-  if (assigned.length) throw new ValidationError(`Cannot use already assigned IP addresses: ${assigned.join(', ')}`);
-}
-
-export async function assertNameAvailable(name, excludeId) {
-  const existing = await Server.findByName(name);
-  if (existing && (excludeId == null || String(existing.id) !== String(excludeId))) {
-    throw new ConflictError('Server name already exists');
-  }
-}
-
+// ===== Queries =====
 export async function listServers(filter) {
-  const [items, totalCount] = await Promise.all([
-    Server.findFilteredList(filter),
-    Server.countFiltered(filter)
-  ]);
+  const [items, totalCount] = await Promise.all([Server.findFilteredList(filter), Server.countFiltered(filter)]);
   return { items, totalCount };
 }
 
+// REST shape (os object)
 export async function getServer(id) {
   const server = await Server.findByIdWithDetails(id);
   if (!server) throw new NotFoundError('Server not found');
   return server;
 }
 
-// input: {name, os?, status?, location?, type?, description?, managers?,
-//         systems?, agents?, services?, tags?, ip_addresses, updated_by?}
-// Existence validation on os/managers/systems/agents/services/tags and the
-// already-assigned-IP guard were previously API-only — adopted here for both
-// consumers, matching the Device/IP precedent set earlier in this refactor.
+// List shape, for the detail modal and the edit form
+export async function getServerWithLinks(id) {
+  const server = await Server.findById(id);
+  if (!server) throw new NotFoundError('Server not found');
+  return server;
+}
+
+// ===== Validation =====
+async function assertNameAvailable(name, excludeId = null) {
+  const existing = await Server.findByName(name);
+  if (existing && String(existing.id) !== String(excludeId)) throw new ConflictError('Server name already exists');
+}
+
+// Primary IPs must exist and not be assigned to another server/device.
+// client: the caller's transaction, so IPs it just created are visible.
+async function assertPrimaryIps(ids, excludeServerId, client) {
+  if (!ids.length) throw new ValidationError('At least one IP address is required');
+  const invalid = [];
+  const assigned = [];
+  for (const id of ids) {
+    const ip = await IpAddress.findById(id, client);
+    if (!ip) invalid.push(id);
+    else if (ip.status === 'assigned') {
+      const { serverId } = await IpAddress.getPrimaryOwnerIds(id, client);
+      if (excludeServerId == null || String(serverId) !== String(excludeServerId)) assigned.push(`IP ${ip.ip_address} (ID: ${id})`);
+    }
+  }
+  if (invalid.length) throw new ValidationError(`Invalid IP address IDs: ${invalid.join(', ')}`);
+  if (assigned.length) throw new ValidationError(`Cannot use already assigned IP addresses: ${assigned.join(', ')}`);
+}
+
+const trimOrNull = (v) => (typeof v === 'string' ? v.trim() || null : (v ?? null));
+
+async function normalize(input, current = null) {
+  const pick = (key, currentKey = key) => (current && !hasKey(input, key) ? current[currentKey] : trimOrNull(input[key]));
+  const data = {
+    name: pick('name'), description: pick('description'), os: pick('os', 'os_id'),
+    status: pick('status'), type: pick('type'), location: pick('location'),
+  };
+  const changed = (key) => !current || hasKey(input, key);
+  if (!data.name) throw new ValidationError('Server name is required');
+  if (changed('name') && data.name !== current?.name) await assertNameAvailable(data.name, current?.id ?? null);
+  if (changed('os') && data.os && !(await Platform.exists(data.os))) throw new ValidationError(`Invalid platform (os) ID: ${data.os}`);
+  if (changed('status')) await assertOption('server_status', data.status, 'status');
+  if (changed('location')) await assertOption('device_location', data.location, 'location');
+  return data;
+}
+
+// ===== Commands =====
+// input: {name, os?, status?, location?, type?, description?, ip_addresses,
+//         managers?, systems?, agents?, services?, tags?, updated_by?}
 export async function createServer(input, client) {
-  const name = (input.name || '').trim();
-  if (!name) throw new ValidationError('Server name is required');
-  await assertNameAvailable(name);
-
-  const os = input.os || null;
-  await validateOs(os);
-  const status = typeof input.status === 'string' ? input.status.trim() : input.status;
-  await validateStatus(status);
-  const location = typeof input.location === 'string' ? input.location.trim() : input.location;
-  await validateLocation(location);
-  const type = typeof input.type === 'string' ? input.type.trim() : input.type;
-
-  const managers = toIdArray(input.managers);
-  if (managers.length) await validateManagerIds(managers);
-  const systems = toIdArray(input.systems);
-  if (systems.length) await validateSystemIds(systems);
-  const agents = toIdArray(input.agents);
-  if (agents.length) await validateAgentIds(agents);
-  const services = toIdArray(input.services);
-  if (services.length) await validateServiceIds(services);
-  const tags = toIdArray(input.tags);
-  if (tags.length) await validateTagIds(tags);
-
-  const ipAddresses = toIdArray(input.ip_addresses);
-  if (ipAddresses.length === 0) throw new ValidationError('At least one IP address is required');
-  await validateIpAddressIds(ipAddresses, undefined, client);
-
-  const description = typeof input.description === 'string' ? (input.description.trim() || null) : (input.description ?? null);
-  const username = input.updated_by || 'admin';
-
-  const serverId = await withTransaction(client, async (c) => {
-    const id = await Server.create({ name, os, status, location, type, description, username, client: c });
-    await Server.setIpAddresses(id, ipAddresses, c);
-    await Server.setManagers(id, managers, c);
-    await Server.setSystems(id, systems, c);
-    await Server.setAgents(id, agents, c);
-    await Server.setServices(id, services, c);
-    await Server.setTags(id, tags, c);
-    return id;
+  const data = await normalize(input);
+  const links = await resolveRelations(input, RELATIONS);
+  const ipIds = toIdArray(input.ip_addresses);
+  await assertPrimaryIps(ipIds, null, client);
+  const id = await withTransaction(client, async (c) => {
+    const serverId = await Server.create({ ...data, username: input.updated_by || 'admin' }, c);
+    await Server.setIpAddresses(serverId, ipIds, c);
+    await saveRelations(serverId, links, RELATIONS, c);
+    return serverId;
   });
-  return Server.findByIdWithDetails(serverId);
+  return Server.findByIdWithDetails(id, client);
 }
 
-const UPDATABLE_FIELDS = [
-  'name', 'description', 'os', 'status', 'type', 'location',
-  'tags', 'managers', 'systems', 'agents', 'services', 'ip_addresses', 'vip_ip_addresses'
-];
-const ARRAY_FIELD_SPECS = [
-  { key: 'tags', validate: validateTagIds, set: Server.setTags },
-  { key: 'managers', validate: validateManagerIds, set: Server.setManagers },
-  { key: 'systems', validate: validateSystemIds, set: Server.setSystems },
-  { key: 'agents', validate: validateAgentIds, set: Server.setAgents },
-  { key: 'services', validate: validateServiceIds, set: Server.setServices }
-];
-
-// Partial update (has-key semantics) with a strict field allow-list, matching
-// the API's existing behavior.
+// Partial update: only the keys present in input change (links included).
+// VIP IPs may belong to another server/device (shared IP) but cannot also be
+// one of this server's primary IPs.
 export async function updateServer(id, input, client) {
-  const current = await Server.findById(id);
+  const current = await Server.findById(id, client);
   if (!current) throw new NotFoundError('Server not found');
+  const unknown = Object.keys(input).filter((k) => !FIELDS.includes(k) && !RELATIONS[k] && k !== 'updated_by');
+  if (unknown.length) throw new ValidationError(`Invalid field(s): ${unknown.join(', ')}`);
 
-  const invalidFields = Object.keys(input).filter(k => !UPDATABLE_FIELDS.includes(k) && k !== 'updated_by');
-  if (invalidFields.length > 0) {
-    throw new ValidationError(`Invalid field(s): ${invalidFields.join(', ')}`);
-  }
-
-  const has = key => Object.prototype.hasOwnProperty.call(input, key);
-
-  const name = has('name') ? (typeof input.name === 'string' ? input.name.trim() : input.name) : current.name;
-  const description = has('description') ? (typeof input.description === 'string' ? input.description.trim() : input.description) : current.description;
-  const os = has('os') ? input.os : current.os_id;
-  const status = has('status') ? input.status : current.status;
-  const type = has('type') ? input.type : current.type;
-  const location = has('location') ? input.location : current.location;
-
-  if (has('name') && name && name !== current.name) {
-    await assertNameAvailable(name, id);
-  }
-  if (has('location') && location) await validateLocation(location);
-  if (has('status') && status) await validateStatus(status);
-  if (has('os') && os) await validateOs(os);
-
-  const normalizedArrays = {};
-  for (const { key, validate } of ARRAY_FIELD_SPECS) {
-    if (has(key)) {
-      const arr = toIdArray(input[key]);
-      if (arr.length > 0) await validate(arr);
-      normalizedArrays[key] = arr;
-    }
-  }
-  if (has('ip_addresses')) {
-    const arr = toIdArray(input.ip_addresses);
-    // The API's original update path only enforced "at least one IP" on
-    // create — clearing to zero on update silently succeeded, unlike the
-    // frontend which always required at least one. A server with no IPs
-    // isn't a meaningful state, so the frontend's stricter rule is adopted
-    // here for both.
-    if (arr.length === 0) throw new ValidationError('At least one IP address is required');
-    await validateIpAddressIds(arr, id, client);
-    normalizedArrays.ip_addresses = arr;
-  }
-
-  // VIP IPs may already belong to another device/server — that's the whole
-  // point of a shared IP, so these are NOT run through validateIpAddressIds.
-  if (has('vip_ip_addresses')) {
-    const arr = toIdArray(input.vip_ip_addresses);
-    for (const ipId of arr) {
-      if (!(await IpAddress.exists(ipId))) throw new ValidationError(`Invalid VIP IP address ID: ${ipId}`);
-    }
-    normalizedArrays.vip_ip_addresses = arr;
-  }
-  if (has('ip_addresses') && has('vip_ip_addresses')) {
-    assertNoOverlap(normalizedArrays.ip_addresses, normalizedArrays.vip_ip_addresses);
+  const data = await normalize(input, current);
+  const links = await resolveRelations(input, RELATIONS, { partial: true });
+  const ipIds = hasKey(input, 'ip_addresses') ? toIdArray(input.ip_addresses) : null;
+  if (ipIds) await assertPrimaryIps(ipIds, id, client);
+  const vipIds = hasKey(input, 'vip_ip_addresses') ? toIdArray(input.vip_ip_addresses) : null;
+  if (vipIds) {
+    await assertIdsExist(vipIds, (x) => IpAddress.exists(x), 'VIP IP address');
+    const primary = (ipIds || current.ip_addresses.filter((ip) => ip.role === 'normal').map((ip) => ip.id)).map(String);
+    const overlap = vipIds.filter((x) => primary.includes(String(x)));
+    if (overlap.length) throw new ValidationError(`IP(s) cannot be both a normal and a VIP IP for the same server: ${overlap.join(', ')}`);
   }
 
   const username = input.updated_by || 'admin';
-
   await withTransaction(client, async (c) => {
-    await Server.update(id, { name, os, status, location, type, description, username, client: c });
-    for (const { key, set } of ARRAY_FIELD_SPECS) {
-      if (has(key)) await set(id, normalizedArrays[key], c);
-    }
-    if (has('ip_addresses')) await Server.setIpAddresses(id, normalizedArrays.ip_addresses, c);
-    if (has('vip_ip_addresses')) await Server.setVipIps(id, normalizedArrays.vip_ip_addresses, username, c);
+    await Server.update(id, { ...data, username }, c);
+    if (ipIds) await Server.setIpAddresses(id, ipIds, c);
+    if (vipIds) await Server.setVipIps(id, vipIds, username, c);
+    await saveRelations(id, links, RELATIONS, c);
   });
-
-  return Server.findByIdWithDetails(id);
+  return Server.findByIdWithDetails(id, client);
 }
 
-// Wrapped in a transaction — the frontend previously called Server.remove()
-// non-transactionally (partial failure across its 5 DELETEs could leave
-// orphaned rows); the API already did this correctly.
-// deleteIp: false (default) releases the server's IPs back to 'reserved'
-// instead of deleting them.
+// deleteIp: false releases the server's IPs ('reserved'), true deletes them.
 export async function deleteServer(id, { deleteIp = false } = {}) {
-  const exists = await Server.exists(id);
-  if (!exists) throw new NotFoundError('Server not found');
-  await withTransaction(null, async (c) => {
-    await Server.remove(id, c, { deleteIp });
-  });
+  if (!(await Server.exists(id))) throw new NotFoundError('Server not found');
+  await withTransaction(null, (c) => Server.remove(id, c, { deleteIp }));
 }

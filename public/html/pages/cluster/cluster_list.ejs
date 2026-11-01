@@ -436,7 +436,7 @@ function buildClusterQuery(overrides) {
         const ipLink = '<a href="/network/ip-address?search=' + encodeURIComponent(m.ip) + '" target="_blank" rel="noopener noreferrer" class="text-decoration-none">' + escapeHtml(m.ip) + '</a>';
         let ownerLink = '<span class="text-muted">-</span>';
         if (m.server_name) {
-          ownerLink = '<a href="/server/server/list?search=' + encodeURIComponent(m.server_name) + '" target="_blank" rel="noopener noreferrer" class="text-decoration-none">' + escapeHtml(m.server_name) + '</a>';
+          ownerLink = '<a href="/server/server?search=' + encodeURIComponent(m.server_name) + '" target="_blank" rel="noopener noreferrer" class="text-decoration-none">' + escapeHtml(m.server_name) + '</a>';
         } else if (m.device_name) {
           ownerLink = '<a href="/device/device?search=' + encodeURIComponent(m.device_name) + '" target="_blank" rel="noopener noreferrer" class="text-decoration-none">' + escapeHtml(m.device_name) + '</a>';
         }

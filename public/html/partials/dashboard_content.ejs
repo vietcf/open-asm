@@ -6,7 +6,7 @@ const CATEGORICAL_COLORS = ['primary', 'info', 'warning', 'success', 'secondary'
 
 const statTiles = stats ? [
   { label: 'Systems', count: stats.counts.systems, icon: 'bi-hdd-stack', url: '/system/system', perm: 'system.read' },
-  { label: 'Servers', count: stats.counts.servers, icon: 'bi-hdd-network', url: '/server/server/list', perm: 'server.read' },
+  { label: 'Servers', count: stats.counts.servers, icon: 'bi-hdd-network', url: '/server/server', perm: 'server.read' },
   { label: 'Devices', count: stats.counts.devices, icon: 'bi-cpu', url: '/device/device', perm: 'device.read' },
   { label: 'IP Addresses', count: stats.counts.ipAddresses, icon: 'bi-diagram-3', url: '/network/ip-address', perm: 'ip_address.read' },
   { label: 'Subnets', count: stats.counts.subnets, icon: 'bi-diagram-2', url: '/network/subnet-address', perm: 'subnet.read' },

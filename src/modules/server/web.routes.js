@@ -1,95 +1,56 @@
+// Web routes of the Server module (servers, services, agents), mounted at /server.
 import express from 'express';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import serverController from './server.controller.js';
+import servers, { serverImport } from './server.controller.js';
+import Service from './service.model.js';
+import Agent from './agent.model.js';
+import services from './service.service.js';
+import agents from './agent.service.js';
 import requirePermission from '../../middlewares/requirePermission.middleware.js';
-
-// Configure multer for file uploads
-const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const dest = path.join(process.cwd(), uploadsDir, 'import');
-    fs.mkdirSync(dest, { recursive: true });
-    cb(null, dest);
-  },
-  filename: function (req, file, cb) {
-    // path.basename strips any directory components a crafted originalname
-    // could carry (multer's diskStorage does not sanitize this itself, it
-    // just path.joins(destination, filename)).
-    cb(null, Date.now() + '-' + path.basename(file.originalname));
-  }
-});
-
-const upload = multer({ 
-  storage: storage,
-  fileFilter: function (req, file, cb) {
-    const allowedTypes = ['.xlsx', '.xls'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowedTypes.includes(ext)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only Excel files (.xlsx, .xls) are allowed'));
-    }
-  },
-  limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
-  }
-});
-
+import excelUpload from '../../middlewares/excelUpload.middleware.js';
+import { catalogPages, mountCatalogPages } from '../../shared/catalogWeb.js';
 
 const router = express.Router();
+const can = requirePermission;
 
-// ====== SERVER MENU ======
-// List servers
-router.get('/server/list', requirePermission('server.read'), serverController.listServer);
-// Export server list as Excel (filtered)
-router.get('/server/export', requirePermission('server.read'), serverController.exportServerList);
-// Add server
-router.get('/server/add', requirePermission('server.create'), serverController.addServerForm);
-router.post('/server/add', requirePermission('server.create'), serverController.createServer);
-// Edit server
-router.get('/server/:id/edit', requirePermission('server.update'), serverController.editServerForm);
-router.post('/server/:id/edit', requirePermission('server.update'), serverController.updateServer);
-// Delete server
-router.delete('/server/:id', requirePermission('server.delete'), serverController.deleteServer);
-// Server import/export
-router.get('/server/template', requirePermission('server.create'), serverController.downloadServerTemplate);
-router.post('/server/validate-import', requirePermission('server.create'), upload.single('file'), serverController.validateImportServers);
-router.post('/server/import', requirePermission('server.create'), upload.single('file'), serverController.importServers);
-router.get('/download/server-validation/:filename', requirePermission('server.read'), serverController.downloadServerValidationFile);
+const servicePages = catalogPages({
+  service: services, model: Service, base: '/server/service', permission: 'service', activeMenu: 'service', icon: 'bi-gear',
+  labels: { section: 'Server Management', list: 'Service List', singular: 'Service', add: 'Add Service', edit: 'Edit Service',
+    search: 'Search Service...', empty: 'No services found', summary: 'Showing {1} - {2} of {3} services' },
+  fields: [{ key: 'name', label: 'Service Name', required: true }, { key: 'description', label: 'Description', type: 'textarea' }],
+  usageLabel: 'Servers',
+});
+const agentPages = catalogPages({
+  service: agents, model: Agent, base: '/server/agent', permission: 'agent', activeMenu: 'agent', icon: 'bi-cpu',
+  labels: { section: 'Server Management', list: 'Agent List', singular: 'Agent', add: 'Add Agent', edit: 'Edit Agent',
+    search: 'Search Agent...', empty: 'No agents found', summary: 'Showing {1} - {2} of {3} agents' },
+  fields: [{ key: 'name', label: 'Agent Name', required: true }, { key: 'version', label: 'Version', maxlength: 50 },
+    { key: 'description', label: 'Description', type: 'textarea' }],
+  usageLabel: 'Servers',
+});
 
-// ====== SERVICE MENU ======
-// List services
-router.get('/service/list', requirePermission('service.read'), serverController.listService);
-// Add service
-router.post('/service/add', requirePermission('service.create'), serverController.createService);
-// Edit service
-router.put('/service/:id', requirePermission('service.update'), serverController.updateService);
-// Delete service
-router.delete('/service/:id', requirePermission('service.delete'), serverController.deleteService);
+// Servers
+router.get('/server', can('server.read'), servers.list);
+router.get('/server/export', can('server.read'), servers.export);
+router.get('/server/template', can('server.create'), serverImport.template);
+router.post('/server/validate-import', can('server.create'), excelUpload, serverImport.validate);
+router.post('/server/import', can('server.create'), excelUpload, serverImport.import);
+router.get('/download/server-validation/:filename', can('server.read'), serverImport.download);
+router.get('/server/add', can('server.create'), servers.addForm);
+router.post('/server/add', can('server.create'), servers.create);
+router.get('/server/:id/edit', can('server.update'), servers.editForm);
+router.post('/server/:id/edit', can('server.update'), servers.update);
+router.post('/server/:id/delete', can('server.delete'), servers.remove);
+router.get('/server/api/:id/detail', can('server.read'), servers.detail);
 
-// ====== AGENT MENU ======
-// List agents
-router.get('/agent/list', requirePermission('agent.read'), serverController.listAgent);
-// Add agent
-router.post('/agent/add', requirePermission('agent.create'), serverController.createAgent);
-// Edit agent
-router.put('/agent/:id', requirePermission('agent.update'), serverController.updateAgent);
-// Delete agent
-router.delete('/agent/:id', requirePermission('agent.delete'), serverController.deleteAgent);
+// Catalogs
+mountCatalogPages(router, '/service', servicePages, 'service', can);
+mountCatalogPages(router, '/agent', agentPages, 'agent', can);
 
-
-// ====== AJAX MENU ======
-// API: Get server detail by ID (for AJAX/modal)
-router.get('/server/api/:id/detail', requirePermission('server.read'), serverController.detailServer);
-// API: Get services for select2 ajax. Call from server edit or add form
-router.get('/api/service', serverController.apiSearchService);
-// API: Get agents for select2 ajax. 
-// Call from server edit or add form
-router.get('/api/agent',serverController.apiSearchAgent);
-// API: Get servers for select2 ajax. 
-// Call from system add/edit form
-router.get('/api/server',serverController.apiSearchServer);
+// Select2 lookups, open to any signed-in user
+router.get('/api/server', servers.lookup);
+router.get('/api/service', servicePages.lookup);
+router.get('/api/service/ids', servicePages.lookupByIds);
+router.get('/api/agent', agentPages.lookup);
+router.get('/api/agent/ids', agentPages.lookupByIds);
 
 export default router;

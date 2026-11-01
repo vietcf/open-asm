@@ -604,6 +604,21 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
+- ♻️ Servers rebuilt on the UI kit: list with filters (status, type,
+  location, platform, systems, managers, services, tags) and column
+  chooser, detail modal, one Add/Edit page (`server_form.ejs`), shared
+  import (same template) and export. Delete asks what to do with the
+  server's IPs through the shared `partials/ui/delete_ip_modal.ejs`.
+  URLs: `/server/server`, `/server/service`, `/server/agent` (the old
+  `.../list` paths are gone; links updated).
+- ♻️ Catalog lists (Services, Agents) are one implementation:
+  `src/shared/catalog.js` (model, service, REST handlers) and
+  `src/shared/catalogWeb.js` with `pages/catalog/list.ejs` / `form.ejs`;
+  lists show how many servers use each entry. Server model: one SELECT
+  for list/detail/REST instead of four, filters built once.
+- 🐛 Deleting a server left its tag links behind.
+- 🔧 REST `GET /servers` items expose IPs as `ip_addresses` (with role,
+  description and status) like the other server endpoints.
 - ♻️ Organization (Contacts, Units, Tags) rebuilt on the UI kit: list
   toolbar, filters, column chooser, Excel export on all three, contact
   detail modal with the vCard QR code, and Add/Edit pages

@@ -98,7 +98,7 @@
           <ul class="nav nav-treeview"<%= isMenuOpen(['server-list', 'service', 'agent']) ? ' style="display: block;"' : '' %>>
             <% if (hasPermission('server.read')) { %>
             <li class="nav-item">
-              <a href="/server/server/list" class="nav-link<%= (activeMenu === 'server-list') ? ' active' : '' %>">
+              <a href="/server/server" class="nav-link<%= (activeMenu === 'server-list') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'server-list') ? ' text-primary' : '' %>"></i>
                 <p><%= t('Server') %></p>
               </a>
@@ -106,7 +106,7 @@
             <% } %>
             <% if (hasPermission('service.read')) { %>
             <li class="nav-item">
-              <a href="/server/service/list" class="nav-link<%= (activeMenu === 'service') ? ' active' : '' %>">
+              <a href="/server/service" class="nav-link<%= (activeMenu === 'service') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'service') ? ' text-primary' : '' %>"></i>
                 <p><%= t('Service') %></p>
               </a>
@@ -114,7 +114,7 @@
             <% } %>
             <% if (hasPermission('agent.read')) { %>
             <li class="nav-item">
-              <a href="/server/agent/list" class="nav-link<%= (activeMenu === 'agent') ? ' active' : '' %>">
+              <a href="/server/agent" class="nav-link<%= (activeMenu === 'agent') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'agent') ? ' text-primary' : '' %>"></i>
                 <p><%= t('Agent') %></p>
               </a>

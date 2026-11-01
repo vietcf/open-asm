@@ -754,7 +754,7 @@ router.delete('/servers/:id', authorizePermissionJWT('server.delete'), serverApi
  *                 total:
  *                   type: integer
  */
-router.get('/services', authorizePermissionJWT('service.read'), serviceApi.listServices);
+router.get('/services', authorizePermissionJWT('service.read'), serviceApi.list);
 
 /**
  * @swagger
@@ -818,7 +818,7 @@ router.get('/services', authorizePermissionJWT('service.read'), serviceApi.listS
  *                   type: string
  *                   example: "Internal server error"
  */
-router.get('/services/find', authorizePermissionJWT('service.read'), serviceApi.findServices);
+router.get('/services/find', authorizePermissionJWT('service.read'), serviceApi.find);
 
 /**
  * @swagger
@@ -867,7 +867,7 @@ router.get('/services/find', authorizePermissionJWT('service.read'), serviceApi.
  *       500:
  *         description: Internal server error
  */
-router.post('/services', authorizePermissionJWT('service.create'), serviceApi.createService);
+router.post('/services', authorizePermissionJWT('service.create'), serviceApi.create);
 
 /**
  * @swagger
@@ -894,7 +894,7 @@ router.post('/services', authorizePermissionJWT('service.create'), serviceApi.cr
  *       404:
  *         description: Service not found
  */
-router.get('/services/:id', authorizePermissionJWT('service.read'), serviceApi.getService);
+router.get('/services/:id', authorizePermissionJWT('service.read'), serviceApi.get);
 
 /**
  * @swagger
@@ -961,7 +961,7 @@ router.get('/services/:id', authorizePermissionJWT('service.read'), serviceApi.g
  *       500:
  *         description: Internal server error
  */
-router.put('/services/:id', authorizePermissionJWT('service.update'), serviceApi.updateService);
+router.put('/services/:id', authorizePermissionJWT('service.update'), serviceApi.update);
 
 /**
  * @swagger
@@ -986,7 +986,7 @@ router.put('/services/:id', authorizePermissionJWT('service.update'), serviceApi
  *       409:
  *         description: Cannot delete — the service is still assigned to one or more servers
  */
-router.delete('/services/:id', authorizePermissionJWT('service.delete'), serviceApi.deleteService);
+router.delete('/services/:id', authorizePermissionJWT('service.delete'), serviceApi.remove);
 
 /**
  * @swagger
@@ -1051,7 +1051,7 @@ router.delete('/services/:id', authorizePermissionJWT('service.delete'), service
  *                   type: integer
  *                   example: 5
  */
-router.get('/agents', authorizePermissionJWT('agent.read'), agentApi.listAgents);
+router.get('/agents', authorizePermissionJWT('agent.read'), agentApi.list);
 
 /**
  * @swagger
@@ -1104,7 +1104,7 @@ router.get('/agents', authorizePermissionJWT('agent.read'), agentApi.listAgents)
  *       500:
  *         description: Internal server error
  */
-router.post('/agents', authorizePermissionJWT('agent.create'), agentApi.createAgent);
+router.post('/agents', authorizePermissionJWT('agent.create'), agentApi.create);
 
 /**
  * @swagger
@@ -1170,7 +1170,7 @@ router.post('/agents', authorizePermissionJWT('agent.create'), agentApi.createAg
  *                   type: string
  *                   description: Detailed error information
  */
-router.get('/agents/find', authorizePermissionJWT('agent.read'), agentApi.findAgents);
+router.get('/agents/find', authorizePermissionJWT('agent.read'), agentApi.find);
 
 /**
  * @swagger
@@ -1197,7 +1197,7 @@ router.get('/agents/find', authorizePermissionJWT('agent.read'), agentApi.findAg
  *       404:
  *         description: Agent not found
  */
-router.get('/agents/:id', authorizePermissionJWT('agent.read'), agentApi.getAgent);
+router.get('/agents/:id', authorizePermissionJWT('agent.read'), agentApi.get);
 
 /**
  * @swagger
@@ -1269,7 +1269,7 @@ router.get('/agents/:id', authorizePermissionJWT('agent.read'), agentApi.getAgen
  *       500:
  *         description: Internal server error
  */
-router.put('/agents/:id', authorizePermissionJWT('agent.update'), agentApi.updateAgent);
+router.put('/agents/:id', authorizePermissionJWT('agent.update'), agentApi.update);
 
 /**
  * @swagger
@@ -1294,6 +1294,6 @@ router.put('/agents/:id', authorizePermissionJWT('agent.update'), agentApi.updat
  *       409:
  *         description: Cannot delete — the agent is still assigned to one or more servers
  */
-router.delete('/agents/:id', authorizePermissionJWT('agent.delete'), agentApi.deleteAgent);
+router.delete('/agents/:id', authorizePermissionJWT('agent.delete'), agentApi.remove);
 
 export default router;
