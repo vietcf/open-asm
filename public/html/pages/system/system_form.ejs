@@ -133,9 +133,9 @@
           <label class="form-file-drop" for="f-upload">
             <i class="bi bi-cloud-arrow-up"></i>
             <span><%= t('Choose files to upload') %></span>
-            <span class="form-text mt-0"><%= t('You can select multiple files.') %></span>
+            <span class="form-text mt-0"><%= t('Allowed: {types}', { types: uploadAllowedList }) %></span>
           </label>
-          <input type="file" id="f-upload" class="visually-hidden" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.zip,.rar">
+          <input type="file" id="f-upload" class="visually-hidden" multiple accept="<%= uploadAccept %>">
           <% if (isEdit) { %>
             <input type="hidden" name="uploaded_docs_edit" id="f-uploaded">
             <input type="hidden" name="delete_files" id="f-deleted" value="[]">
@@ -235,7 +235,10 @@ $(function () {
           var f = (res.success && res.files && res.files[0]) || res.file;
           if (f) { uploaded.push(f); renderFiles(); }
         },
-        error: function () { alert(tr('Upload failed!')); }
+        error: function (xhr) {
+          var reason = xhr.responseJSON && xhr.responseJSON.error;
+          alert(tr('Upload failed!') + ' ' + file.name + (reason ? ' - ' + reason : ''));
+        }
       });
     });
     input.value = '';

@@ -28,10 +28,12 @@ import expressLayouts from 'express-ejs-layouts';
 // =========================
 import { config } from '../config/config.js';
 import { siteConfig } from './utils/siteConfig.js';
+import { UPLOAD_ACCEPT, ALLOWED_UPLOAD_EXTENSIONS } from './utils/uploadTypes.js';
 import { loadPermissions } from './middlewares/permissions.middleware.js';
 import requirePasswordChange from './middlewares/requirePasswordChange.middleware.js';
 import require2fa from './middlewares/require2fa.middleware.js';
 import sessionIdleTimeout from './middlewares/sessionIdleTimeout.middleware.js';
+import auditLog from './middlewares/auditLog.middleware.js';
 // import accessLog from './middlewares/accessLog.middleware.js'; // Disabled
 
 // =========================
@@ -121,6 +123,10 @@ app.use(sessionIdleTimeout);
 // 4.2. Access logging middleware (after session, before other middleware)
 // app.use(accessLog); // Disabled to reduce console output
 
+// 4.3. Audit log: every data change (POST/PUT/PATCH/DELETE) by a signed-in
+// user goes to system_log, app or security category (see the middleware)
+app.use(auditLog);
+
 // 5. Global template variables (res.locals)
 // 5.1. Load permissions for every request (after session, before routes)
 app.use(loadPermissions);
@@ -149,6 +155,9 @@ function assetUrl(urlPath) {
 // app.locals: available to every render, error pages included.
 // <link href="<%= asset('/css/custom.css') %>">
 app.locals.asset = assetUrl;
+// accept="..." for attachment inputs (src/utils/uploadTypes.js)
+app.locals.uploadAccept = UPLOAD_ACCEPT;
+app.locals.uploadAllowedList = ALLOWED_UPLOAD_EXTENSIONS.join(', ');
 
 // 5.2. Global template variables (res.locals)
 app.use((req, res, next) => {

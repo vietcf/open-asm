@@ -602,6 +602,37 @@ when cutting a release.
   URLs, IP Addresses and Updated can be turned on. The choice is kept per
   browser (localStorage); "Reset to default" restores the basic set. Level,
   scope and architecture show their labels instead of raw values.
+- 🔒 Attachments limited to documents and design files: PDF, Word
+  (`.doc`, `.docx`), Excel (`.xls`, `.xlsx`, `.csv`), Visio (`.vsd`,
+  `.vsdx`), draw.io (`.drawio`), `.txt` and images (`.png`, `.jpg`,
+  `.jpeg`). Archives, PowerPoint, GIF and SVG are no longer accepted. One
+  list (`src/utils/uploadTypes.js`) drives the server check and every
+  form's `accept`; forms show the allowed types and the reason a file was
+  refused.
+- 💄 Lists on phones and small tablets (up to 768px): each row becomes a
+  card (name as title, actions top-right, the visible columns as
+  "label | value" lines) instead of a squeezed table with cell borders and
+  horizontal scrolling; reusable `.table-stack` class (cells need
+  `data-label`). The list toolbar fits on two rows (search; actions with
+  icon-only Columns/Export) and the search icon is back.
+- 💄 Sidebar: app mark instead of the AdminLTE logo, muted section
+  headers, child items on a thin guide line instead of "○" bullets, the
+  current page as a soft primary tint, long labels wrap instead of being
+  cut.
+- 💄 System Detail: "Scope user access" moved from Overview to Access.
+- ✨ System Log split into **Application log** and **Security audit** tabs
+  (migration `0008`: `system_log.category` + `level`, existing rows
+  classified). Every data change (POST/PUT/PATCH/DELETE) by a signed-in
+  user is now logged by `auditLog.middleware.js` (who, when, IP, action,
+  object, result; never the request body); users/roles/permissions/
+  configuration/password/2FA go to the security audit, together with
+  sign-in/out. The `log_level` setting now applies to the application log
+  (security events are always kept). New filters (dates and quick ranges,
+  user, action, object, result, severity, IP), column chooser, Excel
+  export, list-kit layout.
+- 🐛 Column chooser had no effect on screens up to 768px wide: the layout's
+  mobile CSS forces table cells visible with `!important`; hidden columns
+  now win.
 - 🐛 Uploads with Vietnamese (or any non-ASCII) names: the name is read as
   UTF-8 instead of busboy's latin1 (no more "TÃ i liá»‡u"), saving no longer
   fails with "Invalid uploaded file" for names with spaces or diacritics

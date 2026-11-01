@@ -33,5 +33,6 @@ router.put('/configuration/:group', requirePermission('configuration.update'), a
 
 // System Log
 router.get('/log', requirePermission('system_log.read'), administratorController.listSystemLogs);
+router.get('/log/export', requirePermission('system_log.read'), administratorController.exportSystemLogs);
 
 export default router;

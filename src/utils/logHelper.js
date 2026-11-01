@@ -1,19 +1,51 @@
-
-import SystemLog from '../models/SystemLog.js';
+import SystemLog, { LOG_LEVELS } from '../models/SystemLog.js';
+import Configuration from '../models/Configuration.js';
 import os from 'os';
+
+// Security audit events. Explicit actions (login/logout/2FA, see
+// authController) and every change made through these paths (users, roles,
+// permissions, system configuration, own password, 2FA setup). Same lists
+// as migrations/versions/0008_system_log_category_level.js.
+export const SECURITY_ACTIONS = new Set(['login', 'logout', '2fa', 'change_password']);
+export const SECURITY_PATH_PREFIXES = ['/administrator', '/change-password', '/2fa'];
+
+// log_level setting: the minimum level kept for the application log.
+// Security events are always written. Cached briefly (read on every write).
+let cachedMinLevel = { value: 'info', at: 0 };
+async function minAppLevel() {
+  if (Date.now() - cachedMinLevel.at < 30000) return cachedMinLevel.value;
+  let value = 'info';
+  try {
+    const row = await Configuration.findById('log_level');
+    if (row && LOG_LEVELS.includes(row.value)) value = row.value;
+  } catch { /* keep default */ }
+  cachedMinLevel = { value, at: Date.now() };
+  return value;
+}
+
+function clientIp(req) {
+  const fwd = req.headers['x-forwarded-for'];
+  return (fwd ? String(fwd).split(',')[0].trim() : null) || req.ip || req.socket?.remoteAddress || null;
+}
 
 /**
  * Write a system log entry; user, ip and user_agent are taken from req when present
  * @param {Object} options
- * @param {string} options.action - Action (login, logout, ...)
+ * @param {string} options.action - Action (login, logout, create, update, delete, ...)
  * @param {string} [options.description] - Details
  * @param {Object} [options.req] - Request object (optional)
  * @param {string} [options.status] - Status (success, failed, ...)
  * @param {string} [options.object_type] - Related object type
  * @param {string|number} [options.object_id] - Related object ID
+ * @param {'app'|'security'} [options.category] - Defaults to 'security' for SECURITY_ACTIONS, else 'app'
+ * @param {'info'|'warning'|'critical'} [options.level] - Defaults to 'warning' when status is failed, else 'info'
  */
-async function writeLog({ action, description, req, status, object_type, object_id, username, user_id }) {
-  let log = {
+async function writeLog({ action, description, req, status, object_type, object_id, username, user_id, category, level }) {
+  const cat = category || (SECURITY_ACTIONS.has(action) ? 'security' : 'app');
+  const lvl = level || (status === 'failed' ? 'warning' : 'info');
+  if (cat === 'app' && LOG_LEVELS.indexOf(lvl) < LOG_LEVELS.indexOf(await minAppLevel())) return;
+
+  const log = {
     action,
     description: description || '',
     object_type: object_type || null,
@@ -22,14 +54,17 @@ async function writeLog({ action, description, req, status, object_type, object_
     user_id: user_id || null,
     username: username || null,
     ip_address: null,
-    user_agent: null
+    user_agent: null,
+    category: cat,
+    level: lvl,
   };
   if (req) {
-    log.ip_address = req.headers['x-forwarded-for'] || req.connection.remoteAddress || null;
+    log.ip_address = clientIp(req);
     log.user_agent = req.headers['user-agent'] || null;
-    if (req.session && req.session.user) {
-      if (!log.username) log.username = req.session.user.username;
-      if (!log.user_id) log.user_id = req.session.user.id;
+    const user = (req.session && req.session.user) || req.user;
+    if (user) {
+      if (!log.username) log.username = user.username;
+      if (!log.user_id) log.user_id = user.id;
     }
   }
   if (!log.username) log.username = os.userInfo().username || null;

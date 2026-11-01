@@ -3,19 +3,15 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { fixLatin1Filename, safeDiskName } from '../utils/filename.js';
+import { ALLOWED_UPLOAD_EXTENSIONS, isAllowedUploadName } from '../utils/uploadTypes.js';
 
 const FILE_UPLOAD_DRIVER = process.env.FILE_UPLOAD_DRIVER || 'local';
 
-// Allow-list of safe, non-executable document/image types. Anything else
-// (html, svg, js, exe, php, ...) is rejected — uploaded files are served
-// back out via express.static, so an unrestricted extension list would let
-// any authenticated uploader plant stored XSS (html/svg) or other active
-// content under the app's own origin.
-const ALLOWED_EXTENSIONS = new Set([
-  '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
-  '.txt', '.csv', '.zip', '.rar', '.7z',
-  '.png', '.jpg', '.jpeg', '.gif'
-]);
+// Allow-list of document/design types (src/utils/uploadTypes.js). Anything
+// else (html, svg, js, exe, archives, ...) is rejected — uploaded files are
+// served back out via express.static, so an unrestricted list would let any
+// authenticated uploader plant stored XSS or other active content under the
+// app's own origin.
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB per file
 
 // Name on disk / in the URL: ASCII only, no directory parts (multer's
@@ -31,9 +27,9 @@ function fileFilter(req, file, cb) {
   // Runs before storage: every later use (disk name, response, DB) gets the
   // UTF-8 name instead of busboy's latin1 decoding.
   file.originalname = fixLatin1Filename(file.originalname);
-  const ext = path.extname(file.originalname).toLowerCase();
-  if (!ALLOWED_EXTENSIONS.has(ext)) {
-    return cb(new Error(`File type not allowed: ${ext || '(no extension)'}`));
+  if (!isAllowedUploadName(file.originalname)) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    return cb(new Error(`File type not allowed: ${ext || '(no extension)'}. Allowed: ${ALLOWED_UPLOAD_EXTENSIONS.join(', ')}`));
   }
   cb(null, true);
 }

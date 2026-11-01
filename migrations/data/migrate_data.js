@@ -28,6 +28,7 @@ import { discover, readHistory, plan, HISTORY_TABLE } from '../lib/runner.js';
 import { seedPermissionsAndRoles, seedConfiguration } from '../lib/seed.js';
 import { up as normalizeOptionConfigs } from '../versions/0004_normalize_option_configs.js';
 import { up as fixUploadFilenames } from '../versions/0007_fix_upload_filename_encoding.js';
+import { classify as classifySystemLog } from '../versions/0008_system_log_category_level.js';
 
 // Never copied: migration bookkeeping (old alters runner and the current
 // runner) and login sessions.
@@ -45,6 +46,7 @@ const POST_COPY_STEPS = [
   { name: '0004 option lists -> [{value, label}]', run: normalizeOptionConfigs },
   { name: '0005 drop device_page_size', sql: `DELETE FROM configuration WHERE key = 'device_page_size'` },
   { name: '0007 repair latin1-decoded upload filenames', run: fixUploadFilenames },
+  { name: '0008 classify system_log rows (security / app, level)', run: classifySystemLog },
 ];
 
 const BATCH_ROWS = 1000;

@@ -40,8 +40,8 @@
           </button>
           <div class="list-actions">
             <div class="dropdown">
-              <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                <i class="bi bi-layout-three-columns"></i> <%= t('Columns') %>
+              <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="<%= t('Columns') %>">
+                <i class="bi bi-layout-three-columns"></i><span class="btn-text"> <%= t('Columns') %></span>
               </button>
               <div class="dropdown-menu dropdown-menu-end columns-menu" id="systemColumnsMenu">
                 <div class="dropdown-header"><%= t('Show columns') %></div>
@@ -55,7 +55,7 @@
                 <button type="button" class="dropdown-item small" data-columns-reset><i class="bi bi-arrow-counterclockwise me-1"></i><%= t('Reset to default') %></button>
               </div>
             </div>
-            <a href="/system/system/export<%= currentQuery %>" class="btn btn-outline-secondary"><i class="bi bi-download"></i> <%= t('Export') %></a>
+            <a href="/system/system/export<%= currentQuery %>" class="btn btn-outline-secondary" title="<%= t('Export') %>"><i class="bi bi-download"></i><span class="btn-text"> <%= t('Export') %></span></a>
             <% if (hasPermission('system.create')) { %>
               <a href="/system/system/add" class="btn btn-primary"><i class="bi bi-plus-lg"></i> <%= t('Add System') %></a>
             <% } %>
@@ -157,12 +157,13 @@
           }
         }
       %>
-      <%# Default-hidden columns are hidden here already (no flash); the script swaps in the viewer's choice. %>
+      <%# Default-hidden columns are hidden here already (no flash); the script swaps in the viewer's choice.
+          !important: the layout's mobile CSS forces '.table td { display: table-cell !important }'. %>
       <style id="systemColumnsStyle">
-        <%= COLUMNS.filter(c => !c.def).map(c => '#systemTable [data-col="' + c.key + '"]').join(', ') %> { display: none; }
+        <%= COLUMNS.filter(c => !c.def).map(c => '#systemTable [data-col="' + c.key + '"]').join(', ') %> { display: none !important; }
       </style>
       <div class="table-responsive">
-        <table class="table table-hover align-middle" id="systemTable">
+        <table class="table table-hover align-middle table-stack" id="systemTable">
           <thead>
             <tr>
               <th class="col-index">#</th>
@@ -175,7 +176,7 @@
               <% systemList.forEach(function (system, idx) { %>
                 <tr>
                   <td class="col-index"><%= (page - 1) * pageSize + idx + 1 %></td>
-                  <% COLUMNS.forEach(function (c) { %><td data-col="<%= c.key %>"<%- c.key === 'name' ? ' class="fw-medium"' : (['code', 'level'].includes(c.key) ? ' class="text-nowrap"' : '') %>><%- cellHtml(system, c.key) %></td><% }) %>
+                  <% COLUMNS.forEach(function (c) { %><td data-col="<%= c.key %>" data-label="<%= t(c.label) %>"<%- c.key === 'name' ? ' class="fw-medium"' : (['code', 'level'].includes(c.key) ? ' class="text-nowrap"' : '') %>><%- cellHtml(system, c.key) %></td><% }) %>
                   <td class="col-actions">
                     <div class="row-actions">
                       <button type="button" class="btn btn-sm btn-outline-secondary" title="<%= t('Detail') %>" onclick="showSystemDetail(<%= JSON.stringify(system.id) %>)" data-system='<%= JSON.stringify(system) %>'><i class="bi bi-eye"></i></button>
@@ -218,7 +219,7 @@
           function apply(visible) {
             var hidden = columns.filter(function (c) { return !c.fixed && visible.indexOf(c.key) === -1; });
             style.textContent = hidden.length
-              ? hidden.map(function (c) { return '#systemTable [data-col="' + c.key + '"]'; }).join(', ') + ' { display: none; }'
+              ? hidden.map(function (c) { return '#systemTable [data-col="' + c.key + '"]'; }).join(', ') + ' { display: none !important; }'
               : '';
             document.querySelectorAll('#systemColumnsMenu input[data-col]').forEach(function (box) {
               box.checked = box.disabled || visible.indexOf(box.dataset.col) !== -1;
@@ -407,19 +408,20 @@
           field('Operations department (L2)', unit(system.ops_department_id, system.ops_department_name)) +
           field('Development department (L3)', unit(system.department_id, system.department_name)) +
           field('Alias', toArray(system.alias).length ? escapeHtml(toArray(system.alias).join(', ')) : '') +
-          field('Scope user access', chips(system.scopes, function (v) { return optionLabel(window.scopeOptionsData, v); })) +
           field('Architecture', chips(system.architecture, function (v) { return optionLabel(window.architectureOptionsData, v); })) +
           field('Tags', chips((system.tags || []).map(function (tg) { return typeof tg === 'string' ? tg : tg.name; }))) +
           field('Managers', contactLinks(system.contacts)) +
           (description ? field('Description', '<span class="text-pre-wrap">' + escapeHtml(description) + '</span>') : '') +
         '</div>');
 
-      // Access: URLs ("fqdn" column) and domains
+      // Access: who can reach the system (scope), URLs ("fqdn" column), domains
       const fqdns = toArray(system.fqdn);
       const domains = system.domains || [];
-      if (fqdns.length || domains.length) {
+      const scopes = system.scopes || [];
+      if (scopes.length || fqdns.length || domains.length) {
         html += section('Access',
           '<div class="detail-rows">' +
+            field('Scope user access', chips(scopes, function (v) { return optionLabel(window.scopeOptionsData, v); })) +
             field('Access URLs', fqdns.length ? '<ul class="detail-list">' + fqdns.map(urlItem).join('') + '</ul>' : '') +
             field('Domains', domains.length ? '<div class="chip-list">' + domains.map(function (d) {
               const name = d.domain || d;
