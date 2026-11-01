@@ -1,98 +1,80 @@
-
+// Application roles and their permissions (role_permissions).
 import { pool } from '../../../config/config.js';
+import { db, Where, replaceLinks, jsonList } from '../../shared/db.js';
 
-const Role = {
-  findAll: async () => {
-    const sql = 'SELECT id, name, description FROM roles ORDER BY id';
-    const result = await pool.query(sql);
-    return result.rows;
-  },
-  findById: async (id) => {
-    const sql = 'SELECT id, name, description FROM roles WHERE id = $1';
-    const result = await pool.query(sql, [id]);
+export const SUPERADMIN = 'superadmin';
+
+const SELECT_WITH_LINKS = `
+  SELECT r.*,
+    ${jsonList('p', { id: 'p.id', name: 'p.name' })} AS permissions,
+    (SELECT COUNT(*)::int FROM users x WHERE x.role_id = r.id) AS user_count
+  FROM roles r
+  LEFT JOIN role_permissions rp ON rp.role_id = r.id
+  LEFT JOIN permissions p ON p.id = rp.permission_id`;
+
+function filterWhere({ search = '' }) {
+  return new Where().search(search, ['r.name ILIKE ?', 'r.description ILIKE ?',
+    'EXISTS (SELECT 1 FROM role_permissions x JOIN permissions pp ON pp.id = x.permission_id WHERE x.role_id = r.id AND pp.name ILIKE ?)']);
+}
+
+class Role {
+  static async create({ name, description }, client) {
+    const result = await db(client).query('INSERT INTO roles (name, description) VALUES ($1, $2) RETURNING *', [name, description ?? null]);
     return result.rows[0];
-  },
-  create: async ({ name, description }) => {
-    const sql = 'INSERT INTO roles (name, description) VALUES ($1, $2) RETURNING *';
-    const result = await pool.query(sql, [name, description]);
-    return result.rows[0];
-  },
-  update: async (id, { name, description }) => {
-    const sql = 'UPDATE roles SET name = $1, description = $2 WHERE id = $3 RETURNING *';
-    const result = await pool.query(sql, [name, description, id]);
-    return result.rows[0];
-  },
-  delete: async (id) => {
-    await pool.query('DELETE FROM roles WHERE id = $1', [id]);
-  },
-  getPermissions: async (roleId) => {
-    const sql = `SELECT p.id, p.name, p.description FROM role_permissions rp JOIN permissions p ON rp.permission_id = p.id WHERE rp.role_id = $1 ORDER BY p.name`;
-    const result = await pool.query(sql, [roleId]);
-    return result.rows;
-  },
-  updatePermissions: async (roleId, permissionIds) => {
-    await pool.query('DELETE FROM role_permissions WHERE role_id = $1', [roleId]);
-    for (const pid of permissionIds) {
-      await pool.query('INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)', [roleId, pid]);
-    }
-  },
-  // Create a role and assign permissions in a transaction-aware way
-  createWithPermissions: async ({ name, description, permissions }, client) => {
-    // Insert role
-    const insertRoleResult = await client.query('INSERT INTO roles (name, description) VALUES ($1, $2) RETURNING *', [name, description]);
-    const newRole = insertRoleResult.rows[0];
-    // Assign permissions
-    await client.query('DELETE FROM role_permissions WHERE role_id = $1', [newRole.id]);
-    for (const pid of permissions) {
-      await client.query('INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)', [newRole.id, pid]);
-    }
-    return newRole;
-  },
-  
-  /**
-   * Count roles with optional filters (for pagination/search)
-   * @param {Object} filters
-   * @returns {Promise<number>}
-   */
-  countFiltered: async (filters = {}) => {
-    let whereClause = '';
-    let queryParams = [];
-    let paramCount = 0;
-    
-    if (filters.search) {
-      whereClause = `WHERE name ILIKE $${++paramCount} OR description ILIKE $${++paramCount}`;
-      const searchPattern = `%${filters.search}%`;
-      queryParams = [searchPattern, searchPattern];
-    }
-    
-    const sql = `SELECT COUNT(*) FROM roles ${whereClause}`;
-    const result = await pool.query(sql, queryParams);
-    return parseInt(result.rows[0].count, 10);
-  },
-  
-  /**
-   * Get a filtered page of roles (for pagination/search)
-   * @param {Object} params
-   * @param {number} params.page
-   * @param {number} params.pageSize
-   * @returns {Promise<Array>}
-   */
-  findFilteredList: async ({ page, pageSize, ...filters }) => {
-    let whereClause = '';
-    let queryParams = [];
-    let paramCount = 0;
-    
-    if (filters && typeof filters['search'] === 'string' && filters['search'].trim()) {
-      whereClause = `WHERE name ILIKE $${++paramCount} OR description ILIKE $${++paramCount}`;
-      const searchPattern = `%${filters['search']}%`;
-      queryParams = [searchPattern, searchPattern];
-    }
-    
-    const offset = (page - 1) * pageSize;
-    const sql = `SELECT id, name, description FROM roles ${whereClause} ORDER BY name LIMIT $${++paramCount} OFFSET $${++paramCount}`;
-    const result = await pool.query(sql, [...queryParams, pageSize, offset]);
+  }
+
+  static async update(id, { name, description }, client) {
+    await db(client).query('UPDATE roles SET name = $1, description = $2 WHERE id = $3', [name, description ?? null, id]);
+  }
+
+  // role_permissions cascades
+  static async remove(id, client) {
+    await db(client).query('DELETE FROM roles WHERE id = $1', [id]);
+  }
+
+  static async findById(id) {
+    const result = await pool.query(`${SELECT_WITH_LINKS} WHERE r.id = $1 GROUP BY r.id`, [id]);
+    return result.rows[0] || null;
+  }
+
+  static async findByName(name) {
+    const result = await pool.query('SELECT * FROM roles WHERE LOWER(name) = LOWER($1)', [name]);
+    return result.rows[0] || null;
+  }
+
+  // {id, text} for the user form and filters (a handful of rows)
+  static async options() {
+    const result = await pool.query('SELECT id, name AS text FROM roles ORDER BY name');
     return result.rows;
   }
-};
+
+  static async findFilteredList(filter = {}) {
+    const { page = 1, pageSize = 10 } = filter;
+    const w = filterWhere(filter);
+    const result = await pool.query(
+      `${SELECT_WITH_LINKS} WHERE ${w} GROUP BY r.id ORDER BY r.name LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      w.params
+    );
+    return result.rows;
+  }
+
+  static async countFiltered(filter = {}) {
+    const w = filterWhere(filter);
+    const result = await pool.query(`SELECT COUNT(*) FROM roles r WHERE ${w}`, w.params);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  static setPermissions(id, ids, client) { return replaceLinks(client, 'role_permissions', 'role_id', id, 'permission_id', ids); }
+
+  // The superadmin role always holds every permission
+  static async grantAllToSuperadmin(client) {
+    await db(client).query(
+      `INSERT INTO role_permissions (role_id, permission_id)
+       SELECT r.id, p.id FROM roles r CROSS JOIN permissions p WHERE r.name = $1
+       AND NOT EXISTS (SELECT 1 FROM role_permissions x WHERE x.role_id = r.id AND x.permission_id = p.id)`,
+      [SUPERADMIN]
+    );
+  }
+}
 
 export default Role;

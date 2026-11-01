@@ -1,0 +1,39 @@
+<%#
+  Add / Edit Permission.  mode, record. The name ("<resource>.<action>") is fixed once created: the code checks it.
+%>
+<% const isEdit = mode === 'edit'; const p = locals.record || {}; %>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [
+  { label: 'Permission Management', href: '/administrator/permissions' }, { label: isEdit ? 'Edit Permission' : 'Add Permission' }
+] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
+    <form class="card form-card" method="POST" action="<%= isEdit ? '/administrator/permissions/' + p.id + '/edit' : '/administrator/permissions/add' %>">
+      <div class="card-header form-card-header">
+        <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit Permission' : 'Add Permission') %></h3>
+      </div>
+      <div class="card-body">
+        <section class="form-section">
+          <div class="row g-3">
+            <div class="col-md-5">
+              <label class="form-label" for="f-name"><%= t('Permission Name') %> <span class="text-danger">*</span></label>
+              <% if (isEdit) { %>
+                <input type="text" id="f-name" class="form-control font-monospace" value="<%= p.name %>" disabled>
+              <% } else { %>
+                <input type="text" id="f-name" name="name" class="form-control font-monospace" required placeholder="asset.read"
+                       pattern="[a-zA-Z0-9_]+\.(read|create|update|delete)">
+                <div class="form-text"><%= t('Format: resource.read | resource.create | resource.update | resource.delete') %></div>
+              <% } %>
+            </div>
+            <div class="col-md-7">
+              <label class="form-label" for="f-description"><%= t('Description') %></label>
+              <input type="text" id="f-description" name="description" class="form-control" value="<%= p.description || '' %>">
+            </div>
+          </div>
+        </section>
+      </div>
+      <%- include('../../partials/ui/form_actions', { cancelUrl: '/administrator/permissions', submitLabel: isEdit ? 'Save Changes' : 'Add Permission' }) %>
+    </form>
+  </div>
+</div>

@@ -604,6 +604,24 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
+- ♻️ Administrator: users, roles and permissions rebuilt on the UI kit
+  (filters for role / sign-in / status / 2FA, Add/Edit pages). The role
+  form shows permissions as a resource × action grid. Configuration and
+  system log keep their pages, now in their own controllers
+  (`configuration.controller.js`, `system-log.controller.js`).
+- 🛡️ User management rules (`user.service.js`): one transaction per save
+  (a wrong repeat password no longer leaves 2FA changes behind); nobody
+  can delete, deactivate or change the role of their own account; at
+  least one active superadmin always remains (replaces the hard-coded
+  `admin` username check); usernames and emails are unique ignoring case;
+  passwords set by an admin follow the change-password rule (8+
+  characters, upper, lower, digit — `src/shared/password.js`).
+- 🛡️ Deactivating, deleting, or changing a user's role, sign-in method,
+  username, password or 2FA now ends that user's open sessions (they were
+  kept with the old role until logout).
+- 🛡️ The superadmin role cannot be edited, renamed to or deleted, and gets
+  every new permission; a role still assigned to users cannot be deleted;
+  saving a role clears only that role's cached permissions.
 - ♻️ Firewall rules rebuilt on the UI kit (multi-select filters, column
   chooser, detail modal with source / destination / violation sections,
   Add/Edit page, shared importer and export). The 1750-line controller

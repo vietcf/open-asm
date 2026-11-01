@@ -1,126 +1,62 @@
+// Application permissions ("<resource>.<action>").
 import { pool } from '../../../config/config.js';
+import { db, Where } from '../../shared/db.js';
 
-/**
- * Permission model for PostgreSQL (ES6 class style)
- * Provides static methods for CRUD and role-based permission queries.
- */
+const SELECT = `SELECT p.*, (SELECT COUNT(*)::int FROM role_permissions x WHERE x.permission_id = p.id) AS role_count FROM permissions p`;
+
+const filterWhere = ({ search = '' }) => new Where().search(search, ['p.name ILIKE ?', 'p.description ILIKE ?']);
+
 class Permission {
-  /**
-   * Get all permissions
-   * @returns {Promise<Array>}
-   */
-  static async findAll() {
-    const sql = 'SELECT id, name, description FROM permissions ORDER BY name';
-    const result = await pool.query(sql);
-    return result.rows;
+  static async create({ name, description }, client) {
+    const result = await db(client).query('INSERT INTO permissions (name, description) VALUES ($1, $2) RETURNING *', [name, description ?? null]);
+    return result.rows[0];
   }
 
-  /**
-   * Find permission by ID
-   * @param {number} id
-   * @returns {Promise<Object|null>}
-   */
+  // The name is immutable (code checks it)
+  static async update(id, { description }, client) {
+    await db(client).query('UPDATE permissions SET description = $1 WHERE id = $2', [description ?? null, id]);
+  }
+
+  // role_permissions cascades
+  static async remove(id, client) {
+    await db(client).query('DELETE FROM permissions WHERE id = $1', [id]);
+  }
+
   static async findById(id) {
-    const sql = 'SELECT id, name, description FROM permissions WHERE id = $1';
-    const result = await pool.query(sql, [id]);
-    return result.rows[0];
+    const result = await pool.query(`${SELECT} WHERE p.id = $1`, [id]);
+    return result.rows[0] || null;
   }
 
-  /**
-   * Create a new permission
-   * @param {Object} param0
-   * @param {string} param0.name
-   * @param {string} param0.description
-   * @returns {Promise<Object>}
-   */
-  static async create({ name, description }) {
-    const sql = 'INSERT INTO permissions (name, description) VALUES ($1, $2) RETURNING *';
-    const result = await pool.query(sql, [name, description]);
-    return result.rows[0];
+  static async findByName(name) {
+    const result = await pool.query('SELECT * FROM permissions WHERE name = $1', [name]);
+    return result.rows[0] || null;
   }
 
-  /**
-   * Update a permission's description
-   * @param {number} id
-   * @param {Object} param1
-   * @param {string} param1.description
-   * @returns {Promise<Object>}
-   */
-  static async update(id, { description }) {
-    const sql = 'UPDATE permissions SET description = $1 WHERE id = $2 RETURNING *';
-    const result = await pool.query(sql, [description, id]);
-    return result.rows[0];
+  // Every permission (the role form shows them all, grouped by resource)
+  static async findAll() {
+    const result = await pool.query('SELECT id, name, description FROM permissions ORDER BY name');
+    return result.rows;
   }
 
-  /**
-   * Delete a permission by ID
-   * @param {number} id
-   * @returns {Promise<void>}
-   */
-  static async delete(id) {
-    await pool.query('DELETE FROM permissions WHERE id = $1', [id]);
-  }
-
-  /**
-   * Find permissions by role ID
-   * @param {number} roleId
-   * @returns {Promise<Array>}
-   */
   static async findByRoleId(roleId) {
-    const sql = `
-      SELECT p.id, p.name, p.description
-      FROM permissions p
-      JOIN role_permissions rp ON rp.permission_id = p.id
-      WHERE rp.role_id = $1
-      ORDER BY p.name
-    `;
-    const result = await pool.query(sql, [roleId]);
+    const result = await pool.query(
+      'SELECT p.id, p.name FROM role_permissions rp JOIN permissions p ON p.id = rp.permission_id WHERE rp.role_id = $1',
+      [roleId]
+    );
     return result.rows;
   }
 
-  /**
-   * Count permissions with optional filters (for pagination/search)
-   * @param {Object} filters
-   * @returns {Promise<number>}
-   */
-  static async countFiltered(filters = {}) {
-    let whereClause = '';
-    let queryParams = [];
-    let paramCount = 0;
-    
-    if (filters.search) {
-      whereClause = `WHERE name ILIKE $${++paramCount} OR description ILIKE $${++paramCount}`;
-      const searchPattern = `%${filters.search}%`;
-      queryParams = [searchPattern, searchPattern];
-    }
-    
-    const sql = `SELECT COUNT(*) FROM permissions ${whereClause}`;
-    const result = await pool.query(sql, queryParams);
+  static async findFilteredList(filter = {}) {
+    const { page = 1, pageSize = 10 } = filter;
+    const w = filterWhere(filter);
+    const result = await pool.query(`${SELECT} WHERE ${w} ORDER BY p.name LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`, w.params);
+    return result.rows;
+  }
+
+  static async countFiltered(filter = {}) {
+    const w = filterWhere(filter);
+    const result = await pool.query(`SELECT COUNT(*) FROM permissions p WHERE ${w}`, w.params);
     return parseInt(result.rows[0].count, 10);
-  }
-
-  /**
-   * Get a filtered page of permissions (for pagination/search)
-   * @param {Object} params
-   * @param {number} params.page
-   * @param {number} params.pageSize
-   * @returns {Promise<Array>}
-   */
-  static async findFilteredList({ page, pageSize, ...filters }) {
-    let whereClause = '';
-    let queryParams = [];
-    let paramCount = 0;
-    
-    if (filters.search) {
-      whereClause = `WHERE name ILIKE $${++paramCount} OR description ILIKE $${++paramCount}`;
-      const searchPattern = `%${filters.search}%`;
-      queryParams = [searchPattern, searchPattern];
-    }
-    
-    const offset = (page - 1) * pageSize;
-    const sql = `SELECT id, name, description FROM permissions ${whereClause} ORDER BY name LIMIT $${++paramCount} OFFSET $${++paramCount}`;
-    const result = await pool.query(sql, [...queryParams, pageSize, offset]);
-    return result.rows;
   }
 }
 

@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import User from '../administrator/user.model.js';
+import { isStrongPassword } from '../../shared/password.js';
 
 const changePasswordController = {};
 
@@ -29,15 +30,13 @@ changePasswordController.postChangePassword = async (req, res) => {
   const { currentPassword, newPassword, confirmPassword } = req.body;
   let error = null;
   let success = null;
-  // Password validation rules
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
   if (!currentPassword || !newPassword || !confirmPassword) {
     error = 'Please enter all required information.';
   } else if (newPassword !== confirmPassword) {
     error = 'The new password and confirmation do not match.';
   } else if (newPassword === currentPassword) {
     error = 'The new password must not be the same as the current password.';
-  } else if (!passwordRegex.test(newPassword)) {
+  } else if (!isStrongPassword(newPassword)) {
     error = 'The new password must be at least 8 characters and include uppercase, lowercase, and a number.';
   }
   if (!error) {

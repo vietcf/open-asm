@@ -1,478 +1,112 @@
-<!-- Content Header -->
-<div class="app-content-header">
-  <div class="container-fluid">
-    <div class="row">
-      <div class="col-12">
-        <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/"><%= t('Home') %></a></li>
-          <li class="breadcrumb-item active"><%= t('User List') %></li>
-        </ol>
-      </div>
-    </div>
-  </div>
-</div>
+<%
+  const f = filter;
+  const activeFilterCount = [f.role_id.length, f.auth_source.length, f.status, f.twofa].filter(Boolean).length;
+  const AUTH = [{ id: 'local', text: t('Local') }, { id: 'ldap', text: 'LDAP' }];
+  const COLUMNS = [
+    { key: 'username', label: 'Username', def: true, fixed: true },
+    { key: 'fullname', label: 'Full Name', def: true },
+    { key: 'email', label: 'Email', def: true },
+    { key: 'role', label: 'Role', def: true },
+    { key: 'auth', label: 'Sign-in', def: true },
+    { key: 'twofa', label: '2FA', def: true },
+    { key: 'status', label: 'Status', def: true },
+    { key: 'created', label: 'Created At' },
+  ];
+  const badge = (cls, text) => `<span class="badge ${cls}">${ui.esc(text)}</span>`;
+  const cell = (u, key) => ({
+    username: ui.esc(u.username) + (u.id === currentUserId ? ` <small class="text-secondary">(${t('you')})</small>` : ''),
+    fullname: ui.text(u.fullname),
+    email: ui.text(u.email),
+    role: ui.chips([u.role_name]),
+    auth: u.auth_source === 'ldap' ? badge('text-bg-info', 'LDAP') : badge('tag', t('Local')) + (u.must_change_password ? ` <i class="bi bi-key text-warning" title="${t('Must change password')}"></i>` : ''),
+    twofa: u.twofa_enabled ? badge('text-bg-success', t('Enabled')) : (u.require_twofa ? badge('text-bg-warning', t('Pending setup')) : ui.dash),
+    status: u.is_active ? badge('text-bg-success', t('Active')) : badge('text-bg-secondary', t('Inactive')),
+    created: ui.date(u.created_at),
+  })[key];
+%>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'Administrator' }, { label: 'User Management' }] }) %>
 
-<!-- Main content -->
 <div class="app-content">
-<div class="container-fluid">
-  <!-- Search and Page Size Row -->
-  <div class="row mb-3">
-    <div class="col-12">
-      <div class="d-flex justify-content-end align-items-center gap-2">
-        <form class="d-flex align-items-center gap-2" role="search" method="get" action="/administrator/users">
-          <div class="input-group input-group-sm" style="width: 250px;">
-            <input class="form-control form-control-sm" type="search" name="search" placeholder="<%= t('Search users...') %>" aria-label="<%= t('Search') %>" value="<%= typeof search !== 'undefined' ? search : '' %>">
-            <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
+  <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
+
+    <div class="card list-card">
+      <form class="list-filter-form" method="get" action="/administrator/users">
+        <input type="hidden" name="pageSize" value="<%= pageSize %>">
+        <%- include('../../partials/ui/list_toolbar', {
+              search, searchPlaceholder: 'Search by username, name, email, role...',
+              filtersId: 'userFilters', activeFilterCount,
+              columns: { tableId: 'userTable', storageKey: 'openasm.userList.columns', list: COLUMNS },
+              addUrl: hasPermission('user.create') ? '/administrator/users/add' : null, addLabel: 'Add User' }) %>
+        <div class="collapse<%= activeFilterCount ? ' show' : '' %>" id="userFilters">
+          <div class="list-filters">
+            <div class="row g-2">
+              <div class="col-md-3">
+                <label class="form-label small"><%= t('Role') %></label>
+                <select name="role_id" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"><%- ui.options(roleOptions, f.role_id) %></select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small"><%= t('Sign-in') %></label>
+                <select name="auth_source" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"><%- ui.options(AUTH, f.auth_source) %></select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small"><%= t('Status') %></label>
+                <select name="status" class="form-select js-filter" data-placeholder="<%= t('All') %>"><option value=""></option>
+                  <%- ui.options([{ id: 'active', text: t('Active') }, { id: 'inactive', text: t('Inactive') }], f.status) %></select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small">2FA</label>
+                <select name="twofa" class="form-select js-filter" data-placeholder="<%= t('All') %>"><option value=""></option>
+                  <%- ui.options([{ id: 'enabled', text: t('Enabled') }, { id: 'required', text: t('Pending setup') }, { id: 'off', text: t('Off') }], f.twofa) %></select>
+              </div>
             </div>
-          <div class="d-flex align-items-center gap-1">
-            <label class="form-label form-label-sm mb-0 text-muted"><%= t('Show:') %></label>
-            <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
-              <% (pageSizeOptions || [10,20,50,100]).forEach(function(size) { %>
-                <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
-                    <% }) %>
-                  </select>
-                </div>
-              </form>
-            </div>
+            <% if (activeFilterCount) { %>
+              <div class="mt-2 text-end"><a href="#" class="small" data-clear-filters><i class="bi bi-x-circle me-1"></i><%= t('Clear All Filters') %></a></div>
+            <% } %>
           </div>
         </div>
+      </form>
 
-    <!-- Action Buttons -->
-    <div class="row mb-3">
-      <div class="col-12">
-        <div class="d-flex justify-content-end gap-2">
-          <% if (hasPermission('user.create')) { %>
-          <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addUserModal">
-            <i class="bi bi-plus"></i> <%= t('Add User') %>
-          </button>
-          <% } %>
-        </div>
-      </div>
-    </div>
-
-    <!-- Flash Messages -->
-    <% if (typeof success !== 'undefined' && success) { %>
-      <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
-        <i class="bi bi-check-circle me-2"></i><%= t(success) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
-      </div>
-      <script>
-        // Auto-hide success message after 5 seconds
-        setTimeout(function() {
-          const alert = document.getElementById('successAlert');
-          if (alert) {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-          }
-        }, 5000);
-      </script>
-    <% } %>
-
-    <% if (typeof error !== 'undefined' && error) { %>
-      <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
-        <i class="bi bi-exclamation-triangle me-2"></i><%= t(error) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
-      </div>
-      <script>
-        // Auto-hide error message after 8 seconds (longer for errors)
-        setTimeout(function() {
-          const alert = document.getElementById('errorAlert');
-          if (alert) {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-          }
-        }, 8000);
-      </script>
-    <% } %>
-
-    <div class="row">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title mb-0"><%= t('User List') %></h3>
-          </div>
-          <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
-            <table class="table table-hover" id="userTable">
-              <thead>
-                <tr>
-                  <th><%= t('No.') %></th>
-                  <th data-sort-type="text"><%= t('Username') %></th>
-                  <th data-sort-type="text"><%= t('Email') %></th>
-                  <th data-sort-type="text"><%= t('Full Name') %></th>
-                  <th data-sort-type="text"><%= t('Role') %></th>
-                  <th data-sort-type="text"><%= t('Auth') %></th>
-                  <th data-sort-type="text">2FA</th>
-                  <th data-sort-type="text"><%= t('Status') %></th>
-                  <th class="text-end"><%= t('Actions') %></th>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle table-stack" id="userTable">
+          <thead>
+            <tr>
+              <th class="col-index">#</th>
+              <% COLUMNS.forEach(function (c) { %><th data-col="<%= c.key %>"><%= t(c.label) %></th><% }) %>
+              <th class="col-actions"><%= t('Actions') %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (userList.length) { %>
+              <% userList.forEach(function (u, idx) { %>
+                <tr<%- u.is_active ? '' : ' class="text-secondary"' %>>
+                  <td class="col-index"><%= (page - 1) * pageSize + idx + 1 %></td>
+                  <% COLUMNS.forEach(function (c) { %><td data-col="<%= c.key %>" data-label="<%= t(c.label) %>"<%- c.key === 'username' ? ' class="fw-medium"' : '' %>><%- cell(u, c.key) %></td><% }) %>
+                  <td class="col-actions">
+                    <div class="row-actions">
+                      <% if (hasPermission('user.update')) { %>
+                        <a href="/administrator/users/<%= u.id %>/edit" class="btn btn-sm btn-outline-secondary" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
+                      <% } %>
+                      <% if (hasPermission('user.delete') && u.id !== currentUserId) { %>
+                        <form action="/administrator/users/<%= u.id %>/delete" method="POST" data-confirm="<%= t('Delete {1}?', { 1: u.username }) %>">
+                          <button type="submit" class="btn btn-sm btn-outline-secondary btn-delete" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
+                        </form>
+                      <% } %>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                <% if (userList && userList.length > 0) { %>
-                  <% userList.forEach(function(user, idx) { %>
-                    <tr>
-                      <td><%= idx + 1 %></td>
-                      <td><%= user.username %></td>
-                      <td><%= user.email %></td>
-                      <td><%= user.fullname || '-' %></td>
-                      <td><%= user.role_name || '-' %></td>
-                      <td>
-                        <% if (user.auth_source === 'ldap') { %>
-                          <span class="badge bg-info text-dark">LDAP</span>
-                        <% } else { %>
-                          <span class="badge bg-secondary"><%= t('Local') %></span>
-                        <% } %>
-                      </td>
-                      <td>
-                        <% if (user.require_twofa) { %>
-                          <span class="badge bg-success"><%= t('Enabled') %></span>
-                        <% } else { %>
-                          <span class="badge bg-secondary"><%= t('Disabled') %></span>
-                        <% } %>
-                      </td>
-                      <td>
-                        <% if (user.is_active) { %>
-                          <span class="badge bg-success"><%= t('Active') %></span>
-                        <% } else { %>
-                          <span class="badge bg-danger"><%= t('Inactive') %></span>
-                        <% } %>
-                      </td>
-                      <td class="text-end">
-                        <% if (hasPermission('user.update')) { %>
-                        <button type="button" class="btn btn-info btn-sm me-1" data-bs-toggle="modal" data-bs-target="#userEditModal-<%= user.id %>" title="<%= t('Edit') %>">
-                          <i class="bi bi-pencil"></i>
-                        </button>
-                        <% } %>
-                        <% if (hasPermission('user.delete')) { %>
-                        <button type="button" class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#userDeleteModal-<%= user.id %>" title="<%= t('Delete') %>">
-                          <i class="bi bi-trash"></i>
-                        </button>
-                        <% } %>
-                      </td>
-                    </tr>
-                  <% }) %>
-                <% } else { %>
-                  <tr><td colspan="9" class="text-center"><%= t('No data') %></td></tr>
-                <% } %>
-              </tbody>
-            </table>
-          </div>
-          <div class="card-footer clearfix">
-            <div class="d-flex justify-content-between align-items-center px-3 py-2">
-              <div>
-                <% 
-                  // Calculate pagination range like IP address list
-                  const userStartItem = (page - 1) * pageSize + 1;
-                  const userEndItem = Math.min(page * pageSize, totalCount || 0);
-                  const userStartPage = Math.max(1, page - 2);
-                  const userEndPage = Math.min(totalPages, page + 2);
-                %>
-                <span><%= t('Showing {1} - {2} of {3} users', { 1: userStartItem, 2: userEndItem, 3: typeof totalCount !== 'undefined' ? totalCount : 0 }) %></span>
-              </div>
-              <ul class="pagination pagination-sm m-0 float-end">
-                <% 
-                  function buildUserFilterQuery() {
-                    let params = [];
-                    if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
-                    if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
-                    return params.join('&');
-                  }
-                  const userFilterQuery = buildUserFilterQuery();
-                %>
-                <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page - 1 %><%= userFilterQuery ? '&' + userFilterQuery : '' %>" tabindex="-1"><%= t('Previous') %></a>
-                </li>
-                <% if (userStartPage > 1) { %>
-                  <li class="page-item"><a class="page-link" href="?page=1<%= userFilterQuery ? '&' + userFilterQuery : '' %>">1</a></li>
-                  <% if (userStartPage > 2) { %>
-                    <li class="page-item disabled"><span class="page-link">...</span></li>
-                  <% } %>
-                <% } %>
-                <% for (let i = userStartPage; i <= userEndPage; i++) { %>
-                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= userFilterQuery ? '&' + userFilterQuery : '' %>"><%= i %></a></li>
-                <% } %>
-                <% if (userEndPage < totalPages) { %>
-                  <li class="page-item disabled"><span class="page-link">...</span></li>
-                  <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= userFilterQuery ? '&' + userFilterQuery : '' %>"><%= totalPages %></a></li>
-                <% } %>
-                <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page + 1 %><%= userFilterQuery ? '&' + userFilterQuery : '' %>"><%= t('Next') %></a>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  </div>
-  <!-- Add User Modal -->
-  <% if (hasPermission('user.create')) { %>
-  <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="addUserModalLabel">
-            <i class="bi bi-plus-circle me-2"></i><%= t('Add User') %>
-          </h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
-        </div>
-        <div class="modal-body">
-          <form id="addUserForm" action="/administrator/users" method="POST">
-            <div class="mb-3">
-              <label class="form-label"><%= t('Username') %> <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" name="username" required pattern="^[a-zA-Z0-9_.-]{3,50}$" title="<%= t('3-50 characters: letters, numbers, dots, hyphens, and underscores only (no spaces)') %>" maxlength="50" placeholder="<%= t('Enter username') %>">
-            </div>
-            <div class="mb-3">
-              <label class="form-label"><%= t('Email') %> <span class="text-danger">*</span></label>
-              <input type="email" class="form-control" name="email" required placeholder="<%= t('Enter email address') %>">
-            </div>
-            <div class="mb-3">
-              <label class="form-label"><%= t('Full Name') %></label>
-              <input type="text" class="form-control" name="fullname" placeholder="<%= t('Enter full name') %>">
-            </div>
-            <div class="mb-3">
-              <label class="form-label"><%= t('Role') %> <span class="text-danger">*</span></label>
-              <select class="form-select user-role-select2" name="role" required>
-                <option value="">-- <%= t('Select Role --') %></option>
-                <% if (roles && roles.length) { roles.forEach(function(role) { %>
-                  <option value="<%= role.id %>"><%= role.name %></option>
-                <% }) } %>
-              </select>
-            </div>
-            <div class="mb-3">
-              <label class="form-label"><%= t('Authentication Method') %> <span class="text-danger">*</span></label>
-              <select class="form-select auth-source-select" name="auth_source">
-                <option value="local" selected><%= t('Local') %></option>
-                <option value="ldap"><%= t('LDAP (Active Directory)') %></option>
-              </select>
-              <div class="form-text"><%= t('LDAP users authenticate against AD using their sAMAccountName as username; no local password is stored.') %></div>
-            </div>
-            <div class="mb-3 auth-source-password-field">
-              <label class="form-label"><%= t('Password') %> <span class="text-danger">*</span></label>
-              <input type="password" class="form-control" name="password" required minlength="4" placeholder="<%= t('Enter password') %>">
-            </div>
-            <div class="mb-3">
-              <label class="form-label"><%= t('Require 2FA') %></label>
-              <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" name="require_twofa" checked>
-                <label class="form-check-label"><%= t('Enable Two-Factor Authentication') %></label>
-              </div>
-            </div>
-            <div class="mb-3 auth-source-mcp-field">
-              <label class="form-label"><%= t('Must Change Password') %></label>
-              <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" name="must_change_password">
-                <label class="form-check-label"><%= t('Force password change on next login') %></label>
-              </div>
-            </div>
-          </form>
-        </div>
-        <div class="modal-footer d-flex justify-content-end">
-          <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal"><%= t('Cancel') %></button>
-          <button type="submit" class="btn btn-primary btn-sm" form="addUserForm"><%= t('Add User') %></button>
-        </div>
-      </div>
-    </div>
-  </div>
-  <% } %>
-
-  <!-- Edit User Modals -->
-  <% if (userList && userList.length > 0) { %>
-    <% userList.forEach(function(user) { %>
-      <div class="modal fade" id="userEditModal-<%= user.id %>" tabindex="-1" aria-labelledby="userEditModalLabel-<%= user.id %>" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="userEditModalLabel-<%= user.id %>">
-                <i class="bi bi-pencil me-2"></i><%= t('Edit User: {1}', { 1: user.username }) %>
-              </h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
-            </div>
-            <div class="modal-body">
-              <form id="editUserForm-<%= user.id %>" action="/administrator/users/<%= user.id %>?_method=PUT" method="POST">
-                <div class="mb-3">
-                  <label class="form-label"><%= t('Username') %> <span class="text-danger">*</span></label>
-                  <input type="text" class="form-control" name="username" value="<%= user.username %>" required pattern="^[a-zA-Z0-9_.-]{3,50}$" title="<%= t('3-50 characters: letters, numbers, dots, hyphens, and underscores only (no spaces)') %>" maxlength="50" placeholder="<%= t('Enter username') %>">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label"><%= t('Email') %> <span class="text-danger">*</span></label>
-                  <input type="email" class="form-control" name="email" value="<%= user.email %>" required placeholder="<%= t('Enter email address') %>">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label"><%= t('Full Name') %></label>
-                  <input type="text" class="form-control" name="fullname" value="<%= user.fullname || '' %>" placeholder="<%= t('Enter full name') %>">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label"><%= t('Role') %> <span class="text-danger">*</span></label>
-                  <select class="form-select user-role-select2" name="role" required>
-                    <option value="">-- <%= t('Select Role --') %></option>
-                    <% if (roles && roles.length) { roles.forEach(function(role) { %>
-                      <option value="<%= role.id %>" <%= user.role_id === role.id ? 'selected' : '' %>><%= role.name %></option>
-                    <% }) } %>
-                  </select>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label"><%= t('Authentication Method') %> <span class="text-danger">*</span></label>
-                  <select class="form-select auth-source-select" name="auth_source">
-                    <option value="local" <%= user.auth_source !== 'ldap' ? 'selected' : '' %>><%= t('Local') %></option>
-                    <option value="ldap" <%= user.auth_source === 'ldap' ? 'selected' : '' %>><%= t('LDAP (Active Directory)') %></option>
-                  </select>
-                  <div class="form-text"><%= t('LDAP users authenticate against AD using their sAMAccountName as username; no local password is stored.') %></div>
-                </div>
-                <div class="mb-3 auth-source-password-field">
-                  <label class="form-label"><%= t('New Password') %></label>
-                  <input type="password" class="form-control" name="password" placeholder="<%= t('Leave blank to keep current password') %>" minlength="4">
-                </div>
-                <div class="mb-3 auth-source-password-field">
-                  <label class="form-label"><%= t('Repeat Password') %></label>
-                  <input type="password" class="form-control" name="repeat_password" placeholder="<%= t('Repeat new password') %>" minlength="4">
-                </div>
-                <div class="mb-3">
-                  <label class="form-label"><%= t('Require 2FA') %></label>
-                  <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" name="require_twofa" <%= user.require_twofa ? 'checked' : '' %>>
-                    <label class="form-check-label"><%= t('Enable Two-Factor Authentication') %></label>
-                  </div>
-                </div>
-                <div class="mb-3 auth-source-mcp-field">
-                  <label class="form-label"><%= t('Must Change Password') %></label>
-                  <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" name="must_change_password" <%= user.must_change_password ? 'checked' : '' %>>
-                    <label class="form-check-label"><%= t('Force password change on next login') %></label>
-                  </div>
-                </div>
-                <div class="mb-3">
-                  <label class="form-label"><%= t('Account Status') %></label>
-                  <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" name="is_active" <%= user.is_active ? 'checked' : '' %>>
-                    <label class="form-check-label"><%= t('Active') %></label>
-                  </div>
-                </div>
-              </form>
-            </div>
-            <div class="modal-footer d-flex justify-content-end">
-              <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal"><%= t('Cancel') %></button>
-              <button type="submit" class="btn btn-primary btn-sm" form="editUserForm-<%= user.id %>"><%= t('Save Changes') %></button>
-            </div>
-          </div>
-        </div>
+              <% }); %>
+            <% } else { %>
+              <tr><td colspan="<%= COLUMNS.length + 2 %>">
+                <%- include('../../partials/ui/empty_state', { icon: 'bi-people', message: 'No users found', filtered: activeFilterCount > 0 || !!search, clearUrl: '/administrator/users',
+                      actionUrl: hasPermission('user.create') ? '/administrator/users/add' : null, actionLabel: 'Add User' }) %>
+              </td></tr>
+            <% } %>
+          </tbody>
+        </table>
       </div>
 
-      <!-- Delete User Modal -->
-      <div class="modal fade" id="userDeleteModal-<%= user.id %>" tabindex="-1" aria-labelledby="userDeleteModalLabel-<%= user.id %>" aria-hidden="true">
-        <div class="modal-dialog">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="userDeleteModalLabel-<%= user.id %>"><%= t('Delete User') %></h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
-            </div>
-            <div class="modal-body">
-              <p><%= t('Are you sure you want to delete user') %> <strong><%= user.username %></strong>?</p>
-              <p class="text-danger"><%= t('This action cannot be undone.') %></p>
-            </div>
-            <div class="modal-footer">
-              <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
-              <form action="/administrator/users/<%= user.id %>?_method=DELETE" method="POST" style="display:inline;">
-                <button type="submit" class="btn btn-danger btn-sm"><%= t('Delete') %></button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
-    <% }) %>
-  <% } %>
+      <%- include('../../partials/ui/pagination', { page, totalPages, totalCount, pageSize, count: userList.length, summary: 'Showing {1} - {2} of {3} users' }) %>
+    </div>
+  </div>
 </div>
-
-<script>
-// Role select styled like every other dropdown in the app (select2 instead
-// of a plain native <select>) - one select2 per modal (Add + one per Edit
-// modal), each scoped to its own modal for correct dropdown positioning.
-// Deferred to document-ready: select2.min.js loads after this page's body
-// content in the layout, so calling .select2() at parse time (before the
-// script has loaded) throws "not a function" and leaves a plain <select>.
-$(function() {
-  $('.user-role-select2').each(function() {
-    $(this).select2({
-      theme: 'bootstrap-5',
-      placeholder: t('Select role'),
-      allowClear: true,
-      width: '100%',
-      dropdownParent: $(this).closest('.modal')
-    });
-  });
-});
-
-// When an admin sets a new password for a user, nudge them to also force a
-// change on next login — otherwise the admin-chosen password can persist
-// indefinitely if they forget to tick the box separately.
-$(document).on('input', '[id^="userEditModal-"] form input[name="password"]', function() {
-  const $checkbox = $(this).closest('form').find('input[name="must_change_password"]');
-  if (this.value.length > 0) {
-    $checkbox.prop('checked', true);
-  }
-});
-
-// LDAP accounts have no local password: grey out the password field(s) and
-// "must change password" toggle whenever LDAP is selected, since AD owns
-// authentication for these users, not this app.
-function applyAuthSourceState($form) {
-  const isLdap = $form.find('select[name="auth_source"]').val() === 'ldap';
-  const $passwordFields = $form.find('.auth-source-password-field');
-  const $mcpCheckbox = $form.find('.auth-source-mcp-field input[name="must_change_password"]');
-
-  $passwordFields.find('input').prop('disabled', isLdap);
-  $passwordFields.toggleClass('opacity-50', isLdap);
-  if (isLdap) {
-    $passwordFields.find('input').val('');
-  }
-
-  $mcpCheckbox.prop('disabled', isLdap);
-  $mcpCheckbox.closest('.auth-source-mcp-field').toggleClass('opacity-50', isLdap);
-  if (isLdap) {
-    $mcpCheckbox.prop('checked', false);
-  }
-}
-
-$(document).on('change', '.auth-source-select', function() {
-  applyAuthSourceState($(this).closest('form'));
-});
-
-$(function() {
-  $('form').each(function() {
-    if ($(this).find('.auth-source-select').length) {
-      applyAuthSourceState($(this));
-    }
-  });
-});
-</script>
-
-<!-- Responsive Tables CSS -->
-<style>
-/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
-#userTable {
-  table-layout: fixed;
-  min-width: 1000px;
-}
-#userTable thead th {
-  white-space: nowrap;
-}
-#userTable th:nth-child(1), #userTable td:nth-child(1) { width: 4%; }
-#userTable th:nth-child(2), #userTable td:nth-child(2) { width: 12%; }
-#userTable th:nth-child(3), #userTable td:nth-child(3) { width: 18%; }
-#userTable th:nth-child(4), #userTable td:nth-child(4) { width: 13%; }
-#userTable th:nth-child(5), #userTable td:nth-child(5) { width: 11%; }
-#userTable th:nth-child(6), #userTable td:nth-child(6) { width: 9%; }
-#userTable th:nth-child(7), #userTable td:nth-child(7) { width: 9%; }
-#userTable th:nth-child(8), #userTable td:nth-child(8) { width: 9%; }
-#userTable th:nth-child(9), #userTable td:nth-child(9) { width: 15%; }
-
-#userTable td:nth-child(2),
-#userTable td:nth-child(3),
-#userTable td:nth-child(4) {
-  overflow-wrap: break-word;
-}
-#userTable td:nth-child(9) {
-  white-space: nowrap;
-  vertical-align: middle;
-}
-</style>
