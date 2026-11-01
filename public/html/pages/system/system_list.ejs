@@ -4,7 +4,7 @@
   const activeFilterCount = [filterTags.length, filterContacts.length, filterScopes.length,
     filterArchitecture.length, filterLevel ? 1 : 0, filterDepartment ? 1 : 0].filter(Boolean).length;
 %>
-<%- include('../../partials/ui/page_header', { title: 'System List', breadcrumbs: [{ label: 'System Management' }, { label: 'System List' }] }) %>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'System Management' }, { label: 'System List' }] }) %>
 
 <div class="app-content">
   <div class="container-fluid">
