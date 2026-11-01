@@ -68,19 +68,14 @@ export async function attachTmpUploads(objectType, objectId, docs, uploadedBy, c
   return created;
 }
 
-// Deletes only attachments that belong to the given object.
-export async function deleteObjectFiles(objectType, objectId, fileIds) {
+// Removes the records of the given attachments that belong to the object, inside
+// the caller's transaction; returns them for FileUpload.unlinkFiles() after commit.
+export async function removeObjectFiles(objectType, objectId, fileIds, client) {
   const ids = parseJsonList(fileIds).map(Number).filter(Number.isInteger);
-  if (!ids.length) return 0;
-  const owned = (await FileUpload.findByObject(objectType, objectId)).map(f => f.id);
-  let deleted = 0;
-  for (const id of ids) {
-    if (owned.includes(id)) {
-      await FileUpload.deleteById(id);
-      deleted++;
-    }
-  }
-  return deleted;
+  if (!ids.length) return [];
+  const owned = new Set((await FileUpload.findByObject(objectType, objectId)).map(f => f.id));
+  const mine = ids.filter(id => owned.has(id));
+  return mine.length ? FileUpload.removeRecordsById(mine, client) : [];
 }
 
 // { id, name, url } list for views / API responses

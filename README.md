@@ -519,16 +519,18 @@ markup, CSS or scripts:
 | --- | --- | --- |
 | List toolbar | `partials/ui/list_toolbar.ejs` | search, Filter button, column chooser, Export, Add |
 | Page frame | `partials/ui/page_header.ejs`, `flash.ejs`, `empty_state.ejs`, `pagination.ejs` | breadcrumb, messages, empty list, pager |
-| Filters panel | `.list-filters` + `public/js/list-filters.js` | `select.js-filter` (Select2, `data-ajax-url`) |
+| Filters panel | `.list-filters` + `public/js/list-filters.js` | `select.js-filter` (Select2, `data-ajax-url`), `input.js-filter-input` (dates) |
 | Column chooser | `partials/ui/columns_menu.ejs` + `public/js/list-columns.js` | `th/td[data-col]`, choice kept per browser |
-| Cell helpers | `ui.*` (`src/utils/viewHelpers.js`) | `ui.text`, `ui.clip`, `ui.chips`, `ui.mono`, `ui.date`, `ui.optionLabel` |
+| Cell helpers | `ui.*` (`src/utils/viewHelpers.js`) | `ui.text`, `ui.clip`, `ui.chips`, `ui.mono`, `ui.date`, `ui.optionLabel`, `ui.options` (static `<option>` list) |
 | Mobile cards | `.table-stack` (`custom.css`) | cells need `data-label`, title cell `.stack-title` |
 | Detail modal | `partials/ui/detail_modal.ejs` + `public/js/detail-view.js` | `DV.open(id, { title, subtitle, body })`, `DV.section`, `DV.rows`, `DV.chips`, ... |
 | Form | `.form-card` / `.form-section`, `partials/ui/form_actions.ejs` | `public/js/form-kit.js`: `select.js-select`, `[data-attachments]` |
 | Attachments | `partials/ui/file_attachments.ejs` | upload + existing files with delete |
 | Confirm | `form[data-confirm="..."]` (`public/js/ui-kit.js`) | asks before submitting (deletes) |
 
-`public/html/pages/system/` is the reference implementation.
+`public/html/pages/system/` is the reference implementation. Every page of
+the main layout now uses the kit; there is no page-local or layout-level
+legacy CSS left (`layouts/layout.ejs` only links `custom.css`).
 
 ### Database Management
 
@@ -604,6 +606,28 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
+- ♻️ Pentest rebuilt on the module template and UI kit: one Add/Edit page
+  (`pentest_form.ejs`), a kit list with Target type / Status (several at
+  once) / test date filters and Excel export (`/pentest/export`). The
+  `/pentest/api/by-object` quick view, `/pentest/report/:id/view` and the
+  `/api/v1/pentest-rounds` responses keep their shape.
+- 🐛 Replacing a pentest report deleted the old file before the round was
+  saved (a failed save lost both); the old file is now removed only after
+  commit, and a rejected upload is cleaned up. Reports were stored with
+  the absolute disk path, so deleting a round never removed its file:
+  they are now stored as `/uploads/pentest/<file>` (migration `0009`
+  converts existing rows; also a `migrate:data` step). Deleting a system,
+  component or system attachment likewise removes files only after the
+  transaction commits.
+- ♻️ Dashboard moved to `pages/dashboard/dashboard.ejs` on the kit; only
+  the sections the user may read are queried (one query for all tile
+  counts, top subnets ranked in SQL). New Pentest Rounds tile; IP status
+  bars use the configured labels and link to the filtered IP list.
+- 🧹 The legacy inline mobile CSS in `layouts/layout.ejs` (~630 lines,
+  written for the pre-kit pages) is removed; the kit's own phone rules
+  cover lists, forms and modals. Change Password uses the kit form. Unused
+  client-side column sorting and old server-modal helpers removed from
+  `custom.js`.
 - ⚡ Tags, units, platforms, device types, services and agents are rendered
   with the page in every form and filter (`src/shared/options.js`,
   `options()` on the catalog models) instead of being fetched by AJAX;

@@ -142,11 +142,8 @@
 
 <script>
   (function () {
-    // Date / IP inputs submit on change; quick date ranges fill both dates.
+    // Quick date ranges fill both dates (inputs submit on change: list-filters.js)
     var form = document.querySelector('.list-filter-form');
-    form.querySelectorAll('.js-filter-input').forEach(function (input) {
-      input.addEventListener('change', function () { form.submit(); });
-    });
     form.querySelectorAll('[data-date-range]').forEach(function (link) {
       link.addEventListener('click', function (e) {
         e.preventDefault();

@@ -12,6 +12,7 @@
 //   data-ids-url="/x/api/ids"  restores the selected AJAX values by id on page load
 //   data-selected='[1,2]'      selected ids for AJAX selects (JSON)
 //   data-none-option="true"    adds a "(Not set)" choice (value "__none__")
+// <input class="js-filter-input"> (date, text...) also submits on change.
 // Static selects render their <option selected> server-side.
 (function () {
   'use strict';
@@ -80,14 +81,16 @@
       $selects.each((_, el) => initSelect($(el)));
       await Promise.all($selects.toArray().map((el) => restoreSelected($(el))));
       // Only now: auto-submit when a filter changes (not while restoring)
-      $selects.on('change', () => {
+      const $inputs = $form.find('input.js-filter-input');
+      $selects.add($inputs).on('change', () => {
         $form.find('input[name="page"]').remove();
         $form.trigger('submit');
       });
       $form.find('[data-clear-filters]').on('click', function (e) {
         e.preventDefault();
-        $selects.off('change');
+        $selects.add($inputs).off('change');
         $selects.val(null).trigger('change.select2');
+        $inputs.val('');
         $form.trigger('submit');
       });
     });

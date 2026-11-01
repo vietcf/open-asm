@@ -138,8 +138,10 @@ What it does, in **one transaction** (any error leaves the target unchanged):
    and 2FA. The seeds then run again to add what this version introduced.
 4. Checks that every table got exactly as many rows as in the source, then
    applies `POST_COPY_STEPS` (currently the data conversions of `0004`,
-   option lists to `[{value, label}]`, `0005`, drop `device_page_size`, and
-   `0007`, repair upload filenames saved latin1-decoded). `0006` (new
+   option lists to `[{value, label}]`, `0005`, drop `device_page_size`,
+   `0007`, repair upload filenames saved latin1-decoded, `0008`, classify
+   `system_log` rows, and `0009`, pentest report paths to
+   `/uploads/pentest/<file>`). `0006` (new
    `systems.ops_department_id`) needs no step: older sources leave it empty
    and their `department_id` becomes the development (L3) department.
 5. Reports source columns/tables the new version no longer has (their data

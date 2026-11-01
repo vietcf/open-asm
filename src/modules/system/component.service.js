@@ -4,7 +4,8 @@ import System from './system.model.js';
 import Contact from '../organize/contact.model.js';
 import IpAddress from '../network/ip-address.model.js';
 import Tag from '../organize/tag.model.js';
-import PentestRound from '../pentest/pentest-round.model.js';
+import FileUpload from '../file/file-upload.model.js';
+import { removeRoundsOf } from '../pentest/pentest.service.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
 import { toStringList, toNullableString, hasKey, loadOptions, assertOption, resolveRelations, saveRelations } from '../../shared/service.js';
@@ -100,10 +101,12 @@ export async function deleteComponent(id) {
   const component = await SystemComponent.findById(id);
   if (!component) throw new NotFoundError('Component not found');
   const ipIds = await SystemComponent.getIpIds(id);
-  await withTransaction(null, async (c) => {
+  const files = await withTransaction(null, async (c) => {
     for (const ipId of ipIds) await System.removeIP(component.system_id, ipId, c);
     await SystemComponent.setTags(id, [], c);
-    await PentestRound.deleteByObject('system_component', id, c);
+    const removed = await removeRoundsOf('system_component', id, c);
     await SystemComponent.delete(id, c);
+    return removed;
   });
+  FileUpload.unlinkFiles(files);
 }

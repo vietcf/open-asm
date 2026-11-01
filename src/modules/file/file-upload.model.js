@@ -4,34 +4,32 @@ import fs from 'fs';
 import path from 'path';
 
 class FileUpload {
-  /**
-   * Delete all file_uploads by object_type and object_id, and remove files from disk if needed (local only).
-   */
-  static async deleteByObject(object_type, object_id) {
-    const result = await pool.query(
-      `SELECT * FROM file_uploads WHERE object_type = $1 AND object_id = $2`,
-      [object_type, object_id]
+  // Removes the records of some objects' files inside the caller's transaction and
+  // returns them; remove the stored files with unlinkFiles() once it has committed.
+  static async removeRecords(object_type, object_ids, client) {
+    const result = await (client || pool).query(
+      'DELETE FROM file_uploads WHERE object_type = $1 AND object_id = ANY($2::int[]) RETURNING *',
+      [object_type, [].concat(object_ids).map(Number)]
     );
-    const files = result.rows;
-    await pool.query(
-      `DELETE FROM file_uploads WHERE object_type = $1 AND object_id = $2`,
-      [object_type, object_id]
-    );
-    if (process.env.FILE_UPLOAD_DRIVER !== 's3') {
-      for (const file of files) {
-        if (file.file_path) {
-          const filePath = FileUpload.safeLocalPath(file.file_path);
-          try {
-            if (filePath && fs.existsSync(filePath)) {
-              fs.unlinkSync(filePath);
-            }
-          } catch (e) {
-            console.error('Failed to delete file from disk:', filePath, e);
-          }
-        }
+    return result.rows;
+  }
+
+  static async removeRecordsById(ids, client) {
+    const result = await (client || pool).query('DELETE FROM file_uploads WHERE id = ANY($1::int[]) RETURNING *', [ids.map(Number)]);
+    return result.rows;
+  }
+
+  // Local storage only; never throws (a missing file is not an error).
+  static unlinkFiles(files) {
+    if (process.env.FILE_UPLOAD_DRIVER === 's3') return;
+    for (const file of files || []) {
+      const filePath = file && file.file_path ? FileUpload.safeLocalPath(file.file_path) : null;
+      try {
+        if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
+      } catch (e) {
+        console.error('Failed to delete file from disk:', filePath, e);
       }
     }
-    return files;
   }
 
   static async create({ object_type, object_id, original_name, file_path, mime_type, size, uploaded_by }, client) {
@@ -74,25 +72,6 @@ class FileUpload {
     return result.rows;
   }
 
-  static async deleteById(id) {
-    const result = await pool.query(
-      `DELETE FROM file_uploads WHERE id = $1 RETURNING *`,
-      [id]
-    );
-    const file = result.rows[0];
-    if (file && process.env.FILE_UPLOAD_DRIVER !== 's3' && file.file_path) {
-      const filePath = FileUpload.safeLocalPath(file.file_path);
-      try {
-        if (filePath && fs.existsSync(filePath)) {
-          fs.unlinkSync(filePath);
-        }
-      } catch (e) {
-        console.error('Failed to delete file from disk:', filePath, e);
-      }
-    }
-    return file;
-  }
-
   // Maps object_type -> the uploads subfolder its files physically live in.
   // Add an entry here whenever a new object_type gets file attachments.
   static FOLDER_BY_OBJECT_TYPE = {
@@ -107,26 +86,6 @@ class FileUpload {
     } else {
       const folder = FileUpload.FOLDER_BY_OBJECT_TYPE[file.object_type] || 'system';
       return '/uploads/' + folder + '/' + file.file_path.split('/').pop();
-    }
-  }
-
-  static moveFromTmpToSystem(url) {
-    if (process.env.FILE_UPLOAD_DRIVER === 's3' || !url || !url.startsWith('/uploads/tmp/')) {
-      return url;
-    }
-    const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
-    const uploadsPrefix = process.env.UPLOADS_PREFIX || '/uploads';
-    const filename = url.split('/').pop();
-    const tmpPath = path.resolve(process.cwd(), uploadsDir, 'tmp', filename);
-    const destDir = path.resolve(process.cwd(), uploadsDir, 'system');
-    const destPath = path.join(destDir, filename);
-    if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true });
-    try {
-      fs.renameSync(tmpPath, destPath);
-      return `${uploadsPrefix}/system/${filename}`;
-    } catch (e) {
-      // If error, keep original tmp url
-      return url;
     }
   }
 

@@ -7,7 +7,7 @@ import IpAddress from '../network/ip-address.model.js';
 import Domain from '../network/domain.model.js';
 import Tag from '../organize/tag.model.js';
 import FileUpload from '../file/file-upload.model.js';
-import PentestRound from '../pentest/pentest-round.model.js';
+import { removeRoundsOf } from '../pentest/pentest.service.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
 import { toStringList, hasKey, loadOptions, assertIdsExist, resolveRelations, saveRelations } from '../../shared/service.js';
@@ -146,10 +146,11 @@ export async function deleteSystem(id) {
   if (await SystemComponent.countBySystemId(id)) {
     throw new ConflictError('You must delete all components of this system before deleting the system. Please remove all components first.');
   }
-  await withTransaction(null, async (c) => {
+  const files = await withTransaction(null, async (c) => {
     await saveRelations(id, { contacts: [], ip_addresses: [], domains: [], tags: [] }, RELATIONS, c);
-    await FileUpload.deleteByObject('system', id);
-    await PentestRound.deleteByObject('system', id, c);
+    const removed = [...await FileUpload.removeRecords('system', id, c), ...await removeRoundsOf('system', id, c)];
     await System.delete(id, c);
+    return removed;
   });
+  FileUpload.unlinkFiles(files);
 }

@@ -4,7 +4,7 @@ import Unit from '../organize/unit.model.js';
 import FileUpload from '../file/file-upload.model.js';
 import * as systemService from './system.service.js';
 import * as componentService from './component.service.js';
-import { attachTmpUploads, deleteObjectFiles } from '../file/file.service.js';
+import { attachTmpUploads, removeObjectFiles } from '../file/file.service.js';
 import { withTransaction } from '../../shared/transaction.js';
 import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, actorId, lookupByIds } from '../../shared/web.js';
 import { sendExcel } from '../../utils/excelExport.js';
@@ -129,11 +129,12 @@ export default {
   async update(req, res) {
     const { id } = req.params;
     try {
-      await withTransaction(null, async (c) => {
+      const removed = await withTransaction(null, async (c) => {
         await systemService.updateSystem(id, formInput(req), c);
-        await deleteObjectFiles('system', id, req.body.delete_files);
         await attachTmpUploads('system', id, req.body.uploaded_docs_edit, actorId(req), c);
+        return removeObjectFiles('system', id, req.body.delete_files, c);
       });
+      FileUpload.unlinkFiles(removed);
       req.flash('success', 'System updated successfully');
     } catch (err) {
       req.flash('error', errorMessage(req, err));

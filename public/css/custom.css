@@ -195,19 +195,6 @@
   }
 }
 
-/* Client-side column sort toggle (see custom.js) */
-.sortable-th {
-  cursor: pointer;
-  user-select: none;
-  white-space: nowrap;
-}
-.sortable-th:hover {
-  background-color: rgba(0, 0, 0, 0.04);
-}
-.sort-icon {
-  font-size: 0.75em;
-}
-
 /* ==========================================================================
    UI standard (shared by every module) - see public/html/partials/ui/
    ========================================================================== */
@@ -257,6 +244,7 @@
 /* Add / Edit pages: one card, titled sections, actions in the footer
    (same card look as the list pages). */
 .form-card { max-width: 1200px; }
+.form-card-narrow { max-width: 560px; }
 .form-card-header { display: flex; align-items: baseline; }
 .form-card-header .card-title { font-size: 1rem; font-weight: 600; }
 .form-card > .card-body { padding: 1.25rem 1.5rem; }
@@ -437,16 +425,13 @@ textarea.form-control { min-height: 6rem; }
   .table.table-stack > tbody > tr:hover > * { --bs-table-bg-state: transparent; }
 }
 
-/* List toolbar on phones/small tablets: search on its own row, actions on one row
-   (Columns/Export icon-only). Also undoes the layout's legacy mobile rules
-   that hide the search icon and cap submit buttons for old #searchBtn forms. */
+/* List toolbar on phones/small tablets: search on its own row, then Filter and
+   the actions flowing as one wrapping row (Columns/Export icon-only). */
 @media (max-width: 768px) {
-  .list-toolbar { gap: .5rem; }
+  .list-card .card-header.list-toolbar { padding: .75rem; }
   .list-toolbar .list-search { flex: 1 1 100%; max-width: none; }
-  .list-card .list-toolbar .list-search .btn[type="submit"] { width: auto !important; max-width: none !important; }
-  .list-card .list-toolbar .list-search .btn[type="submit"] i.bi { display: inline-block !important; }
-  .list-card .list-toolbar .list-search .btn[type="submit"]::after { content: none !important; }
-  .list-toolbar .list-actions { gap: .375rem; }
+  .list-toolbar .list-actions { display: contents; }
+  .list-toolbar .btn { --bs-btn-padding-x: .6rem; }
   .list-toolbar .btn-text { display: none; }
 }
 
@@ -494,3 +479,17 @@ textarea.form-control { min-height: 6rem; }
 
 /* Multi-line tooltips (IP details, descriptions) */
 .tooltip .tooltip-inner { white-space: pre-wrap; max-width: 400px; text-align: left; }
+
+/* ========== DASHBOARD ========== */
+.dashboard-tile { color: inherit; text-decoration: none; }
+.dashboard-tile:hover { border-color: var(--bs-primary-border-subtle); }
+.dashboard-tile .card-body { display: flex; align-items: center; gap: .875rem; padding: .875rem 1rem; }
+.dashboard-tile-icon {
+  flex-shrink: 0; width: 2.75rem; height: 2.75rem; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--bs-primary-bg-subtle); color: var(--bs-primary); font-size: 1.15rem;
+}
+.dashboard-tile-count { display: block; font-size: 1.375rem; font-weight: 600; line-height: 1.2; }
+.dashboard-tile-label { display: block; font-size: .8125rem; color: var(--bs-secondary-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dashboard-bar + .dashboard-bar { margin-top: .625rem; }
+.dashboard-bar .progress { height: .5rem; }

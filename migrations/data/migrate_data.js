@@ -47,6 +47,8 @@ const POST_COPY_STEPS = [
   { name: '0005 drop device_page_size', sql: `DELETE FROM configuration WHERE key = 'device_page_size'` },
   { name: '0007 repair latin1-decoded upload filenames', run: fixUploadFilenames },
   { name: '0008 classify system_log rows (security / app, level)', run: classifySystemLog },
+  { name: '0009 pentest report paths -> /uploads/pentest/<file>', sql: `UPDATE file_uploads SET file_path = '/uploads/pentest/' || regexp_replace(translate(file_path, '\\', '/'), '^.*/', '')
+    WHERE object_type = 'pentest_round' AND file_path !~ '^https?://' AND file_path NOT LIKE '/uploads/pentest/%'` },
 ];
 
 const BATCH_ROWS = 1000;
