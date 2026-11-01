@@ -1,0 +1,56 @@
+<%#
+  Add / Edit Subnet.  mode: 'add' | 'edit', subnet, tagOptions ([{id, text}]), zoneOptions / environmentOptions (strings)
+  Gateway: an existing IP inside the subnet (AJAX picker filtered by the address field).
+%>
+<% const isEdit = mode === 'edit'; const s = locals.subnet || {}; %>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [
+  { label: 'Subnet Address', href: '/network/subnet-address' }, { label: isEdit ? 'Edit Subnet' : 'Add Subnet' }
+] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
+    <form class="card form-card" method="POST" action="<%= isEdit ? '/network/subnet-address/' + s.id + '/edit' : '/network/subnet-address/add' %>">
+      <div class="card-header form-card-header">
+        <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit Subnet' : 'Add Subnet') %></h3>
+      </div>
+      <div class="card-body">
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('General information') %></h4>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="f-address"><%= t('Subnet Address') %> <span class="text-danger">*</span></label>
+              <input type="text" id="f-address" <%= isEdit ? '' : 'name=address' %> class="form-control font-monospace" value="<%= s.address || '' %>"
+                     <%= isEdit ? 'disabled' : 'required' %> placeholder="192.168.1.0/24" pattern="\d{1,3}(\.\d{1,3}){3}/\d{1,2}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-gateway"><%= t('Gateway') %></label>
+              <select id="f-gateway" name="gateway_ip_id" class="form-select js-select" data-placeholder="<%= t('Select an IP inside the subnet') %>"
+                      data-ajax-url="/network/api/ip-addresses/search-all" data-ajax-with='{"subnet":"#f-address"}'
+                      data-selected="<%= JSON.stringify(s.gateway_ip_id ? [{ id: s.gateway_ip_id, text: s.gateway_ip_address }] : []) %>"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-zone"><%= t('Zone') %></label>
+              <input type="text" id="f-zone" name="zone" class="form-control" list="zoneList" value="<%= s.zone || '' %>" maxlength="255">
+              <datalist id="zoneList"><% zoneOptions.forEach(function (z) { %><option value="<%= z %>"><% }) %></datalist>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-environment"><%= t('Environment') %></label>
+              <input type="text" id="f-environment" name="environment" class="form-control" list="environmentList" value="<%= s.environment || '' %>" maxlength="255">
+              <datalist id="environmentList"><% environmentOptions.forEach(function (z) { %><option value="<%= z %>"><% }) %></datalist>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-tags"><%= t('Tags') %></label>
+              <select id="f-tags" name="tags" class="form-select js-select" multiple data-placeholder="<%= t('Select tags') %>"><%- ui.options(tagOptions, s.tags) %></select>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-description"><%= t('Description') %></label>
+              <textarea id="f-description" name="description" class="form-control" rows="3"><%= s.description || '' %></textarea>
+            </div>
+          </div>
+        </section>
+      </div>
+      <%- include('../../partials/ui/form_actions', { cancelUrl: '/network/subnet-address', submitLabel: isEdit ? 'Save Changes' : 'Add Subnet' }) %>
+    </form>
+  </div>
+</div>

@@ -202,7 +202,7 @@ router.get('/ip-addresses/config', authorizePermissionJWT('ip_address.read'), ip
  *         description: Not found
  */
 
-router.get('/ip-addresses/:id', authorizePermissionJWT('ip_address.read'), ipAddressApi.getIpAddress);
+router.get('/ip-addresses/:id', authorizePermissionJWT('ip_address.read'), ipAddressApi.getById);
 
 /**
  * @swagger
@@ -259,7 +259,7 @@ router.get('/ip-addresses/:id', authorizePermissionJWT('ip_address.read'), ipAdd
  *       409:
  *         description: IP address already exists
  */
-router.post('/ip-addresses', authorizePermissionJWT('ip_address.create'), ipAddressApi.createIpAddress);
+router.post('/ip-addresses', authorizePermissionJWT('ip_address.create'), ipAddressApi.create);
 
 /**
  * @swagger
@@ -316,7 +316,7 @@ router.post('/ip-addresses', authorizePermissionJWT('ip_address.create'), ipAddr
  *       404:
  *         description: Not found
  */
-router.put('/ip-addresses/:id', authorizePermissionJWT('ip_address.update'), ipAddressApi.updateIpAddress);
+router.put('/ip-addresses/:id', authorizePermissionJWT('ip_address.update'), ipAddressApi.update);
 
 /**
  * @swagger
@@ -341,7 +341,7 @@ router.put('/ip-addresses/:id', authorizePermissionJWT('ip_address.update'), ipA
  *       409:
  *         description: Cannot delete — the IP address is still assigned to a device or server
  */
-router.delete('/ip-addresses/:id', authorizePermissionJWT('ip_address.delete'), ipAddressApi.deleteIpAddress);
+router.delete('/ip-addresses/:id', authorizePermissionJWT('ip_address.delete'), ipAddressApi.remove);
 
 // Swagger schema for IP address
 /**
@@ -616,7 +616,7 @@ router.get('/subnets/config', authorizePermissionJWT('subnet.read'), subnetApi.g
  *       404:
  *         description: Not found
  */
-router.get('/subnets/:id', authorizePermissionJWT('subnet.read'), subnetApi.getSubnet);
+router.get('/subnets/:id', authorizePermissionJWT('subnet.read'), subnetApi.getById);
 
 /**
  * @swagger
@@ -668,7 +668,7 @@ router.get('/subnets/:id', authorizePermissionJWT('subnet.read'), subnetApi.getS
  *       409:
  *         description: Duplicate subnet address
  */
-router.post('/subnets', authorizePermissionJWT('subnet.create'), subnetApi.createSubnet);
+router.post('/subnets', authorizePermissionJWT('subnet.create'), subnetApi.create);
 
 /**
  * @swagger
@@ -722,7 +722,7 @@ router.post('/subnets', authorizePermissionJWT('subnet.create'), subnetApi.creat
  *       404:
  *         description: Not found
  */
-router.put('/subnets/:id', authorizePermissionJWT('subnet.update'), subnetApi.updateSubnet);
+router.put('/subnets/:id', authorizePermissionJWT('subnet.update'), subnetApi.update);
 
 /**
  * @swagger
@@ -745,7 +745,7 @@ router.put('/subnets/:id', authorizePermissionJWT('subnet.update'), subnetApi.up
  *       404:
  *         description: Not found
  */
-router.delete('/subnets/:id', authorizePermissionJWT('subnet.delete'), subnetApi.deleteSubnet);
+router.delete('/subnets/:id', authorizePermissionJWT('subnet.delete'), subnetApi.remove);
 
 /**
  * @swagger

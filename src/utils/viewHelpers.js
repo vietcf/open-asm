@@ -31,6 +31,13 @@ export function optionLabel(options, value) {
 // monospace list (IPs, codes)
 export const mono = (values) => (toArray(values).length ? `<span class="font-monospace small">${esc(toArray(values).join(', '))}</span>` : dash);
 
+// <option> list for a select rendered with the page: options [{id, text}],
+// selected = ids (or {id} objects) to mark selected
+export function options(list, selected) {
+  const ids = new Set(toArray(selected).map((s) => String(s && typeof s === 'object' ? s.id : s)));
+  return (list || []).map((o) => `<option value="${esc(o.id)}"${ids.has(String(o.id)) ? ' selected' : ''}>${esc(o.text)}</option>`).join('');
+}
+
 // YYYY-MM-DD
 export const date = (value) => {
   if (!value) return dash;
@@ -38,4 +45,4 @@ export const date = (value) => {
   return isNaN(d) ? esc(value) : `<span class="text-nowrap small">${d.toISOString().slice(0, 10)}</span>`;
 };
 
-export default { esc, dash, toArray, text, clip, chips, optionLabel, mono, date };
+export default { esc, dash, toArray, text, clip, chips, optionLabel, mono, date, options };

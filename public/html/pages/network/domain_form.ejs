@@ -1,0 +1,58 @@
+<%#
+  Add / Edit Domain.  mode: 'add' | 'edit', domain, recordTypeOptions, tagOptions ([{id, text}]); IP / systems load via AJAX
+%>
+<% const isEdit = mode === 'edit'; const d = locals.domain || {}; %>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [
+  { label: 'Domain', href: '/network/domain' }, { label: isEdit ? 'Edit Domain' : 'Add Domain' }
+] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
+    <form class="card form-card" method="POST" action="<%= isEdit ? '/network/domain/' + d.id + '/edit' : '/network/domain/add' %>">
+      <div class="card-header form-card-header">
+        <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit Domain' : 'Add Domain') %></h3>
+      </div>
+      <div class="card-body">
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('General information') %></h4>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="f-domain"><%= t('Domain') %> <span class="text-danger">*</span></label>
+              <% if (isEdit) { %>
+                <input type="text" id="f-domain" class="form-control" value="<%= d.domain %>" disabled>
+              <% } else { %>
+                <input type="text" id="f-domain" name="domain" class="form-control" required maxlength="255" placeholder="www.example.com">
+              <% } %>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="f-record-type"><%= t('Record Type') %></label>
+              <select id="f-record-type" name="record_type" class="form-select js-select" data-placeholder="A">
+                <option value=""></option><%- ui.options(recordTypeOptions, d.record_type) %>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="f-ip"><%= t('IP Address') %></label>
+              <select id="f-ip" name="ip_id" class="form-select js-select" data-placeholder="<%= t('Select IP address') %>" data-ajax-url="/network/api/ip-addresses"
+                      data-selected="<%= JSON.stringify(d.ip ? [{ id: d.ip.id, text: d.ip.ip_address }] : []) %>"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-systems"><%= t('Systems') %></label>
+              <select id="f-systems" name="systems" class="form-select js-select" multiple data-placeholder="<%= t('Select systems') %>" data-ajax-url="/system/api/system"
+                      data-selected="<%= JSON.stringify((d.systems || []).map(s => ({ id: s.id, text: s.name }))) %>"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-tags"><%= t('Tags') %></label>
+              <select id="f-tags" name="tags" class="form-select js-select" multiple data-placeholder="<%= t('Select tags') %>"><%- ui.options(tagOptions, d.tags) %></select>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-description"><%= t('Description') %></label>
+              <textarea id="f-description" name="description" class="form-control" rows="3"><%= d.description || '' %></textarea>
+            </div>
+          </div>
+        </section>
+      </div>
+      <%- include('../../partials/ui/form_actions', { cancelUrl: '/network/domain', submitLabel: isEdit ? 'Save Changes' : 'Add Domain' }) %>
+    </form>
+  </div>
+</div>

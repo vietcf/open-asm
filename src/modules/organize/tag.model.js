@@ -69,6 +69,12 @@ class Tag {
   }
 
   // Select2 lookup: [{id, text}]
+  // Every tag as {id, text}, for selects rendered with the page
+  static async options() {
+    const result = await pool.query('SELECT id, name AS text FROM tags ORDER BY name');
+    return result.rows;
+  }
+
   static async select2Search(search = '') {
     const w = filterWhere({ search });
     const result = await pool.query(`SELECT t.id, t.name AS text FROM tags t WHERE ${w} ORDER BY t.name LIMIT 20`, w.params);

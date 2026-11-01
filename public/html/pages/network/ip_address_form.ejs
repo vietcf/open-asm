@@ -1,0 +1,66 @@
+<%#
+  Add / Edit IP Address.  mode: 'add' | 'edit', ip, statusOptions, tagOptions ([{id, text}]); systems / contacts load via AJAX
+  Add accepts several addresses separated by commas (same details for all).
+%>
+<% const isEdit = mode === 'edit'; const ip = locals.ip || {}; %>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [
+  { label: 'IP Address', href: '/network/ip-address' }, { label: isEdit ? 'Edit IP Address' : 'Add IP Address' }
+] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
+    <form class="card form-card" method="POST" action="<%= isEdit ? '/network/ip-address/' + ip.id + '/edit' : '/network/ip-address/add' %>">
+      <div class="card-header form-card-header">
+        <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit IP Address' : 'Add IP Address') %></h3>
+      </div>
+      <div class="card-body">
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('General information') %></h4>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="f-address"><%= t('IP Address') %> <span class="text-danger">*</span></label>
+              <% if (isEdit) { %>
+                <input type="text" id="f-address" class="form-control font-monospace" value="<%= ip.ip_address %>" disabled>
+              <% } else { %>
+                <input type="text" id="f-address" name="address" class="form-control font-monospace" required placeholder="192.168.1.10, 192.168.1.11">
+                <div class="form-text"><%= t('Several addresses can be separated by commas') %></div>
+              <% } %>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-status"><%= t('Status') %></label>
+              <select id="f-status" name="status" class="form-select js-select" data-placeholder="<%= t('Select status') %>">
+                <option value=""></option><%- ui.options(statusOptions, ip.status) %>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-description"><%= t('Description') %></label>
+              <textarea id="f-description" name="description" class="form-control" rows="3"><%= ip.description || '' %></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('Links') %></h4>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label" for="f-systems"><%= t('Systems') %></label>
+              <select id="f-systems" name="systems" class="form-select js-select" multiple data-placeholder="<%= t('Select systems') %>"
+                      data-ajax-url="/system/api/system" data-selected="<%= JSON.stringify((ip.systems || []).map(s => ({ id: s.id, text: s.name }))) %>"></select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="f-contacts"><%= t('Contacts') %></label>
+              <select id="f-contacts" name="contacts" class="form-select js-select" multiple data-placeholder="<%= t('Select contacts') %>"
+                      data-ajax-url="/organize/api/contact" data-selected="<%= JSON.stringify((ip.contacts || []).map(c => ({ id: c.id, text: c.name }))) %>"></select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="f-tags"><%= t('Tags') %></label>
+              <select id="f-tags" name="tags" class="form-select js-select" multiple data-placeholder="<%= t('Select tags') %>"><%- ui.options(tagOptions, ip.tags) %></select>
+            </div>
+          </div>
+        </section>
+      </div>
+      <%- include('../../partials/ui/form_actions', { cancelUrl: '/network/ip-address', submitLabel: isEdit ? 'Save Changes' : 'Add IP Address' }) %>
+    </form>
+  </div>
+</div>

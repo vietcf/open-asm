@@ -48,7 +48,6 @@ import pentestRouter from './modules/pentest/web.routes.js';
 import clusterRouter from './modules/cluster/web.routes.js';
 import privAccountRouter from './modules/privilege/web.routes.js';
 import serverRouter from './modules/server/web.routes.js';
-import serverController from './modules/server/server.controller.js';
 import organizeRouter from './modules/organize/web.routes.js';
 import administratorRouter from './modules/administrator/web.routes.js';
 import deviceRoutes from './modules/device/web.routes.js';
@@ -262,8 +261,6 @@ app.use('/system', requireLogin, require2fa, systemRouter);
 app.use('/pentest', requireLogin, require2fa, pentestRouter);
 app.use('/cluster', requireLogin, require2fa, clusterRouter);
 app.use('/network', requireLogin, require2fa, networkRouter);
-// Public template download route (no auth required)
-app.get('/server/server/template', serverController.downloadServerTemplate);
 app.use('/server', requireLogin, require2fa, serverRouter);
 app.use('/organize', requireLogin, require2fa, organizeRouter);
 app.use('/device', requireLogin, require2fa, deviceRoutes);

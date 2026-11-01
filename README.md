@@ -604,6 +604,33 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
+- ♻️ Network (IP addresses, subnets, domains) rebuilt on the UI kit: one
+  model / service / controller / api file per entity, Add/Edit pages
+  instead of modals, shared importer and Excel export. The 3200-line
+  `network.controller.js` and the unused AJAX endpoints (`/api/zones`,
+  `/api/environments`, `/api/subnet-for-ip`, `/api/subnet/:id/ips`,
+  `/api/subnet-addresses`, `/api/subnet-address/:id`, batch delete) are gone.
+- ⚡ AJAX only where a list can grow large (IP, system, contact, domain
+  pickers and the IP tooltip). Small lists (status, tags, zones,
+  environments, record types) are rendered with the page (`ui.options`).
+  The IP list carries each IP's subnet (zone / environment) in the list
+  query instead of one query per row; subnets show their IP count and
+  link to the IP list filtered by `?subnet_id=` (also in its export).
+  `data-ajax-with` in `form-kit.js` sends another field's value with a
+  picker's search (the subnet gateway picker lists IPs of the typed subnet).
+- 🐛 IP / domain search no longer truncates the tag, contact and system
+  lists of the matching rows; the IP list permission checks used
+  `network.*` instead of `ip_address.*`; the domain import result file
+  had no download route; the remaining network AJAX endpoints had no
+  permission check.
+- 🐛 `requirePermission('a.x', 'b.y')` (two full names) was read as the
+  legacy `(action, resource)` pair; `app.js` still referenced the removed
+  public server template route, so the app did not start.
+- 🔌 REST: `GET /api/v1/domains/:id` returns `systems` as `{id, name,
+  system_id}` (was the full system rows) and also `tags`; list rows of
+  `/domains` carry `ip`, `systems`, `tags`. `GET /api/v1/subnets*` rows
+  carry `ip_count`. `PUT /api/v1/subnets/:id` with an empty body no longer
+  returns 400. No schema change, no data migration.
 - ♻️ Clusters rebuilt on the UI kit (filters, column chooser, detail
   modal with members, list export, one Add/Edit page with a members
   repeater and "add from file" that reports bad rows inline). The import

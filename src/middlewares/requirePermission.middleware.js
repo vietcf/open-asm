@@ -14,7 +14,8 @@ export default function requirePermission(...permissions) {
     // Handle different parameter formats
     let permissionsToCheck = [];
     
-    if (permissions.length === 2 && typeof permissions[0] === 'string' && typeof permissions[1] === 'string') {
+    // ('cluster.create', 'cluster.update') is two full names, not action + resource
+    if (permissions.length === 2 && permissions.every((p) => typeof p === 'string' && !p.includes('.'))) {
       // Legacy format: requirePermission('read', 'user')
       const [action, resource] = permissions;
       permissionsToCheck = [`${resource}.${action}`];
