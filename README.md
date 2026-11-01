@@ -204,6 +204,16 @@ docker compose up -d
 docker compose down
 ```
 
+### Development (live reload)
+```bash
+# Syncs src/, config/, migrations/, public/{html,css,js} into the app
+# container on every save; the app restarts itself (node --watch) and EJS
+# views are re-read per request (NODE_ENV=development). Ctrl+C stops watching.
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watch
+```
+Set `OPENASM_SRC` to sync from another checkout (e.g. a git worktree) while
+the data, `pgdata/` and `ssl/` directories stay in the project directory.
+
 ### Docker Image Management
 ```bash
 # Save Docker images
