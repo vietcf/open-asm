@@ -6,7 +6,7 @@ import * as systemService from './system.service.js';
 import * as componentService from './component.service.js';
 import { attachTmpUploads, deleteObjectFiles } from '../file/file.service.js';
 import { withTransaction } from '../../shared/transaction.js';
-import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, actorId } from '../../shared/web.js';
+import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, actorId, lookupByIds } from '../../shared/web.js';
 import { sendExcel } from '../../utils/excelExport.js';
 import { serveFileInline } from '../../utils/fileServe.js';
 
@@ -168,6 +168,9 @@ export default {
       next(err);
     }
   },
+
+  // Select2 restore: ?ids[]= -> [{id, text}]
+  lookupByIds: lookupByIds((ids) => System.findByIds(ids), (s) => s.name),
 
   async components(req, res, next) {
     try {

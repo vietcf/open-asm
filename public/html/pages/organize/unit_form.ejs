@@ -1,0 +1,34 @@
+<%# Add / Edit Unit.  mode: 'add' | 'edit', unit %>
+<% const isEdit = mode === 'edit'; const u = unit || {}; %>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [
+  { label: 'Organization' }, { label: 'Organization Unit', href: '/organize/unit' }, { label: isEdit ? 'Edit Unit' : 'Add Unit' }
+] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <form class="card form-card" method="POST" action="<%= isEdit ? '/organize/unit/' + u.id + '/edit' : '/organize/unit/add' %>">
+      <div class="card-header form-card-header">
+        <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit Unit' : 'Add Unit') %></h3>
+      </div>
+      <div class="card-body">
+        <section class="form-section">
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label" for="f-name"><%= t('Unit Name') %> <span class="text-danger">*</span></label>
+              <input type="text" id="f-name" name="name" class="form-control" value="<%= u.name || '' %>" maxlength="255" placeholder="<%= t('Enter unit name') %>" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="f-code"><%= t('Code') %></label>
+              <input type="text" id="f-code" name="code" class="form-control" value="<%= u.code || '' %>" maxlength="50" placeholder="<%= t('e.g. IT, HR') %>">
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-description"><%= t('Description') %></label>
+              <textarea id="f-description" name="description" class="form-control" rows="3" placeholder="<%= t('Enter unit description') %>"><%= u.description || '' %></textarea>
+            </div>
+          </div>
+        </section>
+      </div>
+      <%- include('../../partials/ui/form_actions', { cancelUrl: '/organize/unit', submitLabel: isEdit ? 'Save Changes' : 'Add Unit' }) %>
+    </form>
+  </div>
+</div>

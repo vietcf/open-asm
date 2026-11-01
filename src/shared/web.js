@@ -44,3 +44,32 @@ export function takeFlash(req) {
     errorMessage: (req.flash('error') || [])[0],
   };
 }
+
+// Runs a create/update/delete, flashes the result and redirects (to `url`,
+// or to url(err) on failure when a function is given for the error case).
+//   await runAndRedirect(req, res, '/organize/tag', () => tagService.deleteTag(id), 'Tag deleted successfully');
+export async function runAndRedirect(req, res, url, action, successMessage, errorUrl = url) {
+  try {
+    await action();
+    req.flash('success', successMessage);
+    res.redirect(url);
+  } catch (err) {
+    req.flash('error', errorMessage(req, err));
+    res.redirect(errorUrl);
+  }
+}
+
+// Wraps an async page handler: unexpected errors go to the error page.
+export const page = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
+// Select2 AJAX: ?search= -> [{id, text}]
+export const lookup = (search) => page(async (req, res) => {
+  res.json(await search(String(req.query.search || '').trim()));
+});
+
+// Select2 restore of selected values: ?ids[]=1&ids[]=2 -> [{id, text}]
+export const lookupByIds = (findByIds, toText) => page(async (req, res) => {
+  const ids = queryList(req.query, 'ids').map(Number).filter(Number.isInteger);
+  const rows = ids.length ? await findByIds(ids) : [];
+  res.json(rows.map((row) => ({ id: row.id, text: toText(row) })));
+});

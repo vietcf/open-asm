@@ -1,11 +1,9 @@
+// Tags: shared by the web pages and the REST API.
 import Tag from './tag.model.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 
-export async function listTags({ search, page, pageSize }) {
-  const [items, totalCount] = await Promise.all([
-    Tag.findPage(page, pageSize, search || ''),
-    Tag.countAll(search || '')
-  ]);
+export async function listTags(filter) {
+  const [items, totalCount] = await Promise.all([Tag.findFilteredList(filter), Tag.countFiltered(filter)]);
   return { items, totalCount };
 }
 
@@ -81,7 +79,7 @@ export async function deleteTag(id) {
   // object using it instead of blocking the delete. Check usage explicitly.
   const inUseCount = await Tag.countUsage(id);
   if (inUseCount > 0) {
-    throw new ConflictError(`Cannot delete: this tag is used by ${inUseCount} object(s)`);
+    throw new ConflictError('Cannot delete: this tag is used by {count} object(s)').withParams({ count: inUseCount });
   }
   await Tag.delete(id);
 }

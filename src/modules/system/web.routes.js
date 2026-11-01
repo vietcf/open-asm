@@ -37,6 +37,7 @@ router.post('/component/:id/delete', can('system.delete'), components.remove);
 
 // AJAX. Select2 lookups are open to any signed-in user, like the other modules'.
 router.get('/api/system', systems.lookup);
+router.get('/api/system/ids', systems.lookupByIds);
 router.get('/api/component', components.lookup);
 router.get('/api/system/:id/components', can('system.read'), systems.components);
 

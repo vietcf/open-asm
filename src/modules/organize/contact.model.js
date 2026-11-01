@@ -1,4 +1,13 @@
 import { pool } from '../../../config/config.js';
+import { Where, NONE } from '../../shared/db.js';
+
+function filterWhere({ search = '', unit_id = '', position = '' }) {
+  const w = new Where().search(search, ['c.name ILIKE ?', 'c.email ILIKE ?', 'c.phone ILIKE ?', 'c.position ILIKE ?', 'c.description ILIKE ?', 'u.name ILIKE ?']);
+  if (unit_id === NONE) w.add('c.unit_id IS NULL');
+  else if (unit_id) w.add(`c.unit_id = ${w.param(Number(unit_id))}`);
+  if (position) w.add(`c.position = ${w.param(position)}`);
+  return w;
+}
 
 /**
  * Contact Model - handles all database operations for contacts and their relationships.
@@ -30,14 +39,6 @@ class Contact {
     return result.rows[0];
   }
 
-  /**
-   * Get all contacts (no filter, ordered by id)
-   * @returns {Promise<Array>}
-   */
-  static async findAll() {
-    const result = await pool.query('SELECT * FROM contacts ORDER BY id');
-    return result.rows;
-  }
 
   /**
    * Get a contact by id
@@ -138,82 +139,32 @@ class Contact {
     return res.rowCount > 0;
   }
 
-  /**
-   * Build the shared WHERE clause/params for search + unit/position filters,
-   * so the page query and its count always agree on what matches.
-   * @private
-   */
-  static _buildFilterConditions({ search, unit_id, position }) {
-    const conditions = [];
-    const params = [];
-    if (search) {
-      params.push(`%${search}%`);
-      const idx = params.length;
-      conditions.push(`(c.name ILIKE $${idx} OR c.email ILIKE $${idx} OR c.phone ILIKE $${idx} OR c.position ILIKE $${idx} OR c.description ILIKE $${idx} OR u.name ILIKE $${idx})`);
-    }
-    if (unit_id) {
-      params.push(unit_id);
-      conditions.push(`c.unit_id = $${params.length}`);
-    }
-    if (position) {
-      params.push(position);
-      conditions.push(`c.position = $${params.length}`);
-    }
-    return {
-      whereSql: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '',
-      params
-    };
-  }
-
-  /**
-   * Get paginated contacts, optionally searched and/or filtered by
-   * unit_id/position (all optional, combine with AND).
-   * @returns {Promise<Array>}
-   */
-  static async findFilteredPage({ search, unit_id, position, page, pageSize }) {
-    const offset = (page - 1) * pageSize;
-    const { whereSql, params } = Contact._buildFilterConditions({ search, unit_id, position });
-    params.push(pageSize, offset);
+  // Page of contacts with their unit name; filter: {search, unit_id, position}
+  static async findFilteredPage(filter) {
+    const { page = 1, pageSize = 20 } = filter;
+    const w = filterWhere(filter);
     const result = await pool.query(
-      `SELECT c.*, u.name AS unit_name
-       FROM contacts c
-       LEFT JOIN units u ON c.unit_id = u.id
-       ${whereSql}
-       ORDER BY c.id
-       LIMIT $${params.length - 1} OFFSET $${params.length}`,
-      params
+      `SELECT c.*, u.name AS unit_name FROM contacts c LEFT JOIN units u ON c.unit_id = u.id
+       WHERE ${w} ORDER BY c.name LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      w.params
     );
     return result.rows;
   }
 
-  /**
-   * Count contacts matching the same search/filter combination as
-   * findFilteredPage.
-   * @returns {Promise<number>}
-   */
-  static async countFiltered({ search, unit_id, position }) {
-    const { whereSql, params } = Contact._buildFilterConditions({ search, unit_id, position });
-    const result = await pool.query(
-      `SELECT COUNT(*) FROM contacts c LEFT JOIN units u ON c.unit_id = u.id ${whereSql}`,
-      params
-    );
+  static async countFiltered(filter) {
+    const w = filterWhere(filter);
+    const result = await pool.query(`SELECT COUNT(*) FROM contacts c LEFT JOIN units u ON c.unit_id = u.id WHERE ${w}`, w.params);
     return parseInt(result.rows[0].count, 10);
   }
 
-   /**
-   * Search contacts for select2 (by name or email, limit 20, order by name)
-   * @param {string} search
-   * @returns {Promise<Array<{id:number, name:string, email:string}>>}
-   */
-  static async contactSearchSelect2(search) {
-    let sql = 'SELECT id, name, email FROM contacts';
-    let params = [];
-    if (search) {
-      sql += ' WHERE name ILIKE $1 OR email ILIKE $1';
-      params.push(`%${search}%`);
-    }
-    sql += ' ORDER BY name LIMIT 20';
-    const result = await pool.query(sql, params);
+  // Select2 lookup: [{id, text}], text = "Name (mailbox)"
+  static async select2Search(search = '') {
+    const w = new Where().search(search, ['c.name ILIKE ?', 'c.email ILIKE ?']);
+    const result = await pool.query(
+      `SELECT c.id, c.name || COALESCE(' (' || NULLIF(split_part(c.email, '@', 1), '') || ')', '') AS text
+       FROM contacts c WHERE ${w} ORDER BY c.name LIMIT 20`,
+      w.params
+    );
     return result.rows;
   }
 

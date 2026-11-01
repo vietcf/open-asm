@@ -1,34 +1,15 @@
 import Contact from './contact.model.js';
 import Unit from './unit.model.js';
-import Configuration from '../administrator/configuration.model.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
+import { loadOptions, assertOption } from '../../shared/service.js';
 
 export const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
-export async function getPositionOptions() {
-  try {
-    const config = await Configuration.findById('contact_position');
-    if (config && config.value) {
-      const parsed = JSON.parse(config.value);
-      if (Array.isArray(parsed)) {
-        return parsed.map(item => typeof item === 'object' ? item : { value: String(item), label: String(item) });
-      }
-    }
-  } catch (e) { /* fall through to empty */ }
-  return [];
-}
+// Configured positions as {id, text}
+export const getPositionOptions = () => loadOptions('contact_position');
 
-// No position options configured means the deployment isn't restricting
-// values — treat as free text rather than rejecting everything.
-async function validatePosition(position) {
-  if (!position) return;
-  const options = await getPositionOptions();
-  if (!options.length) return;
-  const allowed = options.map(o => o.value);
-  if (!allowed.includes(position)) {
-    throw new ValidationError('Invalid position value');
-  }
-}
+// No positions configured = free text
+const validatePosition = (position) => assertOption('contact_position', position, 'position');
 
 // unit_id: '' | null | undefined all mean "no unit"; anything else must
 // resolve to an existing unit.
@@ -41,11 +22,8 @@ async function resolveUnitId(rawUnitId) {
   return unitId;
 }
 
-export async function listContacts({ search, unit_id, position, page, pageSize }) {
-  const [items, totalCount] = await Promise.all([
-    Contact.findFilteredPage({ search, unit_id, position, page, pageSize }),
-    Contact.countFiltered({ search, unit_id, position })
-  ]);
+export async function listContacts(filter) {
+  const [items, totalCount] = await Promise.all([Contact.findFilteredPage(filter), Contact.countFiltered(filter)]);
   return { items, totalCount };
 }
 

@@ -45,7 +45,7 @@
               <div class="col-md-6 col-xl-3">
                 <label class="form-label small"><%= t('System') %></label>
                 <select name="system_id[]" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"
-                        data-ajax-url="/system/api/system" data-ids-url="/organize/api/system/ids" data-selected='<%= JSON.stringify(filterSystemId) %>'></select>
+                        data-ajax-url="/system/api/system" data-ids-url="/system/api/system/ids" data-selected='<%= JSON.stringify(filterSystemId) %>'></select>
               </div>
               <div class="col-md-6 col-xl-3">
                 <label class="form-label small"><%= t('App Type') %></label>

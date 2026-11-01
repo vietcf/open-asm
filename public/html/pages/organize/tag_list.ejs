@@ -1,426 +1,70 @@
-
 <%
-// ==========================================
-// HELPER FUNCTIONS
-// ==========================================
-
-// Helper function to build pagination URL with all query parameters
-function buildPaginationUrl(targetPage) {
-  const params = new URLSearchParams();
-  
-  // Add page
-  params.set('page', targetPage);
-  
-  // Add search if exists
-  if (typeof search !== 'undefined' && search) {
-    params.set('search', search);
-  }
-  
-  // Add pageSize if exists
-  if (typeof pageSize !== 'undefined' && pageSize) {
-    params.set('pageSize', pageSize);
-  }
-  
-  return '?' + params.toString();
-}
+  const COLUMNS = [
+    { key: 'name', label: 'Tag Name', def: true, fixed: true },
+    { key: 'description', label: 'Description', def: true },
+    { key: 'usage', label: 'Used by', def: true },
+  ];
+  const cell = (tg, key) => ({
+    name: `<span class="badge tag">${ui.esc(tg.name)}</span>`,
+    description: ui.clip(tg.description),
+    usage: tg.usage_count ? ui.esc(t('{1} object(s)', { 1: tg.usage_count })) : ui.dash,
+  })[key];
 %>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'Organization' }, { label: 'Tag List' }] }) %>
 
-<!-- ========================================== -->
-<!-- MAIN CONTENT -->
-<!-- ========================================== -->
-
-<!-- Content Header -->
-<div class="app-content-header">
-  <div class="container-fluid">
-    <div class="row">
-      <div class="col-12">
-        <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/"><%= t('Home') %></a></li>
-          <li class="breadcrumb-item active"><%= t('Tag List') %></li>
-        </ol>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Main content -->
 <div class="app-content">
   <div class="container-fluid">
-    <!-- ========================================== -->
-    <!-- SEARCH AND FILTER SECTION -->
-    <!-- ========================================== -->
-    
-    <!-- Search and Page Size Row -->
-    <div class="row mb-3">
-      <div class="col-12">
-        <div class="d-flex justify-content-end align-items-center gap-2">
-          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/organize/tag">
-            <!-- Hidden inputs to preserve filter values -->
-            <input type="hidden" name="page" value="1">
-            
-            <div class="input-group input-group-sm" style="width: 250px;">
-              <input class="form-control form-control-sm" type="search" name="search" placeholder="<%= t('Search Tag Name...') %>" aria-label="<%= t('Search') %>" value="<%= typeof search !== 'undefined' ? search : '' %>">
-              <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
-            </div>
-            <div class="d-flex align-items-center gap-1">
-              <label class="form-label form-label-sm mb-0 text-muted"><%= t('Show:') %></label>
-              <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
-                <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
-                  <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
-                <% }) %>
-              </select>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+    <%- include('../../partials/ui/flash') %>
 
-    <!-- ========================================== -->
-    <!-- ACTION BUTTONS SECTION -->
-    <!-- ========================================== -->
-    
-    <!-- Action Buttons -->
-    <div class="row mb-3">
-      <div class="col-12">
-        <div class="d-flex justify-content-end gap-2">
-          <% if (hasPermission && hasPermission('tag.create')) { %>
-            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addTagModal">
-              <i class="bi bi-plus"></i> <%= t('Add Tag') %>
-            </button>
-          <% } %>
-        </div>
-      </div>
-    </div>
+    <div class="card list-card">
+      <form class="list-filter-form" method="get" action="/organize/tag">
+        <input type="hidden" name="pageSize" value="<%= pageSize %>">
+        <%- include('../../partials/ui/list_toolbar', {
+              search, searchPlaceholder: 'Search Tag Name...',
+              exportUrl: '/organize/tag/export' + currentQuery,
+              addUrl: hasPermission('tag.create') ? '/organize/tag/add' : null, addLabel: 'Add Tag' }) %>
+      </form>
 
-    <!-- ========================================== -->
-    <!-- FILTER DATA AND FLASH MESSAGES -->
-    <!-- ========================================== -->
-    
-    <!-- Flash Messages -->
-    <% if (typeof successMessage !== 'undefined' && successMessage) { %>
-      <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
-        <i class="bi bi-check-circle me-2"></i><%= t(successMessage) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
-      </div>
-      <script>
-        // Auto-hide success message after 5 seconds
-        setTimeout(function() {
-          const alert = document.getElementById('successAlert');
-          if (alert) {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-          }
-        }, 5000);
-      </script>
-    <% } %>
-    
-    <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
-      <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
-        <i class="bi bi-exclamation-triangle me-2"></i><%= t(errorMessage) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
-      </div>
-      <script>
-        // Auto-hide error message after 8 seconds (longer for errors)
-        setTimeout(function() {
-          const alert = document.getElementById('errorAlert');
-          if (alert) {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-          }
-        }, 8000);
-      </script>
-    <% } %>
-
-    <!-- ========================================== -->
-    <!-- TAG LIST TABLE -->
-    <!-- ========================================== -->
-    
-    <!-- Tag List Table -->
-    <div class="row">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title mb-0"><%= t('Tag List') %></h3>
-          </div>
-          <div class="card-body table-responsive p-0" style="overflow-x: auto;">
-            <table class="table table-hover" id="tagTable">
-              <thead>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle table-stack" id="tagTable">
+          <thead>
+            <tr>
+              <th class="col-index">#</th>
+              <% COLUMNS.forEach(function (c) { %><th data-col="<%= c.key %>"><%= t(c.label) %></th><% }) %>
+              <th class="col-actions"><%= t('Actions') %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (tagList && tagList.length) { %>
+              <% tagList.forEach(function (tag, idx) { %>
                 <tr>
-                  <th><%= t('No.') %></th>
-                  <th data-sort-type="text"><%= t('Tag Name') %></th>
-                  <th data-sort-type="text"><%= t('Description') %></th>
-                  <th class="text-end"><%= t('Actions') %></th>
+                  <td class="col-index"><%= (page - 1) * pageSize + idx + 1 %></td>
+                  <% COLUMNS.forEach(function (c) { %><td data-col="<%= c.key %>" data-label="<%= t(c.label) %>"<%- c.key === 'name' ? ' class="stack-title"' : '' %>><%- cell(tag, c.key) %></td><% }) %>
+                  <td class="col-actions">
+                    <div class="row-actions">
+                      <% if (hasPermission('tag.update')) { %>
+                        <a href="/organize/tag/<%= tag.id %>/edit" class="btn btn-sm btn-outline-secondary" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
+                      <% } %>
+                      <% if (hasPermission('tag.delete')) { %>
+                        <form action="/organize/tag/<%= tag.id %>/delete" method="POST" data-confirm="<%= t('Are you sure you want to delete tag: ') + tag.name + '?' %>">
+                          <button type="submit" class="btn btn-sm btn-outline-secondary btn-delete" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
+                        </form>
+                      <% } %>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                <% if (tagList && tagList.length > 0) { %>
-                  <% tagList.forEach(function(tag, idx) { %>
-                    <tr>
-                      <td><%= (page - 1) * pageSize + idx + 1 %></td>
-                      <td><%= tag.name %></td>
-                      <td>
-                        <%
-                          const cleanDescription = (tag.description || '-').trim();
-                          const shortDescription = cleanDescription.length > 50 ? cleanDescription.substring(0, 50) + '…' : cleanDescription;
-                        %>
-                        <span data-bs-toggle="tooltip" data-bs-placement="top" title="<%= cleanDescription %>" style="cursor: help; word-break: break-word;"><%= shortDescription %></span>
-                      </td>
-                      <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showTagDetail(<%= JSON.stringify(tag.id) %>)" data-tag='<%= JSON.stringify(tag) %>'><i class="bi bi-eye"></i></button>
-                        <% if (hasPermission('tag.update')) { %>
-                          <button type="button" class="btn btn-warning btn-sm" data-bs-toggle="modal" data-bs-target="#editTagModal" data-tag-id="<%= tag.id %>" data-tag-name="<%= tag.name %>" data-tag-description="<%= tag.description || '' %>" title="<%= t('Edit') %>">
-                            <i class="bi bi-pencil"></i>
-                          </button>
-                        <% } %>
-                        <% if (hasPermission('tag.delete')) { %>
-                          <form action="/organize/tag/<%= tag.id %>?_method=DELETE" method="POST" style="display:inline !important;" onsubmit="return confirmDeleteTag(this, <%= JSON.stringify(tag.name) %>)">
-                            <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>" style="display: inline-block !important; visibility: visible !important; position: relative !important;">
-                              <i class="bi bi-trash"></i>
-                            </button>
-                          </form>
-                        <% } %>
-                      </td>
-                    </tr>
-                  <% }) %>
-                <% } else { %>
-                  <tr><td colspan="4" class="text-center"><%= t('No tags found') %></td></tr>
-                <% } %>
-              </tbody>
-            </table>
-          </div>
-          <div class="card-footer clearfix">
-            <div class="d-flex justify-content-between align-items-center px-3 py-2">
-              <div>
-                <% 
-                  // Calculate pagination range
-                  const tagStartItem = (page - 1) * pageSize + 1;
-                  const tagEndItem = Math.min(page * pageSize, totalCount || 0);
-                  const tagStartPage = Math.max(1, page - 2);
-                  const tagEndPage = Math.min(totalPages, page + 2);
-                %>
-                <span><%= t('Showing {1} - {2} of {3} tags', { 1: tagStartItem, 2: tagEndItem, 3: typeof totalCount !== 'undefined' ? totalCount : 0 }) %></span>
-              </div>
-              <ul class="pagination pagination-sm m-0 float-end">
-                <% 
-                  function buildTagFilterQuery() {
-                    let params = [];
-                    if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
-                    if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
-                    return params.join('&');
-                  }
-                  const tagFilterQuery = buildTagFilterQuery();
-                %>
-                <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page - 1 %><%= tagFilterQuery ? '&' + tagFilterQuery : '' %>" tabindex="-1"><%= t('Previous') %></a>
-                </li>
-                <% if (tagStartPage > 1) { %>
-                  <li class="page-item"><a class="page-link" href="?page=1<%= tagFilterQuery ? '&' + tagFilterQuery : '' %>">1</a></li>
-                  <% if (tagStartPage > 2) { %>
-                    <li class="page-item disabled"><span class="page-link">...</span></li>
-                  <% } %>
-                <% } %>
-                <% for (let i = tagStartPage; i <= tagEndPage; i++) { %>
-                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= tagFilterQuery ? '&' + tagFilterQuery : '' %>"><%= i %></a></li>
-                <% } %>
-                <% if (tagEndPage < totalPages) { %>
-                  <li class="page-item disabled"><span class="page-link">...</span></li>
-                  <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= tagFilterQuery ? '&' + tagFilterQuery : '' %>"><%= totalPages %></a></li>
-                <% } %>
-                <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page + 1 %><%= tagFilterQuery ? '&' + tagFilterQuery : '' %>"><%= t('Next') %></a>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
+              <% }); %>
+            <% } else { %>
+              <tr><td colspan="<%= COLUMNS.length + 2 %>">
+                <%- include('../../partials/ui/empty_state', { icon: 'bi-tags', message: 'No tags found', filtered: !!search, clearUrl: '/organize/tag',
+                      actionUrl: hasPermission('tag.create') ? '/organize/tag/add' : null, actionLabel: 'Add Tag' }) %>
+              </td></tr>
+            <% } %>
+          </tbody>
+        </table>
       </div>
+
+      <%- include('../../partials/ui/pagination', { page, totalPages, totalCount, pageSize, count: (tagList || []).length, summary: 'Showing {1} - {2} of {3} tags' }) %>
     </div>
   </div>
 </div>
-
-<!-- ========================================== -->
-<!-- MODALS SECTION -->
-<!-- ========================================== -->
-
-<!-- Tag Detail Modal -->
-<div class="modal fade" id="tagDetailModal" tabindex="-1" aria-labelledby="tagDetailModalLabel">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="tagDetailModalLabel"><%= t('Tag Detail') %></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
-      </div>
-      <div class="modal-body" id="tagDetailContent">
-        <!-- Content will be loaded here -->
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Close') %></button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Add Tag Modal -->
-<div class="modal fade" id="addTagModal" tabindex="-1" aria-labelledby="addTagModalLabel">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="addTagModalLabel"><%= t('Add Tag') %></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
-      </div>
-      <form action="/organize/tag" method="POST">
-        <div class="modal-body">
-          <div class="mb-3">
-            <label for="tagName" class="form-label"><%= t('Tag Name') %> <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="tagName" name="name" placeholder="<%= t('Enter tag name') %>" required>
-          </div>
-          <div class="mb-3">
-            <label for="tagDescription" class="form-label"><%= t('Description') %></label>
-            <textarea class="form-control" id="tagDescription" name="description" rows="3" placeholder="<%= t('Enter tag description') %>"></textarea>
-          </div>
-        </div>
-        <div class="modal-footer d-flex justify-content-end">
-          <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal"><%= t('Cancel') %></button>
-          <button type="submit" class="btn btn-primary btn-sm"><%= t('Add Tag') %></button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-<!-- Edit Tag Modal -->
-<div class="modal fade" id="editTagModal" tabindex="-1" aria-labelledby="editTagModalLabel">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="editTagModalLabel"><%= t('Edit Tag') %></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
-      </div>
-      <form id="editTagForm" action="" method="POST">
-        <div class="modal-body">
-          <div class="mb-3">
-            <label for="editTagName" class="form-label"><%= t('Tag Name') %> <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="editTagName" name="name" placeholder="<%= t('Enter tag name') %>" required>
-          </div>
-          <div class="mb-3">
-            <label for="editTagDescription" class="form-label"><%= t('Description') %></label>
-            <textarea class="form-control" id="editTagDescription" name="description" rows="3" placeholder="<%= t('Enter tag description') %>"></textarea>
-          </div>
-        </div>
-        <div class="modal-footer d-flex justify-content-end">
-          <button type="button" class="btn btn-secondary btn-sm me-2" data-bs-dismiss="modal"><%= t('Cancel') %></button>
-          <button type="submit" class="btn btn-primary btn-sm"><%= t('Update Tag') %></button>
-        </div>
-      </form>
-    </div>
-  </div>
-</div>
-
-
-<script>
-// ==========================================
-// JAVASCRIPT FUNCTIONS
-// ==========================================
-
-// Show tag detail
-// name/description are free text not HTML-stripped server-side — must be
-// escaped before going into innerHTML.
-function escapeHtml(value) {
-  return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
-    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-  });
-}
-
-function showTagDetail(tagId) {
-  const button = document.querySelector(`button[onclick="showTagDetail('${tagId}')"]`);
-  const tagData = JSON.parse(button.getAttribute('data-tag'));
-
-  const modalElement = document.getElementById('tagDetailModal');
-  const content = document.getElementById('tagDetailContent');
-
-  let html = '<dl class="row detail-dl">';
-  html += '<dt class="col-sm-4">Tag ID</dt><dd class="col-sm-8">' + (tagData.id || '-') + '</dd>';
-  html += '<dt class="col-sm-4">Tag Name</dt><dd class="col-sm-8">' + escapeHtml(tagData.name || '-') + '</dd>';
-  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8">' + (tagData.description ? '<div style="white-space: pre-wrap;">' + escapeHtml(tagData.description) + '</div>' : '-') + '</dd>';
-  html += '</dl>';
-  
-  content.innerHTML = html;
-  
-  const modal = new bootstrap.Modal(modalElement);
-  modal.show();
-}
-
-// Handle edit button click with data attributes
-$(document).on('click', 'button[data-bs-target="#editTagModal"]', function() {
-  const id = $(this).data('tag-id');
-  const name = $(this).data('tag-name');
-  const description = $(this).data('tag-description');
-  editTag(id, name, description);
-});
-
-// Edit tag function
-function editTag(id, name, description) {
-  document.getElementById('editTagForm').action = '/organize/tag/' + id + '?_method=PUT';
-  document.getElementById('editTagName').value = name;
-  document.getElementById('editTagDescription').value = description;
-}
-
-// Confirm delete tag
-function confirmDeleteTag(form, tagName) {
-  return confirm(`Are you sure you want to delete tag "${tagName}"? This action cannot be undone.`);
-}
-
-// Helper function to build export URL
-function buildExportUrl() {
-  const params = new URLSearchParams();
-  
-  // Add search if exists
-  if (typeof search !== 'undefined' && search) {
-    params.set('search', search);
-  }
-  
-  // Add pageSize if exists
-  if (typeof pageSize !== 'undefined' && pageSize) {
-    params.set('pageSize', pageSize);
-  }
-  
-  return '/organize/tag/export' + (params.toString() ? '?' + params.toString() : '');
-}
-
-// Initialize tooltips
-$(document).ready(function() {
-  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-    return new bootstrap.Tooltip(tooltipTriggerEl);
-  });
-});
-</script>
-
-<style>
-/* Custom tooltip styles for multi-line descriptions */
-.tooltip .tooltip-inner {
-  white-space: pre-wrap;
-  max-width: 400px;
-  text-align: left;
-}
-
-/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
-#tagTable {
-  table-layout: fixed;
-  min-width: 600px;
-}
-#tagTable thead th {
-  white-space: nowrap;
-}
-#tagTable th:nth-child(1), #tagTable td:nth-child(1) { width: 8%; }
-#tagTable th:nth-child(2), #tagTable td:nth-child(2) { width: 22%; }
-#tagTable th:nth-child(3), #tagTable td:nth-child(3) { width: 43%; }
-#tagTable th:nth-child(4), #tagTable td:nth-child(4) { width: 27%; }
-
-/* Description column alignment */
-#tagTable td:nth-child(3) {
-  text-align: left;
-  vertical-align: top;
-  overflow-wrap: break-word;
-}
-</style>

@@ -1,0 +1,30 @@
+<%# Add / Edit Tag.  mode: 'add' | 'edit', tag %>
+<% const isEdit = mode === 'edit'; const tg = tag || {}; %>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [
+  { label: 'Organization' }, { label: 'Tag List', href: '/organize/tag' }, { label: isEdit ? 'Edit Tag' : 'Add Tag' }
+] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <form class="card form-card" method="POST" action="<%= isEdit ? '/organize/tag/' + tg.id + '/edit' : '/organize/tag/add' %>">
+      <div class="card-header form-card-header">
+        <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit Tag' : 'Add Tag') %></h3>
+      </div>
+      <div class="card-body">
+        <section class="form-section">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="f-name"><%= t('Tag Name') %> <span class="text-danger">*</span></label>
+              <input type="text" id="f-name" name="name" class="form-control" value="<%= tg.name || '' %>" maxlength="100" placeholder="<%= t('Enter tag name') %>" required>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-description"><%= t('Description') %></label>
+              <textarea id="f-description" name="description" class="form-control" rows="3" placeholder="<%= t('Enter tag description') %>"><%= tg.description || '' %></textarea>
+            </div>
+          </div>
+        </section>
+      </div>
+      <%- include('../../partials/ui/form_actions', { cancelUrl: '/organize/tag', submitLabel: isEdit ? 'Save Changes' : 'Add Tag' }) %>
+    </form>
+  </div>
+</div>

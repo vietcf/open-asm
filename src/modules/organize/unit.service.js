@@ -1,18 +1,10 @@
+// Organization units (departments): shared by the web pages and the REST API.
 import Unit from './unit.model.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
+import { hasKey } from '../../shared/service.js';
 
-export async function listUnits({ search, page, pageSize }) {
-  if (search) {
-    const [items, totalCount] = await Promise.all([
-      Unit.findSearchPage(search, page, pageSize),
-      Unit.countSearch(search)
-    ]);
-    return { items, totalCount };
-  }
-  const [items, totalCount] = await Promise.all([
-    Unit.findPage(page, pageSize),
-    Unit.countAll()
-  ]);
+export async function listUnits(filter) {
+  const [items, totalCount] = await Promise.all([Unit.findFilteredList(filter), Unit.countFiltered(filter)]);
   return { items, totalCount };
 }
 
@@ -27,63 +19,39 @@ export async function findUnitsByName(name) {
   return unit ? [unit] : [];
 }
 
-export async function assertNameAvailable(name, excludeId) {
+async function assertNameAvailable(name, excludeId = null) {
   const existing = await Unit.findByName(name);
-  if (existing && (excludeId == null || String(existing.id) !== String(excludeId))) {
-    throw new ConflictError('Unit already exists with this name');
-  }
+  if (existing && String(existing.id) !== String(excludeId)) throw new ConflictError('Unit already exists with this name');
 }
+
+const text = (v) => (typeof v === 'string' ? v.trim() : '');
 
 // input: {name, code?, description?}
 export async function createUnit(input) {
-  const name = (input.name || '').trim();
+  const name = text(input.name);
   if (!name) throw new ValidationError('Unit name is required');
-  const code = (input.code || '').trim();
-  const description = (input.description || '').trim();
-
   await assertNameAvailable(name);
-  return Unit.create({ name, code, description });
+  return Unit.create({ name, code: text(input.code), description: text(input.description) });
 }
 
-// Partial update (has-key semantics). code/description fall back to the
-// current row's value when their key is absent from input — Unit.update has
-// no partial-column form, so all three columns are always written together.
+// Partial update: absent keys keep their value.
 export async function updateUnit(id, input) {
-  const current = await Unit.findById(id);
-  if (!current) throw new NotFoundError('Unit not found');
-
-  const has = key => Object.prototype.hasOwnProperty.call(input, key);
-
-  const name = has('name') ? (typeof input.name === 'string' ? input.name.trim() : current.name) : current.name;
+  const current = await getUnit(id);
+  const pick = (key) => (hasKey(input, key) ? text(input[key]) : current[key]);
+  const name = pick('name');
   if (!name) throw new ValidationError('Unit name is required');
-
-  const code = has('code') ? (typeof input.code === 'string' ? input.code.trim() : current.code) : current.code;
-  const description = has('description') ? (typeof input.description === 'string' ? input.description.trim() : current.description) : current.description;
-
   await assertNameAvailable(name, id);
-  return Unit.update(id, { name, code, description });
+  return Unit.update(id, { name, code: pick('code'), description: pick('description') });
 }
 
-const USAGE_LABELS = {
-  contacts: 'contact(s)',
-  systems: 'system(s)',
-  priv_users: 'privileged account(s)',
-  rulefirewall: 'firewall rule(s)'
-};
+const USAGE_LABELS = { contacts: 'contact(s)', systems: 'system(s)', priv_users: 'privileged account(s)', rulefirewall: 'firewall rule(s)' };
 
+// Refused while referenced: contacts.unit_id has no foreign key and
+// rulefirewall.ou_id is ON DELETE SET NULL, so the database would not stop it.
 export async function deleteUnit(id) {
-  const exists = await Unit.exists(id);
-  if (!exists) throw new NotFoundError('Unit not found');
-  // contacts.unit_id has no FK constraint at all (silent dangling reference
-  // on delete) and rulefirewall.ou_id is ON DELETE SET NULL (silent data
-  // loss) — neither would surface an error, so check usage explicitly
-  // instead of relying on the DB to block the delete.
+  await getUnit(id);
   const usage = await Unit.getUsageBreakdown(id);
-  const parts = Object.entries(usage)
-    .filter(([, count]) => count > 0)
-    .map(([key, count]) => `${count} ${USAGE_LABELS[key]}`);
-  if (parts.length) {
-    throw new ConflictError(`Cannot delete: this unit is still in use by ${parts.join(', ')}`);
-  }
+  const parts = Object.entries(usage).filter(([, n]) => n > 0).map(([key, n]) => `${n} ${USAGE_LABELS[key]}`);
+  if (parts.length) throw new ConflictError('Cannot delete: this unit is still in use by {usage}').withParams({ usage: parts.join(', ') });
   await Unit.delete(id);
 }

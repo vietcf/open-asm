@@ -604,6 +604,20 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
+- ♻️ Organization (Contacts, Units, Tags) rebuilt on the UI kit: list
+  toolbar, filters, column chooser, Excel export on all three, contact
+  detail modal with the vCard QR code, and Add/Edit pages
+  (`contact_form`, `unit_form`, `tag_form`) instead of modal forms. The
+  unit list shows each unit's code and how many contacts / systems /
+  privileged accounts / firewall rules use it; the tag list shows usage.
+  Controllers split per entity; the REST controllers keep their response
+  shapes but share the `src/shared/api.js` helpers.
+- ♻️ Excel import is one shared implementation (`src/shared/excelImport.js`,
+  `partials/ui/import_modal.ejs`, `public/js/import-kit.js`,
+  `src/middlewares/excelUpload.middleware.js`); Contacts use it first.
+  Same template, validation file and import result file as before; empty
+  rows are ignored and each row is imported in its own savepoint.
+- 🐛 Unit search: the count matched the code column but the rows did not.
 - ♻️ Code grouped by feature: the System module (systems + components)
   now lives in `src/modules/system/` (model, service, web controller, REST
   handlers, web and API routes side by side) and shared building blocks in

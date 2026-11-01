@@ -1,79 +1,53 @@
+// Web routes of the Organize module (contacts, units, tags), mounted at /organize.
 import express from 'express';
-import organizeController from './organize.controller.js';
+import contacts, { contactImport } from './contact.controller.js';
+import units from './unit.controller.js';
+import tags from './tag.controller.js';
 import requirePermission from '../../middlewares/requirePermission.middleware.js';
-import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
+import excelUpload from '../../middlewares/excelUpload.middleware.js';
 
 const router = express.Router();
+const can = requirePermission;
 
-// Configure multer for file uploads
-const uploadsDir = process.env.UPLOADS_DIR || 'public/uploads';
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const dest = path.join(process.cwd(), uploadsDir, 'import');
-    fs.mkdirSync(dest, { recursive: true });
-    cb(null, dest);
-  },
-  filename: function (req, file, cb) {
-    // path.basename strips any directory components a crafted originalname
-    // could carry (multer's diskStorage does not sanitize this itself, it
-    // just path.joins(destination, filename)).
-    cb(null, Date.now() + '-' + path.basename(file.originalname));
-  }
-});
+// Contacts
+router.get('/contact', can('contact.read'), contacts.list);
+router.get('/contact/export', can('contact.read'), contacts.export);
+router.get('/contact/template', can('contact.create'), contactImport.template);
+router.post('/contact/validate-import', can('contact.create'), excelUpload, contactImport.validate);
+router.post('/contact/import', can('contact.create'), excelUpload, contactImport.import);
+router.get('/download/contact-validation/:filename', can('contact.read'), contactImport.download);
+router.get('/contact/add', can('contact.create'), contacts.addForm);
+router.post('/contact/add', can('contact.create'), contacts.create);
+router.get('/contact/:id/edit', can('contact.update'), contacts.editForm);
+router.post('/contact/:id/edit', can('contact.update'), contacts.update);
+router.post('/contact/:id/delete', can('contact.delete'), contacts.remove);
 
-const upload = multer({ 
-  storage: storage,
-  fileFilter: function (req, file, cb) {
-    const allowedTypes = ['.xlsx', '.xls'];
-    const ext = path.extname(file.originalname).toLowerCase();
-    if (allowedTypes.includes(ext)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only Excel files (.xlsx, .xls) are allowed'));
-    }
-  },
-  limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
-  }
-});
+// Units
+router.get('/unit', can('unit.read'), units.list);
+router.get('/unit/export', can('unit.read'), units.export);
+router.get('/unit/add', can('unit.create'), units.addForm);
+router.post('/unit/add', can('unit.create'), units.create);
+router.get('/unit/:id/edit', can('unit.update'), units.editForm);
+router.post('/unit/:id/edit', can('unit.update'), units.update);
+router.post('/unit/:id/delete', can('unit.delete'), units.remove);
 
-// Contact Management
-router.get('/contact', requirePermission('contact.read'), organizeController.contactList);
-router.post('/contact', requirePermission('contact.create'), organizeController.createContact);
-router.put('/contact/:id', requirePermission('contact.update'), organizeController.updateContact);
-router.delete('/contact/:id', requirePermission('contact.delete'), organizeController.deleteContact);
+// Tags
+router.get('/tag', can('tag.read'), tags.list);
+router.get('/tag/export', can('tag.read'), tags.export);
+router.get('/tag/add', can('tag.create'), tags.addForm);
+router.post('/tag/add', can('tag.create'), tags.create);
+router.get('/tag/:id/edit', can('tag.update'), tags.editForm);
+router.post('/tag/:id/edit', can('tag.update'), tags.update);
+router.post('/tag/:id/delete', can('tag.delete'), tags.remove);
 
-// Contact Import
-router.get('/contact/template', requirePermission('contact.create'), organizeController.downloadContactTemplate);
-router.post('/contact/validate-import', requirePermission('contact.create'), upload.single('file'), organizeController.validateImportContacts);
-router.post('/contact/import', requirePermission('contact.create'), upload.single('file'), organizeController.importContacts);
-router.get('/download/contact-validation/:filename', requirePermission('contact.read'), organizeController.downloadContactValidationFile);
-
-
-// Organization Unit Management
-router.get('/unit', requirePermission('unit.read'), organizeController.unitList);
-router.post('/unit', requirePermission('unit.create'), organizeController.createUnit);
-router.put('/unit/:id', requirePermission('unit.update'), organizeController.updateUnit);
-router.delete('/unit/:id', requirePermission('unit.delete'), organizeController.deleteUnit);
-
-// Tag Management
-router.get('/tag', requirePermission('tag.read'), organizeController.tagList);
-router.post('/tag', requirePermission('tag.create'), organizeController.createTag);
-router.put('/tag/:id', requirePermission('tag.update'), organizeController.updateTag);
-router.delete('/tag/:id', requirePermission('tag.delete'), organizeController.deleteTag);
-
-// ====== API AJAX SEARCH ======
-router.get('/api/contact', organizeController.apiContactSearch);
-router.get('/api/contact/ids', organizeController.apiContactByIds);
-router.get('/api/tag',organizeController.apiTagSearch);
-router.get('/api/tag/ids', organizeController.apiTagByIds);
-router.get('/api/system/ids', organizeController.apiSystemByIds);
-router.get('/api/unit', organizeController.apiUnitSearch);
-router.get('/api/unit/:id/detail', organizeController.apiUnitDetail);
-router.get('/api/contact/:id/qrcode', organizeController.apiContactQrVcard);
-
-
+// AJAX lookups, open to any signed-in user (pickers on other modules' forms)
+router.get('/api/contact', contacts.lookup);
+router.get('/api/contact/ids', contacts.lookupByIds);
+router.get('/api/contact/:id/qrcode', contacts.qrcode);
+router.get('/api/unit', units.lookup);
+router.get('/api/unit/ids', units.lookupByIds);
+router.get('/api/unit/:id/detail', units.detail);
+router.get('/api/tag', tags.lookup);
+router.get('/api/tag/ids', tags.lookupByIds);
 
 export default router;
