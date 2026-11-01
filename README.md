@@ -180,6 +180,32 @@ SSL_CERT_PATH=./ssl/cert.pem
 SSL_KEY_PATH=./ssl/key.pem
 ```
 
+### System Configuration (admin UI)
+
+**Administrator → System Configuration** (`/administrator/configuration`)
+holds the settings stored in the `configuration` table, one tab per area:
+General, Security & Logs, System, Server & Device, Network, Firewall,
+Privileged Accounts, Organization, Pentest. There is no raw key/value or
+JSON editor: every key has its own editor and server-side validation.
+
+| Editor | Keys (examples) | Rules |
+|---|---|---|
+| Text | `site_name` | required, max 255 characters, no control characters |
+| Number | `log_retention_days` (1–3650), `session_idle_timeout_minutes` (0–10080, 0 = off), `otp_deadline_time` (1–365) | whole number within the range; empty = default for optional keys |
+| Choice | `log_level` | `info`, `warning` or `critical` |
+| Number list | `page_size` (used by every list, the first value is the default) | 1–10 values from 1 to 1000; stored sorted, without duplicates |
+| Option grid | `system_level`, `server_type`, `firewall_name`, … | up to 200 rows; each value unique, max 100 characters, without `, < > " ' \` \`; label optional (defaults to the value) |
+
+Option lists are stored as `[{"value": "...", "label": "..."}]`. A saved
+value is fixed (records refer to it); only its label can change. Removing an
+option leaves records that use it untouched, it is just no longer offered.
+Values saved before these rules existed are kept as they are.
+
+Adding a setting: declare it in `src/utils/configRegistry.js` (group, type,
+limits, label), add its default to `migrations/lib/seed.js`, translate the
+label in `src/i18n/locales/vi.json`. A change to the stored format of an
+existing key needs a data migration (see `migrations/README.md`).
+
 ### Docker Configuration
 
 Docker needs no configuration file: defaults come from `docker/defaults.env`,
@@ -467,7 +493,13 @@ Docker runs it before every app start; it is a no-op when nothing is pending.
 npm run migrate                                   # apply pending migrations + seeds
 npm run migrate:status                            # applied / pending list
 npm run migrate:create -- add_owner_to_servers    # scaffold the next migration
+SOURCE_POSTGRES_DB=openasm_old npm run migrate:data   # copy an existing install into this fresh one
 ```
+
+**Moving an existing system with data** (e.g. v1.1.0 from `main`) onto a
+fresh install of the current version is a separate step from installing:
+see [Data migration](migrations/README.md#data-migration-existing-install--fresh-install).
+Any change to a table that already holds data ships with its data migration.
 
 Each migration runs once, in its own transaction, with checksum,
 ordering and locking safety checks. **Full guide, including how to write an
@@ -523,6 +555,21 @@ Restoring **replaces the entire database** — everything written after the back
 See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
+
+### Unreleased
+- ✨ Data migration `npm run migrate:data`: copies every row of an existing
+  install (e.g. v1.1.0) into a fresh install of this version, in one
+  transaction, with a `--dry-run` rehearsal. See `migrations/README.md`.
+- ✨ `docker-compose.dev.yml`: live code sync for development
+  (`docker compose -f docker-compose.yml -f docker-compose.dev.yml up --watch`).
+- 💄 Page header: breadcrumb only, left-aligned (no separate page title).
+- ✨ System Configuration rebuilt as tabs with typed editors and an option
+  grid instead of raw JSON; every value validated on the server. The raw
+  key/value page (and its unused import/export routes) is gone.
+- 🐛 `system_level` options were ignored (stored as `{"levels": [...]}`);
+  migration `0004` stores every option list as `[{value, label}]`.
+- ♻️ One page size setting for all lists: `device_page_size` removed
+  (migration `0005`).
 
 ### Version 1.1.0 (Latest)
 - 🎉 First tracked release of this baseline. Full asset/network/security

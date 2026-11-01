@@ -1,0 +1,13 @@
+<%#
+  System Configuration tabs: one per group of src/utils/configRegistry.js.
+  include('../../partials/ui/config_tabs', { groups, current: 'system' })
+%>
+<ul class="nav nav-tabs config-tabs mb-3" role="tablist">
+  <% groups.forEach(function (g) { %>
+    <li class="nav-item">
+      <a class="nav-link<%= g.id === current ? ' active' : '' %>" href="/administrator/configuration/<%= g.id %>"<%- g.id === current ? ' aria-current="page"' : '' %>>
+        <i class="bi <%= g.icon %> me-1"></i><%= t(g.label) %>
+      </a>
+    </li>
+  <% }) %>
+</ul>

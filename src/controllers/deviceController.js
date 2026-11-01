@@ -13,6 +13,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { sanitizeExcelRow } from '../utils/excelSafe.js';
+import { siteConfig } from '../utils/siteConfig.js';
 import {
   listDevices as listDevicesService,
   getDevice as getDeviceService,
@@ -87,31 +88,6 @@ async function getDeviceTypeOptionsFromConfig() {
   return options;
 }
 
-// Helper: Load allowed page sizes for device list from DB config (device_page_size first, falls back to page_size)
-async function getPageSizeOptionsFromConfig() {
-  let pageSizeOptions = [];
-  let config = null;
-  try {
-    config = await Configuration.findById('device_page_size');
-    if (!config || !config.value) {
-      config = await Configuration.findById('page_size');
-    }
-    if (config && config.value) {
-      let parsed;
-      try { parsed = JSON.parse(config.value); } catch { parsed = null; }
-      if (Array.isArray(parsed)) {
-        pageSizeOptions = parsed.map(item => typeof item === 'object' ? item : Number(item)).filter(x => !isNaN(x));
-      } else if (typeof config.value === 'string') {
-        pageSizeOptions = config.value.split(',').map(v => Number(v.trim())).filter(x => !isNaN(x));
-      }
-    }
-  } catch (e) { pageSizeOptions = []; }
-  if (!Array.isArray(pageSizeOptions) || pageSizeOptions.length === 0) {
-    pageSizeOptions = [];
-  }
-  return pageSizeOptions;
-}
-
 const deviceController = {};
 // List all devices with search, filter, and pagination
 deviceController.listDevice = async (req, res) => {
@@ -132,7 +108,8 @@ deviceController.listDevice = async (req, res) => {
     if (!filterParams.tags.length) delete filterParams.tags;
     const page = parseInt(req.query.page, 10) || 1;
     let pageSize = parseInt(req.query.pageSize, 10);
-    const allowedPageSizes = await getPageSizeOptionsFromConfig();
+    // Same page size options as every other list (configuration "page_size")
+    const allowedPageSizes = siteConfig.getPageSizeOptions();
     if (!pageSize || !allowedPageSizes.includes(pageSize)) pageSize = allowedPageSizes[0] || 10;
     const { items: deviceList, totalCount } = await listDevicesService({ ...filterParams, page, pageSize });
     const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));

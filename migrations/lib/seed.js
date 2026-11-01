@@ -90,14 +90,14 @@ export async function seedConfiguration(db) {
     {
       key: 'firewall_name',
       value: [
-        { key: 'USER', label: 'USER' },
-        { key: 'SERVER', label: 'SERVER' },
-        { key: 'INTERNET-IN', label: 'INTERNET-IN' },
-        { key: 'INTERNET-OUT', label: 'INTERNET-OUT' },
-        { key: 'BACKBOND', label: 'BACKBOND' },
-        { key: 'DMZ', label: 'DMZ' },
-        { key: 'PARTNER', label: 'PARTNER' },
-        { key: 'DIGI', label: 'DIGI' }
+        { value: 'USER', label: 'USER' },
+        { value: 'SERVER', label: 'SERVER' },
+        { value: 'INTERNET-IN', label: 'INTERNET-IN' },
+        { value: 'INTERNET-OUT', label: 'INTERNET-OUT' },
+        { value: 'BACKBOND', label: 'BACKBOND' },
+        { value: 'DMZ', label: 'DMZ' },
+        { value: 'PARTNER', label: 'PARTNER' },
+        { value: 'DIGI', label: 'DIGI' }
       ],
       description: 'Firewall names'
     },
@@ -217,15 +217,13 @@ export async function seedConfiguration(db) {
     },
     {
       key: 'system_level',
-      value: {
-        levels: [
-          { value: '1', label: 'Level 1' },
-          { value: '2', label: 'Level 2' },
-          { value: '3', label: 'Level 3' },
-          { value: '4', label: 'Level 4' },
-          { value: '5', label: 'Level 5' }
-        ]
-      },
+      value: [
+        { value: '1', label: 'Level 1' },
+        { value: '2', label: 'Level 2' },
+        { value: '3', label: 'Level 3' },
+        { value: '4', label: 'Level 4' },
+        { value: '5', label: 'Level 5' }
+      ],
       description: 'Information system levels'
     },
     {

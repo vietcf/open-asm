@@ -26,13 +26,10 @@ router.post('/permissions', requirePermission('permission.create'), administrato
 router.put('/permissions/:id/edit', requirePermission('permission.update'), administratorController.updatePermission); // Use PUT for edit
 router.delete('/permissions/:id', requirePermission('permission.delete'), administratorController.deletePermission); // Use DELETE for delete
 
-// System Configuration
-router.get('/configuration', requirePermission('configuration.read'), administratorController.listConfigurations);
-router.post('/configuration', requirePermission('configuration.create'), administratorController.createConfiguration);
-router.delete('/configuration/:key', requirePermission('configuration.delete'), administratorController.deleteConfiguration);
-router.put('/configuration/:key', requirePermission('configuration.update'), administratorController.updateConfiguration);
-router.get('/configuration/export', requirePermission('configuration.read'), administratorController.exportConfiguration);
-router.post('/configuration/import', requirePermission('configuration.create'), administratorController.importConfiguration);
+// System Configuration (one tab per group, see src/utils/configRegistry.js)
+router.get('/configuration', requirePermission('configuration.read'), administratorController.configurationHome);
+router.get('/configuration/:group', requirePermission('configuration.read'), administratorController.showConfigurationGroup);
+router.put('/configuration/:group', requirePermission('configuration.update'), administratorController.saveConfigurationGroup); // via _method=PUT
 
 // System Log
 router.get('/log', requirePermission('system_log.read'), administratorController.listSystemLogs);

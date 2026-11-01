@@ -6,6 +6,9 @@ import SystemLog from '../models/SystemLog.js';
 import bcrypt from 'bcrypt';
 import { pool } from '../../config/config.js';
 import { clearPermissionsCache } from '../middlewares/permissions.middleware.js';
+import { CONFIG_GROUPS, findGroup, parseOptions, validateField } from '../utils/configRegistry.js';
+import { withTransaction } from '../services/transaction.js';
+import { siteConfig } from '../utils/siteConfig.js';
 
 // ===== USER MANAGEMENT =====
 const administratorController = {};
@@ -552,296 +555,79 @@ administratorController.deletePermission = async (req, res) => {
   }
 };
 
-// ===== SYSTEM CONFIGURATION CRUD =====
-administratorController.listConfigurations = async (req, res) => {
+// ===== SYSTEM CONFIGURATION: GROUPED PAGES =====
+// One tab per group of src/utils/configRegistry.js, each key with its own
+// editor (option lists as a grid). This is the only way the app writes
+// configuration, so every value goes through validateField().
+administratorController.configurationHome = (req, res) => {
+  res.redirect(`/administrator/configuration/${CONFIG_GROUPS[0].id}`);
+};
+
+administratorController.showConfigurationGroup = async (req, res, next) => {
   try {
-    // Get query parameters
-    const search = req.query.search ? req.query.search.trim() : '';
-    const page = parseInt(req.query.page, 10) || 1;
-    const pageSize = parseInt(req.query.pageSize, 10) || res.locals.defaultPageSize || 20;
-    
-    // Get filtered configurations with pagination
-    const filteredConfigs = await Configuration.findFilteredList({ search, page, pageSize });
-    const totalCount = await Configuration.countFiltered({ search });
-    const totalPages = Math.ceil(totalCount / pageSize);
-    
-    // Get page size options from configuration
-    const pageSizeConfig = await Configuration.findById('page_size');
-    const pageSizeOptions = pageSizeConfig ? 
-      pageSizeConfig.value.split(',').map(size => parseInt(size.trim(), 10)) : 
-      [10, 20, 50, 100];
-    
-    res.render('pages/administrator/configuration_list', {
-      configList: filteredConfigs,
-      search,
-      page,
-      pageSize,
-      totalCount,
-      totalPages,
-      pageSizeOptions,
-      success: (req.flash('success') || [])[0], 
+    const group = findGroup(req.params.group);
+    if (!group) return next();
+    const rows = await Configuration.findByKeys(group.fields.map(f => f.key));
+    const byKey = new Map(rows.map(r => [r.key, r]));
+    const fields = group.fields.map(f => {
+      const row = byKey.get(f.key);
+      const stored = row ? row.value : null;
+      return {
+        ...f,
+        exists: Boolean(row),
+        value: f.type === 'options' ? parseOptions(stored) : (stored ?? ''),
+        updated_by: row ? row.updated_by : null,
+        updated_at: row ? row.updated_at : null,
+      };
+    });
+    res.render('pages/administrator/configuration_group', {
+      group,
+      fields,
+      groups: CONFIG_GROUPS,
+      success: (req.flash('success') || [])[0],
       error: (req.flash('error') || [])[0],
       title: 'System Configuration',
       activeMenu: 'system-configuration'
     });
   } catch (err) {
-    res.status(500).send('Error loading configuration: ' + err.message);
+    next(err);
   }
 };
 
-administratorController.createConfiguration = async (req, res) => {
+administratorController.saveConfigurationGroup = async (req, res, next) => {
+  const group = findGroup(req.params.group);
+  if (!group) return next();
+  const back = `/administrator/configuration/${group.id}`;
+  const submitted = req.body.fields || {};
+  const t = req.t || (s => s);
   try {
-    let { key, value, description } = req.body;
-    // Normalize and validate
-    key = key ? key.trim() : '';
-    value = value ? value.trim() : '';
-    description = description ? description.trim() : '';
-    const keyRegex = /^[a-zA-Z0-9_]+$/;
-    // Validate key and value
-    if (!key || !value) {
-      req.flash('error', 'Key and Value are required!');
-      return res.redirect('/administrator/configuration');
+    const stored = new Map((await Configuration.findByKeys(group.fields.map(f => f.key))).map(r => [r.key, r.value]));
+    const changes = [];
+    for (const field of group.fields) {
+      if (!(field.key in submitted)) continue;
+      const storedValues = field.type === 'options'
+        ? new Set(parseOptions(stored.get(field.key)).map(o => o.value))
+        : undefined;
+      const result = validateField(field, submitted[field.key], storedValues);
+      if (result.error) {
+        req.flash('error', t(result.error, { field: t(field.label), ...result.params }));
+        return res.redirect(back);
+      }
+      changes.push({ field, value: result.value });
     }
-    if (!keyRegex.test(key)) {
-      req.flash('error', 'Key can only contain letters, numbers, and underscores (a-z, A-Z, 0-9, _)!');
-      return res.redirect('/administrator/configuration');
-    }
-
-    // Custom validation for known keys
-    if (key === 'page_size') {
-      // Only allow comma-separated positive integers, unique, sorted ascending
-      let sizes = value.split(',').map(v => v.trim());
-      // All must be positive integers
-      if (!sizes.length || sizes.some(v => !/^[1-9][0-9]*$/.test(v))) {
-        req.flash('error', 'All values must be positive integers, separated by commas!');
-        return res.redirect('/administrator/configuration');
-      }
-      // Check uniqueness
-      const uniqueSizes = Array.from(new Set(sizes));
-      if (uniqueSizes.length !== sizes.length) {
-        req.flash('error', 'Page size values must be unique!');
-        return res.redirect('/administrator/configuration');
-      }
-      // Check sorted ascending
-      const sortedSizes = [...sizes].map(Number).sort((a, b) => a - b).map(String);
-      if (JSON.stringify(sizes) !== JSON.stringify(sortedSizes)) {
-        req.flash('error', 'Page size values must be sorted in ascending order!');
-        return res.redirect('/administrator/configuration');
-      }
-    } 
-    else if (key === 'log_level') {
-      // Only allow info, warning, critical
-      const allowed = ['info','warning','critical'];
-      if (!allowed.includes(value)) {
-        req.flash('error', 'Log level must be one of: info, warning, critical.');
-        return res.redirect('/administrator/configuration');
-      }
-    }
-    else if (key === 'log_retention_days') {
-      // Must be a positive integer
-      if (!/^[0-9]+$/.test(value) || parseInt(value) <= 0) {
-        req.flash('error', 'Log retention days must be a positive integer!');
-        return res.redirect('/administrator/configuration');
-      }
-    }
-    else if (key === 'session_idle_timeout_minutes') {
-      // Must be a non-negative integer (0 disables auto-expiry)
-      if (!/^[0-9]+$/.test(value)) {
-        req.flash('error', 'Session idle timeout must be a non-negative integer (minutes)!');
-        return res.redirect('/administrator/configuration');
-      }
-    }
-
     const user = req.session.user ? req.session.user.username : null;
-    await Configuration.create({ key, value, description, updatedBy: user });
-    // Reload site config cache so newly added keys take effect immediately
-    const { siteConfig } = await import('../utils/siteConfig.js');
+    await withTransaction(null, async client => {
+      for (const { field, value } of changes) {
+        if (value === null) await Configuration.remove(field.key, client);
+        else await Configuration.upsert(field.key, { value, description: field.help || field.label, updatedBy: user }, client);
+      }
+    });
     await siteConfig.initialize();
-    req.flash('success', 'Configuration added successfully!');
-    res.redirect('/administrator/configuration');
+    req.flash('success', t('{group} settings saved', { group: t(group.label) }));
+    res.redirect(back);
   } catch (err) {
-    req.flash('error', 'Failed to add configuration: ' + err.message);
-    res.redirect('/administrator/configuration');
-  }
-};
-
-administratorController.updateConfiguration = async (req, res) => {
-  try {
-    // Support both PUT (RESTful) and traditional POST
-    let key = req.params.key || req.body.key;
-    let { value, description } = req.body;
-    key = key ? key.trim() : '';
-    value = value ? value.trim() : '';
-    description = description ? description.trim() : '';
-    const keyRegex = /^[a-zA-Z0-9_]+$/;
-
-    // Validate key and value
-    if (!key || !value) {
-      req.flash('error', 'Key and Value are required.');
-      return res.redirect('/administrator/configuration');
-    }
-    if (!keyRegex.test(key)) {
-      req.flash('error', 'Key can only contain letters, numbers, and underscores (a-z, A-Z, 0-9, _)!');
-      return res.redirect('/administrator/configuration');
-    }
-
-    // Custom validation for known keys
-    if (key === 'page_size') {
-      // Only allow comma-separated positive integers, unique, sorted ascending
-      let sizes = value.split(',').map(v => v.trim());
-      // All must be positive integers
-      if (!sizes.length || sizes.some(v => !/^[1-9][0-9]*$/.test(v))) {
-        req.flash('error', 'All values must be positive integers, separated by commas!');
-        return res.redirect('/administrator/configuration');
-      }
-      // Check uniqueness
-      const uniqueSizes = Array.from(new Set(sizes));
-      if (uniqueSizes.length !== sizes.length) {
-        req.flash('error', 'Page size values must be unique!');
-        return res.redirect('/administrator/configuration');
-      }
-      // Check sorted ascending
-      const sortedSizes = [...sizes].map(Number).sort((a, b) => a - b).map(String);
-      if (JSON.stringify(sizes) !== JSON.stringify(sortedSizes)) {
-        req.flash('error', 'Page size values must be sorted in ascending order!');
-        return res.redirect('/administrator/configuration');
-      }
-    }
-    else if (key === 'log_level') {
-      // Only allow info, warning, critical
-      const allowed = ['info','warning','critical'];
-      if (!allowed.includes(value)) {
-        req.flash('error', 'Log level must be one of: info, warning, critical.');
-        return res.redirect('/administrator/configuration');
-      }
-    }
-    else if (key === 'log_retention_days') {
-      // Must be a positive integer
-      if (!/^[0-9]+$/.test(value) || parseInt(value) <= 0) {
-        req.flash('error', 'Log retention days must be a positive integer!');
-        return res.redirect('/administrator/configuration');
-      }
-    }
-    else if (key === 'session_idle_timeout_minutes') {
-      // Must be a non-negative integer (0 disables auto-expiry)
-      if (!/^[0-9]+$/.test(value)) {
-        req.flash('error', 'Session idle timeout must be a non-negative integer (minutes)!');
-        return res.redirect('/administrator/configuration');
-      }
-    }
-
-    const user = req.session.user ? req.session.user.username : null;
-    await Configuration.update(key, { value, description, updatedBy: user });
-    // Reload site config cache after updating any configuration
-    const { siteConfig } = await import('../utils/siteConfig.js');
-    await siteConfig.initialize();
-    req.flash('success', 'Configuration updated successfully!');
-    res.redirect('/administrator/configuration');
-  } catch (err) {
-    req.flash('error', 'Failed to update configuration: ' + err.message);
-    res.redirect('/administrator/configuration');
-  }
-};
-
-administratorController.deleteConfiguration = async (req, res) => {
-  try {
-    // Support both DELETE (RESTful) and traditional POST
-    const key = req.params.key || req.body.key;
-    if (!key) {
-      req.flash('error', 'Key is required.');
-      return res.redirect('/administrator/configuration');
-    }
-    await Configuration.remove(key);
-    req.flash('success', 'Configuration deleted successfully!');
-    res.redirect('/administrator/configuration');
-  } catch (err) {
-    req.flash('error', 'Failed to delete configuration: ' + err.message);
-    res.redirect('/administrator/configuration');
-  }
-};
-
-// Export Configuration
-administratorController.exportConfiguration = async (req, res) => {
-  try {
-    const configList = await Configuration.findAll();
-    const dataStr = JSON.stringify(configList, null, 2);
-    
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', 'attachment; filename=system-configuration.json');
-    res.send(dataStr);
-  } catch (err) {
-    req.flash('error', 'Failed to export configuration: ' + err.message);
-    res.redirect('/administrator/configuration');
-  }
-};
-
-// Import Configuration
-administratorController.importConfiguration = async (req, res) => {
-  try {
-    if (!req.file) {
-      req.flash('error', 'No file uploaded.');
-      return res.redirect('/administrator/configuration');
-    }
-    
-    const configData = JSON.parse(req.file.buffer.toString());
-    let imported = 0;
-    let updated = 0;
-    
-    for (const config of configData) {
-      if (config.key && config.value) {
-        const existing = await Configuration.findById(config.key);
-        if (existing) {
-          await Configuration.update(config.key, { 
-            value: config.value, 
-            description: config.description || existing.description,
-            updatedBy: req.session.user?.username 
-          });
-          updated++;
-        } else {
-          await Configuration.create({ 
-            key: config.key, 
-            value: config.value, 
-            description: config.description || '',
-            updatedBy: req.session.user?.username 
-          });
-          imported++;
-        }
-      }
-    }
-    
-    req.flash('success', `Configuration imported successfully! ${imported} new, ${updated} updated.`);
-    res.redirect('/administrator/configuration');
-  } catch (err) {
-    req.flash('error', 'Failed to import configuration: ' + err.message);
-    res.redirect('/administrator/configuration');
-  }
-};
-
-// Delete configuration
-administratorController.deleteConfiguration = async (req, res) => {
-  try {
-    const { key } = req.params;
-    
-    if (!key) {
-      req.flash('error', 'Configuration key is required.');
-      return res.redirect('/administrator/configuration');
-    }
-
-    // Check if configuration exists
-    const existingConfig = await Configuration.findById(key);
-    if (!existingConfig) {
-      req.flash('error', 'Configuration not found.');
-      return res.redirect('/administrator/configuration');
-    }
-
-    // Delete the configuration
-    await Configuration.remove(key);
-    
-    req.flash('success', `Configuration '${key}' deleted successfully.`);
-    res.redirect('/administrator/configuration');
-  } catch (err) {
-    req.flash('error', 'Failed to delete configuration: ' + err.message);
-    res.redirect('/administrator/configuration');
+    req.flash('error', t('Failed to save configuration: {message}', { message: err.message }));
+    res.redirect(back);
   }
 };
 

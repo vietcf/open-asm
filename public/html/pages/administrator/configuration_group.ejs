@@ -1,0 +1,208 @@
+<%#
+  One System Configuration group (src/utils/configRegistry.js): simple
+  settings as form fields, option lists as editable grids. Each grid is
+  serialized to JSON into its hidden fields[key] input on submit.
+%>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'System Configuration' }] }) %>
+<% const canEdit = hasPermission('configuration.update'); %>
+<% const scalars = fields.filter(f => f.type !== 'options'); %>
+<% const optionLists = fields.filter(f => f.type === 'options'); %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <%- include('../../partials/ui/config_tabs', { groups, current: group.id }) %>
+    <%- include('../../partials/ui/flash') %>
+
+    <form id="configGroupForm" method="POST" action="/administrator/configuration/<%= group.id %>?_method=PUT">
+      <% if (scalars.length) { %>
+        <div class="card mb-3">
+          <div class="card-body">
+            <% scalars.forEach(function (f) { %>
+              <div class="row mb-3 align-items-start">
+                <label class="col-md-4 col-form-label fw-semibold" for="cfg-<%= f.key %>">
+                  <%= t(f.label) %><% if (f.required) { %> <span class="text-danger">*</span><% } %>
+                  <div class="small text-muted fw-normal font-monospace"><%= f.key %></div>
+                </label>
+                <div class="col-md-8">
+                  <% if (f.type === 'select') { %>
+                    <select id="cfg-<%= f.key %>" name="fields[<%= f.key %>]" class="form-select" <%= canEdit ? '' : 'disabled' %>>
+                      <% if (!f.required) { %><option value=""><%= t('(Not set)') %></option><% } %>
+                      <% f.choices.forEach(function (c) { %>
+                        <option value="<%= c %>" <%= String(f.value) === c ? 'selected' : '' %>><%= c %></option>
+                      <% }) %>
+                    </select>
+                  <% } else if (f.type === 'number') { %>
+                    <input id="cfg-<%= f.key %>" name="fields[<%= f.key %>]" type="number" min="<%= f.min || 0 %>"<% if (f.max) { %> max="<%= f.max %>"<% } %> step="1" <%= f.required ? 'required' : '' %> class="form-control" style="max-width: 12rem"
+                      value="<%= f.value %>" placeholder="<%= f.default ? t('Default: {value}', { value: f.default }) : '' %>" <%= canEdit ? '' : 'disabled' %>>
+                  <% } else if (f.type === 'int_list') { %>
+                    <input id="cfg-<%= f.key %>" name="fields[<%= f.key %>]" type="text" inputmode="numeric" pattern="\s*\d{1,4}(\s*,\s*\d{1,4}){0,9}\s*" title="10, 20, 50" <%= f.required ? 'required' : '' %> class="form-control" style="max-width: 20rem"
+                      value="<%= String(f.value).split(',').map(s => s.trim()).filter(Boolean).join(', ') %>" placeholder="10, 20, 50" <%= canEdit ? '' : 'disabled' %>>
+                  <% } else { %>
+                    <input id="cfg-<%= f.key %>" name="fields[<%= f.key %>]" type="text" maxlength="255" <%= f.required ? 'required' : '' %> class="form-control" value="<%= f.value %>" <%= canEdit ? '' : 'disabled' %>>
+                  <% } %>
+                  <% if (f.help) { %><div class="form-text"><%= t(f.help) %></div><% } %>
+                </div>
+              </div>
+            <% }) %>
+          </div>
+        </div>
+      <% } %>
+
+      <% optionLists.forEach(function (f) { %>
+        <div class="card mb-3 config-options" data-key="<%= f.key %>">
+          <div class="card-header d-flex align-items-center gap-2">
+            <h3 class="card-title mb-0 fs-6 fw-semibold"><%= t(f.label) %></h3>
+            <span class="badge text-bg-secondary rounded-pill js-count"><%= f.value.length %></span>
+            <span class="small text-muted font-monospace ms-1"><%= f.key %></span>
+            <% if (canEdit) { %>
+              <button type="button" class="btn btn-outline-primary btn-sm ms-auto js-add-row">
+                <i class="bi bi-plus"></i> <%= t('Add option') %>
+              </button>
+            <% } %>
+          </div>
+          <% if (f.help) { %><div class="px-3 pt-2 small text-muted"><%= t(f.help) %></div><% } %>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0 config-options-table">
+              <thead>
+                <tr>
+                  <th class="col-index">#</th>
+                  <th style="width: 35%"><%= t('Value') %> <i class="bi bi-info-circle text-muted" title="<%= t('Values cannot contain commas, quotes, angle brackets, backticks or backslashes. Saved values are fixed; only their label can change.') %>"></i></th>
+                  <th><%= t('Label') %></th>
+                  <% if (canEdit) { %><th class="col-actions"></th><% } %>
+                </tr>
+              </thead>
+              <tbody>
+                <% f.value.forEach(function (o, i) { %>
+                  <tr data-existing="1">
+                    <td class="col-index js-index"><%= i + 1 %></td>
+                    <td><input type="text" class="form-control form-control-sm font-monospace js-value" value="<%= o.value %>" readonly tabindex="-1"></td>
+                    <td><input type="text" class="form-control form-control-sm js-label" value="<%= o.label %>" maxlength="255" <%= canEdit ? '' : 'disabled' %>></td>
+                    <% if (canEdit) { %>
+                      <td class="col-actions">
+                        <button type="button" class="btn btn-outline-secondary btn-sm js-up" title="<%= t('Move up') %>"><i class="bi bi-arrow-up"></i></button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm js-down" title="<%= t('Move down') %>"><i class="bi bi-arrow-down"></i></button>
+                        <button type="button" class="btn btn-outline-danger btn-sm js-remove" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
+                      </td>
+                    <% } %>
+                  </tr>
+                <% }) %>
+                <tr class="js-empty<%= f.value.length ? ' d-none' : '' %>">
+                  <td colspan="4" class="text-center text-muted py-3"><%= t('No options yet') %></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <%# Pre-filled with the current list: a submit without the script keeps it as is. %>
+          <input type="hidden" name="fields[<%= f.key %>]" class="js-json" value="<%= JSON.stringify(f.value) %>" <%= canEdit ? '' : 'disabled' %>>
+        </div>
+      <% }) %>
+
+      <% if (canEdit) { %>
+        <div class="config-save-bar d-flex align-items-center gap-2">
+          <span class="small text-muted js-dirty d-none"><i class="bi bi-circle-fill text-warning me-1"></i><%= t('Unsaved changes') %></span>
+          <a href="/administrator/configuration/<%= group.id %>" class="btn btn-outline-secondary btn-sm ms-auto"><%= t('Reset') %></a>
+          <button type="submit" class="btn btn-primary btn-sm"><i class="bi bi-check-lg"></i> <%= t('Save') %></button>
+        </div>
+      <% } %>
+    </form>
+  </div>
+</div>
+
+<template id="configOptionRow">
+  <tr>
+    <td class="col-index js-index"></td>
+    <td><input type="text" class="form-control form-control-sm font-monospace js-value" maxlength="100" placeholder="<%= t('e.g. ACTIVE') %>"></td>
+    <td><input type="text" class="form-control form-control-sm js-label" maxlength="255" placeholder="<%= t('Shown in lists; empty = value') %>"></td>
+    <td class="col-actions">
+      <button type="button" class="btn btn-outline-secondary btn-sm js-up" title="<%= t('Move up') %>"><i class="bi bi-arrow-up"></i></button>
+      <button type="button" class="btn btn-outline-secondary btn-sm js-down" title="<%= t('Move down') %>"><i class="bi bi-arrow-down"></i></button>
+      <button type="button" class="btn btn-outline-danger btn-sm js-remove" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
+    </td>
+  </tr>
+</template>
+
+<script>
+(function () {
+  var form = document.getElementById('configGroupForm');
+  if (!form) return;
+  var tr = window.t || function (s) { return s; };
+  // Same rule as OPTION_VALUE_PATTERN in src/utils/configRegistry.js
+  var FORBIDDEN = /[,<>"'`\\\u0000-\u001f\u007f]/;
+  var dirty = false;
+  var markDirty = function () {
+    dirty = true;
+    var badge = form.querySelector('.js-dirty');
+    if (badge) badge.classList.remove('d-none');
+  };
+
+  function renumber(card) {
+    var rows = card.querySelectorAll('tbody tr:not(.js-empty)');
+    rows.forEach(function (row, i) { row.querySelector('.js-index').textContent = i + 1; });
+    card.querySelector('.js-count').textContent = rows.length;
+    card.querySelector('.js-empty').classList.toggle('d-none', rows.length > 0);
+  }
+
+  form.querySelectorAll('.config-options').forEach(function (card) {
+    var tbody = card.querySelector('tbody');
+    var addBtn = card.querySelector('.js-add-row');
+    if (addBtn) addBtn.addEventListener('click', function () {
+      var row = document.getElementById('configOptionRow').content.firstElementChild.cloneNode(true);
+      tbody.insertBefore(row, card.querySelector('.js-empty'));
+      renumber(card);
+      markDirty();
+      row.querySelector('.js-value').focus();
+    });
+    tbody.addEventListener('click', function (e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      var row = btn.closest('tr');
+      if (btn.classList.contains('js-up') && row.previousElementSibling) {
+        tbody.insertBefore(row, row.previousElementSibling);
+      } else if (btn.classList.contains('js-down') && row.nextElementSibling && !row.nextElementSibling.classList.contains('js-empty')) {
+        tbody.insertBefore(row.nextElementSibling, row);
+      } else if (btn.classList.contains('js-remove')) {
+        if (row.dataset.existing && !window.confirm(tr('Remove this option? Records that already use it keep the value, but it will no longer be offered in lists.'))) return;
+        row.remove();
+      } else {
+        return;
+      }
+      renumber(card);
+      markDirty();
+    });
+  });
+
+  form.addEventListener('input', markDirty);
+  form.addEventListener('change', markDirty);
+
+  form.addEventListener('submit', function (e) {
+    var problem = null;
+    form.querySelectorAll('.config-options').forEach(function (card) {
+      var seen = {};
+      var items = [];
+      card.querySelectorAll('tbody tr:not(.js-empty)').forEach(function (row) {
+        var valueInput = row.querySelector('.js-value');
+        var value = valueInput.value.trim();
+        var label = row.querySelector('.js-label').value.trim();
+        var badChars = !row.dataset.existing && FORBIDDEN.test(value);
+        valueInput.classList.toggle('is-invalid', !value || seen[value] || badChars);
+        if (!value || badChars) { problem = problem || valueInput; return; }
+        if (seen[value]) { problem = problem || valueInput; return; }
+        seen[value] = true;
+        items.push({ value: value, label: label || value });
+      });
+      card.querySelector('.js-json').value = JSON.stringify(items);
+    });
+    if (problem) {
+      e.preventDefault();
+      problem.focus();
+      window.alert(tr('Every option needs a value, and values must be unique within a list.') + '\n' + tr('Values cannot contain commas, quotes, angle brackets, backticks or backslashes. Saved values are fixed; only their label can change.'));
+      return;
+    }
+    dirty = false;
+  });
+
+  window.addEventListener('beforeunload', function (e) {
+    if (dirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+})();
+</script>

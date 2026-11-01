@@ -8,6 +8,7 @@
     "migrate": "node migrations/migrate.js up",
     "migrate:status": "node migrations/migrate.js status",
     "migrate:create": "node migrations/migrate.js create",
+    "migrate:data": "node migrations/data/migrate_data.js",
     "admin:reset-password": "node migrations/tools/reset_admin_password.js",
     "test:migrations": "node --test migrations/test/migrate.test.js",
     "i18n:check": "node scripts/i18n-check.js"
