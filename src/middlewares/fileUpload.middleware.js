@@ -2,6 +2,7 @@
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import { fixLatin1Filename, safeDiskName } from '../utils/filename.js';
 
 const FILE_UPLOAD_DRIVER = process.env.FILE_UPLOAD_DRIVER || 'local';
 
@@ -17,14 +18,19 @@ const ALLOWED_EXTENSIONS = new Set([
 ]);
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB per file
 
-function sanitizeOriginalName(originalname) {
-  // Strip any directory components (path traversal via "../" or absolute
-  // paths in the client-supplied filename) — multer's diskStorage does not
-  // sanitize this itself, it just path.joins(destination, filename).
-  return path.basename(originalname).replace(/[\\/]/g, '');
+// Name on disk / in the URL: ASCII only, no directory parts (multer's
+// diskStorage just path.joins destination + filename, so "../" must never
+// survive) and no spaces/diacritics, so it matches fileService's tmp-URL
+// check. The real (Vietnamese) name stays in file.originalname.
+function diskFileName(originalname) {
+  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+  return uniqueSuffix + '-' + safeDiskName(originalname);
 }
 
 function fileFilter(req, file, cb) {
+  // Runs before storage: every later use (disk name, response, DB) gets the
+  // UTF-8 name instead of busboy's latin1 decoding.
+  file.originalname = fixLatin1Filename(file.originalname);
   const ext = path.extname(file.originalname).toLowerCase();
   if (!ALLOWED_EXTENSIONS.has(ext)) {
     return cb(new Error(`File type not allowed: ${ext || '(no extension)'}`));
@@ -51,8 +57,7 @@ function createUploadMiddleware({ fieldName = 'file', folder = 'misc', maxCount 
         acl: 'private',
         contentType: multerS3.AUTO_CONTENT_TYPE,
         key: function (req, file, cb) {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-          cb(null, `${folder}/` + uniqueSuffix + '-' + sanitizeOriginalName(file.originalname));
+          cb(null, `${folder}/` + diskFileName(file.originalname));
         }
       });
       const upload = multer({ storage, fileFilter, limits: { fileSize: MAX_FILE_SIZE } });
@@ -67,8 +72,7 @@ function createUploadMiddleware({ fieldName = 'file', folder = 'misc', maxCount 
         cb(null, dest);
       },
       filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + '-' + sanitizeOriginalName(file.originalname));
+        cb(null, diskFileName(file.originalname));
       }
     });
   }

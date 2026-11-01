@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { contentDisposition } from './filename.js';
 
 // Extension -> MIME map for inline preview, restricted to the same safe
 // allow-list enforced at upload time (fileUpload.middleware.js). We
@@ -52,10 +53,10 @@ export function serveFileInline(res, { file, folder }) {
   const ext = path.extname(basename).toLowerCase();
   const safeMime = SAFE_INLINE_MIME_BY_EXT[ext];
   const disposition = safeMime ? 'inline' : 'attachment';
-  const safeName = (file.original_name || basename).replace(/["\r\n]/g, '');
 
   res.setHeader('Content-Type', safeMime || 'application/octet-stream');
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Content-Disposition', `${disposition}; filename="${safeName}"`);
+  // UTF-8 names (e.g. Vietnamese) via filename*=, ASCII fallback in filename=
+  res.setHeader('Content-Disposition', contentDisposition(disposition, file.original_name || basename));
   res.sendFile(absPath);
 }
