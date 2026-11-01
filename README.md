@@ -604,6 +604,13 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
+- ♻️ Clusters rebuilt on the UI kit (filters, column chooser, detail
+  modal with members, list export, one Add/Edit page with a members
+  repeater and "add from file" that reports bad rows inline). The import
+  uses the shared importer, which now supports grouped rows
+  (`groupBy` / `checkGroup`: a cluster is created only when all its rows
+  are valid). Generic `data-repeater` rows in `form-kit.js`.
+- 🐛 Cluster list searched by member IP showed only the matching member.
 - ♻️ Devices rebuilt on the UI kit (filters, column chooser, detail
   modal, one Add/Edit page `device_form.ejs`, shared import and export,
   delete-with-IP choice). Device type / manufacturer / role fields accept

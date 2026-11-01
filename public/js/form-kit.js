@@ -6,6 +6,11 @@
 //   data-selected='[{"id":1,"text":"a"}]'  current values of an AJAX select
 //   data-tags="true"                    new values can be typed (free text)
 //
+// <div data-repeater>                   rows added from <template data-repeater-template>
+//   [data-repeater-rows]                where rows go; [data-repeater-add] adds one,
+//   [data-repeater-remove] (in a row)   removes its row; window.FormKit.addRow(box, fill)
+//                                       adds one from script (fill(rowElement) sets values)
+//
 // <div data-attachments ...>            partials/ui/file_attachments.ejs
 //   existing files + uploads through /api/upload, kept in hidden inputs
 (function () {
@@ -98,10 +103,28 @@
     render();
   }
 
+  function addRow(box, fill) {
+    const tpl = box.querySelector('template[data-repeater-template]');
+    const row = tpl.content.firstElementChild.cloneNode(true);
+    box.querySelector('[data-repeater-rows]').appendChild(row);
+    if (fill) fill(row);
+    row.querySelectorAll('select.js-select').forEach(initSelect);
+    return row;
+  }
+
+  function initRepeater(box) {
+    box.addEventListener('click', (e) => {
+      if (e.target.closest('[data-repeater-add]')) addRow(box);
+      const remove = e.target.closest('[data-repeater-remove]');
+      if (remove) remove.closest('[data-repeater-rows] > *').remove();
+    });
+  }
+
   $(function () {
-    document.querySelectorAll('select.js-select').forEach(initSelect);
+    document.querySelectorAll('select.js-select').forEach(initSelect); // template content is not in the DOM
     document.querySelectorAll('[data-attachments]').forEach(initAttachments);
+    document.querySelectorAll('[data-repeater]').forEach(initRepeater);
   });
 
-  window.FormKit = { initSelect, initAttachments };
+  window.FormKit = { initSelect, initAttachments, addRow };
 })();

@@ -1,58 +1,54 @@
+// Clusters (groups of IPs with a role each, serving systems): shared by the web pages and the REST API.
 import Cluster from './cluster.model.js';
 import System from '../system/system.model.js';
 import IpAddress from '../network/ip-address.model.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
+import { toIdArray, hasKey, assertIdsExist } from '../../shared/service.js';
 
-const toIdArray = v => {
-  if (v === undefined || v === null) return [];
-  const arr = Array.isArray(v) ? v : [v];
-  return arr.map(Number).filter(x => !isNaN(x));
-};
-
-async function validateIpAddressIds(ids) {
-  const invalid = [];
-  for (const id of ids) {
-    if (!(await IpAddress.exists(id))) invalid.push(id);
-  }
-  if (invalid.length) throw new ValidationError(`Invalid IP address IDs: ${invalid.join(', ')}`);
-}
-
-async function validateSystemIds(ids) {
-  const invalid = [];
-  for (const id of ids) {
-    if (!(await System.exists(id))) invalid.push(id);
-  }
-  if (invalid.length) throw new ValidationError(`Invalid system IDs: ${invalid.join(', ')}`);
-}
-
-async function assertNameAvailable(name, excludeId) {
+async function assertNameAvailable(name, excludeId = null) {
   const existing = await Cluster.findByNameExact(name);
-  const clash = existing.find(c => String(c.id) !== String(excludeId));
-  if (clash) throw new ConflictError(`Cluster name already exists: ${name}`);
+  if (existing.some((c) => String(c.id) !== String(excludeId))) throw new ConflictError('Cluster name already exists: {name}').withParams({ name });
 }
 
-// members: [{ ip_address_id, role }]
+// Parallel member_ip_id[] / member_role[] -> [{ip_address_id, role}] (first occurrence of an IP wins)
 function normalizeMembers(rawIpIds, rawRoles) {
-  const ipIds = Array.isArray(rawIpIds) ? rawIpIds : (rawIpIds ? [rawIpIds] : []);
-  const roles = Array.isArray(rawRoles) ? rawRoles : (rawRoles ? [rawRoles] : []);
-  const members = [];
+  const ipIds = [].concat(rawIpIds ?? []);
+  const roles = [].concat(rawRoles ?? []);
   const seen = new Set();
-  for (let i = 0; i < ipIds.length; i++) {
-    const ipId = Number(ipIds[i]);
-    if (!ipId || isNaN(ipId) || seen.has(ipId)) continue;
+  const members = [];
+  ipIds.forEach((raw, i) => {
+    const ipId = Number(raw);
+    if (!Number.isInteger(ipId) || ipId <= 0 || seen.has(ipId)) return;
     seen.add(ipId);
-    const role = (roles[i] || '').toString().trim() || null;
-    members.push({ ip_address_id: ipId, role });
-  }
+    members.push({ ip_address_id: ipId, role: String(roles[i] ?? '').trim() || null });
+  });
   return members;
 }
 
+async function resolveLinks(input, partial) {
+  const links = {};
+  if (!partial || hasKey(input, 'member_ip_id') || hasKey(input, 'member_role')) {
+    links.members = normalizeMembers(input.member_ip_id, input.member_role);
+    await assertIdsExist(links.members.map((m) => m.ip_address_id), (id) => IpAddress.exists(id), 'IP address');
+  }
+  if (!partial || hasKey(input, 'systems')) {
+    links.systems = toIdArray(input.systems);
+    await assertIdsExist(links.systems, (id) => System.exists(id), 'system');
+  }
+  return links;
+}
+
+async function saveLinks(id, links, username, c) {
+  if (links.members) await Cluster.setMembers(id, links.members.map((m) => ({ ...m, updated_by: username })), c);
+  if (links.systems) await Cluster.setSystems(id, links.systems, c);
+}
+
+const description = (v) => (typeof v === 'string' ? v.trim() || null : null);
+
+// ===== Queries =====
 export async function listClusters(filter) {
-  const [items, totalCount] = await Promise.all([
-    Cluster.findFilteredList(filter),
-    Cluster.countFiltered(filter)
-  ]);
+  const [items, totalCount] = await Promise.all([Cluster.findFilteredList(filter), Cluster.countFiltered(filter)]);
   return { items, totalCount };
 }
 
@@ -62,78 +58,42 @@ export async function getCluster(id) {
   return cluster;
 }
 
-export async function getRoleOptions() {
-  return Cluster.getDistinctRoles();
-}
+export const getRoleOptions = () => Cluster.getDistinctRoles();
+export const getClustersForSystem = (systemId) => Cluster.findBySystemId(systemId);
 
-export async function getClustersForSystem(systemId) {
-  return Cluster.findBySystemId(systemId);
-}
-
-// input: {name, description?, member_ip_id[], member_role[], systems[], updated_by?}
-export async function createCluster(input) {
-  const name = (input.name || '').trim();
+// ===== Commands =====
+// input: {name, description?, member_ip_id[]?, member_role[]?, systems[]?, updated_by?}
+export async function createCluster(input, client) {
+  const name = String(input.name || '').trim();
   if (!name) throw new ValidationError('Cluster name is required');
   await assertNameAvailable(name);
-
-  const members = normalizeMembers(input.member_ip_id, input.member_role);
-  if (members.length) await validateIpAddressIds(members.map(m => m.ip_address_id));
-
-  const systems = toIdArray(input.systems);
-  if (systems.length) await validateSystemIds(systems);
-
-  const description = typeof input.description === 'string' ? (input.description.trim() || null) : null;
+  const links = await resolveLinks(input, false);
   const username = input.updated_by || 'admin';
-
-  const cluster = await withTransaction(null, async (c) => {
-    const created = await Cluster.create({ name, description, updated_by: username }, c);
-    await Cluster.setMembers(created.id, members.map(m => ({ ...m, updated_by: username })), c);
-    await Cluster.setSystems(created.id, systems, c);
-    return created;
+  const id = await withTransaction(client, async (c) => {
+    const created = await Cluster.create({ name, description: description(input.description), updated_by: username }, c);
+    await saveLinks(created.id, links, username, c);
+    return created.id;
   });
-  return Cluster.findByIdWithRelations(cluster.id);
+  return Cluster.findByIdWithRelations(id, client);
 }
 
-// Partial update (has-key semantics).
-export async function updateCluster(id, input) {
+// Partial update: only the keys present in input change (members and systems included).
+export async function updateCluster(id, input, client) {
   const current = await Cluster.findById(id);
   if (!current) throw new NotFoundError('Cluster not found');
-
-  const has = key => Object.prototype.hasOwnProperty.call(input, key);
-  const name = has('name') ? (input.name || '').trim() : current.name;
+  const name = hasKey(input, 'name') ? String(input.name || '').trim() : current.name;
   if (!name) throw new ValidationError('Cluster name is required');
-  if (has('name') && name.toLowerCase() !== current.name.toLowerCase()) {
-    await assertNameAvailable(name, id);
-  }
-  const description = has('description')
-    ? (typeof input.description === 'string' ? (input.description.trim() || null) : null)
-    : current.description;
+  if (name.toLowerCase() !== current.name.toLowerCase()) await assertNameAvailable(name, id);
+  const links = await resolveLinks(input, true);
   const username = input.updated_by || 'admin';
-
-  let members;
-  if (has('member_ip_id') || has('member_role')) {
-    members = normalizeMembers(input.member_ip_id, input.member_role);
-    if (members.length) await validateIpAddressIds(members.map(m => m.ip_address_id));
-  }
-
-  let systems;
-  if (has('systems')) {
-    systems = toIdArray(input.systems);
-    if (systems.length) await validateSystemIds(systems);
-  }
-
-  await withTransaction(null, async (c) => {
-    await Cluster.update(id, { name, description, updated_by: username }, c);
-    if (members !== undefined) await Cluster.setMembers(id, members.map(m => ({ ...m, updated_by: username })), c);
-    if (systems !== undefined) await Cluster.setSystems(id, systems, c);
+  await withTransaction(client, async (c) => {
+    await Cluster.update(id, { name, description: hasKey(input, 'description') ? description(input.description) : current.description, updated_by: username }, c);
+    await saveLinks(id, links, username, c);
   });
-  return Cluster.findByIdWithRelations(id);
+  return Cluster.findByIdWithRelations(id, client);
 }
 
 export async function deleteCluster(id) {
-  const exists = await Cluster.exists(id);
-  if (!exists) throw new NotFoundError('Cluster not found');
-  await withTransaction(null, async (c) => {
-    await Cluster.delete(id, c);
-  });
+  if (!(await Cluster.exists(id))) throw new NotFoundError('Cluster not found');
+  await Cluster.delete(id);
 }

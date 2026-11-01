@@ -1,616 +1,133 @@
 <%
-const currentSearch = typeof search !== 'undefined' ? search : '';
-const currentRole = typeof filterRole !== 'undefined' ? filterRole : [];
-const currentSystemId = typeof filterSystemId !== 'undefined' ? filterSystemId : [];
-function buildClusterQuery(overrides) {
-  const params = new URLSearchParams();
-  const q = Object.assign({ search: currentSearch, role: currentRole, system_id: currentSystemId }, overrides || {});
-  if (q.search) params.set('search', q.search);
-  (q.role || []).forEach(r => params.append('role', r));
-  (q.system_id || []).forEach(s => params.append('system_id', s));
-  return params.toString();
-}
+  const f = filter;
+  const activeFilterCount = [f.role.length, f.system_id.length].filter(Boolean).length;
+  const COLUMNS = [
+    { key: 'name', label: 'Cluster Name', def: true, fixed: true },
+    { key: 'systems', label: 'Systems', def: true },
+    { key: 'members', label: 'Members', def: true },
+    { key: 'roles', label: 'Roles', def: true },
+    { key: 'description', label: 'Description' },
+    { key: 'updated', label: 'Updated', def: true },
+  ];
+  const cell = (c, key) => ({
+    name: ui.esc(c.name),
+    systems: ui.chips(c.systems.map(s => s.name)),
+    members: c.members.length ? `<span class="badge tag">${c.members.length}</span> ` + ui.mono(c.members.slice(0, 3).map(m => m.ip).concat(c.members.length > 3 ? ['…'] : [])) : ui.dash,
+    roles: ui.chips([...new Set(c.members.map(m => m.role).filter(Boolean))]),
+    description: ui.clip(c.description),
+    updated: ui.date(c.updated_at),
+  })[key];
 %>
-<!-- Content Header -->
-<div class="app-content-header">
+<%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'Cluster Management' }] }) %>
+
+<div class="app-content">
   <div class="container-fluid">
-    <div class="row">
-      <div class="col-12">
-        <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/"><%= t('Home') %></a></li>
-          <li class="breadcrumb-item active"><%= t('Cluster Management') %></li>
-        </ol>
+    <%- include('../../partials/ui/flash') %>
+
+    <div class="card list-card">
+      <form class="list-filter-form" method="get" action="/cluster">
+        <input type="hidden" name="pageSize" value="<%= pageSize %>">
+        <%- include('../../partials/ui/list_toolbar', {
+              search, searchPlaceholder: 'Search by name, description, member IP...',
+              filtersId: 'clusterFilters', activeFilterCount,
+              columns: { tableId: 'clusterTable', storageKey: 'openasm.clusterList.columns', list: COLUMNS },
+              exportUrl: '/cluster/export' + currentQuery,
+              importModal: hasPermission('cluster.create') ? 'clusterImportModal' : null,
+              addUrl: hasPermission('cluster.create') ? '/cluster/add' : null, addLabel: 'Add Cluster' }) %>
+        <div class="collapse<%= activeFilterCount ? ' show' : '' %>" id="clusterFilters">
+          <div class="list-filters">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label small"><%= t('Role') %></label>
+                <select name="role" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>">
+                  <% (roleOptions || []).forEach(function (r) { %>
+                    <option value="<%= r %>" <%= f.role.includes(r) ? 'selected' : '' %>><%= r %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label small"><%= t('Systems') %></label>
+                <select name="system_id" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"
+                        data-ajax-url="/system/api/system" data-ids-url="/system/api/system/ids" data-selected='<%= JSON.stringify(f.system_id) %>'></select>
+              </div>
+            </div>
+            <% if (activeFilterCount) { %>
+              <div class="mt-2 text-end"><a href="#" class="small" data-clear-filters><i class="bi bi-x-circle me-1"></i><%= t('Clear All Filters') %></a></div>
+            <% } %>
+          </div>
+        </div>
+      </form>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle table-stack" id="clusterTable">
+          <thead>
+            <tr>
+              <th class="col-index">#</th>
+              <% COLUMNS.forEach(function (c) { %><th data-col="<%= c.key %>"><%= t(c.label) %></th><% }) %>
+              <th class="col-actions"><%= t('Actions') %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (clusterList && clusterList.length) { %>
+              <% clusterList.forEach(function (cluster, idx) { %>
+                <tr>
+                  <td class="col-index"><%= (page - 1) * pageSize + idx + 1 %></td>
+                  <% COLUMNS.forEach(function (c) { %><td data-col="<%= c.key %>" data-label="<%= t(c.label) %>"<%- c.key === 'name' ? ' class="fw-medium"' : '' %>><%- cell(cluster, c.key) %></td><% }) %>
+                  <td class="col-actions">
+                    <div class="row-actions">
+                      <button type="button" class="btn btn-sm btn-outline-secondary" title="<%= t('Detail') %>" onclick="showClusterDetail(this)" data-record='<%= JSON.stringify(cluster) %>'><i class="bi bi-eye"></i></button>
+                      <a href="/cluster/<%= cluster.id %>/export" class="btn btn-sm btn-outline-secondary" title="<%= t('Export members') %>"><i class="bi bi-download"></i></a>
+                      <% if (hasPermission('cluster.update')) { %>
+                        <a href="/cluster/<%= cluster.id %>/edit" class="btn btn-sm btn-outline-secondary" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
+                      <% } %>
+                      <% if (hasPermission('cluster.delete')) { %>
+                        <form action="/cluster/<%= cluster.id %>/delete" method="POST" data-confirm="<%= t('Delete {1}?', { 1: cluster.name }) %>">
+                          <button type="submit" class="btn btn-sm btn-outline-secondary btn-delete" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
+                        </form>
+                      <% } %>
+                    </div>
+                  </td>
+                </tr>
+              <% }); %>
+            <% } else { %>
+              <tr><td colspan="<%= COLUMNS.length + 2 %>">
+                <%- include('../../partials/ui/empty_state', { icon: 'bi-diagram-3', message: 'No clusters found', filtered: activeFilterCount > 0 || !!search, clearUrl: '/cluster',
+                      actionUrl: hasPermission('cluster.create') ? '/cluster/add' : null, actionLabel: 'Add Cluster' }) %>
+              </td></tr>
+            <% } %>
+          </tbody>
+        </table>
       </div>
+
+      <%- include('../../partials/ui/pagination', { page, totalPages, totalCount, pageSize, count: (clusterList || []).length, summary: 'Showing {1} - {2} of {3} clusters' }) %>
     </div>
   </div>
 </div>
 
-<!-- Main content -->
-<section class="app-content">
-  <div class="container-fluid">
-    <!-- Search and Page Size Row -->
-    <div class="row mb-3">
-      <div class="col-12">
-        <div class="d-flex justify-content-end align-items-center gap-2">
-          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/cluster">
-            <% (filterRole || []).forEach(r => { %><input type="hidden" name="role" value="<%= r %>"><% }) %>
-            <% (filterSystemId || []).forEach(s => { %><input type="hidden" name="system_id" value="<%= s %>"><% }) %>
-            <div class="input-group input-group-sm" style="width: 250px;">
-              <input class="form-control form-control-sm" type="search" name="search" placeholder="<%= t('Search cluster name, IP...') %>" aria-label="<%= t('Search') %>" value="<%= search || '' %>">
-              <button class="btn btn-outline-secondary btn-sm" type="submit"><i class="bi bi-search"></i></button>
-            </div>
-            <div class="d-flex align-items-center gap-1">
-              <label class="form-label form-label-sm mb-0 text-muted"><%= t('Show:') %></label>
-              <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
-                <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
-                  <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
-                <% }) %>
-              </select>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- Filter and Add Buttons Row -->
-    <div class="row mb-3">
-      <div class="col-12">
-        <div class="d-flex justify-content-end gap-2">
-          <% if (hasPermission && hasPermission('cluster.create')) { %>
-            <a href="/cluster/add" class="btn btn-primary btn-sm">
-              <i class="bi bi-plus"></i> <%= t('Add Cluster') %>
-            </a>
-            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importClusterModal">
-              <i class="bi bi-upload"></i> <%= t('Import') %>
-            </button>
-          <% } %>
-          <%
-            const hasActiveClusterFilter = !!(
-              (filterRole && filterRole.length > 0) ||
-              (filterSystemId && filterSystemId.length > 0)
-            );
-          %>
-          <button type="button" class="btn btn-sm <%= hasActiveClusterFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterClusterModal">
-            <i class="bi bi-funnel<%= hasActiveClusterFilter ? '-fill' : '' %>"></i> <%= t('Filter{1}', { 1: hasActiveClusterFilter ? ' (Filtered)' : '' }) %>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Filter Modal -->
-    <div class="modal fade" id="filterClusterModal" tabindex="-1" aria-labelledby="filterClusterModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <form id="clusterFilterForm" method="get" action="/cluster">
-            <input type="hidden" name="pageSize" value="<%= pageSize %>">
-            <input type="hidden" name="search" value="<%= search || '' %>">
-            <div class="modal-header">
-              <h5 class="modal-title" id="filterClusterModalLabel"><%= t('Filter Clusters') %></h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
-            </div>
-            <div class="modal-body">
-              <div class="row g-2">
-                <div class="col-12 mb-2">
-                  <label class="form-label" for="filterRoleSelect"><%= t('Role') %></label>
-                  <select id="filterRoleSelect" name="role" class="form-control" multiple>
-                    <% (roleOptions || []).forEach(function(r) { %>
-                      <option value="<%= r %>" <%= (filterRole || []).includes(r) ? 'selected' : '' %>><%= r %></option>
-                    <% }) %>
-                  </select>
-                </div>
-                <div class="col-12 mb-2">
-                  <label class="form-label" for="filterSystemSelect"><%= t('System') %></label>
-                  <select id="filterSystemSelect" name="system_id" class="form-control" multiple></select>
-                </div>
-              </div>
-            </div>
-            <div class="modal-footer d-flex justify-content-between">
-              <button type="button" id="clearFilterBtnCluster" class="btn btn-outline-danger"><%= t('Clear All Filters') %></button>
-              <div>
-                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
-                <button type="submit" class="btn btn-primary btn-sm"><%= t('Apply Filters') %></button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- Import Cluster Modal -->
-    <div class="modal fade" id="importClusterModal" tabindex="-1" aria-labelledby="importClusterModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="importClusterModalLabel"><%= t('Import Clusters') %></h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
-          </div>
-          <div class="modal-body">
-            <form id="importClusterForm" enctype="multipart/form-data">
-              <div class="mb-3">
-                <label for="clusterImportFile" class="form-label"><%= t('Select File') %> <span class="text-danger">*</span></label>
-                <div class="input-group">
-                  <input type="file" class="form-control" id="clusterImportFile" name="file" accept=".xlsx,.xls" required>
-                  <a href="/cluster/template" class="btn btn-outline-info" download>
-                    <i class="bi bi-download"></i> <%= t('Download Template') %>
-                  </a>
-                </div>
-                <div class="form-text"><%= t('Supported format: Excel (.xlsx, .xls). Maximum file size: 10MB') %></div>
-              </div>
-              <div class="mb-3">
-                <div class="alert alert-info">
-                  <h6><i class="bi bi-info-circle"></i> <%= t('Import Instructions:') %></h6>
-                  <ul class="mb-0">
-                    <li><%= t('One row per cluster member — rows sharing the same Cluster Name become one cluster with multiple members') %></li>
-                    <li><%= t('Cluster Name is required, and must not already exist') %></li>
-                    <li><%= t('IP Address is required and must already exist — this import never creates IPs, create them first') %></li>
-                    <li><%= t('System Name (if any) must already exist too, comma-separated if multiple') %></li>
-                    <li><%= t('A cluster is only created once every row for it passes validation') %></li>
-                    <li><%= t('Select your filled template file and validate before importing') %></li>
-                  </ul>
-                </div>
-              </div>
-              <div id="clusterImportProgress" class="progress mb-3" style="display: none;">
-                <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-              </div>
-              <div id="clusterImportResults" class="alert" style="display: none;"></div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
-            <button type="button" class="btn btn-warning btn-sm" id="validateClusterImportBtn" disabled><%= t('Validate File') %></button>
-            <button type="button" class="btn btn-success btn-sm" id="importClusterBtn" style="display: none;"><%= t('Import Clusters') %></button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Flash Messages -->
-    <% if (typeof success !== 'undefined' && success) { %>
-      <div class="alert alert-success alert-dismissible fade show" role="alert">
-        <i class="bi bi-check-circle me-2"></i><%= t(success) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
-      </div>
-    <% } %>
-    <% if (typeof error !== 'undefined' && error) { %>
-      <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        <i class="bi bi-exclamation-triangle me-2"></i><%= t(error) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
-      </div>
-    <% } %>
-
-    <!-- List Table -->
-    <div class="row">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title mb-0"><%= t('Clusters') %></h3>
-          </div>
-          <div class="card-body table-responsive p-0" style="overflow-x: auto;">
-            <table class="table table-hover">
-              <thead>
-                <tr>
-                  <th><%= t('No.') %></th>
-                  <th data-sort-type="text"><%= t('Cluster Name') %></th>
-                  <th data-sort-type="text"><%= t('Systems') %></th>
-                  <th data-sort-type="text"><%= t('Members') %></th>
-                  <th data-sort-type="date"><%= t('Updated') %></th>
-                  <th class="text-end"><%= t('Actions') %></th>
-                </tr>
-              </thead>
-              <tbody>
-                <% if (clusterList && clusterList.length > 0) { %>
-                  <% clusterList.forEach(function(cluster, idx) { %>
-                    <tr>
-                      <td><%= (page - 1) * pageSize + idx + 1 %></td>
-                      <td><%= cluster.name %></td>
-                      <td>
-                        <% if (cluster.systems && cluster.systems.length > 0) { %>
-                          <% cluster.systems.forEach(function(s) { %>
-                            <span class="badge bg-secondary me-1 mb-1"><%= s.name %></span>
-                          <% }) %>
-                        <% } else { %>
-                          <span class="text-muted">-</span>
-                        <% } %>
-                      </td>
-                      <td>
-                        <% if (cluster.members && cluster.members.length > 0) { %>
-                          <% cluster.members.slice(0, 3).forEach(function(m) { %>
-                            <span class="badge bg-info text-dark me-1 mb-1"><%= m.ip %><%= m.role ? (' [' + m.role + ']') : '' %></span>
-                          <% }) %>
-                          <% if (cluster.members.length > 3) { %>
-                            <span class="badge bg-light text-dark border"><%= t('+{1} more', { 1: cluster.members.length - 3 }) %></span>
-                          <% } %>
-                        <% } else { %>
-                          <span class="text-muted"><%= t('No members') %></span>
-                        <% } %>
-                      </td>
-                      <td data-sort-value="<%= cluster.updated_at || '' %>"><%= cluster.updated_at ? new Date(cluster.updated_at).toLocaleDateString('en-GB') : '-' %></td>
-                      <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showClusterDetail(<%= JSON.stringify(cluster.id) %>)" data-cluster='<%= JSON.stringify(cluster) %>'><i class="bi bi-eye"></i></button>
-                        <% if (hasPermission('cluster.update')) { %>
-                          <a href="/cluster/<%= cluster.id %>/edit" class="btn btn-warning btn-sm" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
-                        <% } %>
-                        <% if (hasPermission('cluster.delete')) { %>
-                          <form action="/cluster/<%= cluster.id %>/delete" method="post" class="d-inline-block" onsubmit="return confirm('Delete this cluster? This will not affect its Systems or IP/Server/Device members.');">
-                            <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
-                          </form>
-                        <% } %>
-                      </td>
-                    </tr>
-                  <% }) %>
-                <% } else { %>
-                  <tr><td colspan="6" class="text-center"><%= t('No clusters found') %></td></tr>
-                <% } %>
-              </tbody>
-            </table>
-          </div>
-          <div class="card-footer clearfix">
-            <div class="d-flex justify-content-between align-items-center px-3 py-2">
-              <div>
-                <span><%= t('Showing {1} - {2} of {3} clusters', { 1: startItem, 2: endItem, 3: totalCount }) %></span>
-              </div>
-              <ul class="pagination pagination-sm m-0 float-end">
-                <% const pq = buildClusterQuery(); %>
-                <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page - 1 %><%= pq ? '&' + pq : '' %>"><%= t('Previous') %></a>
-                </li>
-                <% for (let i = Math.max(1, page - 2); i <= Math.min(totalPages, page + 2); i++) { %>
-                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= pq ? '&' + pq : '' %>"><%= i %></a></li>
-                <% } %>
-                <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page + 1 %><%= pq ? '&' + pq : '' %>"><%= t('Next') %></a>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Cluster Detail Modal -->
-  <div class="modal fade" id="clusterDetailModal" tabindex="-1" aria-labelledby="clusterDetailModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="clusterDetailModalLabel"><%= t('Cluster Detail') %></h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
-        </div>
-        <div class="modal-body" id="clusterDetailContent">
-          <!-- Content will be loaded here -->
-        </div>
-        <div class="modal-footer">
-          <a id="exportClusterMembersBtn" href="#" class="btn btn-outline-success btn-sm me-auto">
-            <i class="bi bi-file-earmark-excel"></i> <%= t('Export Members') %>
-          </a>
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Close') %></button>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<script src="/vendor/jquery-3.6.0.min.js"></script>
-<link href="/css/select2.min.css" rel="stylesheet" />
-<link href="/css/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-<script src="/vendor/select2.min.js"></script>
-<script src="/vendor/bootstrap.min.js"></script>
-
-<style>
-.select2-dropdown { z-index: 9999 !important; }
-.select2-container--bootstrap-5 .select2-dropdown { z-index: 9999 !important; }
-.modal .select2-dropdown { z-index: 9999 !important; }
-.select2-container--open .select2-dropdown { z-index: 9999 !important; }
-
-@media (max-width: 991.98px) {
-  #filterClusterModal .modal-footer {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0.5rem !important;
-    justify-content: stretch !important;
-    align-items: stretch !important;
-    width: 100% !important;
-  }
-  #filterClusterModal .modal-footer .btn,
-  #filterClusterModal .modal-footer button {
-    width: 100% !important;
-    margin: 0 !important;
-    flex: 1 1 0% !important;
-    min-height: 38px !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    display: block !important;
-  }
-  #filterClusterModal .modal-footer > div {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0.5rem !important;
-    width: 100% !important;
-  }
-  #filterClusterModal .modal-footer > div .btn {
-    width: 100% !important;
-    margin: 0 !important;
-  }
-  #filterClusterModal .modal-footer .btn:first-child { order: 3 !important; }
-  #filterClusterModal .modal-footer > div .btn:first-child { order: 2 !important; }
-  #filterClusterModal .modal-footer > div .btn:last-child { order: 1 !important; }
-}
-</style>
+<%- include('../../partials/ui/detail_modal', { id: 'clusterDetailModal' }) %>
+<% if (hasPermission('cluster.create')) { %>
+  <%- include('../../partials/ui/import_modal', { id: 'clusterImportModal', title: 'Import Clusters', baseUrl: '/cluster',
+        instructions: ['One row per member; rows with the same cluster name make one cluster', 'IP addresses and systems must already exist', 'A cluster is created only when all of its rows are valid'] }) %>
+<% } %>
 
 <script>
-  const currentSelectedSystems = <%- jsonSafe(selectedSystems || []) %>;
-
-  $(function() {
-    $('#filterRoleSelect').select2({
-      theme: 'bootstrap-5',
-      placeholder: t('All Roles'),
-      allowClear: true,
-      width: '100%',
-      dropdownParent: $('#filterClusterModal')
-    });
-
-    $('#filterSystemSelect').select2({
-      theme: 'bootstrap-5',
-      placeholder: t('All Systems'),
-      allowClear: true,
-      width: '100%',
-      dropdownParent: $('#filterClusterModal'),
-      ajax: {
-        url: '/system/api/system',
-        dataType: 'json',
-        delay: 250,
-        data: params => ({ search: params.term }),
-        processResults: data => ({ results: data }),
-        cache: true
-      }
-    });
-    currentSelectedSystems.forEach(function(s) {
-      const option = new Option(s.text, s.id, true, true);
-      $('#filterSystemSelect').append(option);
-    });
-    $('#filterSystemSelect').trigger('change');
-
-    $('#clearFilterBtnCluster').on('click', function() {
-      window.location.href = '/cluster';
-    });
-  });
-
-  // Cluster name/description, member IP/role, server/device names, etc. are
-  // all free-text/user-controlled and persisted server-side with no HTML
-  // stripping — must be escaped before going into innerHTML.
-  function escapeHtml(value) {
-    return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-    });
+  function showClusterDetail(button) {
+    const c = DV.record(button);
+    if (!c) return;
+    const members = c.members || [];
+    const owner = (m) => m.server_name
+      ? '<a href="/server/server?search=' + encodeURIComponent(m.server_name) + '">' + DV.esc(m.server_name) + '</a>'
+      : (m.device_name ? '<a href="/device/device?search=' + encodeURIComponent(m.device_name) + '">' + DV.esc(m.device_name) + '</a>' : DV.EMPTY);
+    const table = members.length
+      ? '<div class="table-responsive"><table class="table table-sm align-middle detail-table mb-0"><thead><tr><th>' + DV.esc(t('IP Address')) + '</th><th>' + DV.esc(t('Role')) + '</th><th>' + DV.esc(t('Server')) + ' / ' + DV.esc(t('Device')) + '</th></tr></thead><tbody>' +
+        members.map((m) => '<tr><td>' + DV.ipLink(m.ip) + '</td><td>' + (DV.text(m.role) || DV.EMPTY) + '</td><td>' + owner(m) + '</td></tr>').join('') + '</tbody></table></div>'
+      : '<p class="text-secondary small mb-0 detail-pad">' + DV.esc(t('No members')) + '</p>';
+    let body = DV.section('Overview', DV.rows(
+      DV.field('Systems', DV.linkChips(c.systems || [], (s) => '/system/system?search=' + encodeURIComponent(s.name))),
+      DV.multiline(c.description) ? DV.field('Description', DV.multiline(c.description)) : ''
+    ));
+    body += DV.section('Members', table, ' <span class="badge tag ms-1">' + members.length + '</span>');
+    body += DV.meta(c);
+    DV.open('clusterDetailModal', { title: c.name, body, recordId: c.id });
   }
-
-  function showClusterDetail(clusterId) {
-    const buttons = document.querySelectorAll('button[data-cluster]');
-    let targetButton = null;
-    for (const button of buttons) {
-      const data = button.getAttribute('data-cluster');
-      if (data) {
-        try {
-          const cluster = JSON.parse(data);
-          if (cluster.id == clusterId) { targetButton = button; break; }
-        } catch (e) { console.error('Error parsing cluster data:', e); }
-      }
-    }
-    if (!targetButton) { alert(t('Cluster data not found')); return; }
-
-    let cluster;
-    try {
-      cluster = JSON.parse(targetButton.getAttribute('data-cluster'));
-    } catch (e) {
-      alert(t('Error parsing cluster data: ') + e.message);
-      return;
-    }
-
-    const modal = new bootstrap.Modal(document.getElementById('clusterDetailModal'));
-    const content = document.getElementById('clusterDetailContent');
-
-    const exportBtn = document.getElementById('exportClusterMembersBtn');
-    exportBtn.href = '/cluster/' + encodeURIComponent(cluster.id) + '/export';
-    exportBtn.style.display = (cluster.members && cluster.members.length > 0) ? '' : 'none';
-
-    let html = '<dl class="row detail-dl">';
-    html += '<dt class="col-sm-4">Cluster Name</dt><dd class="col-sm-8">' + escapeHtml(cluster.name || 'N/A') + '</dd>';
-    if (cluster.description && cluster.description.trim()) {
-      html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><span style="white-space: pre-wrap;">' + escapeHtml(cluster.description) + '</span></dd>';
-    }
-
-    html += '<dt class="col-sm-4">Systems</dt><dd class="col-sm-8">';
-    if (cluster.systems && cluster.systems.length > 0) {
-      cluster.systems.forEach(function(s) {
-        html += '<a href="/system/system?search=' + encodeURIComponent(s.name) + '" target="_blank" rel="noopener noreferrer" class="badge bg-secondary me-1 mb-1 text-decoration-none">' + escapeHtml(s.name) + '</a>';
-      });
-    } else {
-      html += '<span class="text-muted">-</span>';
-    }
-    html += '</dd>';
-
-    html += '<dt class="col-sm-4">Members</dt><dd class="col-sm-8">';
-    if (cluster.members && cluster.members.length > 0) {
-      html += '<table class="table table-sm mb-0"><thead><tr><th>IP</th><th>Server/Device</th><th>Role</th></tr></thead><tbody>';
-      cluster.members.forEach(function(m) {
-        const ipLink = '<a href="/network/ip-address?search=' + encodeURIComponent(m.ip) + '" target="_blank" rel="noopener noreferrer" class="text-decoration-none">' + escapeHtml(m.ip) + '</a>';
-        let ownerLink = '<span class="text-muted">-</span>';
-        if (m.server_name) {
-          ownerLink = '<a href="/server/server?search=' + encodeURIComponent(m.server_name) + '" target="_blank" rel="noopener noreferrer" class="text-decoration-none">' + escapeHtml(m.server_name) + '</a>';
-        } else if (m.device_name) {
-          ownerLink = '<a href="/device/device?search=' + encodeURIComponent(m.device_name) + '" target="_blank" rel="noopener noreferrer" class="text-decoration-none">' + escapeHtml(m.device_name) + '</a>';
-        }
-        html += '<tr><td>' + ipLink + '</td><td>' + ownerLink + '</td><td>' + escapeHtml(m.role || '-') + '</td></tr>';
-      });
-      html += '</tbody></table>';
-    } else {
-      html += '<span class="text-muted">No members</span>';
-    }
-    html += '</dd>';
-
-    if (cluster.created_at) {
-      html += '<dt class="col-sm-4">Created At</dt><dd class="col-sm-8">' + new Date(cluster.created_at).toLocaleString('en-GB') + '</dd>';
-    }
-    if (cluster.updated_by) {
-      html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + escapeHtml(cluster.updated_by) + '</dd>';
-    }
-    if (cluster.updated_at) {
-      html += '<dt class="col-sm-4">Updated At</dt><dd class="col-sm-8">' + new Date(cluster.updated_at).toLocaleString('en-GB') + '</dd>';
-    }
-    html += '</dl>';
-
-    content.innerHTML = html;
-    modal.show();
-  }
-
-  // Import Cluster functionality (mirrors the IP Address import flow:
-  // validate first - downloads a report and only enables Import once
-  // everything passes - then import, which also downloads a results report).
-  let selectedClusterFile = null;
-
-  $(document).on('change', '#clusterImportFile', function() {
-    selectedClusterFile = this.files[0];
-    $('#validateClusterImportBtn').prop('disabled', !selectedClusterFile);
-    if (!selectedClusterFile) $('#importClusterBtn').hide();
-  });
-
-  function downloadBlobResponse(data, xhr, fallbackName) {
-    const contentType = xhr.getResponseHeader('Content-Type');
-    const contentDisposition = xhr.getResponseHeader('Content-Disposition');
-    if (!contentType || !contentType.includes('spreadsheetml.sheet')) return;
-    const blob = new Blob([data], { type: contentType });
-    const url = window.URL.createObjectURL(blob);
-    let filename = fallbackName;
-    if (contentDisposition) {
-      const match = contentDisposition.match(/filename="(.+)"/);
-      if (match) filename = match[1];
-    }
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
-  }
-
-  $(document).on('click', '#validateClusterImportBtn', function() {
-    if (!selectedClusterFile) { alert(t('Please select a file first')); return; }
-    const formData = new FormData();
-    formData.append('file', selectedClusterFile);
-
-    $('#clusterImportProgress').show();
-    $('#clusterImportResults').hide();
-    $('#clusterImportProgress .progress-bar').css('width', '30%');
-
-    let nativeXhr;
-    $.ajax({
-      url: '/cluster/validate-import',
-      type: 'POST',
-      data: formData,
-      processData: false,
-      contentType: false,
-      xhr: function() {
-        nativeXhr = new window.XMLHttpRequest();
-        nativeXhr.responseType = 'blob';
-        return nativeXhr;
-      },
-      success: function(data, status, xhr) {
-        $('#clusterImportProgress .progress-bar').css('width', '100%');
-        downloadBlobResponse(data, xhr, 'cluster_import_validation.xlsx');
-
-        const resultsDiv = $('#clusterImportResults');
-        try {
-          const summary = JSON.parse(xhr.getResponseHeader('X-Validation-Summary'));
-          if (summary.allPassed) {
-            resultsDiv.removeClass('alert-danger').addClass('alert-success')
-              .html('<strong>Validation Complete!</strong><br><small>Total: ' + summary.total + ', Passed: ' + summary.passed + ', Failed: ' + summary.failed + '</small><br><small>Validation file downloaded. Review results before importing.</small>');
-            $('#importClusterBtn').show();
-          } else {
-            resultsDiv.removeClass('alert-success').addClass('alert-danger')
-              .html('<strong>Validation Failed!</strong><br><small>Total: ' + summary.total + ', Passed: ' + summary.passed + ', Failed: ' + summary.failed + '</small><br><small>Validation file downloaded. Please fix the errors before importing.</small>');
-            $('#importClusterBtn').hide();
-          }
-        } catch (e) {
-          resultsDiv.removeClass('alert-danger').addClass('alert-success')
-            .html('<strong>Validation Complete!</strong><br><small>Validation file downloaded. Review results before importing.</small>');
-        }
-        resultsDiv.show();
-      },
-      error: function(xhr, status, error) {
-        $('#clusterImportProgress .progress-bar').css('width', '100%');
-        extractImportErrorMessage(nativeXhr || xhr).then(function(msg) {
-          $('#clusterImportResults').removeClass('alert-success').addClass('alert-danger')
-            .html('<strong>Validation Error!</strong><br>' + msg).show();
-        });
-      },
-      complete: function() {
-        $('#validateClusterImportBtn').prop('disabled', false);
-        setTimeout(() => { $('#clusterImportProgress').hide(); }, 2000);
-      }
-    });
-  });
-
-  $(document).on('click', '#importClusterBtn', function() {
-    if (!selectedClusterFile) { alert(t('Please select a file first')); return; }
-    const formData = new FormData();
-    formData.append('file', selectedClusterFile);
-
-    $('#clusterImportProgress').show();
-    $('#clusterImportProgress .progress-bar').css('width', '30%');
-    $('#importClusterBtn').prop('disabled', true);
-
-    let nativeXhr;
-    $.ajax({
-      url: '/cluster/import',
-      type: 'POST',
-      data: formData,
-      processData: false,
-      contentType: false,
-      xhr: function() {
-        nativeXhr = new window.XMLHttpRequest();
-        nativeXhr.responseType = 'blob';
-        return nativeXhr;
-      },
-      success: function(data, status, xhr) {
-        $('#clusterImportProgress .progress-bar').css('width', '100%');
-        downloadBlobResponse(data, xhr, 'cluster_import_results.xlsx');
-
-        const resultsDiv = $('#clusterImportResults');
-        let summary = null;
-        try { summary = JSON.parse(xhr.getResponseHeader('X-Import-Summary')); } catch (e) {}
-
-        if (summary && summary.failed > 0) {
-          resultsDiv.removeClass('alert-success').addClass('alert-danger')
-            .html('<strong>Import Completed with Errors!</strong><br><small>Total: ' + summary.total + ', Success: ' + summary.success + ', Failed: ' + summary.failed + '</small><br><small>Import results file downloaded. Page will refresh.</small>');
-        } else {
-          resultsDiv.removeClass('alert-danger').addClass('alert-success')
-            .html('<strong>Import Completed!</strong><br><small>Import results file downloaded. Page will refresh.</small>');
-        }
-        resultsDiv.show();
-        $('#importClusterBtn').hide();
-        setTimeout(() => { window.location.reload(); }, 2000);
-      },
-      error: function(xhr, status, error) {
-        $('#clusterImportProgress .progress-bar').css('width', '100%');
-        extractImportErrorMessage(nativeXhr || xhr).then(function(msg) {
-          $('#clusterImportResults').removeClass('alert-success').addClass('alert-danger')
-            .html('<strong>Import Error!</strong><br>' + msg).show();
-        });
-      },
-      complete: function() {
-        $('#importClusterBtn').prop('disabled', false);
-        setTimeout(() => { $('#clusterImportProgress').hide(); }, 2000);
-      }
-    });
-  });
-
-  $('#importClusterModal').on('hidden.bs.modal', function() {
-    $('#importClusterForm')[0].reset();
-    selectedClusterFile = null;
-    $('#validateClusterImportBtn').prop('disabled', true);
-    $('#importClusterBtn').hide();
-    $('#clusterImportProgress').hide();
-    $('#clusterImportResults').hide();
-  });
 </script>

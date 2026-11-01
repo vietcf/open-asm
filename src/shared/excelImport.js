@@ -9,6 +9,8 @@
 //     check: async (row, ctx) => ({ errors: [...], skip: 'reason' }), // per row, no writes
 //     save: async (row, client, ctx) => {},                       // import one row
 //     duplicateKeys: (row) => [row.email.toLowerCase()],          // optional: once per file
+//     groupBy: (row) => row.cluster.toLowerCase(),                // optional: rows saved together,
+//     checkGroup: async (rows, ctx) => [...errors],               //   all or nothing; save(rows, client, ctx)
 //     resultUrl: (file) => `/organize/download/contact-validation/${file}`,
 //   });
 //   router.get('/contact/template', contactImport.template) ...
@@ -78,7 +80,15 @@ async function writeWorkbook(filePath, sheetName, headers, rows, statusIndex) {
 
 const removeQuietly = (p) => { try { if (p && fs.existsSync(p)) fs.unlinkSync(p); } catch (e) { /* temp file */ } };
 
-export function excelImport({ name, columns, sample, prepare = async () => ({}), check, save, duplicateKeys, resultUrl }) {
+// Template download: header row + sample rows -> <name>_import_template.xlsx
+export async function sendTemplate(res, name, headers, rows) {
+  fs.mkdirSync(tempDir(), { recursive: true });
+  const filePath = path.join(tempDir(), `template_${name}_${Date.now()}.xlsx`);
+  await writeWorkbook(filePath, `${name} template`, headers, rows, null);
+  res.download(filePath, `${name}_import_template.xlsx`, () => removeQuietly(filePath));
+}
+
+export function excelImport({ name, columns, sample, prepare = async () => ({}), check, save, duplicateKeys, groupBy, checkGroup, resultUrl }) {
   const headers = columns.map((c) => c.header);
 
   async function resultFile(file, suffix, sheet, extraHeaders, rows) {
@@ -87,6 +97,37 @@ export function excelImport({ name, columns, sample, prepare = async () => ({}),
     const fileName = `${Date.now()}_${base}_${suffix}.xlsx`;
     await writeWorkbook(path.join(tempDir(), fileName), sheet, [...headers, ...extraHeaders], rows, headers.length);
     return resultUrl(fileName);
+  }
+
+  // Checks every row; returns the units saved together: one per row, or one
+  // per group (groupBy) where any error fails the whole group.
+  async function assess(rows, ctx) {
+    const seen = new Set();
+    for (const row of rows) {
+      const { errors = [], skip } = await check(row, ctx);
+      Object.assign(row, { __errors: errors, __skip: skip });
+      const keys = duplicateKeys ? duplicateKeys(row).filter(Boolean) : [];
+      row.__duplicate = keys.some((k) => seen.has(k));
+      keys.forEach((k) => seen.add(k));
+    }
+    if (!groupBy) return rows.map((row) => ({ rows: [row], errors: [] }));
+    const groups = new Map();
+    rows.forEach((row, i) => {
+      const key = groupBy(row) || `__row${i}`;
+      if (!groups.has(key)) groups.set(key, { rows: [], errors: [] });
+      groups.get(key).rows.push(row);
+    });
+    for (const unit of groups.values()) unit.errors = checkGroup ? await checkGroup(unit.rows, ctx) : [];
+    return [...groups.values()];
+  }
+
+  function reasonsOf(unit, row) {
+    const reasons = [...unit.errors, ...row.__errors];
+    if (row.__skip) reasons.push(row.__skip);
+    if (row.__duplicate) reasons.push('Duplicate within this file');
+    const unitFails = unit.errors.length || unit.rows.some((r) => r.__errors.length || r.__skip || r.__duplicate);
+    if (!reasons.length && unitFails) reasons.push('Not imported: another row of this group has an error');
+    return reasons;
   }
 
   const fail = (res, err, label) => {
@@ -99,11 +140,7 @@ export function excelImport({ name, columns, sample, prepare = async () => ({}),
   return {
     async template(req, res) {
       try {
-        fs.mkdirSync(tempDir(), { recursive: true });
-        const filePath = path.join(tempDir(), `template_${name}_${Date.now()}.xlsx`);
-        const rows = (await sample()).map((r) => columns.map((c) => r[c.key] ?? ''));
-        await writeWorkbook(filePath, `${name} template`, headers, rows, null);
-        res.download(filePath, `${name}_import_template.xlsx`, () => removeQuietly(filePath));
+        await sendTemplate(res, name, headers, (await sample()).map((r) => columns.map((c) => r[c.key] ?? '')));
       } catch (err) {
         fail(res, err, 'Template');
       }
@@ -112,16 +149,13 @@ export function excelImport({ name, columns, sample, prepare = async () => ({}),
     async validate(req, res) {
       try {
         const rows = readRows(req.file, columns);
-        const ctx = await prepare(req);
-        const seen = new Set();
+        const units = await assess(rows, await prepare(req));
         const results = [];
-        for (const row of rows) {
-          const { errors = [], skip } = await check(row, ctx);
-          const keys = duplicateKeys ? duplicateKeys(row).filter(Boolean) : [];
-          if (keys.some((k) => seen.has(k))) errors.push('Duplicate within this file');
-          keys.forEach((k) => seen.add(k));
-          const reasons = skip ? [...errors, skip] : errors;
-          results.push([...columns.map((c) => row[c.key]), reasons.length ? 'Fail' : 'Pass', reasons.join('; ')]);
+        for (const unit of units) {
+          for (const row of unit.rows) {
+            const reasons = reasonsOf(unit, row);
+            results.push([...columns.map((c) => row[c.key]), reasons.length ? 'Fail' : 'Pass', reasons.join('; ')]);
+          }
         }
         const failedRows = results.filter((r) => r[headers.length] === 'Fail').length;
         const summary = { totalRows: rows.length, passedRows: rows.length - failedRows, failedRows, allPassed: failedRows === 0 };
@@ -139,35 +173,34 @@ export function excelImport({ name, columns, sample, prepare = async () => ({}),
       try {
         const rows = readRows(req.file, columns);
         const ctx = await prepare(req);
-        const seen = new Set();
-        const results = [];
+        const units = await assess(rows, ctx);
+        const outcome = new Map(); // row -> [status, reason]
         await client.query('BEGIN');
-        for (const [i, row] of rows.entries()) {
-          let status = 'Success';
-          let reason = '';
-          const { errors = [], skip } = await check(row, ctx);
-          const keys = duplicateKeys ? duplicateKeys(row).filter(Boolean) : [];
-          if (errors.length) { status = 'Failed'; reason = errors.join('; '); }
-          else if (skip) { status = 'Skipped'; reason = skip; }
-          else if (keys.some((k) => seen.has(k))) { status = 'Skipped'; reason = 'Duplicate within this file'; }
-          else {
-            keys.forEach((k) => seen.add(k));
-            const savepoint = `import_row_${i}`;
-            try {
-              await client.query(`SAVEPOINT ${savepoint}`);
-              await save(row, client, ctx);
-              await client.query(`RELEASE SAVEPOINT ${savepoint}`);
-              reason = 'Imported';
-            } catch (err) {
-              await client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
-              if (!(err instanceof ServiceError)) console.error(`${name} import row ${i + 2}:`, err);
-              status = 'Failed';
-              reason = err.message || 'Unknown error';
+        for (const [i, unit] of units.entries()) {
+          const failed = unit.errors.length || unit.rows.some((r) => r.__errors.length);
+          const skipped = unit.rows.some((r) => r.__skip || r.__duplicate);
+          if (failed || skipped) {
+            for (const row of unit.rows) {
+              const reasons = reasonsOf(unit, row);
+              const status = unit.errors.length || row.__errors.length || (failed && !row.__skip && !row.__duplicate) ? 'Failed' : 'Skipped';
+              outcome.set(row, [status, reasons.join('; ')]);
             }
+            continue;
           }
-          results.push([...columns.map((c) => row[c.key]), status, reason]);
+          const savepoint = `import_unit_${i}`;
+          try {
+            await client.query(`SAVEPOINT ${savepoint}`);
+            await save(groupBy ? unit.rows : unit.rows[0], client, ctx);
+            await client.query(`RELEASE SAVEPOINT ${savepoint}`);
+            unit.rows.forEach((row) => outcome.set(row, ['Success', 'Imported']));
+          } catch (err) {
+            await client.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+            if (!(err instanceof ServiceError)) console.error(`${name} import:`, err);
+            unit.rows.forEach((row) => outcome.set(row, ['Failed', err.message || 'Unknown error']));
+          }
         }
         await client.query('COMMIT');
+        const results = rows.map((row) => [...columns.map((c) => row[c.key]), ...outcome.get(row)]);
         const count = (s) => results.filter((r) => r[headers.length] === s).length;
         const summary = { totalRows: rows.length, successRows: count('Success'), skippedRows: count('Skipped'), failedRows: count('Failed') };
         const url = await resultFile(req.file, 'imported', 'Import Results', ['Import Status', 'Import Reason'], results);
