@@ -155,7 +155,7 @@ class Unit {
     const result = await pool.query(
       `SELECT
         (SELECT COUNT(*) FROM contacts WHERE unit_id = $1) AS contacts,
-        (SELECT COUNT(*) FROM systems WHERE department_id = $1) AS systems,
+        (SELECT COUNT(*) FROM systems WHERE department_id = $1 OR ops_department_id = $1) AS systems,
         (SELECT COUNT(*) FROM priv_users WHERE organize_id = $1) AS priv_users,
         (SELECT COUNT(*) FROM rulefirewall WHERE ou_id = $1) AS rulefirewall`,
       [id]

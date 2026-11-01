@@ -3,13 +3,14 @@ import { pool } from '../../config/config.js';
 
 class System {
   // ===== CRUD METHODS =====
-  static async create({ system_id, name, level, department_id, alias, description, fqdn, scopes, architecture, updated_by }, client) {
+  // department_id = development department (L3), ops_department_id = operations department (L2)
+  static async create({ system_id, name, level, department_id, ops_department_id = null, alias, description, fqdn, scopes, architecture, updated_by }, client) {
     const executor = client || pool;
     const result = await executor.query(
-      `INSERT INTO systems (system_id, name, level, department_id, alias, description, fqdn, scopes, architecture, updated_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-      [system_id, name, level, department_id, alias, description, fqdn, 
-       scopes ? JSON.stringify(scopes) : null, 
+      `INSERT INTO systems (system_id, name, level, department_id, ops_department_id, alias, description, fqdn, scopes, architecture, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+      [system_id, name, level, department_id, ops_department_id, alias, description, fqdn,
+       scopes ? JSON.stringify(scopes) : null,
        architecture ? JSON.stringify(architecture) : null, updated_by]
     );
     return result.rows[0];
@@ -18,7 +19,7 @@ class System {
   static async findAll(page = 1, pageSize = 10) {
     const offset = (page - 1) * pageSize;
     const result = await pool.query(
-      `SELECT s.*, u.name AS department_name,
+      `SELECT s.*, u.name AS department_name, uo.name AS ops_department_name,
         ARRAY(
           SELECT c.name FROM system_contact sc
           JOIN contacts c ON sc.contact_id = c.id
@@ -26,6 +27,7 @@ class System {
         ) AS managers
        FROM systems s
        LEFT JOIN units u ON s.department_id = u.id
+       LEFT JOIN units uo ON s.ops_department_id = uo.id
        ORDER BY s.id
        LIMIT $1 OFFSET $2`,
       [pageSize, offset]
@@ -36,22 +38,23 @@ class System {
   static async findById(id, client) {
     const executor = client || pool;
     const result = await executor.query(
-      `SELECT s.*, u.name AS department_name
+      `SELECT s.*, u.name AS department_name, uo.name AS ops_department_name
        FROM systems s
        LEFT JOIN units u ON s.department_id = u.id
+       LEFT JOIN units uo ON s.ops_department_id = uo.id
        WHERE s.id = $1`,
       [id]
     );
     return result.rows[0];
   }
 
-  static async update(id, { system_id, name, level, department_id, alias, description, fqdn, scopes, architecture, updated_by }, client) {
+  static async update(id, { system_id, name, level, department_id, ops_department_id = null, alias, description, fqdn, scopes, architecture, updated_by }, client) {
     const executor = client || pool;
     const result = await executor.query(
-      `UPDATE systems SET system_id=$1, name=$2, level=$3, department_id=$4, alias=$5, description=$6, fqdn=$7, scopes=$8, architecture=$9, updated_at=CURRENT_TIMESTAMP, updated_by=$10
-       WHERE id=$11 RETURNING *`,
-      [system_id, name, level, department_id, alias, description, fqdn, 
-       scopes ? JSON.stringify(scopes) : null, 
+      `UPDATE systems SET system_id=$1, name=$2, level=$3, department_id=$4, ops_department_id=$5, alias=$6, description=$7, fqdn=$8, scopes=$9, architecture=$10, updated_at=CURRENT_TIMESTAMP, updated_by=$11
+       WHERE id=$12 RETURNING *`,
+      [system_id, name, level, department_id, ops_department_id, alias, description, fqdn,
+       scopes ? JSON.stringify(scopes) : null,
        architecture ? JSON.stringify(architecture) : null, updated_by, id]
     );
     return result.rows[0];
@@ -347,15 +350,17 @@ class System {
       paramIdx++;
     }
     if (filterDepartment === '__none__') {
-      whereClauses.push('s.department_id IS NULL');
+      whereClauses.push('s.department_id IS NULL AND s.ops_department_id IS NULL');
     } else if (filterDepartment) {
-      whereClauses.push(`s.department_id = $${paramIdx}`);
+      // operations (L2) or development (L3) department
+      whereClauses.push(`(s.department_id = $${paramIdx} OR s.ops_department_id = $${paramIdx})`);
       params.push(parseInt(filterDepartment, 10));
       paramIdx++;
     }
     const result = await pool.query(`
       SELECT s.*,
         u.name AS department_name,
+        uo.name AS ops_department_name,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email)) FILTER (WHERE c.id IS NOT NULL), '[]') AS contacts,
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip', ip.ip_address, 'server_name', srv.name, 'subnet_zone', sub.zone, 'subnet_environment', sub.environment)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
@@ -363,6 +368,7 @@ class System {
         COALESCE(json_agg(DISTINCT jsonb_build_object('id', f.id, 'name', f.original_name, 'url', f.file_path)) FILTER (WHERE f.id IS NOT NULL), '[]') AS docs
       FROM systems s
       LEFT JOIN units u ON s.department_id = u.id
+      LEFT JOIN units uo ON s.ops_department_id = uo.id
       LEFT JOIN tag_object tobj ON tobj.object_type = 'system' AND tobj.object_id = s.id
       LEFT JOIN tags t ON t.id = tobj.tag_id
       LEFT JOIN system_contact sc ON sc.system_id = s.id
@@ -383,7 +389,7 @@ class System {
       LEFT JOIN file_uploads f ON f.object_type = 'system' AND f.object_id = s.id
       LEFT JOIN system_components comp ON comp.system_id = s.id
       WHERE ${whereClauses.join(' AND ')}
-      GROUP BY s.id, u.name
+      GROUP BY s.id, u.name, uo.name
       ORDER BY s.updated_at DESC
       LIMIT $${paramIdx} OFFSET $${paramIdx + 1}
     `, [...params, pageSize, offset]);
@@ -459,9 +465,10 @@ class System {
       paramIdx++;
     }
     if (filterDepartment === '__none__') {
-      whereClauses.push('s.department_id IS NULL');
+      whereClauses.push('s.department_id IS NULL AND s.ops_department_id IS NULL');
     } else if (filterDepartment) {
-      whereClauses.push(`s.department_id = $${paramIdx}`);
+      // operations (L2) or development (L3) department
+      whereClauses.push(`(s.department_id = $${paramIdx} OR s.ops_department_id = $${paramIdx})`);
       params.push(parseInt(filterDepartment, 10));
       paramIdx++;
     }

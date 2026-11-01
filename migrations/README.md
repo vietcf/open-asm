@@ -138,7 +138,10 @@ What it does, in **one transaction** (any error leaves the target unchanged):
    and 2FA. The seeds then run again to add what this version introduced.
 4. Checks that every table got exactly as many rows as in the source, then
    applies `POST_COPY_STEPS` (currently the data conversions of `0004`,
-   option lists to `[{value, label}]`, and `0005`, drop `device_page_size`).
+   option lists to `[{value, label}]`, `0005`, drop `device_page_size`, and
+   `0007`, repair upload filenames saved latin1-decoded). `0006` (new
+   `systems.ops_department_id`) needs no step: older sources leave it empty
+   and their `department_id` becomes the development (L3) department.
 5. Reports source columns/tables the new version no longer has (their data
    is not copied). A new `NOT NULL` column without default that the source
    lacks stops the run before anything is written: add a conversion.

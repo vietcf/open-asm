@@ -126,7 +126,8 @@ export async function getSystem(id) {
   return system;
 }
 
-// input: {system_id, name, level?, department_id?, alias?, description?, fqdn?,
+// input: {system_id, name, level?, department_id? (development dept, L3),
+//         ops_department_id? (operations dept, L2), alias?, description?, fqdn?,
 //         contacts?, ip_addresses?, domains?, tags?, scopes?, architecture?, updated_by?}
 // Existence/uniqueness validation here was previously API-only (the frontend
 // only caught the system_id unique-constraint error, mislabeling name
@@ -144,6 +145,8 @@ export async function createSystem(input, client) {
   await validateLevel(level);
   const department_id = input.department_id === undefined || input.department_id === null || input.department_id === '' ? null : input.department_id;
   await validateDepartmentId(department_id);
+  const ops_department_id = input.ops_department_id === undefined || input.ops_department_id === null || input.ops_department_id === '' ? null : input.ops_department_id;
+  await validateDepartmentId(ops_department_id);
 
   const contacts = toIdArray(input.contacts);
   if (contacts.length) await validateContactIds(contacts);
@@ -163,7 +166,7 @@ export async function createSystem(input, client) {
 
   return withTransaction(client, async (c) => {
     const created = await System.create({
-      system_id, name, level, department_id,
+      system_id, name, level, department_id, ops_department_id,
       alias: alias.length ? alias : null,
       description, fqdn, scopes, architecture, updated_by: username
     }, c);
@@ -176,7 +179,7 @@ export async function createSystem(input, client) {
 }
 
 const UPDATABLE_FIELDS = [
-  'system_id', 'name', 'level', 'department_id', 'alias', 'description', 'fqdn',
+  'system_id', 'name', 'level', 'department_id', 'ops_department_id', 'alias', 'description', 'fqdn',
   'scopes', 'architecture', 'contacts', 'ip_addresses', 'domains', 'tags'
 ];
 
@@ -203,6 +206,7 @@ export async function updateSystem(id, input, client) {
   const name = has('name') ? String(input.name || '').trim() : current.name;
   const level = has('level') ? (input.level === '' ? null : input.level) : current.level;
   const department_id = has('department_id') ? (input.department_id === '' ? null : input.department_id) : current.department_id;
+  const ops_department_id = has('ops_department_id') ? (input.ops_department_id === '' ? null : input.ops_department_id) : current.ops_department_id;
 
   if (has('system_id')) {
     if (!system_id) throw new ValidationError('System ID cannot be empty');
@@ -214,6 +218,7 @@ export async function updateSystem(id, input, client) {
   }
   if (has('level')) await validateLevel(level);
   if (has('department_id')) await validateDepartmentId(department_id);
+  if (has('ops_department_id')) await validateDepartmentId(ops_department_id);
 
   const normalizedArrays = {};
   if (has('contacts')) {
@@ -246,7 +251,7 @@ export async function updateSystem(id, input, client) {
 
   return withTransaction(client, async (c) => {
     await System.update(id, {
-      system_id, name, level, department_id,
+      system_id, name, level, department_id, ops_department_id,
       alias: (Array.isArray(alias) && alias.length) ? alias : null,
       description, fqdn, scopes, architecture, updated_by: username
     }, c);

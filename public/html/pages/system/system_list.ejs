@@ -3,6 +3,23 @@
     filterArchitecture.length || filterLevel || filterDepartment);
   const activeFilterCount = [filterTags.length, filterContacts.length, filterScopes.length,
     filterArchitecture.length, filterLevel ? 1 : 0, filterDepartment ? 1 : 0].filter(Boolean).length;
+  // List columns: "def" = shown by default, "fixed" = always shown.
+  const COLUMNS = [
+    { key: 'code', label: 'System Code', def: true },
+    { key: 'name', label: 'Name', def: true, fixed: true },
+    { key: 'level', label: 'Level', def: true },
+    { key: 'ops', label: 'Operations department (L2)', def: true },
+    { key: 'dev', label: 'Development department (L3)', def: true },
+    { key: 'tags', label: 'Tags', def: true },
+    { key: 'description', label: 'Description' },
+    { key: 'alias', label: 'Alias' },
+    { key: 'scopes', label: 'Scope user access' },
+    { key: 'architecture', label: 'Architecture' },
+    { key: 'managers', label: 'Managers' },
+    { key: 'urls', label: 'Access URLs' },
+    { key: 'ips', label: 'IP Addresses' },
+    { key: 'updated', label: 'Updated' },
+  ];
 %>
 <%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'System Management' }, { label: 'System List' }] }) %>
 
@@ -22,6 +39,22 @@
             <i class="bi bi-funnel"></i> <%= t('Filter') %><% if (activeFilterCount) { %> <span class="badge rounded-pill"><%= activeFilterCount %></span><% } %>
           </button>
           <div class="list-actions">
+            <div class="dropdown">
+              <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                <i class="bi bi-layout-three-columns"></i> <%= t('Columns') %>
+              </button>
+              <div class="dropdown-menu dropdown-menu-end columns-menu" id="systemColumnsMenu">
+                <div class="dropdown-header"><%= t('Show columns') %></div>
+                <% COLUMNS.forEach(function (c) { %>
+                  <label class="dropdown-item form-check mb-0">
+                    <input type="checkbox" class="form-check-input" data-col="<%= c.key %>" <%= c.def || c.fixed ? 'checked' : '' %> <%= c.fixed ? 'disabled' : '' %>>
+                    <span class="form-check-label"><%= t(c.label) %></span>
+                  </label>
+                <% }) %>
+                <div class="dropdown-divider"></div>
+                <button type="button" class="dropdown-item small" data-columns-reset><i class="bi bi-arrow-counterclockwise me-1"></i><%= t('Reset to default') %></button>
+              </div>
+            </div>
             <a href="/system/system/export<%= currentQuery %>" class="btn btn-outline-secondary"><i class="bi bi-download"></i> <%= t('Export') %></a>
             <% if (hasPermission('system.create')) { %>
               <a href="/system/system/add" class="btn btn-primary"><i class="bi bi-plus-lg"></i> <%= t('Add System') %></a>
@@ -42,7 +75,7 @@
                         data-ajax-url="/organize/api/contact" data-ids-url="/organize/api/contact/ids" data-selected='<%= JSON.stringify(filterContacts) %>'></select>
               </div>
               <div class="col-md-6 col-xl-4">
-                <label class="form-label small"><%= t('Department') %></label>
+                <label class="form-label small"><%= t('Department (L2 or L3)') %></label>
                 <select name="department_id" class="form-select js-filter" data-placeholder="<%= t('All Departments') %>">
                   <option value=""></option>
                   <option value="__none__" <%= filterDepartment === '__none__' ? 'selected' : '' %>><%= t('(Not set)') %></option>
@@ -87,18 +120,53 @@
         </div>
       </form>
 
+      <%
+        // Columns of the list. "def": shown by default; "fixed": cannot be hidden.
+        // Each viewer's choice is kept in localStorage (see the script below).
+        const labelOf = (options, v) => { const o = (options || []).find(x => String(x.id) === String(v)); return o ? o.text : v; };
+        const dash = '<span class="text-secondary">—</span>';
+        const chipsHtml = list => (list && list.length)
+          ? '<div class="chip-list">' + list.map(v => '<span class="badge tag">' + escapeFn(v) + '</span>').join('') + '</div>'
+          : dash;
+        function cellHtml(system, key) {
+          switch (key) {
+            case 'code': return escapeFn(system.system_id);
+            case 'name': return escapeFn(system.name);
+            case 'level': return system.level ? escapeFn(labelOf(levelOptions, system.level)) : dash;
+            case 'ops': return system.ops_department_name ? escapeFn(system.ops_department_name) : dash;
+            case 'dev': return system.department_name ? escapeFn(system.department_name) : dash;
+            case 'tags': return chipsHtml((system.tags || []).map(tg => tg.name));
+            case 'description': {
+              const d = (system.description || '').trim();
+              return d ? '<span class="cell-clip" title="' + escapeFn(d) + '">' + escapeFn(d) + '</span>' : dash;
+            }
+            case 'alias': {
+              const a = Array.isArray(system.alias) ? system.alias : (system.alias ? [system.alias] : []);
+              return a.length ? escapeFn(a.join(', ')) : dash;
+            }
+            case 'scopes': return chipsHtml((system.scopes || []).map(v => labelOf(scopeOptions, v)));
+            case 'architecture': return chipsHtml((system.architecture || []).map(v => labelOf(architectureOptions, v)));
+            case 'managers': return (system.contacts || []).length ? escapeFn(system.contacts.map(c => c.name).join(', ')) : dash;
+            case 'urls': {
+              const u = Array.isArray(system.fqdn) ? system.fqdn : (system.fqdn ? [system.fqdn] : []);
+              return u.length ? '<span class="cell-clip" title="' + escapeFn(u.join('\n')) + '">' + escapeFn(u.join(', ')) + '</span>' : dash;
+            }
+            case 'ips': return (system.ip_addresses || []).length ? '<span class="font-monospace small">' + escapeFn(system.ip_addresses.map(ip => ip.ip).join(', ')) + '</span>' : dash;
+            case 'updated': return system.updated_at ? '<span class="text-nowrap small">' + escapeFn(new Date(system.updated_at).toISOString().slice(0, 10)) + '</span>' : dash;
+            default: return '';
+          }
+        }
+      %>
+      <%# Default-hidden columns are hidden here already (no flash); the script swaps in the viewer's choice. %>
+      <style id="systemColumnsStyle">
+        <%= COLUMNS.filter(c => !c.def).map(c => '#systemTable [data-col="' + c.key + '"]').join(', ') %> { display: none; }
+      </style>
       <div class="table-responsive">
         <table class="table table-hover align-middle" id="systemTable">
           <thead>
             <tr>
               <th class="col-index">#</th>
-              <th><%= t('System Code') %></th>
-              <th><%= t('Name') %></th>
-              <th><%= t('Description') %></th>
-              <th><%= t('Alias') %></th>
-              <th><%= t('Tags') %></th>
-              <th><%= t('Scope user access') %></th>
-              <th><%= t('Architecture') %></th>
+              <% COLUMNS.forEach(function (c) { %><th data-col="<%= c.key %>"><%= t(c.label) %></th><% }) %>
               <th class="col-actions"><%= t('Actions') %></th>
             </tr>
           </thead>
@@ -107,31 +175,7 @@
               <% systemList.forEach(function (system, idx) { %>
                 <tr>
                   <td class="col-index"><%= (page - 1) * pageSize + idx + 1 %></td>
-                  <td class="text-nowrap"><%= system.system_id %></td>
-                  <td class="fw-medium"><%= system.name %></td>
-                  <td>
-                    <% const desc = (system.description || '').trim(); %>
-                    <% if (desc) { %><span class="cell-clip" title="<%= desc %>"><%= desc %></span><% } else { %><span class="text-secondary">—</span><% } %>
-                  </td>
-                  <td>
-                    <% const aliases = Array.isArray(system.alias) ? system.alias : (system.alias ? [system.alias] : []); %>
-                    <%= aliases.length ? aliases.join(', ') : '—' %>
-                  </td>
-                  <td>
-                    <% if (system.tags && system.tags.length) { %>
-                      <div class="chip-list"><% system.tags.forEach(function (tag) { %><span class="badge tag"><%= tag.name %></span><% }); %></div>
-                    <% } else { %><span class="text-secondary">—</span><% } %>
-                  </td>
-                  <td>
-                    <% if (system.scopes && system.scopes.length) { %>
-                      <div class="chip-list"><% system.scopes.forEach(function (scope) { %><span class="badge tag"><%= scope %></span><% }); %></div>
-                    <% } else { %><span class="text-secondary">—</span><% } %>
-                  </td>
-                  <td>
-                    <% if (system.architecture && system.architecture.length) { %>
-                      <div class="chip-list"><% system.architecture.forEach(function (arch) { %><span class="badge tag"><%= arch %></span><% }); %></div>
-                    <% } else { %><span class="text-secondary">—</span><% } %>
-                  </td>
+                  <% COLUMNS.forEach(function (c) { %><td data-col="<%= c.key %>"<%- c.key === 'name' ? ' class="fw-medium"' : (['code', 'level'].includes(c.key) ? ' class="text-nowrap"' : '') %>><%- cellHtml(system, c.key) %></td><% }) %>
                   <td class="col-actions">
                     <div class="row-actions">
                       <button type="button" class="btn btn-sm btn-outline-secondary" title="<%= t('Detail') %>" onclick="showSystemDetail(<%= JSON.stringify(system.id) %>)" data-system='<%= JSON.stringify(system) %>'><i class="bi bi-eye"></i></button>
@@ -148,7 +192,7 @@
                 </tr>
               <% }); %>
             <% } else { %>
-              <tr><td colspan="9">
+              <tr><td colspan="<%= COLUMNS.length + 2 %>">
                 <%- include('../../partials/ui/empty_state', { icon: 'bi-hdd-stack', message: 'No systems found', filtered: hasActiveFilter || !!search, clearUrl: '/system/system',
                       actionUrl: hasPermission('system.create') ? '/system/system/add' : null, actionLabel: 'Add System' }) %>
               </td></tr>
@@ -156,6 +200,51 @@
           </tbody>
         </table>
       </div>
+      <script>
+        // Column chooser: visible column keys per browser (localStorage, best
+        // effort); the defaults apply when nothing is stored or storage is blocked.
+        (function () {
+          var KEY = 'openasm.systemList.columns';
+          var columns = <%- jsonSafe(COLUMNS.map(c => ({ key: c.key, def: !!c.def, fixed: !!c.fixed }))) %>;
+          var defaults = columns.filter(function (c) { return c.def; }).map(function (c) { return c.key; });
+          var style = document.getElementById('systemColumnsStyle');
+          function load() {
+            try {
+              var saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+              if (Array.isArray(saved)) return saved;
+            } catch (e) { /* storage unavailable */ }
+            return defaults;
+          }
+          function apply(visible) {
+            var hidden = columns.filter(function (c) { return !c.fixed && visible.indexOf(c.key) === -1; });
+            style.textContent = hidden.length
+              ? hidden.map(function (c) { return '#systemTable [data-col="' + c.key + '"]'; }).join(', ') + ' { display: none; }'
+              : '';
+            document.querySelectorAll('#systemColumnsMenu input[data-col]').forEach(function (box) {
+              box.checked = box.disabled || visible.indexOf(box.dataset.col) !== -1;
+            });
+          }
+          var visible = load();
+          apply(visible);
+
+          var menu = document.getElementById('systemColumnsMenu');
+          if (!menu) return;
+          menu.addEventListener('change', function (e) {
+            if (!e.target.matches('input[data-col]')) return;
+            visible = columns.filter(function (c) {
+              var box = menu.querySelector('input[data-col="' + c.key + '"]');
+              return c.fixed || (box && box.checked);
+            }).map(function (c) { return c.key; });
+            try { localStorage.setItem(KEY, JSON.stringify(visible)); } catch (err) { /* ignore */ }
+            apply(visible);
+          });
+          menu.querySelector('[data-columns-reset]').addEventListener('click', function () {
+            visible = defaults.slice();
+            try { localStorage.removeItem(KEY); } catch (err) { /* ignore */ }
+            apply(visible);
+          });
+        })();
+      </script>
 
       <%- include('../../partials/ui/pagination', { page, totalPages, totalCount, pageSize, count: (systemList || []).length, summary: 'Showing {1} - {2} of {3} systems' }) %>
     </div>
@@ -263,13 +352,18 @@
       if (isNaN(d)) return String(value);
       return d.toLocaleString(document.documentElement.lang || undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
     }
-    // "host [comment]" -> link + chip
-    function fqdnItem(raw) {
+    // Access URL entry (stored in the "fqdn" column): "https://host:port/path",
+    // a bare host or IP, optionally followed by " [comment]".
+    // Only http(s) links are clickable; a bare host gets http://.
+    function urlItem(raw) {
       const str = String(raw).trim();
       const m = str.match(/^(.+?)\s*\[(.+?)\]$/);
-      const host = m ? m[1].trim() : str;
+      const target = m ? m[1].trim() : str;
       const note = m ? ' <span class="badge tag">' + escapeHtml(m[2].trim()) + '</span>' : '';
-      return '<li><a href="http://' + encodeURI(host) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(host) + '</a>' + note + '</li>';
+      const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(target);
+      const href = hasScheme ? (/^https?:\/\//i.test(target) ? target : null) : 'http://' + target;
+      const text = escapeHtml(target);
+      return '<li>' + (href ? '<a href="' + escapeHtml(encodeURI(href)) + '" target="_blank" rel="noopener noreferrer">' + text + '</a>' : text) + note + '</li>';
     }
     function contactLinks(contacts) {
       if (!contacts || !contacts.length) return EMPTY;
@@ -303,13 +397,15 @@
       let html = '';
 
       // Overview
-      const department = system.department_id
-        ? '<span class="org-tooltip" data-unit-id="' + escapeHtml(system.department_id) + '" style="cursor: help;">' + escapeHtml(system.department_name || '') + '</span>'
-        : '';
+      // Unit name with a lazy description tooltip
+      const unit = function (id, name) {
+        return id ? '<span class="org-tooltip" data-unit-id="' + escapeHtml(id) + '" style="cursor: help;">' + escapeHtml(name || '') + '</span>' : '';
+      };
       const description = (system.description || '').trim();
       html += section('Overview',
         '<div class="detail-rows">' +
-          field('Department', department) +
+          field('Operations department (L2)', unit(system.ops_department_id, system.ops_department_name)) +
+          field('Development department (L3)', unit(system.department_id, system.department_name)) +
           field('Alias', toArray(system.alias).length ? escapeHtml(toArray(system.alias).join(', ')) : '') +
           field('Scope user access', chips(system.scopes, function (v) { return optionLabel(window.scopeOptionsData, v); })) +
           field('Architecture', chips(system.architecture, function (v) { return optionLabel(window.architectureOptionsData, v); })) +
@@ -318,13 +414,13 @@
           (description ? field('Description', '<span class="text-pre-wrap">' + escapeHtml(description) + '</span>') : '') +
         '</div>');
 
-      // Access: FQDN and domains
+      // Access: URLs ("fqdn" column) and domains
       const fqdns = toArray(system.fqdn);
       const domains = system.domains || [];
       if (fqdns.length || domains.length) {
         html += section('Access',
           '<div class="detail-rows">' +
-            field('FQDN', fqdns.length ? '<ul class="detail-list">' + fqdns.map(fqdnItem).join('') + '</ul>' : '') +
+            field('Access URLs', fqdns.length ? '<ul class="detail-list">' + fqdns.map(urlItem).join('') + '</ul>' : '') +
             field('Domains', domains.length ? '<div class="chip-list">' + domains.map(function (d) {
               const name = d.domain || d;
               return '<a href="/network/domain?search=' + encodeURIComponent(name) + '" target="_blank" rel="noopener noreferrer" class="badge tag text-decoration-none">' + escapeHtml(name) + '</a>';
@@ -517,7 +613,7 @@
               '</button>' +
               '<div class="collapse" id="' + id + '"><div class="detail-component-body"><div class="detail-rows">' +
                 field('IP Addresses', ips.length ? '<div class="chip-list">' + ips.map(function (ip) { return ipLink(ip.ip_address || ip.ip || ip); }).join('') + '</div>' : '') +
-                field('FQDN', fqdns.length ? '<ul class="detail-list">' + fqdns.map(fqdnItem).join('') + '</ul>' : '') +
+                field('Access URLs', fqdns.length ? '<ul class="detail-list">' + fqdns.map(urlItem).join('') + '</ul>' : '') +
                 field('Managers', contactLinks(c.contacts)) +
                 field('Tags', chips((c.tags || []).map(function (tg) { return typeof tg === 'string' ? tg : tg.name; }))) +
                 (description ? field('Description', '<span class="text-pre-wrap">' + escapeHtml(description) + '</span>') : '') +

@@ -1,0 +1,244 @@
+<%#
+  Add / Edit System form (shared). Included by system_add.ejs and
+  system_edit.ejs with:
+    mode:     'add' | 'edit'
+    system:   the system being edited (edit) or {} (add)
+    selected: { contacts, ip_addresses, domains, tags, department, ops_department } as [{id, text}]
+  Field names are the ones the controller already reads.
+%>
+<%
+  const isEdit = mode === 'edit';
+  const s = system || {};
+  const sel = selected || {};
+  const join = v => Array.isArray(v) ? v.join(', ') : (v || '');
+  const has = (list, id) => Array.isArray(list) && list.map(String).includes(String(id));
+%>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [
+  { label: 'System Management' },
+  { label: 'System List', href: '/system/system' },
+  { label: isEdit ? 'Edit System' : 'Add System' }
+] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <form id="systemForm" class="card form-card" method="POST" enctype="multipart/form-data"
+          action="<%= isEdit ? '/system/system/' + s.id + '/edit' : '/system/system/add' %>">
+      <div class="card-header form-card-header">
+        <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit System' : 'Add System') %></h3>
+        <% if (isEdit) { %><span class="text-secondary small font-monospace ms-2"><%= s.system_id %></span><% } %>
+      </div>
+
+      <div class="card-body">
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('General information') %></h4>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label" for="f-system-id"><%= t('System Code') %> <span class="text-danger">*</span></label>
+              <input type="text" id="f-system-id" name="system_id" class="form-control" value="<%= s.system_id || '' %>" maxlength="50" placeholder="<%= t('Enter system ID') %>" required>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label" for="f-name"><%= t('System Name') %> <span class="text-danger">*</span></label>
+              <input type="text" id="f-name" name="name" class="form-control" value="<%= s.name || '' %>" maxlength="255" placeholder="<%= t('Enter system name') %>" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="f-level"><%= t('Level') %></label>
+              <select id="f-level" name="level" class="form-select js-select" data-placeholder="<%= t('Select level') %>">
+                <option value=""></option>
+                <% (levelOptions || []).forEach(function (o) { %>
+                  <option value="<%= o.id %>" <%= String(s.level) === String(o.id) ? 'selected' : '' %>><%= o.text %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label" for="f-alias"><%= t('Alias') %></label>
+              <input type="text" id="f-alias" name="alias" class="form-control" value="<%= join(s.alias) %>" placeholder="<%= t('e.g. alias1, alias2') %>">
+              <div class="form-text"><%= t('Separate multiple values with commas') %></div>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-fqdn"><%= t('Access URLs') %></label>
+              <input type="text" id="f-fqdn" name="fqdn" class="form-control" value="<%= join(s.fqdn) %>" placeholder="<%= t('e.g. https://app.example.com, http://10.0.0.5:8080') %>">
+              <div class="form-text"><%= t('Separate multiple values with commas') %></div>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-description"><%= t('Description') %></label>
+              <textarea id="f-description" name="description" class="form-control" rows="4"
+                        placeholder="<%= t('Please provide the following information: 1) What business functions/features does this system provide? 2) What components does the system include? 3) Who are the target users of this system?') %>"><%= s.description || '' %></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('Classification') %></h4>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="f-scopes"><%= t('Scope user access') %></label>
+              <select id="f-scopes" name="scopes[]" class="form-select js-select" multiple data-placeholder="<%= t('Select scopes (optional)') %>">
+                <% (scopeOptions || []).forEach(function (o) { %>
+                  <option value="<%= o.id %>" <%= has(s.scopes, o.id) ? 'selected' : '' %>><%= o.text %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-architecture"><%= t('Architecture') %></label>
+              <select id="f-architecture" name="architecture[]" class="form-select js-select" multiple data-placeholder="<%= t('Select architecture types (optional)') %>">
+                <% (architectureOptions || []).forEach(function (o) { %>
+                  <option value="<%= o.id %>" <%= has(s.architecture, o.id) ? 'selected' : '' %>><%= o.text %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-tags"><%= t('Tags') %></label>
+              <select id="f-tags" name="tags[]" class="form-select js-select" multiple data-ajax-url="/organize/api/tag"
+                      data-placeholder="<%= t('Select tags') %>" data-selected="<%= JSON.stringify(sel.tags || []) %>"></select>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('Ownership & infrastructure') %></h4>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="f-ops-department"><%= t('Operations department (L2)') %></label>
+              <select id="f-ops-department" name="ops_department_id" class="form-select js-select" data-ajax-url="/organize/api/unit"
+                      data-placeholder="<%= t('Select department') %>" data-selected="<%= JSON.stringify(sel.ops_department || []) %>"></select>
+              <div class="form-text"><%= t('Administers and operates the system') %></div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-department"><%= t('Development department (L3)') %></label>
+              <select id="f-department" name="department_id" class="form-select js-select" data-ajax-url="/organize/api/unit"
+                      data-placeholder="<%= t('Select department') %>" data-selected="<%= JSON.stringify(sel.department || []) %>"></select>
+              <div class="form-text"><%= t('Develops and fixes the system') %></div>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-contacts"><%= t('Managers') %></label>
+              <select id="f-contacts" name="contacts[]" class="form-select js-select" multiple data-ajax-url="/organize/api/contact"
+                      data-placeholder="<%= t('Select contacts') %>" data-selected="<%= JSON.stringify(sel.contacts || []) %>"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-ips"><%= t('IP Addresses') %></label>
+              <select id="f-ips" name="ip_addresses[]" class="form-select js-select" multiple data-ajax-url="/network/api/ip-addresses"
+                      data-placeholder="<%= t('Select IP addresses') %>" data-selected="<%= JSON.stringify(sel.ip_addresses || []) %>"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-domains"><%= t('Domains') %></label>
+              <select id="f-domains" name="domains[]" class="form-select js-select" multiple data-ajax-url="/network/api/domain"
+                      data-placeholder="<%= t('Select domains') %>" data-selected="<%= JSON.stringify(sel.domains || []) %>"></select>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('Documents') %></h4>
+          <ul id="f-files" class="form-file-list" data-existing="<%= JSON.stringify(isEdit ? (s.docs || []) : []) %>"></ul>
+          <label class="form-file-drop" for="f-upload">
+            <i class="bi bi-cloud-arrow-up"></i>
+            <span><%= t('Choose files to upload') %></span>
+            <span class="form-text mt-0"><%= t('You can select multiple files.') %></span>
+          </label>
+          <input type="file" id="f-upload" class="visually-hidden" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.png,.jpg,.jpeg,.zip,.rar">
+          <% if (isEdit) { %>
+            <input type="hidden" name="uploaded_docs_edit" id="f-uploaded">
+            <input type="hidden" name="delete_files" id="f-deleted" value="[]">
+          <% } else { %>
+            <input type="hidden" name="uploaded_docs" id="f-uploaded">
+          <% } %>
+        </section>
+      </div>
+
+      <div class="card-footer form-actions">
+        <a href="/system/system" class="btn btn-outline-secondary"><%= t('Cancel') %></a>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> <%= t(isEdit ? 'Save Changes' : 'Add System') %></button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+$(function () {
+  var tr = window.t || function (s) { return s; };
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  // Select2 for every .js-select; AJAX ones get their current values from
+  // data-selected ([{id, text}]).
+  $('#systemForm .js-select').each(function () {
+    var $el = $(this);
+    var ajaxUrl = $el.data('ajaxUrl');
+    var opts = { theme: 'bootstrap-5', width: '100%', allowClear: true, placeholder: $el.data('placeholder') || '' };
+    if (ajaxUrl) {
+      opts.ajax = {
+        url: ajaxUrl, dataType: 'json', delay: 250,
+        data: function (params) { return { search: params.term }; },
+        processResults: function (data) {
+          return { results: (Array.isArray(data) ? data : []).map(function (x) { return { id: x.id, text: x.text || x.name || String(x.id) }; }) };
+        },
+        cache: true
+      };
+      ($el.data('selected') || []).forEach(function (o) {
+        $el.append(new Option(o.text, o.id, true, true));
+      });
+    }
+    $el.select2(opts);
+  });
+
+  // Documents: existing files (edit) + files uploaded now through /api/upload.
+  var existing = $('#f-files').data('existing') || [];
+  var uploaded = [];
+  var deleted = [];
+  var nameOf = function (f) { return f.originalname || f.name || ''; };
+
+  function renderFiles() {
+    var items = existing.map(function (f) {
+      var viewUrl = f.id ? '/system/file/' + encodeURIComponent(f.id) + '/view' : f.url;
+      return '<li><i class="bi bi-paperclip text-secondary"></i>' +
+        '<a href="' + esc(f.url) + '" download class="text-truncate">' + esc(nameOf(f)) + '</a>' +
+        '<a href="' + esc(viewUrl) + '" target="_blank" rel="noopener noreferrer" class="badge tag text-decoration-none">' + esc(tr('View')) + '</a>' +
+        '<button type="button" class="btn btn-sm btn-link text-danger ms-auto js-remove-file" data-kind="existing" data-id="' + esc(f.id) + '" title="' + esc(tr('Delete')) + '"><i class="bi bi-trash"></i></button></li>';
+    }).concat(uploaded.map(function (f, i) {
+      return '<li><i class="bi bi-paperclip text-secondary"></i>' +
+        '<a href="' + esc(f.url) + '" target="_blank" rel="noopener noreferrer" class="text-truncate">' + esc(nameOf(f)) + '</a>' +
+        '<span class="badge bg-success">' + esc(tr('New')) + '</span>' +
+        '<button type="button" class="btn btn-sm btn-link text-danger ms-auto js-remove-file" data-kind="uploaded" data-index="' + i + '" title="' + esc(tr('Remove')) + '"><i class="bi bi-x-lg"></i></button></li>';
+    }));
+    $('#f-files').html(items.length ? items.join('') : '<li class="text-secondary small">' + esc(tr('No files attached')) + '</li>');
+    $('#f-uploaded').val(JSON.stringify(uploaded));
+    $('#f-deleted').val(JSON.stringify(deleted));
+  }
+  renderFiles();
+
+  $('#f-files').on('click', '.js-remove-file', function () {
+    var $b = $(this);
+    if ($b.data('kind') === 'existing') {
+      var id = $b.data('id');
+      existing = existing.filter(function (f) { return String(f.id) !== String(id); });
+      deleted.push(id);
+    } else {
+      uploaded.splice(Number($b.data('index')), 1);
+    }
+    renderFiles();
+  });
+
+  $('#f-upload').on('change', function () {
+    var input = this;
+    Array.from(input.files).forEach(function (file) {
+      var taken = existing.concat(uploaded).some(function (f) { return nameOf(f) === file.name; });
+      if (taken) return;
+      var formData = new FormData();
+      formData.append('file', file);
+      $.ajax({
+        url: '/api/upload', type: 'POST', data: formData, processData: false, contentType: false,
+        xhrFields: { withCredentials: true },
+        success: function (res) {
+          var f = (res.success && res.files && res.files[0]) || res.file;
+          if (f) { uploaded.push(f); renderFiles(); }
+        },
+        error: function () { alert(tr('Upload failed!')); }
+      });
+    });
+    input.value = '';
+  });
+});
+</script>

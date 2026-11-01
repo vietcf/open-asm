@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import System from '../models/System.js';
 import Contact from '../models/Contact.js';
+import Tag from '../models/Tag.js';
 import Unit from '../models/Unit.js';
 import FileUpload from '../models/FileUpload.js';
 import { pool } from '../../config/config.js';
@@ -351,7 +352,17 @@ systemController.editSystemForm = async (req, res) => {
     const levelOptions = await getLevelOptions();
     const scopeOptions = await getScopeOptions();
     const architectureOptions = await getArchitectureOptions();
+    // Current values of the AJAX selects, as {id, text} options
+    const selected = {
+      contacts: selectedManagerObjects.map(c => ({ id: c.id, text: c.email ? `${c.name} (${c.email})` : c.name })),
+      ip_addresses: ipAddresses.map(ip => ({ id: ip.id, text: ip.ip_address })),
+      domains: selectedDomains.map(d => ({ id: d.id, text: d.name })),
+      tags: (await Tag.findByIds(selectedTags)).map(tg => ({ id: tg.id, text: tg.name })),
+      department: system.department_id ? [{ id: system.department_id, text: system.department_name }] : [],
+      ops_department: system.ops_department_id ? [{ id: system.ops_department_id, text: system.ops_department_name }] : [],
+    };
     res.render('pages/system/system_edit', {
+      selected,
       system,
       selectedContacts,
       ipAddresses,
@@ -378,7 +389,7 @@ systemController.updateSystem = async (req, res) => {
     await client.query('BEGIN');
     const id = req.params.id;
     let {
-      system_id, name, level, department_id, alias, contacts, ip_addresses,
+      system_id, name, level, department_id, ops_department_id, alias, contacts, ip_addresses,
       tags, domains, description, fqdn, scopes, architecture
     } = req.body;
 
@@ -387,7 +398,7 @@ systemController.updateSystem = async (req, res) => {
     // to preserve the edit form's "fully replace on submit" UX under the
     // service's has-key semantics — same fix applied to Server's controller.
     const updatedSystem = await systemService.updateSystem(id, {
-      system_id, name, level, department_id, alias,
+      system_id, name, level, department_id, ops_department_id, alias,
       contacts: contacts || [],
       ip_addresses: ip_addresses || [],
       tags: tags || [],
@@ -440,12 +451,12 @@ systemController.addSystem = async (req, res) => {
   try {
     await client.query('BEGIN');
     let {
-      system_id, name, level, department_id, alias, contacts, ip_addresses,
+      system_id, name, level, department_id, ops_department_id, alias, contacts, ip_addresses,
       tags, domains, description, fqdn, scopes, architecture
     } = req.body;
 
     const newSystem = await systemService.createSystem({
-      system_id, name, level, department_id, alias, contacts, ip_addresses,
+      system_id, name, level, department_id, ops_department_id, alias, contacts, ip_addresses,
       tags, domains, description, fqdn, scopes, architecture,
       updated_by: req.session.user && req.session.user.username ? req.session.user.username : null
     }, client);

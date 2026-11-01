@@ -581,6 +581,33 @@ when cutting a release.
   the list's neutral chips, translated labels, option labels instead of
   raw values (level, scope, architecture) and readable dates. Reusable
   `.detail-card` / `.detail-row` styles in `custom.css`.
+- 💄 Add / Edit System share one form (`system_form.ejs`) in the list's
+  look: breadcrumb header, one card with titled sections (General
+  information, Classification, Ownership & infrastructure, Documents),
+  two-column grid, actions in the footer. No more duplicate jQuery /
+  Bootstrap / Select2 loads; selected values and file names are escaped.
+- ✏️ "FQDN" on systems is shown as "Access URLs": the values are URLs such
+  as `https://10.0.0.5:8443` or `http://example.com` (the column stays
+  `fqdn`). Links keep their own scheme instead of getting `http://`
+  prepended, and only http(s) values are clickable.
+- ✨ Systems have two departments by support layer: **Operations department
+  (L2)**, new `systems.ops_department_id` (migration `0006`), and
+  **Development department (L3)**, the existing `department_id`, so every
+  department recorded so far is now the L3 one. Form, detail modal, REST
+  API (`ops_department_id`), unit usage count; the department filter
+  matches either layer.
+- ✨ System List column chooser ("Columns" button): by default only System
+  Code, Name, Level, Operations (L2) and Development (L3) department and
+  Tags are shown; Description, Alias, Scope, Architecture, Managers, Access
+  URLs, IP Addresses and Updated can be turned on. The choice is kept per
+  browser (localStorage); "Reset to default" restores the basic set. Level,
+  scope and architecture show their labels instead of raw values.
+- 🐛 Uploads with Vietnamese (or any non-ASCII) names: the name is read as
+  UTF-8 instead of busboy's latin1 (no more "TÃ i liá»‡u"), saving no longer
+  fails with "Invalid uploaded file" for names with spaces or diacritics
+  (files are stored under an ASCII name, the real name is kept for display),
+  and downloads send the name as RFC 5987 `filename*`. Migration `0007`
+  repairs names already stored garbled.
 - 🐛 CSS/JS changes now reach browsers: the app's own assets are linked
   with a `?v=<mtime>` version (nginx caches `/css` and `/js` for a year as
   immutable, so unversioned URLs kept serving the old files).

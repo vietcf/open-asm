@@ -41,7 +41,10 @@ const router = express.Router();
  *           description: System level
  *         department_id:
  *           type: integer
- *           description: Department (unit) ID
+ *           description: Development department (L3), unit ID
+ *         ops_department_id:
+ *           type: integer
+ *           description: Operations department (L2), unit ID
  *         domains:
  *           type: array
  *           items:
@@ -66,7 +69,7 @@ const router = express.Router();
  *           type: array
  *           items:
  *             type: string
- *           description: List of Fully Qualified Domain Names
+ *           description: Access URLs of the system (shown as "Access URLs" in the UI), e.g. "https://app.example.com", "http://10.0.0.5:8080" or a bare host; an optional " [comment]" suffix is shown as a note
  *         scopes:
  *           type: array
  *           items:
@@ -97,6 +100,7 @@ const router = express.Router();
  *         description: "Main business system"
  *         level: 2
  *         department_id: 3
+ *         ops_department_id: 4
  *         domains: [1, 2]
  *         contacts: [{ id: 5, name: "Jane Doe", email: "jane@example.com" }]
  *         ip_addresses: [101, 102]
@@ -165,6 +169,10 @@ const router = express.Router();
  *                 type: integer
  *               department_id:
  *                 type: integer
+ *                 description: Development department (L3), unit ID
+ *               ops_department_id:
+ *                 type: integer
+ *                 description: Operations department (L2), unit ID
  *               domains:
  *                 type: array
  *                 items:
@@ -253,6 +261,10 @@ const router = express.Router();
  *                 type: integer
  *               department_id:
  *                 type: integer
+ *                 description: Development department (L3), unit ID
+ *               ops_department_id:
+ *                 type: integer
+ *                 description: Operations department (L2), unit ID
  *               domains:
  *                 type: array
  *                 items:

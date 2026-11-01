@@ -254,6 +254,29 @@
 .form-section-title { font-size: .8125rem; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--bs-secondary-color); margin-bottom: .75rem; }
 .form-actions { display: flex; justify-content: flex-end; gap: .5rem; }
 
+/* Add / Edit pages: one card, titled sections, actions in the footer
+   (same card look as the list pages). */
+.form-card { max-width: 1200px; }
+.form-card-header { display: flex; align-items: baseline; }
+.form-card-header .card-title { font-size: 1rem; font-weight: 600; }
+.form-card > .card-body { padding: 1.25rem 1.5rem; }
+.form-card > .card-footer { background: var(--bs-tertiary-bg); padding: .75rem 1.5rem; }
+.form-file-list { list-style: none; padding: 0; margin: 0 0 .75rem; display: grid; gap: .375rem; }
+.form-file-list > li { display: flex; align-items: center; gap: .5rem; min-width: 0; padding: .375rem .75rem; border: 1px solid var(--bs-border-color); border-radius: .375rem; }
+.form-file-list > li.text-secondary { border-style: dashed; }
+.form-file-list .btn-link { padding: 0 .25rem; }
+.form-file-drop {
+  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; cursor: pointer;
+  padding: .75rem 1rem; border: 1px dashed var(--bs-border-color); border-radius: .375rem; color: var(--bs-secondary-color);
+}
+.form-file-drop:hover { border-color: var(--bs-primary); color: var(--bs-primary); }
+.form-file-drop > .bi { font-size: 1.25rem; }
+@media (max-width: 575.98px) {
+  .form-card > .card-body { padding: 1rem; }
+  .form-actions { flex-direction: column-reverse; }
+  .form-actions .btn { width: 100%; }
+}
+
 /* Auto-hiding alerts (flash partial) are handled in custom.js */
 
 /* --- Calm, consistent colours ------------------------------------------- */
@@ -365,3 +388,9 @@ textarea.form-control { min-height: 6rem; }
 }
 .config-tabs { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
 .config-tabs .nav-link { white-space: nowrap; }
+
+/* List column chooser ("Columns" dropdown in the list toolbar) */
+.columns-menu { min-width: 16rem; max-height: 70vh; overflow-y: auto; }
+.columns-menu .dropdown-item.form-check { display: flex; align-items: center; gap: .5rem; padding-left: 1rem; cursor: pointer; }
+.columns-menu .dropdown-item.form-check .form-check-input { float: none; margin: 0; }
+.columns-menu .form-check-input:disabled ~ .form-check-label { opacity: .6; }
