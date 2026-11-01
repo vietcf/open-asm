@@ -128,6 +128,28 @@ app.use(loadPermissions);
 // 5.1b. UI language (req.t / res.locals.t, ?lang= switch) - see src/i18n/
 app.use(i18n);
 
+// Cache-busting URLs for the app's own CSS/JS: nginx serves /css and /js
+// with a one-year immutable cache, so the URL must change when the file
+// does. Version = file mtime; looked up once in production, on every
+// request in development (files change under `docker compose watch`).
+const PUBLIC_DIR = path.join(__dirname, '../public');
+const assetVersions = new Map();
+function assetUrl(urlPath) {
+  let version = process.env.NODE_ENV === 'production' ? assetVersions.get(urlPath) : undefined;
+  if (!version) {
+    try {
+      version = Math.floor(fs.statSync(path.join(PUBLIC_DIR, urlPath)).mtimeMs).toString(36);
+    } catch {
+      version = 'missing';
+    }
+    assetVersions.set(urlPath, version);
+  }
+  return `${urlPath}?v=${version}`;
+}
+// app.locals: available to every render, error pages included.
+// <link href="<%= asset('/css/custom.css') %>">
+app.locals.asset = assetUrl;
+
 // 5.2. Global template variables (res.locals)
 app.use((req, res, next) => {
   // Browser-side translation catalog: <script src="<%= i18nScript %>">

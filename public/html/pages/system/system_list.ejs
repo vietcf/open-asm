@@ -163,10 +163,13 @@
 </div>
     <!-- System Detail Modal -->
     <div class="modal fade" id="systemDetailModal" tabindex="-1" aria-labelledby="systemDetailModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg">
+      <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title" id="systemDetailModalLabel"><%= t('System Detail') %></h5>
+            <div class="me-3">
+              <h5 class="modal-title mb-0" id="systemDetailModalLabel"><%= t('System Detail') %></h5>
+              <div class="small text-secondary mt-1" id="systemDetailSubtitle"></div>
+            </div>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
           </div>
           <div class="modal-body" id="systemDetailContent">
@@ -208,6 +211,7 @@
 <div id="system-data" 
      data-scope-options='<%= JSON.stringify(scopeOptions || []) %>'
      data-architecture-options='<%= JSON.stringify(architectureOptions || []) %>'
+     data-level-options='<%= JSON.stringify(levelOptions || []) %>'
      style="display: none;"></div>
 
 <script>
@@ -215,6 +219,7 @@
     const systemDataEl = document.getElementById('system-data');
     window.scopeOptionsData = JSON.parse(systemDataEl.dataset.scopeOptions || '[]');
     window.architectureOptionsData = JSON.parse(systemDataEl.dataset.architectureOptions || '[]');
+    window.levelOptionsData = JSON.parse(systemDataEl.dataset.levelOptions || '[]');
     
     
 
@@ -227,297 +232,163 @@
       return false;
     }
 
-    // Simple function to show system detail modal
-    function showSystemDetail(systemId) {
-      console.log('showSystemDetail called with ID:', systemId);
-      window.currentDetailSystemId = systemId;
+    // ---- System Detail modal -------------------------------------------
+    // Same visual language as the list: neutral chips, "—" for empty
+    // values, translated labels. Sections are only shown when they have
+    // content; components and clusters load on demand.
+    const EMPTY = '<span class="text-secondary">—</span>';
 
-      try {
-        // Find the button that was clicked
-        const buttons = document.querySelectorAll('button[data-system]');
-        let targetButton = null;
-        
-        for (let button of buttons) {
-          const data = button.getAttribute('data-system');
-          if (data) {
-            try {
-              const system = JSON.parse(data);
-              if (system.id == systemId) {
-                targetButton = button;
-                break;
-              }
-            } catch (e) {
-              console.error('Error parsing system data:', e);
-            }
-          }
-        }
-        
-        if (!targetButton) {
-          console.error('Button not found for system ID:', systemId);
-          alert(t('Button not found for system ID: ') + systemId);
-          return;
-        }
-        
-        const systemData = targetButton.getAttribute('data-system');
-        console.log('Raw system data:', systemData);
-        
-        let system;
-        try {
-          system = JSON.parse(systemData);
-          console.log('Parsed system data:', system);
-        } catch (e) {
-          console.error('Error parsing system data:', e);
-          alert(t('Error parsing system data: ') + e.message);
-          return;
-        }
-        
-        // Check if Bootstrap is available
-        if (typeof bootstrap === 'undefined') {
-          console.error('Bootstrap is not loaded');
-          alert(t('Bootstrap is not loaded'));
-          return;
-        }
-        
-        const modalElement = document.getElementById('systemDetailModal');
-        if (!modalElement) {
-          console.error('Modal element not found');
-          alert(t('Modal element not found'));
-          return;
-        }
-        
-        const modal = new bootstrap.Modal(modalElement, {
-          backdrop: true,
-          keyboard: true,
-          focus: true
-        });
-        const content = document.getElementById('systemDetailContent');
-        
-        // Build HTML content - definition-list field:value layout
-        let html = '<dl class="row detail-dl">';
-
-        // Debug: Show all system properties
-        console.log('All system properties:', Object.keys(system));
-
-        // System Name
-        const systemName = (system.name || system.system_name || 'N/A');
-        console.log('System Name:', systemName, 'System Code:', system.system_id || system.code);
-        html += '<dt class="col-sm-4">System Name</dt><dd class="col-sm-8">' + escapeHtml(String(systemName).trim()) + '</dd>';
-
-        // System Code
-        const systemCode = (system.system_id || system.code || 'N/A');
-        console.log('System Code raw:', systemCode, 'Type:', typeof systemCode);
-        html += '<dt class="col-sm-4">System Code</dt><dd class="col-sm-8">' + escapeHtml(String(systemCode).trim()) + '</dd>';
-
-        // ID
-        const systemIdValue = (system.id || 'N/A');
-        html += '<dt class="col-sm-4">ID</dt><dd class="col-sm-8">' + escapeHtml(String(systemIdValue).trim()) + '</dd>';
-
-        // Description
-        if (system.description && system.description.trim()) {
-          html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><span style="white-space: pre-wrap;">' + escapeHtml(system.description) + '</span></dd>';
-        }
-
-        // Level
-        const level = (system.level || 'N/A');
-        html += '<dt class="col-sm-4">Level</dt><dd class="col-sm-8">' + escapeHtml(String(level).trim()) + '</dd>';
-
-        // Organization (Department)
-        const department = (system.department_name || system.department || 'N/A');
-        if (system.department_id) {
-          html += '<dt class="col-sm-4">Organization</dt><dd class="col-sm-8"><span class="org-tooltip" data-unit-id="' + escapeHtml(system.department_id) + '" title="Loading..." style="cursor: help;">' + escapeHtml(String(department).trim()) + '</span></dd>';
-        } else {
-          html += '<dt class="col-sm-4">Organization</dt><dd class="col-sm-8">' + escapeHtml(String(department).trim()) + '</dd>';
-        }
-
-        // Alias
-        if (system.alias && (Array.isArray(system.alias) ? system.alias.length > 0 : system.alias)) {
-          const alias = Array.isArray(system.alias) ? system.alias.join(', ') : system.alias;
-          html += '<dt class="col-sm-4">Alias</dt><dd class="col-sm-8">' + escapeHtml(String(alias).trim()) + '</dd>';
-        }
-
-        // FQDN
-        if (system.fqdn && (Array.isArray(system.fqdn) ? system.fqdn.length > 0 : system.fqdn)) {
-          html += '<dt class="col-sm-4">FQDN</dt><dd class="col-sm-8">';
-          const fqdnList = Array.isArray(system.fqdn) ? system.fqdn : [system.fqdn];
-          html += '<ul class="mb-0 ps-3">';
-          fqdnList.forEach(function(fqdn) {
-            const fqdnStr = String(fqdn).trim();
-            // Check if FQDN contains brackets - extract domain and comment separately
-            if (fqdnStr.includes('[') && fqdnStr.includes(']')) {
-              const bracketMatch = fqdnStr.match(/^(.+?)\s*\[(.+?)\]$/);
-              if (bracketMatch) {
-                const domain = bracketMatch[1].trim();
-                const comment = bracketMatch[2].trim();
-                html += '<li><a href="http://' + escapeHtml(domain) + '" target="_blank" class="text-decoration-none">' + escapeHtml(domain) + '</a> <span class="badge bg-secondary ms-1">' + escapeHtml(comment) + '</span></li>';
-              } else {
-                html += '<li><span class="text-muted">' + escapeHtml(fqdnStr) + '</span></li>';
-              }
-            } else {
-              html += '<li><a href="http://' + escapeHtml(fqdnStr) + '" target="_blank" class="text-decoration-none">' + escapeHtml(fqdnStr) + '</a></li>';
-            }
-          });
-          html += '</ul>';
-          html += '</dd>';
-        }
-
-        // Tags
-        if (system.tags && system.tags.length > 0) {
-          html += '<dt class="col-sm-4">Tags</dt><dd class="col-sm-8">';
-          system.tags.forEach(function(tag) {
-            const tagValue = (typeof tag === 'string' ? tag : tag.name);
-            html += '<span class="badge bg-primary me-1 mb-1">' + escapeHtml(String(tagValue).trim()) + '</span>';
-          });
-          html += '</dd>';
-        }
-
-        // Scopes
-        if (system.scopes && system.scopes.length > 0) {
-          html += '<dt class="col-sm-4">Scope</dt><dd class="col-sm-8">';
-          system.scopes.forEach(function(scope) {
-            html += '<span class="badge bg-info me-1 mb-1">' + escapeHtml(String(scope).trim()) + '</span>';
-          });
-          html += '</dd>';
-        }
-
-        // Architecture
-        if (system.architecture && system.architecture.length > 0) {
-          html += '<dt class="col-sm-4">Architecture</dt><dd class="col-sm-8">';
-          system.architecture.forEach(function(arch) {
-            html += '<span class="badge bg-warning me-1 mb-1">' + escapeHtml(String(arch).trim()) + '</span>';
-          });
-          html += '</dd>';
-        }
-
-        // IP Addresses
-        if (system.ip_addresses && system.ip_addresses.length > 0) {
-          html += '<dt class="col-sm-4">IP Addresses</dt><dd class="col-sm-8">';
-          system.ip_addresses.forEach(function(ipObj) {
-            const ipAddress = ipObj.ip || ipObj.ip_address || ipObj;
-            const zone = ipObj.subnet_zone || '';
-            const environment = ipObj.subnet_environment || '';
-            const serverName = ipObj.server_name || '';
-            
-            html += '<div class="mt-1 d-flex align-items-center flex-wrap">';
-            html += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary me-2 ip-hover-link" data-ip="' + escapeHtml(ipAddress) + '" data-bs-toggle="tooltip" data-bs-placement="top" title="Loading IP info...">' + escapeHtml(String(ipAddress).trim()) + '</a>';
-
-            // Add server/device name if available
-            if (serverName) {
-              html += '<span class="badge bg-light text-dark border me-2" style="border-radius: 3px;">[' + escapeHtml(serverName) + ']</span>';
-            }
-
-            // Add zone and environment info if available
-            if (zone || environment) {
-              const zoneEnvText = (zone && environment) ? zone + '-' + environment : (zone || environment);
-              html += '<span class="badge bg-light text-dark border me-2" style="border-radius: 3px;">[' + escapeHtml(zoneEnvText) + ']</span>';
-            }
-            
-            html += '</div>';
-          });
-          html += '</dd>';
-        }
-
-        // Domains
-        if (system.domains && system.domains.length > 0) {
-          html += '<dt class="col-sm-4">Domains</dt><dd class="col-sm-8">';
-          system.domains.forEach(function(domainObj) {
-            const domain = domainObj.domain || domainObj;
-            html += '<a href="/network/domain?search=' + encodeURIComponent(domain) + '" target="_blank" class="badge bg-secondary me-1 mb-1 text-decoration-none" title="Click to view domain details">' + escapeHtml(String(domain).trim()) + '</a>';
-          });
-          html += '</dd>';
-        }
-
-        <% if (hasPermission('cluster.read')) { %>
-        // Clusters - loaded via AJAX, same as Components. Kept out of
-        // System's own query entirely (mirrors the Organization-tooltip and
-        // Pentest quick-view approach: a small dedicated API + client-side
-        // fetch instead of baking cluster data into System's SQL).
-        html += '<dt class="col-sm-4">Clusters</dt><dd class="col-sm-8" id="clusters-section-' + escapeHtml(systemId) + '"><span class="text-muted">Loading...</span></dd>';
-        <% } %>
-
-        // Contacts
-        if (system.contacts && system.contacts.length > 0) {
-          html += '<dt class="col-sm-4">Contacts</dt><dd class="col-sm-8"><ul class="mb-0 ps-3">';
-          system.contacts.forEach(function(contactObj) {
-            const contactName = contactObj.name || contactObj;
-            const contactEmail = contactObj.email || '';
-            let displayText = contactName;
-            let searchTerm = contactName;
-
-            if (contactEmail) {
-              // Extract username part before @
-              const emailUsername = contactEmail.split('@')[0];
-              displayText = `${contactName} (${emailUsername})`;
-              searchTerm = contactEmail; // Still use full email for search
-            }
-
-            html += '<li><a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary">' + escapeHtml(String(displayText).trim()) + '</a></li>';
-          });
-          html += '</ul></dd>';
-        }
-
-        // Created
-        const created = (system.created_at || system.createdAt || 'N/A');
-        html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + escapeHtml(String(created).trim()) + '</dd>';
-
-        // Updated
-        const updated = (system.updated_at || system.updatedAt || 'N/A');
-        html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + escapeHtml(String(updated).trim()) + '</dd>';
-
-        // Updated By
-        if (system.updated_by) {
-          html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + escapeHtml(String(system.updated_by).trim()) + '</dd>';
-        }
-
-        // Files/Documents
-        if (system.docs && system.docs.length > 0) {
-          html += '<dt class="col-sm-4">Attached Files</dt><dd class="col-sm-8">';
-          system.docs.forEach(function(file) {
-            const fileName = file.name || file.originalname || 'Unknown file';
-            const fileUrl = file.url || '#';
-            const fileViewUrl = file.id ? ('/system/file/' + file.id + '/view') : fileUrl;
-            html += '<div class="mt-1">';
-            html += '<a href="' + escapeHtml(fileUrl) + '" download class="text-decoration-none text-primary me-2">' + escapeHtml(String(fileName).trim()) + '</a>';
-            html += '<a href="' + escapeHtml(fileViewUrl) + '" target="_blank" rel="noopener noreferrer" class="badge bg-light text-dark border text-decoration-none" style="border-radius: 3px;">[View]</a>';
-            html += '</div>';
-          });
-          html += '</dd>';
-        }
-
-        // Components - will be loaded via AJAX (moved to bottom)
-        html += '<dt class="col-sm-4">Components</dt><dd class="col-sm-8" id="components-section-' + escapeHtml(systemId) + '"><span class="text-muted">Loading...</span></dd>';
-
-        html += '</dl>';
-        content.innerHTML = html;
-        initOrgTooltips(content);
-
-        // Show modal with proper event handling
-        modal.show();
-
-        // Load components data via AJAX
-        loadSystemComponents(systemId);
-        <% if (hasPermission('cluster.read')) { %>
-        loadSystemClusters(systemId);
-        <% } %>
-        
-        // Add IP hover functionality
-        setupIPHover();
-        
-        // Handle modal events
-        modalElement.addEventListener('shown.bs.modal', function() {
-          console.log('Modal shown successfully');
-        });
-        
-        modalElement.addEventListener('hidden.bs.modal', function() {
-          console.log('Modal hidden');
-          // Clear content when modal is hidden
-          content.innerHTML = '';
-        });
-        
-      } catch (error) {
-        console.error('Error showing system detail:', error);
-        alert(t('Error loading system details: ') + error.message);
-      }
+    function optionLabel(options, value) {
+      const found = (options || []).find(function (o) { return String(o.id) === String(value); });
+      return found ? found.text : value;
     }
+    function chips(values, toLabel) {
+      const list = (values || []).filter(function (v) { return v !== null && v !== undefined && String(v).trim() !== ''; });
+      if (!list.length) return EMPTY;
+      return '<div class="chip-list">' + list.map(function (v) {
+        return '<span class="badge tag">' + escapeHtml(toLabel ? toLabel(v) : v) + '</span>';
+      }).join('') + '</div>';
+    }
+    // One "label | value" row: label in a fixed left column, value on the right.
+    function field(label, valueHtml) {
+      return '<div class="detail-row"><div class="detail-label">' + escapeHtml(t(label)) + '</div><div class="detail-value">' + (valueHtml || EMPTY) + '</div></div>';
+    }
+    // A titled card; the body has no padding (rows/tables bring their own).
+    function section(title, bodyHtml, extraHtml) {
+      return '<section class="detail-card"><div class="detail-card-header">' + escapeHtml(t(title)) + (extraHtml || '') + '</div><div class="detail-card-body">' + bodyHtml + '</div></section>';
+    }
+    function formatDate(value) {
+      if (!value) return '';
+      const d = new Date(value);
+      if (isNaN(d)) return String(value);
+      return d.toLocaleString(document.documentElement.lang || undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+    // "host [comment]" -> link + chip
+    function fqdnItem(raw) {
+      const str = String(raw).trim();
+      const m = str.match(/^(.+?)\s*\[(.+?)\]$/);
+      const host = m ? m[1].trim() : str;
+      const note = m ? ' <span class="badge tag">' + escapeHtml(m[2].trim()) + '</span>' : '';
+      return '<li><a href="http://' + encodeURI(host) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(host) + '</a>' + note + '</li>';
+    }
+    function contactLinks(contacts) {
+      if (!contacts || !contacts.length) return EMPTY;
+      return '<ul class="detail-list">' + contacts.map(function (c) {
+        const name = c.name || c;
+        const user = c.email ? String(c.email).split('@')[0] : '';
+        return '<li><i class="bi bi-person text-secondary me-1"></i><a href="/organize/contact?search=' + encodeURIComponent(c.email || name) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(name) + '</a>' +
+          (user ? ' <span class="text-secondary small">(' + escapeHtml(user) + ')</span>' : '') + '</li>';
+      }).join('') + '</ul>';
+    }
+    function ipLink(ip) {
+      return '<a href="/network/ip-address?search=' + encodeURIComponent(ip) + '" target="_blank" rel="noopener noreferrer" class="ip-hover-link font-monospace" data-ip="' + escapeHtml(ip) + '" data-bs-toggle="tooltip" data-bs-placement="top" title="' + escapeHtml(t('Loading IP info...')) + '">' + escapeHtml(ip) + '</a>';
+    }
+
+    function showSystemDetail(systemId) {
+      window.currentDetailSystemId = systemId;
+      const button = Array.from(document.querySelectorAll('button[data-system]')).find(function (b) {
+        try { return String(JSON.parse(b.getAttribute('data-system')).id) === String(systemId); } catch (e) { return false; }
+      });
+      if (!button) return;
+      const system = JSON.parse(button.getAttribute('data-system'));
+      const toArray = function (v) { return Array.isArray(v) ? v : (v ? [v] : []); };
+
+      // Header: name, code and level
+      document.getElementById('systemDetailModalLabel').textContent = system.name || t('System Detail');
+      const level = system.level ? optionLabel(window.levelOptionsData, system.level) : '';
+      document.getElementById('systemDetailSubtitle').innerHTML =
+        '<span class="font-monospace">' + escapeHtml(system.system_id || '') + '</span>' +
+        (level ? ' <span class="badge tag ms-1">' + escapeHtml(level) + '</span>' : '');
+
+      let html = '';
+
+      // Overview
+      const department = system.department_id
+        ? '<span class="org-tooltip" data-unit-id="' + escapeHtml(system.department_id) + '" style="cursor: help;">' + escapeHtml(system.department_name || '') + '</span>'
+        : '';
+      const description = (system.description || '').trim();
+      html += section('Overview',
+        '<div class="detail-rows">' +
+          field('Department', department) +
+          field('Alias', toArray(system.alias).length ? escapeHtml(toArray(system.alias).join(', ')) : '') +
+          field('Scope user access', chips(system.scopes, function (v) { return optionLabel(window.scopeOptionsData, v); })) +
+          field('Architecture', chips(system.architecture, function (v) { return optionLabel(window.architectureOptionsData, v); })) +
+          field('Tags', chips((system.tags || []).map(function (tg) { return typeof tg === 'string' ? tg : tg.name; }))) +
+          field('Managers', contactLinks(system.contacts)) +
+          (description ? field('Description', '<span class="text-pre-wrap">' + escapeHtml(description) + '</span>') : '') +
+        '</div>');
+
+      // Access: FQDN and domains
+      const fqdns = toArray(system.fqdn);
+      const domains = system.domains || [];
+      if (fqdns.length || domains.length) {
+        html += section('Access',
+          '<div class="detail-rows">' +
+            field('FQDN', fqdns.length ? '<ul class="detail-list">' + fqdns.map(fqdnItem).join('') + '</ul>' : '') +
+            field('Domains', domains.length ? '<div class="chip-list">' + domains.map(function (d) {
+              const name = d.domain || d;
+              return '<a href="/network/domain?search=' + encodeURIComponent(name) + '" target="_blank" rel="noopener noreferrer" class="badge tag text-decoration-none">' + escapeHtml(name) + '</a>';
+            }).join('') + '</div>' : '') +
+          '</div>');
+      }
+
+      // Infrastructure: IP addresses (+ clusters)
+      const ips = system.ip_addresses || [];
+      let infra = '';
+      if (ips.length) {
+        infra += '<div class="table-responsive"><table class="table table-sm align-middle detail-table mb-0"><thead><tr>' +
+          '<th>' + escapeHtml(t('IP Address')) + '</th><th>' + escapeHtml(t('Server')) + '</th><th>' + escapeHtml(t('Zone')) + ' / ' + escapeHtml(t('Environment')) + '</th>' +
+          '</tr></thead><tbody>' +
+          ips.map(function (ip) {
+            const addr = ip.ip || ip.ip_address || ip;
+            const zoneEnv = [ip.subnet_zone, ip.subnet_environment].filter(Boolean).join(' / ');
+            return '<tr><td>' + ipLink(addr) + '</td><td>' + (ip.server_name ? escapeHtml(ip.server_name) : EMPTY) + '</td><td>' + (zoneEnv ? escapeHtml(zoneEnv) : EMPTY) + '</td></tr>';
+          }).join('') +
+          '</tbody></table></div>';
+      } else {
+        infra += '<p class="text-secondary small mb-0 detail-pad">' + escapeHtml(t('No IP addresses')) + '</p>';
+      }
+      <% if (hasPermission('cluster.read')) { %>
+      infra += '<div class="detail-rows detail-rows-divided">' + field('Clusters', '<span id="clusters-section-' + escapeHtml(systemId) + '" class="text-secondary small">' + escapeHtml(t('Loading...')) + '</span>') + '</div>';
+      <% } %>
+      html += section('Infrastructure', infra, ' <span class="badge tag ms-1">' + ips.length + '</span>');
+
+      // Components (loaded on demand)
+      html += section('Components', '<div id="components-section-' + escapeHtml(systemId) + '" class="text-secondary small detail-pad">' + escapeHtml(t('Loading...')) + '</div>',
+        ' <span class="badge tag ms-1 d-none" id="components-count-' + escapeHtml(systemId) + '"></span>');
+
+      // Attached files
+      const docs = system.docs || [];
+      if (docs.length) {
+        html += section('Attached Files', '<ul class="detail-list detail-pad">' + docs.map(function (file) {
+          const name = file.name || file.originalname || t('Unknown file');
+          const viewUrl = file.id ? '/system/file/' + encodeURIComponent(file.id) + '/view' : file.url;
+          return '<li><i class="bi bi-paperclip text-secondary me-1"></i><a href="' + escapeHtml(file.url || '#') + '" download>' + escapeHtml(name) + '</a>' +
+            ' <a href="' + escapeHtml(viewUrl || '#') + '" target="_blank" rel="noopener noreferrer" class="badge tag text-decoration-none ms-1">' + escapeHtml(t('View')) + '</a></li>';
+        }).join('') + '</ul>');
+      }
+
+      // Record metadata
+      const meta = [];
+      if (system.created_at) meta.push(escapeHtml(t('Created')) + ' ' + escapeHtml(formatDate(system.created_at)));
+      if (system.updated_at) meta.push(escapeHtml(t('Updated')) + ' ' + escapeHtml(formatDate(system.updated_at)) + (system.updated_by ? ' · ' + escapeHtml(system.updated_by) : ''));
+      if (meta.length) html += '<div class="detail-meta">' + meta.join('<span class="mx-2">|</span>') + '</div>';
+
+      const content = document.getElementById('systemDetailContent');
+      content.innerHTML = html;
+      initOrgTooltips(content);
+      setupIPHover();
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('systemDetailModal')).show();
+
+      loadSystemComponents(systemId);
+      <% if (hasPermission('cluster.read')) { %>
+      loadSystemClusters(systemId);
+      <% } %>
+    }
+
+    document.getElementById('systemDetailModal').addEventListener('hidden.bs.modal', function () {
+      document.getElementById('systemDetailContent').innerHTML = '';
+    });
 
     // Function to setup IP hover functionality — uses Bootstrap's Tooltip
     // component (same as the Description column tooltips) instead of the
@@ -617,162 +488,48 @@
         });
     }
 
-    // Function to load system components via AJAX
+    // Components of a system: one collapsible row each (name + app type),
+    // details in the same field grid as the rest of the modal.
     function loadSystemComponents(systemId) {
-      const componentsSection = document.getElementById('components-section-' + systemId);
-      if (!componentsSection) return;
-      
-      fetch(`/system/api/system/${systemId}/components`)
-        .then(response => response.json())
-        .then(data => {
-          if (data.components && data.components.length > 0) {
-            let componentsHtml = '<div class="components-section">';
-            componentsHtml += '<h6 class="mb-3 text-primary"><i class="bi bi-gear-fill me-2"></i>Components (' + data.components.length + ')</h6>';
-
-            data.components.forEach(function(component, index) {
-              const detailId = 'component-detail-' + systemId + '-' + index;
-
-              // Name row — collapsed by default; click to expand the detail card below
-              componentsHtml += '<div class="component-name-row d-flex justify-content-between align-items-center border rounded px-3 py-2 mb-1 bg-light" style="cursor:pointer;" data-bs-toggle="collapse" data-bs-target="#' + escapeHtml(detailId) + '" role="button" aria-expanded="false">';
-              componentsHtml += '<span class="fw-bold text-dark">' + escapeHtml(String(component.name || 'N/A').trim()) + '</span>';
-              componentsHtml += '<span class="d-flex align-items-center">';
-              if (component.app_type) {
-                componentsHtml += '<span class="badge bg-primary me-2">' + escapeHtml(String(component.app_type).trim()) + '</span>';
-              }
-              componentsHtml += '<i class="bi bi-chevron-down component-toggle-icon"></i>';
-              componentsHtml += '</span>';
-              componentsHtml += '</div>';
-
-              componentsHtml += '<div class="collapse mb-2" id="' + escapeHtml(detailId) + '">';
-              componentsHtml += '<div class="component-card border rounded p-3 bg-white">';
-
-              // Component Details in smaller font
-              componentsHtml += '<div class="component-details small text-muted">';
-              
-              // Component ID
-              if (component.id) {
-                componentsHtml += '<div class="mb-1">';
-                componentsHtml += '<span class="fw-semibold">ID:</span> ' + escapeHtml(String(component.id).trim());
-                componentsHtml += '</div>';
-              }
-
-              // Description
-              if (component.description && component.description.trim()) {
-                componentsHtml += '<div class="mb-2">';
-                componentsHtml += '<span class="fw-semibold">Description:</span><br><span style="white-space: pre-wrap;">' + escapeHtml(component.description) + '</span>';
-                componentsHtml += '</div>';
-              }
-              
-              // FQDN
-              if (component.fqdn && (Array.isArray(component.fqdn) ? component.fqdn.length > 0 : component.fqdn)) {
-                componentsHtml += '<div class="mb-2">';
-                componentsHtml += '<span class="fw-semibold">FQDN:</span>';
-                const fqdnList = Array.isArray(component.fqdn) ? component.fqdn : [component.fqdn];
-                componentsHtml += '<div class="mt-1">';
-                fqdnList.forEach(function(fqdn) {
-                  const fqdnStr = String(fqdn).trim();
-                  // Check if FQDN contains brackets - extract domain and comment separately
-                  if (fqdnStr.includes('[') && fqdnStr.includes(']')) {
-                    const bracketMatch = fqdnStr.match(/^(.+?)\s*\[(.+?)\]$/);
-                    if (bracketMatch) {
-                      const domain = bracketMatch[1].trim();
-                      const comment = bracketMatch[2].trim();
-                      componentsHtml += '<div class="mb-1"><a href="http://' + escapeHtml(domain) + '" target="_blank" class="text-decoration-none text-primary">' + escapeHtml(domain) + '</a> <span class="badge bg-secondary ms-1">' + escapeHtml(comment) + '</span></div>';
-                    } else {
-                      componentsHtml += '<div class="mb-1 text-muted">' + escapeHtml(fqdnStr) + '</div>';
-                    }
-                  } else {
-                    componentsHtml += '<div class="mb-1"><a href="http://' + escapeHtml(fqdnStr) + '" target="_blank" class="text-decoration-none text-primary">' + escapeHtml(fqdnStr) + '</a></div>';
-                  }
-                });
-                componentsHtml += '</div>';
-                componentsHtml += '</div>';
-              }
-              
-              // IP Addresses
-              if (component.ips && component.ips.length > 0) {
-                componentsHtml += '<div class="mb-2">';
-                componentsHtml += '<span class="fw-semibold">IP Addresses:</span>';
-                componentsHtml += '<div class="mt-1">';
-                component.ips.forEach(function(ipObj, index) {
-                  const ipAddress = ipObj.ip_address || ipObj.ip || ipObj;
-                  componentsHtml += '<a href="/network/ip-address?search=' + encodeURIComponent(ipAddress) + '" target="_blank" class="text-decoration-none text-primary ip-hover-link" data-ip="' + escapeHtml(ipAddress) + '" data-bs-toggle="tooltip" data-bs-placement="top" title="Loading IP info...">' + escapeHtml(String(ipAddress).trim()) + '</a>';
-                  
-                  // Add comma separator if not the last item
-                  if (index < component.ips.length - 1) {
-                    componentsHtml += ', ';
-                  }
-                });
-                componentsHtml += '</div>';
-                componentsHtml += '</div>';
-              }
-              
-              // Contacts
-              if (component.contacts && component.contacts.length > 0) {
-                componentsHtml += '<div class="mb-2">';
-                componentsHtml += '<span class="fw-semibold">Contacts:</span>';
-                componentsHtml += '<ul class="mb-0 mt-1">';
-                component.contacts.forEach(function(contactObj) {
-                  const contactName = contactObj.name || contactObj;
-                  const contactEmail = contactObj.email || '';
-                  let displayText = contactName;
-                  let searchTerm = contactName;
-                  
-                  if (contactEmail) {
-                    // Extract username part before @
-                    const emailUsername = contactEmail.split('@')[0];
-                    displayText = `${contactName} (${emailUsername})`;
-                    searchTerm = contactEmail; // Still use full email for search
-                  }
-                  
-                  componentsHtml += '<li><a href="/organize/contact?search=' + encodeURIComponent(searchTerm) + '" target="_blank" class="text-decoration-none text-primary">' + escapeHtml(String(displayText).trim()) + '</a></li>';
-                });
-                componentsHtml += '</ul>';
-                componentsHtml += '</div>';
-              }
-
-              // Tags
-              if (component.tags && component.tags.length > 0) {
-                componentsHtml += '<div class="mb-2">';
-                componentsHtml += '<span class="fw-semibold">Tags:</span>';
-                componentsHtml += '<div class="mt-1">';
-                component.tags.forEach(function(tag) {
-                  const tagValue = (typeof tag === 'string' ? tag : tag.name);
-                  componentsHtml += '<span class="badge bg-primary me-1 mb-1">' + escapeHtml(String(tagValue).trim()) + '</span>';
-                });
-                componentsHtml += '</div>';
-                componentsHtml += '</div>';
-              }
-
-              // Created/Updated dates
-              if (component.created_at || component.updated_at) {
-                componentsHtml += '<div class="d-flex justify-content-between text-muted">';
-                if (component.created_at) {
-                  componentsHtml += '<small><span class="fw-semibold">Created:</span> ' + escapeHtml(String(component.created_at).trim()) + '</small>';
-                }
-                if (component.updated_at) {
-                  componentsHtml += '<small><span class="fw-semibold">Updated:</span> ' + escapeHtml(String(component.updated_at).trim()) + '</small>';
-                }
-                componentsHtml += '</div>';
-              }
-              
-              componentsHtml += '</div>'; // End component-details
-              componentsHtml += '</div>'; // End component-card
-              componentsHtml += '</div>'; // End collapse
-            });
-            
-            componentsHtml += '</div>'; // End components-section
-            componentsSection.innerHTML = componentsHtml;
-            
-            // Setup IP hover for components
-            setupIPHover();
-          } else {
-            componentsSection.innerHTML = '<div class="text-center text-muted py-3"><i class="bi bi-gear me-2"></i>No components found</div>';
+      const target = document.getElementById('components-section-' + systemId);
+      const counter = document.getElementById('components-count-' + systemId);
+      if (!target) return;
+      fetch('/system/api/system/' + encodeURIComponent(systemId) + '/components')
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
+          const components = data.components || [];
+          if (counter) { counter.textContent = components.length; counter.classList.remove('d-none'); }
+          if (!components.length) {
+            target.innerHTML = escapeHtml(t('No components'));
+            return;
           }
+          target.classList.remove('text-secondary', 'small');
+          target.innerHTML = '<div class="detail-components">' + components.map(function (c, index) {
+            const id = 'component-detail-' + systemId + '-' + index;
+            const fqdns = Array.isArray(c.fqdn) ? c.fqdn : (c.fqdn ? [c.fqdn] : []);
+            const ips = c.ips || [];
+            const description = (c.description || '').trim();
+            return '<div class="detail-component">' +
+              '<button type="button" class="detail-component-head collapsed" data-bs-toggle="collapse" data-bs-target="#' + id + '" aria-expanded="false" aria-controls="' + id + '">' +
+                '<i class="bi bi-chevron-right detail-component-icon"></i>' +
+                '<span class="fw-medium">' + escapeHtml(c.name || '') + '</span>' +
+                (c.app_type ? '<span class="badge tag ms-auto">' + escapeHtml(c.app_type) + '</span>' : '') +
+              '</button>' +
+              '<div class="collapse" id="' + id + '"><div class="detail-component-body"><div class="detail-rows">' +
+                field('IP Addresses', ips.length ? '<div class="chip-list">' + ips.map(function (ip) { return ipLink(ip.ip_address || ip.ip || ip); }).join('') + '</div>' : '') +
+                field('FQDN', fqdns.length ? '<ul class="detail-list">' + fqdns.map(fqdnItem).join('') + '</ul>' : '') +
+                field('Managers', contactLinks(c.contacts)) +
+                field('Tags', chips((c.tags || []).map(function (tg) { return typeof tg === 'string' ? tg : tg.name; }))) +
+                (description ? field('Description', '<span class="text-pre-wrap">' + escapeHtml(description) + '</span>') : '') +
+              '</div>' +
+              (c.updated_at ? '<div class="detail-meta px-3 pb-2">' + escapeHtml(t('Updated')) + ' ' + escapeHtml(formatDate(c.updated_at)) + '</div>' : '') +
+              '</div></div>' +
+            '</div>';
+          }).join('') + '</div>';
+          setupIPHover();
         })
-        .catch(error => {
-          console.error('Error loading components:', error);
-          componentsSection.innerHTML = '<strong>Components:</strong> <span class="text-danger">Error loading components</span>';
+        .catch(function () {
+          target.innerHTML = '<span class="text-danger">' + escapeHtml(t('Error loading components')) + '</span>';
         });
     }
 
@@ -780,26 +537,20 @@
     // Cluster endpoint (read-only here; managed from the Cluster Management
     // page). System's own query/model is untouched by this feature.
     function loadSystemClusters(systemId) {
-      const clustersSection = document.getElementById('clusters-section-' + systemId);
-      if (!clustersSection) return;
-
+      const target = document.getElementById('clusters-section-' + systemId);
+      if (!target) return;
       fetch('/cluster/api/by-system?system_id=' + encodeURIComponent(systemId))
-        .then(function(response) { return response.json(); })
-        .then(function(data) {
+        .then(function (response) { return response.json(); })
+        .then(function (data) {
           const clusters = data.clusters || [];
-          if (clusters.length === 0) {
-            clustersSection.innerHTML = '<span class="text-muted">No clusters</span>';
-            return;
-          }
-          let html = '';
-          clusters.forEach(function(cluster) {
-            html += '<a href="/cluster?search=' + encodeURIComponent(cluster.name) + '" target="_blank" rel="noopener noreferrer" class="badge bg-secondary me-1 mb-1 text-decoration-none">' + escapeHtml(cluster.name) + '</a>';
-          });
-          clustersSection.innerHTML = html;
+          if (!clusters.length) { target.innerHTML = EMPTY; return; }
+          target.classList.remove('text-secondary', 'small');
+          target.innerHTML = '<div class="chip-list">' + clusters.map(function (cluster) {
+            return '<a href="/cluster?search=' + encodeURIComponent(cluster.name) + '" target="_blank" rel="noopener noreferrer" class="badge tag text-decoration-none">' + escapeHtml(cluster.name) + '</a>';
+          }).join('') + '</div>';
         })
-        .catch(function(error) {
-          console.error('Error loading clusters:', error);
-          clustersSection.innerHTML = '<span class="text-danger">Error loading clusters</span>';
+        .catch(function () {
+          target.innerHTML = '<span class="text-danger">' + escapeHtml(t('Error loading clusters')) + '</span>';
         });
     }
 
@@ -907,7 +658,4 @@
 <style>
 /* Multi-line tooltips (descriptions) */
 .tooltip .tooltip-inner { white-space: pre-wrap; max-width: 400px; text-align: left; }
-/* Component row chevron in the detail modal */
-.component-name-row .component-toggle-icon { transition: transform .2s ease-in-out; }
-.component-name-row[aria-expanded="true"] .component-toggle-icon { transform: rotate(180deg); }
 </style>

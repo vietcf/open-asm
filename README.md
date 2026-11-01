@@ -240,6 +240,11 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build --watc
 Set `OPENASM_SRC` to sync from another checkout (e.g. a git worktree) while
 the data, `pgdata/` and `ssl/` directories stay in the project directory.
 
+nginx caches `/css` and `/js` for a year, so the layout links the app's own
+files through `asset()` (`<%= asset('/css/custom.css') %>` adds
+`?v=<file mtime>`): an edited file gets a new URL and browsers fetch it
+right away. Use `asset()` for any new local stylesheet or script.
+
 ### Docker Image Management
 ```bash
 # Save Docker images
@@ -570,6 +575,15 @@ when cutting a release.
   migration `0004` stores every option list as `[{value, label}]`.
 - ♻️ One page size setting for all lists: `device_page_size` removed
   (migration `0005`).
+- 💄 System Detail modal reorganized into section cards (Overview, Access,
+  Infrastructure, Components, Attached files), each a list of
+  "label | value" rows (muted fixed-width label, emphasized value), with
+  the list's neutral chips, translated labels, option labels instead of
+  raw values (level, scope, architecture) and readable dates. Reusable
+  `.detail-card` / `.detail-row` styles in `custom.css`.
+- 🐛 CSS/JS changes now reach browsers: the app's own assets are linked
+  with a `?v=<mtime>` version (nginx caches `/css` and `/js` for a year as
+  immutable, so unversioned URLs kept serving the old files).
 
 ### Version 1.1.0 (Latest)
 - 🎉 First tracked release of this baseline. Full asset/network/security
