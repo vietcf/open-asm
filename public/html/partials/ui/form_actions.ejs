@@ -1,0 +1,8 @@
+<%#
+  Footer of an Add/Edit form card: Cancel + primary submit.
+  include('../../partials/ui/form_actions', { cancelUrl: '/system/system', submitLabel: 'Save Changes' })
+%>
+<div class="card-footer form-actions">
+  <a href="<%= cancelUrl %>" class="btn btn-outline-secondary"><%= t('Cancel') %></a>
+  <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> <%= t(locals.submitLabel || 'Save') %></button>
+</div>

@@ -491,3 +491,6 @@ textarea.form-control { min-height: 6rem; }
   background-color: rgba(var(--bs-primary-rgb), .22) !important; color: #fff !important; font-weight: 600;
 }
 .app-sidebar .sidebar-menu .nav-link.active > .nav-icon { opacity: 1; }
+
+/* Multi-line tooltips (IP details, descriptions) */
+.tooltip .tooltip-inner { white-space: pre-wrap; max-width: 400px; text-align: left; }

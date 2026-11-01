@@ -1,0 +1,30 @@
+<%#
+  Detail modal shell, filled by DV.open(id, { title, subtitle, body, onShow })
+  (public/js/detail-view.js).
+  include('../../partials/ui/detail_modal', {
+    id: 'systemDetailModal',
+    pentestType: 'system'      // optional: "Pentest History" button (needs pentest.read)
+  })
+%>
+<div class="modal fade" id="<%= id %>" tabindex="-1" aria-labelledby="<%= id %>Title" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="me-3">
+          <h5 class="modal-title mb-0" id="<%= id %>Title" data-detail-title></h5>
+          <div class="small text-secondary mt-1" data-detail-subtitle></div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
+      </div>
+      <div class="modal-body" data-detail-body></div>
+      <div class="modal-footer">
+        <% if (locals.pentestType && hasPermission('pentest.read')) { %>
+          <button type="button" class="btn btn-outline-primary btn-sm me-auto" data-detail-pentest="<%= pentestType %>">
+            <i class="bi bi-shield-check"></i> <%= t('Pentest History') %>
+          </button>
+        <% } %>
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Close') %></button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -29,12 +29,12 @@ import expressLayouts from 'express-ejs-layouts';
 import { config } from '../config/config.js';
 import { siteConfig } from './utils/siteConfig.js';
 import { UPLOAD_ACCEPT, ALLOWED_UPLOAD_EXTENSIONS } from './utils/uploadTypes.js';
+import viewHelpers from './utils/viewHelpers.js';
 import { loadPermissions } from './middlewares/permissions.middleware.js';
 import requirePasswordChange from './middlewares/requirePasswordChange.middleware.js';
 import require2fa from './middlewares/require2fa.middleware.js';
 import sessionIdleTimeout from './middlewares/sessionIdleTimeout.middleware.js';
 import auditLog from './middlewares/auditLog.middleware.js';
-// import accessLog from './middlewares/accessLog.middleware.js'; // Disabled
 
 // =========================
 // Routers
@@ -120,10 +120,7 @@ app.use(flash());
 // 4.1. Auto-expire session after inactivity (must run after session/flash, before routes)
 app.use(sessionIdleTimeout);
 
-// 4.2. Access logging middleware (after session, before other middleware)
-// app.use(accessLog); // Disabled to reduce console output
-
-// 4.3. Audit log: every data change (POST/PUT/PATCH/DELETE) by a signed-in
+// 4.2. Audit log: every data change (POST/PUT/PATCH/DELETE) by a signed-in
 // user goes to system_log, app or security category (see the middleware)
 app.use(auditLog);
 
@@ -158,6 +155,8 @@ app.locals.asset = assetUrl;
 // accept="..." for attachment inputs (src/utils/uploadTypes.js)
 app.locals.uploadAccept = UPLOAD_ACCEPT;
 app.locals.uploadAllowedList = ALLOWED_UPLOAD_EXTENSIONS.join(', ');
+// list cell helpers for templates: <%- ui.chips(...) %> (src/utils/viewHelpers.js)
+app.locals.ui = viewHelpers;
 
 // 5.2. Global template variables (res.locals)
 app.use((req, res, next) => {

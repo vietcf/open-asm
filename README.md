@@ -488,6 +488,27 @@ the file cannot run as-is. There is no `npm test` script yet.
 installed (only `.eslintignore` exists), so there is no `npm run lint`
 script yet.
 
+### UI kit (shared page templates)
+
+Every list, form and detail modal is built from the same pieces, so a look
+can be changed in one place. Use them for new pages instead of page-local
+markup, CSS or scripts:
+
+| Piece | Where | Use |
+| --- | --- | --- |
+| List toolbar | `partials/ui/list_toolbar.ejs` | search, Filter button, column chooser, Export, Add |
+| Page frame | `partials/ui/page_header.ejs`, `flash.ejs`, `empty_state.ejs`, `pagination.ejs` | breadcrumb, messages, empty list, pager |
+| Filters panel | `.list-filters` + `public/js/list-filters.js` | `select.js-filter` (Select2, `data-ajax-url`) |
+| Column chooser | `partials/ui/columns_menu.ejs` + `public/js/list-columns.js` | `th/td[data-col]`, choice kept per browser |
+| Cell helpers | `ui.*` (`src/utils/viewHelpers.js`) | `ui.text`, `ui.clip`, `ui.chips`, `ui.mono`, `ui.date`, `ui.optionLabel` |
+| Mobile cards | `.table-stack` (`custom.css`) | cells need `data-label`, title cell `.stack-title` |
+| Detail modal | `partials/ui/detail_modal.ejs` + `public/js/detail-view.js` | `DV.open(id, { title, subtitle, body })`, `DV.section`, `DV.rows`, `DV.chips`, ... |
+| Form | `.form-card` / `.form-section`, `partials/ui/form_actions.ejs` | `public/js/form-kit.js`: `select.js-select`, `[data-attachments]` |
+| Attachments | `partials/ui/file_attachments.ejs` | upload + existing files with delete |
+| Confirm | `form[data-confirm="..."]` (`public/js/ui-kit.js`) | asks before submitting (deletes) |
+
+`public/html/pages/system/` is the reference implementation.
+
 ### Database Management
 
 Schema changes are versioned files in `migrations/versions/` (`0001_baseline.sql`,
@@ -562,6 +583,13 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
+- ♻️ Shared UI kit (see Development → UI kit): list toolbar, column
+  chooser, cell helpers (`ui.*`), detail modal (`DV`), form actions,
+  attachments and delete confirmation are now partials and scripts loaded
+  once by the layout instead of being copied into each page. System List,
+  Add/Edit System and System Log use it. Dead code removed (unused API
+  auth middleware and common routes, `DeviceContact` model, swagger route,
+  old header layout, IP partial, access-log middleware, `accessControl`).
 - ✨ Data migration `npm run migrate:data`: copies every row of an existing
   install (e.g. v1.1.0) into a fresh install of this version, in one
   transaction, with a `--dry-run` rehearsal. See `migrations/README.md`.

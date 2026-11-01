@@ -51,34 +51,11 @@
       <form class="list-filter-form" method="get" action="/administrator/log">
         <input type="hidden" name="category" value="<%= filter.category %>">
         <input type="hidden" name="pageSize" value="<%= pageSize %>">
-        <div class="card-header list-toolbar">
-          <div class="input-group list-search">
-            <input class="form-control" type="search" name="search" value="<%= filter.search %>" placeholder="<%= t('Search user, action, object, IP, description...') %>" aria-label="<%= t('Search') %>">
-            <button class="btn btn-outline-secondary" type="submit" title="<%= t('Search') %>"><i class="bi bi-search"></i></button>
-          </div>
-          <button type="button" class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#logFilters" aria-expanded="<%= hasActiveFilter %>">
-            <i class="bi bi-funnel"></i> <%= t('Filter') %><% if (activeFilterCount) { %> <span class="badge rounded-pill"><%= activeFilterCount %></span><% } %>
-          </button>
-          <div class="list-actions">
-            <div class="dropdown">
-              <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="<%= t('Columns') %>">
-                <i class="bi bi-layout-three-columns"></i><span class="btn-text"> <%= t('Columns') %></span>
-              </button>
-              <div class="dropdown-menu dropdown-menu-end columns-menu" id="logColumnsMenu">
-                <div class="dropdown-header"><%= t('Show columns') %></div>
-                <% COLUMNS.forEach(function (c) { %>
-                  <label class="dropdown-item form-check mb-0">
-                    <input type="checkbox" class="form-check-input" data-col="<%= c.key %>" <%= c.def || c.fixed ? 'checked' : '' %> <%= c.fixed ? 'disabled' : '' %>>
-                    <span class="form-check-label"><%= t(c.label) %></span>
-                  </label>
-                <% }) %>
-                <div class="dropdown-divider"></div>
-                <button type="button" class="dropdown-item small" data-columns-reset><i class="bi bi-arrow-counterclockwise me-1"></i><%= t('Reset to default') %></button>
-              </div>
-            </div>
-            <a href="<%= exportUrl %>" class="btn btn-outline-secondary" title="<%= t('Export') %>"><i class="bi bi-download"></i><span class="btn-text"> <%= t('Export') %></span></a>
-          </div>
-        </div>
+        <%- include('../../partials/ui/list_toolbar', {
+              search: filter.search, searchPlaceholder: 'Search user, action, object, IP, description...',
+              filtersId: 'logFilters', activeFilterCount,
+              columns: { tableId: 'logTable', storageKey: 'openasm.systemLog.columns', list: COLUMNS },
+              exportUrl }) %>
         <div class="collapse<%= hasActiveFilter ? ' show' : '' %>" id="logFilters">
           <div class="list-filters">
             <div class="row g-2">
@@ -124,10 +101,6 @@
         </div>
       </form>
 
-      <%# hidden by default; !important wins over the layout's mobile table CSS %>
-      <style id="logColumnsStyle">
-        <%= COLUMNS.filter(c => !c.def).map(c => '#logTable [data-col="' + c.key + '"]').join(', ') %> { display: none !important; }
-      </style>
       <div class="table-responsive">
         <table class="table table-hover align-middle table-stack" id="logTable">
           <thead>
@@ -169,35 +142,6 @@
 
 <script>
   (function () {
-    // Column chooser, same behaviour as the System List (per browser).
-    var KEY = 'openasm.systemLog.columns';
-    var columns = <%- jsonSafe(COLUMNS.map(c => ({ key: c.key, def: !!c.def, fixed: !!c.fixed }))) %>;
-    var defaults = columns.filter(function (c) { return c.def; }).map(function (c) { return c.key; });
-    var style = document.getElementById('logColumnsStyle');
-    var menu = document.getElementById('logColumnsMenu');
-    function load() {
-      try { var saved = JSON.parse(localStorage.getItem(KEY) || 'null'); if (Array.isArray(saved)) return saved; } catch (e) { /* storage unavailable */ }
-      return defaults;
-    }
-    function apply(visible) {
-      var hidden = columns.filter(function (c) { return !c.fixed && visible.indexOf(c.key) === -1; });
-      style.textContent = hidden.length ? hidden.map(function (c) { return '#logTable [data-col="' + c.key + '"]'; }).join(', ') + ' { display: none !important; }' : '';
-      menu.querySelectorAll('input[data-col]').forEach(function (box) { box.checked = box.disabled || visible.indexOf(box.dataset.col) !== -1; });
-    }
-    var visible = load();
-    apply(visible);
-    menu.addEventListener('change', function (e) {
-      if (!e.target.matches('input[data-col]')) return;
-      visible = columns.filter(function (c) { var b = menu.querySelector('input[data-col="' + c.key + '"]'); return c.fixed || (b && b.checked); }).map(function (c) { return c.key; });
-      try { localStorage.setItem(KEY, JSON.stringify(visible)); } catch (err) { /* ignore */ }
-      apply(visible);
-    });
-    menu.querySelector('[data-columns-reset]').addEventListener('click', function () {
-      visible = defaults.slice();
-      try { localStorage.removeItem(KEY); } catch (err) { /* ignore */ }
-      apply(visible);
-    });
-
     // Date / IP inputs submit on change; quick date ranges fill both dates.
     var form = document.querySelector('.list-filter-form');
     form.querySelectorAll('.js-filter-input').forEach(function (input) {

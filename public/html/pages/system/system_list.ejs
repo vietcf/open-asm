@@ -1,9 +1,7 @@
 <%
-  const hasActiveFilter = !!(filterTags.length || filterContacts.length || filterScopes.length ||
-    filterArchitecture.length || filterLevel || filterDepartment);
   const activeFilterCount = [filterTags.length, filterContacts.length, filterScopes.length,
     filterArchitecture.length, filterLevel ? 1 : 0, filterDepartment ? 1 : 0].filter(Boolean).length;
-  // List columns: "def" = shown by default, "fixed" = always shown.
+  // "def" = shown by default, "fixed" = always shown (column chooser)
   const COLUMNS = [
     { key: 'code', label: 'System Code', def: true },
     { key: 'name', label: 'Name', def: true, fixed: true },
@@ -20,6 +18,23 @@
     { key: 'ips', label: 'IP Addresses' },
     { key: 'updated', label: 'Updated' },
   ];
+  const cell = (s, key) => ({
+    code: ui.esc(s.system_id),
+    name: ui.esc(s.name),
+    level: s.level ? ui.esc(ui.optionLabel(levelOptions, s.level)) : ui.dash,
+    ops: ui.text(s.ops_department_name),
+    dev: ui.text(s.department_name),
+    tags: ui.chips((s.tags || []).map(tg => tg.name)),
+    description: ui.clip(s.description),
+    alias: ui.text(ui.toArray(s.alias).join(', ')),
+    scopes: ui.chips((s.scopes || []).map(v => ui.optionLabel(scopeOptions, v))),
+    architecture: ui.chips((s.architecture || []).map(v => ui.optionLabel(architectureOptions, v))),
+    managers: ui.text((s.contacts || []).map(c => c.name).join(', ')),
+    urls: ui.clip(ui.toArray(s.fqdn).join(', ')),
+    ips: ui.mono((s.ip_addresses || []).map(ip => ip.ip)),
+    updated: ui.date(s.updated_at),
+  })[key];
+  const NOWRAP = ['code', 'level'];
 %>
 <%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'System Management' }, { label: 'System List' }] }) %>
 
@@ -30,38 +45,13 @@
     <div class="card list-card">
       <form class="list-filter-form" method="get" action="/system/system">
         <input type="hidden" name="pageSize" value="<%= pageSize %>">
-        <div class="card-header list-toolbar">
-          <div class="input-group list-search">
-            <input class="form-control" type="search" name="search" value="<%= search || '' %>" placeholder="<%= t('Search by name, system ID...') %>" aria-label="<%= t('Search') %>">
-            <button class="btn btn-outline-secondary" type="submit" title="<%= t('Search') %>"><i class="bi bi-search"></i></button>
-          </div>
-          <button type="button" class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#systemFilters" aria-expanded="<%= hasActiveFilter %>">
-            <i class="bi bi-funnel"></i> <%= t('Filter') %><% if (activeFilterCount) { %> <span class="badge rounded-pill"><%= activeFilterCount %></span><% } %>
-          </button>
-          <div class="list-actions">
-            <div class="dropdown">
-              <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="<%= t('Columns') %>">
-                <i class="bi bi-layout-three-columns"></i><span class="btn-text"> <%= t('Columns') %></span>
-              </button>
-              <div class="dropdown-menu dropdown-menu-end columns-menu" id="systemColumnsMenu">
-                <div class="dropdown-header"><%= t('Show columns') %></div>
-                <% COLUMNS.forEach(function (c) { %>
-                  <label class="dropdown-item form-check mb-0">
-                    <input type="checkbox" class="form-check-input" data-col="<%= c.key %>" <%= c.def || c.fixed ? 'checked' : '' %> <%= c.fixed ? 'disabled' : '' %>>
-                    <span class="form-check-label"><%= t(c.label) %></span>
-                  </label>
-                <% }) %>
-                <div class="dropdown-divider"></div>
-                <button type="button" class="dropdown-item small" data-columns-reset><i class="bi bi-arrow-counterclockwise me-1"></i><%= t('Reset to default') %></button>
-              </div>
-            </div>
-            <a href="/system/system/export<%= currentQuery %>" class="btn btn-outline-secondary" title="<%= t('Export') %>"><i class="bi bi-download"></i><span class="btn-text"> <%= t('Export') %></span></a>
-            <% if (hasPermission('system.create')) { %>
-              <a href="/system/system/add" class="btn btn-primary"><i class="bi bi-plus-lg"></i> <%= t('Add System') %></a>
-            <% } %>
-          </div>
-        </div>
-        <div class="collapse<%= hasActiveFilter ? ' show' : '' %>" id="systemFilters">
+        <%- include('../../partials/ui/list_toolbar', {
+              search, searchPlaceholder: 'Search by name, system ID...',
+              filtersId: 'systemFilters', activeFilterCount,
+              columns: { tableId: 'systemTable', storageKey: 'openasm.systemList.columns', list: COLUMNS },
+              exportUrl: '/system/system/export' + currentQuery,
+              addUrl: hasPermission('system.create') ? '/system/system/add' : null, addLabel: 'Add System' }) %>
+        <div class="collapse<%= activeFilterCount ? ' show' : '' %>" id="systemFilters">
           <div class="list-filters">
             <div class="row g-2">
               <div class="col-md-6 col-xl-4">
@@ -113,55 +103,13 @@
                 </select>
               </div>
             </div>
-            <% if (hasActiveFilter) { %>
+            <% if (activeFilterCount) { %>
               <div class="mt-2 text-end"><a href="#" class="small" data-clear-filters><i class="bi bi-x-circle me-1"></i><%= t('Clear All Filters') %></a></div>
             <% } %>
           </div>
         </div>
       </form>
 
-      <%
-        // Columns of the list. "def": shown by default; "fixed": cannot be hidden.
-        // Each viewer's choice is kept in localStorage (see the script below).
-        const labelOf = (options, v) => { const o = (options || []).find(x => String(x.id) === String(v)); return o ? o.text : v; };
-        const dash = '<span class="text-secondary">—</span>';
-        const chipsHtml = list => (list && list.length)
-          ? '<div class="chip-list">' + list.map(v => '<span class="badge tag">' + escapeFn(v) + '</span>').join('') + '</div>'
-          : dash;
-        function cellHtml(system, key) {
-          switch (key) {
-            case 'code': return escapeFn(system.system_id);
-            case 'name': return escapeFn(system.name);
-            case 'level': return system.level ? escapeFn(labelOf(levelOptions, system.level)) : dash;
-            case 'ops': return system.ops_department_name ? escapeFn(system.ops_department_name) : dash;
-            case 'dev': return system.department_name ? escapeFn(system.department_name) : dash;
-            case 'tags': return chipsHtml((system.tags || []).map(tg => tg.name));
-            case 'description': {
-              const d = (system.description || '').trim();
-              return d ? '<span class="cell-clip" title="' + escapeFn(d) + '">' + escapeFn(d) + '</span>' : dash;
-            }
-            case 'alias': {
-              const a = Array.isArray(system.alias) ? system.alias : (system.alias ? [system.alias] : []);
-              return a.length ? escapeFn(a.join(', ')) : dash;
-            }
-            case 'scopes': return chipsHtml((system.scopes || []).map(v => labelOf(scopeOptions, v)));
-            case 'architecture': return chipsHtml((system.architecture || []).map(v => labelOf(architectureOptions, v)));
-            case 'managers': return (system.contacts || []).length ? escapeFn(system.contacts.map(c => c.name).join(', ')) : dash;
-            case 'urls': {
-              const u = Array.isArray(system.fqdn) ? system.fqdn : (system.fqdn ? [system.fqdn] : []);
-              return u.length ? '<span class="cell-clip" title="' + escapeFn(u.join('\n')) + '">' + escapeFn(u.join(', ')) + '</span>' : dash;
-            }
-            case 'ips': return (system.ip_addresses || []).length ? '<span class="font-monospace small">' + escapeFn(system.ip_addresses.map(ip => ip.ip).join(', ')) + '</span>' : dash;
-            case 'updated': return system.updated_at ? '<span class="text-nowrap small">' + escapeFn(new Date(system.updated_at).toISOString().slice(0, 10)) + '</span>' : dash;
-            default: return '';
-          }
-        }
-      %>
-      <%# Default-hidden columns are hidden here already (no flash); the script swaps in the viewer's choice.
-          !important: the layout's mobile CSS forces '.table td { display: table-cell !important }'. %>
-      <style id="systemColumnsStyle">
-        <%= COLUMNS.filter(c => !c.def).map(c => '#systemTable [data-col="' + c.key + '"]').join(', ') %> { display: none !important; }
-      </style>
       <div class="table-responsive">
         <table class="table table-hover align-middle table-stack" id="systemTable">
           <thead>
@@ -176,15 +124,15 @@
               <% systemList.forEach(function (system, idx) { %>
                 <tr>
                   <td class="col-index"><%= (page - 1) * pageSize + idx + 1 %></td>
-                  <% COLUMNS.forEach(function (c) { %><td data-col="<%= c.key %>" data-label="<%= t(c.label) %>"<%- c.key === 'name' ? ' class="fw-medium"' : (['code', 'level'].includes(c.key) ? ' class="text-nowrap"' : '') %>><%- cellHtml(system, c.key) %></td><% }) %>
+                  <% COLUMNS.forEach(function (c) { %><td data-col="<%= c.key %>" data-label="<%= t(c.label) %>"<%- c.key === 'name' ? ' class="fw-medium"' : (NOWRAP.includes(c.key) ? ' class="text-nowrap"' : '') %>><%- cell(system, c.key) %></td><% }) %>
                   <td class="col-actions">
                     <div class="row-actions">
-                      <button type="button" class="btn btn-sm btn-outline-secondary" title="<%= t('Detail') %>" onclick="showSystemDetail(<%= JSON.stringify(system.id) %>)" data-system='<%= JSON.stringify(system) %>'><i class="bi bi-eye"></i></button>
+                      <button type="button" class="btn btn-sm btn-outline-secondary" title="<%= t('Detail') %>" onclick="showSystemDetail(this)" data-record='<%= JSON.stringify(system) %>'><i class="bi bi-eye"></i></button>
                       <% if (hasPermission('system.update')) { %>
                         <a href="/system/system/<%= system.id %>/edit" class="btn btn-sm btn-outline-secondary" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
                       <% } %>
                       <% if (hasPermission('system.delete')) { %>
-                        <form action="/system/system/<%= system.id %>/delete" method="POST" onsubmit="return confirmDeleteSystem(this, <%= JSON.stringify(system.name) %>)">
+                        <form action="/system/system/<%= system.id %>/delete" method="POST" data-confirm="<%= t('Are you sure you want to delete the system: ') + system.name + '?' %>">
                           <button type="submit" class="btn btn-sm btn-outline-secondary btn-delete" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
                         </form>
                       <% } %>
@@ -194,566 +142,101 @@
               <% }); %>
             <% } else { %>
               <tr><td colspan="<%= COLUMNS.length + 2 %>">
-                <%- include('../../partials/ui/empty_state', { icon: 'bi-hdd-stack', message: 'No systems found', filtered: hasActiveFilter || !!search, clearUrl: '/system/system',
+                <%- include('../../partials/ui/empty_state', { icon: 'bi-hdd-stack', message: 'No systems found', filtered: activeFilterCount > 0 || !!search, clearUrl: '/system/system',
                       actionUrl: hasPermission('system.create') ? '/system/system/add' : null, actionLabel: 'Add System' }) %>
               </td></tr>
             <% } %>
           </tbody>
         </table>
       </div>
-      <script>
-        // Column chooser: visible column keys per browser (localStorage, best
-        // effort); the defaults apply when nothing is stored or storage is blocked.
-        (function () {
-          var KEY = 'openasm.systemList.columns';
-          var columns = <%- jsonSafe(COLUMNS.map(c => ({ key: c.key, def: !!c.def, fixed: !!c.fixed }))) %>;
-          var defaults = columns.filter(function (c) { return c.def; }).map(function (c) { return c.key; });
-          var style = document.getElementById('systemColumnsStyle');
-          function load() {
-            try {
-              var saved = JSON.parse(localStorage.getItem(KEY) || 'null');
-              if (Array.isArray(saved)) return saved;
-            } catch (e) { /* storage unavailable */ }
-            return defaults;
-          }
-          function apply(visible) {
-            var hidden = columns.filter(function (c) { return !c.fixed && visible.indexOf(c.key) === -1; });
-            style.textContent = hidden.length
-              ? hidden.map(function (c) { return '#systemTable [data-col="' + c.key + '"]'; }).join(', ') + ' { display: none !important; }'
-              : '';
-            document.querySelectorAll('#systemColumnsMenu input[data-col]').forEach(function (box) {
-              box.checked = box.disabled || visible.indexOf(box.dataset.col) !== -1;
-            });
-          }
-          var visible = load();
-          apply(visible);
-
-          var menu = document.getElementById('systemColumnsMenu');
-          if (!menu) return;
-          menu.addEventListener('change', function (e) {
-            if (!e.target.matches('input[data-col]')) return;
-            visible = columns.filter(function (c) {
-              var box = menu.querySelector('input[data-col="' + c.key + '"]');
-              return c.fixed || (box && box.checked);
-            }).map(function (c) { return c.key; });
-            try { localStorage.setItem(KEY, JSON.stringify(visible)); } catch (err) { /* ignore */ }
-            apply(visible);
-          });
-          menu.querySelector('[data-columns-reset]').addEventListener('click', function () {
-            visible = defaults.slice();
-            try { localStorage.removeItem(KEY); } catch (err) { /* ignore */ }
-            apply(visible);
-          });
-        })();
-      </script>
 
       <%- include('../../partials/ui/pagination', { page, totalPages, totalCount, pageSize, count: (systemList || []).length, summary: 'Showing {1} - {2} of {3} systems' }) %>
     </div>
   </div>
 </div>
-    <!-- System Detail Modal -->
-    <div class="modal fade" id="systemDetailModal" tabindex="-1" aria-labelledby="systemDetailModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-          <div class="modal-header">
-            <div class="me-3">
-              <h5 class="modal-title mb-0" id="systemDetailModalLabel"><%= t('System Detail') %></h5>
-              <div class="small text-secondary mt-1" id="systemDetailSubtitle"></div>
-            </div>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
-          </div>
-          <div class="modal-body" id="systemDetailContent">
-            <!-- Content will be loaded here -->
-          </div>
-          <div class="modal-footer">
-            <% if (hasPermission && hasPermission('pentest.read')) { %>
-              <button type="button" class="btn btn-outline-primary btn-sm me-auto" onclick="showPentestQuickView('system', window.currentDetailSystemId)">
-                <i class="bi bi-shield-check"></i> <%= t('Pentest History') %>
-              </button>
-            <% } %>
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Close') %></button>
-          </div>
-        </div>
-      </div>
-    </div>
 
-    <!-- Pentest Quick-View Modal (read-only) -->
-    <div class="modal fade" id="pentestQuickViewModal" tabindex="-1" aria-labelledby="pentestQuickViewModalLabel" aria-hidden="true">
-      <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="pentestQuickViewModalLabel"><%= t('Pentest History') %></h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
-          </div>
-          <div class="modal-body" id="pentestQuickViewContent">
-            <!-- Content will be loaded here -->
-          </div>
-          <div class="modal-footer">
-            <a id="pentestQuickViewManageLink" href="/pentest" class="btn btn-outline-primary btn-sm me-auto"><%= t('Manage in Pentest page') %></a>
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Close') %></button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  <!-- Filter values for JS (safe for strict EJS, same as IP Address List) -->
-<!-- Data attributes for JavaScript -->
-<div id="system-data" 
-     data-scope-options='<%= JSON.stringify(scopeOptions || []) %>'
-     data-architecture-options='<%= JSON.stringify(architectureOptions || []) %>'
-     data-level-options='<%= JSON.stringify(levelOptions || []) %>'
-     style="display: none;"></div>
+<%- include('../../partials/ui/detail_modal', { id: 'systemDetailModal', pentestType: 'system' }) %>
+<%- include('../../partials/ui/pentest_quick_view') %>
 
 <script>
-    // Select2 option data, loaded from the database
-    const systemDataEl = document.getElementById('system-data');
-    window.scopeOptionsData = JSON.parse(systemDataEl.dataset.scopeOptions || '[]');
-    window.architectureOptionsData = JSON.parse(systemDataEl.dataset.architectureOptions || '[]');
-    window.levelOptionsData = JSON.parse(systemDataEl.dataset.levelOptions || '[]');
-    
-    
+  // Option labels for the detail modal
+  const SYSTEM_OPTIONS = {
+    level: <%- jsonSafe(levelOptions || []) %>,
+    scope: <%- jsonSafe(scopeOptions || []) %>,
+    architecture: <%- jsonSafe(architectureOptions || []) %>,
+  };
+  const CAN_READ_CLUSTERS = <%- jsonSafe(hasPermission('cluster.read')) %>;
 
-    
-    function confirmDeleteSystem(form, name) {
-      if (confirm(t('Are you sure you want to delete the system: ') + name + '?')) {
-        form._deleting = true;
-        return true;
-      }
-      return false;
+  function showSystemDetail(button) {
+    const s = DV.record(button);
+    if (!s) return;
+    const level = s.level ? DV.optionLabel(SYSTEM_OPTIONS.level, s.level) : '';
+    const ips = s.ip_addresses || [];
+    const scopes = s.scopes || [];
+    const urls = DV.toArray(s.fqdn);
+    const domains = s.domains || [];
+
+    let body = DV.section('Overview', DV.rows(
+      DV.field('Operations department (L2)', DV.unit(s.ops_department_id, s.ops_department_name)),
+      DV.field('Development department (L3)', DV.unit(s.department_id, s.department_name)),
+      DV.field('Alias', DV.text(DV.toArray(s.alias).join(', '))),
+      DV.field('Architecture', DV.chips(s.architecture, (v) => DV.optionLabel(SYSTEM_OPTIONS.architecture, v))),
+      DV.field('Tags', DV.chips((s.tags || []).map((tg) => tg.name || tg))),
+      DV.field('Managers', DV.contacts(s.contacts)),
+      DV.multiline(s.description) ? DV.field('Description', DV.multiline(s.description)) : ''
+    ));
+    if (scopes.length || urls.length || domains.length) {
+      body += DV.section('Access', DV.rows(
+        DV.field('Scope user access', DV.chips(scopes, (v) => DV.optionLabel(SYSTEM_OPTIONS.scope, v))),
+        DV.field('Access URLs', DV.urlList(urls)),
+        DV.field('Domains', DV.linkChips(domains, (d) => '/network/domain?search=' + encodeURIComponent(d.domain || d)))
+      ));
     }
+    const ipTable = ips.length
+      ? '<div class="table-responsive"><table class="table table-sm align-middle detail-table mb-0"><thead><tr><th>' + DV.esc(t('IP Address')) + '</th><th>' + DV.esc(t('Server')) + '</th><th>' + DV.esc(t('Zone')) + ' / ' + DV.esc(t('Environment')) + '</th></tr></thead><tbody>' +
+        ips.map((ip) => '<tr><td>' + DV.ipLink(ip.ip) + '</td><td>' + (DV.text(ip.server_name) || DV.EMPTY) + '</td><td>' + (DV.text([ip.subnet_zone, ip.subnet_environment].filter(Boolean).join(' / ')) || DV.EMPTY) + '</td></tr>').join('') +
+        '</tbody></table></div>'
+      : '<p class="text-secondary small mb-0 detail-pad">' + DV.esc(t('No IP addresses')) + '</p>';
+    body += DV.section('Infrastructure',
+      ipTable + (CAN_READ_CLUSTERS ? '<div class="detail-rows detail-rows-divided">' + DV.field('Clusters', DV.placeholder('sysClusters')) + '</div>' : ''),
+      ' <span class="badge tag ms-1">' + ips.length + '</span>');
+    body += DV.section('Components', '<div id="sysComponents" class="text-secondary small detail-pad">' + DV.esc(t('Loading...')) + '</div>',
+      ' <span class="badge tag ms-1 d-none" id="sysComponentsCount"></span>');
+    if ((s.docs || []).length) body += DV.section('Attached Files', DV.files(s.docs, '/system/file/:id/view'));
+    body += DV.meta(s);
 
-    // ---- System Detail modal -------------------------------------------
-    // Same visual language as the list: neutral chips, "—" for empty
-    // values, translated labels. Sections are only shown when they have
-    // content; components and clusters load on demand.
-    const EMPTY = '<span class="text-secondary">—</span>';
+    DV.open('systemDetailModal', {
+      title: s.name,
+      subtitle: '<span class="font-monospace">' + DV.esc(s.system_id) + '</span>' + (level ? ' <span class="badge tag ms-1">' + DV.esc(level) + '</span>' : ''),
+      body,
+      recordId: s.id,
+    });
 
-    function optionLabel(options, value) {
-      const found = (options || []).find(function (o) { return String(o.id) === String(value); });
-      return found ? found.text : value;
-    }
-    function chips(values, toLabel) {
-      const list = (values || []).filter(function (v) { return v !== null && v !== undefined && String(v).trim() !== ''; });
-      if (!list.length) return EMPTY;
-      return '<div class="chip-list">' + list.map(function (v) {
-        return '<span class="badge tag">' + escapeHtml(toLabel ? toLabel(v) : v) + '</span>';
+    DV.load('/system/api/system/' + encodeURIComponent(s.id) + '/components', document.getElementById('sysComponents'), (data) => {
+      const components = data.components || [];
+      const counter = document.getElementById('sysComponentsCount');
+      if (counter) { counter.textContent = components.length; counter.classList.remove('d-none'); }
+      if (!components.length) return DV.esc(t('No components'));
+      return '<div class="detail-components">' + components.map((c, i) => {
+        const id = 'sysComponent' + i;
+        return '<div class="detail-component">' +
+          '<button type="button" class="detail-component-head collapsed" data-bs-toggle="collapse" data-bs-target="#' + id + '" aria-expanded="false" aria-controls="' + id + '">' +
+            '<i class="bi bi-chevron-right detail-component-icon"></i><span class="fw-medium">' + DV.esc(c.name) + '</span>' +
+            (c.app_type ? '<span class="badge tag ms-auto">' + DV.esc(c.app_type) + '</span>' : '') +
+          '</button>' +
+          '<div class="collapse" id="' + id + '"><div class="detail-component-body">' + DV.rows(
+            DV.field('IP Addresses', DV.ipLinks(c.ips)),
+            DV.field('Access URLs', DV.urlList(c.fqdn)),
+            DV.field('Managers', DV.contacts(c.contacts)),
+            DV.field('Tags', DV.chips((c.tags || []).map((tg) => tg.name || tg))),
+            DV.multiline(c.description) ? DV.field('Description', DV.multiline(c.description)) : ''
+          ) + (c.updated_at ? '<div class="detail-meta px-3 pb-2">' + DV.esc(t('Updated')) + ' ' + DV.esc(DV.date(c.updated_at)) + '</div>' : '') + '</div></div>' +
+        '</div>';
       }).join('') + '</div>';
-    }
-    // One "label | value" row: label in a fixed left column, value on the right.
-    function field(label, valueHtml) {
-      return '<div class="detail-row"><div class="detail-label">' + escapeHtml(t(label)) + '</div><div class="detail-value">' + (valueHtml || EMPTY) + '</div></div>';
-    }
-    // A titled card; the body has no padding (rows/tables bring their own).
-    function section(title, bodyHtml, extraHtml) {
-      return '<section class="detail-card"><div class="detail-card-header">' + escapeHtml(t(title)) + (extraHtml || '') + '</div><div class="detail-card-body">' + bodyHtml + '</div></section>';
-    }
-    function formatDate(value) {
-      if (!value) return '';
-      const d = new Date(value);
-      if (isNaN(d)) return String(value);
-      return d.toLocaleString(document.documentElement.lang || undefined, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
-    }
-    // Access URL entry (stored in the "fqdn" column): "https://host:port/path",
-    // a bare host or IP, optionally followed by " [comment]".
-    // Only http(s) links are clickable; a bare host gets http://.
-    function urlItem(raw) {
-      const str = String(raw).trim();
-      const m = str.match(/^(.+?)\s*\[(.+?)\]$/);
-      const target = m ? m[1].trim() : str;
-      const note = m ? ' <span class="badge tag">' + escapeHtml(m[2].trim()) + '</span>' : '';
-      const hasScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(target);
-      const href = hasScheme ? (/^https?:\/\//i.test(target) ? target : null) : 'http://' + target;
-      const text = escapeHtml(target);
-      return '<li>' + (href ? '<a href="' + escapeHtml(encodeURI(href)) + '" target="_blank" rel="noopener noreferrer">' + text + '</a>' : text) + note + '</li>';
-    }
-    function contactLinks(contacts) {
-      if (!contacts || !contacts.length) return EMPTY;
-      return '<ul class="detail-list">' + contacts.map(function (c) {
-        const name = c.name || c;
-        const user = c.email ? String(c.email).split('@')[0] : '';
-        return '<li><i class="bi bi-person text-secondary me-1"></i><a href="/organize/contact?search=' + encodeURIComponent(c.email || name) + '" target="_blank" rel="noopener noreferrer">' + escapeHtml(name) + '</a>' +
-          (user ? ' <span class="text-secondary small">(' + escapeHtml(user) + ')</span>' : '') + '</li>';
-      }).join('') + '</ul>';
-    }
-    function ipLink(ip) {
-      return '<a href="/network/ip-address?search=' + encodeURIComponent(ip) + '" target="_blank" rel="noopener noreferrer" class="ip-hover-link font-monospace" data-ip="' + escapeHtml(ip) + '" data-bs-toggle="tooltip" data-bs-placement="top" title="' + escapeHtml(t('Loading IP info...')) + '">' + escapeHtml(ip) + '</a>';
-    }
-
-    function showSystemDetail(systemId) {
-      window.currentDetailSystemId = systemId;
-      const button = Array.from(document.querySelectorAll('button[data-system]')).find(function (b) {
-        try { return String(JSON.parse(b.getAttribute('data-system')).id) === String(systemId); } catch (e) { return false; }
-      });
-      if (!button) return;
-      const system = JSON.parse(button.getAttribute('data-system'));
-      const toArray = function (v) { return Array.isArray(v) ? v : (v ? [v] : []); };
-
-      // Header: name, code and level
-      document.getElementById('systemDetailModalLabel').textContent = system.name || t('System Detail');
-      const level = system.level ? optionLabel(window.levelOptionsData, system.level) : '';
-      document.getElementById('systemDetailSubtitle').innerHTML =
-        '<span class="font-monospace">' + escapeHtml(system.system_id || '') + '</span>' +
-        (level ? ' <span class="badge tag ms-1">' + escapeHtml(level) + '</span>' : '');
-
-      let html = '';
-
-      // Overview
-      // Unit name with a lazy description tooltip
-      const unit = function (id, name) {
-        return id ? '<span class="org-tooltip" data-unit-id="' + escapeHtml(id) + '" style="cursor: help;">' + escapeHtml(name || '') + '</span>' : '';
-      };
-      const description = (system.description || '').trim();
-      html += section('Overview',
-        '<div class="detail-rows">' +
-          field('Operations department (L2)', unit(system.ops_department_id, system.ops_department_name)) +
-          field('Development department (L3)', unit(system.department_id, system.department_name)) +
-          field('Alias', toArray(system.alias).length ? escapeHtml(toArray(system.alias).join(', ')) : '') +
-          field('Architecture', chips(system.architecture, function (v) { return optionLabel(window.architectureOptionsData, v); })) +
-          field('Tags', chips((system.tags || []).map(function (tg) { return typeof tg === 'string' ? tg : tg.name; }))) +
-          field('Managers', contactLinks(system.contacts)) +
-          (description ? field('Description', '<span class="text-pre-wrap">' + escapeHtml(description) + '</span>') : '') +
-        '</div>');
-
-      // Access: who can reach the system (scope), URLs ("fqdn" column), domains
-      const fqdns = toArray(system.fqdn);
-      const domains = system.domains || [];
-      const scopes = system.scopes || [];
-      if (scopes.length || fqdns.length || domains.length) {
-        html += section('Access',
-          '<div class="detail-rows">' +
-            field('Scope user access', chips(scopes, function (v) { return optionLabel(window.scopeOptionsData, v); })) +
-            field('Access URLs', fqdns.length ? '<ul class="detail-list">' + fqdns.map(urlItem).join('') + '</ul>' : '') +
-            field('Domains', domains.length ? '<div class="chip-list">' + domains.map(function (d) {
-              const name = d.domain || d;
-              return '<a href="/network/domain?search=' + encodeURIComponent(name) + '" target="_blank" rel="noopener noreferrer" class="badge tag text-decoration-none">' + escapeHtml(name) + '</a>';
-            }).join('') + '</div>' : '') +
-          '</div>');
-      }
-
-      // Infrastructure: IP addresses (+ clusters)
-      const ips = system.ip_addresses || [];
-      let infra = '';
-      if (ips.length) {
-        infra += '<div class="table-responsive"><table class="table table-sm align-middle detail-table mb-0"><thead><tr>' +
-          '<th>' + escapeHtml(t('IP Address')) + '</th><th>' + escapeHtml(t('Server')) + '</th><th>' + escapeHtml(t('Zone')) + ' / ' + escapeHtml(t('Environment')) + '</th>' +
-          '</tr></thead><tbody>' +
-          ips.map(function (ip) {
-            const addr = ip.ip || ip.ip_address || ip;
-            const zoneEnv = [ip.subnet_zone, ip.subnet_environment].filter(Boolean).join(' / ');
-            return '<tr><td>' + ipLink(addr) + '</td><td>' + (ip.server_name ? escapeHtml(ip.server_name) : EMPTY) + '</td><td>' + (zoneEnv ? escapeHtml(zoneEnv) : EMPTY) + '</td></tr>';
-          }).join('') +
-          '</tbody></table></div>';
-      } else {
-        infra += '<p class="text-secondary small mb-0 detail-pad">' + escapeHtml(t('No IP addresses')) + '</p>';
-      }
-      <% if (hasPermission('cluster.read')) { %>
-      infra += '<div class="detail-rows detail-rows-divided">' + field('Clusters', '<span id="clusters-section-' + escapeHtml(systemId) + '" class="text-secondary small">' + escapeHtml(t('Loading...')) + '</span>') + '</div>';
-      <% } %>
-      html += section('Infrastructure', infra, ' <span class="badge tag ms-1">' + ips.length + '</span>');
-
-      // Components (loaded on demand)
-      html += section('Components', '<div id="components-section-' + escapeHtml(systemId) + '" class="text-secondary small detail-pad">' + escapeHtml(t('Loading...')) + '</div>',
-        ' <span class="badge tag ms-1 d-none" id="components-count-' + escapeHtml(systemId) + '"></span>');
-
-      // Attached files
-      const docs = system.docs || [];
-      if (docs.length) {
-        html += section('Attached Files', '<ul class="detail-list detail-pad">' + docs.map(function (file) {
-          const name = file.name || file.originalname || t('Unknown file');
-          const viewUrl = file.id ? '/system/file/' + encodeURIComponent(file.id) + '/view' : file.url;
-          return '<li><i class="bi bi-paperclip text-secondary me-1"></i><a href="' + escapeHtml(file.url || '#') + '" download>' + escapeHtml(name) + '</a>' +
-            ' <a href="' + escapeHtml(viewUrl || '#') + '" target="_blank" rel="noopener noreferrer" class="badge tag text-decoration-none ms-1">' + escapeHtml(t('View')) + '</a></li>';
-        }).join('') + '</ul>');
-      }
-
-      // Record metadata
-      const meta = [];
-      if (system.created_at) meta.push(escapeHtml(t('Created')) + ' ' + escapeHtml(formatDate(system.created_at)));
-      if (system.updated_at) meta.push(escapeHtml(t('Updated')) + ' ' + escapeHtml(formatDate(system.updated_at)) + (system.updated_by ? ' · ' + escapeHtml(system.updated_by) : ''));
-      if (meta.length) html += '<div class="detail-meta">' + meta.join('<span class="mx-2">|</span>') + '</div>';
-
-      const content = document.getElementById('systemDetailContent');
-      content.innerHTML = html;
-      initOrgTooltips(content);
-      setupIPHover();
-      bootstrap.Modal.getOrCreateInstance(document.getElementById('systemDetailModal')).show();
-
-      loadSystemComponents(systemId);
-      <% if (hasPermission('cluster.read')) { %>
-      loadSystemClusters(systemId);
-      <% } %>
-    }
-
-    document.getElementById('systemDetailModal').addEventListener('hidden.bs.modal', function () {
-      document.getElementById('systemDetailContent').innerHTML = '';
     });
-
-    // Function to setup IP hover functionality — uses Bootstrap's Tooltip
-    // component (same as the Description column tooltips) instead of the
-    // native browser title tooltip, so both look and behave the same way.
-    function setupIPHover() {
-      const ipLinks = document.querySelectorAll('.ip-hover-link');
-      ipLinks.forEach(link => {
-        if (link.getAttribute('data-tooltip-init') === 'true') return;
-        link.setAttribute('data-tooltip-init', 'true');
-        new bootstrap.Tooltip(link);
-        link.addEventListener('mouseenter', handleIPHover);
-      });
+    if (CAN_READ_CLUSTERS) {
+      DV.load('/cluster/api/by-system?system_id=' + encodeURIComponent(s.id), document.getElementById('sysClusters'),
+        (data) => DV.linkChips(data.clusters || [], (c) => '/cluster?search=' + encodeURIComponent(c.name)));
     }
-
-    // IP hover handler
-    function handleIPHover(event) {
-      const element = event.target.closest('.ip-hover-link');
-      const ipAddress = element.getAttribute('data-ip');
-      const tooltip = bootstrap.Tooltip.getInstance(element);
-
-      if (!ipAddress || !tooltip || element.getAttribute('data-loading') === 'true') {
-        return;
-      }
-
-      // Set loading state
-      element.setAttribute('data-loading', 'true');
-      tooltip.setContent({ '.tooltip-inner': 'Loading IP info...' });
-
-      // Fetch IP information
-      fetch(`/network/api/ip-addresses/detail?search=${encodeURIComponent(ipAddress)}`)
-        .then(response => response.json())
-        .then(data => {
-          if (data && data.length > 0) {
-            const ipInfo = data[0];
-            let tooltipText = `IP: ${ipInfo.ip_address || ipInfo.ip || ipAddress}`;
-            
-            if (ipInfo.description) {
-              tooltipText += `\nDescription: ${ipInfo.description}`;
-            }
-            
-            if (ipInfo.status) {
-              tooltipText += `\nStatus: ${ipInfo.status}`;
-            }
-            
-            // List EVERY owner — an IP can have more than one device/server
-            // once VIP sharing is involved, not just a single primary owner.
-            (ipInfo.servers || []).forEach(function(s) {
-              tooltipText += `\nServer: ${s.name}${s.role === 'vip' ? ' (VIP)' : ''}`;
-            });
-            (ipInfo.devices || []).forEach(function(d) {
-              tooltipText += `\nDevice: ${d.name}${d.role === 'vip' ? ' (VIP)' : ''}`;
-            });
-            
-            // Add tags information
-            if (ipInfo.tags && ipInfo.tags.length > 0) {
-              const tagNames = ipInfo.tags.map(tag => typeof tag === 'string' ? tag : tag.name).join(', ');
-              tooltipText += `\nTags: ${tagNames}`;
-            }
-            
-            // Add contacts information
-            if (ipInfo.contacts && ipInfo.contacts.length > 0) {
-              const contactEmails = ipInfo.contacts.map(contact => {
-                if (typeof contact === 'string') {
-                  // If it's a string, check if it's an email or name
-                  if (contact.includes('@')) {
-                    return contact.split('@')[0]; // Extract username part
-                  }
-                  return contact;
-                }
-                // If it's an object, handle email and name like in System Detail
-                if (contact.email) {
-                  const emailUsername = contact.email.split('@')[0];
-                  return contact.name ? `${contact.name} (${emailUsername})` : emailUsername;
-                }
-                return contact.name || contact;
-              }).join(', ');
-              tooltipText += `\nContacts: ${contactEmails}`;
-            }
-            
-            // Add systems information
-            if (ipInfo.systems && ipInfo.systems.length > 0) {
-              const systemNames = ipInfo.systems.map(system => typeof system === 'string' ? system : system.name).join(', ');
-              tooltipText += `\nSystems: ${systemNames}`;
-            }
-            
-            tooltip.setContent({ '.tooltip-inner': tooltipText });
-          } else {
-            tooltip.setContent({ '.tooltip-inner': `IP: ${ipAddress}\nNo additional information found` });
-          }
-        })
-        .catch(error => {
-          console.error('Error loading IP info:', error);
-          tooltip.setContent({ '.tooltip-inner': `IP: ${ipAddress}\nError loading information` });
-        })
-        .finally(() => {
-          element.removeAttribute('data-loading');
-        });
-    }
-
-    // Components of a system: one collapsible row each (name + app type),
-    // details in the same field grid as the rest of the modal.
-    function loadSystemComponents(systemId) {
-      const target = document.getElementById('components-section-' + systemId);
-      const counter = document.getElementById('components-count-' + systemId);
-      if (!target) return;
-      fetch('/system/api/system/' + encodeURIComponent(systemId) + '/components')
-        .then(function (response) { return response.json(); })
-        .then(function (data) {
-          const components = data.components || [];
-          if (counter) { counter.textContent = components.length; counter.classList.remove('d-none'); }
-          if (!components.length) {
-            target.innerHTML = escapeHtml(t('No components'));
-            return;
-          }
-          target.classList.remove('text-secondary', 'small');
-          target.innerHTML = '<div class="detail-components">' + components.map(function (c, index) {
-            const id = 'component-detail-' + systemId + '-' + index;
-            const fqdns = Array.isArray(c.fqdn) ? c.fqdn : (c.fqdn ? [c.fqdn] : []);
-            const ips = c.ips || [];
-            const description = (c.description || '').trim();
-            return '<div class="detail-component">' +
-              '<button type="button" class="detail-component-head collapsed" data-bs-toggle="collapse" data-bs-target="#' + id + '" aria-expanded="false" aria-controls="' + id + '">' +
-                '<i class="bi bi-chevron-right detail-component-icon"></i>' +
-                '<span class="fw-medium">' + escapeHtml(c.name || '') + '</span>' +
-                (c.app_type ? '<span class="badge tag ms-auto">' + escapeHtml(c.app_type) + '</span>' : '') +
-              '</button>' +
-              '<div class="collapse" id="' + id + '"><div class="detail-component-body"><div class="detail-rows">' +
-                field('IP Addresses', ips.length ? '<div class="chip-list">' + ips.map(function (ip) { return ipLink(ip.ip_address || ip.ip || ip); }).join('') + '</div>' : '') +
-                field('Access URLs', fqdns.length ? '<ul class="detail-list">' + fqdns.map(urlItem).join('') + '</ul>' : '') +
-                field('Managers', contactLinks(c.contacts)) +
-                field('Tags', chips((c.tags || []).map(function (tg) { return typeof tg === 'string' ? tg : tg.name; }))) +
-                (description ? field('Description', '<span class="text-pre-wrap">' + escapeHtml(description) + '</span>') : '') +
-              '</div>' +
-              (c.updated_at ? '<div class="detail-meta px-3 pb-2">' + escapeHtml(t('Updated')) + ' ' + escapeHtml(formatDate(c.updated_at)) + '</div>' : '') +
-              '</div></div>' +
-            '</div>';
-          }).join('') + '</div>';
-          setupIPHover();
-        })
-        .catch(function () {
-          target.innerHTML = '<span class="text-danger">' + escapeHtml(t('Error loading components')) + '</span>';
-        });
-    }
-
-    // Clusters serving this System - loaded via AJAX from a dedicated
-    // Cluster endpoint (read-only here; managed from the Cluster Management
-    // page). System's own query/model is untouched by this feature.
-    function loadSystemClusters(systemId) {
-      const target = document.getElementById('clusters-section-' + systemId);
-      if (!target) return;
-      fetch('/cluster/api/by-system?system_id=' + encodeURIComponent(systemId))
-        .then(function (response) { return response.json(); })
-        .then(function (data) {
-          const clusters = data.clusters || [];
-          if (!clusters.length) { target.innerHTML = EMPTY; return; }
-          target.classList.remove('text-secondary', 'small');
-          target.innerHTML = '<div class="chip-list">' + clusters.map(function (cluster) {
-            return '<a href="/cluster?search=' + encodeURIComponent(cluster.name) + '" target="_blank" rel="noopener noreferrer" class="badge tag text-decoration-none">' + escapeHtml(cluster.name) + '</a>';
-          }).join('') + '</div>';
-        })
-        .catch(function () {
-          target.innerHTML = '<span class="text-danger">' + escapeHtml(t('Error loading clusters')) + '</span>';
-        });
-    }
-
-    function showToast(msg, type) {
-      const toast = document.createElement('div');
-      toast.className = `alert alert-${type}`;
-      toast.style.position = 'fixed';
-      toast.style.top = '16px';
-      toast.style.right = '16px';
-      toast.style.zIndex = 9999;
-      toast.style.minWidth = '200px';
-      toast.innerText = msg;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
-    }
-
-    // Filter modal select2 logic
-    // Initialize tooltips
-    $(document).ready(function() {
-      var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-      var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-      });
-    });
-
-    // Organization/Unit hover tooltip — lazily fetches the unit's
-    // description via AJAX on first hover instead of carrying it through
-    // this page's own query. Cached across elements sharing the same unit id.
-    const unitInfoCache = {};
-    function initOrgTooltips(scopeEl) {
-      (scopeEl || document).querySelectorAll('.org-tooltip').forEach(function(el) {
-        if (el.dataset.tooltipInit) return;
-        el.dataset.tooltipInit = '1';
-        const unitId = el.getAttribute('data-unit-id');
-        if (!unitId) return;
-        const tooltip = new bootstrap.Tooltip(el, { title: 'Loading...' });
-        el.addEventListener('show.bs.tooltip', function() {
-          if (unitInfoCache[unitId]) {
-            tooltip.setContent({ '.tooltip-inner': unitInfoCache[unitId] });
-            return;
-          }
-          fetch('/organize/api/unit/' + encodeURIComponent(unitId) + '/detail')
-            .then(function(res) { return res.json(); })
-            .then(function(data) {
-              const desc = (data && data.description) ? data.description : 'No description';
-              unitInfoCache[unitId] = desc;
-              tooltip.setContent({ '.tooltip-inner': desc });
-            })
-            .catch(function() {
-              tooltip.setContent({ '.tooltip-inner': 'Error loading info' });
-            });
-        });
-      });
-    }
-
-    // Read-only quick-view of pentest rounds for a System/Component, launched
-    // from the Detail modal's "Pentest History" button. Full add/edit/delete
-    // happens on the dedicated Pentest Management page (link below).
-    // Round name, participant names, and the uploaded report's original
-    // filename are all free-text user input persisted server-side with no
-    // HTML stripping — must be escaped before going into innerHTML, or a
-    // crafted round/filename executes script in the browser of anyone who
-    // later opens this quick-view.
-    function escapeHtml(value) {
-      return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
-        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-      });
-    }
-
-    function showPentestQuickView(objectType, objectId) {
-      if (!objectId) return;
-      const content = document.getElementById('pentestQuickViewContent');
-      content.innerHTML = '<p class="text-muted mb-0">Loading...</p>';
-      document.getElementById('pentestQuickViewManageLink').href = '/pentest?object_type=' + encodeURIComponent(objectType) + '&object_id=' + encodeURIComponent(objectId);
-      const modal = new bootstrap.Modal(document.getElementById('pentestQuickViewModal'));
-      modal.show();
-
-      fetch('/pentest/api/by-object?object_type=' + encodeURIComponent(objectType) + '&object_id=' + encodeURIComponent(objectId))
-        .then(res => res.json())
-        .then(data => {
-          const rounds = data.rounds || [];
-          if (rounds.length === 0) {
-            content.innerHTML = '<p class="text-muted mb-0">No pentest rounds recorded yet.</p>';
-            return;
-          }
-          let html = '<table class="table table-sm table-hover mb-0"><thead><tr><th>Round Name</th><th>Date</th><th>Status</th><th>Participants</th><th>Report</th></tr></thead><tbody>';
-          rounds.forEach(function(round) {
-            const participants = (round.participants || []).map(p => escapeHtml(p.name)).join(', ') || '-';
-            let report = '<span class="text-muted">No report</span>';
-            if (round.report) {
-              report = '<a href="' + escapeHtml(round.report.url) + '" download class="text-decoration-none text-primary me-1">' + escapeHtml(round.report.original_name) + '</a>' +
-                       '<a href="/pentest/report/' + encodeURIComponent(round.report.id) + '/view" target="_blank" rel="noopener noreferrer" class="badge bg-light text-dark border text-decoration-none" style="border-radius:3px;">[View]</a>';
-            }
-            html += '<tr><td>' + escapeHtml(round.name) + '</td><td>' + (round.test_date ? new Date(round.test_date).toLocaleDateString('en-GB') : '-') + '</td><td>' + escapeHtml(round.status || 'NOT_STARTED') + '</td><td>' + participants + '</td><td>' + report + '</td></tr>';
-          });
-          html += '</tbody></table>';
-          content.innerHTML = html;
-        })
-        .catch(() => {
-          content.innerHTML = '<p class="text-danger mb-0">Error loading pentest rounds.</p>';
-        });
-    }
+  }
 </script>
-
-<style>
-/* Multi-line tooltips (descriptions) */
-.tooltip .tooltip-inner { white-space: pre-wrap; max-width: 400px; text-align: left; }
-</style>

@@ -129,119 +129,13 @@
 
         <section class="form-section">
           <h4 class="form-section-title"><%= t('Documents') %></h4>
-          <ul id="f-files" class="form-file-list" data-existing="<%= JSON.stringify(isEdit ? (s.docs || []) : []) %>"></ul>
-          <label class="form-file-drop" for="f-upload">
-            <i class="bi bi-cloud-arrow-up"></i>
-            <span><%= t('Choose files to upload') %></span>
-            <span class="form-text mt-0"><%= t('Allowed: {types}', { types: uploadAllowedList }) %></span>
-          </label>
-          <input type="file" id="f-upload" class="visually-hidden" multiple accept="<%= uploadAccept %>">
-          <% if (isEdit) { %>
-            <input type="hidden" name="uploaded_docs_edit" id="f-uploaded">
-            <input type="hidden" name="delete_files" id="f-deleted" value="[]">
-          <% } else { %>
-            <input type="hidden" name="uploaded_docs" id="f-uploaded">
-          <% } %>
+          <%- include('../../partials/ui/file_attachments', {
+                existing: isEdit ? (s.docs || []) : [], viewUrl: '/system/file/:id/view',
+                uploadedName: isEdit ? 'uploaded_docs_edit' : 'uploaded_docs', deletedName: isEdit ? 'delete_files' : null }) %>
         </section>
       </div>
 
-      <div class="card-footer form-actions">
-        <a href="/system/system" class="btn btn-outline-secondary"><%= t('Cancel') %></a>
-        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> <%= t(isEdit ? 'Save Changes' : 'Add System') %></button>
-      </div>
+      <%- include('../../partials/ui/form_actions', { cancelUrl: '/system/system', submitLabel: isEdit ? 'Save Changes' : 'Add System' }) %>
     </form>
   </div>
 </div>
-
-<script>
-$(function () {
-  var tr = window.t || function (s) { return s; };
-  function esc(v) {
-    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
-      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-    });
-  }
-
-  // Select2 for every .js-select; AJAX ones get their current values from
-  // data-selected ([{id, text}]).
-  $('#systemForm .js-select').each(function () {
-    var $el = $(this);
-    var ajaxUrl = $el.data('ajaxUrl');
-    var opts = { theme: 'bootstrap-5', width: '100%', allowClear: true, placeholder: $el.data('placeholder') || '' };
-    if (ajaxUrl) {
-      opts.ajax = {
-        url: ajaxUrl, dataType: 'json', delay: 250,
-        data: function (params) { return { search: params.term }; },
-        processResults: function (data) {
-          return { results: (Array.isArray(data) ? data : []).map(function (x) { return { id: x.id, text: x.text || x.name || String(x.id) }; }) };
-        },
-        cache: true
-      };
-      ($el.data('selected') || []).forEach(function (o) {
-        $el.append(new Option(o.text, o.id, true, true));
-      });
-    }
-    $el.select2(opts);
-  });
-
-  // Documents: existing files (edit) + files uploaded now through /api/upload.
-  var existing = $('#f-files').data('existing') || [];
-  var uploaded = [];
-  var deleted = [];
-  var nameOf = function (f) { return f.originalname || f.name || ''; };
-
-  function renderFiles() {
-    var items = existing.map(function (f) {
-      var viewUrl = f.id ? '/system/file/' + encodeURIComponent(f.id) + '/view' : f.url;
-      return '<li><i class="bi bi-paperclip text-secondary"></i>' +
-        '<a href="' + esc(f.url) + '" download class="text-truncate">' + esc(nameOf(f)) + '</a>' +
-        '<a href="' + esc(viewUrl) + '" target="_blank" rel="noopener noreferrer" class="badge tag text-decoration-none">' + esc(tr('View')) + '</a>' +
-        '<button type="button" class="btn btn-sm btn-link text-danger ms-auto js-remove-file" data-kind="existing" data-id="' + esc(f.id) + '" title="' + esc(tr('Delete')) + '"><i class="bi bi-trash"></i></button></li>';
-    }).concat(uploaded.map(function (f, i) {
-      return '<li><i class="bi bi-paperclip text-secondary"></i>' +
-        '<a href="' + esc(f.url) + '" target="_blank" rel="noopener noreferrer" class="text-truncate">' + esc(nameOf(f)) + '</a>' +
-        '<span class="badge bg-success">' + esc(tr('New')) + '</span>' +
-        '<button type="button" class="btn btn-sm btn-link text-danger ms-auto js-remove-file" data-kind="uploaded" data-index="' + i + '" title="' + esc(tr('Remove')) + '"><i class="bi bi-x-lg"></i></button></li>';
-    }));
-    $('#f-files').html(items.length ? items.join('') : '<li class="text-secondary small">' + esc(tr('No files attached')) + '</li>');
-    $('#f-uploaded').val(JSON.stringify(uploaded));
-    $('#f-deleted').val(JSON.stringify(deleted));
-  }
-  renderFiles();
-
-  $('#f-files').on('click', '.js-remove-file', function () {
-    var $b = $(this);
-    if ($b.data('kind') === 'existing') {
-      var id = $b.data('id');
-      existing = existing.filter(function (f) { return String(f.id) !== String(id); });
-      deleted.push(id);
-    } else {
-      uploaded.splice(Number($b.data('index')), 1);
-    }
-    renderFiles();
-  });
-
-  $('#f-upload').on('change', function () {
-    var input = this;
-    Array.from(input.files).forEach(function (file) {
-      var taken = existing.concat(uploaded).some(function (f) { return nameOf(f) === file.name; });
-      if (taken) return;
-      var formData = new FormData();
-      formData.append('file', file);
-      $.ajax({
-        url: '/api/upload', type: 'POST', data: formData, processData: false, contentType: false,
-        xhrFields: { withCredentials: true },
-        success: function (res) {
-          var f = (res.success && res.files && res.files[0]) || res.file;
-          if (f) { uploaded.push(f); renderFiles(); }
-        },
-        error: function (xhr) {
-          var reason = xhr.responseJSON && xhr.responseJSON.error;
-          alert(tr('Upload failed!') + ' ' + file.name + (reason ? ' - ' + reason : ''));
-        }
-      });
-    });
-    input.value = '';
-  });
-});
-</script>
