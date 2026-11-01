@@ -3,6 +3,7 @@ import SystemComponent from './component.model.js';
 import * as componentService from './component.service.js';
 import { parseListQuery, queryList, totalPagesOf, errorMessage, takeFlash, actorName } from '../../shared/web.js';
 import { sendExcel } from '../../utils/excelExport.js';
+import { pageOptions } from '../../shared/options.js';
 
 const LIST_URL = '/system/component';
 
@@ -27,8 +28,9 @@ const formInput = (req) => {
 
 const toOptions = (rows, text) => (rows || []).map((r) => ({ id: r.id, text: text(r) }));
 
-function renderForm(res, mode, extra) {
+async function renderForm(res, mode, extra) {
   res.render('pages/system/component_form', {
+    ...(await pageOptions('tags')),
     mode, title: mode === 'edit' ? 'Edit System Component' : 'Add System Component', activeMenu: 'system-component',
     component: {}, selected: {}, ...extra,
   });
@@ -44,6 +46,7 @@ export default {
         componentService.getAppTypeOptions(),
       ]);
       res.render('pages/system/component_list', {
+    ...(await pageOptions('tags')),
         componentList: items, search, page, pageSize, totalCount, totalPages: totalPagesOf(totalCount, pageSize),
         ...filter, appTypeOptions, ...takeFlash(req),
         title: 'System Component', activeMenu: 'system-component',
@@ -82,7 +85,7 @@ export default {
 
   async addForm(req, res, next) {
     try {
-      renderForm(res, 'add', { appTypeOptions: await componentService.getAppTypeOptions() });
+      await renderForm(res, 'add', { appTypeOptions: await componentService.getAppTypeOptions() });
     } catch (err) {
       next(err);
     }
@@ -97,7 +100,7 @@ export default {
         ips: toOptions(component.ips, (ip) => ip.ip),
         tags: toOptions(component.tags, (tg) => tg.name),
       };
-      renderForm(res, 'edit', { component, selected, appTypeOptions });
+      await renderForm(res, 'edit', { component, selected, appTypeOptions });
     } catch (err) {
       req.flash('error', errorMessage(req, err));
       res.redirect(LIST_URL);

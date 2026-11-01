@@ -28,8 +28,8 @@
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-os"><%= t('Platform') %></label>
-              <select id="f-os" name="os" class="form-select js-select" data-ajax-url="/device/api/platform"
-                      data-placeholder="<%= t('Select platform') %>" data-selected="<%= JSON.stringify(sel.os || []) %>"></select>
+              <select id="f-os" name="os" class="form-select js-select"
+                      data-placeholder="<%= t('Select platform') %>"><option value=""></option><%- ui.options(platformOptions, sel.os || []) %></select>
             </div>
             <% [optionSelect('status', 'Status', statusOptions, 'Select status'), optionSelect('type', 'Type', typesOptions, 'Select type'), optionSelect('location', 'Location', locations, 'Select location')].forEach(function (o) { %>
               <div class="col-md-4">
@@ -84,18 +84,18 @@
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-services"><%= t('Services') %></label>
-              <select id="f-services" name="services[]" class="form-select js-select" multiple data-ajax-url="/server/api/service"
-                      data-placeholder="<%= t('Select services') %>" data-selected="<%= JSON.stringify(sel.services || []) %>"></select>
+              <select id="f-services" name="services[]" class="form-select js-select" multiple
+                      data-placeholder="<%= t('Select services') %>"><%- ui.options(serviceOptions, sel.services || []) %></select>
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-agents"><%= t('Agents') %></label>
-              <select id="f-agents" name="agents[]" class="form-select js-select" multiple data-ajax-url="/server/api/agent"
-                      data-placeholder="<%= t('Select agents') %>" data-selected="<%= JSON.stringify(sel.agents || []) %>"></select>
+              <select id="f-agents" name="agents[]" class="form-select js-select" multiple
+                      data-placeholder="<%= t('Select agents') %>"><%- ui.options(agentOptions, sel.agents || []) %></select>
             </div>
             <div class="col-12">
               <label class="form-label" for="f-tags"><%= t('Tags') %></label>
-              <select id="f-tags" name="tags[]" class="form-select js-select" multiple data-ajax-url="/organize/api/tag"
-                      data-placeholder="<%= t('Select tags') %>" data-selected="<%= JSON.stringify(sel.tags || []) %>"></select>
+              <select id="f-tags" name="tags[]" class="form-select js-select" multiple
+                      data-placeholder="<%= t('Select tags') %>"><%- ui.options(tagOptions, sel.tags || []) %></select>
             </div>
           </div>
         </section>

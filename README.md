@@ -604,6 +604,14 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
+- ⚡ Tags, units, platforms, device types, services and agents are rendered
+  with the page in every form and filter (`src/shared/options.js`,
+  `options()` on the catalog models) instead of being fetched by AJAX;
+  AJAX pickers remain for large tables (systems, contacts, servers, IPs,
+  domains). Unused `public/js/server_add.js` and `xlsx.full.min.js`
+  (client-side Excel parsing of the old import modals) removed.
+- 🐛 `src/modules/firewall/api.routes.js` had a syntax error left by the
+  firewall refactor (the app did not start).
 - ♻️ Administrator: users, roles and permissions rebuilt on the UI kit
   (filters for role / sign-in / status / 2FA, Add/Edit pages). The role
   form shows permissions as a resource × action grid. Configuration and

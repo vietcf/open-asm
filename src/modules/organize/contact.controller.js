@@ -6,13 +6,15 @@ import * as contactService from './contact.service.js';
 import { excelImport } from '../../shared/excelImport.js';
 import { parseListQuery, queryValue, totalPagesOf, errorMessage, takeFlash, runAndRedirect, page, lookup, lookupByIds } from '../../shared/web.js';
 import { sendExcel } from '../../utils/excelExport.js';
+import { pageOptions } from '../../shared/options.js';
 
 const LIST_URL = '/organize/contact';
 const listFilter = (query) => ({ unit_id: queryValue(query, 'unit_id'), position: queryValue(query, 'position') });
 const formInput = ({ name, email, position, unit_id, phone, description }) => ({ name, email, position, unit_id, phone, description });
 
-function renderForm(res, mode, contact, positionOptions) {
+async function renderForm(res, mode, contact, positionOptions) {
   res.render('pages/organize/contact_form', {
+    ...(await pageOptions('units')),
     mode, contact, positionOptions, title: mode === 'edit' ? 'Edit Contact' : 'Add Contact', activeMenu: 'contact',
     selectedUnit: contact.unit_id ? [{ id: contact.unit_id, text: contact.unit_name }] : [],
   });
@@ -107,7 +109,7 @@ export default {
 
   async editForm(req, res) {
     try {
-      renderForm(res, 'edit', await contactService.getContact(req.params.id), await contactService.getPositionOptions());
+      await renderForm(res, 'edit', await contactService.getContact(req.params.id), await contactService.getPositionOptions());
     } catch (err) {
       req.flash('error', errorMessage(req, err));
       res.redirect(LIST_URL);

@@ -62,8 +62,7 @@
           <div class="row g-3">
             <div class="col-md-4">
               <label class="form-label" for="f-ou"><%= t('OU (Unit)') %></label>
-              <select id="f-ou" name="ou_id" class="form-select js-select" data-placeholder="<%= t('Select unit') %>" data-ajax-url="/organize/api/unit"
-                      data-selected="<%= JSON.stringify(r.ou_id ? [{ id: r.ou_id, text: r.ou_name }] : []) %>"></select>
+              <select id="f-ou" name="ou_id" class="form-select js-select" data-placeholder="<%= t('Select unit') %>"><option value=""></option><%- ui.options(unitOptions, r.ou_id ? [{ id: r.ou_id, text: r.ou_name }] : []) %></select>
             </div>
             <div class="col-md-4">
               <label class="form-label" for="f-contacts"><%= t('Contacts') %></label>

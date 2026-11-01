@@ -67,8 +67,7 @@
               <% }) %>
               <div class="col-md-4 col-xl-3">
                 <label class="form-label small"><%= t('Platform') %></label>
-                <select name="os[]" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>" data-none-option="true"
-                        data-ajax-url="/device/api/platform" data-ids-url="/device/api/platform/ids" data-selected='<%= JSON.stringify(f.os) %>'></select>
+                <select name="os[]" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"><%- ui.options([{ id: '__none__', text: t('(Not set)') }, ...platformOptions], f.os) %></select>
               </div>
               <div class="col-md-6 col-xl-3">
                 <label class="form-label small"><%= t('Systems') %></label>
@@ -82,13 +81,11 @@
               </div>
               <div class="col-md-6 col-xl-3">
                 <label class="form-label small"><%= t('Services') %></label>
-                <select name="services[]" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"
-                        data-ajax-url="/server/api/service" data-ids-url="/server/api/service/ids" data-selected='<%= JSON.stringify(f.services) %>'></select>
+                <select name="services[]" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"><%- ui.options(serviceOptions, f.services) %></select>
               </div>
               <div class="col-md-6 col-xl-3">
                 <label class="form-label small"><%= t('Tags') %></label>
-                <select name="tags[]" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"
-                        data-ajax-url="/organize/api/tag" data-ids-url="/organize/api/tag/ids" data-selected='<%= JSON.stringify(f.tags) %>'></select>
+                <select name="tags[]" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"><%- ui.options(tagOptions, f.tags) %></select>
               </div>
             </div>
             <% if (activeFilterCount) { %>

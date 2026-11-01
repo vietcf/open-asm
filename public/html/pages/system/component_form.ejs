@@ -76,8 +76,8 @@
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-tags"><%= t('Tags') %></label>
-              <select id="f-tags" name="tags[]" class="form-select js-select" multiple data-ajax-url="/organize/api/tag"
-                      data-placeholder="<%= t('Select tags') %>" data-selected="<%= JSON.stringify(sel.tags || []) %>"></select>
+              <select id="f-tags" name="tags[]" class="form-select js-select" multiple
+                      data-placeholder="<%= t('Select tags') %>"><%- ui.options(tagOptions, sel.tags || []) %></select>
             </div>
           </div>
         </section>

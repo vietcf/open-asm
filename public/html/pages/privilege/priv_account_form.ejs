@@ -36,8 +36,7 @@
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-organize"><%= t('Organize Unit') %> <span class="text-danger">*</span></label>
-              <select id="f-organize" name="organize_id" class="form-select js-select" required data-placeholder="<%= t('Select unit') %>"
-                      data-ajax-url="/organize/api/unit" data-selected="<%= JSON.stringify(sel(a.organize)) %>"></select>
+              <select id="f-organize" name="organize_id" class="form-select js-select" required data-placeholder="<%= t('Select unit') %>"><option value=""></option><%- ui.options(unitOptions, sel(a.organize)) %></select>
             </div>
             <div class="col-12">
               <label class="form-label" for="f-description"><%= t('Description') %></label>

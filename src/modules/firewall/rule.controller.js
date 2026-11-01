@@ -3,6 +3,7 @@ import RuleFirewall from './rule.model.js';
 import Unit from '../organize/unit.model.js';
 import Contact from '../organize/contact.model.js';
 import Tag from '../organize/tag.model.js';
+import { pageOptions as catalogOptions } from '../../shared/options.js';
 import * as ruleService from './rule.service.js';
 import { canonical } from './rule.service.js';
 import { excelImport, splitList, resolveNames } from '../../shared/excelImport.js';
@@ -16,10 +17,10 @@ const listFilter = (query) => ({
   ou_id: parseInt(queryValue(query, 'ou_id'), 10) || null, audit_batch: queryValue(query, 'audit_batch'), work_order: queryValue(query, 'work_order'),
 });
 
-// Configured options and tags are small: rendered with the page
+// Configured options, tags and units are small: rendered with the page
 const pageOptions = async () => {
-  const [options, tagOptions] = await Promise.all([ruleService.getRuleOptions(), Tag.options()]);
-  return { options, tagOptions };
+  const [options, catalogs] = await Promise.all([ruleService.getRuleOptions(), catalogOptions('tags', 'units')]);
+  return { options, ...catalogs };
 };
 
 const FIELDS = ['rulename', 'firewall_name', 'audit_batch', 'src_zone', 'src', 'src_detail', 'dst_zone', 'dst', 'dst_detail', 'services', 'application', 'url',

@@ -24,13 +24,13 @@
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-type"><%= t('Device Type') %> <span class="text-danger">*</span></label>
-              <select id="f-type" name="type" class="form-select js-select" data-ajax-url="/device/api/device-type" data-tags="true" required
-                      data-placeholder="<%= t('Select or type a device type') %>" data-selected="<%= JSON.stringify(sel.type || []) %>"></select>
+              <select id="f-type" name="type" class="form-select js-select" data-tags="true" required
+                      data-placeholder="<%= t('Select or type a device type') %>"><option value=""></option><%- ui.options(deviceTypeOptions, sel.type || []) %></select>
             </div>
             <div class="col-md-4">
               <label class="form-label" for="f-os"><%= t('Platform') %></label>
-              <select id="f-os" name="os" class="form-select js-select" data-ajax-url="/device/api/platform"
-                      data-placeholder="<%= t('Select platform') %>" data-selected="<%= JSON.stringify(sel.platform || []) %>"></select>
+              <select id="f-os" name="os" class="form-select js-select"
+                      data-placeholder="<%= t('Select platform') %>"><option value=""></option><%- ui.options(platformOptions, sel.platform || []) %></select>
             </div>
             <div class="col-md-4">
               <label class="form-label" for="f-manufacturer"><%= t('Manufacturer') %></label>
@@ -96,8 +96,8 @@
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-tags"><%= t('Tags') %></label>
-              <select id="f-tags" name="tags[]" class="form-select js-select" multiple data-ajax-url="/organize/api/tag"
-                      data-placeholder="<%= t('Select tags') %>" data-selected="<%= JSON.stringify(sel.tags || []) %>"></select>
+              <select id="f-tags" name="tags[]" class="form-select js-select" multiple
+                      data-placeholder="<%= t('Select tags') %>"><%- ui.options(tagOptions, sel.tags || []) %></select>
             </div>
           </div>
         </section>

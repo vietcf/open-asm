@@ -47,6 +47,8 @@ export function catalogModel({ table, columns, search = ['name', 'description'],
       const w = filterWhere(term);
       return parseInt((await one(`SELECT COUNT(*) FROM ${table} t WHERE ${w}`, w.params)).count, 10);
     },
+    // Every row as {id, text}, for selects rendered with the page (catalogs stay small)
+    options: async () => (await all(`SELECT * FROM ${table} ORDER BY name`)).map((row) => ({ id: row.id, text: text(row) })),
     // Select2 lookup: [{id, text}]
     async select2Search({ search: term = '', limit = 20 } = {}) {
       const w = filterWhere(term);

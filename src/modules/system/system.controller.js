@@ -9,6 +9,7 @@ import { withTransaction } from '../../shared/transaction.js';
 import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, actorId, lookupByIds } from '../../shared/web.js';
 import { sendExcel } from '../../utils/excelExport.js';
 import { serveFileInline } from '../../utils/fileServe.js';
+import { pageOptions } from '../../shared/options.js';
 
 const LIST_URL = '/system/system';
 
@@ -34,8 +35,9 @@ const formInput = (req) => {
   };
 };
 
-function renderForm(res, mode, extra) {
+async function renderForm(res, mode, extra) {
   res.render('pages/system/system_form', {
+    ...(await pageOptions('tags', 'units')),
     mode, title: mode === 'edit' ? 'Edit System' : 'Add System', activeMenu: 'system', system: {}, selected: {}, ...extra,
   });
 }
@@ -51,6 +53,7 @@ export default {
         Unit.findAll(),
       ]);
       res.render('pages/system/system_list', {
+    ...(await pageOptions('tags')),
         systemList: items, search, page, pageSize, totalCount, totalPages: totalPagesOf(totalCount, pageSize),
         ...filter, ...options, departments, ...takeFlash(req),
         title: 'System Management', activeMenu: 'system',
@@ -94,7 +97,7 @@ export default {
 
   async addForm(req, res, next) {
     try {
-      renderForm(res, 'add', await systemService.getFormOptions());
+      await renderForm(res, 'add', await systemService.getFormOptions());
     } catch (err) {
       next(err);
     }
@@ -103,7 +106,7 @@ export default {
   async editForm(req, res, next) {
     try {
       const [{ system, selected }, options] = await Promise.all([systemService.getSystemForEdit(req.params.id), systemService.getFormOptions()]);
-      renderForm(res, 'edit', { system, selected, ...options });
+      await renderForm(res, 'edit', { system, selected, ...options });
     } catch (err) {
       req.flash('error', errorMessage(req, err));
       res.redirect(LIST_URL);

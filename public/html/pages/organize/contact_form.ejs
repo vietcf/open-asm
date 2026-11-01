@@ -38,8 +38,8 @@
             </div>
             <div class="col-12">
               <label class="form-label" for="f-unit"><%= t('Organization') %></label>
-              <select id="f-unit" name="unit_id" class="form-select js-select" data-ajax-url="/organize/api/unit"
-                      data-placeholder="<%= t('Select organization unit') %>" data-selected="<%= JSON.stringify(selectedUnit || []) %>"></select>
+              <select id="f-unit" name="unit_id" class="form-select js-select"
+                      data-placeholder="<%= t('Select organization unit') %>"><option value=""></option><%- ui.options(unitOptions, selectedUnit || []) %></select>
             </div>
             <div class="col-12">
               <label class="form-label" for="f-description"><%= t('Description') %></label>

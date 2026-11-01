@@ -70,8 +70,7 @@
               </div>
               <div class="col-md-3">
                 <label class="form-label small"><%= t('OU (Unit)') %></label>
-                <select name="ou_id" class="form-select js-filter" data-placeholder="<%= t('All') %>"
-                        data-ajax-url="/organize/api/unit" data-ids-url="/organize/api/unit/ids" data-selected='<%= JSON.stringify(f.ou_id ? [f.ou_id] : []) %>'></select>
+                <select name="ou_id" class="form-select js-filter" data-placeholder="<%= t('All') %>"><option value=""></option><%- ui.options(unitOptions, f.ou_id ? [f.ou_id] : []) %></select>
               </div>
               <div class="col-md-3">
                 <label class="form-label small"><%= t('Tags') %> <small class="text-secondary">(<%= t('all selected') %>)</small></label>

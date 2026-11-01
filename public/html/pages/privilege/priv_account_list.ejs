@@ -54,8 +54,7 @@
               </div>
               <div class="col-md-4">
                 <label class="form-label small"><%= t('Organize Unit') %></label>
-                <select name="organize_id" class="form-select js-filter" data-placeholder="<%= t('All') %>"
-                        data-ajax-url="/organize/api/unit" data-ids-url="/organize/api/unit/ids" data-selected='<%= JSON.stringify(f.organize_id ? [f.organize_id] : []) %>'></select>
+                <select name="organize_id" class="form-select js-filter" data-placeholder="<%= t('All') %>"><option value=""></option><%- ui.options(unitOptions, f.organize_id ? [f.organize_id] : []) %></select>
               </div>
               <div class="col-md-6">
                 <label class="form-label small"><%= t('Systems') %></label>

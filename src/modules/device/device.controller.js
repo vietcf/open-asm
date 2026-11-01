@@ -11,6 +11,7 @@ import { assignedAddresses, ensureIpAddresses } from '../network/ip-ownership.js
 import { excelImport, splitList, resolveNames } from '../../shared/excelImport.js';
 import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, runAndRedirect, page, lookup } from '../../shared/web.js';
 import { sendExcel } from '../../utils/excelExport.js';
+import { pageOptions } from '../../shared/options.js';
 
 const LIST_URL = '/device/device';
 
@@ -44,6 +45,7 @@ const options = (rows, text = (r) => r.name) => (rows || []).map((r) => ({ id: r
 async function renderForm(res, mode, device = {}) {
   const ips = device.ip_addresses || [];
   res.render('pages/device/device_form', {
+    ...(await pageOptions('deviceTypes', 'platforms', 'tags')),
     mode, device, locationOptions: await deviceService.getLocationOptions(),
     selected: {
       ips: options(ips.filter((ip) => ip.role !== 'vip'), (ip) => ip.ip_address),
@@ -133,6 +135,7 @@ export default {
       deviceService.getLocationOptions(),
     ]);
     res.render('pages/device/device_list', {
+    ...(await pageOptions('deviceTypes', 'platforms', 'tags')),
       deviceList: items, search, page: pageNo, pageSize, totalCount, totalPages: totalPagesOf(totalCount, pageSize),
       filter, locationOptions, ...takeFlash(req), title: 'Device List', activeMenu: 'device',
     });

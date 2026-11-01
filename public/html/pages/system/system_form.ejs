@@ -88,8 +88,8 @@
             </div>
             <div class="col-12">
               <label class="form-label" for="f-tags"><%= t('Tags') %></label>
-              <select id="f-tags" name="tags[]" class="form-select js-select" multiple data-ajax-url="/organize/api/tag"
-                      data-placeholder="<%= t('Select tags') %>" data-selected="<%= JSON.stringify(sel.tags || []) %>"></select>
+              <select id="f-tags" name="tags[]" class="form-select js-select" multiple
+                      data-placeholder="<%= t('Select tags') %>"><%- ui.options(tagOptions, sel.tags || []) %></select>
             </div>
           </div>
         </section>
@@ -99,14 +99,14 @@
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label" for="f-ops-department"><%= t('Operations department (L2)') %></label>
-              <select id="f-ops-department" name="ops_department_id" class="form-select js-select" data-ajax-url="/organize/api/unit"
-                      data-placeholder="<%= t('Select department') %>" data-selected="<%= JSON.stringify(sel.ops_department || []) %>"></select>
+              <select id="f-ops-department" name="ops_department_id" class="form-select js-select"
+                      data-placeholder="<%= t('Select department') %>"><option value=""></option><%- ui.options(unitOptions, sel.ops_department || []) %></select>
               <div class="form-text"><%= t('Administers and operates the system') %></div>
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-department"><%= t('Development department (L3)') %></label>
-              <select id="f-department" name="department_id" class="form-select js-select" data-ajax-url="/organize/api/unit"
-                      data-placeholder="<%= t('Select department') %>" data-selected="<%= JSON.stringify(sel.department || []) %>"></select>
+              <select id="f-department" name="department_id" class="form-select js-select"
+                      data-placeholder="<%= t('Select department') %>"><option value=""></option><%- ui.options(unitOptions, sel.department || []) %></select>
               <div class="form-text"><%= t('Develops and fixes the system') %></div>
             </div>
             <div class="col-12">

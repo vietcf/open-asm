@@ -13,6 +13,7 @@ import { assignedAddresses, ensureIpAddresses } from '../network/ip-ownership.js
 import { excelImport, splitList, resolveNames } from '../../shared/excelImport.js';
 import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, runAndRedirect, page, lookup } from '../../shared/web.js';
 import { sendExcel } from '../../utils/excelExport.js';
+import { pageOptions } from '../../shared/options.js';
 
 const LIST_URL = '/server/server';
 
@@ -46,6 +47,7 @@ const options = (rows, text = (r) => r.name) => (rows || []).map((r) => ({ id: r
 async function renderForm(res, mode, server = {}) {
   const ips = server.ip_addresses || [];
   res.render('pages/server/server_form', {
+    ...(await pageOptions('platforms', 'services', 'agents', 'tags')),
     mode, server, ...(await serverService.getFormOptions()),
     selected: {
       ips: options(ips.filter((ip) => ip.role !== 'vip'), (ip) => ip.ip_address),
@@ -141,6 +143,7 @@ export default {
       serverService.getFormOptions(),
     ]);
     res.render('pages/server/server_list', {
+    ...(await pageOptions('platforms', 'services', 'tags')),
       serverList: items, search, page: pageNo, pageSize, totalCount, totalPages: totalPagesOf(totalCount, pageSize),
       filter, ...formOptions, ...takeFlash(req), title: 'Server List', activeMenu: 'server-list',
     });

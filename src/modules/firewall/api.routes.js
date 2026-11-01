@@ -265,14 +265,6 @@ router.get('/rules', authorizePermissionJWT('rule.read'), ruleApi.listRules);
  */
 // Get configuration values for enum fields
 router.get('/rules/config', authorizePermissionJWT('rule.read'), ruleApi.getConfig);
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: err.message
-    });
-  }
-});
 
 // Get rule by ID
 router.get('/rules/:id', authorizePermissionJWT('rule.read'), ruleApi.getRule);

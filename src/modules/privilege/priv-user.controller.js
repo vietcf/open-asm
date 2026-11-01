@@ -4,6 +4,7 @@ import { SERVER_TYPES, URL_TYPES } from './priv-user.service.js';
 import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, runAndRedirect, page } from '../../shared/web.js';
 import { optionLabel } from '../../utils/viewHelpers.js';
 import { sendExcel } from '../../utils/excelExport.js';
+import { pageOptions } from '../../shared/options.js';
 
 const LIST_URL = '/priv-account/account';
 const listFilter = (query) => ({
@@ -26,6 +27,7 @@ const formInput = (req) => {
 
 async function renderForm(res, mode, account = {}) {
   res.render('pages/privilege/priv_account_form', {
+    ...(await pageOptions('units')),
     mode, account, ...(await typeOptions()),
     title: mode === 'edit' ? 'Edit Privileged Account' : 'Add Privileged Account', activeMenu: 'priv-account-list',
   });
@@ -39,6 +41,7 @@ export default {
       accountService.listAccounts({ search, page: pageNo, pageSize, ...filter }), typeOptions(),
     ]);
     res.render('pages/privilege/priv_account_list', {
+    ...(await pageOptions('units')),
       accountList: items, search, page: pageNo, pageSize, totalCount, totalPages: totalPagesOf(totalCount, pageSize),
       filter, ...options, ...takeFlash(req), title: 'Privileged Account', activeMenu: 'priv-account-list',
     });
