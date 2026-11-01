@@ -264,28 +264,7 @@ router.get('/rules', authorizePermissionJWT('rule.read'), ruleApi.listRules);
  *         description: Server error
  */
 // Get configuration values for enum fields
-router.get('/rules/config', authorizePermissionJWT('rule.read'), async (req, res) => {
-  try {
-    // Import helper functions from controller
-    const controllerModule = await import('./rule.api.js');
-    
-    // Get all config options
-    const [actions, status, violationTypes, firewallNames] = await Promise.all([
-      controllerModule.getActionsOptionsFromConfig(),
-      controllerModule.getStatusOptionsFromConfig(), 
-      controllerModule.getViolationTypeOptionsFromConfig(),
-      controllerModule.getFirewallNameOptionsFromConfig()
-    ]);
-    
-    res.json({
-      success: true,
-      data: {
-        action: actions,
-        status: status,
-        violation_type: violationTypes,
-        firewall_name: firewallNames
-      }
-    });
+router.get('/rules/config', authorizePermissionJWT('rule.read'), ruleApi.getConfig);
   } catch (err) {
     res.status(500).json({
       success: false,

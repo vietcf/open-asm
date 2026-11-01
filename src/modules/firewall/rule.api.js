@@ -1,116 +1,31 @@
-import {
-  listRules as listRulesService,
-  getRule as getRuleService,
-  createRule as createRuleService,
-  updateRule as updateRuleService,
-  deleteRule as deleteRuleService,
-  getActionOptions as getActionsOptionsFromConfig,
-  getStatusOptions as getStatusOptionsFromConfig,
-  getViolationTypeOptions as getViolationTypeOptionsFromConfig,
-  getFirewallNameOptions as getFirewallNameOptionsFromConfig
-} from './rule.service.js';
-import { handleServiceErrorPlain } from '../../shared/api.js';
+// REST: /api/v1/rules (plain bodies, errors as {error})
+import * as ruleService from './rule.service.js';
+import { apiHandler, apiPage, crudHandlers } from '../../shared/api.js';
+import { toValueLabel } from '../../shared/service.js';
 
-// Controller for Firewall Rule API
-const apiRuleController = {};
+const ids = (v) => [].concat(v ?? []).map(Number).filter(Boolean);
+const crud = crudHandlers({ get: ruleService.getRule, create: ruleService.createRule, update: ruleService.updateRule, remove: ruleService.deleteRule });
+const validId = (handler) => (req, res) => (Number.isInteger(Number(req.params.id)) ? handler(req, res) : res.status(400).json({ error: 'Invalid rule ID' }));
 
-apiRuleController.listRules = async (req, res) => {
-  try {
-    // Normalize query params
-    const search = req.query.search ? req.query.search.trim() : '';
-    let page = parseInt(req.query.page, 10);
-    let pageSize = parseInt(req.query.pageSize, 10);
-    if (isNaN(page) || page < 1) page = 1;
-    if (isNaN(pageSize) || pageSize < 1 || pageSize > 100) pageSize = 20;
+export default {
+  getRule: validId(crud.getById),
+  createRule: crud.create,
+  updateRule: validId(crud.update),
+  deleteRule: validId(crud.remove),
 
-    // Filter parameters
-    let ou_id = req.query.ou_id ? parseInt(req.query.ou_id, 10) : undefined;
-    if (isNaN(ou_id)) ou_id = undefined;
-
-    let contacts = req.query.contacts || req.query['contacts[]'] || [];
-    if (typeof contacts === 'string') contacts = [contacts];
-    contacts = Array.isArray(contacts) ? contacts.map(c => parseInt(c, 10)).filter(c => !isNaN(c)) : [];
-    if (contacts.length === 0) contacts = undefined;
-
-    let tags = req.query.tags || req.query['tags[]'] || [];
-    if (typeof tags === 'string') tags = [tags];
-    tags = Array.isArray(tags) ? tags.map(t => parseInt(t, 10)).filter(t => !isNaN(t)) : [];
-    if (tags.length === 0) tags = undefined;
-
-    let violation_type = req.query.violation_type ? req.query.violation_type.trim() : undefined;
-    if (violation_type === '') violation_type = undefined;
-
-    let status = req.query.status ? req.query.status.trim() : undefined;
-    if (status === '') status = undefined;
-
-    let firewall_name = req.query.firewall_name ? req.query.firewall_name.trim() : undefined;
-    if (firewall_name === '') firewall_name = undefined;
-
-    let audit_batch = req.query.audit_batch ? req.query.audit_batch.trim() : undefined;
-    if (audit_batch === '') audit_batch = undefined;
-
-    let work_order = req.query.work_order ? req.query.work_order.trim() : undefined;
-    if (work_order === '') work_order = undefined;
-
-    // Original contract: a bare array (RuleFirewall.findFilteredList's own
-    // shape), unlike every other list endpoint in this API — preserved as-is
-    // rather than silently changing the response envelope.
-    const { items } = await listRulesService({
-      search, page, pageSize, ou_id, contacts, tags, violation_type,
-      status, firewall_name, audit_batch, work_order
+  // Array of rules (no envelope)
+  listRules: apiHandler(async (req, res) => {
+    const { search, page, pageSize } = apiPage({ pageSize: 20, ...req.query });
+    const q = req.query;
+    const { items } = await ruleService.listRules({
+      search, page, pageSize, ou_id: parseInt(q.ou_id, 10) || null, contacts: ids(q.contacts ?? q['contacts[]']), tags: ids(q.tags ?? q['tags[]']),
+      violation_type: q.violation_type || [], status: q.status || [], firewall_name: q.firewall_name || [], audit_batch: q.audit_batch, work_order: q.work_order,
     });
     res.json(items);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  }),
+
+  getConfig: apiHandler(async (req, res) => {
+    const options = await ruleService.getRuleOptions();
+    res.json({ success: true, data: Object.fromEntries(Object.entries(options).map(([k, v]) => [k, toValueLabel(v)])) });
+  }),
 };
-
-apiRuleController.getRule = async (req, res) => {
-  try {
-    const id = req.params.id;
-    if (!id || isNaN(parseInt(id, 10))) {
-      return res.status(400).json({ error: 'Invalid rule ID' });
-    }
-    const rule = await getRuleService(id);
-    res.json(rule);
-  } catch (err) {
-    handleServiceErrorPlain(err, res);
-  }
-};
-
-apiRuleController.createRule = async (req, res) => {
-  try {
-    const rule = await createRuleService({ ...req.body, updated_by: req.user ? req.user.username : null });
-    res.status(201).json(rule);
-  } catch (err) {
-    handleServiceErrorPlain(err, res);
-  }
-};
-
-apiRuleController.updateRule = async (req, res) => {
-  try {
-    const id = req.params.id;
-    const rule = await updateRuleService(id, { ...req.body, updated_by: req.user ? req.user.username : null });
-    res.json(rule);
-  } catch (err) {
-    handleServiceErrorPlain(err, res);
-  }
-};
-
-apiRuleController.deleteRule = async (req, res) => {
-  try {
-    const id = req.params.id;
-    if (!id || isNaN(parseInt(id, 10))) {
-      return res.status(400).json({ error: 'Invalid rule ID' });
-    }
-    await deleteRuleService(id);
-    res.status(204).send();
-  } catch (err) {
-    handleServiceErrorPlain(err, res);
-  }
-};
-
-// Export helper functions for use in routes
-export { getActionsOptionsFromConfig, getStatusOptionsFromConfig, getViolationTypeOptionsFromConfig, getFirewallNameOptionsFromConfig };
-
-export default apiRuleController;

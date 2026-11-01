@@ -604,6 +604,18 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
+- ♻️ Firewall rules rebuilt on the UI kit (multi-select filters, column
+  chooser, detail modal with source / destination / violation sections,
+  Add/Edit page, shared importer and export). The 1750-line controller
+  is gone; the rule service validates once for the form, the importer and
+  the API (configured action / status / violation type / firewall name are
+  matched case-insensitively and stored as configured). The unused
+  `/firewall/api/batch-update-wo` endpoint was removed. The import still
+  checks the audit batch format (YYYY-MM) and skips rules already in the
+  same batch; its Tags column accepts tag IDs or names.
+- 🔌 REST `/api/v1/rules` rows no longer carry the duplicate `tagNames`
+  field (use `tags[].name`); `status`, `firewall_name`, `violation_type`
+  filters accept several values.
 - ♻️ Privileged accounts, roles and permissions rebuilt on the UI kit
   (filters, column chooser, detail modal, Add/Edit pages, export). Lists
   load links in one query (was up to 5 queries per account row). The
