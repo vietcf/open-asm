@@ -1,5 +1,5 @@
-import SystemLog, { LOG_LEVELS } from '../models/SystemLog.js';
-import Configuration from '../models/Configuration.js';
+import SystemLog, { LOG_LEVELS } from '../modules/administrator/system-log.model.js';
+import Configuration from '../modules/administrator/configuration.model.js';
 import os from 'os';
 
 // Security audit events. Explicit actions (login/logout/2FA, see

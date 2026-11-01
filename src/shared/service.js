@@ -1,5 +1,5 @@
 // Input normalization and validation shared by the services.
-import Configuration from '../models/Configuration.js';
+import Configuration from '../modules/administrator/configuration.model.js';
 import { ValidationError } from './errors.js';
 
 // IDs from a form (string / string[]) or the API (number[], or {id, ...}

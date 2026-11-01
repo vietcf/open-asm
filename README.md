@@ -391,9 +391,11 @@ open-asm/
 │   │   ├── api.js                   #   REST error mapping, pagination, CRUD handlers
 │   │   ├── errors.js                #   ValidationError, NotFoundError, ConflictError, ...
 │   │   └── transaction.js           #   withTransaction()
-│   ├── api/                         # REST bootstrap: /api/v1 router, JWT auth, Swagger
-│   ├── controllers/ routes/ services/ models/   # modules not moved to src/modules yet
-│   ├── middlewares/                 # Express middlewares (auth, permissions, upload, audit log)
+│   │   (organize, server, device, cluster, network, firewall, pentest, privilege,
+│   │    administrator, auth, dashboard, file: same layout)
+│   ├── api/                         # /api/v1 router (index.js) and Swagger UI (swagger.js)
+│   ├── i18n/                        # translations + /i18n/<lang>.js route
+│   ├── middlewares/                 # Express middlewares (login, JWT, permissions, upload, audit log)
 │   └── utils/                       # generic helpers (excelExport, viewHelpers, filename, ...)
 ├── public/
 │   ├── html/                        # EJS templates (pages/, partials/ui/ = UI kit)
@@ -606,7 +608,12 @@ when cutting a release.
   now lives in `src/modules/system/` (model, service, web controller, REST
   handlers, web and API routes side by side) and shared building blocks in
   `src/shared/` (see Project Structure). Web pages and the REST API call
-  the same services; duplicated code removed: list/count SQL filters built
+  the same services. Every other area followed (`src/modules/organize`,
+  `server`, `device`, `cluster`, `network`, `firewall`, `pentest`,
+  `privilege`, `administrator`, `auth`, `dashboard`, `file`); the old
+  `src/controllers`, `src/routes`, `src/services`, `src/models` and
+  `src/api/{controllers,routes}` folders are gone, and each module's REST
+  routes (with their Swagger docs) are one `api.routes.js`. Duplicated code removed: list/count SQL filters built
   once, link tables saved in one statement, one Excel export helper
   (`src/utils/excelExport.js`), one REST CRUD/pagination helper, unused
   model methods and the per-row N+1 queries of the System list.

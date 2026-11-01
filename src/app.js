@@ -39,37 +39,31 @@ import auditLog from './middlewares/auditLog.middleware.js';
 // =========================
 // Routers
 // =========================
-import authRouter from './routes/auth.js';
-import dashboardRouter from './routes/dashboard.js';
+import authRouter from './modules/auth/web.routes.js';
+import dashboardRouter from './modules/dashboard/web.routes.js';
 import requireLogin from './middlewares/requireLogin.middleware.js';
-import networkRouter from './routes/network.js';
+import networkRouter from './modules/network/web.routes.js';
 import systemRouter from './modules/system/web.routes.js';
-import pentestRouter from './routes/pentest.js';
-import clusterRouter from './routes/cluster.js';
-import privAccountRouter from './routes/privAccount.js';
-import serverRouter from './routes/server.js';
-import serverController from './controllers/serverController.js';
-import organizeRouter from './routes/organize.js';
-import administratorRouter from './routes/administrator.js';
-import deviceRoutes from './routes/device.js';
-import uploadRouter from './routes/upload.js';
-import firewallRouter from './routes/firewall.js';
-import twofaRouter from './routes/twofa.js';
-import changePasswordRouter from './routes/changePassword.js';
+import pentestRouter from './modules/pentest/web.routes.js';
+import clusterRouter from './modules/cluster/web.routes.js';
+import privAccountRouter from './modules/privilege/web.routes.js';
+import serverRouter from './modules/server/web.routes.js';
+import serverController from './modules/server/server.controller.js';
+import organizeRouter from './modules/organize/web.routes.js';
+import administratorRouter from './modules/administrator/web.routes.js';
+import deviceRoutes from './modules/device/web.routes.js';
+import uploadRouter from './modules/file/web.routes.js';
+import firewallRouter from './modules/firewall/web.routes.js';
+import twofaRouter from './modules/auth/twofa.routes.js';
+import changePasswordRouter from './modules/auth/change-password.routes.js';
 
 // API Routers
-// import apiContactRouter from './api/routes/apiContact.js';
-// import apiUnitRouter from './api/routes/apiUnit.js';
-// import apiRuleRouter from './api/routes/apiRule.js';
-// import apiServerRouter from './api/routes/apiServer.js';
-// import apiIpAddressRouter from './api/routes/apiIpAddress.js';
-// import apiAuthRouter from './api/routes/apiAuth.js';
-import apiSwaggerRouter from './api/routes/apiSwagger.js';
-import apiRouter from './api/routes/index.js';
+import apiSwaggerRouter from './api/swagger.js';
+import apiRouter from './api/index.js';
 import i18n from './middlewares/i18n.middleware.js';
 import connectPgSimple from 'connect-pg-simple';
 import { pool } from '../config/config.js';
-import i18nRouter, { catalogVersion } from './routes/i18n.js';
+import i18nRouter, { catalogVersion } from './i18n/routes.js';
 // Remove unused controller import since we're using router pattern
 
 

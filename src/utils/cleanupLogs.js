@@ -2,7 +2,7 @@
 // Scheduled job to delete system logs older than X days using node-cron
 import cron from 'node-cron';
 import { pool } from '../../config/config.js';
-import Configuration from '../models/Configuration.js';
+import Configuration from '../modules/administrator/configuration.model.js';
 
 // Get retention days from config or default to 30
 

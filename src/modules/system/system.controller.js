@@ -1,10 +1,10 @@
 // Web pages: /system/system (list, export, add, edit, delete), file view, select2 lookup.
 import System from './system.model.js';
-import Unit from '../../models/Unit.js';
-import FileUpload from '../../models/FileUpload.js';
+import Unit from '../organize/unit.model.js';
+import FileUpload from '../file/file-upload.model.js';
 import * as systemService from './system.service.js';
 import * as componentService from './component.service.js';
-import { attachTmpUploads, deleteObjectFiles } from '../../services/fileService.js';
+import { attachTmpUploads, deleteObjectFiles } from '../file/file.service.js';
 import { withTransaction } from '../../shared/transaction.js';
 import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, actorId } from '../../shared/web.js';
 import { sendExcel } from '../../utils/excelExport.js';

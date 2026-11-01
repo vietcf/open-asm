@@ -2,7 +2,7 @@
 import express from 'express';
 import systemApi from './system.api.js';
 import componentApi from './component.api.js';
-import { authenticateJWT, authorizePermissionJWT } from '../../api/middlewares/auth.middleware.js';
+import { authenticateJWT, authorizePermissionJWT } from '../../middlewares/jwtAuth.middleware.js';
 
 const router = express.Router();
 router.use(['/systems', '/components'], authenticateJWT);

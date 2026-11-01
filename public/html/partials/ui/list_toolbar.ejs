@@ -9,6 +9,7 @@
     activeFilterCount,
     columns: { tableId, storageKey, list: COLUMNS },  // omit for no chooser
     exportUrl,                            // omit for no export
+    importModal,                          // id of a partials/ui/import_modal.ejs dialog, omit for no import
     addUrl, addLabel,                     // omit (or null) when not allowed
   })
 %>
@@ -28,6 +29,9 @@
     <% } %>
     <% if (locals.exportUrl) { %>
       <a href="<%= exportUrl %>" class="btn btn-outline-secondary" title="<%= t('Export') %>"><i class="bi bi-download"></i><span class="btn-text"> <%= t('Export') %></span></a>
+    <% } %>
+    <% if (locals.importModal) { %>
+      <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#<%= importModal %>" title="<%= t('Import') %>"><i class="bi bi-upload"></i><span class="btn-text"> <%= t('Import') %></span></button>
     <% } %>
     <% if (locals.addUrl) { %>
       <a href="<%= addUrl %>" class="btn btn-primary"><i class="bi bi-plus-lg"></i> <%= t(locals.addLabel || 'Add') %></a>

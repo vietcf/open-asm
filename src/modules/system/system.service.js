@@ -1,13 +1,13 @@
 // Systems: validation and persistence shared by the web pages and the REST API.
 import System from './system.model.js';
 import SystemComponent from './component.model.js';
-import Unit from '../../models/Unit.js';
-import Contact from '../../models/Contact.js';
-import IpAddress from '../../models/IpAddress.js';
-import Domain from '../../models/Domain.js';
-import Tag from '../../models/Tag.js';
-import FileUpload from '../../models/FileUpload.js';
-import PentestRound from '../../models/PentestRound.js';
+import Unit from '../organize/unit.model.js';
+import Contact from '../organize/contact.model.js';
+import IpAddress from '../network/ip-address.model.js';
+import Domain from '../network/domain.model.js';
+import Tag from '../organize/tag.model.js';
+import FileUpload from '../file/file-upload.model.js';
+import PentestRound from '../pentest/pentest-round.model.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
 import { toStringList, hasKey, loadOptions, assertIdsExist, resolveRelations, saveRelations } from '../../shared/service.js';

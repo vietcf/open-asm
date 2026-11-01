@@ -1,0 +1,39 @@
+<%#
+  Excel import dialog (validate, then import), driven by public/js/import-kit.js.
+  Server side: src/shared/excelImport.js.
+  include('../../partials/ui/import_modal', {
+    id: 'contactImportModal',
+    title: 'Import Contacts',
+    baseUrl: '/organize/contact',   // GET <base>/template, POST <base>/validate-import, <base>/import
+    instructions: ['Name, Email, and Position (Required, one per row) must not already exist']  // English keys
+  })
+%>
+<div class="modal fade" id="<%= id %>" tabindex="-1" aria-labelledby="<%= id %>Title" aria-hidden="true" data-import="<%= baseUrl %>">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="<%= id %>Title"><%= t(title) %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
+      </div>
+      <div class="modal-body">
+        <label class="form-label" for="<%= id %>File"><%= t('Select File') %> <span class="text-danger">*</span></label>
+        <div class="input-group">
+          <input type="file" class="form-control" id="<%= id %>File" accept=".xlsx,.xls" data-import-file>
+          <a href="<%= baseUrl %>/template" class="btn btn-outline-secondary" download><i class="bi bi-download"></i> <%= t('Download Template') %></a>
+        </div>
+        <div class="form-text"><%= t('Supported format: Excel (.xlsx, .xls). Maximum file size: 10MB') %></div>
+        <ol class="small text-secondary mt-3 mb-0 ps-3">
+          <li><%= t('Click "Download Template" to get the Excel template with correct format') %></li>
+          <% (locals.instructions || []).forEach(function (line) { %><li><%= t(line) %></li><% }) %>
+          <li><%= t('Select your filled template file and validate before importing') %></li>
+        </ol>
+        <div class="alert mt-3 mb-0 d-none" role="status" data-import-result></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+        <button type="button" class="btn btn-outline-primary btn-sm" data-import-validate disabled><%= t('Validate File') %></button>
+        <button type="button" class="btn btn-primary btn-sm d-none" data-import-run><%= t('Import') %></button>
+      </div>
+    </div>
+  </div>
+</div>
