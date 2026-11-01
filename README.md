@@ -604,6 +604,16 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
+- ♻️ Devices rebuilt on the UI kit (filters, column chooser, detail
+  modal, one Add/Edit page `device_form.ejs`, shared import and export,
+  delete-with-IP choice). Device type / manufacturer / role fields accept
+  new values typed in the select. Device Types and Platforms use the
+  shared catalog pages (usage counts; platforms count devices and servers).
+- ♻️ Primary / VIP IP ownership of servers and devices is one module
+  (`src/modules/network/ip-ownership.js`): validation, linking, releasing
+  or deleting IPs on delete, and the import helpers. Server and Device
+  services no longer carry their own copies.
+- 🔧 REST config endpoints keep the `{value, label}` option shape.
 - ♻️ Servers rebuilt on the UI kit: list with filters (status, type,
   location, platform, systems, managers, services, tags) and column
   chooser, detail modal, one Add/Edit page (`server_form.ejs`), shared

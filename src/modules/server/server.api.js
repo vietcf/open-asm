@@ -1,171 +1,49 @@
-// API Controller for Server (ES6)
+// REST: /api/v1/servers
 import Server from './server.model.js';
-import {
-  listServers as listServersService,
-  getServer as getServerService,
-  createServer as createServerService,
-  updateServer as updateServerService,
-  deleteServer as deleteServerService,
-  getServerLocationOptions,
-  getServerStatusOptions,
-  getServerTypeOptions
-} from './server.service.js';
-import { handleServiceError } from '../../shared/api.js';
+import * as serverService from './server.service.js';
+import { apiHandler, apiPage, apiActor, handleServiceError } from '../../shared/api.js';
+import { toValueLabel } from '../../shared/service.js';
 
-const apiServerController = {};
+const handler = (fn) => apiHandler(fn, handleServiceError);
+const list = (v) => [].concat(v || []).map(String).filter(Boolean);
 
-// Get server configuration options
-apiServerController.getConfig = async (req, res) => {
-  try {
-    const [statusOptions, typeOptions, locationOptions] = await Promise.all([
-      getServerStatusOptions(),
-      getServerTypeOptions(),
-      getServerLocationOptions()
-    ]);
+export default {
+  // Allowed values of the enum fields
+  getConfig: handler(async (req, res) => {
+    const { statusOptions, typesOptions, locations } = await serverService.getFormOptions();
+    res.json({ success: true, data: { status: toValueLabel(statusOptions), type: toValueLabel(typesOptions), location: toValueLabel(locations) } });
+  }),
 
-    res.json({
-      success: true,
-      data: {
-        status: statusOptions,
-        type: typeOptions,
-        location: locationOptions
-      }
+  listServers: handler(async (req, res) => {
+    const { search, page, pageSize } = apiPage(req.query);
+    const q = req.query;
+    const { items, totalCount } = await serverService.listServers({
+      search, page, pageSize, status: q.status, type: q.type, location: q.location,
+      tags: list(q.tags), ip: list(q.ip), manager: list(q.manager), systems: list(q.systems), services: list(q.services), os: list(q.os),
     });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: err.message
-    });
-  }
-};
+    res.json({ success: true, data: items, count: items.length, total: totalCount });
+  }),
 
-// List all servers (with filter and pagination)
-apiServerController.listServers = async (req, res) => {
-  try {
-    const { search, status, type, location, tags, ip, manager, systems, services, os, page = 1, pageSize = 10 } = req.query;
-    const normalize = v => (!v ? [] : Array.isArray(v) ? v : [v]);
-    const filterParams = {
-      search: search ? search.trim().toLowerCase() : '',
-      status,
-      type,
-      location,
-      tags: normalize(tags),
-      ip: normalize(ip),
-      manager: normalize(manager),
-      systems: normalize(systems),
-      services: normalize(services),
-      os: normalize(os),
-      page: Math.max(1, parseInt(page, 10) || 1),
-      pageSize: Math.max(1, Math.min(parseInt(pageSize, 10) || 10, 100))
-    };
-    const { items, totalCount } = await listServersService(filterParams);
-    res.json({
-      success: true,
-      data: items,
-      count: items.length,
-      total: totalCount
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: err.message
-    });
-  }
-};
-
-// Find servers by specific field values (exact match)
-apiServerController.findServers = async (req, res) => {
-  try {
-    const { name, ip_address } = req.query;
-
-    if (!name && !ip_address) {
-      return res.status(400).json({
-        success: false,
-        message: 'At least one search criteria must be provided (name or ip_address)'
-      });
-    }
-
+  // ?name= and/or ?ip_address= exact match; 404 when nothing matches
+  findServers: handler(async (req, res) => {
     const criteria = {};
-    if (name) criteria.name = name.trim();
-    if (ip_address) criteria.ip_address = ip_address.trim();
-
-    const servers = await Server.findByCriteria(criteria);
-
-    if (!servers || servers.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: 'No servers found matching the specified criteria',
-        criteria
-      });
+    if (req.query.name) criteria.name = String(req.query.name).trim();
+    if (req.query.ip_address) criteria.ip_address = String(req.query.ip_address).trim();
+    if (!criteria.name && !criteria.ip_address) {
+      return res.status(400).json({ success: false, message: 'At least one search criteria must be provided (name or ip_address)' });
     }
+    const data = await Server.findByCriteria(criteria);
+    if (!data.length) return res.status(404).json({ success: false, message: 'No servers found matching the specified criteria', criteria });
+    res.json({ success: true, data, count: data.length, criteria });
+  }),
 
-    res.json({
-      success: true,
-      data: servers,
-      count: servers.length,
-      criteria
-    });
-  } catch (err) {
-    res.status(500).json({
-      success: false,
-      message: 'Internal server error',
-      error: err.message
-    });
-  }
+  getServer: handler(async (req, res) => res.json({ success: true, data: await serverService.getServer(req.params.id) })),
+  createServer: handler(async (req, res) => res.status(201).json(await serverService.createServer({ ...req.body, updated_by: apiActor(req) }))),
+  updateServer: handler(async (req, res) => {
+    res.json({ success: true, message: 'Server updated successfully', data: await serverService.updateServer(req.params.id, { ...req.body, updated_by: apiActor(req) }) });
+  }),
+  deleteServer: handler(async (req, res) => {
+    await serverService.deleteServer(req.params.id, { deleteIp: ['true', '1'].includes(String(req.query.delete_ip).toLowerCase()) });
+    res.json({ success: true, message: 'Server deleted successfully' });
+  }),
 };
-
-// Get a single server by id
-apiServerController.getServer = async (req, res) => {
-  try {
-    const server = await getServerService(req.params.id);
-    res.json({
-      success: true,
-      data: server
-    });
-  } catch (err) {
-    handleServiceError(err, res);
-  }
-};
-
-// Create a new server
-apiServerController.createServer = async (req, res) => {
-  try {
-    const server = await createServerService({ ...req.body, updated_by: req.user ? req.user.username : null });
-    res.status(201).json(server);
-  } catch (err) {
-    handleServiceError(err, res);
-  }
-};
-
-// Update a server
-apiServerController.updateServer = async (req, res) => {
-  try {
-    const id = req.params.id;
-    const server = await updateServerService(id, { ...req.body, updated_by: req.user ? req.user.username : null });
-    res.json({
-      success: true,
-      message: 'Server updated successfully',
-      data: server
-    });
-  } catch (err) {
-    handleServiceError(err, res);
-  }
-};
-
-// Delete a server
-apiServerController.deleteServer = async (req, res) => {
-  try {
-    const deleteIp = ['true', '1'].includes(String(req.query.delete_ip).toLowerCase());
-    await deleteServerService(req.params.id, { deleteIp });
-    res.json({
-      success: true,
-      message: 'Server deleted successfully'
-    });
-  } catch (err) {
-    handleServiceError(err, res);
-  }
-};
-
-export default apiServerController;

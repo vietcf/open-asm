@@ -713,7 +713,7 @@ router.delete('/devices/:id', authorizePermissionJWT('device.delete'), deviceApi
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/device-types', authorizePermissionJWT('device_type.read'), deviceTypeApi.getAllDeviceTypes);
+router.get('/device-types', authorizePermissionJWT('device_type.read'), deviceTypeApi.list);
 
 /**
  * @swagger
@@ -751,7 +751,7 @@ router.get('/device-types', authorizePermissionJWT('device_type.read'), deviceTy
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/device-types/find', authorizePermissionJWT('device_type.read'), deviceTypeApi.findDeviceTypes);
+router.get('/device-types/find', authorizePermissionJWT('device_type.read'), deviceTypeApi.find);
 
 /**
  * @swagger
@@ -795,7 +795,7 @@ router.get('/device-types/find', authorizePermissionJWT('device_type.read'), dev
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.get('/device-types/:id', authorizePermissionJWT('device_type.read'), deviceTypeApi.getDeviceTypeById);
+router.get('/device-types/:id', authorizePermissionJWT('device_type.read'), deviceTypeApi.get);
 
 /**
  * @swagger
@@ -838,7 +838,7 @@ router.get('/device-types/:id', authorizePermissionJWT('device_type.read'), devi
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.post('/device-types', authorizePermissionJWT('device_type.create'), deviceTypeApi.createDeviceType);
+router.post('/device-types', authorizePermissionJWT('device_type.create'), deviceTypeApi.create);
 
 /**
  * @swagger
@@ -908,7 +908,7 @@ router.post('/device-types', authorizePermissionJWT('device_type.create'), devic
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.put('/device-types/:id', authorizePermissionJWT('device_type.update'), deviceTypeApi.updateDeviceType);
+router.put('/device-types/:id', authorizePermissionJWT('device_type.update'), deviceTypeApi.update);
 
 /**
  * @swagger
@@ -965,7 +965,7 @@ router.put('/device-types/:id', authorizePermissionJWT('device_type.update'), de
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-router.delete('/device-types/:id', authorizePermissionJWT('device_type.delete'), deviceTypeApi.deleteDeviceType);
+router.delete('/device-types/:id', authorizePermissionJWT('device_type.delete'), deviceTypeApi.remove);
 
 /**
  * @swagger
@@ -1067,7 +1067,7 @@ router.delete('/device-types/:id', authorizePermissionJWT('device_type.delete'),
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/platforms', authorizePermissionJWT('platform.read'), platformApi.getAllPlatforms);
+router.get('/platforms', authorizePermissionJWT('platform.read'), platformApi.list);
 
 /**
  * @swagger
@@ -1112,7 +1112,7 @@ router.get('/platforms', authorizePermissionJWT('platform.read'), platformApi.ge
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/platforms/find', authorizePermissionJWT('platform.read'), platformApi.findPlatforms);
+router.get('/platforms/find', authorizePermissionJWT('platform.read'), platformApi.find);
 
 /**
  * @swagger
@@ -1155,7 +1155,7 @@ router.get('/platforms/find', authorizePermissionJWT('platform.read'), platformA
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/platforms/:id', authorizePermissionJWT('platform.read'), platformApi.getPlatform);
+router.get('/platforms/:id', authorizePermissionJWT('platform.read'), platformApi.get);
 
 /**
  * @swagger
@@ -1203,7 +1203,7 @@ router.get('/platforms/:id', authorizePermissionJWT('platform.read'), platformAp
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/platforms', authorizePermissionJWT('platform.create'), platformApi.createPlatform);
+router.post('/platforms', authorizePermissionJWT('platform.create'), platformApi.create);
 
 /**
  * @swagger
@@ -1264,7 +1264,7 @@ router.post('/platforms', authorizePermissionJWT('platform.create'), platformApi
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.put('/platforms/:id', authorizePermissionJWT('platform.update'), platformApi.updatePlatform);
+router.put('/platforms/:id', authorizePermissionJWT('platform.update'), platformApi.update);
 
 /**
  * @swagger
@@ -1321,6 +1321,6 @@ router.put('/platforms/:id', authorizePermissionJWT('platform.update'), platform
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.delete('/platforms/:id', authorizePermissionJWT('platform.delete'), platformApi.deletePlatform);
+router.delete('/platforms/:id', authorizePermissionJWT('platform.delete'), platformApi.remove);
 
 export default router;

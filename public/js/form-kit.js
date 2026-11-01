@@ -4,6 +4,7 @@
 //   data-placeholder="..."              (already translated)
 //   data-ajax-url="/x/api/..."          options from an endpoint ({id, text|name})
 //   data-selected='[{"id":1,"text":"a"}]'  current values of an AJAX select
+//   data-tags="true"                    new values can be typed (free text)
 //
 // <div data-attachments ...>            partials/ui/file_attachments.ejs
 //   existing files + uploads through /api/upload, kept in hidden inputs
@@ -31,6 +32,13 @@
       (($el.data('selected')) || []).forEach((o) => $el.append(new Option(o.text, o.id, true, true)));
     } else if (!$el.prop('multiple')) {
       opts.minimumResultsForSearch = 10;
+    }
+    if ($el.data('tags')) {
+      opts.tags = true;
+      opts.createTag = (params) => {
+        const term = $.trim(params.term);
+        return term ? { id: term, text: term, newTag: true } : null;
+      };
     }
     $el.select2(opts);
   }

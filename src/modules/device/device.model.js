@@ -1,463 +1,130 @@
-// Device model for CRUD operations
 import { pool } from '../../../config/config.js';
-import IpAddress from '../network/ip-address.model.js';
+import { db, Where, replaceLinks, replaceTags, jsonList } from '../../shared/db.js';
 
+const COLUMNS = ['name', 'manufacturer', 'device_role', 'platform_id', 'device_type_id', 'location', 'serial_number', 'management_address', 'description', 'updated_by'];
+
+// Device with type, platform and links. ip_addresses carry role ('normal' or 'vip').
+const SELECT_WITH_LINKS = `
+  SELECT d.*, dt.name AS device_type_name, p.name AS platform_name,
+    ${jsonList('ip', { id: 'ip.id', ip_address: 'ip.ip_address', description: 'ip.description', status: 'ip.status', role: 'di.role' })} AS ip_addresses,
+    ${jsonList('t', { id: 't.id', name: 't.name', description: 't.description' })} AS tags,
+    ${jsonList('c', { id: 'c.id', name: 'c.name', email: 'c.email', phone: 'c.phone' })} AS contacts
+  FROM devices d
+  LEFT JOIN device_types dt ON d.device_type_id = dt.id
+  LEFT JOIN platforms p ON d.platform_id = p.id
+  LEFT JOIN device_ip di ON di.device_id = d.id
+  LEFT JOIN ip_addresses ip ON ip.id = di.ip_id
+  LEFT JOIN tag_object tobj ON tobj.object_type = 'device' AND tobj.object_id = d.id
+  LEFT JOIN tags t ON t.id = tobj.tag_id
+  LEFT JOIN device_contact dc ON dc.device_id = d.id
+  LEFT JOIN contacts c ON c.id = dc.contact_id`;
+const GROUP_BY = 'GROUP BY d.id, dt.name, p.name';
+
+// filter: {search, device_type_id, platform_id, location, manufacturer, device_role, tags[]}
+function filterWhere({ search = '', device_type_id, platform_id, location, manufacturer, device_role, tags = [] }) {
+  const w = new Where();
+  w.search(search, ['d.name ILIKE ?', 'd.manufacturer ILIKE ?', 'd.device_role ILIKE ?', 'd.management_address ILIKE ?', 'd.serial_number ILIKE ?',
+    'EXISTS (SELECT 1 FROM platforms x WHERE x.id = d.platform_id AND x.name ILIKE ?)',
+    'EXISTS (SELECT 1 FROM device_types x WHERE x.id = d.device_type_id AND x.name ILIKE ?)',
+    'EXISTS (SELECT 1 FROM device_ip x JOIN ip_addresses i ON i.id = x.ip_id WHERE x.device_id = d.id AND i.ip_address ILIKE ?)',
+    "EXISTS (SELECT 1 FROM tag_object x JOIN tags tg ON tg.id = x.tag_id WHERE x.object_type = 'device' AND x.object_id = d.id AND tg.name ILIKE ?)"]);
+  if (device_type_id) w.add(`d.device_type_id = ${w.param(Number(device_type_id))}`);
+  if (platform_id) w.add(`d.platform_id = ${w.param(Number(platform_id))}`);
+  if (location) w.add(`d.location ILIKE ${w.param(location)}`);
+  if (manufacturer) w.add(`d.manufacturer ILIKE ${w.param(manufacturer)}`);
+  if (device_role) w.add(`d.device_role ILIKE ${w.param(device_role)}`);
+  if (tags.length) w.add(`EXISTS (SELECT 1 FROM tag_object x WHERE x.object_type = 'device' AND x.object_id = d.id AND x.tag_id = ANY(${w.param(tags.map(Number))}))`);
+  return w;
+}
 
 class Device {
-  // Create a new device (with manufacturer and device_role)
-  static async create({ name, manufacturer, device_role, platform_id, device_type_id, location, serial_number, management_address, description, updated_by }, client = pool) {
-    const result = await client.query(
-      'INSERT INTO devices (name, manufacturer, device_role, platform_id, device_type_id, location, serial_number, management_address, description, updated_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
-      [name, manufacturer, device_role, platform_id, device_type_id, location, serial_number, management_address, description, updated_by]
+  static async create(data, client) {
+    const result = await db(client).query(
+      `INSERT INTO devices (${COLUMNS.join(', ')}) VALUES (${COLUMNS.map((_, i) => `$${i + 1}`).join(', ')}) RETURNING *`,
+      COLUMNS.map((c) => data[c] ?? null)
     );
     return result.rows[0];
   }
 
-  static async findAll() {
-    const result = await pool.query('SELECT * FROM devices ORDER BY updated_at DESC, id DESC');
+  // Only the given columns change
+  static async updatePartial(id, data, client) {
+    const keys = COLUMNS.filter((c) => data[c] !== undefined);
+    if (!keys.length) return null;
+    const result = await db(client).query(
+      `UPDATE devices SET ${keys.map((c, i) => `${c} = $${i + 1}`).join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${keys.length + 1} RETURNING *`,
+      [...keys.map((c) => data[c]), id]
+    );
+    return result.rows[0];
+  }
+
+  // Links go with the device (device_ip cascades); its IPs are handled by the caller.
+  static async remove(id, client) {
+    const ex = db(client);
+    await ex.query('DELETE FROM device_contact WHERE device_id = $1', [id]);
+    await replaceTags(ex, 'device', id, []);
+    await ex.query('DELETE FROM devices WHERE id = $1', [id]);
+  }
+
+  static async getFullDetail(id, client) {
+    const result = await db(client).query(`${SELECT_WITH_LINKS} WHERE d.id = $1 ${GROUP_BY}`, [id]);
+    return result.rows[0] || null;
+  }
+
+  // REST /devices/find: exact name and/or IP address
+  static async findByCriteria({ name, ip_address }) {
+    const w = new Where();
+    if (name) w.add(`d.name = ${w.param(name)}`);
+    if (ip_address) w.add(`EXISTS (SELECT 1 FROM device_ip x JOIN ip_addresses i ON i.id = x.ip_id WHERE x.device_id = d.id AND i.ip_address = ${w.param(ip_address)})`);
+    if (!w.clauses.length) return [];
+    const result = await pool.query(`${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY d.updated_at DESC, d.id DESC`, w.params);
     return result.rows;
   }
 
-  static async findById(id) {
-    const result = await pool.query('SELECT * FROM devices WHERE id = $1', [id]);
-    return result.rows[0];
-  }
-
-  static async update(id, { name, manufacturer, device_role, platform_id, device_type_id, location, serial_number, management_address, description, updated_by }, client = null) {
-    const query =
-      'UPDATE devices SET name = $1, manufacturer = $2, device_role = $3, platform_id = $4, device_type_id = $5, location = $6, serial_number = $7, management_address = $8, description = $9, updated_by = $10, updated_at = CURRENT_TIMESTAMP WHERE id = $11 RETURNING *';
-    const params = [name, manufacturer, device_role, platform_id, device_type_id, location, serial_number, management_address, description, updated_by, id];
-    const exec = client ? client.query.bind(client) : pool.query.bind(pool);
-    const result = await exec(query, params);
-    return result.rows[0];
-  }
-
-  // Partial update method - only update provided fields
-  static async updatePartial(id, updateData, client = null) {
-    const allowedFields = [
-      'name', 'manufacturer', 'device_role', 'platform_id', 'device_type_id', 
-      'location', 'serial_number', 'management_address', 'description', 'updated_by'
-    ];
-    
-    // Filter only allowed fields that are provided
-    const fieldsToUpdate = Object.keys(updateData).filter(key => 
-      allowedFields.includes(key) && updateData[key] !== undefined
-    );
-    
-    if (fieldsToUpdate.length === 0) {
-      throw new Error('No valid fields to update');
-    }
-    
-    // Build dynamic query
-    const setClause = fieldsToUpdate.map((field, index) => `${field} = $${index + 1}`).join(', ');
-    const query = `UPDATE devices SET ${setClause}, updated_at = CURRENT_TIMESTAMP WHERE id = $${fieldsToUpdate.length + 1} RETURNING *`;
-    
-    // Build parameters array
-    const params = fieldsToUpdate.map(field => updateData[field]);
-    params.push(id);
-    
-    const exec = client ? client.query.bind(client) : pool.query.bind(pool);
-    const result = await exec(query, params);
-    return result.rows[0];
-  }
-
-  static async remove(id, client = pool, { deleteIp = false } = {}) {
-    await client.query('DELETE FROM device_contact WHERE device_id = $1', [id]);
-    await client.query('DELETE FROM tag_object WHERE object_type = $1 AND object_id = $2', ['device', id]);
-
-    const { rows: ipRows } = await client.query('SELECT ip_id FROM device_ip WHERE device_id = $1', [id]);
-    const ipIds = ipRows.map(r => r.ip_id);
-
-    // device_ip rows for this device are removed automatically (ON DELETE CASCADE)
-    await client.query('DELETE FROM devices WHERE id = $1', [id]);
-
-    if (ipIds.length > 0) {
-      // Only touch IPs that have no other device/server (primary or VIP) left
-      if (deleteIp) {
-        await client.query(
-          `DELETE FROM ip_addresses WHERE id = ANY($1)
-           AND id NOT IN (SELECT ip_id FROM device_ip UNION SELECT ip_id FROM server_ip)`,
-          [ipIds]
-        );
-      } else {
-        await client.query(
-          `UPDATE ip_addresses SET status = 'reserved' WHERE id = ANY($1)
-           AND id NOT IN (SELECT ip_id FROM device_ip UNION SELECT ip_id FROM server_ip)`,
-          [ipIds]
-        );
-      }
-    }
-  }
-
-  static async findPage(page = 1, pageSize = 5) {
-    const offset = (page - 1) * pageSize;
-    const result = await pool.query(
-      `SELECT d.*, dt.name AS device_type_name, p.name AS platform_name
-       FROM devices d
-       LEFT JOIN device_types dt ON d.device_type_id = dt.id
-       LEFT JOIN platforms p ON d.platform_id = p.id
-       ORDER BY d.updated_at DESC, d.id DESC LIMIT $1 OFFSET $2`,
-      [pageSize, offset]
-    );
-    const deviceList = result.rows;
-    for (const device of deviceList) {
-      device.ip_addresses = await Device.getIpAddresses(device.id);
-      device.tags = await Device.getTags(device.id);
-    }
-    return deviceList;
-  }
-
-  static async countAll() {
-    const result = await pool.query('SELECT COUNT(*) FROM devices');
-    return parseInt(result.rows[0].count, 10);
-  }
-
-  // Replaces the device's PRIMARY IP assignments only — VIP links (role='vip')
-  // added via setVipIps are left untouched.
-  static async setIpAddresses(deviceId, ipIds, client = pool) {
-    const { rows: oldRows } = await client.query(
-      "SELECT ip_id FROM device_ip WHERE device_id = $1 AND role = 'normal'",
-      [deviceId]
-    );
-    const oldIpIds = oldRows.map(r => r.ip_id);
-    await client.query("DELETE FROM device_ip WHERE device_id = $1 AND role = 'normal'", [deviceId]);
-    if (oldIpIds.length > 0) {
-      await client.query('UPDATE ip_addresses SET status = NULL WHERE id = ANY($1)', [oldIpIds]);
-    }
-    if (ipIds && ipIds.length > 0) {
-      for (const ipId of ipIds) {
-        await client.query(
-          `INSERT INTO device_ip (device_id, ip_id, role) VALUES ($1, $2, 'normal')
-           ON CONFLICT (device_id, ip_id) DO UPDATE SET role = 'normal'`,
-          [deviceId, ipId]
-        );
-        await client.query("UPDATE ip_addresses SET status = 'assigned' WHERE id = $1", [ipId]);
-      }
-    }
-  }
-
-  // Replaces the device's VIP ('vip'-role) IP links — the IPs may already
-  // have a primary owner elsewhere; that's the whole point of a shared/VIP
-  // IP. Same "full replace" semantics as setIpAddresses, but for role='vip'.
-  static async setVipIps(deviceId, vipIpIds, updated_by, client = pool) {
-    const { rows: oldRows } = await client.query(
-      "SELECT ip_id FROM device_ip WHERE device_id = $1 AND role = 'vip'",
-      [deviceId]
-    );
-    const oldIds = oldRows.map(r => r.ip_id);
-    const newIds = (vipIpIds || []).map(id => Number(id));
-    for (const ipId of oldIds) {
-      if (!newIds.includes(ipId)) {
-        await IpAddress.removeVipLink({ ip_id: ipId, device_id: deviceId }, client);
-      }
-    }
-    for (const ipId of newIds) {
-      if (!oldIds.includes(ipId)) {
-        await IpAddress.addVipLink({ ip_id: ipId, device_id: deviceId, updated_by }, client);
-      }
-    }
-  }
-
-  static async setTags(deviceId, tagList, client = pool) {
-    await client.query("DELETE FROM tag_object WHERE object_type = $1 AND object_id = $2", ['device', deviceId]);
-    if (tagList && tagList.length > 0) {
-      for (const tagId of tagList) {
-        await client.query(
-          "INSERT INTO tag_object (tag_id, object_type, object_id) VALUES ($1, 'device', $2) ON CONFLICT DO NOTHING",
-          [tagId, deviceId]
-        );
-      }
-    }
-  }
-
-  static async setContacts(deviceId, contactList, client = pool) {
-    await client.query('DELETE FROM device_contact WHERE device_id = $1', [deviceId]);
-    if (contactList && contactList.length > 0) {
-      for (const contactId of contactList) {
-        await client.query(
-          'INSERT INTO device_contact (device_id, contact_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
-          [deviceId, contactId]
-        );
-      }
-    }
-  }
-
-  static async getIpAddresses(deviceId) {
-    const ipResult = await pool.query(
-      `SELECT ip.id, ip.ip_address, di.role FROM device_ip di
-       JOIN ip_addresses ip ON ip.id = di.ip_id
-       WHERE di.device_id = $1`,
-      [deviceId]
-    );
-    return ipResult.rows;
-  }
-
-  static async getTags(deviceId) {
-    const tagResult = await pool.query(
-      `SELECT t.id, t.name FROM tag_object tobj JOIN tags t ON tobj.tag_id = t.id WHERE tobj.object_type = 'device' AND tobj.object_id = $1`,
-      [deviceId]
-    );
-    return tagResult.rows;
-  }
-
-  static async getContactIds(deviceId) {
-    const result = await pool.query('SELECT contact_id FROM device_contact WHERE device_id = $1', [deviceId]);
-    return result.rows.map(row => row.contact_id);
-  }
-
-  static async findFilteredList({ search, device_type_id, tags, platform_id, location, manufacturer, device_role, page = 1, pageSize = 10 }) {
-    let params = [];
-    let whereClauses = [];
-    let joinClauses = [];
-    let idx = 1;
-    joinClauses.push('LEFT JOIN device_ip di ON di.device_id = d.id');
-    joinClauses.push('LEFT JOIN ip_addresses ip ON ip.id = di.ip_id');
-    joinClauses.push("LEFT JOIN tag_object tobj ON tobj.object_type = 'device' AND tobj.object_id = d.id");
-    joinClauses.push('LEFT JOIN tags t ON t.id = tobj.tag_id');
-    if (device_type_id) {
-      whereClauses.push(`d.device_type_id = $${idx}`);
-      params.push(device_type_id);
-      idx++;
-    }
-    if (platform_id) {
-      whereClauses.push(`d.platform_id = $${idx}`);
-      params.push(platform_id);
-      idx++;
-    }
-    if (location) {
-      whereClauses.push(`d.location ILIKE $${idx}`);
-      params.push(location);
-      idx++;
-    }
-    if (manufacturer) {
-      whereClauses.push(`d.manufacturer ILIKE $${idx}`);
-      params.push(manufacturer);
-      idx++;
-    }
-    if (device_role) {
-      whereClauses.push(`d.device_role ILIKE $${idx}`);
-      params.push(device_role);
-      idx++;
-    }
-    if (tags && tags.length > 0) {
-      whereClauses.push(`d.id IN (SELECT object_id FROM tag_object WHERE object_type = 'device' AND tag_id = ANY($${idx}))`);
-      params.push(tags);
-      idx++;
-    }
-    if (search) {
-      whereClauses.push('(' + [
-        `d.name ILIKE $${idx}`,
-        `d.manufacturer ILIKE $${idx}`,
-        `d.device_role ILIKE $${idx}`,
-        `COALESCE(p.name, '') ILIKE $${idx}`,
-        `COALESCE(ip.ip_address, '') ILIKE $${idx}`,
-        `COALESCE(d.management_address, '') ILIKE $${idx}`,
-        `COALESCE(d.serial_number, '') ILIKE $${idx}`,
-        `COALESCE(dt.name, '') ILIKE $${idx}`,
-        `COALESCE(t.name, '') ILIKE $${idx}`
-      ].join(' OR ') + ')');
-      params.push(`%${search}%`);
-      idx++;
-    }
-    let sql = `SELECT d.*, dt.name AS device_type_name, p.name AS platform_name,
-      COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address, 'role', di.role)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
-      COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
-      COALESCE((
-        SELECT json_agg(jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email))
-        FROM device_contact dc
-        JOIN contacts c ON dc.contact_id = c.id
-        WHERE dc.device_id = d.id
-      ), '[]') AS contacts
-      FROM devices d
-      LEFT JOIN device_types dt ON d.device_type_id = dt.id
-      LEFT JOIN platforms p ON d.platform_id = p.id
-      ${joinClauses.join(' ')}
-      ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''}
-      GROUP BY d.id, dt.name, p.name
-      ORDER BY d.updated_at DESC, d.id DESC
-      LIMIT $${idx} OFFSET $${idx + 1}`;
-    params.push(pageSize, (page - 1) * pageSize);
-    const result = await pool.query(sql, params);
-    return result.rows;
-  }
-
-  static async countFiltered({ search, device_type_id, tags, platform_id, location, manufacturer, device_role }) {
-    let params = [];
-    let whereClauses = [];
-    let joinClauses = [];
-    let idx = 1;
-    joinClauses.push('LEFT JOIN device_ip di ON di.device_id = d.id');
-    joinClauses.push('LEFT JOIN ip_addresses ip ON ip.id = di.ip_id');
-    joinClauses.push("LEFT JOIN tag_object tobj ON tobj.object_type = 'device' AND tobj.object_id = d.id");
-    joinClauses.push('LEFT JOIN tags t ON t.id = tobj.tag_id');
-    if (device_type_id) {
-      whereClauses.push(`d.device_type_id = $${idx}`);
-      params.push(device_type_id);
-      idx++;
-    }
-    if (platform_id) {
-      whereClauses.push(`d.platform_id = $${idx}`);
-      params.push(platform_id);
-      idx++;
-    }
-    if (location) {
-      whereClauses.push(`d.location ILIKE $${idx}`);
-      params.push(location);
-      idx++;
-    }
-    if (manufacturer) {
-      whereClauses.push(`d.manufacturer ILIKE $${idx}`);
-      params.push(manufacturer);
-      idx++;
-    }
-    if (device_role) {
-      whereClauses.push(`d.device_role ILIKE $${idx}`);
-      params.push(device_role);
-      idx++;
-    }
-    if (tags && tags.length > 0) {
-      whereClauses.push(`d.id IN (SELECT object_id FROM tag_object WHERE object_type = 'device' AND tag_id = ANY($${idx}))`);
-      params.push(tags);
-      idx++;
-    }
-    if (search) {
-      whereClauses.push('(' + [
-        `d.name ILIKE $${idx}`,
-        `d.manufacturer ILIKE $${idx}`,
-        `d.device_role ILIKE $${idx}`,
-        `COALESCE(p.name, '') ILIKE $${idx}`,
-        `COALESCE(ip.ip_address, '') ILIKE $${idx}`,
-        `COALESCE(d.management_address, '') ILIKE $${idx}`,
-        `COALESCE(d.serial_number, '') ILIKE $${idx}`,
-        `COALESCE(dt.name, '') ILIKE $${idx}`,
-        `COALESCE(t.name, '') ILIKE $${idx}`
-      ].join(' OR ') + ')');
-      params.push(`%${search}%`);
-      idx++;
-    }
-    let sql = `SELECT COUNT(DISTINCT d.id) FROM devices d
-      LEFT JOIN device_types dt ON d.device_type_id = dt.id
-      LEFT JOIN platforms p ON d.platform_id = p.id
-      ${joinClauses.join(' ')}
-      ${whereClauses.length ? 'WHERE ' + whereClauses.join(' AND ') : ''}`;
-    const result = await pool.query(sql, params);
-    return parseInt(result.rows[0].count, 10);
-  }
-
-  static async getFullDetail(id) {
-    const result = await pool.query(
-      `SELECT d.*, dt.name AS device_type_name, p.name AS platform_name,
-        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address, 'role', di.role)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
-        COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
-        COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email)) FILTER (WHERE c.id IS NOT NULL), '[]') AS contacts
-       FROM devices d
-       LEFT JOIN device_types dt ON d.device_type_id = dt.id
-       LEFT JOIN platforms p ON d.platform_id = p.id
-       LEFT JOIN device_ip di ON di.device_id = d.id
-       LEFT JOIN ip_addresses ip ON ip.id = di.ip_id
-       LEFT JOIN tag_object tobj ON tobj.object_type = 'device' AND tobj.object_id = d.id
-       LEFT JOIN tags t ON t.id = tobj.tag_id
-       LEFT JOIN device_contact dc ON dc.device_id = d.id
-       LEFT JOIN contacts c ON c.id = dc.contact_id
-       WHERE d.id = $1
-       GROUP BY d.id, dt.name, p.name`,
-      [id]
-    );
-    const device = result.rows[0];
-    if (!device) return null;
-    device.ip_addresses = Array.isArray(device.ip_addresses) ? device.ip_addresses : JSON.parse(device.ip_addresses);
-    device.tags = Array.isArray(device.tags) ? device.tags : JSON.parse(device.tags);
-    device.contacts = Array.isArray(device.contacts) ? device.contacts : JSON.parse(device.contacts);
-    return device;
-  }
-
-  // For select2 AJAX: get devices by search (id, name)
-  static async select2Search(search = '', limit = 20) {
-    let sql = 'SELECT id, name FROM devices';
-    let params = [];
-    if (search) {
-      sql += ' WHERE LOWER(name) LIKE $1';
-      params.push(`%${search}%`);
-    }
-    sql += ' ORDER BY name LIMIT $' + (params.length + 1);
-    params.push(limit);
-    const result = await pool.query(sql, params);
-    return result.rows.map(row => ({ id: row.id, text: row.name }));
-  }
-
-  // Find a device by name (case-insensitive, for duplicate check)
   static async findByName(name) {
     const result = await pool.query('SELECT * FROM devices WHERE LOWER(name) = LOWER($1) LIMIT 1', [name]);
     return result.rows[0] || null;
   }
 
-  // Check if a device exists by id
   static async exists(id) {
     const result = await pool.query('SELECT 1 FROM devices WHERE id = $1', [id]);
     return result.rowCount > 0;
   }
 
-  /**
-   * Find devices by specific criteria (name, ip_address)
-   * @param {Object} criteria - Search criteria
-   * @param {string} criteria.name - Device name (exact match)
-   * @param {string} criteria.ip_address - IP address (exact match)
-   * @returns {Promise<Array>} Array of devices with full details
-   */
-  static async findByCriteria(criteria) {
-    let params = [];
-    let whereClauses = [];
-    let idx = 1;
-
-    // Build WHERE clauses based on criteria
-    if (criteria.name) {
-      whereClauses.push(`d.name = $${idx}`);
-      params.push(criteria.name);
-      idx++;
-    }
-
-    if (criteria.ip_address) {
-      whereClauses.push(`d.id IN (SELECT di.device_id FROM device_ip di JOIN ip_addresses ip2 ON ip2.id = di.ip_id WHERE ip2.ip_address = $${idx})`);
-      params.push(criteria.ip_address);
-      idx++;
-    }
-
-    if (whereClauses.length === 0) {
-      return [];
-    }
-
-    const sql = `
-      SELECT d.*, dt.name AS device_type_name, p.name AS platform_name,
-        COALESCE(json_agg(DISTINCT jsonb_build_object('id', ip.id, 'ip_address', ip.ip_address, 'description', ip.description, 'status', ip.status, 'role', di.role)) FILTER (WHERE ip.id IS NOT NULL), '[]') AS ip_addresses,
-        COALESCE(json_agg(DISTINCT jsonb_build_object('id', t.id, 'name', t.name, 'description', t.description)) FILTER (WHERE t.id IS NOT NULL), '[]') AS tags,
-        COALESCE(json_agg(DISTINCT jsonb_build_object('id', c.id, 'name', c.name, 'email', c.email, 'phone', c.phone)) FILTER (WHERE c.id IS NOT NULL), '[]') AS contacts
-      FROM devices d
-      LEFT JOIN device_types dt ON d.device_type_id = dt.id
-      LEFT JOIN platforms p ON d.platform_id = p.id
-      LEFT JOIN device_ip di ON di.device_id = d.id
-      LEFT JOIN ip_addresses ip ON ip.id = di.ip_id
-      LEFT JOIN tag_object tobj ON tobj.object_type = 'device' AND tobj.object_id = d.id
-      LEFT JOIN tags t ON t.id = tobj.tag_id
-      LEFT JOIN device_contact dc ON dc.device_id = d.id
-      LEFT JOIN contacts c ON c.id = dc.contact_id
-      WHERE ${whereClauses.join(' AND ')}
-      GROUP BY d.id, dt.name, p.name
-      ORDER BY d.updated_at DESC, d.id DESC
-    `;
-
-    const result = await pool.query(sql, params);
-    
-    // Parse JSON fields for each device
-    return result.rows.map(device => {
-      // Parse JSON arrays
-      device.ip_addresses = Array.isArray(device.ip_addresses) ? device.ip_addresses : JSON.parse(device.ip_addresses);
-      device.tags = Array.isArray(device.tags) ? device.tags : JSON.parse(device.tags);
-      device.contacts = Array.isArray(device.contacts) ? device.contacts : JSON.parse(device.contacts);
-      
-      return device;
-    });
+  static async findFilteredList(filter = {}) {
+    const { page = 1, pageSize = 10 } = filter;
+    const w = filterWhere(filter);
+    const result = await pool.query(
+      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY d.updated_at DESC, d.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      w.params
+    );
+    return result.rows;
   }
-}
 
+  static async countFiltered(filter = {}) {
+    const w = filterWhere(filter);
+    const result = await pool.query(`SELECT COUNT(*) FROM devices d WHERE ${w}`, w.params);
+    return parseInt(result.rows[0].count, 10);
+  }
+
+  // Distinct non-empty values of a free-text column (manufacturer, device_role) for autocomplete
+  static async distinctValues(column, search = '', limit = 20) {
+    if (!['manufacturer', 'device_role'].includes(column)) throw new Error(`Unsupported column: ${column}`);
+    const result = await pool.query(
+      `SELECT DISTINCT ${column} AS value FROM devices WHERE ${column} <> '' AND ${column} ILIKE $1 ORDER BY 1 LIMIT $2`,
+      [`%${search}%`, limit]
+    );
+    return result.rows.map((r) => r.value);
+  }
+
+  // Select2 lookup: [{id, text}]
+  static async select2Search(search = '', limit = 20) {
+    const result = await pool.query('SELECT id, name AS text FROM devices WHERE name ILIKE $1 ORDER BY name LIMIT $2', [`%${search}%`, limit]);
+    return result.rows;
+  }
+
+  // ===== Links (IPs: see network/ip-ownership.js) =====
+  static setTags(id, ids, client) { return replaceTags(client, 'device', id, ids); }
+  static setContacts(id, ids, client) { return replaceLinks(client, 'device_contact', 'device_id', id, 'contact_id', ids); }
+}
 
 export default Device;

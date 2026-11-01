@@ -9,6 +9,7 @@ import Tag from '../organize/tag.model.js';
 import System from '../system/system.model.js';
 import * as serverService from './server.service.js';
 import { IPV4_REGEX } from '../network/ip-address.service.js';
+import { assignedAddresses, ensureIpAddresses } from '../network/ip-ownership.js';
 import { excelImport, splitList, resolveNames } from '../../shared/excelImport.js';
 import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, runAndRedirect, page, lookup } from '../../shared/web.js';
 import { sendExcel } from '../../utils/excelExport.js';
@@ -111,11 +112,7 @@ export const serverImport = excelImport({
     row.serverName = row.name || (row.os ? `server_${row.os.replace(/\s+/g, '-').toLowerCase()}_${row.ipList[0]}` : `server_${row.ipList[0]}`);
     let skip;
     if (row.ipList.length && await Server.findByName(row.serverName)) skip = 'Server name already exists';
-    const assigned = [];
-    for (const ip of row.ipList) {
-      const existing = await IpAddress.findByAddressWithDetails(ip);
-      if (existing && existing.status === 'assigned') assigned.push(ip);
-    }
+    const assigned = await assignedAddresses(row.ipList);
     if (assigned.length) skip = `IP already assigned to a server: ${assigned.join(', ')}`;
     return { errors, skip };
   },
@@ -123,11 +120,7 @@ export const serverImport = excelImport({
   async save(row, client, ctx) {
     const note = ['Note: This IP address was automatically created from server import feature', `Server: ${row.serverName}`,
       ...IMPORT_COLUMNS.slice(2).map((c) => `${c.header.replace(/ \(.*$/, '')}: ${row[c.key] || 'N/A'}`)].join('\n');
-    const ipIds = [];
-    for (const ip of row.ipList) {
-      const existing = await IpAddress.findByAddress(ip);
-      ipIds.push(existing ? existing.id : (await IpAddress.create({ address: ip, description: note, status: 'reserved', updated_by: ctx.username }, client)).id);
-    }
+    const ipIds = await ensureIpAddresses(row.ipList, note, ctx.username, client);
     await serverService.createServer({
       name: row.serverName, os: row.osId, status: row.status || null, location: row.location || null, type: row.type || null,
       description: row.description || null, managers: row.managerIds, systems: row.systemIds, agents: row.agentIds,

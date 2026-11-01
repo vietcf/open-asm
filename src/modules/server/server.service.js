@@ -2,14 +2,14 @@
 import Server from './server.model.js';
 import Agent from './agent.model.js';
 import Service from './service.model.js';
-import IpAddress from '../network/ip-address.model.js';
+import { assertPrimaryIps, assertVipIps, setPrimaryIps, setVipIps, ownedIpIds, releaseIps } from '../network/ip-ownership.js';
 import Platform from '../device/platform.model.js';
 import Contact from '../organize/contact.model.js';
 import Tag from '../organize/tag.model.js';
 import System from '../system/system.model.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
-import { toIdArray, hasKey, loadOptions, assertOption, assertIdsExist, resolveRelations, saveRelations } from '../../shared/service.js';
+import { toIdArray, hasKey, loadOptions, assertOption, resolveRelations, saveRelations } from '../../shared/service.js';
 
 const RELATIONS = {
   managers: { label: 'manager (contact)', exists: (id) => Contact.exists(id), save: (id, ids, c) => Server.setManagers(id, ids, c) },
@@ -56,24 +56,6 @@ async function assertNameAvailable(name, excludeId = null) {
   if (existing && String(existing.id) !== String(excludeId)) throw new ConflictError('Server name already exists');
 }
 
-// Primary IPs must exist and not be assigned to another server/device.
-// client: the caller's transaction, so IPs it just created are visible.
-async function assertPrimaryIps(ids, excludeServerId, client) {
-  if (!ids.length) throw new ValidationError('At least one IP address is required');
-  const invalid = [];
-  const assigned = [];
-  for (const id of ids) {
-    const ip = await IpAddress.findById(id, client);
-    if (!ip) invalid.push(id);
-    else if (ip.status === 'assigned') {
-      const { serverId } = await IpAddress.getPrimaryOwnerIds(id, client);
-      if (excludeServerId == null || String(serverId) !== String(excludeServerId)) assigned.push(`IP ${ip.ip_address} (ID: ${id})`);
-    }
-  }
-  if (invalid.length) throw new ValidationError(`Invalid IP address IDs: ${invalid.join(', ')}`);
-  if (assigned.length) throw new ValidationError(`Cannot use already assigned IP addresses: ${assigned.join(', ')}`);
-}
-
 const trimOrNull = (v) => (typeof v === 'string' ? v.trim() || null : (v ?? null));
 
 async function normalize(input, current = null) {
@@ -98,10 +80,10 @@ export async function createServer(input, client) {
   const data = await normalize(input);
   const links = await resolveRelations(input, RELATIONS);
   const ipIds = toIdArray(input.ip_addresses);
-  await assertPrimaryIps(ipIds, null, client);
+  await assertPrimaryIps('server', ipIds, null, client);
   const id = await withTransaction(client, async (c) => {
     const serverId = await Server.create({ ...data, username: input.updated_by || 'admin' }, c);
-    await Server.setIpAddresses(serverId, ipIds, c);
+    await setPrimaryIps('server', serverId, ipIds, c);
     await saveRelations(serverId, links, RELATIONS, c);
     return serverId;
   });
@@ -120,20 +102,15 @@ export async function updateServer(id, input, client) {
   const data = await normalize(input, current);
   const links = await resolveRelations(input, RELATIONS, { partial: true });
   const ipIds = hasKey(input, 'ip_addresses') ? toIdArray(input.ip_addresses) : null;
-  if (ipIds) await assertPrimaryIps(ipIds, id, client);
+  if (ipIds) await assertPrimaryIps('server', ipIds, id, client);
   const vipIds = hasKey(input, 'vip_ip_addresses') ? toIdArray(input.vip_ip_addresses) : null;
-  if (vipIds) {
-    await assertIdsExist(vipIds, (x) => IpAddress.exists(x), 'VIP IP address');
-    const primary = (ipIds || current.ip_addresses.filter((ip) => ip.role === 'normal').map((ip) => ip.id)).map(String);
-    const overlap = vipIds.filter((x) => primary.includes(String(x)));
-    if (overlap.length) throw new ValidationError(`IP(s) cannot be both a normal and a VIP IP for the same server: ${overlap.join(', ')}`);
-  }
+  if (vipIds) await assertVipIps('server', vipIds, ipIds || current.ip_addresses.filter((ip) => ip.role === 'normal').map((ip) => ip.id));
 
   const username = input.updated_by || 'admin';
   await withTransaction(client, async (c) => {
     await Server.update(id, { ...data, username }, c);
-    if (ipIds) await Server.setIpAddresses(id, ipIds, c);
-    if (vipIds) await Server.setVipIps(id, vipIds, username, c);
+    if (ipIds) await setPrimaryIps('server', id, ipIds, c);
+    if (vipIds) await setVipIps('server', id, vipIds, username, c);
     await saveRelations(id, links, RELATIONS, c);
   });
   return Server.findByIdWithDetails(id, client);
@@ -142,5 +119,9 @@ export async function updateServer(id, input, client) {
 // deleteIp: false releases the server's IPs ('reserved'), true deletes them.
 export async function deleteServer(id, { deleteIp = false } = {}) {
   if (!(await Server.exists(id))) throw new NotFoundError('Server not found');
-  await withTransaction(null, (c) => Server.remove(id, c, { deleteIp }));
+  await withTransaction(null, async (c) => {
+    const ipIds = await ownedIpIds('server', id, c);
+    await Server.remove(id, c);
+    await releaseIps(ipIds, { deleteIp }, c);
+  });
 }

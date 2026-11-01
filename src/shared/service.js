@@ -39,6 +39,9 @@ export async function loadOptions(configKey) {
   return [];
 }
 
+// {id, text} options as the REST config endpoints return them: [{value, label}]
+export const toValueLabel = (options) => options.map((o) => ({ value: o.id, label: o.text }));
+
 // Value must be one of the configured options; no options configured = no restriction.
 export async function assertOption(configKey, value, label) {
   if (value === undefined || value === null || value === '') return;

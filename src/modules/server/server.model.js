@@ -1,5 +1,4 @@
 import { pool } from '../../../config/config.js';
-import IpAddress from '../network/ip-address.model.js';
 import { db, Where, NONE, replaceLinks, replaceTags, jsonList } from '../../shared/db.js';
 
 // Server with platform and every link. ip_addresses carry role ('normal' or 'vip').
@@ -72,21 +71,14 @@ class Server {
     );
   }
 
-  // Links go with the server; its IPs are released ('reserved') or, with
-  // deleteIp, deleted, unless another device/server still uses them.
-  static async remove(id, client, { deleteIp = false } = {}) {
+  // Links go with the server (server_ip cascades); its IPs are handled by the caller.
+  static async remove(id, client) {
     const ex = db(client);
-    const { rows } = await ex.query('SELECT ip_id FROM server_ip WHERE server_id = $1', [id]);
     for (const table of ['server_contact', 'server_system', 'server_agents', 'server_services']) {
       await ex.query(`DELETE FROM ${table} WHERE server_id = $1`, [id]);
     }
     await replaceTags(ex, 'server', id, []);
-    await ex.query('DELETE FROM servers WHERE id = $1', [id]); // server_ip cascades
-    const ipIds = rows.map((r) => r.ip_id);
-    if (ipIds.length) {
-      const unused = 'id = ANY($1) AND id NOT IN (SELECT ip_id FROM device_ip UNION SELECT ip_id FROM server_ip)';
-      await ex.query(deleteIp ? `DELETE FROM ip_addresses WHERE ${unused}` : `UPDATE ip_addresses SET status = 'reserved' WHERE ${unused}`, [ipIds]);
-    }
+    await ex.query('DELETE FROM servers WHERE id = $1', [id]);
   }
 
   static async findById(id, client) {
@@ -141,33 +133,7 @@ class Server {
     return res.rows;
   }
 
-  // ===== Links =====
-  // Primary ('normal') IPs: replaced and marked 'assigned'; VIP links are kept.
-  static async setIpAddresses(serverId, ipIds, client) {
-    const ex = db(client);
-    const { rows } = await ex.query("DELETE FROM server_ip WHERE server_id = $1 AND role = 'normal' RETURNING ip_id", [serverId]);
-    const old = rows.map((r) => r.ip_id);
-    if (old.length) await ex.query('UPDATE ip_addresses SET status = NULL WHERE id = ANY($1)', [old]);
-    if (ipIds.length) {
-      await ex.query(
-        `INSERT INTO server_ip (server_id, ip_id, role) SELECT $1, unnest($2::int[]), 'normal'
-         ON CONFLICT (server_id, ip_id) DO UPDATE SET role = 'normal'`,
-        [serverId, ipIds]
-      );
-      await ex.query("UPDATE ip_addresses SET status = 'assigned' WHERE id = ANY($1)", [ipIds]);
-    }
-  }
-
-  // Shared ('vip') IPs, which may have a primary owner elsewhere
-  static async setVipIps(serverId, vipIpIds, updatedBy, client) {
-    const ex = db(client);
-    const { rows } = await ex.query("SELECT ip_id FROM server_ip WHERE server_id = $1 AND role = 'vip'", [serverId]);
-    const oldIds = rows.map((r) => r.ip_id);
-    const newIds = (vipIpIds || []).map(Number);
-    for (const ipId of oldIds.filter((x) => !newIds.includes(x))) await IpAddress.removeVipLink({ ip_id: ipId, server_id: serverId }, ex);
-    for (const ipId of newIds.filter((x) => !oldIds.includes(x))) await IpAddress.addVipLink({ ip_id: ipId, server_id: serverId, updated_by: updatedBy }, ex);
-  }
-
+  // ===== Links (IPs: see network/ip-ownership.js) =====
   static setManagers(id, ids, client) { return replaceLinks(client, 'server_contact', 'server_id', id, 'contact_id', ids); }
   static setSystems(id, ids, client) { return replaceLinks(client, 'server_system', 'server_id', id, 'system_id', ids); }
   static setAgents(id, ids, client) { return replaceLinks(client, 'server_agents', 'server_id', id, 'agent_id', ids); }

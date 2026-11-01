@@ -1,1413 +1,180 @@
 <%
-// ==========================================
-// HELPER FUNCTIONS
-// ==========================================
-
-// Helper function to build pagination URL with all query parameters
-function buildPaginationUrl(targetPage) {
-  const params = new URLSearchParams();
-  
-  // Add page
-  params.set('page', targetPage);
-  
-  // Add search if exists
-  if (typeof search !== 'undefined' && search) {
-    params.set('search', search);
-  }
-  
-  // Add pageSize if exists
-  if (typeof pageSize !== 'undefined' && pageSize) {
-    params.set('pageSize', pageSize);
-  }
-  
-  // Add status filter if exists
-  if (typeof filterStatus !== 'undefined' && filterStatus) {
-    params.set('status', filterStatus);
-  }
-  
-  // Add type filter if exists
-  if (typeof filterType !== 'undefined' && filterType) {
-    params.set('type', filterType);
-  }
-  
-  // Add location filter if exists
-  if (typeof filterLocation !== 'undefined' && filterLocation) {
-    params.set('location', filterLocation);
-  }
-  
-  return '?' + params.toString();
-}
-
-// Helper function to build export URL with all query parameters
-function buildExportUrl() {
-  const params = new URLSearchParams();
-  
-  // Add search if exists
-  if (typeof search !== 'undefined' && search) {
-    params.set('search', search);
-  }
-  
-  // Add device_type_id filter if exists
-  if (typeof device_type_id !== 'undefined' && device_type_id) {
-    params.set('device_type_id', device_type_id);
-  }
-  
-  // Add tags filter if exists
-  if (typeof tags !== 'undefined' && tags && tags.length > 0) {
-    tags.forEach(tag => params.append('tags[]', tag));
-  }
-  
-  // Add platform_id filter if exists
-  if (typeof platform_id !== 'undefined' && platform_id) {
-    params.set('platform_id', platform_id);
-  }
-  
-  // Add location filter if exists
-  if (typeof location !== 'undefined' && location) {
-    params.set('location', location);
-  }
-  
-  // Add manufacturer filter if exists
-  if (typeof manufacturer !== 'undefined' && manufacturer) {
-    params.set('manufacturer', manufacturer);
-  }
-  
-  // Add device_role filter if exists
-  if (typeof device_role !== 'undefined' && device_role) {
-    params.set('device_role', device_role);
-  }
-  
-  return '/device/device/export' + (params.toString() ? '?' + params.toString() : '');
-}
+  const f = filter;
+  const activeFilterCount = [f.device_type_id, f.platform_id, f.location, f.manufacturer, f.device_role, f.tags.length].filter(Boolean).length;
+  const COLUMNS = [
+    { key: 'name', label: 'Device Name', def: true, fixed: true },
+    { key: 'type', label: 'Device Type', def: true },
+    { key: 'ips', label: 'IP Address(es)', def: true },
+    { key: 'location', label: 'Location', def: true },
+    { key: 'description', label: 'Description', def: true },
+    { key: 'platform', label: 'Platform' },
+    { key: 'manufacturer', label: 'Manufacturer' },
+    { key: 'role', label: 'Device Role' },
+    { key: 'serial', label: 'Serial Number' },
+    { key: 'management', label: 'Management Address' },
+    { key: 'managers', label: 'Managers' },
+    { key: 'tags', label: 'Tags' },
+    { key: 'updated', label: 'Updated' },
+  ];
+  const cell = (d, key) => ({
+    name: ui.esc(d.name),
+    type: d.device_type_name ? `<span class="badge tag">${ui.esc(d.device_type_name)}</span>` : ui.dash,
+    ips: ui.mono(d.ip_addresses.map(ip => ip.ip_address + (ip.role === 'vip' ? ' (VIP)' : ''))),
+    location: d.location ? ui.esc(ui.optionLabel(locationOptions, d.location)) : ui.dash,
+    description: ui.clip(d.description),
+    platform: ui.text(d.platform_name),
+    manufacturer: ui.text(d.manufacturer),
+    role: ui.text(d.device_role),
+    serial: d.serial_number ? `<span class="font-monospace small">${ui.esc(d.serial_number)}</span>` : ui.dash,
+    management: ui.mono(d.management_address ? [d.management_address] : []),
+    managers: ui.text((d.contacts || []).map(c => c.name).join(', ')),
+    tags: ui.chips((d.tags || []).map(tg => tg.name)),
+    updated: ui.date(d.updated_at),
+  })[key];
+  const oneId = (v) => JSON.stringify(v ? [v] : []);
 %>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'Device Management' }, { label: 'Device List' }] }) %>
 
-<!-- ========================================== -->
-<!-- MAIN CONTENT -->
-<!-- ========================================== -->
-
-<!-- Content Header -->
-<div class="app-content-header">
-  <div class="container-fluid">
-    <div class="row">
-      <div class="col-12">
-        <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/"><%= t('Home') %></a></li>
-          <li class="breadcrumb-item active"><%= t('Device List') %></li>
-        </ol>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Main content -->
 <div class="app-content">
   <div class="container-fluid">
-    <!-- ========================================== -->
-    <!-- SEARCH AND FILTER SECTION -->
-    <!-- ========================================== -->
-    
-    <!-- Search and Page Size Row -->
-    <div class="row mb-3">
-      <div class="col-12">
-        <div class="d-flex justify-content-end align-items-center gap-2">
-          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/device/device">
-            <!-- Hidden inputs to preserve filter values -->
-            <input type="hidden" name="page" value="1">
-            <% if (typeof device_type_id !== 'undefined' && device_type_id) { %>
-              <input type="hidden" name="device_type_id" value="<%= device_type_id %>">
-            <% } %>
-            <% if (typeof platform_id !== 'undefined' && platform_id) { %>
-              <input type="hidden" name="platform_id" value="<%= platform_id %>">
-            <% } %>
-            <% if (typeof location !== 'undefined' && location) { %>
-              <input type="hidden" name="location" value="<%= location %>">
-            <% } %>
-            <% if (typeof manufacturer !== 'undefined' && manufacturer) { %>
-              <input type="hidden" name="manufacturer" value="<%= manufacturer %>">
-            <% } %>
-            <% if (typeof device_role !== 'undefined' && device_role) { %>
-              <input type="hidden" name="device_role" value="<%= device_role %>">
-            <% } %>
-            <% if (typeof tags !== 'undefined' && tags && tags.length > 0) { %>
-              <% tags.forEach(function(tag) { %>
-                <input type="hidden" name="tags[]" value="<%= tag %>">
-              <% }); %>
-            <% } %>
-            
-            <div class="input-group input-group-sm" style="width: 250px;">
-              <input class="form-control form-control-sm" type="search" name="search" placeholder="<%= t('Search Device Name...') %>" aria-label="<%= t('Search') %>" value="<%= typeof search !== 'undefined' ? search : '' %>">
-              <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
-            </div>
-            <div class="d-flex align-items-center gap-1">
-              <label class="form-label form-label-sm mb-0 text-muted"><%= t('Show:') %></label>
-              <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
-                <% (pageSizeOptions || [10,20,50]).forEach(function(size) { %>
-                  <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
-                <% }) %>
-              </select>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
+    <%- include('../../partials/ui/flash') %>
 
-    <!-- ========================================== -->
-    <!-- ACTION BUTTONS SECTION -->
-    <!-- ========================================== -->
-    
-    <!-- Action Buttons -->
-    <div class="row mb-3">
-      <div class="col-12">
-        <div class="d-flex justify-content-end gap-2">
-          <% if (hasPermission && hasPermission('device.create')) { %>
-            <a href="/device/device/add" class="btn btn-primary btn-sm">
-              <i class="bi bi-plus"></i> <%= t('Add Device') %>
-            </a>
-          <% } %>
-          <%
-            const hasActiveDeviceFilter = !!(
-              (device_type_id && device_type_id !== '') ||
-              (platform_id && platform_id !== '') ||
-              (location && location !== '') ||
-              (manufacturer && manufacturer !== '') ||
-              (device_role && device_role !== '') ||
-              (tags && tags.length > 0)
-            );
-          %>
-          <button type="button" class="btn btn-sm <%= hasActiveDeviceFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterDeviceModal">
-            <i class="bi bi-funnel<%= hasActiveDeviceFilter ? '-fill' : '' %>"></i> <%= t('Filter{1}', { 1: hasActiveDeviceFilter ? ' (Filtered)' : '' }) %>
-          </button>
-          <% if (hasPermission && hasPermission('device.read')) { %>
-            <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">
-              <i class="bi bi-download"></i> <%= t('Export') %>
-            </a>
-          <% } %>
-          <% if (hasPermission && hasPermission('device.create')) { %>
-            <button type="button" class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importDeviceModal">
-              <i class="bi bi-upload"></i> <%= t('Import Device') %>
-            </button>
-          <% } %>
-        </div>
-      </div>
-    </div>
-
-    <!-- ========================================== -->
-    <!-- FILTER DATA AND FLASH MESSAGES -->
-    <!-- ========================================== -->
-    
-    <!-- Filter values for JS -->
-    <div id="filter-device-data"
-         data-device-type-id='<%= typeof device_type_id !== 'undefined' ? device_type_id : '' %>'
-         data-tags='<%= JSON.stringify(selectedTags || []) %>'
-         data-platform-id='<%= typeof platform_id !== 'undefined' ? platform_id : '' %>'
-         data-location='<%= typeof location !== 'undefined' ? location : '' %>'
-         data-manufacturer='<%= typeof manufacturer !== 'undefined' ? manufacturer : '' %>'
-         data-device-role='<%= typeof device_role !== 'undefined' ? device_role : '' %>'
-         style="display:none"></div>
-    
-    <!-- Flash Messages -->
-    <% if (typeof successMessage !== 'undefined' && successMessage) { %>
-      <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
-        <i class="bi bi-check-circle me-2"></i><%= t(successMessage) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
-      </div>
-      <script>
-        // Auto-hide success message after 5 seconds
-        setTimeout(function() {
-          const alert = document.getElementById('successAlert');
-          if (alert) {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-          }
-        }, 5000);
-      </script>
-    <% } %>
-    
-    <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
-      <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
-        <i class="bi bi-exclamation-triangle me-2"></i><%= t(errorMessage) %>
-        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
-      </div>
-      <script>
-        // Auto-hide error message after 8 seconds (longer for errors)
-        setTimeout(function() {
-          const alert = document.getElementById('errorAlert');
-          if (alert) {
-            const bsAlert = new bootstrap.Alert(alert);
-            bsAlert.close();
-          }
-        }, 8000);
-      </script>
-    <% } %>
-
-    <!-- ========================================== -->
-    <!-- DEVICE LIST TABLE -->
-    <!-- ========================================== -->
-    
-    <!-- Device List Table -->
-    <div class="row">
-      <div class="col-12">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title mb-0"><%= t('Device List') %></h3>
-          </div>
-          <div class="card-body table-responsive p-0" style="overflow-x: auto;">
-            <table class="table table-hover" id="deviceTable">
-              <thead>
-                <tr>
-                  <th><%= t('No.') %></th>
-                  <th data-sort-type="text"><%= t('Device Name') %></th>
-                  <th data-sort-type="text"><%= t('Description') %></th>
-                  <th data-sort-type="text"><%= t('Device Type') %></th>
-                  <th data-sort-type="text"><%= t('Location') %></th>
-                  <th data-sort-type="text"><%= t('IP Address(es)') %></th>
-                  <th class="text-end"><%= t('Actions') %></th>
-                </tr>
-              </thead>
-              <tbody>
-                <% if (deviceList && deviceList.length > 0) { %>
-                  <% deviceList.forEach(function(device, idx) { %>
-                    <tr>
-                      <td><%= (page - 1) * pageSize + idx + 1 %></td>
-                      <td><%= device.name %></td>
-                      <td>
-                        <%
-                          const cleanDescription = (device.description || '-').trim();
-                          const shortDescription = cleanDescription.length > 50 ? cleanDescription.substring(0, 50) + '…' : cleanDescription;
-                        %>
-                        <span data-bs-toggle="tooltip" data-bs-placement="top" title="<%= cleanDescription %>" style="cursor: help; word-break: break-word;"><%= shortDescription %></span>
-                      </td>
-                      <td><%= device.device_type_name || '-' %></td>
-                      <td><%= device.location || '-' %></td>
-                      <td>
-                        <% if (device.ip_addresses && device.ip_addresses.length > 0) { %>
-                          <% device.ip_addresses.slice(0, 3).forEach(function(ip, index) { %>
-                            <%= ip.ip_address %><% if (index < Math.min(device.ip_addresses.length, 3) - 1) { %>, <% } %>
-                          <% }) %>
-                          <% if (device.ip_addresses.length > 3) { %>
-                            <br><small class="text-muted"><%= t('+{1} more', { 1: device.ip_addresses.length - 3 }) %></small>
-                          <% } %>
-                        <% } else { %>
-                          -
-                        <% } %>
-                      </td>
-                      <td class="text-end">
-                        <button type="button" class="btn btn-info btn-sm" title="<%= t('Show') %>" onclick="showDeviceDetail(<%= JSON.stringify(device.id) %>)" data-device='<%= JSON.stringify(device) %>'>
-                          <i class="bi bi-eye"></i>
-                        </button>
-                        <% if (hasPermission('device.update')) { %>
-                          <a href="/device/device/edit/<%= device.id %>" class="btn btn-warning btn-sm" title="<%= t('Edit') %>">
-                            <i class="bi bi-pencil"></i>
-                          </a>
-                        <% } %>
-                        <% if (hasPermission('device.delete')) { %>
-                          <form action="/device/device/<%= device.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeleteDevice(this, <%= JSON.stringify(device.name) %>)">
-                            <input type="hidden" name="delete_ip" value="false">
-                            <button type="submit" class="btn btn-danger btn-sm" title="<%= t('Delete') %>">
-                              <i class="bi bi-trash"></i>
-                            </button>
-                          </form>
-                        <% } %>
-                      </td>
-                    </tr>
-                  <% }) %>
-                <% } else { %>
-                  <tr><td colspan="7" class="text-center"><%= t('No devices found') %></td></tr>
-                <% } %>
-              </tbody>
-            </table>
-          </div>
-          <div class="card-footer clearfix">
-            <div class="d-flex justify-content-between align-items-center px-3 py-2">
-              <div>
-                <% 
-                  // Calculate pagination range
-                  const deviceStartItem = (page - 1) * pageSize + 1;
-                  const deviceEndItem = Math.min(page * pageSize, totalCount || 0);
-                  const deviceStartPage = Math.max(1, page - 2);
-                  const deviceEndPage = Math.min(totalPages, page + 2);
-                %>
-                <span><%= t('Showing {1} - {2} of {3} devices', { 1: deviceStartItem, 2: deviceEndItem, 3: typeof totalCount !== 'undefined' ? totalCount : 0 }) %></span>
+    <div class="card list-card">
+      <form class="list-filter-form" method="get" action="/device/device">
+        <input type="hidden" name="pageSize" value="<%= pageSize %>">
+        <%- include('../../partials/ui/list_toolbar', {
+              search, searchPlaceholder: 'Search by name, IP, serial, manufacturer...',
+              filtersId: 'deviceFilters', activeFilterCount,
+              columns: { tableId: 'deviceTable', storageKey: 'openasm.deviceList.columns', list: COLUMNS },
+              exportUrl: '/device/device/export' + currentQuery,
+              importModal: hasPermission('device.create') ? 'deviceImportModal' : null,
+              addUrl: hasPermission('device.create') ? '/device/device/add' : null, addLabel: 'Add Device' }) %>
+        <div class="collapse<%= activeFilterCount ? ' show' : '' %>" id="deviceFilters">
+          <div class="list-filters">
+            <div class="row g-2">
+              <div class="col-md-4 col-xl-3">
+                <label class="form-label small"><%= t('Device Type') %></label>
+                <select name="device_type_id" class="form-select js-filter" data-placeholder="<%= t('All') %>"
+                        data-ajax-url="/device/api/device-type" data-ids-url="/device/api/device-type/ids" data-selected='<%= oneId(f.device_type_id) %>'></select>
               </div>
-              <ul class="pagination pagination-sm m-0 float-end">
-                <% 
-                  function buildDeviceFilterQuery() {
-                    let params = [];
-                    if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
-                    if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
-                    if (typeof device_type_id !== 'undefined' && device_type_id) params.push('device_type_id=' + encodeURIComponent(device_type_id));
-                    if (typeof platform_id !== 'undefined' && platform_id) params.push('platform_id=' + encodeURIComponent(platform_id));
-                    if (typeof location !== 'undefined' && location) params.push('location=' + encodeURIComponent(location));
-                    if (typeof manufacturer !== 'undefined' && manufacturer) params.push('manufacturer=' + encodeURIComponent(manufacturer));
-                    if (typeof device_role !== 'undefined' && device_role) params.push('device_role=' + encodeURIComponent(device_role));
-                    if (typeof tags !== 'undefined' && tags && tags.length > 0) {
-                      tags.forEach(function(tag) { params.push('tags[]=' + encodeURIComponent(tag)); });
-                    }
-                    return params.join('&');
-                  }
-                  const deviceFilterQuery = buildDeviceFilterQuery();
-                %>
-                <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page - 1 %><%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>" tabindex="-1"><%= t('Previous') %></a>
-                </li>
-                <% if (deviceStartPage > 1) { %>
-                  <li class="page-item"><a class="page-link" href="?page=1<%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>">1</a></li>
-                  <% if (deviceStartPage > 2) { %>
-                    <li class="page-item disabled"><span class="page-link">...</span></li>
-                  <% } %>
-                <% } %>
-                <% for (let i = deviceStartPage; i <= deviceEndPage; i++) { %>
-                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>"><%= i %></a></li>
-                <% } %>
-                <% if (deviceEndPage < totalPages) { %>
-                  <li class="page-item disabled"><span class="page-link">...</span></li>
-                  <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>"><%= totalPages %></a></li>
-                <% } %>
-                <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                  <a class="page-link" href="?page=<%= page + 1 %><%= deviceFilterQuery ? '&' + deviceFilterQuery : '' %>"><%= t('Next') %></a>
-                </li>
-              </ul>
+              <div class="col-md-4 col-xl-3">
+                <label class="form-label small"><%= t('Platform') %></label>
+                <select name="platform_id" class="form-select js-filter" data-placeholder="<%= t('All') %>"
+                        data-ajax-url="/device/api/platform" data-ids-url="/device/api/platform/ids" data-selected='<%= oneId(f.platform_id) %>'></select>
+              </div>
+              <div class="col-md-4 col-xl-3">
+                <label class="form-label small"><%= t('Location') %></label>
+                <select name="location" class="form-select js-filter" data-placeholder="<%= t('All') %>">
+                  <option value=""></option>
+                  <% (locationOptions || []).forEach(function (o) { %>
+                    <option value="<%= o.id %>" <%= f.location === o.id ? 'selected' : '' %>><%= o.text %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <div class="col-md-4 col-xl-3">
+                <label class="form-label small"><%= t('Manufacturer') %></label>
+                <input type="text" name="manufacturer" class="form-control" value="<%= f.manufacturer %>" placeholder="<%= t('All') %>">
+              </div>
+              <div class="col-md-4 col-xl-3">
+                <label class="form-label small"><%= t('Device Role') %></label>
+                <input type="text" name="device_role" class="form-control" value="<%= f.device_role %>" placeholder="<%= t('All') %>">
+              </div>
+              <div class="col-md-8 col-xl-6">
+                <label class="form-label small"><%= t('Tags') %></label>
+                <select name="tags[]" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"
+                        data-ajax-url="/organize/api/tag" data-ids-url="/organize/api/tag/ids" data-selected='<%= JSON.stringify(f.tags) %>'></select>
+              </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ========================================== -->
-<!-- MODALS SECTION -->
-<!-- ========================================== -->
-
-<!-- Device Detail Modal -->
-<div class="modal fade" id="deviceDetailModal" tabindex="-1" aria-labelledby="deviceDetailModalLabel">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="deviceDetailModalLabel"><%= t('Device Detail') %></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
-      </div>
-      <div class="modal-body" id="deviceDetailContent">
-        <!-- Content will be loaded here -->
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Close') %></button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Delete Device Modal -->
-<div class="modal fade" id="deleteDeviceModal" tabindex="-1" aria-labelledby="deleteDeviceModalLabel">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="deleteDeviceModalLabel"><%= t('Delete Device') %></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
-      </div>
-      <div class="modal-body">
-        <p><%= t('Are you sure you want to delete the device') %> <strong id="deleteDeviceName"></strong>?</p>
-        <p class="mb-2"><%= t('What should happen to its IP address(es)?') %></p>
-        <div class="form-check">
-          <input class="form-check-input" type="radio" name="deleteDeviceIpChoice" id="deleteDeviceIpReserve" value="false" checked>
-          <label class="form-check-label" for="deleteDeviceIpReserve">
-            <%= t('Release IP(s) back to') %> <strong><%= t('Reserved') %></strong> <%= t('status (default)') %>
-          </label>
-        </div>
-        <div class="form-check">
-          <input class="form-check-input" type="radio" name="deleteDeviceIpChoice" id="deleteDeviceIpDelete" value="true">
-          <label class="form-check-label" for="deleteDeviceIpDelete">
-            <%= t('Delete the IP address(es) permanently') %>
-          </label>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
-        <button type="button" class="btn btn-danger btn-sm" id="deleteDeviceConfirmBtn"><%= t('Delete') %></button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Filter Device Modal -->
-<div class="modal fade" id="filterDeviceModal" tabindex="-1" aria-labelledby="filterDeviceModalLabel">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="filterDeviceModalLabel"><%= t('Filter Devices') %></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
-      </div>
-      <form method="GET" action="/device/device" id="filterDeviceForm">
-        <input type="hidden" name="page" value="1">
-        <% if (typeof pageSize !== 'undefined' && pageSize) { %>
-          <input type="hidden" name="pageSize" value="<%= pageSize %>">
-        <% } %>
-        <div class="modal-body">
-          <div class="row g-2">
-            <!-- Device Type Filter -->
-            <div class="col-12 mb-2">
-              <label class="form-label"><%= t('Device Type') %></label>
-              <select id="filterDeviceTypeId" name="device_type_id" class="form-control">
-                <option value=""><%= t('All Device Types') %></option>
-                <!-- Options will be loaded via AJAX -->
-              </select>
-            </div>
-            
-            <!-- Tags Filter -->
-            <div class="col-12 mb-2">
-              <label class="form-label"><%= t('Tags') %></label>
-              <select id="filterDeviceTags" name="tags[]" class="form-control" multiple></select>
-            </div>
-            
-            <!-- Platform Filter -->
-            <div class="col-12 mb-2">
-              <label class="form-label"><%= t('Platform') %></label>
-              <select id="filterDevicePlatform" name="platform_id" class="form-control">
-                <option value=""><%= t('All Platforms') %></option>
-                <!-- Options will be loaded via AJAX -->
-              </select>
-            </div>
-            
-            <!-- Location Filter -->
-            <div class="col-12 mb-2">
-              <label for="filterDeviceLocation" class="form-label"><%= t('Location') %></label>
-              <select class="form-control" id="filterDeviceLocation" name="location">
-                <option value=""><%= t('All Locations') %></option>
-                <% if (typeof locationOptions !== 'undefined' && locationOptions.length > 0) { %>
-                  <% locationOptions.forEach(function(option) { %>
-                    <option value="<%= option.value %>" <%= (typeof location !== 'undefined' && location === option.value) ? 'selected' : '' %>><%= option.label %></option>
-                  <% }); %>
-                <% } %>
-              </select>
-            </div>
-            
-            <!-- Manufacturer Filter -->
-            <div class="col-12 mb-2">
-              <label for="filterDeviceManufacturer" class="form-label"><%= t('Manufacturer') %></label>
-              <select id="filterDeviceManufacturer" name="manufacturer" class="form-control">
-                <option value=""><%= t('All Manufacturers') %></option>
-                <!-- Options will be loaded via AJAX -->
-              </select>
-            </div>
-            
-            <!-- Device Role Filter -->
-            <div class="col-12 mb-2">
-              <label for="filterDeviceRole" class="form-label"><%= t('Device Role') %></label>
-              <select id="filterDeviceRole" name="device_role" class="form-control">
-                <option value=""><%= t('All Device Roles') %></option>
-                <!-- Options will be loaded via AJAX -->
-              </select>
-            </div>
-          </div>
-        </div>
-        <div class="modal-footer d-flex justify-content-between">
-          <button type="button" class="btn btn-outline-danger" id="clearFilterBtnDevice"><%= t('Clear All Filters') %></button>
-          <div>
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
-            <button type="submit" class="btn btn-primary btn-sm"><%= t('Apply Filters') %></button>
+            <% if (activeFilterCount) { %>
+              <div class="mt-2 text-end"><a href="#" class="small" data-clear-filters><i class="bi bi-x-circle me-1"></i><%= t('Clear All Filters') %></a></div>
+            <% } %>
           </div>
         </div>
       </form>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle table-stack" id="deviceTable">
+          <thead>
+            <tr>
+              <th class="col-index">#</th>
+              <% COLUMNS.forEach(function (c) { %><th data-col="<%= c.key %>"><%= t(c.label) %></th><% }) %>
+              <th class="col-actions"><%= t('Actions') %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (deviceList && deviceList.length) { %>
+              <% deviceList.forEach(function (device, idx) { %>
+                <tr>
+                  <td class="col-index"><%= (page - 1) * pageSize + idx + 1 %></td>
+                  <% COLUMNS.forEach(function (c) { %><td data-col="<%= c.key %>" data-label="<%= t(c.label) %>"<%- c.key === 'name' ? ' class="fw-medium"' : '' %>><%- cell(device, c.key) %></td><% }) %>
+                  <td class="col-actions">
+                    <div class="row-actions">
+                      <button type="button" class="btn btn-sm btn-outline-secondary" title="<%= t('Detail') %>" onclick="showDeviceDetail(this)" data-record='<%= JSON.stringify(device) %>'><i class="bi bi-eye"></i></button>
+                      <% if (hasPermission('device.update')) { %>
+                        <a href="/device/device/<%= device.id %>/edit" class="btn btn-sm btn-outline-secondary" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
+                      <% } %>
+                      <% if (hasPermission('device.delete')) { %>
+                        <form action="/device/device/<%= device.id %>/delete" method="POST" data-delete-ip="<%= device.name %>">
+                          <input type="hidden" name="delete_ip" value="false">
+                          <button type="submit" class="btn btn-sm btn-outline-secondary btn-delete" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
+                        </form>
+                      <% } %>
+                    </div>
+                  </td>
+                </tr>
+              <% }); %>
+            <% } else { %>
+              <tr><td colspan="<%= COLUMNS.length + 2 %>">
+                <%- include('../../partials/ui/empty_state', { icon: 'bi-router', message: 'No devices found', filtered: activeFilterCount > 0 || !!search, clearUrl: '/device/device',
+                      actionUrl: hasPermission('device.create') ? '/device/device/add' : null, actionLabel: 'Add Device' }) %>
+              </td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+
+      <%- include('../../partials/ui/pagination', { page, totalPages, totalCount, pageSize, count: (deviceList || []).length, summary: 'Showing {1} - {2} of {3} devices' }) %>
     </div>
   </div>
 </div>
 
-<!-- Import Device Modal -->
-<div class="modal fade" id="importDeviceModal" tabindex="-1" aria-labelledby="importDeviceModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="importDeviceModalLabel"><%= t('Import Devices') %></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
-      </div>
-      <div class="modal-body">
-        <form id="importDeviceForm" enctype="multipart/form-data">
-          <div class="mb-3">
-            <label for="deviceImportFile" class="form-label"><%= t('Select File') %> <span class="text-danger">*</span></label>
-            <div class="input-group">
-              <input type="file" class="form-control" id="deviceImportFile" name="file" accept=".xlsx,.xls" required>
-              <a href="/device/device/template" class="btn btn-outline-info" download>
-                <i class="bi bi-download"></i> <%= t('Download Template') %>
-              </a>
-            </div>
-            <div class="form-text"><%= t('Supported format: Excel (.xlsx, .xls). Maximum file size: 10MB') %></div>
-          </div>
-          
-          <div class="mb-3">
-            <div class="alert alert-info">
-              <h6><i class="bi bi-info-circle"></i> <%= t('Import Instructions:') %></h6>
-              <ul class="mb-0">
-                <li><%= t('Click "Download Template" to get the Excel template with correct format') %></li>
-                <li><%= t('Fill the template with your device data') %></li>
-                <li><strong><%= t('Required fields:') %></strong> <%= t('IP Address, Device Type') %></li>
-                <li><strong><%= t('Optional fields:') %></strong> <%= t('Name (auto-generated if empty), Platform, Location, Serial Number, Management Address, Manufacturer, Device Role, Manager, Tags, Description') %></li>
-                <li><%= t('Select your filled template file and validate before importing') %></li>
-              </ul>
-            </div>
-          </div>
-          
-          <!-- Progress bar -->
-          <div id="deviceImportProgress" class="progress mb-3" style="display: none;">
-            <div class="progress-bar" role="progressbar" style="width: 0%"></div>
-          </div>
-          
-          <!-- Results display -->
-          <div id="deviceImportResults" class="alert" style="display: none;"></div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
-        <button type="button" class="btn btn-warning btn-sm" id="validateDeviceBtn"><%= t('Validate File') %></button>
-        <button type="button" class="btn btn-success btn-sm" id="importDeviceBtn" style="display: none;"><%= t('Import Devices') %></button>
-      </div>
-    </div>
-  </div>
-</div>
+<%- include('../../partials/ui/detail_modal', { id: 'deviceDetailModal', pentestType: 'device' }) %>
+<%- include('../../partials/ui/pentest_quick_view') %>
+<%- include('../../partials/ui/delete_ip_modal') %>
+<% if (hasPermission('device.create')) { %>
+  <%- include('../../partials/ui/import_modal', { id: 'deviceImportModal', title: 'Import Devices', baseUrl: '/device/device',
+        instructions: ['IP addresses and device type are required; unknown IPs are created as Reserved and assigned to the device', 'Device type, platform, managers (email) and tags must already exist', 'A row whose name or IP is already used is skipped'] }) %>
+<% } %>
 
 <script>
-// ==========================================
-// JAVASCRIPT FUNCTIONS
-// ==========================================
+  const LOCATION_OPTIONS = <%- jsonSafe(locationOptions || []) %>;
 
-// Show device detail
-// Manufacturer/Device Role are free-text (autocomplete, not a fixed enum),
-// and name/description/serial_number/management_address/tags/contacts are
-// all user-editable — none are HTML-stripped server-side, so they must be
-// escaped before going into innerHTML or a crafted value executes script
-// in the browser of anyone who opens this detail modal.
-function escapeHtml(value) {
-  return String(value == null ? '' : value).replace(/[&<>"']/g, function(c) {
-    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
-  });
-}
-
-function showDeviceDetail(deviceId) {
-  const buttons = document.querySelectorAll('button[data-device]');
-  let targetButton = null;
-  
-  for (let button of buttons) {
-    const data = button.getAttribute('data-device');
-    if (data) {
-      try {
-        const device = JSON.parse(data);
-        if (device.id == deviceId) {
-          targetButton = button;
-          break;
-        }
-      } catch (e) {
-        console.error('Error parsing device data:', e);
-      }
-    }
-  }
-  
-  if (!targetButton) {
-    alert(t('Device data not found'));
-    return;
-  }
-  
-  const deviceData = targetButton.getAttribute('data-device');
-  let device;
-  try {
-    device = JSON.parse(deviceData);
-  } catch (e) {
-    alert(t('Error parsing device data: ') + e.message);
-    return;
-  }
-  
-  const modalElement = document.getElementById('deviceDetailModal');
-  const modal = new bootstrap.Modal(modalElement);
-  const content = document.getElementById('deviceDetailContent');
-  
-  let html = '<dl class="row detail-dl">';
-  html += '<dt class="col-sm-4">Device Name</dt><dd class="col-sm-8">' + escapeHtml(device.name || 'N/A') + '</dd>';
-  html += '<dt class="col-sm-4">Type</dt><dd class="col-sm-8">' + escapeHtml(device.device_type_name || device.type || 'N/A') + '</dd>';
-  html += '<dt class="col-sm-4">Location</dt><dd class="col-sm-8">' + escapeHtml(device.location || 'N/A') + '</dd>';
-  html += '<dt class="col-sm-4">Platform (OS)</dt><dd class="col-sm-8">' + escapeHtml(device.platform_name || 'N/A') + '</dd>';
-  html += '<dt class="col-sm-4">Serial Number</dt><dd class="col-sm-8">' + escapeHtml(device.serial_number || 'N/A') + '</dd>';
-  html += '<dt class="col-sm-4">Manufacturer</dt><dd class="col-sm-8">' + escapeHtml(device.manufacturer || 'N/A') + '</dd>';
-  html += '<dt class="col-sm-4">Device Role</dt><dd class="col-sm-8">' + escapeHtml(device.device_role || 'N/A') + '</dd>';
-
-  html += '<dt class="col-sm-4">IP Addresses</dt><dd class="col-sm-8">';
-  if (device.ip_addresses && device.ip_addresses.length > 0) {
-    html += '<ul class="mb-0 ps-3">';
-    device.ip_addresses.forEach(function(ip) {
-      const ipValue = (typeof ip === 'string' ? ip : ip.ip_address);
-      const searchUrl = '/network/ip-address?page=1&search=' + encodeURIComponent(ipValue);
-      html += '<li><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' + escapeHtml(ipValue) + '</a>';
-      if (typeof ip !== 'string' && ip.role === 'vip') {
-        html += ' <span class="badge bg-warning text-dark">VIP</span>';
-      }
-      html += '</li>';
+  function showDeviceDetail(button) {
+    const d = DV.record(button);
+    if (!d) return;
+    const ips = d.ip_addresses || [];
+    let body = DV.section('Overview', DV.rows(
+      DV.field('Device Type', DV.text(d.device_type_name)),
+      DV.field('Platform', DV.text(d.platform_name)),
+      DV.field('Manufacturer', DV.text(d.manufacturer)),
+      DV.field('Device Role', DV.text(d.device_role)),
+      DV.field('Serial Number', DV.text(d.serial_number)),
+      DV.field('Location', DV.text(d.location ? DV.optionLabel(LOCATION_OPTIONS, d.location) : '')),
+      DV.field('Tags', DV.chips((d.tags || []).map((tg) => tg.name))),
+      DV.field('Managers', DV.contacts(d.contacts)),
+      DV.multiline(d.description) ? DV.field('Description', DV.multiline(d.description)) : ''
+    ));
+    body += DV.section('Network', DV.rows(
+      DV.field('Management Address', DV.text(d.management_address)),
+      DV.field('IP Addresses', DV.ipLinks(ips.filter((ip) => ip.role !== 'vip'))),
+      DV.field('VIP IP Address(es)', DV.ipLinks(ips.filter((ip) => ip.role === 'vip')))
+    ), ' <span class="badge tag ms-1">' + ips.length + '</span>');
+    body += DV.meta(d);
+    DV.open('deviceDetailModal', {
+      title: d.name,
+      subtitle: d.device_type_name ? '<span class="badge tag">' + DV.esc(d.device_type_name) + '</span>' : '',
+      body,
+      recordId: d.id,
     });
-    html += '</ul>';
-  } else {
-    html += 'N/A';
   }
-  html += '</dd>';
-
-  html += '<dt class="col-sm-4">Management Address</dt><dd class="col-sm-8">';
-  if (device.management_address && device.management_address.trim() !== '') {
-    const managementAddresses = device.management_address.split(',').map(addr => addr.trim()).filter(addr => addr);
-    if (managementAddresses.length > 1) {
-      html += '<ul class="mb-0 ps-3">';
-      managementAddresses.forEach(function(addr) {
-        html += '<li>' + escapeHtml(addr) + '</li>';
-      });
-      html += '</ul>';
-    } else {
-      html += escapeHtml(device.management_address);
-    }
-  } else {
-    html += 'N/A';
-  }
-  html += '</dd>';
-
-  if (device.contacts && device.contacts.length > 0) {
-    html += '<dt class="col-sm-4">Managers</dt><dd class="col-sm-8"><ul class="mb-0 ps-3">';
-    device.contacts.forEach(function(manager) {
-      const managerName = (typeof manager === 'string' ? manager : manager.name);
-      const managerEmail = (typeof manager === 'string' ? '' : manager.email);
-      const searchUrl = '/organize/contact?page=1&search=' + encodeURIComponent(managerName);
-      html += '<li><a href="' + escapeHtml(searchUrl) + '" class="text-primary text-decoration-underline">' + escapeHtml(managerName);
-      if (managerEmail) {
-        html += ' (' + escapeHtml(managerEmail) + ')';
-      }
-      html += '</a></li>';
-    });
-    html += '</ul></dd>';
-  }
-
-  if (device.tags && device.tags.length > 0) {
-    html += '<dt class="col-sm-4">Tags</dt><dd class="col-sm-8">';
-    device.tags.forEach(function(tag) {
-      const tagValue = (typeof tag === 'string' ? tag : tag.name);
-      html += '<span class="badge bg-primary me-1 mb-1">' + escapeHtml(tagValue) + '</span>';
-    });
-    html += '</dd>';
-  }
-
-  html += '<dt class="col-sm-4">Description</dt><dd class="col-sm-8"><pre class="mb-0" style="white-space: pre-wrap; font-family: inherit; background: none; border: none; padding: 0;">' + escapeHtml(device.description || 'N/A') + '</pre></dd>';
-
-  const deviceCreated = (device.created_at || 'N/A');
-  html += '<dt class="col-sm-4">Created</dt><dd class="col-sm-8">' + escapeHtml(deviceCreated) + '</dd>';
-  const deviceUpdated = (device.updated_at || 'N/A');
-  html += '<dt class="col-sm-4">Updated</dt><dd class="col-sm-8">' + escapeHtml(deviceUpdated) + '</dd>';
-  if (device.updated_by) {
-    html += '<dt class="col-sm-4">Updated By</dt><dd class="col-sm-8">' + escapeHtml(device.updated_by) + '</dd>';
-  }
-  html += '</dl>';
-  content.innerHTML = html;
-  modal.show();
-}
-
-// Confirm delete device
-let pendingDeleteDeviceForm = null;
-function confirmDeleteDevice(form, deviceName) {
-  pendingDeleteDeviceForm = form;
-  document.getElementById('deleteDeviceName').textContent = deviceName;
-  document.getElementById('deleteDeviceIpReserve').checked = true;
-  const modal = new bootstrap.Modal(document.getElementById('deleteDeviceModal'));
-  modal.show();
-  return false;
-}
-
-document.getElementById('deleteDeviceConfirmBtn').addEventListener('click', function () {
-  if (!pendingDeleteDeviceForm) return;
-  const deleteIp = document.querySelector('input[name="deleteDeviceIpChoice"]:checked').value;
-  pendingDeleteDeviceForm.querySelector('input[name="delete_ip"]').value = deleteIp;
-  bootstrap.Modal.getInstance(document.getElementById('deleteDeviceModal')).hide();
-  pendingDeleteDeviceForm.submit();
-});
-
-// ==========================================
-// FILTER DEVICE MODAL JAVASCRIPT
-// ==========================================
-
-// Initialize window variables for Select2
-window.selectedDeviceType = <%- jsonSafe(selectedDeviceType || null) %>;
-window.selectedTags = <%- jsonSafe(selectedTags || []) %>;
-window.selectedPlatform = <%- jsonSafe(selectedPlatform || null) %>;
-
-// Debug log
-console.log('Device List - window.selectedTags initialized:', window.selectedTags);
-console.log('Device List - window.selectedDeviceType initialized:', window.selectedDeviceType);
-console.log('Device List - window.selectedPlatform initialized:', window.selectedPlatform);
-
-$(document).ready(function() {
-  console.log('Document ready - initializing Select2 fields');
-  
-  // Initialize Select2 for Device Type
-  $('#filterDeviceTypeId').select2({
-    theme: 'bootstrap-5',
-    placeholder: t('Select device type'),
-    allowClear: true,
-    width: '100%',
-    dropdownParent: $('#filterDeviceModal'),
-    ajax: {
-      url: '/device/api/device-type',
-      dataType: 'json',
-      delay: 250,
-      data: function(params) {
-        return { search: params.term };
-      },
-      processResults: function(data) {
-        return { results: data };
-      },
-      cache: true
-    }
-  });
-
-  // Initialize Select2 for Tags
-  $('#filterDeviceTags').select2({
-    theme: 'bootstrap-5',
-    placeholder: t('Select tag(s)'),
-    allowClear: true,
-    width: '100%',
-    dropdownParent: $('#filterDeviceModal'),
-    ajax: {
-      url: '/organize/api/tag',
-      dataType: 'json',
-      delay: 250,
-      data: function(params) {
-        return { search: params.term };
-      },
-      processResults: function(data) {
-        return { results: data };
-      },
-      cache: true
-    }
-  });
-
-  // Initialize Select2 for Platform
-  $('#filterDevicePlatform').select2({
-    theme: 'bootstrap-5',
-    placeholder: t('Select platform'),
-    allowClear: true,
-    width: '100%',
-    dropdownParent: $('#filterDeviceModal'),
-    ajax: {
-      url: '/device/api/platform',
-      dataType: 'json',
-      delay: 250,
-      data: function(params) {
-        return { search: params.term };
-      },
-      processResults: function(data) {
-        return { results: data };
-      },
-      cache: true
-    }
-  });
-
-  // Initialize Select2 for Manufacturer
-  $('#filterDeviceManufacturer').select2({
-    theme: 'bootstrap-5',
-    placeholder: t('Select or type manufacturer'),
-    allowClear: true,
-    width: '100%',
-    dropdownParent: $('#filterDeviceModal'),
-    tags: true,
-    ajax: {
-      url: '/device/api/manufacturer',
-      dataType: 'json',
-      delay: 250,
-      data: function(params) {
-        return { search: params.term };
-      },
-      processResults: function(data) {
-        return { results: data };
-      },
-      cache: true
-    },
-    createTag: function(params) {
-      var term = $.trim(params.term);
-      if (term === '') {
-        return null;
-      }
-      return {
-        id: term,
-        text: term,
-        newTag: true
-      };
-    }
-  });
-
-  // Initialize Select2 for Device Role
-  $('#filterDeviceRole').select2({
-    theme: 'bootstrap-5',
-    placeholder: t('Select or type device role'),
-    allowClear: true,
-    width: '100%',
-    dropdownParent: $('#filterDeviceModal'),
-    tags: true,
-    ajax: {
-      url: '/device/api/device-role',
-      dataType: 'json',
-      delay: 250,
-      data: function(params) {
-        return { search: params.term };
-      },
-      processResults: function(data) {
-        return { results: data };
-      },
-      cache: true
-    },
-    createTag: function(params) {
-      var term = $.trim(params.term);
-      if (term === '') {
-        return null;
-      }
-      return {
-        id: term,
-        text: term,
-        newTag: true
-      };
-    }
-  });
-
-  // Initialize Select2 for Location — options are already rendered
-  // server-side (locationOptions), so no ajax needed, just the Bootstrap 5
-  // styling to match the other filter fields in this modal.
-  $('#filterDeviceLocation').select2({
-    theme: 'bootstrap-5',
-    placeholder: t('All Locations'),
-    allowClear: true,
-    width: '100%',
-    dropdownParent: $('#filterDeviceModal')
-  });
-
-  console.log('All Select2 fields initialized');
-
-  // Clear all filters - use event delegation
-  $(document).on('click', '#clearFilterBtnDevice', function() {
-    console.log('Clear All Filters button clicked');
-
-    // Clear Select2 fields
-    $('#filterDeviceTypeId').val(null).trigger('change');
-    $('#filterDeviceTags').val(null).trigger('change');
-    $('#filterDevicePlatform').val(null).trigger('change');
-    $('#filterDeviceManufacturer').val(null).trigger('change');
-    $('#filterDeviceRole').val(null).trigger('change');
-    $('#filterDeviceLocation').val(null).trigger('change');
-
-    // Also try using Select2 API to clear
-    $('#filterDeviceTypeId').select2('val', null);
-    $('#filterDeviceTags').select2('val', null);
-    $('#filterDevicePlatform').select2('val', null);
-    $('#filterDeviceManufacturer').select2('val', null);
-    $('#filterDeviceRole').select2('val', null);
-    $('#filterDeviceLocation').select2('val', null);
-
-    // Close modal
-    $('#filterDeviceModal').modal('hide');
-
-    // Redirect to clean URL but preserve pageSize and search
-    const currentPageSize = $('select[name="pageSize"]').val() || '10';
-    const currentSearch = $('input[name="search"]').val() || '';
-    let cleanUrl = '/device/device';
-    const params = [];
-    if (currentPageSize && currentPageSize !== '10') params.push('pageSize=' + encodeURIComponent(currentPageSize));
-    if (currentSearch) params.push('search=' + encodeURIComponent(currentSearch));
-    if (params.length > 0) cleanUrl += '?' + params.join('&');
-    window.location.href = cleanUrl;
-
-    console.log('All filters cleared');
-  });
-
-  // Load existing filter values when modal is shown
-  $('#filterDeviceModal').on('show.bs.modal', function() {
-    console.log('Filter Device Modal opened');
-    
-    // Load existing filter values
-    setTimeout(() => {
-      loadFilterExistingValues();
-    }, 100);
-  });
-
-  // Reset filters when modal is hidden
-  $('#filterDeviceModal').on('hidden.bs.modal', function() {
-    console.log('Filter Device Modal hidden, resetting form');
-    $('#filterDeviceForm')[0].reset();
-    $('#filterDeviceTypeId, #filterDeviceTags, #filterDevicePlatform, #filterDeviceManufacturer, #filterDeviceRole').val(null).trigger('change');
-  });
-});
-
-function loadFilterExistingValues() {
-  console.log('Loading existing filter values...');
-  
-  // Get filter data from hidden div
-  const filterDataEl = document.getElementById('filter-device-data');
-  if (!filterDataEl) {
-    console.log('Filter data element not found');
-    return;
-  }
-  
-  try {
-    const filterDeviceTypeId = filterDataEl.dataset.deviceTypeId || '';
-    const filterTags = JSON.parse(filterDataEl.dataset.tags || '[]');
-    const filterPlatformId = filterDataEl.dataset.platformId || '';
-    const filterLocation = filterDataEl.dataset.location || '';
-    const filterManufacturer = filterDataEl.dataset.manufacturer || '';
-    const filterDeviceRole = filterDataEl.dataset.deviceRole || '';
-    
-    console.log('Filter data:', { filterDeviceTypeId, filterTags, filterPlatformId, filterLocation, filterManufacturer, filterDeviceRole });
-    
-    // Clear existing options first to avoid duplicates
-    $('#filterDeviceTags').find('option').remove();
-    
-    // Load device type from window variables (preferred) or from filter data (backup)
-    const deviceTypeToLoad = window.selectedDeviceType || (filterDeviceTypeId ? { id: filterDeviceTypeId, text: filterDeviceTypeId } : null);
-    if (deviceTypeToLoad && deviceTypeToLoad.id) {
-      console.log('Loading device type:', deviceTypeToLoad);
-      // For Select2, we need to fetch the device type data first
-      $.ajax({
-        url: '/device/api/device-type',
-        data: { search: '' },
-        success: function(data) {
-          const deviceType = data.find(item => item.id == deviceTypeToLoad.id);
-          if (deviceType) {
-            const option = new Option(deviceType.text, deviceType.id, true, true);
-            $('#filterDeviceTypeId').append(option).trigger('change');
-          }
-        }
-      });
-    }
-    
-    // Load tags from window variables (preferred) or from filter data (backup)
-    const tagsToLoad = window.selectedTags && window.selectedTags.length > 0 ? window.selectedTags : filterTags;
-    if (tagsToLoad && tagsToLoad.length > 0) {
-      console.log('Loading tags:', tagsToLoad);
-      tagsToLoad.forEach(tag => {
-        // Handle both object format {id, name} and simple format
-        const tagId = typeof tag === 'object' ? tag.id : tag;
-        const tagName = typeof tag === 'object' ? tag.name : tag;
-        const option = new Option(tagName, tagId, true, true);
-        $('#filterDeviceTags').append(option);
-      });
-      $('#filterDeviceTags').trigger('change');
-    }
-    
-    // Load platform from window variables (preferred) or from filter data (backup)
-    const platformToLoad = window.selectedPlatform || (filterPlatformId ? { id: filterPlatformId, text: filterPlatformId } : null);
-    if (platformToLoad && platformToLoad.id) {
-      console.log('Loading platform:', platformToLoad);
-      $.ajax({
-        url: '/device/api/platform',
-        data: { search: '' },
-        success: function(data) {
-          const platform = data.find(item => item.id == platformToLoad.id);
-          if (platform) {
-            const option = new Option(platform.text, platform.id, true, true);
-            $('#filterDevicePlatform').append(option).trigger('change');
-          }
-        }
-      });
-    }
-    
-    // Load simple fields
-    if (filterLocation) {
-      $('#filterDeviceLocation').val(filterLocation);
-    }
-    
-    // Load Manufacturer (Select2 with tag creation)
-    if (filterManufacturer) {
-      console.log('Loading manufacturer:', filterManufacturer);
-      // For Select2 with tags, we can directly set the value
-      const option = new Option(filterManufacturer, filterManufacturer, true, true);
-      $('#filterDeviceManufacturer').append(option).trigger('change');
-    }
-    
-    // Load Device Role (Select2 with tag creation)
-    if (filterDeviceRole) {
-      console.log('Loading device role:', filterDeviceRole);
-      // For Select2 with tags, we can directly set the value
-      const option = new Option(filterDeviceRole, filterDeviceRole, true, true);
-      $('#filterDeviceRole').append(option).trigger('change');
-    }
-    
-  } catch (e) {
-    console.error('Error loading filter values:', e);
-  }
-}
-
-// ==========================================
-// DEVICE IMPORT FUNCTIONALITY
-// ==========================================
-
-console.log('Device import JavaScript loaded');
-
-// Check if elements exist
-console.log('Validate button exists:', $('#validateDeviceBtn').length > 0);
-console.log('Import button exists:', $('#importDeviceBtn').length > 0);
-console.log('File input exists:', $('#deviceImportFile').length > 0);
-console.log('Progress bar exists:', $('#deviceImportProgress').length > 0);
-console.log('Results div exists:', $('#deviceImportResults').length > 0);
-
-// Track selected file
-let selectedDeviceFile = null;
-
-// Handle file selection
-console.log('Binding file input change handler');
-$('#deviceImportFile').on('change', function() {
-  console.log('Device file input changed');
-  selectedDeviceFile = this.files[0];
-  if (selectedDeviceFile) {
-    console.log('Device file selected:', selectedDeviceFile.name, 'Size:', selectedDeviceFile.size);
-    $('#validateDeviceBtn').prop('disabled', false);
-    console.log('Validate button enabled');
-  } else {
-    console.log('No file selected');
-    $('#validateDeviceBtn').prop('disabled', true);
-    $('#importDeviceBtn').hide();
-    console.log('Validate button disabled, import button hidden');
-  }
-});
-
-// Handle validate button click
-console.log('Binding validate button click handler');
-$(document).on('click', '#validateDeviceBtn', function() {
-  console.log('Validate button clicked');
-  console.log('Selected file:', selectedDeviceFile);
-  
-  if (!selectedDeviceFile) {
-    console.log('No file selected, showing alert');
-    alert(t('Please select a file first'));
-    return;
-  }
-  
-  console.log('Creating FormData with file:', selectedDeviceFile.name);
-  const formData = new FormData();
-  formData.append('file', selectedDeviceFile);
-  
-  // Show progress
-  console.log('Showing progress bar');
-  $('#deviceImportProgress').show();
-  $('#deviceImportResults').text(t('Validating file...'));
-  $('.progress-bar').css('width', '30%');
-  
-  console.log('Starting AJAX request to:', '/device/device/validate-import');
-  let nativeXhr;
-  $.ajax({
-    url: '/device/device/validate-import',
-    type: 'POST',
-    data: formData,
-    processData: false,
-    contentType: false,
-    xhr: function() {
-      console.log('Creating XHR with blob response type');
-      nativeXhr = new window.XMLHttpRequest();
-      nativeXhr.responseType = 'blob'; // Important for file download
-      return nativeXhr;
-    },
-    success: function(data, status, xhr) {
-      console.log('AJAX success - Validation completed');
-      console.log('Response status:', status);
-      console.log('Response data type:', typeof data);
-      console.log('Response data size:', data ? data.size : 'no data');
-      
-      $('#deviceImportProgress .progress-bar').css('width', '100%').text(t('Validation Complete'));
-      
-      // Handle file download
-      const contentType = xhr.getResponseHeader('Content-Type');
-      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
-      console.log('Content-Type:', contentType);
-      console.log('Content-Disposition:', contentDisposition);
-      
-      if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
-        // Create blob link and trigger download
-        const blob = new Blob([data], { type: contentType });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        
-        // Extract filename from Content-Disposition header
-        let filename = 'device_validation_results.xlsx';
-        if (contentDisposition) {
-          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-          if (filenameMatch) {
-            filename = filenameMatch[1];
-          }
-        }
-        
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-        
-        // Try to get validation summary from response headers so the
-        // result banner reflects pass/fail instead of always showing green.
-        const resultsDiv = $('#deviceImportResults');
-        let summary = null;
-        try {
-          const summaryHeader = xhr.getResponseHeader('X-Validation-Summary');
-          console.log('Raw validation summary header:', summaryHeader);
-          if (summaryHeader) {
-            summary = JSON.parse(summaryHeader);
-            console.log('Parsed validation summary:', summary);
-          }
-        } catch (e) {
-          console.error('Error parsing validation summary header:', e);
-        }
-
-        if (summary) {
-          if (summary.allPassed) {
-            resultsDiv.removeClass('alert-danger').addClass('alert-success')
-              .html(`<strong>Validation Complete!</strong><br>
-                     <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
-                     <small>Validation file downloaded. Review results before importing.</small>`);
-            $('#importDeviceBtn').show();
-          } else {
-            resultsDiv.removeClass('alert-success').addClass('alert-danger')
-              .html(`<strong>Validation Failed!</strong><br>
-                     <small>Total: ${summary.total}, Passed: ${summary.passed}, Failed: ${summary.failed}</small><br>
-                     <small>Validation file downloaded. Please fix the errors before importing.</small>`);
-          }
-        } else {
-          // No summary header available - fall back to a neutral message
-          resultsDiv.removeClass('alert-danger').addClass('alert-success')
-            .html(`<strong>Validation Complete!</strong><br>
-                   <small>Validation file downloaded. Review results before importing.</small>`);
-          $('#importDeviceBtn').show();
-        }
-        resultsDiv.show();
-      }
-    },
-    error: function(xhr, status, error) {
-      console.error('AJAX error - Device validation failed');
-      console.error('XHR object:', xhr);
-      console.error('Status:', status);
-      console.error('Error:', error);
-      console.error('Response status:', xhr.status);
-      console.error('Response text:', xhr.responseText);
-      console.error('Response JSON:', xhr.responseJSON);
-      
-      $('.progress-bar').css('width', '100%').text(t('Validation Failed'));
-
-      extractImportErrorMessage(nativeXhr || xhr).then(function(errorMessage) {
-        const resultsDiv = $('#deviceImportResults');
-        resultsDiv.removeClass('alert-success').addClass('alert-danger')
-          .html(`<strong>Validation Failed!</strong><br>${errorMessage}`);
-        resultsDiv.show();
-      });
-    },
-    complete: function() {
-      console.log('AJAX complete - Validation request finished');
-      $('#validateDeviceBtn').prop('disabled', false);
-      setTimeout(() => {
-        console.log('Hiding progress bar');
-        $('#deviceImportProgress').hide();
-      }, 2000);
-    }
-  });
-});
-
-// Handle import button click
-$(document).on('click', '#importDeviceBtn', function() {
-  if (!selectedDeviceFile) {
-    alert(t('Please select a file first'));
-    return;
-  }
-  
-  const formData = new FormData();
-  formData.append('file', selectedDeviceFile);
-  
-  // Show progress
-  $('#deviceImportProgress').show();
-  $('#deviceImportResults').text(t('Importing devices...'));
-  $('.progress-bar').css('width', '30%').text(t('Importing...'));
-  $('#importDeviceBtn').prop('disabled', true);
-  
-  let nativeXhr;
-  $.ajax({
-    url: '/device/device/import',
-    type: 'POST',
-    data: formData,
-    processData: false,
-    contentType: false,
-    xhr: function() {
-      nativeXhr = new window.XMLHttpRequest();
-      nativeXhr.responseType = 'blob'; // Important for file download
-      return nativeXhr;
-    },
-    success: function(data, status, xhr) {
-      $('#deviceImportProgress .progress-bar').css('width', '100%').text(t('Import Complete'));
-      
-      // Handle file download
-      const contentType = xhr.getResponseHeader('Content-Type');
-      const contentDisposition = xhr.getResponseHeader('Content-Disposition');
-      
-      if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
-        // Create blob link and trigger download
-        const blob = new Blob([data], { type: contentType });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        
-        // Extract filename from Content-Disposition header
-        let filename = 'device_import_results.xlsx';
-        if (contentDisposition) {
-          const filenameMatch = contentDisposition.match(/filename="(.+)"/);
-          if (filenameMatch) {
-            filename = filenameMatch[1];
-          }
-        }
-        
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        window.URL.revokeObjectURL(url);
-        
-        // Show results - reflect actual success/failure counts, not just "it downloaded"
-        const resultsDiv = $('#deviceImportResults');
-        let importSummary = null;
-        try {
-          const summaryHeader = xhr.getResponseHeader('X-Import-Summary');
-          if (summaryHeader) importSummary = JSON.parse(summaryHeader);
-        } catch (e) {}
-
-        if (importSummary && importSummary.failed > 0) {
-          resultsDiv.removeClass('alert-success').addClass('alert-danger')
-            .html(`<strong>Import Completed with Errors!</strong><br>
-                   <small>Total: ${importSummary.total}, Success: ${importSummary.success}, Failed: ${importSummary.failed}</small><br>
-                   <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
-        } else {
-          resultsDiv.removeClass('alert-danger').addClass('alert-success')
-            .html(`<strong>Import Complete!</strong><br>
-                   <small>Import results file downloaded. Page will refresh to show updated data.</small>`);
-        }
-        resultsDiv.show();
-        
-        // Refresh page after a delay
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
-      }
-    },
-    error: function(xhr, status, error) {
-      console.error('Device import error:', xhr);
-      console.error('Status:', xhr.status);
-      console.error('Error:', error);
-      
-      $('.progress-bar').css('width', '100%').text(t('Import Failed'));
-
-      extractImportErrorMessage(nativeXhr || xhr).then(function(errorMessage) {
-        const resultsDiv = $('#deviceImportResults');
-        resultsDiv.removeClass('alert-success').addClass('alert-danger')
-          .html(`<strong>Import Failed!</strong><br>${errorMessage}`);
-        resultsDiv.show();
-      });
-    },
-    complete: function() {
-      $('#importDeviceBtn').prop('disabled', false);
-      setTimeout(() => {
-        $('#deviceImportProgress').hide();
-      }, 2000);
-    }
-  });
-});
-
-// Initialize tooltips
-$(document).ready(function() {
-  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-    return new bootstrap.Tooltip(tooltipTriggerEl);
-  });
-});
-
 </script>
-
-<style>
-/* Custom tooltip styles for multi-line descriptions */
-.tooltip .tooltip-inner {
-  white-space: pre-wrap;
-  max-width: 400px;
-  text-align: left;
-}
-
-/* Fixed proportional column widths — see ip_address_list.ejs for rationale:
-   table-layout: fixed makes width depend only on these percentages, not on
-   cell content, so a long Description can never shift other columns. */
-#deviceTable {
-  table-layout: fixed;
-  min-width: 900px;
-}
-#deviceTable thead th {
-  white-space: nowrap;
-}
-#deviceTable th:nth-child(1), #deviceTable td:nth-child(1) { width: 5%; }
-#deviceTable th:nth-child(2), #deviceTable td:nth-child(2) { width: 15%; }
-#deviceTable th:nth-child(3), #deviceTable td:nth-child(3) { width: 19%; }
-#deviceTable th:nth-child(4), #deviceTable td:nth-child(4) { width: 13%; }
-#deviceTable th:nth-child(5), #deviceTable td:nth-child(5) { width: 12%; }
-#deviceTable th:nth-child(6), #deviceTable td:nth-child(6) { width: 18%; }
-#deviceTable th:nth-child(7), #deviceTable td:nth-child(7) { width: 18%; }
-
-/* Description column alignment */
-#deviceTable td:nth-child(3) {
-  text-align: left;
-  vertical-align: top;
-  overflow-wrap: break-word;
-}
-
-/* Force override for Filter Devices modal buttons on mobile */
-@media (max-width: 991.98px) {
-  #filterDeviceModal .modal-footer {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0.5rem !important;
-    justify-content: stretch !important;
-    align-items: stretch !important;
-    width: 100% !important;
-  }
-  
-  #filterDeviceModal .modal-footer .btn,
-  #filterDeviceModal .modal-footer button {
-    width: 100% !important;
-    margin: 0 !important;
-    flex: 1 1 0% !important;
-    min-height: 38px !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    display: block !important;
-  }
-  
-  #filterDeviceModal .modal-footer > div {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0.5rem !important;
-    width: 100% !important;
-  }
-  
-  #filterDeviceModal .modal-footer > div .btn {
-    width: 100% !important;
-    margin: 0 !important;
-  }
-  
-  /* Order: Apply Filters on top, Cancel in the middle, Clear All Filters at the bottom */
-  #filterDeviceModal .modal-footer .btn:first-child {
-    order: 3 !important; /* Clear All Filters at the bottom */
-  }
-  
-  #filterDeviceModal .modal-footer > div .btn:first-child {
-    order: 2 !important; /* Cancel in the middle */
-  }
-  
-  #filterDeviceModal .modal-footer > div .btn:last-child {
-    order: 1 !important; /* Apply Filters on top */
-  }
-  
-  /* Force override any Bootstrap or AdminLTE styles */
-  #filterDeviceModal .modal-footer .btn.btn-outline-danger,
-  #filterDeviceModal .modal-footer .btn.btn-secondary,
-  #filterDeviceModal .modal-footer .btn.btn-primary {
-    width: 100% !important;
-    flex: 1 1 0% !important;
-    min-height: 38px !important;
-  }
-}
-
-</style>
-
-

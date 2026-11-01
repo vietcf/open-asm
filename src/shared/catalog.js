@@ -7,7 +7,7 @@
 //   });
 //   const agentService = catalogService(Agent, { entity: 'Agent', usedBy: 'server(s)' });
 import { pool } from '../../config/config.js';
-import { Where } from './db.js';
+import { db, Where } from './db.js';
 import { ValidationError, NotFoundError, ConflictError } from './errors.js';
 import { hasKey } from './service.js';
 import { apiHandler, handleServiceError } from './api.js';
@@ -16,11 +16,12 @@ export function catalogModel({ table, columns, search = ['name', 'description'],
   const filterWhere = (term) => new Where().search(term, search.map((c) => `t.${c} ILIKE ?`));
   const usage = usageSql ? `(${usageSql})::int` : '0';
   const one = async (sql, params) => (await pool.query(sql, params)).rows[0] || null;
+  const oneOn = async (client, sql, params) => (await db(client).query(sql, params)).rows[0] || null;
   const all = async (sql, params) => (await pool.query(sql, params)).rows;
 
   return {
-    async create(data) {
-      return one(`INSERT INTO ${table} (${columns.join(', ')}) VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')}) RETURNING *`,
+    async create(data, client) {
+      return oneOn(client, `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')}) RETURNING *`,
         columns.map((c) => data[c] ?? null));
     },
     // Only the given columns change
@@ -106,7 +107,13 @@ export function catalogService(model, { entity, columns, usedBy }) {
 // REST handlers with the { success, data, message } envelope:
 // list (every row), find (?name= exact), get, create, update, remove.
 export function catalogApi(model, service, { entity }) {
-  const handler = (fn) => apiHandler(fn, handleServiceError);
+  // ids must be integers: 400 instead of a database error
+  const handler = (fn) => apiHandler(async (req, res) => {
+    if (req.params.id !== undefined && !/^\d+$/.test(req.params.id)) {
+      return res.status(400).json({ success: false, message: `Valid ${entity.toLowerCase()} ID is required` });
+    }
+    return fn(req, res);
+  }, handleServiceError);
   return {
     list: handler(async (req, res) => {
       const data = await model.findAll();
