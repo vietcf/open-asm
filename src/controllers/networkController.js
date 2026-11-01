@@ -5,7 +5,7 @@ import Domain from '../models/Domain.js';
 import Configuration from '../models/Configuration.js';
 import Tag from '../models/Tag.js';
 import Contact from '../models/Contact.js';
-import System from '../models/System.js';
+import System from '../modules/system/system.model.js';
 import { pool } from '../../config/config.js';
 import fs from 'fs';
 import ExcelJS from 'exceljs';
@@ -13,7 +13,7 @@ import XLSX from 'xlsx';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import archiver from 'archiver';
-import { ServiceError } from '../services/errors.js';
+import { ServiceError } from '../shared/errors.js';
 import { sanitizeExcelRow } from '../utils/excelSafe.js';
 import {
   listIpAddresses as listIpAddressesService,

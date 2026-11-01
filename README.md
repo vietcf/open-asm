@@ -367,27 +367,46 @@ curl -X GET https://localhost/api/v1/systems \
 
 ## 📁 Project Structure
 
+Code is grouped **by feature**: everything about one area (model, service,
+web pages and REST API) lives in one folder under `src/modules/`. The web
+pages and the REST API of a module share the same service and model, so a
+rule is written once.
+
 ```
 open-asm/
 ├── src/
-│   ├── api/                 # API routes and controllers
-│   ├── controllers/         # Web controllers
-│   ├── services/            # Shared business logic, used by both web and API
-│   ├── models/             # Database models
-│   ├── routes/             # Web routes
-│   ├── middlewares/        # Custom middlewares
-│   └── utils/              # Utility functions
+│   ├── modules/
+│   │   └── system/                  # one folder per feature
+│   │       ├── system.model.js      #   SQL only (pg queries)
+│   │       ├── system.service.js    #   validation + business rules, used by web and API
+│   │       ├── system.controller.js #   web pages (EJS render, flash, redirect)
+│   │       ├── system.api.js        #   REST handlers (JSON)
+│   │       ├── component.*.js       #   same four files for System Components
+│   │       ├── web.routes.js        #   /system/... pages + AJAX lookups
+│   │       └── api.routes.js        #   /api/v1/systems, /api/v1/components (+ Swagger docs)
+│   ├── shared/                      # building blocks used by every module
+│   │   ├── db.js                    #   Where builder, link-table helpers, json_agg helper
+│   │   ├── service.js               #   input normalization, option lists, relation validation
+│   │   ├── web.js                   #   list query parsing, flash, error messages
+│   │   ├── api.js                   #   REST error mapping, pagination, CRUD handlers
+│   │   ├── errors.js                #   ValidationError, NotFoundError, ConflictError, ...
+│   │   └── transaction.js           #   withTransaction()
+│   ├── api/                         # REST bootstrap: /api/v1 router, JWT auth, Swagger
+│   ├── controllers/ routes/ services/ models/   # modules not moved to src/modules yet
+│   ├── middlewares/                 # Express middlewares (auth, permissions, upload, audit log)
+│   └── utils/                       # generic helpers (excelExport, viewHelpers, filename, ...)
 ├── public/
-│   ├── html/               # EJS templates
-│   ├── css/                # Stylesheets
-│   ├── js/                 # Client-side JavaScript
-│   └── uploads/            # File uploads
-├── migrations/             # Database migrations
-├── tests/                  # Test files
-├── docker-compose.yml      # Docker configuration
-├── Dockerfile             # Docker image definition
-└── README.md              # This file
+│   ├── html/                        # EJS templates (pages/, partials/ui/ = UI kit)
+│   ├── css/  js/                    # stylesheets and browser scripts (UI kit: list-columns, detail-view, form-kit, ui-kit)
+│   └── uploads/                     # file uploads
+├── migrations/                      # schema versions + data migration
+├── docker-compose.yml / Dockerfile
+└── README.md
 ```
+
+Adding a feature: copy the shape of `src/modules/system/`, mount
+`web.routes.js` in `src/app.js` and `api.routes.js` in
+`src/api/routes/index.js` (its Swagger comments are picked up automatically).
 
 ## 🚀 Deployment
 
@@ -583,6 +602,22 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
+- ♻️ Code grouped by feature: the System module (systems + components)
+  now lives in `src/modules/system/` (model, service, web controller, REST
+  handlers, web and API routes side by side) and shared building blocks in
+  `src/shared/` (see Project Structure). Web pages and the REST API call
+  the same services; duplicated code removed: list/count SQL filters built
+  once, link tables saved in one statement, one Excel export helper
+  (`src/utils/excelExport.js`), one REST CRUD/pagination helper, unused
+  model methods and the per-row N+1 queries of the System list.
+- ♻️ Component List, Add and Edit Component rebuilt on the UI kit (toolbar,
+  filters panel, column chooser, detail modal, shared form); new Excel
+  export. Add/Edit System render `system_form.ejs` directly.
+- 🐛 Component List: the total count ignored IP-address search terms (pager
+  disagreed with the rows). System form: a rejected upload redirected to a
+  wrong URL.
+- 🔧 REST: component IPs are `ips: [{id, ip, server_name}]` on every
+  endpoint (GET /components/:id used `ip_address`).
 - ♻️ Shared UI kit (see Development → UI kit): list toolbar, column
   chooser, cell helpers (`ui.*`), detail modal (`DV`), form actions,
   attachments and delete confirmation are now partials and scripts loaded

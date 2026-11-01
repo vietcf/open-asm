@@ -1,5 +1,5 @@
 // Small helpers shared by the web (EJS) controllers.
-import { ServiceError } from '../../services/errors.js';
+import { ServiceError } from './errors.js';
 
 // Username to store in updated_by columns
 export const actorName = (req) => req.session?.user?.username || null;

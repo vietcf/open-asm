@@ -43,7 +43,7 @@ import authRouter from './routes/auth.js';
 import dashboardRouter from './routes/dashboard.js';
 import requireLogin from './middlewares/requireLogin.middleware.js';
 import networkRouter from './routes/network.js';
-import systemRouter from './routes/system.js';
+import systemRouter from './modules/system/web.routes.js';
 import pentestRouter from './routes/pentest.js';
 import clusterRouter from './routes/cluster.js';
 import privAccountRouter from './routes/privAccount.js';

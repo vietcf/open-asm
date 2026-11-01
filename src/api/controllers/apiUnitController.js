@@ -6,7 +6,7 @@ import {
   updateUnit as updateUnitService,
   deleteUnit as deleteUnitService
 } from '../../services/unitService.js';
-import { handleServiceErrorPlain } from '../utils/handleServiceError.js';
+import { handleServiceErrorPlain } from '../../shared/api.js';
 
 // Controller for Organization Unit (OU) API
 const apiUnitController = {};

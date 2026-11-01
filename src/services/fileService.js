@@ -9,7 +9,7 @@
 import fs from 'fs';
 import path from 'path';
 import FileUpload from '../models/FileUpload.js';
-import { ValidationError } from './errors.js';
+import { ValidationError } from '../shared/errors.js';
 
 const UPLOADS_DIR = path.resolve(process.cwd(), process.env.UPLOADS_DIR || 'public/uploads');
 const TMP_URL_RE = /^\/uploads\/tmp\/([A-Za-z0-9._-]+)$/;

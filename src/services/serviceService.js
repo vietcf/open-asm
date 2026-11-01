@@ -1,5 +1,5 @@
 import Service from '../models/Service.js';
-import { ValidationError, NotFoundError, ConflictError } from './errors.js';
+import { ValidationError, NotFoundError, ConflictError } from '../shared/errors.js';
 
 export async function listServices({ search, page, pageSize }) {
   const [items, totalCount] = await Promise.all([

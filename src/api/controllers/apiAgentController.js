@@ -6,7 +6,7 @@ import {
   updateAgent as updateAgentService,
   deleteAgent as deleteAgentService
 } from '../../services/agentService.js';
-import { handleServiceError } from '../utils/handleServiceError.js';
+import { handleServiceError } from '../../shared/api.js';
 
 const apiAgentController = {};
 

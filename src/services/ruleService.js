@@ -3,8 +3,8 @@ import Configuration from '../models/Configuration.js';
 import Unit from '../models/Unit.js';
 import Contact from '../models/Contact.js';
 import Tag from '../models/Tag.js';
-import { ValidationError, NotFoundError, ConflictError } from './errors.js';
-import { withTransaction } from './transaction.js';
+import { ValidationError, NotFoundError, ConflictError } from '../shared/errors.js';
+import { withTransaction } from '../shared/transaction.js';
 
 const toIdArray = v => {
   if (v === undefined || v === null) return [];

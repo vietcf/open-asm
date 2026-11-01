@@ -9,7 +9,7 @@ import bcrypt from 'bcrypt';
 import { pool } from '../../config/config.js';
 import { clearPermissionsCache } from '../middlewares/permissions.middleware.js';
 import { CONFIG_GROUPS, findGroup, parseOptions, validateField } from '../utils/configRegistry.js';
-import { withTransaction } from '../services/transaction.js';
+import { withTransaction } from '../shared/transaction.js';
 import { siteConfig } from '../utils/siteConfig.js';
 
 // ===== USER MANAGEMENT =====

@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt';
 import speakeasy from 'speakeasy';
 import User from '../models/User.js';
 import Permission from '../models/Permission.js';
-import { UnauthorizedError, ForbiddenError, ServiceUnavailableError } from './errors.js';
+import { UnauthorizedError, ForbiddenError, ServiceUnavailableError } from '../shared/errors.js';
 import { authenticateLdap, LdapUnavailableError } from './ldapService.js';
 
 // Looks up user by username, then dispatches to bcrypt or LDAP bind depending

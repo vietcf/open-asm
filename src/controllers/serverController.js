@@ -10,13 +10,13 @@ import Platform from '../models/Platform.js';
 import Configuration from '../models/Configuration.js';
 import Tag from '../models/Tag.js';
 import Contact from '../models/Contact.js';
-import System from '../models/System.js';
+import System from '../modules/system/system.model.js';
 import ExcelJS from 'exceljs';
 import XLSX from 'xlsx';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { ServiceError } from '../services/errors.js';
+import { ServiceError } from '../shared/errors.js';
 import { IPV4_REGEX } from '../services/ipAddressService.js';
 import { sanitizeExcelRow } from '../utils/excelSafe.js';
 import {

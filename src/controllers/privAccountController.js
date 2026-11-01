@@ -3,7 +3,7 @@ import PrivRole from '../models/PrivRole.js';
 import PrivPermission from '../models/PrivPermission.js';
 import { pool } from '../../config/config.js';
 import Configuration from '../models/Configuration.js';
-import System from '../models/System.js';
+import System from '../modules/system/system.model.js';
 import Unit from '../models/Unit.js';
 import Contact from '../models/Contact.js';
 import ExcelJS from 'exceljs';

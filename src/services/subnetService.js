@@ -1,8 +1,8 @@
 import Subnet from '../models/Subnet.js';
 import Tag from '../models/Tag.js';
 import IpAddress from '../models/IpAddress.js';
-import { ValidationError, NotFoundError, ConflictError } from './errors.js';
-import { withTransaction } from './transaction.js';
+import { ValidationError, NotFoundError, ConflictError } from '../shared/errors.js';
+import { withTransaction } from '../shared/transaction.js';
 
 // Anchored CIDR check — the only format validation that existed anywhere was
 // the frontend's unanchored regex (`\d{1,3}(\.\d{1,3}){3}\/\d{1,2}$`, missing

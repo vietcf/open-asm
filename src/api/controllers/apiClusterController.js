@@ -14,7 +14,7 @@ import {
   updateCluster as updateClusterService,
   deleteCluster as deleteClusterService
 } from '../../services/clusterService.js';
-import { handleServiceErrorPlain } from '../utils/handleServiceError.js';
+import { handleServiceErrorPlain } from '../../shared/api.js';
 
 const apiClusterController = {};
 

@@ -1,10 +1,10 @@
 import IpAddress from '../models/IpAddress.js';
 import Tag from '../models/Tag.js';
 import Contact from '../models/Contact.js';
-import System from '../models/System.js';
+import System from '../modules/system/system.model.js';
 import Configuration from '../models/Configuration.js';
-import { ValidationError, NotFoundError, ConflictError } from './errors.js';
-import { withTransaction } from './transaction.js';
+import { ValidationError, NotFoundError, ConflictError } from '../shared/errors.js';
+import { withTransaction } from '../shared/transaction.js';
 
 // Stricter, correctly octet-bounded regex (was previously only applied by the
 // API; the frontend's old `^[0-9]{1,3}(\.[0-9]{1,3}){3}$` allowed octets >255).

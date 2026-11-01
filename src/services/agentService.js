@@ -1,5 +1,5 @@
 import Agent from '../models/Agent.js';
-import { ValidationError, NotFoundError, ConflictError } from './errors.js';
+import { ValidationError, NotFoundError, ConflictError } from '../shared/errors.js';
 
 export async function listAgents({ search, page, pageSize }) {
   const [items, totalCount] = await Promise.all([

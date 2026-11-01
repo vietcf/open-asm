@@ -8,7 +8,7 @@ import {
   deleteContact as deleteContactService,
   getPositionOptions as getPositionOptionsFromConfig
 } from '../../services/contactService.js';
-import { handleServiceErrorPlain } from '../utils/handleServiceError.js';
+import { handleServiceErrorPlain } from '../../shared/api.js';
 
 const apiContactController = {};
 

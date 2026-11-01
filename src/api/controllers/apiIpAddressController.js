@@ -9,7 +9,7 @@ import {
   deleteIpAddress as deleteIpAddressService,
   getIpStatusOptions
 } from '../../services/ipAddressService.js';
-import { handleServiceErrorPlain } from '../utils/handleServiceError.js';
+import { handleServiceErrorPlain } from '../../shared/api.js';
 
 const apiIpAddressController = {};
 

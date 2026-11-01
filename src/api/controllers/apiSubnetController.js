@@ -6,7 +6,7 @@ import {
   updateSubnet as updateSubnetService,
   deleteSubnet as deleteSubnetService
 } from '../../services/subnetService.js';
-import { handleServiceErrorPlain } from '../utils/handleServiceError.js';
+import { handleServiceErrorPlain } from '../../shared/api.js';
 
 const apiSubnetController = {};
 

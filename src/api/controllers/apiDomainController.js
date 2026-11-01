@@ -6,7 +6,7 @@ import {
   updateDomain as updateDomainService,
   deleteDomain as deleteDomainService
 } from '../../services/domainService.js';
-import { handleServiceErrorPlain } from '../utils/handleServiceError.js';
+import { handleServiceErrorPlain } from '../../shared/api.js';
 
 const apiDomainController = {};
 

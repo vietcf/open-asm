@@ -1,9 +1,9 @@
 import Domain from '../models/Domain.js';
-import System from '../models/System.js';
+import System from '../modules/system/system.model.js';
 import IpAddress from '../models/IpAddress.js';
 import Tag from '../models/Tag.js';
-import { ValidationError, NotFoundError, ConflictError } from './errors.js';
-import { withTransaction } from './transaction.js';
+import { ValidationError, NotFoundError, ConflictError } from '../shared/errors.js';
+import { withTransaction } from '../shared/transaction.js';
 
 const toIdArray = v => {
   if (v === undefined || v === null) return [];

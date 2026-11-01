@@ -1,7 +1,7 @@
 import Contact from '../models/Contact.js';
 import Unit from '../models/Unit.js';
 import Configuration from '../models/Configuration.js';
-import { ValidationError, NotFoundError, ConflictError } from './errors.js';
+import { ValidationError, NotFoundError, ConflictError } from '../shared/errors.js';
 
 export const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 

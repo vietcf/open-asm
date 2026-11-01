@@ -9,7 +9,7 @@ import {
   getViolationTypeOptions as getViolationTypeOptionsFromConfig,
   getFirewallNameOptions as getFirewallNameOptionsFromConfig
 } from '../../services/ruleService.js';
-import { handleServiceErrorPlain } from '../utils/handleServiceError.js';
+import { handleServiceErrorPlain } from '../../shared/api.js';
 
 // Controller for Firewall Rule API
 const apiRuleController = {};

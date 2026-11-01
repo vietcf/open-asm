@@ -10,7 +10,7 @@ import XLSX from 'xlsx';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { ServiceError } from '../services/errors.js';
+import { ServiceError } from '../shared/errors.js';
 import { sanitizeExcelObject, sanitizeExcelRow } from '../utils/excelSafe.js';
 import {
   listRules as listRulesService,

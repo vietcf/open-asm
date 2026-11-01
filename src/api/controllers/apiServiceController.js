@@ -6,7 +6,7 @@ import {
   updateService as updateServiceService,
   deleteService as deleteServiceService
 } from '../../services/serviceService.js';
-import { handleServiceError } from '../utils/handleServiceError.js';
+import { handleServiceError } from '../../shared/api.js';
 
 const apiServiceController = {};
 

@@ -8,7 +8,7 @@ import XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
 import fs from 'fs';
 import path from 'path';
-import { ServiceError } from '../services/errors.js';
+import { ServiceError } from '../shared/errors.js';
 import { sanitizeExcelRow } from '../utils/excelSafe.js';
 import {
   listContacts as listContactsService,

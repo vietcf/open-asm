@@ -10,7 +10,7 @@ import {
   getServerStatusOptions,
   getServerTypeOptions
 } from '../../services/serverService.js';
-import { handleServiceError } from '../utils/handleServiceError.js';
+import { handleServiceError } from '../../shared/api.js';
 
 const apiServerController = {};
 

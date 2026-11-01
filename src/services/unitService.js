@@ -1,5 +1,5 @@
 import Unit from '../models/Unit.js';
-import { ValidationError, NotFoundError, ConflictError } from './errors.js';
+import { ValidationError, NotFoundError, ConflictError } from '../shared/errors.js';
 
 export async function listUnits({ search, page, pageSize }) {
   if (search) {

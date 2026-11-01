@@ -1,0 +1,89 @@
+<%#
+  Add / Edit Component form.
+    mode:      'add' | 'edit'
+    component: the component being edited (edit) or {} (add)
+    selected:  { system, contacts, ips, tags } as [{id, text}]
+%>
+<%
+  const isEdit = mode === 'edit';
+  const c = component || {};
+  const sel = selected || {};
+  const join = v => Array.isArray(v) ? v.join(', ') : (v || '');
+%>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [
+  { label: 'System Management' },
+  { label: 'Component List', href: '/system/component' },
+  { label: isEdit ? 'Edit Component' : 'Add Component' }
+] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <form id="componentForm" class="card form-card" method="POST"
+          action="<%= isEdit ? '/system/component/' + c.id + '/edit' : '/system/component/add' %>">
+      <div class="card-header form-card-header">
+        <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit Component' : 'Add Component') %></h3>
+        <% if (isEdit && c.system_name) { %><span class="text-secondary small ms-2"><%= c.system_name %></span><% } %>
+      </div>
+
+      <div class="card-body">
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('General information') %></h4>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="f-system"><%= t('System') %> <span class="text-danger">*</span></label>
+              <select id="f-system" name="system_id" class="form-select js-select" data-ajax-url="/system/api/system" required
+                      data-placeholder="<%= t('Select system') %>" data-selected="<%= JSON.stringify(sel.system || []) %>"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-name"><%= t('Component Name') %> <span class="text-danger">*</span></label>
+              <input type="text" id="f-name" name="name" class="form-control" value="<%= c.name || '' %>" maxlength="255" placeholder="<%= t('Enter component name') %>" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-app-type"><%= t('App Type') %></label>
+              <select id="f-app-type" name="app_type" class="form-select js-select" data-placeholder="<%= t('Select app type') %>">
+                <option value=""></option>
+                <% (appTypeOptions || []).forEach(function (o) { %>
+                  <option value="<%= o.id %>" <%= String(c.app_type) === String(o.id) ? 'selected' : '' %>><%= o.text %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-fqdn"><%= t('Access URLs') %></label>
+              <input type="text" id="f-fqdn" name="fqdn" class="form-control" value="<%= join(c.fqdn) %>" placeholder="<%= t('e.g. https://app.example.com, http://10.0.0.5:8080') %>">
+              <div class="form-text"><%= t('Separate multiple values with commas') %></div>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-description"><%= t('Description') %></label>
+              <textarea id="f-description" name="description" class="form-control" rows="4"
+                        placeholder="<%= t('Please provide the following information: 1) What business functions/features does this component provide? 2) What components does it include? 3) Who are the target users of this component?') %>"><%= c.description || '' %></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('Ownership & infrastructure') %></h4>
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label" for="f-contacts"><%= t('Managers') %></label>
+              <select id="f-contacts" name="contacts[]" class="form-select js-select" multiple data-ajax-url="/organize/api/contact"
+                      data-placeholder="<%= t('Select contacts') %>" data-selected="<%= JSON.stringify(sel.contacts || []) %>"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-ips"><%= t('IP Addresses') %></label>
+              <select id="f-ips" name="ips[]" class="form-select js-select" multiple data-ajax-url="/network/api/ip-addresses"
+                      data-placeholder="<%= t('Select IP addresses') %>" data-selected="<%= JSON.stringify(sel.ips || []) %>"></select>
+              <div class="form-text"><%= t('Also linked to the system') %></div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-tags"><%= t('Tags') %></label>
+              <select id="f-tags" name="tags[]" class="form-select js-select" multiple data-ajax-url="/organize/api/tag"
+                      data-placeholder="<%= t('Select tags') %>" data-selected="<%= JSON.stringify(sel.tags || []) %>"></select>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <%- include('../../partials/ui/form_actions', { cancelUrl: '/system/component', submitLabel: isEdit ? 'Save Changes' : 'Add Component' }) %>
+    </form>
+  </div>
+</div>

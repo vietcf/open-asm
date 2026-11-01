@@ -1,5 +1,5 @@
 import Tag from '../models/Tag.js';
-import { ValidationError, NotFoundError, ConflictError } from './errors.js';
+import { ValidationError, NotFoundError, ConflictError } from '../shared/errors.js';
 
 export async function listTags({ search, page, pageSize }) {
   const [items, totalCount] = await Promise.all([

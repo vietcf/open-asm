@@ -5,8 +5,8 @@ import Tag from '../models/Tag.js';
 import Contact from '../models/Contact.js';
 import IpAddress from '../models/IpAddress.js';
 import Configuration from '../models/Configuration.js';
-import { ValidationError, NotFoundError, ConflictError } from './errors.js';
-import { withTransaction } from './transaction.js';
+import { ValidationError, NotFoundError, ConflictError } from '../shared/errors.js';
+import { withTransaction } from '../shared/transaction.js';
 
 const safe = v => (v === undefined || v === '') ? null : v;
 const safeStr = v => (v === undefined || v === '') ? null : (typeof v === 'string' ? v.trim() : v);

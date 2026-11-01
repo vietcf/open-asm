@@ -6,7 +6,7 @@ import {
   updatePlatform as updatePlatformService,
   deletePlatform as deletePlatformService
 } from '../../services/platformService.js';
-import { ServiceError, HTTP_STATUS_BY_CODE } from '../../services/errors.js';
+import { ServiceError, HTTP_STATUS_BY_CODE } from '../../shared/errors.js';
 
 function respondServiceError(err, res) {
   if (err instanceof ServiceError) {

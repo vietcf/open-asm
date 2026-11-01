@@ -1,5 +1,5 @@
 import Platform from '../models/Platform.js';
-import { ValidationError, NotFoundError, ConflictError } from './errors.js';
+import { ValidationError, NotFoundError, ConflictError } from '../shared/errors.js';
 
 const UPDATABLE_FIELDS = ['name', 'description'];
 

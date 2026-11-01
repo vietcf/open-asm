@@ -9,7 +9,7 @@ import {
   deleteDevice as deleteDeviceService,
   getLocationOptions
 } from '../../services/deviceService.js';
-import { handleServiceError } from '../utils/handleServiceError.js';
+import { handleServiceError } from '../../shared/api.js';
 
 const apiDeviceController = {};
 

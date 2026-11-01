@@ -2,13 +2,13 @@ import Server from '../models/Server.js';
 import IpAddress from '../models/IpAddress.js';
 import Platform from '../models/Platform.js';
 import Contact from '../models/Contact.js';
-import System from '../models/System.js';
+import System from '../modules/system/system.model.js';
 import Agent from '../models/Agent.js';
 import Service from '../models/Service.js';
 import Tag from '../models/Tag.js';
 import Configuration from '../models/Configuration.js';
-import { ValidationError, NotFoundError, ConflictError } from './errors.js';
-import { withTransaction } from './transaction.js';
+import { ValidationError, NotFoundError, ConflictError } from '../shared/errors.js';
+import { withTransaction } from '../shared/transaction.js';
 import { getLocationOptions as getServerLocationOptions } from './deviceService.js';
 
 const toIdArray = v => {

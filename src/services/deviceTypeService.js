@@ -1,5 +1,5 @@
 import DeviceType from '../models/DeviceType.js';
-import { ValidationError, NotFoundError, ConflictError } from './errors.js';
+import { ValidationError, NotFoundError, ConflictError } from '../shared/errors.js';
 
 const UPDATABLE_FIELDS = ['name', 'description'];
 

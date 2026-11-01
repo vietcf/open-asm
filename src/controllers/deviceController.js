@@ -22,7 +22,7 @@ import {
   deleteDevice as deleteDeviceService,
   getLocationOptions
 } from '../services/deviceService.js';
-import { ServiceError } from '../services/errors.js';
+import { ServiceError } from '../shared/errors.js';
 import {
   listPlatforms as listPlatformsService,
   createPlatform as createPlatformService,
