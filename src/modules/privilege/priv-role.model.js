@@ -1,193 +1,91 @@
+// Privileged roles: one system each, with permissions of that system.
 import { pool } from '../../../config/config.js';
+import { db, Where, replaceLinks, jsonList } from '../../shared/db.js';
 
-/**
- * PrivRole Model - handles all database operations for privileged roles and their relationships.
- * Naming convention: All methods use get/set prefix for clarity and consistency.
- */
+const SELECT_WITH_LINKS = `
+  SELECT r.*,
+    CASE WHEN s.id IS NULL THEN NULL ELSE jsonb_build_object('id', s.id, 'name', s.name) END AS system,
+    ${jsonList('p', { id: 'p.id', name: 'p.name', description: 'p.description' })} AS permissions,
+    (SELECT COUNT(*)::int FROM priv_users x WHERE x.role_id = r.id) AS account_count
+  FROM priv_roles r
+  LEFT JOIN systems s ON s.id = r.system_id
+  LEFT JOIN priv_role_permissions rp ON rp.role_id = r.id
+  LEFT JOIN priv_permissions p ON p.id = rp.permission_id`;
+const GROUP_BY = 'GROUP BY r.id, s.id';
+
+// filter: {search, system_id}
+function filterWhere({ search = '', system_id }) {
+  const w = new Where();
+  w.search(search, ['r.name ILIKE ?', 'r.description ILIKE ?',
+    'EXISTS (SELECT 1 FROM priv_role_permissions x JOIN priv_permissions pp ON pp.id = x.permission_id WHERE x.role_id = r.id AND pp.name ILIKE ?)']);
+  if (system_id) w.add(`r.system_id = ${w.param(Number(system_id))}`);
+  return w;
+}
+
 class PrivRole {
-  /**
-   * List roles with optional search, system_id filter, pagination, and system join.
-   * Returns: { roles: [...], totalCount, totalPages }
-   */
-  static async findFilteredList({ search = '', system_id = '', page = 1, pageSize = 10 }) {
-    let where = [];
-    let params = [];
-    let idx = 1;
-    if (search) {
-      where.push(`(r.name ILIKE $${idx} OR r.description ILIKE $${idx})`);
-      params.push(`%${search}%`);
-      idx++;
-    }
-    if (system_id) {
-      where.push(`r.system_id = $${idx}`);
-      params.push(system_id);
-      idx++;
-    }
-    const whereClause = where.length ? ('WHERE ' + where.join(' AND ')) : '';
-    params.push(pageSize, (page - 1) * pageSize);
-    const pageRes = await pool.query(
-      `SELECT r.*, s.id as system_id, s.name as system_name FROM priv_roles r LEFT JOIN systems s ON r.system_id = s.id ${whereClause} ORDER BY r.id LIMIT $${params.length - 1} OFFSET $${params.length}`,
-      params
+  static async create({ name, description, system_id, updated_by }, client) {
+    const result = await db(client).query(
+      'INSERT INTO priv_roles (name, description, system_id, updated_by) VALUES ($1, $2, $3, $4) RETURNING *',
+      [name, description ?? null, system_id, updated_by ?? null]
     );
-    const roles = pageRes.rows.map(row => ({
-      ...row,
-      system: row.system_id ? { id: row.system_id, name: row.system_name } : null
-    }));
-    return roles;
+    return result.rows[0];
   }
 
-  static async countFilteredList({ search = '', system_id = '' }) {
-    let where = [];
-    let params = [];
-    let idx = 1;
-    if (search) {
-      where.push(`(r.name ILIKE $${idx} OR r.description ILIKE $${idx})`);
-      params.push(`%${search}%`);
-      idx++;
-    }
-    if (system_id) {
-      where.push(`r.system_id = $${idx}`);
-      params.push(system_id);
-      idx++;
-    }
-    const whereClause = where.length ? ('WHERE ' + where.join(' AND ')) : '';
-    const countRes = await pool.query(`SELECT COUNT(*) FROM priv_roles r ${whereClause}`, params);
-    return parseInt(countRes.rows[0].count, 10);
+  static async update(id, { name, description, system_id, updated_by }, client) {
+    await db(client).query(
+      'UPDATE priv_roles SET name = $1, description = $2, system_id = $3, updated_by = $4, updated_date = CURRENT_TIMESTAMP WHERE id = $5',
+      [name, description ?? null, system_id, updated_by ?? null, id]
+    );
   }
-  // ===== CRUD METHODS =====
-  static async findAll() {
-    const res = await pool.query(`
-      SELECT r.*, s.id as system_id, s.name as system_name
-      FROM priv_roles r
-      LEFT JOIN systems s ON r.system_id = s.id
-      ORDER BY r.id
-    `);
-    return res.rows.map(row => ({
-      ...row,
-      system: row.system_id ? { id: row.system_id, name: row.system_name } : null
-    }));
+
+  static async remove(id, client) {
+    await db(client).query('DELETE FROM priv_roles WHERE id = $1', [id]);
   }
+
   static async findById(id) {
-    const res = await pool.query(`
-      SELECT r.*, s.id as system_id, s.name as system_name
-      FROM priv_roles r
-      LEFT JOIN systems s ON r.system_id = s.id
-      WHERE r.id = $1
-    `, [id]);
-    const row = res.rows[0];
-    if (!row) return null;
-    return {
-      ...row,
-      system: row.system_id ? { id: row.system_id, name: row.system_name } : null
-    };
+    const result = await pool.query(`${SELECT_WITH_LINKS} WHERE r.id = $1 ${GROUP_BY}`, [id]);
+    return result.rows[0] || null;
   }
-  static async create({ name, description, system_id, updated_by }) {
-    try {
-      const res = await pool.query(
-        'INSERT INTO priv_roles (name, description, system_id, updated_date, updated_by) VALUES ($1, $2, $3, NOW(), $4) RETURNING *',
-        [name, description, system_id, updated_by]
-      );
-      return res.rows[0];
-    } catch (err) {
-      if (err.code === '23505') {
-        throw new Error('A role with this name already exists for the selected system. Please choose a different name or system.');
-      }
-      throw err;
-    }
+
+  static async exists(id) {
+    const result = await pool.query('SELECT 1 FROM priv_roles WHERE id = $1', [id]);
+    return result.rowCount > 0;
   }
-  static async update(id, { name, description, system_id, updated_by }) {
-    const res = await pool.query(
-      'UPDATE priv_roles SET name = $1, description = $2, system_id = $3, updated_date = NOW(), updated_by = $4 WHERE id = $5 RETURNING *',
-      [name, description, system_id, updated_by, id]
+
+  static async findByName(name, systemId) {
+    const result = await pool.query('SELECT * FROM priv_roles WHERE LOWER(name) = LOWER($1) AND system_id = $2', [name, systemId]);
+    return result.rows[0] || null;
+  }
+
+  static async findFilteredList(filter = {}) {
+    const { page = 1, pageSize = 10 } = filter;
+    const w = filterWhere(filter);
+    const result = await pool.query(
+      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY r.updated_date DESC, r.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      w.params
     );
-    return res.rows[0];
+    return result.rows;
   }
-  static async remove(id) {
-    await pool.query('DELETE FROM priv_roles WHERE id = $1', [id]);
+
+  static async countFiltered(filter = {}) {
+    const w = filterWhere(filter);
+    const result = await pool.query(`SELECT COUNT(*) FROM priv_roles r WHERE ${w}`, w.params);
+    return parseInt(result.rows[0].count, 10);
   }
-  static async findFilteredPage(search, page = 1, pageSize = 10) {
-    const offset = (page - 1) * pageSize;
-    const q = `%${search}%`;
-    const res = await pool.query(`
-      SELECT r.*, s.id as system_id, s.name as system_name
-      FROM priv_roles r
-      LEFT JOIN systems s ON r.system_id = s.id
-      WHERE r.name ILIKE $1 OR r.description ILIKE $1
-      ORDER BY r.id
-      LIMIT $2 OFFSET $3
-    `, [q, pageSize, offset]);
-    return res.rows.map(row => ({
-      ...row,
-      system: row.system_id ? { id: row.system_id, name: row.system_name } : null
-    }));
-  }
-  static async countFiltered(search) {
-    const q = `%${search}%`;
-    const res = await pool.query(
-      `SELECT COUNT(*) FROM priv_roles
-       WHERE name ILIKE $1 OR description ILIKE $1`,
-      [q]
+
+  // Select2: roles of the given systems, [{id, text}] (text includes the system when several)
+  static async searchForSystems(search = '', systemIds = []) {
+    if (!systemIds.length) return [];
+    const result = await pool.query(
+      `SELECT r.id, r.name || CASE WHEN $3 THEN ' (' || s.name || ')' ELSE '' END AS text
+       FROM priv_roles r JOIN systems s ON s.id = r.system_id
+       WHERE r.system_id = ANY($1::int[]) AND r.name ILIKE $2 ORDER BY r.name LIMIT 30`,
+      [systemIds, `%${search}%`, systemIds.length > 1]
     );
-    return parseInt(res.rows[0].count, 10);
+    return result.rows;
   }
-  static async findForSystemSelect2(search, system_ids) {
-    const q = `%${search}%`;
-    if (Array.isArray(system_ids)) {
-      system_ids = system_ids.filter(x => x !== undefined && x !== null && x !== '');
-    }
-    let sql = `SELECT id, name FROM priv_roles WHERE (name ILIKE $1 OR description ILIKE $1)`;
-    let params = [q];
-    if (system_ids && Array.isArray(system_ids) && system_ids.length > 0) {
-      sql += ' AND system_id = ANY($2)';
-      params.push(system_ids);
-    } else {
-      return [];
-    }
-    sql += ' ORDER BY name ASC LIMIT 30';
-    const res = await pool.query(sql, params);
-    return res.rows;
-  }
-  static async findPermissions(roleId) {
-    const res = await pool.query(
-      `SELECT p.* FROM priv_role_permissions rp JOIN priv_permissions p ON rp.permission_id = p.id WHERE rp.role_id = $1 ORDER BY p.name`,
-      [roleId]
-    );
-    return res.rows;
-  }
-  // ===== COMPATIBILITY SHIM =====
-  static async getPermissions(roleId) {
-    // For legacy compatibility: alias for findPermissions
-    return this.findPermissions(roleId);
-  }
-  static async setPermissions(roleId, permissionIds) {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query('DELETE FROM priv_role_permissions WHERE role_id = $1', [roleId]);
-      for (const permId of permissionIds) {
-        await client.query('INSERT INTO priv_role_permissions (role_id, permission_id) VALUES ($1, $2)', [roleId, permId]);
-      }
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
-  }
-  static async findBySystemIds(system_ids) {
-    if (!Array.isArray(system_ids) || !system_ids.length) return [];
-    system_ids = system_ids
-      .filter(x => x !== undefined && x !== null && x !== '')
-      .map(x => Number(x))
-      .filter(x => !isNaN(x));
-    if (!system_ids.length) return [];
-    const res = await pool.query(
-      'SELECT id, name FROM priv_roles WHERE system_id = ANY($1) ORDER BY name ASC LIMIT 30',
-      [system_ids]
-    );
-    return res.rows;
-  }
+
+  static setPermissions(id, ids, client) { return replaceLinks(client, 'priv_role_permissions', 'role_id', id, 'permission_id', ids); }
 }
 
 export default PrivRole;

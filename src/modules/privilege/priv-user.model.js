@@ -1,290 +1,91 @@
+// Privileged accounts (priv_users) with unit, role, contacts, systems and servers.
 import { pool } from '../../../config/config.js';
+import { db, Where, replaceLinks, jsonList } from '../../shared/db.js';
 
-/**
- * PrivUser Model - handles all database operations for privileged users and their relationships.
- * Naming convention: All methods use get/set prefix for clarity and consistency.
- */
+const SELECT_WITH_LINKS = `
+  SELECT pu.*,
+    CASE WHEN u.id IS NULL THEN NULL ELSE jsonb_build_object('id', u.id, 'name', u.name) END AS organize,
+    CASE WHEN r.id IS NULL THEN NULL ELSE jsonb_build_object('id', r.id, 'name', r.name) END AS role,
+    ${jsonList('c', { id: 'c.id', name: 'c.name', email: 'c.email' })} AS contacts,
+    ${jsonList('s', { id: 's.id', name: 's.name' })} AS systems,
+    ${jsonList('srv', { id: 'srv.id', name: 'srv.name' })} AS servers
+  FROM priv_users pu
+  LEFT JOIN units u ON u.id = pu.organize_id
+  LEFT JOIN priv_roles r ON r.id = pu.role_id
+  LEFT JOIN priv_user_contacts puc ON puc.user_id = pu.id
+  LEFT JOIN contacts c ON c.id = puc.contact_id
+  LEFT JOIN priv_user_systems pus ON pus.user_id = pu.id
+  LEFT JOIN systems s ON s.id = pus.system_id
+  LEFT JOIN priv_user_servers pusv ON pusv.user_id = pu.id
+  LEFT JOIN servers srv ON srv.id = pusv.server_id`;
+const GROUP_BY = 'GROUP BY pu.id, u.id, r.id';
+
+// filter: {search, system_ids[], organize_id, contact_ids[], account_type[], manage_type[]}
+function filterWhere({ search = '', system_ids = [], organize_id, contact_ids = [], account_type = [], manage_type = [] }) {
+  const w = new Where();
+  w.search(search, ['pu.username ILIKE ?', 'pu.description ILIKE ?', 'pu.app_url ILIKE ?',
+    'EXISTS (SELECT 1 FROM priv_roles x WHERE x.id = pu.role_id AND x.name ILIKE ?)',
+    'EXISTS (SELECT 1 FROM priv_user_servers x JOIN servers sv ON sv.id = x.server_id WHERE x.user_id = pu.id AND sv.name ILIKE ?)']);
+  if (system_ids.length) w.add(`EXISTS (SELECT 1 FROM priv_user_systems x WHERE x.user_id = pu.id AND x.system_id = ANY(${w.param(system_ids.map(Number))}))`);
+  if (contact_ids.length) w.add(`EXISTS (SELECT 1 FROM priv_user_contacts x WHERE x.user_id = pu.id AND x.contact_id = ANY(${w.param(contact_ids.map(Number))}))`);
+  if (organize_id) w.add(`pu.organize_id = ${w.param(Number(organize_id))}`);
+  if (account_type.length) w.add(`pu.account_type = ANY(${w.param(account_type)})`);
+  if (manage_type.length) w.add(`pu.manage_type = ANY(${w.param(manage_type)})`);
+  return w;
+}
+
+const COLUMNS = ['username', 'description', 'organize_id', 'role_id', 'account_type', 'manage_type', 'app_url', 'updated_by'];
 
 class PrivUser {
-  /**
-   * Find filtered list of privileged users with pagination and details.
-   * @param {Object} params - { search, system_ids, organize_id, contact_ids, page, pageSize }
-   * @returns {Array} users with details
-   */
-  static async findFilteredList({ search = '', system_ids = [], organize_id = '', contact_ids = [], page = 1, pageSize = 10 }) {
-    let where = [];
-    let params = [];
-    let idx = 1;
-    if (search) {
-      where.push('(pu.username ILIKE $' + idx + ' OR pu.description ILIKE $' + idx + ')');
-      params.push(`%${search}%`);
-      idx++;
-    }
-    if (system_ids && system_ids.length) {
-      where.push('EXISTS (SELECT 1 FROM priv_user_systems pus WHERE pus.user_id = pu.id AND pus.system_id = ANY($' + idx + '))');
-      params.push(system_ids);
-      idx++;
-    }
-    if (organize_id) {
-      where.push('pu.organize_id = $' + idx);
-      params.push(organize_id);
-      idx++;
-    }
-    if (contact_ids && contact_ids.length) {
-      where.push('EXISTS (SELECT 1 FROM priv_user_contacts puc WHERE puc.user_id = pu.id AND puc.contact_id = ANY($' + idx + '))');
-      params.push(contact_ids);
-      idx++;
-    }
-    let whereClause = where.length ? ('WHERE ' + where.join(' AND ')) : '';
-    params.push(pageSize, (page - 1) * pageSize);
-    const sql = `
-      SELECT DISTINCT pu.* 
-      FROM priv_users pu
-      ${whereClause}
-      ORDER BY pu.id
-      LIMIT $${params.length - 1} 
-      OFFSET $${params.length}
-    `;
-    const result = await pool.query(sql, params);
-    const users = result.rows;
-    // Load details for each user (contacts, systems, organize, role, servers)
-    for (const user of users) {
-      // Contacts
-      const contactRows = await pool.query(
-        `SELECT c.id, c.name, c.email 
-         FROM priv_user_contacts puc 
-         JOIN contacts c ON puc.contact_id = c.id 
-         WHERE puc.user_id = $1`,
-        [user.id]
-      );
-      user.contacts = contactRows.rows;
-      // Systems
-      const systemRows = await pool.query(
-        `SELECT s.id, s.name 
-         FROM priv_user_systems pus 
-         JOIN systems s ON pus.system_id = s.id 
-         WHERE pus.user_id = $1`,
-        [user.id]
-      );
-      user.systems = systemRows.rows;
-      // Organize
-      if (user.organize_id) {
-        const orgRows = await pool.query('SELECT id, name FROM units WHERE id = $1', [user.organize_id]);
-        user.organize = orgRows.rows[0];
-      }
-      // Role
-      if (user.role_id) {
-        const roleRows = await pool.query('SELECT id, name FROM priv_roles WHERE id = $1', [user.role_id]);
-        user.role = roleRows.rows[0];
-      }
-      // Servers
-      if (user.account_type === 'OS' || user.account_type === 'DB') {
-        const serverRows = await pool.query(
-          `SELECT s.id, s.name 
-           FROM priv_user_servers pus 
-           JOIN servers s ON pus.server_id = s.id 
-           WHERE pus.user_id = $1`,
-          [user.id]
-        );
-        user.servers = serverRows.rows;
-      }
-    }
-    return users;
-  }
-
-  /**
-   * Count filtered privileged users (for pagination)
-   * @param {Object} params - { search, system_ids, organize_id, contact_ids }
-   * @returns {number}
-   */
-  static async countFilteredList({ search = '', system_ids = [], organize_id = '', contact_ids = [] }) {
-    let where = [];
-    let params = [];
-    let idx = 1;
-    if (search) {
-      where.push('(pu.username ILIKE $' + idx + ' OR pu.description ILIKE $' + idx + ')');
-      params.push(`%${search}%`);
-      idx++;
-    }
-    if (system_ids && system_ids.length) {
-      where.push('EXISTS (SELECT 1 FROM priv_user_systems pus WHERE pus.user_id = pu.id AND pus.system_id = ANY($' + idx + '))');
-      params.push(system_ids);
-      idx++;
-    }
-    if (organize_id) {
-      where.push('pu.organize_id = $' + idx);
-      params.push(organize_id);
-      idx++;
-    }
-    if (contact_ids && contact_ids.length) {
-      where.push('EXISTS (SELECT 1 FROM priv_user_contacts puc WHERE puc.user_id = pu.id AND puc.contact_id = ANY($' + idx + '))');
-      params.push(contact_ids);
-      idx++;
-    }
-    let whereClause = where.length ? ('WHERE ' + where.join(' AND ')) : '';
-    const countSql = `
-      SELECT COUNT(DISTINCT pu.id) 
-      FROM priv_users pu
-      ${whereClause}
-    `;
-    const countResult = await pool.query(countSql, params);
-    return parseInt(countResult.rows[0].count, 10);
-  }
-  // ===== CRUD METHODS =====
-
-
-  /**
-   * Create a privileged user (only priv_users table)
-   * @param {Object} params - { username, description, organize_id, role_id, account_type, manage_type, app_url, updated_by }
-   * @param {object} client - optional pg client for transaction
-   * @returns {Object} created user
-   */
-  static async create({ username, description, organize_id, role_id, account_type, manage_type, app_url, updated_by, client = pool }) {
-    const res = await client.query(
-      `INSERT INTO priv_users (username, description, organize_id, role_id, account_type, manage_type, app_url, created_at, updated_date, updated_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW(), $8) RETURNING *`,
-      [username, description, organize_id || null, role_id || null, account_type, manage_type, app_url || null, updated_by || username]
+  static async create(data, client) {
+    const result = await db(client).query(
+      `INSERT INTO priv_users (${COLUMNS.join(', ')}) VALUES (${COLUMNS.map((_, i) => `$${i + 1}`).join(', ')}) RETURNING *`,
+      COLUMNS.map((c) => data[c] ?? null)
     );
-    return res.rows[0];
+    return result.rows[0];
   }
 
-  /**
-   * Add contacts to a privileged user (helper for transaction)
-   */
-  static async addContacts(userId, contactIds, client = pool) {
-    for (const contactId of contactIds) {
-      if (contactId) {
-        await client.query('INSERT INTO priv_user_contacts (user_id, contact_id) VALUES ($1, $2)', [userId, contactId]);
-      }
-    }
+  static async update(id, data, client) {
+    await db(client).query(
+      `UPDATE priv_users SET ${COLUMNS.map((c, i) => `${c} = $${i + 1}`).join(', ')}, updated_date = CURRENT_TIMESTAMP WHERE id = $${COLUMNS.length + 1}`,
+      [...COLUMNS.map((c) => data[c] ?? null), id]
+    );
   }
 
-  /**
-   * Add systems to a privileged user (helper for transaction)
-   */
-  static async addSystems(userId, systemIds, client = pool) {
-    for (const systemId of systemIds) {
-      if (systemId) {
-        await client.query('INSERT INTO priv_user_systems (user_id, system_id) VALUES ($1, $2)', [userId, systemId]);
-      }
-    }
-  }
-
-  /**
-   * Add servers to a privileged user (helper for transaction)
-   */
-  static async addServers(userId, serverIds, client = pool) {
-    for (const serverId of serverIds) {
-      if (serverId) {
-        await client.query('INSERT INTO priv_user_servers (user_id, server_id) VALUES ($1, $2)', [userId, serverId]);
-      }
-    }
-  }
-
-  static async findAll() {
-    const res = await pool.query('SELECT * FROM priv_users ORDER BY id');
-    return res.rows;
+  // Link tables cascade
+  static async remove(id, client) {
+    await db(client).query('DELETE FROM priv_users WHERE id = $1', [id]);
   }
 
   static async findById(id) {
-    const res = await pool.query('SELECT * FROM priv_users WHERE id = $1', [id]);
-    return res.rows[0];
+    const result = await pool.query(`${SELECT_WITH_LINKS} WHERE pu.id = $1 ${GROUP_BY}`, [id]);
+    return result.rows[0] || null;
   }
 
-  static async update(id, { username, description, organize_id, role_id, account_type, manage_type, app_url, updated_by, client = pool }) {
-    const res = await client.query(
-      `UPDATE priv_users SET username = $1, description = $2, organize_id = $3, role_id = $4,
-       account_type = $5, manage_type = $6, app_url = $7, updated_by = $8, updated_date = NOW()
-       WHERE id = $9 RETURNING *`,
-      [username, description, organize_id || null, role_id || null, account_type, manage_type, app_url || null, updated_by || username, id]
+  static async findByUsername(username) {
+    const result = await pool.query('SELECT * FROM priv_users WHERE LOWER(username) = LOWER($1)', [username]);
+    return result.rows[0] || null;
+  }
+
+  static async findFilteredList(filter = {}) {
+    const { page = 1, pageSize = 10 } = filter;
+    const w = filterWhere(filter);
+    const result = await pool.query(
+      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY pu.updated_date DESC, pu.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      w.params
     );
-    return res.rows[0];
+    return result.rows;
   }
 
-  static async remove(id, client = pool) {
-    await client.query('DELETE FROM priv_users WHERE id = $1', [id]);
+  static async countFiltered(filter = {}) {
+    const w = filterWhere(filter);
+    const result = await pool.query(`SELECT COUNT(*) FROM priv_users pu WHERE ${w}`, w.params);
+    return parseInt(result.rows[0].count, 10);
   }
 
-
-
-  static async getByIdWithDetails(id) {
-    const res = await pool.query('SELECT * FROM priv_users WHERE id = $1', [id]);
-    if (!res.rows.length) return null;
-    const user = res.rows[0];
-    const contactRows = await pool.query(
-      `SELECT puc.user_id, c.id, c.name, c.email FROM priv_user_contacts puc JOIN contacts c ON puc.contact_id = c.id WHERE puc.user_id = $1`,
-      [user.id]
-    );
-    const systemRows = await pool.query(
-      `SELECT pus.user_id, s.id, s.name FROM priv_user_systems pus JOIN systems s ON pus.system_id = s.id WHERE pus.user_id = $1`,
-      [user.id]
-    );
-    const serverRows = await pool.query(
-      `SELECT pus.user_id, s.id, s.name FROM priv_user_servers pus JOIN servers s ON pus.server_id = s.id WHERE pus.user_id = $1`,
-      [user.id]
-    );
-    let organize = null;
-    if (user.organize_id) {
-      const orgRows = await pool.query('SELECT id, name FROM units WHERE id = $1', [user.organize_id]);
-      organize = orgRows.rows[0] || null;
-    }
-    let role = null;
-    if (user.role_id) {
-      const roleRows = await pool.query('SELECT id, name FROM priv_roles WHERE id = $1', [user.role_id]);
-      role = roleRows.rows[0] || null;
-    }
-    user.contacts = contactRows.rows.map(r => ({ id: r.id, name: r.name, email: r.email }));
-    user.systems = systemRows.rows.map(r => ({ id: r.id, name: r.name }));
-    user.servers = serverRows.rows.map(r => ({ id: r.id, name: r.name }));
-    user.organize = organize;
-    user.role = role;
-    return user;
-  }
-
-    /**
-   * Set contacts for a privileged user (removes all and adds new)
-   * @param {number} userId
-   * @param {Array} contactIds
-   * @param {object} client
-   */
-  static async setContacts(userId, contactIds, client = pool) {
-    await client.query('DELETE FROM priv_user_contacts WHERE user_id = $1', [userId]);
-    for (const contactId of contactIds) {
-      if (contactId) {
-        await client.query('INSERT INTO priv_user_contacts (user_id, contact_id) VALUES ($1, $2)', [userId, contactId]);
-      }
-    }
-  }
-
-  /**
-   * Set systems for a privileged user (removes all and adds new)
-   * @param {number} userId
-   * @param {Array} systemIds
-   * @param {object} client
-   */
-  static async setSystems(userId, systemIds, client = pool) {
-    await client.query('DELETE FROM priv_user_systems WHERE user_id = $1', [userId]);
-    for (const systemId of systemIds) {
-      if (systemId) {
-        await client.query('INSERT INTO priv_user_systems (user_id, system_id) VALUES ($1, $2)', [userId, systemId]);
-      }
-    }
-  }
-
-  /**
-   * Set servers for a privileged user (removes all and adds new)
-   * @param {number} userId
-   * @param {Array} serverIds
-   * @param {object} client
-   */
-  static async setServers(userId, serverIds, client = pool) {
-    await client.query('DELETE FROM priv_user_servers WHERE user_id = $1', [userId]);
-    for (const serverId of serverIds) {
-      if (serverId) {
-        await client.query('INSERT INTO priv_user_servers (user_id, server_id) VALUES ($1, $2)', [userId, serverId]);
-      }
-    }
-  }
+  static setContacts(id, ids, client) { return replaceLinks(client, 'priv_user_contacts', 'user_id', id, 'contact_id', ids); }
+  static setSystems(id, ids, client) { return replaceLinks(client, 'priv_user_systems', 'user_id', id, 'system_id', ids); }
+  static setServers(id, ids, client) { return replaceLinks(client, 'priv_user_servers', 'user_id', id, 'server_id', ids); }
 }
 
 export default PrivUser;

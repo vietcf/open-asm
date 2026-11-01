@@ -604,6 +604,20 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
+- ♻️ Privileged accounts, roles and permissions rebuilt on the UI kit
+  (filters, column chooser, detail modal, Add/Edit pages, export). Lists
+  load links in one query (was up to 5 queries per account row). The
+  account form shows servers for OS / DB and the URL for APP accounts; the
+  role picker lists roles of the chosen systems and the permission picker
+  permissions of the role's system (`data-ajax-with`).
+- 🛡️ New checks: account names are unique (case-insensitive); an
+  account's role must belong to one of its systems; a role holds only its
+  system's permissions; a role still assigned to accounts or the system of
+  a permission used by roles cannot change / be deleted (clear messages
+  instead of FK errors). Existing rows that break these rules are shown as
+  before and only need fixing when edited.
+- 🐛 The permission list ignored the system filter; saving a privileged
+  role flushed the app's own permission cache (unrelated tables).
 - ♻️ Network (IP addresses, subnets, domains) rebuilt on the UI kit: one
   model / service / controller / api file per entity, Add/Edit pages
   instead of modals, shared importer and Excel export. The 3200-line
