@@ -37,6 +37,8 @@ export default function apiDebugLog(req, res, next) {
         const body = bodyText(req.body);
         writeLog({
           req,
+          // requests refused before authentication have no user (not the OS user writeLog falls back to)
+          username: req.user?.username || 'anonymous',
           action: 'api_request',
           object_type,
           object_id,
