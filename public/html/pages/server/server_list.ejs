@@ -59,9 +59,7 @@
                   <select name="<%= s.name %>" class="form-select js-filter" data-placeholder="<%= t('All') %>">
                     <option value=""></option>
                     <% if (s.name !== 'status') { %><option value="__none__" <%= s.value === '__none__' ? 'selected' : '' %>><%= t('(Not set)') %></option><% } %>
-                    <% (s.opts || []).forEach(function (o) { %>
-                      <option value="<%= o.id %>" <%= s.value === o.id ? 'selected' : '' %>><%= o.text %></option>
-                    <% }) %>
+                    <%- ui.options(s.opts, s.value, { all: true }) %>
                   </select>
                 </div>
               <% }) %>

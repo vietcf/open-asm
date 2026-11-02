@@ -1460,5 +1460,21 @@
   "You cannot delete your own account": "Bạn không thể xóa chính tài khoản mình",
   "You do not have permission to access this feature.": "Bạn không có quyền truy cập chức năng này.",
   "You must select at least one permission!": "Bạn phải chọn ít nhất một quyền!",
-  "Zone": "Zone"
+  "Zone": "Zone",
+  "inactive": "ngưng dùng",
+  "In use": "Đang dùng",
+  "{value} is no longer in use for {label}": "\"{value}\" đã ngưng dùng cho {label}",
+  "{field}: \"{from}\" replaced by \"{to}\" in {count} record(s)": "{field}: đã thay \"{from}\" bằng \"{to}\" trên {count} bản ghi",
+  "{field}: \"{value}\" is still in use, kept as inactive": "{field}: \"{value}\" vẫn đang được dùng nên được giữ ở trạng thái ngưng dùng",
+  "{field}: \"{value}\" cannot replace \"{from}\", it must be an active option of the list": "{field}: không thể dùng \"{value}\" thay cho \"{from}\", giá trị thay thế phải đang được dùng trong danh sách",
+  "Delete this value? No record uses it.": "Xoá giá trị này? Không có bản ghi nào đang dùng.",
+  "\"{value}\" is used by {count} record(s). What should happen to them?": "\"{value}\" đang được {count} bản ghi sử dụng. Bạn muốn xử lý các bản ghi này thế nào?",
+  "Delete a value in use": "Xoá giá trị đang được dùng",
+  "Make it inactive": "Ngưng dùng",
+  "Records keep the value; it can no longer be chosen.": "Các bản ghi giữ nguyên giá trị; không chọn được giá trị này nữa.",
+  "Replace it on those records with": "Thay trên các bản ghi đó bằng",
+  "Replacement value": "Giá trị thay thế",
+  "Applied when you save; the value is then deleted.": "Áp dụng khi bấm Lưu; sau đó giá trị cũ bị xoá.",
+  "Records using this value. A used value cannot be deleted: it is made inactive, or replaced on those records by another value.": "Số bản ghi đang dùng giá trị này. Giá trị đang được dùng không thể xoá: chỉ có thể ngưng dùng, hoặc thay bằng giá trị khác trên các bản ghi đó.",
+  "Inactive: records keep the value, it can no longer be chosen.": "Ngưng dùng: các bản ghi giữ nguyên giá trị, nhưng không chọn được giá trị này nữa."
 }

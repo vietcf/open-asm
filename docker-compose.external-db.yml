@@ -1,0 +1,22 @@
+## External PostgreSQL: app + nginx only, no db / pgadmin containers.
+##   docker compose -f docker-compose.external-db.yml up -d
+## Database settings (POSTGRES_HOST, _PORT, _DB, _USER, _PASSWORD, _SSL) go in
+## .env.docker. The database must exist (it may be empty: the schema is
+## created on the first start). A database on this same host is reachable as
+## POSTGRES_HOST=host.docker.internal.
+services:
+  app:
+    extends:
+      file: docker-compose.yml
+      service: app
+    depends_on: !reset {}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+  nginx:
+    extends:
+      file: docker-compose.yml
+      service: nginx
+
+networks:
+  openasm_net:
+    driver: bridge

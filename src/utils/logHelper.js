@@ -77,7 +77,30 @@ async function writeLog({ action, description, req, status, object_type, object_
     }
   }
   if (!log.username) log.username = os.userInfo().username || null;
+  toConsole(log);
   await SystemLog.create(log);
+}
+
+// Every entry written to system_log is also printed to stdout as one JSON
+// line (docker compose logs app), for log collectors / a SIEM. Written before
+// the database insert, so an event is not lost when the database is down.
+function toConsole(log) {
+  process.stdout.write(JSON.stringify({
+    time: new Date().toISOString(),
+    app: 'open-asm',
+    type: 'audit',
+    category: log.category,
+    level: log.level,
+    action: log.action,
+    status: log.status,
+    user: log.username,
+    user_id: log.user_id,
+    src_ip: log.ip_address,
+    object_type: log.object_type,
+    object_id: log.object_id,
+    description: log.description,
+    user_agent: log.user_agent,
+  }) + '\n');
 }
 
 export { writeLog };

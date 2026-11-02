@@ -45,6 +45,14 @@ export async function getAccount(id) {
 }
 
 // ===== Commands =====
+// The record's own value passes unchanged (even retired); a new one must be an active option
+function assertChoosable(options, value, current, message) {
+  if (value === current) return;
+  const found = options.find((o) => o.id === value);
+  if (!found) throw new ValidationError(message);
+  if (found.inactive) throw new ValidationError('{value} is no longer in use for {label}').withParams({ value, label: message.replace('Invalid ', '') });
+}
+
 // input: {username, description, organize_id, role_id, account_type, manage_type, app_url, contacts, systems, servers, updated_by}
 async function normalize(input, id = null) {
   const username = typeof input.username === 'string' ? input.username.trim() : '';
@@ -53,12 +61,13 @@ async function normalize(input, id = null) {
   if (existing && String(existing.id) !== String(id)) throw new ConflictError('Account name already exists');
 
   const [accountTypes, manageTypes] = await Promise.all([getAccountTypeOptions(), getManageTypeOptions()]);
+  const current = id ? await PrivUser.findById(id) : null;
   const account_type = toNullableString(input.account_type);
   const manage_type = toNullableString(input.manage_type);
   if (!account_type) throw new ValidationError('Account Type is required');
-  if (!accountTypes.some((o) => o.id === account_type)) throw new ValidationError('Invalid Account Type');
+  assertChoosable(accountTypes, account_type, current?.account_type, 'Invalid Account Type');
   if (!manage_type) throw new ValidationError('Management Method is required');
-  if (!manageTypes.some((o) => o.id === manage_type)) throw new ValidationError('Invalid Management Method');
+  assertChoosable(manageTypes, manage_type, current?.manage_type, 'Invalid Management Method');
 
   const organize_id = parseInt(input.organize_id, 10) || null;
   if (!organize_id) throw new ValidationError('Organize Unit is required');

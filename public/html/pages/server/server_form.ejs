@@ -37,9 +37,7 @@
                 <label class="form-label" for="f-<%= o.name %>"><%= t(o.label) %></label>
                 <select id="f-<%= o.name %>" name="<%= o.name %>" class="form-select js-select" data-placeholder="<%= t(o.placeholder) %>">
                   <option value=""></option>
-                  <% (o.opts || []).forEach(function (opt) { %>
-                    <option value="<%= opt.id %>" <%= String(s[o.name]) === String(opt.id) ? 'selected' : '' %>><%= opt.text %></option>
-                  <% }) %>
+                  <%- ui.options(o.opts, s[o.name]) %>
                 </select>
               </div>
             <% }) %>

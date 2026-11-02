@@ -46,11 +46,11 @@
             <div class="row g-2">
               <div class="col-md-4">
                 <label class="form-label small"><%= t('Account Type') %></label>
-                <select name="account_type" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"><%- ui.options(accountTypes, f.account_type) %></select>
+                <select name="account_type" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"><%- ui.options(accountTypes, f.account_type, { all: true }) %></select>
               </div>
               <div class="col-md-4">
                 <label class="form-label small"><%= t('Management Method') %></label>
-                <select name="manage_type" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"><%- ui.options(manageTypes, f.manage_type) %></select>
+                <select name="manage_type" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"><%- ui.options(manageTypes, f.manage_type, { all: true }) %></select>
               </div>
               <div class="col-md-4">
                 <label class="form-label small"><%= t('Organize Unit') %></label>

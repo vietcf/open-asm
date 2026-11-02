@@ -139,6 +139,25 @@ test('upgrading a database with data does not seed; migrations add new permissio
   assert.ok((await perms('admin')).includes('device.create')); // the seed re-grants the defaults
 });
 
+test('values removed from an option list but still used by records come back as retired (0020)', async () => {
+  const db = await freshDb();
+  await q(db, fs.readFileSync(path.join(VERSIONS, '0001_baseline.sql'), 'utf8'));
+  await q(db, `INSERT INTO roles (name, description) VALUES ('superadmin', 's')`);
+  await q(db, `INSERT INTO configuration (key, value) VALUES ('ip_address_status', '[{"value":"assigned","label":"Assigned"}]'),
+                                                             ('system_user_scope', '[{"value":"Internal","label":"Internal"}]')`);
+  await q(db, `INSERT INTO ip_addresses (ip_address, status) VALUES ('10.0.0.1', 'assigned'), ('10.0.0.2', 'old-status'), ('10.0.0.3', NULL)`);
+  await q(db, `INSERT INTO systems (system_id, name, scopes) VALUES ('S1', 'one', '["Internal","Partner"]')`);
+  const r = await migrate(db);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /0020: ip_address_status: retired values added for existing records: old-status/);
+  const list = (key) => q(db, `SELECT value FROM configuration WHERE key = '${key}'`).then((rows) => JSON.parse(rows[0].value));
+  assert.deepEqual(await list('ip_address_status'), [
+    { value: 'assigned', label: 'Assigned' },
+    { value: 'old-status', label: 'old-status', active: false },
+  ]);
+  assert.deepEqual((await list('system_user_scope')).map((o) => [o.value, o.active]), [['Internal', undefined], ['Partner', false]]);
+});
+
 test('incomplete existing database is refused', async () => {
   const db = await freshDb();
   await q(db, 'CREATE TABLE users (id serial primary key)');

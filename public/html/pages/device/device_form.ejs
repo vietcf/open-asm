@@ -47,9 +47,7 @@
               <label class="form-label" for="f-location"><%= t('Location') %></label>
               <select id="f-location" name="location" class="form-select js-select" data-placeholder="<%= t('Select location') %>">
                 <option value=""></option>
-                <% (locationOptions || []).forEach(function (o) { %>
-                  <option value="<%= o.id %>" <%= d.location === o.id ? 'selected' : '' %>><%= o.text %></option>
-                <% }) %>
+                <%- ui.options(locationOptions, d.location) %>
               </select>
             </div>
             <div class="col-md-4">

@@ -77,18 +77,14 @@
                 <label class="form-label small"><%= t('Scope user access') %></label>
                 <select name="scopes[]" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>">
                   <option value="__none__" <%= filterScopes.includes('__none__') ? 'selected' : '' %>><%= t('(Not set)') %></option>
-                  <% (scopeOptions || []).forEach(function (o) { %>
-                    <option value="<%= o.id %>" <%= filterScopes.includes(String(o.id)) ? 'selected' : '' %>><%= o.text %></option>
-                  <% }); %>
+                  <%- ui.options(scopeOptions, filterScopes, { all: true }) %>
                 </select>
               </div>
               <div class="col-md-6 col-xl-4">
                 <label class="form-label small"><%= t('Architecture') %></label>
                 <select name="architectures[]" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>">
                   <option value="__none__" <%= filterArchitecture.includes('__none__') ? 'selected' : '' %>><%= t('(Not set)') %></option>
-                  <% (architectureOptions || []).forEach(function (o) { %>
-                    <option value="<%= o.id %>" <%= filterArchitecture.includes(String(o.id)) ? 'selected' : '' %>><%= o.text %></option>
-                  <% }); %>
+                  <%- ui.options(architectureOptions, filterArchitecture, { all: true }) %>
                 </select>
               </div>
               <div class="col-md-6 col-xl-4">
@@ -96,9 +92,7 @@
                 <select name="level" class="form-select js-filter" data-placeholder="<%= t('All Levels') %>">
                   <option value=""></option>
                   <option value="__none__" <%= filterLevel === '__none__' ? 'selected' : '' %>><%= t('(Not set)') %></option>
-                  <% (levelOptions || []).forEach(function (level) { %>
-                    <option value="<%= level.id %>" <%= String(filterLevel) === String(level.id) ? 'selected' : '' %>><%= level.text %></option>
-                  <% }); %>
+                  <%- ui.options(levelOptions, filterLevel, { all: true }) %>
                 </select>
               </div>
             </div>
