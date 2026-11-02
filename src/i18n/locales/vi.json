@@ -203,6 +203,7 @@
   "Cannot delete admin user!": "Không thể xóa người dùng admin!",
   "Cannot delete IP address: it is assigned to {owners}": "Không thể xóa địa chỉ IP: đang được gán cho {owners}",
   "Cannot delete IP address: it is used by service mapping {names}. Remove it from the mapping first.": "Không thể xóa địa chỉ IP: đang được dùng trong service mapping {names}. Hãy gỡ IP khỏi service mapping trước.",
+  "Cannot delete IP address: it is a member of cluster {names}. Remove it from the cluster first.": "Không thể xóa địa chỉ IP: đang là thành viên của cluster {names}. Hãy gỡ IP khỏi cluster trước.",
   "Cannot delete domain: it is used by service mapping {names}. Remove it from the mapping first.": "Không thể xóa domain: đang được dùng trong service mapping {names}. Hãy gỡ domain khỏi service mapping trước.",
   "Cannot delete the superadmin role!": "Không thể xóa vai trò superadmin!",
   "Cannot delete this role because it is assigned to {count} account(s). Reassign them first.": "Không thể xóa role này vì đang gán cho {count} tài khoản. Hãy chuyển các tài khoản sang role khác trước.",

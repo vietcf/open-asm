@@ -198,6 +198,14 @@ class IpAddress {
     return result.rows;
   }
 
+  // Clusters that have the IP as a member
+  static async getClusters(ipId, client) {
+    const result = await db(client).query(
+      `SELECT DISTINCT cl.id, cl.name FROM cluster_members cm JOIN clusters cl ON cl.id = cm.cluster_id
+        WHERE cm.ip_address_id = $1 ORDER BY cl.name`, [ipId]);
+    return result.rows;
+  }
+
   static async getPrimaryOwnerIds(ipId, client) {
     const ex = db(client);
     const [d, s] = await Promise.all([

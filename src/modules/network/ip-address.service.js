@@ -94,7 +94,7 @@ export async function updateIpAddress(id, input, client) {
   return IpAddress.findByIdWithDetails(id);
 }
 
-// An IP still used by a server or device, or as a service mapping backend, cannot be deleted.
+// An IP still used by a server or device, a service mapping or a cluster cannot be deleted.
 export async function deleteIpAddress(id, client) {
   if (!(await IpAddress.exists(id))) throw new NotFoundError('IP address not found');
   const { devices, servers } = await IpAddress.getOwners(id, client);
@@ -106,6 +106,11 @@ export async function deleteIpAddress(id, client) {
   if (mappings.length) {
     throw new ConflictError('Cannot delete IP address: it is used by service mapping {names}. Remove it from the mapping first.')
       .withParams({ names: mappings.map((m) => `"${m.name}"`).join(', ') });
+  }
+  const clusters = await IpAddress.getClusters(id, client);
+  if (clusters.length) {
+    throw new ConflictError('Cannot delete IP address: it is a member of cluster {names}. Remove it from the cluster first.')
+      .withParams({ names: clusters.map((c) => `"${c.name}"`).join(', ') });
   }
   await IpAddress.remove(id, client);
 }

@@ -666,6 +666,12 @@ when cutting a release.
   is cached for up to 30 seconds. Migration
   `0017_system_log_debug_level.sql` adds `debug` to the level check; the
   seed adds `api_debug_log = off`.
+- 🐛 Deleting an IP address no longer silently removes it from its
+  clusters: the delete is refused with the cluster names until the IP is
+  removed from them. Deleting a server / device with "delete IPs" keeps
+  (as reserved) the IPs still used by a cluster or a service mapping.
+  Migration `0018_cluster_member_ip_restrict.sql` makes
+  `cluster_members.ip_address_id` `ON DELETE RESTRICT`.
 - 🐛 Device import: unknown device types are now auto-created (matching
   the Add Device form behaviour) instead of failing with "Not found".
 - ✨ Backup & Restore page (`/backup`, `src/modules/backup/`): separate

@@ -73,12 +73,19 @@ export async function ownedIpIds(kind, ownerId, client) {
   return rows.map((r) => r.ip_id);
 }
 
-// After an owner is deleted: its IPs that nothing else uses are released
-// ('reserved') or, with deleteIp, deleted.
+// After an owner is deleted: its IPs that no other owner uses are released
+// ('reserved') or, with deleteIp, deleted. IPs still referenced by a cluster
+// or a service mapping are only released, never deleted.
 export async function releaseIps(ipIds, { deleteIp = false } = {}, client) {
   if (!ipIds.length) return;
+  const ex = db(client);
   const unused = 'id = ANY($1) AND id NOT IN (SELECT ip_id FROM device_ip UNION SELECT ip_id FROM server_ip)';
-  await db(client).query(deleteIp ? `DELETE FROM ip_addresses WHERE ${unused}` : `UPDATE ip_addresses SET status = 'reserved' WHERE ${unused}`, [ipIds]);
+  if (deleteIp) {
+    await ex.query(`DELETE FROM ip_addresses WHERE ${unused} AND id NOT IN (
+      SELECT ip_address_id FROM cluster_members UNION SELECT ip_address_id FROM virtual_server_members
+      UNION SELECT ip_address_id FROM virtual_servers)`, [ipIds]);
+  }
+  await ex.query(`UPDATE ip_addresses SET status = 'reserved' WHERE ${unused}`, [ipIds]);
 }
 
 // ===== Imports =====
