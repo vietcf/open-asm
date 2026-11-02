@@ -101,6 +101,7 @@ docker compose up -d
 
 - Your own certificate: put it in `./ssl/` as `nginx-selfsigned.crt` / `nginx-selfsigned.key`, then `docker compose restart nginx`.
 - Lost the admin password: `docker compose exec app npm run admin:reset-password`
+- Cannot sign in after a restore: `docker compose exec app node migrations/tools/reset_admin_password.js [username] --disable-2fa`
 - Update to a new version: `git pull && docker compose up -d --build` (migrations run automatically; no nginx restart needed).
 - Requires Docker Compose ≥ 2.24 (for the optional `.env.docker`).
 
@@ -603,13 +604,18 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
-- ✨ Backup & Restore page (`/backup`, `src/modules/backup/`): back up now,
-  download, delete, upload a dump and restore it from the UI. The restore
-  is atomic (a failing dump changes nothing), takes a `pre-restore_*` copy
-  first, needs the typed word `RESTORE` and the new `backup.restore`
-  permission, then runs pending migrations. New permissions `backup.read`,
-  `backup.create`, `backup.delete`, `backup.restore` (seeded for
-  `superadmin`).
+- ✨ Backup & Restore page (`/backup`, `src/modules/backup/`): separate
+  Backup section (back up now, upload, download, delete) and Restore
+  section with a warning that restoring replaces the entire database and
+  a CLI hint for resetting password / disabling 2FA afterwards. The
+  restore is atomic (a failing dump changes nothing), takes a
+  `pre-restore_*` copy first, needs the typed word `RESTORE` and the new
+  `backup.restore` permission, then runs pending migrations. New
+  permissions `backup.read`, `backup.create`, `backup.delete`,
+  `backup.restore` (seeded for `superadmin`).
+- 🔧 `reset_admin_password.js` now accepts `--disable-2fa` to turn off
+  two-factor authentication when resetting a password (useful after a
+  restore).
 - ♻️ Backup settings moved from `.env` to System Configuration > Backup
   (on/off, frequency, hour, number kept) and apply without a restart.
   Installs that set `BACKUP_FREQUENCY` / `BACKUP_RETENTION` keep those
