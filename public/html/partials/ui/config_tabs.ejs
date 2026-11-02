@@ -1,0 +1,35 @@
+<%#
+  System Configuration navigation: the groups of src/utils/configRegistry.js,
+  gathered under their `section` heading. A side list from the lg breakpoint,
+  a select on narrower screens, so nothing scrolls sideways.
+  include('../../partials/ui/config_tabs', { groups, current: 'system' })
+%>
+<%
+  const sections = [];
+  groups.forEach(function (g) {
+    let s = sections.find(x => x.label === g.section);
+    if (!s) sections.push(s = { label: g.section, groups: [] });
+    s.groups.push(g);
+  });
+%>
+<nav class="config-nav" aria-label="<%= t('System Configuration') %>">
+  <select class="form-select d-lg-none mb-3" data-config-nav aria-label="<%= t('System Configuration') %>">
+    <% sections.forEach(function (s) { %>
+      <optgroup label="<%= t(s.label) %>">
+        <% s.groups.forEach(function (g) { %>
+          <option value="/administrator/configuration/<%= g.id %>"<%= g.id === current ? ' selected' : '' %>><%= t(g.label) %></option>
+        <% }) %>
+      </optgroup>
+    <% }) %>
+  </select>
+  <div class="config-nav-list d-none d-lg-block card">
+    <% sections.forEach(function (s) { %>
+      <div class="config-nav-heading"><%= t(s.label) %></div>
+      <% s.groups.forEach(function (g) { %>
+        <a class="config-nav-link<%= g.id === current ? ' active' : '' %>" href="/administrator/configuration/<%= g.id %>"<%- g.id === current ? ' aria-current="page"' : '' %>>
+          <i class="bi <%= g.icon %>"></i><%= t(g.label) %>
+        </a>
+      <% }) %>
+    <% }) %>
+  </div>
+</nav>

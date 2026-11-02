@@ -1,0 +1,109 @@
+<%#
+  Add / Edit Device.  mode: 'add' | 'edit', device, locationOptions,
+  selected: { ips, vips, type, platform, manufacturer, role, contacts, tags } as [{id, text}]
+  Type, manufacturer and role accept new values (typed).
+%>
+<% const isEdit = mode === 'edit'; const d = device || {}; const sel = selected || {}; %>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [
+  { label: 'Device Management' }, { label: 'Device List', href: '/device/device' }, { label: isEdit ? 'Edit Device' : 'Add Device' }
+] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <form class="card form-card" method="POST" action="<%= isEdit ? '/device/device/' + d.id + '/edit' : '/device/device/add' %>">
+      <div class="card-header form-card-header">
+        <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit Device' : 'Add Device') %></h3>
+      </div>
+      <div class="card-body">
+        <%- include('../../partials/ui/copied_from', { copiedFrom: locals.copiedFrom, hint: 'Enter a name, IP addresses and serial number for the copy.' }) %>
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('General information') %></h4>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="f-name"><%= t('Device Name') %> <span class="text-danger">*</span></label>
+              <input type="text" id="f-name" name="name" class="form-control" value="<%= d.name || '' %>" maxlength="255" placeholder="<%= t('Enter device name') %>" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-type"><%= t('Device Type') %> <span class="text-danger">*</span></label>
+              <select id="f-type" name="type" class="form-select js-select" data-tags="true" required
+                      data-placeholder="<%= t('Select or type a device type') %>"><option value=""></option><%- ui.options(deviceTypeOptions, sel.type || []) %></select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="f-os"><%= t('Platform') %></label>
+              <select id="f-os" name="os" class="form-select js-select"
+                      data-placeholder="<%= t('Select platform') %>"><option value=""></option><%- ui.options(platformOptions, sel.platform || []) %></select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="f-manufacturer"><%= t('Manufacturer') %></label>
+              <select id="f-manufacturer" name="manufacturer" class="form-select js-select" data-ajax-url="/device/api/manufacturer" data-tags="true"
+                      data-placeholder="<%= t('Select or type a manufacturer') %>" data-selected="<%= JSON.stringify(sel.manufacturer || []) %>"></select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="f-role"><%= t('Device Role') %></label>
+              <select id="f-role" name="device_role" class="form-select js-select" data-ajax-url="/device/api/device-role" data-tags="true"
+                      data-placeholder="<%= t('Select or type a role') %>" data-selected="<%= JSON.stringify(sel.role || []) %>"></select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="f-location"><%= t('Location') %></label>
+              <select id="f-location" name="location" class="form-select js-select" data-placeholder="<%= t('Select location') %>">
+                <option value=""></option>
+                <% (locationOptions || []).forEach(function (o) { %>
+                  <option value="<%= o.id %>" <%= d.location === o.id ? 'selected' : '' %>><%= o.text %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="f-serial"><%= t('Serial Number') %></label>
+              <input type="text" id="f-serial" name="serial_number" class="form-control" value="<%= d.serial_number || '' %>" maxlength="255">
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-description"><%= t('Description') %></label>
+              <textarea id="f-description" name="description" class="form-control" rows="3" placeholder="<%= t('Enter device description') %>"><%= d.description || '' %></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('Network') %></h4>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="f-ips"><%= t('IP Address(es)') %> <span class="text-danger">*</span></label>
+              <select id="f-ips" name="ip_addresses[]" class="form-select js-select" multiple required data-ajax-url="/network/api/ip-addresses/unassigned"
+                      data-placeholder="<%= t('Select IP addresses') %>" data-selected="<%= JSON.stringify(sel.ips || []) %>"></select>
+              <div class="form-text"><%= t('Unassigned addresses only.') %> <a href="/network/ip-address/add" target="_blank" rel="noopener"><%= t('Add IP') %></a></div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-management"><%= t('Management Address') %></label>
+              <input type="text" id="f-management" name="management_address" class="form-control" value="<%= d.management_address || '' %>" placeholder="<%= t('e.g. https://10.0.0.1, 10.0.0.1:22') %>">
+            </div>
+            <% if (isEdit) { %>
+              <div class="col-md-6">
+                <label class="form-label" for="f-vips"><%= t('VIP IP Address(es)') %></label>
+                <select id="f-vips" name="vip_ip_addresses[]" class="form-select js-select" multiple data-ajax-url="/network/api/ip-addresses/search-all"
+                        data-placeholder="<%= t('Select IP addresses') %>" data-selected="<%= JSON.stringify(sel.vips || []) %>"></select>
+                <div class="form-text"><%= t('(shared with other devices/servers)') %></div>
+              </div>
+            <% } %>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('Ownership') %></h4>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="f-managers"><%= t('Managers') %></label>
+              <select id="f-managers" name="managers[]" class="form-select js-select" multiple data-ajax-url="/organize/api/contact"
+                      data-placeholder="<%= t('Select managers') %>" data-selected="<%= JSON.stringify(sel.contacts || []) %>"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-tags"><%= t('Tags') %></label>
+              <select id="f-tags" name="tags[]" class="form-select js-select" multiple
+                      data-placeholder="<%= t('Select tags') %>"><%- ui.options(tagOptions, sel.tags || []) %></select>
+            </div>
+          </div>
+        </section>
+      </div>
+      <%- include('../../partials/ui/form_actions', { cancelUrl: '/device/device', submitLabel: isEdit ? 'Save Changes' : 'Add Device', record: d }) %>
+    </form>
+  </div>
+</div>

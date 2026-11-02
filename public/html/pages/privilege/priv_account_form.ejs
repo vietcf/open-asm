@@ -1,0 +1,101 @@
+<%#
+  Add / Edit Privileged Account.  mode, account, accountTypes / manageTypes ([{id, text}]), serverTypes / urlTypes (type values)
+  Servers are asked for OS / DB accounts, the URL for APP accounts. The role picker lists roles of the chosen systems.
+%>
+<% const isEdit = mode === 'edit'; const a = locals.account || {}; const sel = (x) => (x ? [{ id: x.id, text: x.name }] : []); %>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [
+  { label: 'Privileged Account', href: '/priv-account/account' }, { label: isEdit ? 'Edit Privileged Account' : 'Add Privileged Account' }
+] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
+    <form id="accountForm" class="card form-card" method="POST" action="<%= isEdit ? '/priv-account/account/' + a.id + '/edit' : '/priv-account/account/add' %>">
+      <div class="card-header form-card-header">
+        <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit Privileged Account' : 'Add Privileged Account') %></h3>
+      </div>
+      <div class="card-body">
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('General information') %></h4>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="f-username"><%= t('Account Name') %> <span class="text-danger">*</span></label>
+              <input type="text" id="f-username" name="username" class="form-control" value="<%= a.username || '' %>" maxlength="50" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="f-account-type"><%= t('Account Type') %> <span class="text-danger">*</span></label>
+              <select id="f-account-type" name="account_type" class="form-select js-select" required data-placeholder="<%= t('Select') %>">
+                <option value=""></option><%- ui.options(accountTypes, a.account_type) %>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="f-manage-type"><%= t('Management Method') %> <span class="text-danger">*</span></label>
+              <select id="f-manage-type" name="manage_type" class="form-select js-select" required data-placeholder="<%= t('Select') %>">
+                <option value=""></option><%- ui.options(manageTypes, a.manage_type) %>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-organize"><%= t('Organize Unit') %> <span class="text-danger">*</span></label>
+              <select id="f-organize" name="organize_id" class="form-select js-select" required data-placeholder="<%= t('Select unit') %>"><option value=""></option><%- ui.options(unitOptions, sel(a.organize)) %></select>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-description"><%= t('Description') %></label>
+              <textarea id="f-description" name="description" class="form-control" rows="2"><%= a.description || '' %></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('Scope') %></h4>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="f-systems"><%= t('Systems') %> <span class="text-danger">*</span></label>
+              <select id="f-systems" name="systems" class="form-select js-select" multiple required data-placeholder="<%= t('Select systems') %>"
+                      data-ajax-url="/system/api/system" data-selected="<%= JSON.stringify((a.systems || []).map(s => ({ id: s.id, text: s.name }))) %>"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-role"><%= t('Role') %> <span class="text-danger">*</span></label>
+              <select id="f-role" name="role_id" class="form-select js-select" required data-placeholder="<%= t('Select systems first') %>"
+                      data-ajax-url="/priv-account/api/roles" data-ajax-with='{"system_ids":"#f-systems"}' data-selected="<%= JSON.stringify(sel(a.role)) %>"></select>
+            </div>
+            <div class="col-md-6" data-show-for="<%= serverTypes.join(' ') %>">
+              <label class="form-label" for="f-servers"><%= t('Servers') %> <span class="text-danger">*</span></label>
+              <select id="f-servers" name="servers" class="form-select js-select" multiple data-placeholder="<%= t('Select servers') %>"
+                      data-ajax-url="/server/api/server" data-selected="<%= JSON.stringify((a.servers || []).map(s => ({ id: s.id, text: s.name }))) %>"></select>
+            </div>
+            <div class="col-md-6" data-show-for="<%= urlTypes.join(' ') %>">
+              <label class="form-label" for="f-app-url"><%= t('Application URL') %> <span class="text-danger">*</span></label>
+              <input type="url" id="f-app-url" name="app_url" class="form-control" value="<%= a.app_url || '' %>" maxlength="255" placeholder="https://app.example.com">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-contacts"><%= t('Contacts') %> <span class="text-danger">*</span></label>
+              <select id="f-contacts" name="contacts" class="form-select js-select" multiple required data-placeholder="<%= t('Select contacts') %>"
+                      data-ajax-url="/organize/api/contact" data-selected="<%= JSON.stringify((a.contacts || []).map(c => ({ id: c.id, text: c.name }))) %>"></select>
+            </div>
+          </div>
+        </section>
+      </div>
+      <%- include('../../partials/ui/form_actions', { cancelUrl: '/priv-account/account', submitLabel: isEdit ? 'Save Changes' : 'Add Privileged Account', record: a }) %>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function () {
+    // Servers for OS / DB accounts, URL for APP accounts
+    const type = $('#f-account-type');
+    const sync = () => document.querySelectorAll('#accountForm [data-show-for]').forEach((box) => {
+      const show = box.dataset.showFor.split(' ').includes(type.val());
+      box.classList.toggle('d-none', !show);
+      box.querySelectorAll('input, select').forEach((el) => { el.required = show; });
+    });
+    type.on('change', sync);
+    sync();
+    // a role belongs to one system: reset it when the systems change
+    $('#f-systems').on('change', () => {
+      const role = $('#f-role');
+      const systems = $('#f-systems').val() || [];
+      if (!systems.length) role.val(null).trigger('change');
+    });
+  })();
+</script>

@@ -1,0 +1,114 @@
+<%#
+  Dashboard.  stats: { counts: {key: n}, ipStatus, deviceTypes, subnets } (null = section not permitted), or null when loading failed.
+%>
+<%
+  const TILES = [
+    { key: 'systems', label: 'Systems', icon: 'bi-hdd-stack', url: '/system/system' },
+    { key: 'servers', label: 'Servers', icon: 'bi-hdd-network', url: '/server/server' },
+    { key: 'devices', label: 'Devices', icon: 'bi-cpu', url: '/device/device' },
+    { key: 'ipAddresses', label: 'IP Addresses', icon: 'bi-diagram-3', url: '/network/ip-address' },
+    { key: 'subnets', label: 'Subnets', icon: 'bi-diagram-2', url: '/network/subnet-address' },
+    { key: 'domains', label: 'Domains', icon: 'bi-globe', url: '/network/domain' },
+    { key: 'contacts', label: 'Contacts', icon: 'bi-people', url: '/organize/contact' },
+    { key: 'rules', label: 'Firewall Rules', icon: 'bi-shield-exclamation', url: '/firewall/rule' },
+    { key: 'pentestRounds', label: 'Pentest Rounds', icon: 'bi-shield-check', url: '/pentest' },
+  ];
+  // Fixed colors per IP status value, so a status always reads the same
+  const IP_STATUS_COLORS = { assigned: 'primary', reserved: 'warning', inactive: 'secondary' };
+  const CATEGORICAL_COLORS = ['primary', 'info', 'warning', 'success', 'secondary', 'dark'];
+  const n = (v) => Number(v).toLocaleString();
+%>
+<%# bars: [{label, count, pct, color, href?, note?, value?}] %>
+<% const bars = (rows) => rows.map((row) => `
+  <div class="dashboard-bar">
+    <div class="d-flex justify-content-between gap-2 small mb-1">
+      <span class="text-truncate">${row.href ? `<a href="${ui.esc(row.href)}">${ui.esc(row.label)}</a>` : ui.esc(row.label)}${row.note ? ` <span class="text-secondary">— ${ui.esc(row.note)}</span>` : ''}</span>
+      <span class="text-secondary text-nowrap">${row.value || n(row.count)} (${row.pct}%)</span>
+    </div>
+    <div class="progress" role="progressbar" aria-label="${ui.esc(row.label)}" aria-valuenow="${row.pct}" aria-valuemin="0" aria-valuemax="100">
+      <div class="progress-bar bg-${row.color}" style="width: ${row.pct}%"></div>
+    </div>
+  </div>`).join(''); %>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'Dashboard' }] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <% if (!stats) { %>
+      <div class="alert alert-warning"><%= t('Unable to load dashboard statistics right now.') %></div>
+    <% } else { %>
+      <div class="row g-3">
+        <% TILES.filter(tile => tile.key in stats.counts).forEach(function (tile) { %>
+          <div class="col-6 col-md-4 col-xl-3">
+            <a href="<%= tile.url %>" class="card dashboard-tile h-100">
+              <div class="card-body">
+                <span class="dashboard-tile-icon"><i class="bi <%= tile.icon %>"></i></span>
+                <span class="min-w-0">
+                  <span class="dashboard-tile-count"><%= n(stats.counts[tile.key]) %></span>
+                  <span class="dashboard-tile-label"><%= t(tile.label) %></span>
+                </span>
+              </div>
+            </a>
+          </div>
+        <% }) %>
+      </div>
+
+      <div class="row g-3 mt-0">
+        <% if (stats.ipStatus) { %>
+          <div class="col-lg-6">
+            <div class="card h-100">
+              <div class="card-header">
+                <h3 class="card-title"><%= t('IP Address Status') %></h3>
+                <span class="text-secondary small ms-1"><%= t('({1} total)', { 1: n(stats.counts.ipAddresses) }) %></span>
+              </div>
+              <div class="card-body">
+                <% if (!stats.ipStatus.length) { %>
+                  <div class="text-secondary small"><%= t('No IP addresses yet.') %></div>
+                <% } else { %>
+                  <%- bars(stats.ipStatus.map(row => ({ ...row, label: row.value ? row.label : t('(Not set)'), color: IP_STATUS_COLORS[row.value] || 'secondary',
+                        href: '/network/ip-address?status=' + encodeURIComponent(row.value || '__none__') }))) %>
+                <% } %>
+              </div>
+            </div>
+          </div>
+        <% } %>
+
+        <% if (stats.deviceTypes) { %>
+          <div class="col-lg-6">
+            <div class="card h-100">
+              <div class="card-header">
+                <h3 class="card-title"><%= t('Devices by Type') %></h3>
+                <span class="text-secondary small ms-1"><%= t('({1} total)', { 1: n(stats.counts.devices) }) %></span>
+              </div>
+              <div class="card-body">
+                <% if (!stats.deviceTypes.length) { %>
+                  <div class="text-secondary small"><%= t('No devices yet.') %></div>
+                <% } else { %>
+                  <%- bars(stats.deviceTypes.map((row, i) => ({ ...row, label: row.label || t('Unspecified'), color: CATEGORICAL_COLORS[i % CATEGORICAL_COLORS.length] }))) %>
+                <% } %>
+              </div>
+            </div>
+          </div>
+        <% } %>
+
+        <% if (stats.subnets) { %>
+          <div class="col-12">
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title"><%= t('Subnet Utilization') %></h3>
+                <span class="text-secondary small ms-1"><%= t('(highest usage first)') %></span>
+              </div>
+              <div class="card-body">
+                <% if (!stats.subnets.length) { %>
+                  <div class="text-secondary small"><%= t('No subnets yet.') %></div>
+                <% } else { %>
+                  <%- bars(stats.subnets.map(sn => ({ label: sn.address, note: sn.description, pct: sn.pct, color: sn.color,
+                        value: n(sn.usedCount) + ' / ' + n(sn.totalIPs), href: '/network/subnet-address?search=' + encodeURIComponent(sn.address) }))) %>
+                <% } %>
+              </div>
+            </div>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+</div>

@@ -1,0 +1,141 @@
+<%#
+  Add / Edit System form (shared). Included by system_add.ejs and
+  system_edit.ejs with:
+    mode:     'add' | 'edit'
+    system:   the system being edited (edit) or {} (add)
+    selected: { contacts, ip_addresses, domains, tags, department, ops_department } as [{id, text}]
+  Field names are the ones the controller already reads.
+%>
+<%
+  const isEdit = mode === 'edit';
+  const s = system || {};
+  const sel = selected || {};
+  const join = v => Array.isArray(v) ? v.join(', ') : (v || '');
+  const has = (list, id) => Array.isArray(list) && list.map(String).includes(String(id));
+%>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [
+  { label: 'System Management' },
+  { label: 'System List', href: '/system/system' },
+  { label: isEdit ? 'Edit System' : 'Add System' }
+] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <form id="systemForm" class="card form-card" method="POST" enctype="multipart/form-data"
+          action="<%= isEdit ? '/system/system/' + s.id + '/edit' : '/system/system/add' %>">
+      <div class="card-header form-card-header">
+        <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit System' : 'Add System') %></h3>
+        <% if (isEdit) { %><span class="text-secondary small font-monospace ms-2"><%= s.system_id %></span><% } %>
+      </div>
+
+      <div class="card-body">
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('General information') %></h4>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label" for="f-system-id"><%= t('System Code') %> <span class="text-danger">*</span></label>
+              <input type="text" id="f-system-id" name="system_id" class="form-control" value="<%= s.system_id || '' %>" maxlength="50" placeholder="<%= t('Enter system ID') %>" required>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label" for="f-name"><%= t('System Name') %> <span class="text-danger">*</span></label>
+              <input type="text" id="f-name" name="name" class="form-control" value="<%= s.name || '' %>" maxlength="255" placeholder="<%= t('Enter system name') %>" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="f-level"><%= t('Level') %></label>
+              <select id="f-level" name="level" class="form-select js-select" data-placeholder="<%= t('Select level') %>">
+                <option value=""></option>
+                <% (levelOptions || []).forEach(function (o) { %>
+                  <option value="<%= o.id %>" <%= String(s.level) === String(o.id) ? 'selected' : '' %>><%= o.text %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label" for="f-alias"><%= t('Alias') %></label>
+              <input type="text" id="f-alias" name="alias" class="form-control" value="<%= join(s.alias) %>" placeholder="<%= t('e.g. alias1, alias2') %>">
+              <div class="form-text"><%= t('Separate multiple values with commas') %></div>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-fqdn"><%= t('Access URLs') %></label>
+              <input type="text" id="f-fqdn" name="fqdn" class="form-control" value="<%= join(s.fqdn) %>" placeholder="<%= t('e.g. https://app.example.com, http://10.0.0.5:8080') %>">
+              <div class="form-text"><%= t('Separate multiple values with commas') %></div>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-description"><%= t('Description') %></label>
+              <textarea id="f-description" name="description" class="form-control" rows="4"
+                        placeholder="<%= t('Please provide the following information: 1) What business functions/features does this system provide? 2) What components does the system include? 3) Who are the target users of this system?') %>"><%= s.description || '' %></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('Classification') %></h4>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="f-scopes"><%= t('Scope user access') %></label>
+              <select id="f-scopes" name="scopes[]" class="form-select js-select" multiple data-placeholder="<%= t('Select scopes (optional)') %>">
+                <% (scopeOptions || []).forEach(function (o) { %>
+                  <option value="<%= o.id %>" <%= has(s.scopes, o.id) ? 'selected' : '' %>><%= o.text %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-architecture"><%= t('Architecture') %></label>
+              <select id="f-architecture" name="architecture[]" class="form-select js-select" multiple data-placeholder="<%= t('Select architecture types (optional)') %>">
+                <% (architectureOptions || []).forEach(function (o) { %>
+                  <option value="<%= o.id %>" <%= has(s.architecture, o.id) ? 'selected' : '' %>><%= o.text %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-tags"><%= t('Tags') %></label>
+              <select id="f-tags" name="tags[]" class="form-select js-select" multiple
+                      data-placeholder="<%= t('Select tags') %>"><%- ui.options(tagOptions, sel.tags || []) %></select>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('Ownership & infrastructure') %></h4>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="f-ops-department"><%= t('Operations department (L2)') %></label>
+              <select id="f-ops-department" name="ops_department_id" class="form-select js-select"
+                      data-placeholder="<%= t('Select department') %>"><option value=""></option><%- ui.options(unitOptions, sel.ops_department || []) %></select>
+              <div class="form-text"><%= t('Administers and operates the system') %></div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-department"><%= t('Development department (L3)') %></label>
+              <select id="f-department" name="department_id" class="form-select js-select"
+                      data-placeholder="<%= t('Select department') %>"><option value=""></option><%- ui.options(unitOptions, sel.department || []) %></select>
+              <div class="form-text"><%= t('Develops and fixes the system') %></div>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-contacts"><%= t('Managers') %></label>
+              <select id="f-contacts" name="contacts[]" class="form-select js-select" multiple data-ajax-url="/organize/api/contact"
+                      data-placeholder="<%= t('Select contacts') %>" data-selected="<%= JSON.stringify(sel.contacts || []) %>"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-ips"><%= t('IP Addresses') %></label>
+              <select id="f-ips" name="ip_addresses[]" class="form-select js-select" multiple data-ajax-url="/network/api/ip-addresses"
+                      data-placeholder="<%= t('Select IP addresses') %>" data-selected="<%= JSON.stringify(sel.ip_addresses || []) %>"></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-domains"><%= t('Domains') %></label>
+              <select id="f-domains" name="domains[]" class="form-select js-select" multiple data-ajax-url="/network/api/domain"
+                      data-placeholder="<%= t('Select domains') %>" data-selected="<%= JSON.stringify(sel.domains || []) %>"></select>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('Documents') %></h4>
+          <%- include('../../partials/ui/file_attachments', {
+                existing: isEdit ? (s.docs || []) : [], viewUrl: '/system/file/:id/view',
+                uploadedName: isEdit ? 'uploaded_docs_edit' : 'uploaded_docs', deletedName: isEdit ? 'delete_files' : null }) %>
+        </section>
+      </div>
+
+      <%- include('../../partials/ui/form_actions', { cancelUrl: '/system/system', submitLabel: isEdit ? 'Save Changes' : 'Add System', record: s }) %>
+    </form>
+  </div>
+</div>

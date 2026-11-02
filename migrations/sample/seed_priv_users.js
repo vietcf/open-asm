@@ -22,7 +22,7 @@ export default async (pool) => {
     const role_id = roleMap[user.role_name];
     if (organize_id && role_id) {
       await pool.query(
-        `INSERT INTO priv_users (username, description, organize_id, role_id, created_at, updated_date, updated_by, account_type, manage_type, app_url)
+        `INSERT INTO priv_users (username, description, organize_id, role_id, created_at, updated_at, updated_by, account_type, manage_type, app_url)
          VALUES ($1, $2, $3, $4, NOW(), NOW(), 'system', $5, $6, $7)
          ON CONFLICT (username) DO NOTHING;`,
         [user.username, user.description, organize_id, role_id, user.account_type, user.manage_type, user.app_url]

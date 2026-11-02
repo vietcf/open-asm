@@ -2,7 +2,7 @@
 export default async (pool) => {
   // Insert roles in order: admin, manager, user (ID will auto-increment)
   await pool.query(`
-    INSERT INTO priv_roles (name, description, created_at, updated_date, updated_by)
+    INSERT INTO priv_roles (name, description, created_at, updated_at, updated_by)
     VALUES
       ('admin', 'Quản trị viên', NOW(), NOW(), 'system'),
       ('manager', 'Quản lý', NOW(), NOW(), 'system'),

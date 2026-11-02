@@ -1,0 +1,43 @@
+<%#
+  Add / Edit Privileged Permission.  mode, record (permission)
+%>
+<% const isEdit = mode === 'edit'; const p = locals.record || {}; %>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [
+  { label: 'Privileged Permission List', href: '/priv-account/permission' }, { label: isEdit ? 'Edit Privileged Permission' : 'Add Privileged Permission' }
+] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
+    <form class="card form-card" method="POST" action="<%= isEdit ? '/priv-account/permission/' + p.id + '/edit' : '/priv-account/permission/add' %>">
+      <div class="card-header form-card-header">
+        <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit Privileged Permission' : 'Add Privileged Permission') %></h3>
+      </div>
+      <div class="card-body">
+        <section class="form-section">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="f-name"><%= t('Permission Name') %> <span class="text-danger">*</span></label>
+              <input type="text" id="f-name" name="name" class="form-control" value="<%= p.name || '' %>" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-system"><%= t('System') %> <span class="text-danger">*</span></label>
+              <select id="f-system" name="system_id" class="form-select js-select" required data-placeholder="<%= t('Select system') %>"
+                      data-ajax-url="/system/api/system" data-selected="<%= JSON.stringify(p.system ? [{ id: p.system.id, text: p.system.name }] : []) %>"
+                      <%= p.role_count ? 'disabled' : '' %>></select>
+              <% if (p.role_count) { %>
+                <input type="hidden" name="system_id" value="<%= p.system_id %>">
+                <div class="form-text"><%= t('Used by {1} role(s); the system cannot change', { 1: p.role_count }) %></div>
+              <% } %>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-description"><%= t('Description') %></label>
+              <textarea id="f-description" name="description" class="form-control" rows="3"><%= p.description || '' %></textarea>
+            </div>
+          </div>
+        </section>
+      </div>
+      <%- include('../../partials/ui/form_actions', { cancelUrl: '/priv-account/permission', submitLabel: isEdit ? 'Save Changes' : 'Add Privileged Permission', record: p }) %>
+    </form>
+  </div>
+</div>

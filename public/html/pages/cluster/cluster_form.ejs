@@ -1,0 +1,115 @@
+<%#
+  Add / Edit Cluster.  mode: 'add' | 'edit', cluster, roleOptions, selectedSystems [{id, text}]
+  Members: repeater rows (IP select + role) submitted as parallel member_ip_id[] / member_role[].
+%>
+<% const isEdit = mode === 'edit'; const c = cluster || {}; %>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [
+  { label: 'Cluster Management', href: '/cluster' }, { label: isEdit ? 'Edit Cluster' : 'Add Cluster' }
+] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <form id="clusterForm" class="card form-card" method="POST" action="<%= isEdit ? '/cluster/' + c.id + '/edit' : '/cluster/add' %>">
+      <div class="card-header form-card-header">
+        <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit Cluster' : 'Add Cluster') %></h3>
+      </div>
+      <div class="card-body">
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('General information') %></h4>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="f-name"><%= t('Cluster Name') %> <span class="text-danger">*</span></label>
+              <input type="text" id="f-name" name="name" class="form-control" value="<%= c.name || '' %>" maxlength="255" required
+                     data-check-url="/cluster/api/check-name" data-exclude-id="<%= c.id || '' %>">
+              <div class="invalid-feedback"><%= t('Cluster name already exists') %></div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-systems"><%= t('Systems') %></label>
+              <select id="f-systems" name="systems" class="form-select js-select" multiple data-ajax-url="/system/api/system"
+                      data-placeholder="<%= t('Select systems') %>" data-selected="<%= JSON.stringify(selectedSystems || []) %>"></select>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-description"><%= t('Description') %></label>
+              <textarea id="f-description" name="description" class="form-control" rows="3"><%= c.description || '' %></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="form-section" data-repeater id="clusterMembers">
+          <h4 class="form-section-title"><%= t('Members') %></h4>
+          <div class="vstack gap-2" data-repeater-rows>
+            <% (c.members || []).forEach(function (m) { %>
+              <div class="d-flex gap-2 align-items-start">
+                <select name="member_ip_id" class="form-select js-select" data-ajax-url="/network/api/ip-addresses" data-placeholder="<%= t('Select IP address') %>"
+                        data-selected="<%= JSON.stringify([{ id: m.ip_address_id, text: m.ip }]) %>"></select>
+                <input type="text" name="member_role" class="form-control" list="clusterRoles" value="<%= m.role || '' %>" placeholder="<%= t('Role (e.g. master)') %>">
+                <button type="button" class="btn btn-outline-secondary" data-repeater-remove title="<%= t('Remove') %>"><i class="bi bi-x-lg"></i></button>
+              </div>
+            <% }) %>
+          </div>
+          <template data-repeater-template>
+            <div class="d-flex gap-2 align-items-start">
+              <select name="member_ip_id" class="form-select js-select" data-ajax-url="/network/api/ip-addresses" data-placeholder="<%= t('Select IP address') %>"></select>
+              <input type="text" name="member_role" class="form-control" list="clusterRoles" placeholder="<%= t('Role (e.g. master)') %>">
+              <button type="button" class="btn btn-outline-secondary" data-repeater-remove title="<%= t('Remove') %>"><i class="bi bi-x-lg"></i></button>
+            </div>
+          </template>
+          <datalist id="clusterRoles"><% (roleOptions || []).forEach(function (r) { %><option value="<%= r %>"><% }) %></datalist>
+          <div class="d-flex flex-wrap gap-2 mt-2">
+            <button type="button" class="btn btn-outline-primary btn-sm" data-repeater-add><i class="bi bi-plus-lg"></i> <%= t('Add member') %></button>
+            <label class="btn btn-outline-secondary btn-sm mb-0"><i class="bi bi-upload"></i> <%= t('Add from file') %>
+              <input type="file" accept=".xlsx,.xls" class="d-none" id="memberFile">
+            </label>
+            <a href="/cluster/member-template" class="btn btn-link btn-sm"><%= t('Download Template') %></a>
+          </div>
+          <div class="alert mt-2 mb-0 d-none" id="memberFileResult" role="status"></div>
+        </section>
+      </div>
+      <%- include('../../partials/ui/form_actions', { cancelUrl: '/cluster', submitLabel: isEdit ? 'Save Changes' : 'Add Cluster', record: c }) %>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const form = document.getElementById('clusterForm');
+    const box = document.getElementById('clusterMembers');
+    const result = document.getElementById('memberFileResult');
+    const nameInput = document.getElementById('f-name');
+
+    // Name availability, checked on blur
+    nameInput.addEventListener('blur', async () => {
+      const name = nameInput.value.trim();
+      if (!name) return;
+      const res = await fetch(nameInput.dataset.checkUrl + '?name=' + encodeURIComponent(name) + '&exclude_id=' + encodeURIComponent(nameInput.dataset.excludeId));
+      const data = await res.json().catch(() => ({ available: true }));
+      nameInput.classList.toggle('is-invalid', data.available === false);
+    });
+
+    // "IP Address | Role" file: rows are added only when the whole file is valid
+    document.getElementById('memberFile').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      const body = new FormData();
+      body.append('file', file);
+      form.querySelectorAll('select[name="member_ip_id"]').forEach((s) => s.value && body.append('existing_ip_ids', s.value));
+      const res = await fetch('/cluster/validate-members', { method: 'POST', body, credentials: 'same-origin' });
+      const data = await res.json().catch(() => ({ error: res.statusText }));
+      result.classList.remove('d-none');
+      if (!res.ok) { result.className = 'alert alert-danger mt-2 mb-0'; result.textContent = data.error; return; }
+      if (!data.allPassed) {
+        result.className = 'alert alert-danger mt-2 mb-0';
+        result.innerHTML = '<strong>' + DV.esc(t('No members were added. Fix these rows and try again:')) + '</strong><ul class="mb-0">' +
+          data.results.filter((r) => r.error).map((r) => '<li>' + DV.esc(t('Row')) + ' ' + r.row + ' (' + DV.esc(r.ip || '-') + '): ' + DV.esc(t(r.error)) + '</li>').join('') + '</ul>';
+        return;
+      }
+      data.results.forEach((m) => FormKit.addRow(box, (row) => {
+        row.querySelector('select').setAttribute('data-selected', JSON.stringify([{ id: m.ip_address_id, text: m.ip }]));
+        row.querySelector('input[name="member_role"]').value = m.role || '';
+      }));
+      result.className = 'alert alert-success mt-2 mb-0';
+      result.textContent = t('{1} member(s) added. Save the form to keep them.').replace('{1}', data.results.length);
+    });
+  })();
+</script>

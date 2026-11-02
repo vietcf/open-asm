@@ -1,0 +1,18 @@
+<%#
+  Standard empty state for list tables (put inside <td colspan="N">).
+  include('../../partials/ui/empty_state', {
+    icon: 'bi-hdd-stack', message: 'No systems found',
+    filtered: hasActiveFilter,                // shows "Clear filters" instead
+    clearUrl: '/system/system',
+    actionUrl: '/system/system/add', actionLabel: 'Add System'   // optional, permission-checked by caller
+  })
+%>
+<div class="empty-state">
+  <i class="bi <%= locals.icon || 'bi-inbox' %>"></i>
+  <div class="empty-state-title"><%= t(locals.filtered ? 'No results match your search or filters' : message) %></div>
+  <% if (locals.filtered && locals.clearUrl) { %>
+    <a href="<%= clearUrl %>" class="btn btn-sm btn-outline-secondary mt-2"><i class="bi bi-x-circle me-1"></i><%= t('Clear All Filters') %></a>
+  <% } else if (locals.actionUrl) { %>
+    <a href="<%= actionUrl %>" class="btn btn-sm btn-primary mt-2"><i class="bi bi-plus-lg me-1"></i><%= t(actionLabel) %></a>
+  <% } %>
+</div>

@@ -1,0 +1,55 @@
+<%#
+  Standard list footer: "Showing x - y of z <items>" + page size + pages.
+  include('../../partials/ui/pagination', {
+    page, totalPages, totalCount, pageSize,
+    count: rows.length,                       // rows on this page
+    summary: 'Showing {1} - {2} of {3} systems'  // English key with {1},{2},{3}
+  })
+  Links keep the current search/filters (pageUrl helper).
+%>
+<%
+  const pgPage = Number(page) || 1;
+  const pgTotalPages = Math.max(Number(totalPages) || 1, 1);
+  const pgTotal = Number(totalCount) || 0;
+  const pgSize = Number(pageSize) || 10;
+  const pgFrom = pgTotal ? (pgPage - 1) * pgSize + 1 : 0;
+  const pgTo = pgTotal ? pgFrom + (Number(count) || 0) - 1 : 0;
+  // window of at most 7 page links, with first/last + ellipsis
+  let pgStart = Math.max(1, pgPage - 3), pgEnd = Math.min(pgTotalPages, pgStart + 6);
+  pgStart = Math.max(1, pgEnd - 6);
+%>
+<div class="card-footer list-footer">
+  <div class="text-secondary small"><%= t(summary, { 1: pgFrom, 2: pgTo, 3: pgTotal }) %></div>
+  <div class="d-flex align-items-center gap-3 flex-wrap">
+    <form method="get" class="d-flex align-items-center gap-2 page-size-form">
+      <% const pgUrl = new URL(pageUrl(1), 'http://x'); pgUrl.searchParams.forEach(function (v, k) { if (k !== 'pageSize' && k !== 'page') { %>
+        <input type="hidden" name="<%= k %>" value="<%= v %>">
+      <% } }); %>
+      <label class="small text-secondary mb-0" for="pageSizeSelect"><%= t('Show:') %></label>
+      <select id="pageSizeSelect" name="pageSize" class="form-select form-select-sm" onchange="this.form.submit()">
+        <% (pageSizeOptions || [10, 20, 50]).forEach(function (size) { %>
+          <option value="<%= size %>" <%= pgSize == size ? 'selected' : '' %>><%= size %></option>
+        <% }); %>
+      </select>
+    </form>
+    <% if (pgTotalPages > 1) { %>
+    <nav aria-label="<%= t('Pagination') %>">
+      <ul class="pagination pagination-sm mb-0">
+        <li class="page-item<%= pgPage <= 1 ? ' disabled' : '' %>"><a class="page-link" href="<%= pageUrl(pgPage - 1) %>" aria-label="<%= t('Previous') %>"><i class="bi bi-chevron-left"></i></a></li>
+        <% if (pgStart > 1) { %>
+          <li class="page-item"><a class="page-link" href="<%= pageUrl(1) %>">1</a></li>
+          <% if (pgStart > 2) { %><li class="page-item disabled"><span class="page-link">…</span></li><% } %>
+        <% } %>
+        <% for (let i = pgStart; i <= pgEnd; i++) { %>
+          <li class="page-item<%= i === pgPage ? ' active' : '' %>"><a class="page-link" href="<%= pageUrl(i) %>"<%- i === pgPage ? ' aria-current="page"' : '' %>><%= i %></a></li>
+        <% } %>
+        <% if (pgEnd < pgTotalPages) { %>
+          <% if (pgEnd < pgTotalPages - 1) { %><li class="page-item disabled"><span class="page-link">…</span></li><% } %>
+          <li class="page-item"><a class="page-link" href="<%= pageUrl(pgTotalPages) %>"><%= pgTotalPages %></a></li>
+        <% } %>
+        <li class="page-item<%= pgPage >= pgTotalPages ? ' disabled' : '' %>"><a class="page-link" href="<%= pageUrl(pgPage + 1) %>" aria-label="<%= t('Next') %>"><i class="bi bi-chevron-right"></i></a></li>
+      </ul>
+    </nav>
+    <% } %>
+  </div>
+</div>

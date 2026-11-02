@@ -1,353 +1,169 @@
-<!-- Content Header -->
-<div class="app-content-header">
-  <div class="container-fluid">
-    <div class="row">
-      <div class="col-12">
-        <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/">Home</a></li>
-          <li class="breadcrumb-item active">System Logs</li>
-        </ol>
-      </div>
-    </div>
-  </div>
-</div>
+<%#
+  System Log: two tabs (application log / security audit) over system_log,
+  list-kit layout (toolbar, collapsible filters, column chooser, stacked
+  rows on phones, pagination). Read-only.
+%>
+<%
+  const isSecurity = filter.category === 'security';
+  const activeFilterCount = ['dateFrom', 'dateTo', 'username', 'action', 'objectType', 'status', 'level', 'ip'].filter(k => filter[k]).length;
+  const hasActiveFilter = activeFilterCount > 0;
+  const tabUrl = cat => '/administrator/log?category=' + cat;
+  // currentQuery keeps tab + filters (the form always submits category)
+  const exportUrl = '/administrator/log/export' + (currentQuery || '?category=' + filter.category);
+  const fmtTime = d => {
+    if (!d) return '';
+    const x = new Date(d), p = n => String(n).padStart(2, '0');
+    return `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())} ${p(x.getHours())}:${p(x.getMinutes())}:${p(x.getSeconds())}`;
+  };
+  const statusBadge = s => !s ? '' : (/^(failed|failure|error|denied)$/i.test(s) ? 'bg-danger' : (/^success$/i.test(s) ? 'bg-success' : 'tag'));
+  const levelBadge = l => l === 'critical' ? 'bg-danger' : (l === 'warning' ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
+    : (l === 'debug' ? 'bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle' : 'tag'));
+  const COLUMNS = [
+    { key: 'time', label: 'Time', def: true, fixed: true },
+    { key: 'user', label: 'User', def: true },
+    { key: 'action', label: 'Action', def: true },
+    { key: 'object', label: 'Object', def: true },
+    { key: 'status', label: 'Result', def: true },
+    { key: 'level', label: 'Severity' },
+    { key: 'ip', label: 'IP Address', def: true },
+    { key: 'description', label: 'Description', def: true },
+    { key: 'agent', label: 'User agent' },
+  ];
+%>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'Administration' }, { label: 'System Log' }] }) %>
 
-<!-- Main content -->
 <div class="app-content">
   <div class="container-fluid">
+    <ul class="nav nav-tabs config-tabs mb-3">
+      <li class="nav-item">
+        <a class="nav-link<%= !isSecurity ? ' active' : '' %>" href="<%= tabUrl('app') %>"<%- !isSecurity ? ' aria-current="page"' : '' %>><i class="bi bi-journal-text me-1"></i><%= t('Application log') %></a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link<%= isSecurity ? ' active' : '' %>" href="<%= tabUrl('security') %>"<%- isSecurity ? ' aria-current="page"' : '' %>><i class="bi bi-shield-lock me-1"></i><%= t('Security audit') %></a>
+      </li>
+    </ul>
+    <p class="text-secondary small mb-3">
+      <%= isSecurity
+        ? t('Sign-in and sign-out, 2FA, password changes and every change to users, roles, permissions and system configuration.')
+        : t('Changes to assets and other data (create, update, delete, import), by the web interface and the REST API.') %>
+    </p>
 
-  <!-- Search & Filter -->
-  <div class="row mb-3">
-    <div class="col-12">
-      <div class="d-flex flex-wrap justify-content-end align-items-center gap-2">
-        <form class="d-flex flex-wrap justify-content-end align-items-center gap-2" role="search" method="get" action="/administrator/log">
-          <!-- Date Range Picker -->
-          <div class="d-flex align-items-center gap-1">
-            <label class="form-label form-label-sm mb-0 text-muted">From:</label>
-            <input type="date" class="form-control form-control-sm" name="dateFrom" value="<%= typeof dateFrom !== 'undefined' ? dateFrom : '' %>" style="width: 140px;">
-          </div>
-          <div class="d-flex align-items-center gap-1">
-            <label class="form-label form-label-sm mb-0 text-muted">To:</label>
-            <input type="date" class="form-control form-control-sm" name="dateTo" value="<%= typeof dateTo !== 'undefined' ? dateTo : '' %>" style="width: 140px;">
-          </div>
-          <div class="input-group input-group-sm" style="width: 250px;">
-            <input class="form-control form-control-sm" type="search" name="search" placeholder="Search Logs..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-            <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
-          </div>
-          <div class="d-flex align-items-center gap-1">
-            <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
-            <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
-              <% (pageSizeOptions || [10,20,50,100]).forEach(function(size) { %>
-                <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
+    <div class="card list-card">
+      <form class="list-filter-form" method="get" action="/administrator/log">
+        <input type="hidden" name="category" value="<%= filter.category %>">
+        <input type="hidden" name="pageSize" value="<%= pageSize %>">
+        <%- include('../../partials/ui/list_toolbar', {
+              search: filter.search, searchPlaceholder: 'Search user, action, object, IP, description...',
+              filtersId: 'logFilters', activeFilterCount,
+              columns: { tableId: 'logTable', storageKey: 'openasm.systemLog.columns', list: COLUMNS },
+              exportUrl }) %>
+        <div class="collapse<%= hasActiveFilter ? ' show' : '' %>" id="logFilters">
+          <div class="list-filters">
+            <div class="row g-2">
+              <div class="col-6 col-md-3 col-xl-2">
+                <label class="form-label small" for="f-from"><%= t('From date') %></label>
+                <input type="date" id="f-from" name="dateFrom" class="form-control js-filter-input" value="<%= filter.dateFrom %>">
+              </div>
+              <div class="col-6 col-md-3 col-xl-2">
+                <label class="form-label small" for="f-to"><%= t('To date') %></label>
+                <input type="date" id="f-to" name="dateTo" class="form-control js-filter-input" value="<%= filter.dateTo %>">
+              </div>
+              <% [
+                   { name: 'username', label: 'User', values: options.usernames, current: filter.username },
+                   { name: 'action', label: 'Action', values: options.actions, current: filter.action },
+                   { name: 'object_type', label: 'Object', values: options.objectTypes, current: filter.objectType },
+                   { name: 'status', label: 'Result', values: options.statuses, current: filter.status },
+                   { name: 'level', label: 'Severity', values: options.levels, current: filter.level },
+                 ].forEach(function (f) { %>
+                <div class="col-6 col-md-3 col-xl-2">
+                  <label class="form-label small"><%= t(f.label) %></label>
+                  <select name="<%= f.name %>" class="form-select js-filter" data-placeholder="<%= t('All') %>">
+                    <option value=""></option>
+                    <% (f.values || []).forEach(function (v) { %>
+                      <option value="<%= v %>" <%= f.current === v ? 'selected' : '' %>><%= t(v) %></option>
+                    <% }) %>
+                  </select>
+                </div>
               <% }) %>
-            </select>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <!-- Flash Messages -->
-  <% if (typeof success !== 'undefined' && success) { %>
-    <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
-      <i class="bi bi-check-circle me-2"></i><%= success %>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-    <script>
-      // Auto-hide success message after 5 seconds
-      setTimeout(function() {
-        const alert = document.getElementById('successAlert');
-        if (alert) {
-          const bsAlert = new bootstrap.Alert(alert);
-          bsAlert.close();
-        }
-      }, 5000);
-    </script>
-  <% } %>
-
-  <% if (typeof error !== 'undefined' && error) { %>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
-      <i class="bi bi-exclamation-triangle me-2"></i><%= error %>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-    <script>
-      // Auto-hide error message after 8 seconds (longer for errors)
-      setTimeout(function() {
-        const alert = document.getElementById('errorAlert');
-        if (alert) {
-          const bsAlert = new bootstrap.Alert(alert);
-          bsAlert.close();
-        }
-      }, 8000);
-    </script>
-  <% } %>
-
-  <div class="row">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title mb-0">Recent System Logs</h3>
-        </div>
-        <div class="card-body table-responsive p-0" style="overflow-x: auto;">
-          <table class="table table-hover" id="logTable">
-            <thead>
-              <tr>
-                <th data-sort-type="date">Time</th>
-                <th data-sort-type="text">User</th>
-                <th data-sort-type="text">Action</th>
-                <th data-sort-type="text">Status</th>
-                <th data-sort-type="text">Description</th>
-                <th class="text-end">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <% if (logs && logs.length > 0) { %>
-                <% logs.forEach(function(log) { %>
-                  <tr>
-                    <td data-sort-value="<%= log.created_at || '' %>"><%= log.created_at ? log.created_at.toLocaleString ? log.created_at.toLocaleString() : log.created_at : '' %></td>
-                    <td><%= log.username || '' %></td>
-                    <td><%= log.action || '' %></td>
-                    <td><%= log.status || '' %></td>
-                    <td><%= log.description || log.detail || '' %></td>
-                    <td class="text-end">
-                      <button type="button" class="btn btn-info btn-sm" title="Show" data-bs-toggle="modal" data-bs-target="#logDetailModal-<%= log.id %>"><i class="bi bi-eye"></i></button>
-                    </td>
-                  </tr>
-                  <!-- Log Detail Modal -->
-                  <div class="modal fade" id="logDetailModal-<%= log.id %>" tabindex="-1" aria-labelledby="logDetailModalLabel-<%= log.id %>" aria-hidden="true">
-                    <div class="modal-dialog">
-                      <div class="modal-content">
-                        <div class="modal-header">
-                          <h5 class="modal-title" id="logDetailModalLabel-<%= log.id %>">Log Detail</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-                          <dl class="row detail-dl">
-                            <dt class="col-sm-4">ID</dt><dd class="col-sm-8"><%= log.id %></dd>
-                            <dt class="col-sm-4">Time</dt><dd class="col-sm-8"><%= log.created_at ? log.created_at.toLocaleString ? log.created_at.toLocaleString() : log.created_at : '' %></dd>
-                            <dt class="col-sm-4">User</dt><dd class="col-sm-8"><%= log.username || '' %></dd>
-                            <dt class="col-sm-4">User ID</dt><dd class="col-sm-8"><%= log.user_id || '' %></dd>
-                            <dt class="col-sm-4">IP</dt><dd class="col-sm-8"><%= log.ip_address || '' %></dd>
-                            <dt class="col-sm-4">Action</dt><dd class="col-sm-8"><%= log.action || '' %></dd>
-                            <dt class="col-sm-4">Status</dt><dd class="col-sm-8"><%= log.status || '' %></dd>
-                            <dt class="col-sm-4">Object Type</dt><dd class="col-sm-8"><%= log.object_type || '' %></dd>
-                            <dt class="col-sm-4">Object ID</dt><dd class="col-sm-8"><%= log.object_id || '' %></dd>
-                            <dt class="col-sm-4">Description</dt><dd class="col-sm-8"><%= log.description || log.detail || '' %></dd>
-                          </dl>
-                        </div>
-                        <div class="modal-footer">
-                          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                <% }) %>
-              <% } else { %>
-                <tr><td colspan="6" class="text-center">No logs found</td></tr>
-              <% } %>
-            </tbody>
-          </table>
-        </div>
-        <div class="card-footer clearfix">
-          <div class="d-flex justify-content-between align-items-center px-3 py-2">
-            <div>
-              <% 
-                // Calculate pagination range like IP address list
-                const logStartItem = (page - 1) * pageSize + 1;
-                const logEndItem = Math.min(page * pageSize, totalCount || 0);
-                const logStartPage = Math.max(1, page - 2);
-                const logEndPage = Math.min(totalPages, page + 2);
-              %>
-              <span>Showing <%= logStartItem %> - <%= logEndItem %> of <%= typeof totalCount !== 'undefined' ? totalCount : 0 %> logs</span>
+              <div class="col-6 col-md-3 col-xl-2">
+                <label class="form-label small" for="f-ip"><%= t('IP Address') %></label>
+                <input type="text" id="f-ip" name="ip" class="form-control js-filter-input" value="<%= filter.ip %>" placeholder="10.0.">
+              </div>
             </div>
-            <ul class="pagination pagination-sm m-0 float-end">
-              <% 
-                function buildLogFilterQuery() {
-                  let params = [];
-                  if (typeof search !== 'undefined' && search) params.push('search=' + encodeURIComponent(search));
-                  if (typeof pageSize !== 'undefined' && pageSize) params.push('pageSize=' + encodeURIComponent(pageSize));
-                  if (typeof dateFrom !== 'undefined' && dateFrom) params.push('dateFrom=' + encodeURIComponent(dateFrom));
-                  if (typeof dateTo !== 'undefined' && dateTo) params.push('dateTo=' + encodeURIComponent(dateTo));
-                  return params.join('&');
-                }
-                const logFilterQuery = buildLogFilterQuery();
-              %>
-              <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page - 1 %><%= logFilterQuery ? '&' + logFilterQuery : '' %>" tabindex="-1">Previous</a>
-              </li>
-              <% if (logStartPage > 1) { %>
-                <li class="page-item"><a class="page-link" href="?page=1<%= logFilterQuery ? '&' + logFilterQuery : '' %>">1</a></li>
-                <% if (logStartPage > 2) { %>
-                  <li class="page-item disabled"><span class="page-link">...</span></li>
-                <% } %>
+            <div class="mt-2 d-flex justify-content-end gap-3">
+              <% [['Today', 0], ['Last 7 days', 6], ['Last 30 days', 29]].forEach(function (r) { %>
+                <a href="#" class="small" data-date-range="<%= r[1] %>"><%= t(r[0]) %></a>
+              <% }) %>
+              <% if (hasActiveFilter) { %>
+                <a href="<%= tabUrl(filter.category) %>" class="small"><i class="bi bi-x-circle me-1"></i><%= t('Clear All Filters') %></a>
               <% } %>
-              <% for (let i = logStartPage; i <= logEndPage; i++) { %>
-                <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="?page=<%= i %><%= logFilterQuery ? '&' + logFilterQuery : '' %>"><%= i %></a></li>
-              <% } %>
-              <% if (logEndPage < totalPages) { %>
-                <li class="page-item disabled"><span class="page-link">...</span></li>
-                <li class="page-item"><a class="page-link" href="?page=<%= totalPages %><%= logFilterQuery ? '&' + logFilterQuery : '' %>"><%= totalPages %></a></li>
-              <% } %>
-              <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                <a class="page-link" href="?page=<%= page + 1 %><%= logFilterQuery ? '&' + logFilterQuery : '' %>">Next</a>
-              </li>
-            </ul>
+            </div>
           </div>
         </div>
+      </form>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle table-stack" id="logTable">
+          <thead>
+            <tr>
+              <% COLUMNS.forEach(function (c) { %><th data-col="<%= c.key %>"><%= t(c.label) %></th><% }) %>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (logs && logs.length) { %>
+              <% logs.forEach(function (log) { %>
+                <tr>
+                  <%# the time cell is the card title on phones (.stack-title) %>
+                  <td data-col="time" class="text-nowrap font-monospace small stack-title"><%= fmtTime(log.created_at) %></td>
+                  <td data-col="user" data-label="<%= t('User') %>"><%= log.username || '—' %></td>
+                  <td data-col="action" data-label="<%= t('Action') %>"><span class="badge tag"><%= t(log.action) %></span></td>
+                  <td data-col="object" data-label="<%= t('Object') %>">
+                    <% if (log.object_type) { %><%= log.object_type %><% if (log.object_id) { %> <span class="text-secondary">#<%= log.object_id %></span><% } %><% } else { %><span class="text-secondary">—</span><% } %>
+                  </td>
+                  <td data-col="status" data-label="<%= t('Result') %>"><% if (log.status) { %><span class="badge <%= statusBadge(log.status) %>"><%= t(log.status) %></span><% } else { %><span class="text-secondary">—</span><% } %></td>
+                  <td data-col="level" data-label="<%= t('Severity') %>"><span class="badge <%= levelBadge(log.level) %>"><%= t(log.level) %></span></td>
+                  <td data-col="ip" data-label="<%= t('IP Address') %>" class="font-monospace small"><%= log.ip_address || '—' %></td>
+                  <td data-col="description" data-label="<%= t('Description') %>">
+                    <% const descLines = String(log.description || '').split('\n'); %>
+                    <% if (descLines.length > 1) { %>
+                      <%# multi-line entries (API debug log: request line + JSON body) expand in place %>
+                      <details><summary class="small"><%= descLines[0] %></summary><pre class="small mb-0 mt-1 text-pre-wrap"><%= descLines.slice(1).join('\n') %></pre></details>
+                    <% } else { %>
+                      <span class="cell-clip" title="<%= log.description %>"><%= log.description %></span>
+                    <% } %>
+                  </td>
+                  <td data-col="agent" data-label="<%= t('User agent') %>"><span class="cell-clip small text-secondary" title="<%= log.user_agent %>"><%= log.user_agent || '—' %></span></td>
+                </tr>
+              <% }); %>
+            <% } else { %>
+              <tr><td colspan="<%= COLUMNS.length %>">
+                <%- include('../../partials/ui/empty_state', { icon: isSecurity ? 'bi-shield-lock' : 'bi-journal-text', message: 'No log entries found', filtered: hasActiveFilter || !!filter.search, clearUrl: tabUrl(filter.category) }) %>
+              </td></tr>
+            <% } %>
+          </tbody>
+        </table>
       </div>
+
+      <%- include('../../partials/ui/pagination', { page, totalPages, totalCount, pageSize, count: (logs || []).length, summary: 'Showing {1} - {2} of {3} entries' }) %>
     </div>
   </div>
 </div>
-</div>
-<% if (success) { %>
-  <script>
-    window.addEventListener('DOMContentLoaded', function() {
-      showToast('<%= success %>', 'success');
-    });
-  </script>
-<% } %>
-<% if (error) { %>
-  <script>
-    window.addEventListener('DOMContentLoaded', function() {
-      showToast('<%= error %>', 'danger');
-    });
-  </script>
-<% } %>
-
-<!-- Responsive Tables CSS -->
-<style>
-/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
-#logTable {
-  table-layout: fixed;
-  min-width: 900px;
-}
-#logTable thead th {
-  white-space: nowrap;
-}
-#logTable th:nth-child(1), #logTable td:nth-child(1) { width: 16%; }
-#logTable th:nth-child(2), #logTable td:nth-child(2) { width: 10%; }
-#logTable th:nth-child(3), #logTable td:nth-child(3) { width: 10%; }
-#logTable th:nth-child(4), #logTable td:nth-child(4) { width: 10%; }
-#logTable th:nth-child(5), #logTable td:nth-child(5) { width: 44%; }
-#logTable th:nth-child(6), #logTable td:nth-child(6) { width: 10%; }
-
-#logTable td:nth-child(5) {
-  overflow-wrap: break-word;
-  vertical-align: top;
-}
-#logTable td:nth-child(6) {
-  white-space: nowrap;
-  vertical-align: middle;
-}
-</style>
 
 <script>
-$(document).ready(function() {
-  // Date range picker functionality
-  const dateFromInput = $('input[name="dateFrom"]');
-  const dateToInput = $('input[name="dateTo"]');
-  
-  // Set max date for "From" field to today
-  const today = new Date().toISOString().split('T')[0];
-  dateFromInput.attr('max', today);
-  dateToInput.attr('max', today);
-  
-  // Validate date range
-  function validateDateRange() {
-    const fromDate = dateFromInput.val();
-    const toDate = dateToInput.val();
-    
-    if (fromDate && toDate && fromDate > toDate) {
-      dateToInput[0].setCustomValidity('End date must be after start date');
-      return false;
-    } else {
-      dateToInput[0].setCustomValidity('');
-      return true;
-    }
-  }
-  
-  // Add validation on change
-  dateFromInput.on('change', function() {
-    validateDateRange();
-    // Auto-submit form when date range changes
-    if (dateFromInput.val() || dateToInput.val()) {
-      $(this).closest('form').submit();
-    }
-  });
-  
-  dateToInput.on('change', function() {
-    validateDateRange();
-    // Auto-submit form when date range changes
-    if (dateFromInput.val() || dateToInput.val()) {
-      $(this).closest('form').submit();
-    }
-  });
-  
-  // Quick date range buttons
-  function addQuickDateButtons() {
-    const form = $('form[action="/administrator/log"]');
-    const quickButtons = $(`
-      <div class="d-flex flex-wrap align-items-center gap-1 ms-2">
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-range="today">Today</button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-range="yesterday">Yesterday</button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-range="week">This Week</button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-range="month">This Month</button>
-        <button type="button" class="btn btn-outline-secondary btn-sm" data-range="clear">Clear</button>
-      </div>
-    `);
-    
-    form.append(quickButtons);
-    
-    // Handle quick date buttons
-    quickButtons.find('button').on('click', function() {
-      const range = $(this).data('range');
-      const today = new Date();
-      
-      switch(range) {
-        case 'today':
-          const todayStr = today.toISOString().split('T')[0];
-          dateFromInput.val(todayStr);
-          dateToInput.val(todayStr);
-          break;
-        case 'yesterday':
-          const yesterday = new Date(today);
-          yesterday.setDate(yesterday.getDate() - 1);
-          const yesterdayStr = yesterday.toISOString().split('T')[0];
-          dateFromInput.val(yesterdayStr);
-          dateToInput.val(yesterdayStr);
-          break;
-        case 'week':
-          const weekStart = new Date(today);
-          weekStart.setDate(today.getDate() - today.getDay());
-          const weekStartStr = weekStart.toISOString().split('T')[0];
-          const todayStr2 = today.toISOString().split('T')[0];
-          dateFromInput.val(weekStartStr);
-          dateToInput.val(todayStr2);
-          break;
-        case 'month':
-          const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-          const monthStartStr = monthStart.toISOString().split('T')[0];
-          const todayStr3 = today.toISOString().split('T')[0];
-          dateFromInput.val(monthStartStr);
-          dateToInput.val(todayStr3);
-          break;
-        case 'clear':
-          dateFromInput.val('');
-          dateToInput.val('');
-          break;
-      }
-      
-      // Submit form after setting dates
-      if (range !== 'clear') {
+  (function () {
+    // Quick date ranges fill both dates (inputs submit on change: list-filters.js)
+    var form = document.querySelector('.list-filter-form');
+    form.querySelectorAll('[data-date-range]').forEach(function (link) {
+      link.addEventListener('click', function (e) {
+        e.preventDefault();
+        var p = function (n) { return String(n).padStart(2, '0'); };
+        var day = function (d) { return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()); };
+        var to = new Date();
+        var from = new Date(); from.setDate(to.getDate() - Number(link.dataset.dateRange));
+        form.elements.dateFrom.value = day(from);
+        form.elements.dateTo.value = day(to);
         form.submit();
-      } else {
-        // For clear, submit to remove date filters
-        form.submit();
-      }
+      });
     });
-  }
-  
-  // Add quick date buttons
-  addQuickDateButtons();
-});
+  })();
 </script>

@@ -1,0 +1,20 @@
+<%#
+  Attachment field for Add/Edit forms. Behaviour: public/js/form-kit.js.
+  include('../../partials/ui/file_attachments', {
+    existing: system.docs || [],          // [{ id, name, url }] (edit only)
+    viewUrl: '/system/file/:id/view',     // inline viewer, optional
+    uploadedName: 'uploaded_docs',        // hidden input with new uploads (JSON)
+    deletedName: 'delete_files',          // hidden input with removed ids (edit only)
+  })
+%>
+<div data-attachments data-existing="<%= JSON.stringify(locals.existing || []) %>" data-view-url="<%= locals.viewUrl || '' %>">
+  <ul class="form-file-list" data-attachments-list></ul>
+  <label class="form-file-drop">
+    <i class="bi bi-cloud-arrow-up"></i>
+    <span><%= t('Choose files to upload') %></span>
+    <span class="form-text mt-0"><%= t('Allowed: {types}', { types: uploadAllowedList }) %></span>
+    <input type="file" class="visually-hidden" multiple accept="<%= uploadAccept %>">
+  </label>
+  <input type="hidden" name="<%= uploadedName %>" data-attachments-uploaded>
+  <% if (locals.deletedName) { %><input type="hidden" name="<%= deletedName %>" value="[]" data-attachments-deleted><% } %>
+</div>

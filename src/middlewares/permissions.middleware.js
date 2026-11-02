@@ -2,7 +2,7 @@
 // Middleware to load permissions for the current user (by role_id) and attach to req.permissions
 // Uses in-memory cache for role-permissions mapping with expiration and better cache management
 
-import Permission from '../models/Permission.js';
+import Permission from '../modules/administrator/permission.model.js';
 
 // Cache with expiration (role_id -> {permissions: [], timestamp: Date, loading: Promise})
 const rolePermissionsCache = {};

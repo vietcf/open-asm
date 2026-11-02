@@ -1,0 +1,84 @@
+<%#
+  Add / Edit Firewall Rule.  mode, rule, options {action, status, violation_type, firewall_name: [{id, text}]}, tagOptions
+%>
+<%
+  const isEdit = mode === 'edit'; const r = locals.rule || {};
+  const input = (name, label, { required, width = 'col-md-4', type = 'text', placeholder = '' } = {}) => `<div class="${width}">
+    <label class="form-label" for="f-${name}">${t(label)}${required ? ' <span class="text-danger">*</span>' : ''}</label>
+    <input type="${type}" id="f-${name}" name="${name}" class="form-control" value="${ui.esc(r[name] || '')}"${required ? ' required' : ''} placeholder="${ui.esc(placeholder)}"></div>`;
+  const area = (name, label, width = 'col-md-6', rows = 2) => `<div class="${width}">
+    <label class="form-label" for="f-${name}">${t(label)}</label>
+    <textarea id="f-${name}" name="${name}" class="form-control" rows="${rows}">${ui.esc(r[name] || '')}</textarea></div>`;
+  const select = (name, label, required) => `<div class="col-md-3">
+    <label class="form-label" for="f-${name}">${t(label)}${required ? ' <span class="text-danger">*</span>' : ''}</label>
+    <select id="f-${name}" name="${name}" class="form-select js-select" data-placeholder="${t('Select')}"${required ? ' required' : ''}>
+      <option value=""></option>${ui.options(options[name], r[name])}</select></div>`;
+%>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [
+  { label: 'Firewall Rule', href: '/firewall/rule' }, { label: isEdit ? 'Edit Rule' : 'Add Rule' }
+] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
+    <form class="card form-card" method="POST" action="<%= isEdit ? '/firewall/rule/' + r.id + '/edit' : '/firewall/rule/add' %>">
+      <div class="card-header form-card-header">
+        <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit Rule' : 'Add Rule') %></h3>
+      </div>
+      <div class="card-body">
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('General information') %></h4>
+          <div class="row g-3">
+            <%- select('firewall_name', 'Firewall Name', true) %>
+            <%- input('rulename', 'Rule Name', { required: true, width: 'col-md-5' }) %>
+            <%- input('audit_batch', 'Audit Batch', { required: true, width: 'col-md-2', placeholder: '2024-01' }) %>
+            <%- input('src_zone', 'Source Zone', { width: 'col-md-3' }) %>
+            <%- input('src', 'Source', { required: true, width: 'col-md-4' }) %>
+            <%- input('src_detail', 'Source Detail', { width: 'col-md-5' }) %>
+            <%- input('dst_zone', 'Destination Zone', { width: 'col-md-3' }) %>
+            <%- input('dst', 'Destination', { required: true, width: 'col-md-4' }) %>
+            <%- input('dst_detail', 'Destination Detail', { width: 'col-md-5' }) %>
+            <%- input('services', 'Service', { width: 'col-md-3' }) %>
+            <%- input('application', 'Application', { width: 'col-md-3' }) %>
+            <%- input('url', 'URL', { width: 'col-md-6', type: 'url' }) %>
+            <%- select('action', 'Action', true) %>
+            <%- select('status', 'Status') %>
+            <%- input('work_order', 'Work Order', { width: 'col-md-3' }) %>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('Violation') %></h4>
+          <div class="row g-3">
+            <%- select('violation_type', 'Violation Type') %>
+            <%- area('violation_detail', 'Violation Detail', 'col-md-9') %>
+            <%- area('solution_proposal', 'Solution Proposal') %>
+            <%- area('solution_confirm', 'Solution Confirm') %>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('Links') %></h4>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label" for="f-ou"><%= t('OU (Unit)') %></label>
+              <select id="f-ou" name="ou_id" class="form-select js-select" data-placeholder="<%= t('Select unit') %>"><option value=""></option><%- ui.options(unitOptions, r.ou_id ? [{ id: r.ou_id, text: r.ou_name }] : []) %></select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="f-contacts"><%= t('Contacts') %></label>
+              <select id="f-contacts" name="contacts" class="form-select js-select" multiple data-placeholder="<%= t('Select contacts') %>" data-ajax-url="/organize/api/contact"
+                      data-selected="<%= JSON.stringify((r.contacts || []).map(c => ({ id: c.id, text: c.name }))) %>"></select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="f-tags"><%= t('Tags') %></label>
+              <select id="f-tags" name="tags" class="form-select js-select" multiple data-placeholder="<%= t('Select tags') %>"><%- ui.options(tagOptions, r.tags) %></select>
+            </div>
+            <%- area('description', 'Description', 'col-12') %>
+            <%- area('raw_data', 'Raw Data', 'col-12', 4) %>
+          </div>
+        </section>
+      </div>
+      <%- include('../../partials/ui/form_actions', { cancelUrl: '/firewall/rule', submitLabel: isEdit ? 'Save Changes' : 'Add Rule', record: r }) %>
+    </form>
+  </div>
+</div>

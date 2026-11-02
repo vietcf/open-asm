@@ -1,0 +1,36 @@
+<%#
+  Catalog Add / Edit form, rendered by src/shared/catalogWeb.js.
+  field: { key, label, required, type: 'text' | 'textarea', maxlength, placeholder }
+%>
+<% const c = catalog; const isEdit = mode === 'edit'; const r = record || {}; %>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [
+  { label: c.labels.section }, { label: c.labels.list, href: c.base }, { label: isEdit ? c.labels.edit : c.labels.add }
+] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <form class="card form-card" method="POST" action="<%= isEdit ? c.base + '/' + r.id + '/edit' : c.base + '/add' %>">
+      <div class="card-header form-card-header">
+        <h3 class="card-title mb-0"><%= t(isEdit ? c.labels.edit : c.labels.add) %></h3>
+      </div>
+      <div class="card-body">
+        <section class="form-section">
+          <div class="row g-3">
+            <% c.fields.forEach(function (f) { const id = 'f-' + f.key; %>
+              <div class="<%= f.type === 'textarea' ? 'col-12' : 'col-md-6' %>">
+                <label class="form-label" for="<%= id %>"><%= t(f.label) %><% if (f.required) { %> <span class="text-danger">*</span><% } %></label>
+                <% if (f.type === 'textarea') { %>
+                  <textarea id="<%= id %>" name="<%= f.key %>" class="form-control" rows="3" placeholder="<%= f.placeholder ? t(f.placeholder) : '' %>"><%= r[f.key] || '' %></textarea>
+                <% } else { %>
+                  <input type="text" id="<%= id %>" name="<%= f.key %>" class="form-control" value="<%= r[f.key] || '' %>"
+                         maxlength="<%= f.maxlength || 255 %>" placeholder="<%= f.placeholder ? t(f.placeholder) : '' %>"<%= f.required ? ' required' : '' %>>
+                <% } %>
+              </div>
+            <% }) %>
+          </div>
+        </section>
+      </div>
+      <%- include('../../partials/ui/form_actions', { cancelUrl: c.base, submitLabel: isEdit ? 'Save Changes' : c.labels.add, record: r }) %>
+    </form>
+  </div>
+</div>

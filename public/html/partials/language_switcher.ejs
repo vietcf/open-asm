@@ -1,0 +1,18 @@
+<%# Language switcher (VI / EN). Links keep the current page and add ?lang=xx;
+    the choice is remembered (session, cookie and the user's profile). %>
+<li class="nav-item dropdown">
+  <a class="nav-link d-flex align-items-center" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false" title="<%= t('Language') %>">
+    <i class="bi bi-translate me-1"></i>
+    <span class="fw-semibold"><%= lang.toUpperCase() %></span>
+  </a>
+  <ul class="dropdown-menu dropdown-menu-end" style="min-width: 160px;">
+    <% languages.forEach(function (l) { %>
+    <li>
+      <a class="dropdown-item d-flex align-items-center justify-content-between<%= l.code === lang ? ' active' : '' %>" href="<%= langUrl(l.code) %>" hreflang="<%= l.code %>" lang="<%= l.code %>">
+        <span><%= l.name %></span>
+        <span class="badge text-bg-secondary ms-2"><%= l.flag %></span>
+      </a>
+    </li>
+    <% }); %>
+  </ul>
+</li>

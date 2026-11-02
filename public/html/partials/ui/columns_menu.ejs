@@ -1,0 +1,30 @@
+<%#
+  "Columns" dropdown + the style that hides default-hidden columns (no
+  flash before the script runs). Behaviour: public/js/list-columns.js.
+  include('../../partials/ui/columns_menu', {
+    tableId: 'systemTable',
+    storageKey: 'openasm.systemList.columns',   // optional
+    columns: [{ key, label, def?, fixed? }]      // label = English i18n key
+  })
+  Table cells carry data-col="<key>".
+%>
+<div class="dropdown" data-columns-menu data-table="<%= tableId %>" data-storage-key="<%= locals.storageKey || ('openasm.columns.' + tableId) %>">
+  <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="<%= t('Columns') %>">
+    <i class="bi bi-layout-three-columns"></i><span class="btn-text"> <%= t('Columns') %></span>
+  </button>
+  <div class="dropdown-menu dropdown-menu-end columns-menu">
+    <div class="dropdown-header"><%= t('Show columns') %></div>
+    <% columns.forEach(function (c) { %>
+      <label class="dropdown-item form-check mb-0">
+        <input type="checkbox" class="form-check-input" data-col="<%= c.key %>"<%= c.def ? ' data-default=1' : '' %><%= c.fixed ? ' data-fixed=1' : '' %> <%= c.def || c.fixed ? 'checked' : '' %> <%= c.fixed ? 'disabled' : '' %>>
+        <span class="form-check-label"><%= t(c.label) %></span>
+      </label>
+    <% }) %>
+    <div class="dropdown-divider"></div>
+    <button type="button" class="dropdown-item small" data-columns-reset><i class="bi bi-arrow-counterclockwise me-1"></i><%= t('Reset to default') %></button>
+  </div>
+</div>
+<% const defaultHidden = columns.filter(c => !c.def && !c.fixed); %>
+<style data-columns-style="<%= tableId %>">
+  <% if (defaultHidden.length) { %><%= defaultHidden.map(c => '#' + tableId + ' [data-col="' + c.key + '"]').join(', ') %> { display: none !important; }<% } %>
+</style>

@@ -1,0 +1,118 @@
+<%#
+  Add / Edit User.  mode, user, roleOptions ([{id, text}]), isSelf (editing own account), passwordRule (message)
+  Local accounts have a password here; LDAP accounts sign in against the directory.
+%>
+<% const isEdit = mode === 'edit'; const u = locals.user || {}; const local = (u.auth_source || 'local') === 'local'; %>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [
+  { label: 'User Management', href: '/administrator/users' }, { label: isEdit ? 'Edit User' : 'Add User' }
+] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
+    <form id="userForm" class="card form-card" method="POST" action="<%= isEdit ? '/administrator/users/' + u.id + '/edit' : '/administrator/users/add' %>" autocomplete="off">
+      <div class="card-header form-card-header">
+        <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit User' : 'Add User') %></h3>
+      </div>
+      <div class="card-body">
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('Account') %></h4>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label" for="f-username"><%= t('Username') %> <span class="text-danger">*</span></label>
+              <input type="text" id="f-username" name="username" class="form-control" value="<%= u.username || '' %>" required pattern="[a-zA-Z0-9_.\-]{3,50}" maxlength="50">
+              <div class="form-text"><%= t('3-50 letters, numbers, dots, hyphens or underscores') %></div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="f-fullname"><%= t('Full Name') %></label>
+              <input type="text" id="f-fullname" name="fullname" class="form-control" value="<%= u.fullname || '' %>" maxlength="255">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="f-email"><%= t('Email') %> <span class="text-danger">*</span></label>
+              <input type="email" id="f-email" name="email" class="form-control" value="<%= u.email || '' %>" required maxlength="100">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="f-role"><%= t('Role') %> <span class="text-danger">*</span></label>
+              <% if (isSelf) { %>
+                <input type="hidden" name="role_id" value="<%= u.role_id %>">
+                <input type="text" class="form-control" value="<%= u.role_name %>" disabled>
+                <div class="form-text"><%= t('You cannot change the role of your own account') %></div>
+              <% } else { %>
+                <select id="f-role" name="role_id" class="form-select js-select" required data-placeholder="<%= t('Select role') %>">
+                  <option value=""></option><%- ui.options(roleOptions, u.role_id) %>
+                </select>
+              <% } %>
+            </div>
+            <% if (isEdit) { %>
+              <div class="col-md-4 d-flex align-items-end">
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="f-active" name="is_active" <%= u.is_active ? 'checked' : '' %> <%= isSelf ? 'disabled' : '' %>>
+                  <label class="form-check-label" for="f-active"><%= t('Active') %></label>
+                </div>
+                <% if (isSelf) { %><input type="hidden" name="is_active" value="on"><% } %>
+              </div>
+            <% } %>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('Sign-in') %></h4>
+          <div class="row g-3">
+            <div class="col-12">
+              <div class="btn-group" role="group">
+                <input type="radio" class="btn-check" name="auth_source" id="f-auth-local" value="local" <%= local ? 'checked' : '' %>>
+                <label class="btn btn-outline-primary btn-sm" for="f-auth-local"><%= t('Local password') %></label>
+                <input type="radio" class="btn-check" name="auth_source" id="f-auth-ldap" value="ldap" <%= local ? '' : 'checked' %>>
+                <label class="btn btn-outline-primary btn-sm" for="f-auth-ldap">LDAP / Active Directory</label>
+              </div>
+            </div>
+            <div class="col-md-4" data-local-only>
+              <label class="form-label" for="f-password"><%= t(isEdit ? 'New password' : 'Password') %><%- isEdit ? '' : ' <span class="text-danger">*</span>' %></label>
+              <input type="password" id="f-password" name="password" class="form-control" autocomplete="new-password">
+              <div class="form-text"><%= isEdit ? t('Leave blank to keep the current password') + '. ' : '' %><%= t(passwordRule) %></div>
+            </div>
+            <% if (isEdit) { %>
+              <div class="col-md-4" data-local-only>
+                <label class="form-label" for="f-repeat"><%= t('Repeat password') %></label>
+                <input type="password" id="f-repeat" name="repeat_password" class="form-control" autocomplete="new-password">
+              </div>
+            <% } %>
+            <div class="col-md-4 d-flex align-items-end" data-local-only>
+              <div class="form-check mb-2">
+                <input class="form-check-input" type="checkbox" id="f-must-change" name="must_change_password" <%= isEdit ? (u.must_change_password ? 'checked' : '') : 'checked' %>>
+                <label class="form-check-label" for="f-must-change"><%= t('Must change password at next sign-in') %></label>
+              </div>
+            </div>
+            <div class="col-12">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="f-twofa" name="require_twofa" <%= u.require_twofa ? 'checked' : '' %>>
+                <label class="form-check-label" for="f-twofa"><%= t('Require two-factor authentication (2FA)') %></label>
+              </div>
+              <% if (isEdit && u.twofa_enabled) { %>
+                <div class="form-text"><%= t('2FA is set up. Unticking removes it; the user sets it up again when it is required.') %></div>
+              <% } %>
+            </div>
+          </div>
+        </section>
+        <% if (isEdit && !isSelf) { %>
+          <p class="small text-secondary mb-0"><i class="bi bi-info-circle me-1"></i><%= t('Changing the role, status, sign-in method or password signs the user out of open sessions.') %></p>
+        <% } %>
+      </div>
+      <%- include('../../partials/ui/form_actions', { cancelUrl: '/administrator/users', submitLabel: isEdit ? 'Save Changes' : 'Add User', record: u }) %>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function () {
+    const form = document.getElementById('userForm');
+    const password = document.getElementById('f-password');
+    const sync = () => {
+      const local = form.querySelector('input[name="auth_source"]:checked').value === 'local';
+      form.querySelectorAll('[data-local-only]').forEach((el) => el.classList.toggle('d-none', !local));
+      password.required = local && <%- isEdit && local ? 'false' : 'true' %>;
+    };
+    form.querySelectorAll('input[name="auth_source"]').forEach((el) => el.addEventListener('change', sync));
+    sync();
+  })();
+</script>

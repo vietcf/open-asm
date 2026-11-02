@@ -1,0 +1,39 @@
+## Development override: live code sync, no image rebuild per change.
+##   docker compose -f docker-compose.yml -f docker-compose.dev.yml watch
+## OPENASM_SRC (optional) points the sync at another checkout of the code,
+## e.g. a git worktree, while data/pgdata/ssl stay in the project directory.
+services:
+  app:
+    # development: Express re-reads EJS views on every request (no view cache)
+    environment:
+      - NODE_ENV=development
+    # restarts the app whenever a synced server-side file changes
+    command: ["node", "--watch", "src/app.js"]
+    develop:
+      watch:
+        - path: ${OPENASM_SRC:-.}/src
+          target: /app/src
+          action: sync
+          initial_sync: true
+        - path: ${OPENASM_SRC:-.}/config
+          target: /app/config
+          action: sync+restart
+          initial_sync: true
+        - path: ${OPENASM_SRC:-.}/migrations
+          target: /app/migrations
+          action: sync
+          initial_sync: true
+        - path: ${OPENASM_SRC:-.}/public/html
+          target: /app/public/html
+          action: sync
+          initial_sync: true
+        - path: ${OPENASM_SRC:-.}/public/css
+          target: /app/public/css
+          action: sync
+          initial_sync: true
+        - path: ${OPENASM_SRC:-.}/public/js
+          target: /app/public/js
+          action: sync
+          initial_sync: true
+        - path: ${OPENASM_SRC:-.}/package.json
+          action: rebuild

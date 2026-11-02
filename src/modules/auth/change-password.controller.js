@@ -1,0 +1,84 @@
+import bcrypt from 'bcrypt';
+import User from '../administrator/user.model.js';
+import { isStrongPassword } from '../../shared/password.js';
+
+const changePasswordController = {};
+
+// GET change password page
+changePasswordController.getChangePassword = (req, res) => {
+  // LDAP accounts have no local password to change — AD owns it.
+  if (req.session.user && req.session.user.auth_source === 'ldap') {
+    return res.redirect('/dashboard');
+  }
+  res.render('pages/change_password', {
+    error: null,
+    success: null,
+    title: 'Change Password',
+    activeMenu: '' // Fix for sidebar.ejs expecting activeMenu
+  });
+};
+
+// POST change password
+changePasswordController.postChangePassword = async (req, res) => {
+  const userId = req.session.user && req.session.user.id;
+  if (!userId) {
+    return res.redirect('/login');
+  }
+  if (req.session.user.auth_source === 'ldap') {
+    return res.redirect('/dashboard');
+  }
+  const { currentPassword, newPassword, confirmPassword } = req.body;
+  let error = null;
+  let success = null;
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    error = 'Please enter all required information.';
+  } else if (newPassword !== confirmPassword) {
+    error = 'The new password and confirmation do not match.';
+  } else if (newPassword === currentPassword) {
+    error = 'The new password must not be the same as the current password.';
+  } else if (!isStrongPassword(newPassword)) {
+    error = 'The new password must be at least 8 characters and include uppercase, lowercase, and a number.';
+  }
+  if (!error) {
+    try {
+      const user = await User.findById(userId);
+      if (!user) {
+        return res.redirect('/login');
+      }
+      const match = await bcrypt.compare(currentPassword, user.password_hash);
+      if (!match) {
+        error = 'The current password is incorrect.';
+      } else {
+        // Prevent new password from being the same as the old password (hash check)
+        const isSameHash = await bcrypt.compare(newPassword, user.password_hash);
+        if (isSameHash) {
+          error = 'The new password must not be the same as the current password.';
+        } else {
+          const newHash = await bcrypt.hash(newPassword, 10);
+          await User.updatePassword(userId, newHash);
+          success = 'Password changed successfully!';
+          // If user was required to change password, clear the flag after success
+          if (user.must_change_password) {
+            await User.updateMustChangePassword(userId, false);
+            req.session.user.must_change_password = false;
+          }
+          // Logout user after password change and require re-login
+          req.session.destroy(() => {
+            res.redirect('/login?success=Password%20changed%20successfully.%20Please%20login%20again.');
+          });
+          return;
+        }
+      }
+    } catch (err) {
+      error = 'An error occurred. Please try again.';
+    }
+  }
+  res.render('pages/change_password', {
+    error,
+    success,
+    title: 'Change Password',
+    activeMenu: '' // Fix for sidebar.ejs expecting activeMenu
+  });
+};
+
+export default changePasswordController;

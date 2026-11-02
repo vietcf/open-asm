@@ -4,7 +4,7 @@ const app = require('../src/app'); // Import your Express app
 describe('API Tests with JWT', () => {
   let authToken = '';
   
-  // Login và lấy token trước khi chạy tests
+  // Log in and get a token before running the tests
   beforeAll(async () => {
     const loginResponse = await request(app)
       .post('/auth/login')

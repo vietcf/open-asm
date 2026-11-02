@@ -1,6 +1,6 @@
 // Site configuration utility
 // Loads and caches common configuration values from database at startup
-import Configuration from '../models/Configuration.js';
+import Configuration from '../modules/administrator/configuration.model.js';
 
 const siteConfig = {
   cachedSiteName: 'ASG Project',

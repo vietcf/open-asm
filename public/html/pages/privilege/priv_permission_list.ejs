@@ -1,750 +1,91 @@
 <%
-// Helper function to build pagination URL with all query parameters
-function buildPaginationUrl(targetPage) {
-  const params = new URLSearchParams();
-  
-  // Add page
-  params.set('page', targetPage);
-  
-  // Add search if exists
-  if (typeof search !== 'undefined' && search) {
-    params.set('search', search);
-  }
-  
-  // Add pageSize if exists
-  if (typeof pageSize !== 'undefined' && pageSize) {
-    params.set('pageSize', pageSize);
-  }
-  
-  // Add system_id filter if exists
-  if (typeof system_id !== 'undefined' && system_id) {
-    params.set('system_id', system_id);
-  }
-  
-  return '?' + params.toString();
-}
-
-// Helper function to build export URL with all query parameters
-function buildExportUrl() {
-  const params = new URLSearchParams();
-  
-  // Add search if exists
-  if (typeof search !== 'undefined' && search) {
-    params.set('search', search);
-  }
-  
-  // Add system_id filter if exists
-  if (typeof system_id !== 'undefined' && system_id) {
-    params.set('system_id', system_id);
-  }
-  
-  return '/priv-account/permission/export' + (params.toString() ? '?' + params.toString() : '');
-}
+  const activeFilterCount = filter.system_id ? 1 : 0;
+  const COLUMNS = [
+    { key: 'name', label: 'Permission Name', def: true, fixed: true },
+    { key: 'system', label: 'System', def: true },
+    { key: 'roles', label: 'Roles', def: true },
+    { key: 'description', label: 'Description', def: true },
+    { key: 'updated', label: 'Updated' },
+  ];
+  const cell = (p, key) => ({
+    name: ui.esc(p.name),
+    system: ui.text(p.system?.name),
+    roles: p.role_count ? `<span class="badge tag">${p.role_count}</span>` : ui.dash,
+    description: ui.clip(p.description),
+    updated: ui.date(p.updated_at),
+  })[key];
 %>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'Privileged Account', href: '/priv-account/account' }, { label: 'Privileged Permission List' }] }) %>
 
-<!-- Content Header -->
-<div class="app-content-header">
-<div class="container-fluid">
-    <div class="row">
-    <div class="col-12">
-        <ol class="breadcrumb">
-          <li class="breadcrumb-item"><a href="/">Home</a></li>
-          <li class="breadcrumb-item active">Privileged Permission List</li>
-        </ol>
-        </div>
-        </div>
-      </div>
-    </div>
-  
-<!-- Main content -->
 <div class="app-content">
   <div class="container-fluid">
-  <!-- Search and Page Size Row -->
-  <div class="row mb-3">
-    <div class="col-12">
-      <div class="d-flex justify-content-end align-items-center gap-2">
-          <form class="d-flex align-items-center gap-2" role="search" method="get" action="/priv-account/permission">
-          <!-- Hidden inputs to preserve filter values -->
-          <input type="hidden" name="page" value="1">
-            <% if (typeof system_id !== 'undefined' && system_id) { %>
-              <input type="hidden" name="system_id" value="<%= system_id %>">
-          <% } %>
-          
-          <div class="input-group input-group-sm" style="width: 250px;">
-              <input class="form-control form-control-sm" type="search" name="search" placeholder="Search Permission or Description..." aria-label="Search" value="<%= typeof search !== 'undefined' ? search : '' %>">
-            <button class="btn btn-outline-secondary btn-sm" type="submit" id="searchBtn"><i class="bi bi-search"></i></button>
-            </div>
-          <div class="d-flex align-items-center gap-1">
-            <label class="form-label form-label-sm mb-0 text-muted">Show:</label>
-            <select class="form-select form-select-sm" name="pageSize" onchange="this.form.submit()" style="width: 80px;">
-                <% (allowedPageSizes || [10,20,50]).forEach(function(size) { %>
-                <option value="<%= size %>" <%= pageSize == size ? 'selected' : '' %>><%= size %></option>
-                    <% }) %>
-                  </select>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
+    <%- include('../../partials/ui/flash') %>
 
-    <!-- Action Buttons -->
-    <div class="row mb-3">
-      <div class="col-12">
-        <div class="d-flex justify-content-end gap-2">
-          <% if (hasPermission('priv_permission.create')) { %>
-            <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addPrivPermissionModal">
-              <i class="bi bi-plus"></i> Add Privileged Permission
-              </button>
-        <% } %>
-          <%
-            const hasActivePrivPermissionFilter = !!(system_id && system_id !== '');
-          %>
-          <button type="button" class="btn btn-sm <%= hasActivePrivPermissionFilter ? 'btn-primary' : 'btn-outline-secondary' %>" data-bs-toggle="modal" data-bs-target="#filterPrivPermissionModal">
-        <i class="bi bi-funnel<%= hasActivePrivPermissionFilter ? '-fill' : '' %>"></i> Filter<%= hasActivePrivPermissionFilter ? ' (Filtered)' : '' %>
-      </button>
-          <% if (hasPermission('priv_permission.read')) { %>
-            <a href="<%= buildExportUrl() %>" class="btn btn-info btn-sm">
-              <i class="bi bi-download"></i> Export
-            </a>
-          <% } %>
-      </div>
+    <div class="card list-card">
+      <form class="list-filter-form" method="get" action="/priv-account/permission">
+        <input type="hidden" name="pageSize" value="<%= pageSize %>">
+        <%- include('../../partials/ui/list_toolbar', {
+              search, searchPlaceholder: 'Search by name or description...',
+              filtersId: 'permissionFilters', activeFilterCount,
+              columns: { tableId: 'permissionTable', storageKey: 'openasm.privPermissionList.columns', list: COLUMNS },
+              exportUrl: '/priv-account/permission/export' + currentQuery,
+              addUrl: hasPermission('priv_permission.create') ? '/priv-account/permission/add' : null, addLabel: 'Add Privileged Permission' }) %>
+        <div class="collapse<%= activeFilterCount ? ' show' : '' %>" id="permissionFilters">
+          <div class="list-filters">
+            <div class="row g-2">
+              <div class="col-md-6">
+                <label class="form-label small"><%= t('System') %></label>
+                <select name="system_id" class="form-select js-filter" data-placeholder="<%= t('All') %>"
+                        data-ajax-url="/system/api/system" data-ids-url="/system/api/system/ids" data-selected='<%= JSON.stringify(filter.system_id ? [filter.system_id] : []) %>'></select>
               </div>
-                  </div>
-
-    <!-- Filter values for JS -->
-  <div id="filter-permission-data"
-          data-system-id='<%= JSON.stringify(system_id || '') %>' style="display:none"></div>
-
-  <!-- Flash Messages -->
-  <% if (typeof successMessage !== 'undefined' && successMessage) { %>
-    <div class="alert alert-success alert-dismissible fade show" role="alert" id="successAlert">
-      <i class="bi bi-check-circle me-2"></i><%= successMessage %>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-      <script>
-      // Auto-hide success message after 5 seconds
-            setTimeout(function() {
-        const alert = document.getElementById('successAlert');
-        if (alert) {
-          const bsAlert = new bootstrap.Alert(alert);
-          bsAlert.close();
-        }
-      }, 5000);
-      </script>
-  <% } %>
-  
-  <% if (typeof errorMessage !== 'undefined' && errorMessage) { %>
-    <div class="alert alert-danger alert-dismissible fade show" role="alert" id="errorAlert">
-      <i class="bi bi-exclamation-triangle me-2"></i><%= errorMessage %>
-      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-    </div>
-    <script>
-      // Auto-hide error message after 5 seconds
-      setTimeout(function() {
-        const alert = document.getElementById('errorAlert');
-        if (alert) {
-          const bsAlert = new bootstrap.Alert(alert);
-          bsAlert.close();
-        }
-      }, 5000);
-    </script>
-  <% } %>
-
-    <!-- Data Table -->
-  <div class="row">
-    <div class="col-12">
-      <div class="card">
-        <div class="card-header">
-            <h3 class="card-title mb-0">Privileged Permission List</h3>
-        </div>
-          <div class="card-body table-responsive p-0" style="max-height: 70vh; overflow-y: auto; overflow-x: auto;">
-            <table class="table table-hover" id="privPermissionTable" style="table-layout: fixed; min-width: 800px;">
-            <thead>
-              <tr>
-                <th>No.</th>
-                <th data-sort-type="text">Permission Name</th>
-                <th data-sort-type="text">Description</th>
-                  <th data-sort-type="text">System</th>
-                <th class="text-end">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-                <% if (privPermissionList && privPermissionList.length > 0) { %>
-                  <% privPermissionList.forEach(function(permission, idx) { %>
-                  <tr>
-                    <td><%= (page - 1) * pageSize + idx + 1 %></td>
-                    <td><%= permission.name %></td>
-                      <td><%= permission.description %></td>
-                      <td><%= permission.system && permission.system.name ? permission.system.name : '' %></td>
-                    <td class="text-end">
-                      <button type="button" class="btn btn-info btn-sm" title="Show" onclick="showPermissionDetail('<%= permission.id %>')" data-permission-id="<%= permission.id %>" data-permission='<%= JSON.stringify(permission) %>'><i class="bi bi-eye"></i></button>
-                      <% if (hasPermission('priv_permission.update')) { %>
-                      <button type="button" class="btn btn-warning btn-sm" title="Edit" 
-                                data-bs-toggle="modal" data-bs-target="#editPrivPermissionModal"
-                              data-permission-id="<%= permission.id %>"
-                              data-permission-name="<%= permission.name %>"
-                                data-permission-description="<%= permission.description || '' %>"
-                                data-permission-system="<%= JSON.stringify(permission.system || {}) %>">
-                        <i class="bi bi-pencil"></i>
-                      </button>
-                      <% } %>
-                      <% if (hasPermission('priv_permission.delete')) { %>
-                        <form action="/priv-account/permission/<%= permission.id %>?_method=DELETE" method="POST" style="display:inline" onsubmit="return confirmDeletePermission(this, '<%= permission.name %>')">
-                        <button type="submit" class="btn btn-danger btn-sm" title="Delete">
-                          <i class="bi bi-trash"></i>
-                        </button>
-                      </form>
-                              <% } %>
-                    </td>
-                  </tr>
-                <% }) %>
-              <% } else { %>
-                  <tr><td colspan="5" class="text-center">No data</td></tr>
-              <% } %>
-            </tbody>
-          </table>
-                        </div>
-        <div class="card-footer clearfix">
-          <div class="d-flex justify-content-between align-items-center px-3 py-2">
-            <div>
-                <span>Showing <%= startItem %> - <%= endItem %> of <%= totalCount %> permissions</span>
             </div>
-              <ul class="pagination pagination-sm m-0">
-                <% 
-                  let startPage = 1;
-                  let endPage = totalPages;
-                  if (totalPages > 10) {
-                    if (page <= 6) {
-                      startPage = 1;
-                      endPage = 10;
-                    } else if (page + 4 >= totalPages) {
-                      startPage = totalPages - 9;
-                      endPage = totalPages;
-                    } else {
-                      startPage = page - 5;
-                      endPage = page + 4;
-                    }
-                  }
-              %>
-              <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
-                  <a class="page-link" href="<%= buildPaginationUrl(page - 1) %>">Previous</a>
-              </li>
-                <% if (startPage > 1) { %>
-                  <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(1) %>">1</a></li>
-                  <% if (startPage > 2) { %>
-                  <li class="page-item disabled"><span class="page-link">...</span></li>
-                <% } %>
-              <% } %>
-                <% for (let i = startPage; i <= endPage; i++) { %>
-                  <li class="page-item <%= i === page ? 'active' : '' %>"><a class="page-link" href="<%= buildPaginationUrl(i) %>"><%= i %></a></li>
-              <% } %>
-                <% if (endPage < totalPages) { %>
-                <li class="page-item disabled"><span class="page-link">...</span></li>
-                  <li class="page-item"><a class="page-link" href="<%= buildPaginationUrl(totalPages) %>"><%= totalPages %></a></li>
-              <% } %>
-              <li class="page-item <%= page >= totalPages ? 'disabled' : '' %>">
-                  <a class="page-link" href="<%= buildPaginationUrl(page + 1) %>">Next</a>
-              </li>
-            </ul>
-            </div>
+            <% if (activeFilterCount) { %>
+              <div class="mt-2 text-end"><a href="#" class="small" data-clear-filters><i class="bi bi-x-circle me-1"></i><%= t('Clear All Filters') %></a></div>
+            <% } %>
           </div>
-        </div>
-                  </div>
-    </div>
-  </div>
-</div>
-
-<!-- Add Privileged Permission Modal -->
-<div class="modal fade" id="addPrivPermissionModal" tabindex="-1" aria-labelledby="addPrivPermissionModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-                      <div class="modal-content">
-                        <div class="modal-header">
-        <h5 class="modal-title" id="addPrivPermissionModalLabel">Add Privileged Permission</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body">
-        <form id="addPrivPermissionForm" action="/priv-account/permission" method="POST" autocomplete="off">
-          <div class="mb-3">
-            <label for="privPermissionName" class="form-label">Permission Name <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="privPermissionName" name="name" placeholder="Permission Name" required>
-                                </div>
-          <div class="mb-3">
-            <label for="privPermissionDescription" class="form-label">Description</label>
-            <textarea class="form-control" id="privPermissionDescription" name="description" placeholder="Description" rows="2"></textarea>
-                            </div>
-          <div class="mb-3">
-            <label for="privPermissionSystem" class="form-label">System <span class="text-danger">*</span></label>
-            <select id="privPermissionSystem" name="system_id" class="form-control" required style="width:100%"></select>
-              </div>
-        </form>
-                        </div>
-                        <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-        <button type="submit" class="btn btn-primary btn-sm" form="addPrivPermissionForm">Add Permission</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-<!-- Edit Privileged Permission Modal -->
-<div class="modal fade" id="editPrivPermissionModal" tabindex="-1" aria-labelledby="editPrivPermissionModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-                      <div class="modal-content">
-                        <div class="modal-header">
-        <h5 class="modal-title" id="editPrivPermissionModalLabel">Edit Privileged Permission</h5>
-                          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                          <div class="modal-body">
-        <form id="editPrivPermissionForm" method="POST" autocomplete="off">
-          <input type="hidden" id="editPermissionId" name="id">
-          <div class="mb-3">
-            <label for="editPermissionName" class="form-label">Permission Name <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="editPermissionName" name="name" placeholder="Permission Name" required>
-                            </div>
-          <div class="mb-3">
-            <label for="editPermissionDescription" class="form-label">Description</label>
-            <textarea class="form-control" id="editPermissionDescription" name="description" placeholder="Description" rows="2"></textarea>
-                            </div>
-          <div class="mb-3">
-            <label for="editPermissionSystem" class="form-label">System <span class="text-danger">*</span></label>
-            <select id="editPermissionSystem" name="system_id" class="form-control" required style="width:100%"></select>
-                          </div>
-                        </form>
-                  </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-        <button type="submit" class="btn btn-primary btn-sm" form="editPrivPermissionForm">Save Changes</button>
-      </div>
-    </div>
-  </div>
-                  </div>
-                  
-<!-- Filter Modal -->
-<div class="modal fade" id="filterPrivPermissionModal" tabindex="-1" aria-labelledby="filterPrivPermissionModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="filterPrivPermissionModalLabel">Filter Privileged Permissions</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <form method="get" action="/priv-account/permission">
-        <div class="modal-body">
-          <div class="mb-3">
-            <label for="filterSystemId" class="form-label">System</label>
-            <select id="filterSystemId" name="system_id" class="form-control" style="width:100%"></select>
-                  </div>
-                  </div>
-        <div class="modal-footer d-flex justify-content-end gap-2">
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-warning btn-sm" id="clearPrivPermissionFilterBtn">Clear Filter</button>
-          <button type="submit" class="btn btn-primary btn-sm">Apply Filter</button>
         </div>
       </form>
-    </div>
-          </div>
-        </div>
-        
-<script>
-function showToast(msg, type) {
-  const toast = document.createElement('div');
-  toast.className = `alert alert-${type}`;
-  toast.style.position = 'fixed';
-  toast.style.top = '16px';
-  toast.style.right = '16px';
-  toast.style.zIndex = 9999;
-  toast.style.minWidth = '200px';
-  toast.innerText = msg;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
-}
 
-function showPermissionDetail(permissionId) {
-  console.log('showPermissionDetail called with permissionId:', permissionId);
-  
-  // Get permission data from button (specifically the show button)
-  const button = document.querySelector(`button[data-permission-id="${permissionId}"][title="Show"]`);
-  if (!button) {
-    console.error('Button not found for permissionId:', permissionId);
-    return;
-  }
-  
-  console.log('Button found:', button);
-  
-  const permissionData = button.getAttribute('data-permission');
-  if (!permissionData) {
-    console.error('No permission data found for permissionId:', permissionId);
-    return;
-  }
-  
-  let permission;
-  try {
-    permission = JSON.parse(permissionData);
-  } catch (e) {
-    console.error('Error parsing permission data:', e);
-    return;
-  }
-  
-  // Create modal HTML
-  const modalId = `permissionDetailModal-${permissionId}`;
-  const modalHtml = `
-    <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title" id="${modalId}Label">Privileged Permission Information</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-      <div class="modal-body">
-            <dl class="row detail-dl">
-              <dt class="col-sm-4">Permission Name</dt>
-              <dd class="col-sm-8">${permission.name || '<span class="text-muted">No data</span>'}</dd>
-              <dt class="col-sm-4">Description</dt>
-              <dd class="col-sm-8">${permission.description || '<span class="text-muted">No data</span>'}</dd>
-              <dt class="col-sm-4">System</dt>
-              <dd class="col-sm-8">${permission.system && permission.system.name ? permission.system.name : '<span class="text-muted">No data</span>'}</dd>
-              <dt class="col-sm-4">Created At</dt>
-              <dd class="col-sm-8">${permission.created_at ? new Date(permission.created_at).toLocaleString() : '<span class="text-muted">No data</span>'}</dd>
-              <dt class="col-sm-4">Updated At</dt>
-              <dd class="col-sm-8">${permission.updated_date ? new Date(permission.updated_date).toLocaleString() : '<span class="text-muted">No data</span>'}</dd>
-              <dt class="col-sm-4">Updated By</dt>
-              <dd class="col-sm-8">${permission.updated_by || '<span class="text-muted">No data</span>'}</dd>
-            </dl>
+      <div class="table-responsive">
+        <table class="table table-hover align-middle table-stack" id="permissionTable">
+          <thead>
+            <tr>
+              <th class="col-index">#</th>
+              <% COLUMNS.forEach(function (c) { %><th data-col="<%= c.key %>"><%= t(c.label) %></th><% }) %>
+              <th class="col-actions"><%= t('Actions') %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (list.length) { %>
+              <% list.forEach(function (p, idx) { %>
+                <tr>
+                  <td class="col-index"><%= (page - 1) * pageSize + idx + 1 %></td>
+                  <% COLUMNS.forEach(function (c) { %><td data-col="<%= c.key %>" data-label="<%= t(c.label) %>"<%- c.key === 'name' ? ' class="fw-medium"' : '' %>><%- cell(p, c.key) %></td><% }) %>
+                  <td class="col-actions">
+                    <div class="row-actions">
+                      <% if (hasPermission('priv_permission.update')) { %>
+                        <a href="/priv-account/permission/<%= p.id %>/edit" class="btn btn-sm btn-outline-secondary" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
+                      <% } %>
+                      <% if (hasPermission('priv_permission.delete')) { %>
+                        <form action="/priv-account/permission/<%= p.id %>/delete" method="POST" data-confirm="<%= t('Delete {1}?', { 1: p.name }) %>">
+                          <button type="submit" class="btn btn-sm btn-outline-secondary btn-delete" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
+                        </form>
+                      <% } %>
+                    </div>
+                  </td>
+                </tr>
+              <% }); %>
+            <% } else { %>
+              <tr><td colspan="<%= COLUMNS.length + 2 %>">
+                <%- include('../../partials/ui/empty_state', { icon: 'bi-key', message: 'No privileged permissions found', filtered: activeFilterCount > 0 || !!search, clearUrl: '/priv-account/permission',
+                      actionUrl: hasPermission('priv_permission.create') ? '/priv-account/permission/add' : null, actionLabel: 'Add Privileged Permission' }) %>
+              </td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+
+      <%- include('../../partials/ui/pagination', { page, totalPages, totalCount, pageSize, count: list.length, summary: 'Showing {1} - {2} of {3} permissions' }) %>
     </div>
-      <div class="modal-footer">
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
   </div>
 </div>
-  </div>
-</div>
-  `;
-  
-  // Remove existing modal if any
-  const existingModal = document.getElementById(modalId);
-  if (existingModal) {
-    existingModal.remove();
-  }
-  
-  // Add modal to body
-  document.body.insertAdjacentHTML('beforeend', modalHtml);
-  
-  // Show modal
-  const modal = new bootstrap.Modal(document.getElementById(modalId));
-  modal.show();
-  
-  // Remove modal from DOM when hidden
-  document.getElementById(modalId).addEventListener('hidden.bs.modal', function() {
-    this.remove();
-  });
-}
-
-function confirmDeletePermission(form, permissionName) {
-  return confirm(`Are you sure you want to delete permission "${permissionName}"?`);
-}
-</script>
-
-<% if (success) { %>
-<script>
-    window.addEventListener('DOMContentLoaded', function() {
-      showToast('<%= success %>', 'success');
-    });
-  </script>
-<% } %>
-<% if (error) { %>
-  <script>
-    window.addEventListener('DOMContentLoaded', function() {
-      showToast('<%= error %>', 'danger');
-    });
-  </script>
-<% } %>
-
-<script>
-$(function() {
-  // Add Privileged Permission Modal: System select2
-  $('#privPermissionSystem').select2({
-      theme: 'bootstrap-5',
-    placeholder: 'Select system',
-      width: '100%',
-    allowClear: true,
-    dropdownParent: $('#addPrivPermissionModal'),
-    dropdownPosition: 'below',
-      ajax: {
-      url: '/system/api/system',
-        dataType: 'json',
-        delay: 250,
-      data: params => ({ search: params.term }),
-      processResults: data => ({ results: data }),
-        cache: true
-      }
-    });
-
-  // Edit Privileged Permission Modal: System select2
-  $('#editPermissionSystem').select2({
-      theme: 'bootstrap-5',
-    placeholder: 'Select system',
-      width: '100%',
-    allowClear: true,
-    dropdownParent: $('#editPrivPermissionModal'),
-      ajax: {
-      url: '/system/api/system',
-        dataType: 'json',
-        delay: 250,
-      data: params => ({ search: params.term }),
-      processResults: data => ({ results: data }),
-        cache: true
-      }
-    });
-  
-  // When Edit button is clicked, populate the edit modal
-  $(document).on('click', '[data-bs-target="#editPrivPermissionModal"]', function() {
-    const permissionId = $(this).data('permission-id');
-    const permissionName = $(this).data('permission-name');
-    const permissionDescription = $(this).data('permission-description');
-    const permissionSystem = $(this).data('permission-system');
-    
-    // Populate form fields
-    $('#editPermissionId').val(permissionId);
-    $('#editPermissionName').val(permissionName);
-    $('#editPermissionDescription').val(permissionDescription);
-    
-    // Set form action
-    $('#editPrivPermissionForm').attr('action', '/priv-account/permission/' + permissionId + '?_method=PUT');
-    
-    // Clear and populate system select
-    const $systemSelect = $('#editPermissionSystem');
-    $systemSelect.val(null).trigger('change');
-    $systemSelect.find('option').remove();
-    if (permissionSystem && permissionSystem.id && permissionSystem.name) {
-      const option = new Option(permissionSystem.name, permissionSystem.id, true, true);
-      $systemSelect.append(option).trigger('change');
-    }
-  });
-  
-  // Filter modal: system select2
-  $('#filterSystemId').select2({
-            theme: 'bootstrap-5',
-    placeholder: 'Select system',
-            width: '100%',
-            allowClear: true,
-    dropdownParent: $('#filterPrivPermissionModal'),
-            ajax: {
-      url: '/system/api/system',
-              dataType: 'json',
-              delay: 250,
-      data: params => ({ search: params.term }),
-      processResults: data => ({ results: data }),
-              cache: true
-            }
-          });
-
-  // Persist filter values when opening modal
-  $('#filterPrivPermissionModal').on('shown.bs.modal', function() {
-    const systemId = '<%= typeof system_id !== "undefined" ? system_id : "" %>';
-    const systemName = '<%= typeof system_name !== "undefined" ? system_name : "" %>';
-    if (systemId && systemName) {
-      const option = new Option(systemName, systemId, true, true);
-      $('#filterSystemId').empty().append(option).trigger('change');
-    } else {
-      $('#filterSystemId').val(null).trigger('change');
-    }
-  });
-  
-  // Clear filter button
-  $('#clearPrivPermissionFilterBtn').on('click', function() {
-    $('#filterSystemId').val(null).trigger('change');
-    window.location.href = '/priv-account/permission';
-  });
-});
-</script>
-
-<!-- Responsive Tables CSS -->
-<style>
-#privPermissionTable thead th {
-  white-space: nowrap;
-}
-/* Fixed proportional column widths — see network/ip_address_list.ejs for rationale. */
-#privPermissionTable th:nth-child(1), #privPermissionTable td:nth-child(1) { width: 4%; }
-#privPermissionTable th:nth-child(2), #privPermissionTable td:nth-child(2) { width: 18%; }
-#privPermissionTable th:nth-child(3), #privPermissionTable td:nth-child(3) { width: 38%; }
-#privPermissionTable th:nth-child(4), #privPermissionTable td:nth-child(4) { width: 20%; }
-#privPermissionTable th:nth-child(5), #privPermissionTable td:nth-child(5) { width: 20%; }
-#privPermissionTable td:nth-child(4) {
-  overflow-wrap: break-word;
-}
-
-/* Mobile responsive styles for Privileged Permission List */
-@media (max-width: 768px) {
-  .table-responsive {
-    display: block !important;
-    overflow-x: scroll !important;
-    overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-  
-  .table {
-    display: table !important;
-    min-width: 800px !important;
-    width: 100% !important;
-  }
-  
-  .card-body,
-  .card,
-  .col-12,
-  .container-fluid,
-  .row {
-    position: relative !important;
-    z-index: 1 !important;
-    width: 100% !important;
-    margin: 0 !important;
-  }
-  
-  .col-12 {
-    position: relative !important;
-    z-index: 1 !important;
-    width: 100% !important;
-    padding: 0 15px !important;
-  }
-  
-  /* Button responsive */
-  .btn-sm {
-    font-size: 0.75rem !important;
-    padding: 0.25rem 0.5rem !important;
-  }
-  
-  /* Search form responsive */
-  .input-group {
-    max-width: 100% !important;
-    width: 100% !important;
-  }
-  
-  .input-group .form-control {
-    font-size: 0.875rem !important;
-  }
-  
-  .input-group .form-select {
-    font-size: 0.75rem !important;
-    width: 80px !important;
-  }
-}
-
-/* Force override for Add Privileged Permission modal buttons on mobile */
-@media (max-width: 991.98px) {
-  #addPrivPermissionModal .modal-footer {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0.5rem !important;
-    justify-content: stretch !important;
-    align-items: stretch !important;
-    width: 100% !important;
-  }
-  
-  #addPrivPermissionModal .modal-footer .btn,
-  #addPrivPermissionModal .modal-footer button {
-    width: 100% !important;
-    margin: 0 !important;
-    flex: 1 1 0% !important;
-    min-height: 38px !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    display: block !important;
-  }
-  
-  #addPrivPermissionModal .modal-footer .btn:first-child,
-  #addPrivPermissionModal .modal-footer button:first-child {
-    order: 2 !important;
-  }
-  
-  #addPrivPermissionModal .modal-footer .btn:last-child,
-  #addPrivPermissionModal .modal-footer button:last-child {
-    order: 1 !important;
-  }
-  
-  /* Force override any Bootstrap or AdminLTE styles */
-  #addPrivPermissionModal .modal-footer .btn.btn-secondary,
-  #addPrivPermissionModal .modal-footer .btn.btn-primary {
-    width: 100% !important;
-    flex: 1 1 0% !important;
-    min-height: 38px !important;
-  }
-}
-
-/* Force override for Edit Privileged Permission modal buttons on mobile */
-@media (max-width: 991.98px) {
-  #editPrivPermissionModal .modal-footer {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0.5rem !important;
-    justify-content: stretch !important;
-    align-items: stretch !important;
-    width: 100% !important;
-  }
-  
-  #editPrivPermissionModal .modal-footer .btn,
-  #editPrivPermissionModal .modal-footer button {
-    width: 100% !important;
-    margin: 0 !important;
-    flex: 1 1 0% !important;
-    min-height: 38px !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    display: block !important;
-  }
-  
-  #editPrivPermissionModal .modal-footer .btn:first-child,
-  #editPrivPermissionModal .modal-footer button:first-child {
-    order: 2 !important;
-  }
-  
-  #editPrivPermissionModal .modal-footer .btn:last-child,
-  #editPrivPermissionModal .modal-footer button:last-child {
-    order: 1 !important;
-  }
-  
-  /* Force override any Bootstrap or AdminLTE styles */
-  #editPrivPermissionModal .modal-footer .btn.btn-secondary,
-  #editPrivPermissionModal .modal-footer .btn.btn-primary {
-    width: 100% !important;
-    flex: 1 1 0% !important;
-    min-height: 38px !important;
-  }
-}
-
-/* Force override for Filter Privileged Permission modal buttons on mobile */
-@media (max-width: 991.98px) {
-  #filterPrivPermissionModal .modal-footer {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 0.5rem !important;
-    justify-content: stretch !important;
-    align-items: stretch !important;
-    width: 100% !important;
-  }
-  
-  #filterPrivPermissionModal .modal-footer .btn,
-  #filterPrivPermissionModal .modal-footer button {
-    width: 100% !important;
-    margin: 0 !important;
-    flex: 1 1 0% !important;
-    min-height: 38px !important;
-    max-width: 100% !important;
-    box-sizing: border-box !important;
-    display: block !important;
-  }
-  
-  #filterPrivPermissionModal .modal-footer .btn:first-child {
-    order: 2 !important;
-  }
-  
-  #filterPrivPermissionModal .modal-footer .btn:last-child {
-    order: 1 !important;
-  }
-  
-  /* Force override any Bootstrap or AdminLTE styles */
-  #filterPrivPermissionModal .modal-footer .btn.btn-outline-danger,
-  #filterPrivPermissionModal .modal-footer .btn.btn-secondary,
-  #filterPrivPermissionModal .modal-footer .btn.btn-primary {
-    width: 100% !important;
-    flex: 1 1 0% !important;
-    min-height: 38px !important;
-  }
-}
-</style>

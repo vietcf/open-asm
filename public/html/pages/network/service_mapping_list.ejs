@@ -1,0 +1,228 @@
+<%
+  const f = filter;
+  const activeFilterCount = [f.direction, f.scope, f.access_mode, f.protocol, f.provider, f.device_id, f.system_id].filter(Boolean).length;
+  const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+  const COLUMNS = [
+    { key: 'name', label: 'Name', def: true, fixed: true },
+    { key: 'direction', label: 'Direction', def: true },
+    { key: 'scope', label: 'Scope', def: true },
+    { key: 'domain', label: 'Domain', def: true },
+    { key: 'endpoint', label: 'Endpoint', def: true },
+    { key: 'provider', label: 'Provider / Channel', def: true },
+    { key: 'access', label: 'Access', def: true },
+    { key: 'system', label: 'System', def: true },
+    { key: 'device', label: 'Device' },
+    { key: 'members', label: 'Backends', def: true },
+    { key: 'description', label: 'Description' },
+    { key: 'updated', label: 'Updated' },
+  ];
+  const cell = (vs, key) => ({
+    name: ui.esc(vs.name),
+    direction: `<span class="text-nowrap"><i class="bi ${vs.direction === 'outbound' ? 'bi-box-arrow-up-right' : 'bi-box-arrow-in-down-right'} me-1"></i>${ui.esc(t(cap(vs.direction)))}</span>`,
+    scope: `<span class="badge tag">${ui.esc(t(cap(vs.scope)))}</span>`,
+    domain: vs.domain ? `<span class="font-monospace small">${ui.esc(vs.domain)}</span>` : ui.dash,
+    endpoint: `<span class="font-monospace small">${ui.esc(vs.ip_address)}:${vs.port}</span> <span class="badge tag">${ui.esc(vs.protocol)}</span>`,
+    provider: vs.provider ? `<span class="badge tag">${ui.esc(vs.provider)}</span>` : ui.dash,
+    access: vs.access_mode === 'limited'
+      ? `<span class="badge tag" title="${ui.esc((vs.allowed_ips || []).join(', '))}"><i class="bi bi-shield-lock me-1"></i>${ui.esc(t('Limited'))}${(vs.allowed_ips || []).length ? ` (${vs.allowed_ips.length})` : ''}</span>`
+      : `<span class="badge tag">${ui.esc(t('Full'))}</span>`,
+    system: vs.system_name ? ui.esc(vs.system_name) : ui.dash,
+    device: vs.device_name ? ui.esc(vs.device_name) : ui.dash,
+    members: vs.members.length ? `<span class="badge tag">${vs.members.length}</span> ` + ui.mono(vs.members.slice(0, 3).map(m => m.ip + (m.port ? ':' + m.port : '')).concat(vs.members.length > 3 ? ['…'] : [])) : ui.dash,
+    description: ui.clip(vs.description),
+    updated: ui.date(vs.updated_at),
+  })[key];
+  const simpleFilter = (name, label, options, labelOf) => ({ name, label, options, labelOf: labelOf || ((o) => o) });
+  const FILTERS = [
+    simpleFilter('direction', 'Direction', directionOptions, (o) => t(cap(o))),
+    simpleFilter('scope', 'Scope', scopeOptions, (o) => t(cap(o))),
+    simpleFilter('access_mode', 'Access', ['full', 'limited'], (o) => t(o === 'full' ? 'Full' : 'Limited')),
+    simpleFilter('protocol', 'Protocol', protocolOptions || []),
+    simpleFilter('provider', 'Provider / Channel', providerOptions || []),
+  ];
+%>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'Network' }, { label: 'Service Mapping' }] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
+
+    <div class="card list-card">
+      <form class="list-filter-form" method="get" action="/network/service-mapping">
+        <input type="hidden" name="pageSize" value="<%= pageSize %>">
+        <%- include('../../partials/ui/list_toolbar', {
+              search, searchPlaceholder: 'Search by name, domain, IP, system, device, server...',
+              filtersId: 'smFilters', activeFilterCount,
+              columns: { tableId: 'smTable', storageKey: 'openasm.serviceMappingList.columns.v3', list: COLUMNS },
+              exportUrl: '/network/service-mapping/export' + currentQuery,
+              importModal: hasPermission('service_mapping.create') ? 'smImportModal' : null,
+              addUrl: hasPermission('service_mapping.create') ? '/network/service-mapping/add' : null, addLabel: 'Add Service Mapping' }) %>
+        <div class="collapse<%= activeFilterCount ? ' show' : '' %>" id="smFilters">
+          <div class="list-filters">
+            <div class="row g-2">
+              <% FILTERS.forEach(function (fl) { %>
+                <div class="col-md-3">
+                  <label class="form-label small"><%= t(fl.label) %></label>
+                  <select name="<%= fl.name %>" class="form-select js-filter" data-placeholder="<%= t('All') %>">
+                    <option value=""></option>
+                    <% fl.options.forEach(function (o) { %>
+                      <option value="<%= o %>" <%= f[fl.name] === o ? 'selected' : '' %>><%= fl.labelOf(o) %></option>
+                    <% }) %>
+                  </select>
+                </div>
+              <% }) %>
+              <div class="col-md-3">
+                <label class="form-label small"><%= t('System') %></label>
+                <select name="system_id" class="form-select js-filter" data-placeholder="<%= t('All') %>"
+                        data-ajax-url="/system/api/system" data-ids-url="/system/api/system/ids" data-selected='<%= JSON.stringify(f.system_id ? [f.system_id] : []) %>'></select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small"><%= t('Device') %></label>
+                <select name="device_id" class="form-select js-filter" data-placeholder="<%= t('All') %>"
+                        data-ajax-url="/device/api/device" data-ids-url="/device/api/device/ids" data-selected='<%= JSON.stringify(f.device_id ? [f.device_id] : []) %>'></select>
+              </div>
+            </div>
+            <% if (activeFilterCount) { %>
+              <div class="mt-2 text-end"><a href="#" class="small" data-clear-filters><i class="bi bi-x-circle me-1"></i><%= t('Clear All Filters') %></a></div>
+            <% } %>
+          </div>
+        </div>
+      </form>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle table-stack" id="smTable">
+          <thead>
+            <tr>
+              <th class="col-index">#</th>
+              <% COLUMNS.forEach(function (c) { %><th data-col="<%= c.key %>"><%= t(c.label) %></th><% }) %>
+              <th class="col-actions"><%= t('Actions') %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (vsList && vsList.length) { %>
+              <% vsList.forEach(function (vs, idx) { %>
+                <tr>
+                  <td class="col-index"><%= (page - 1) * pageSize + idx + 1 %></td>
+                  <% COLUMNS.forEach(function (c) { %><td data-col="<%= c.key %>" data-label="<%= t(c.label) %>"<%- c.key === 'name' ? ' class="fw-medium"' : '' %>><%- cell(vs, c.key) %></td><% }) %>
+                  <td class="col-actions">
+                    <div class="row-actions">
+                      <button type="button" class="btn btn-sm btn-outline-secondary" title="<%= t('Detail') %>" onclick="showSmDetail(this)" data-record='<%= JSON.stringify(vs) %>'><i class="bi bi-eye"></i></button>
+                      <% if (hasPermission('service_mapping.create')) { %>
+                        <a href="/network/service-mapping/<%= vs.id %>/duplicate" class="btn btn-sm btn-outline-secondary" title="<%= t('Duplicate') %>"><i class="bi bi-copy"></i></a>
+                      <% } %>
+                      <% if (hasPermission('service_mapping.update')) { %>
+                        <a href="/network/service-mapping/<%= vs.id %>/edit" class="btn btn-sm btn-outline-secondary" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
+                      <% } %>
+                      <% if (hasPermission('service_mapping.delete')) { %>
+                        <form action="/network/service-mapping/<%= vs.id %>/delete" method="POST" data-confirm="<%= t('Delete {1}?', { 1: vs.name }) %>">
+                          <button type="submit" class="btn btn-sm btn-outline-secondary btn-delete" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
+                        </form>
+                      <% } %>
+                    </div>
+                  </td>
+                </tr>
+              <% }); %>
+            <% } else { %>
+              <tr><td colspan="<%= COLUMNS.length + 2 %>">
+                <%- include('../../partials/ui/empty_state', { icon: 'bi-hdd-network', message: 'No service mappings found', filtered: activeFilterCount > 0 || !!search, clearUrl: '/network/service-mapping',
+                      actionUrl: hasPermission('service_mapping.create') ? '/network/service-mapping/add' : null, actionLabel: 'Add Service Mapping' }) %>
+              </td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+
+      <%- include('../../partials/ui/pagination', { page, totalPages, totalCount, pageSize, count: (vsList || []).length, summary: 'Showing {1} - {2} of {3} service mappings' }) %>
+    </div>
+  </div>
+</div>
+
+<%- include('../../partials/ui/detail_modal', { id: 'smDetailModal' }) %>
+<% if (hasPermission('service_mapping.create')) { %>
+  <%- include('../../partials/ui/import_modal', { id: 'smImportModal', title: 'Import Service Mappings', baseUrl: '/network/service-mapping',
+        instructions: ['IP address and port are required', 'Direction: inbound / outbound, Scope: public / private, Access: full / limited',
+          'Allowed IPs are optional, only used when Access is limited', 'System and device are looked up by exact name', 'Backend format: ip:port, comma-separated; the IPs must already exist'] }) %>
+<% } %>
+
+<style>
+  .sm-flow{display:flex;align-items:stretch;gap:.5rem;padding:1rem;overflow-x:auto;background:var(--bs-tertiary-bg);border-radius:.5rem}
+  .sm-node{display:flex;flex-direction:column;justify-content:center;text-align:center;padding:.5rem .75rem;border-radius:.5rem;background:var(--bs-body-bg);border:1px solid var(--bs-border-color);min-width:110px;flex-shrink:0}
+  .sm-node > i.bi{font-size:1.25rem;margin-bottom:.25rem}
+  .sm-node .sm-title{font-weight:500}
+  .sm-node small{display:block;font-size:.75rem;color:var(--bs-secondary-color);word-break:break-all}
+  .sm-arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--bs-secondary-color);flex-shrink:0;font-size:.7rem}
+  .sm-arrow i{font-size:1.25rem}
+  .sm-n-source{background:var(--bs-info-bg-subtle);border-color:var(--bs-info-border-subtle)}
+  .sm-n-edge{background:var(--bs-warning-bg-subtle);border-color:var(--bs-warning-border-subtle)}
+  .sm-n-entry{background:var(--bs-primary-bg-subtle);border-color:var(--bs-primary-border-subtle)}
+  .sm-n-servers{background:var(--bs-success-bg-subtle);border-color:var(--bs-success-border-subtle);text-align:left}
+  .sm-n-servers .sm-srv{white-space:nowrap;padding:.1rem 0}
+  .sm-n-servers .sm-srv.is-inactive{opacity:.55;text-decoration:line-through}
+</style>
+<script>
+  function smFlow(vs) {
+    const esc = DV.esc;
+    const inbound = vs.direction !== 'outbound';
+    const isPrivate = vs.scope === 'private';
+    const limited = vs.access_mode === 'limited';
+    const ips = vs.allowed_ips || [];
+    const node = (cls, icon, title, sub) =>
+      `<div class="sm-node ${cls}"><i class="bi ${icon}"></i><div class="sm-title">${title}</div>${sub ? '<small>' + sub + '</small>' : ''}</div>`;
+    const arrow = (label) => `<div class="sm-arrow"><i class="bi bi-arrow-right"></i>${label ? '<span>' + esc(label) + '</span>' : ''}</div>`;
+    const members = vs.members || [];
+    const serversNode = members.length
+      ? `<div class="sm-node sm-n-servers"><div class="sm-title mb-1">${esc(t(inbound ? 'Backend Servers' : 'Source Servers'))}</div>` +
+        members.map(m => `<div class="sm-srv${m.status === 'inactive' ? ' is-inactive' : ''}"><i class="bi bi-server ${m.status === 'inactive' ? 'text-secondary' : 'text-success'} me-1"></i>${esc(m.ip)}${m.port ? ':' + m.port : ''}${m.server_name ? ' <small>' + esc(m.server_name) + '</small>' : ''}</div>`).join('') + '</div>'
+      : node('sm-n-servers', 'bi-server', esc(t(inbound ? 'Backend Servers' : 'Source Servers')), esc(t('None')));
+    const endpoint = `${esc(vs.ip_address)}:${vs.port} · ${esc(vs.protocol)}`;
+    const device = vs.device_name ? node('sm-n-entry', inbound ? 'bi-hdd-rack' : 'bi-shield', esc(vs.device_name), esc(t(inbound ? 'LB / Firewall' : 'Firewall / NAT'))) : '';
+    const sourceSub = limited && !ips.length ? esc(t('Sources not recorded')) : limited ? ips.slice(0, 4).map(esc).join('<br>') + (ips.length > 4 ? '<br>+' + (ips.length - 4) : '') : esc(t(isPrivate ? 'Private network' : 'Any source'));
+    const parts = [];
+    if (inbound) {
+      parts.push(node('sm-n-source', isPrivate ? 'bi-building' : 'bi-globe', esc(t(isPrivate ? 'Partner / Branch' : (limited ? 'Allowed clients' : 'Internet'))), sourceSub));
+      if (vs.provider) parts.push(arrow(vs.domain || ''), node('sm-n-edge', isPrivate ? 'bi-signpost-split' : 'bi-cloud', esc(vs.provider), esc(t(isPrivate ? 'Private channel' : 'CDN / WAF'))));
+      parts.push(arrow(vs.provider ? '' : (vs.domain || '')), node('sm-n-entry', 'bi-door-open', esc(t(isPrivate ? 'NAT IP' : 'Public IP / VIP')), endpoint));
+      if (device) parts.push(arrow(''), device);
+      parts.push(arrow(''), serversNode);
+    } else {
+      parts.push(serversNode);
+      if (device) parts.push(arrow(''), device);
+      if (vs.provider) parts.push(arrow(''), node('sm-n-edge', isPrivate ? 'bi-signpost-split' : 'bi-cloud', esc(vs.provider), esc(t(isPrivate ? 'Private channel' : 'Provider'))));
+      parts.push(arrow(''), node('sm-n-source', isPrivate ? 'bi-building' : 'bi-globe', esc(vs.domain || t(isPrivate ? 'Private destination' : 'Internet destination')), endpoint));
+    }
+    return `<div class="sm-flow">${parts.join('')}</div>`;
+  }
+
+  function showSmDetail(button) {
+    const vs = DV.record(button);
+    if (!vs) return;
+    const esc = DV.esc;
+    const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+    const members = vs.members || [];
+    let body = DV.section('Service Flow', smFlow(vs));
+    body += DV.section('Overview', DV.rows(
+      DV.multiline(vs.description) ? DV.field('Description', DV.multiline(vs.description)) : '',
+      DV.field('Direction', DV.chips([t(cap(vs.direction))])),
+      DV.field('Scope', DV.chips([t(cap(vs.scope))])),
+      DV.field('System', DV.text(vs.system_name)),
+      DV.field('Domain', DV.text(vs.domain)),
+      DV.field('Provider / Channel', vs.provider ? DV.chips([vs.provider]) : ''),
+      DV.field('IP Address', DV.text(vs.ip_address)),
+      DV.field('Port', DV.text(vs.port)),
+      DV.field('Protocol', DV.chips([vs.protocol])),
+      DV.field('Access', DV.chips([t(vs.access_mode === 'limited' ? 'Limited' : 'Full')])),
+      vs.access_mode === 'limited' ? DV.field('Allowed IPs', DV.chips(vs.allowed_ips || [])) : '',
+      DV.field('Device', DV.text(vs.device_name))
+    ));
+    if (members.length) {
+      const rows = members.map(m =>
+        `<tr><td>${esc(m.ip)}</td><td>${m.port || ''}</td><td>${m.server_name ? esc(m.server_name) : '—'}</td><td><span class="badge tag">${esc(t(cap(m.status || 'active')))}</span></td></tr>`
+      ).join('');
+      body += DV.section(vs.direction === 'outbound' ? 'Source Servers' : 'Backend Servers',
+        `<table class="table table-sm mb-0"><thead><tr><th>${t('IP Address')}</th><th>${t('Port')}</th><th>${t('Server')}</th><th>${t('Status')}</th></tr></thead><tbody>${rows}</tbody></table>`,
+        ' <span class="badge tag ms-1">' + members.length + '</span>');
+    }
+    body += DV.meta(vs);
+    DV.open('smDetailModal', { title: vs.name, subtitle: vs.domain ? '<span class="font-monospace small">' + esc(vs.domain) + '</span>' : '', body });
+  }
+</script>

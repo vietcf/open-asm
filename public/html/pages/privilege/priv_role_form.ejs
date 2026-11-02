@@ -1,0 +1,50 @@
+<%#
+  Add / Edit Privileged Role.  mode, record (role). Permissions are those of the chosen system (AJAX picker).
+%>
+<% const isEdit = mode === 'edit'; const r = locals.record || {}; %>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [
+  { label: 'Privileged Role List', href: '/priv-account/role' }, { label: isEdit ? 'Edit Privileged Role' : 'Add Privileged Role' }
+] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
+    <form class="card form-card" method="POST" action="<%= isEdit ? '/priv-account/role/' + r.id + '/edit' : '/priv-account/role/add' %>">
+      <div class="card-header form-card-header">
+        <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit Privileged Role' : 'Add Privileged Role') %></h3>
+      </div>
+      <div class="card-body">
+        <section class="form-section">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="f-name"><%= t('Role Name') %> <span class="text-danger">*</span></label>
+              <input type="text" id="f-name" name="name" class="form-control" value="<%= r.name || '' %>" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-system"><%= t('System') %> <span class="text-danger">*</span></label>
+              <select id="f-system" name="system_id" class="form-select js-select" required data-placeholder="<%= t('Select system') %>"
+                      data-ajax-url="/system/api/system" data-selected="<%= JSON.stringify(r.system ? [{ id: r.system.id, text: r.system.name }] : []) %>"></select>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-permissions"><%= t('Permissions') %></label>
+              <select id="f-permissions" name="permissions" class="form-select js-select" multiple data-placeholder="<%= t('Select system first') %>"
+                      data-ajax-url="/priv-account/api/permissions" data-ajax-with='{"system_id":"#f-system"}'
+                      data-selected="<%= JSON.stringify((r.permissions || []).map(p => ({ id: p.id, text: p.name }))) %>"></select>
+              <div class="form-text"><%= t('Only permissions of the selected system') %></div>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-description"><%= t('Description') %></label>
+              <textarea id="f-description" name="description" class="form-control" rows="3"><%= r.description || '' %></textarea>
+            </div>
+          </div>
+        </section>
+      </div>
+      <%- include('../../partials/ui/form_actions', { cancelUrl: '/priv-account/role', submitLabel: isEdit ? 'Save Changes' : 'Add Privileged Role', record: r }) %>
+    </form>
+  </div>
+</div>
+
+<script>
+  // permissions belong to one system: clear them when the system changes
+  $('#f-system').on('change', () => $('#f-permissions').val(null).trigger('change'));
+</script>

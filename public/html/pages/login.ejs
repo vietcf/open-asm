@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="<%= lang %>">
   <!--begin::Head-->
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title><%= siteName %> | Login</title>
+    <title><%= siteName %> | <%= t('Login') %></title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <!--begin::Fonts-->
@@ -95,6 +95,7 @@
         color: #fff;
       }
     </style>
+    <script src="<%= i18nScript %>"></script>
   </head>
   <!--end::Head-->
   <!--begin::Body-->
@@ -102,10 +103,13 @@
     <div class="login-shell">
       <!--begin::Form panel-->
       <div class="login-form-panel">
-        <h2>Sign In</h2>
+        <h2><%= t('Sign In') %></h2>
+        <% if (typeof successMessage !== 'undefined' && successMessage) { %>
+          <div class="alert alert-success py-2" role="status"><%= t(successMessage) %></div>
+        <% } %>
         <% if (errorMessage) { %>
           <div class="alert alert-danger py-2" role="alert">
-            <%= errorMessage %>
+            <%= t(errorMessage) %>
           </div>
         <% } %>
         <% const initialMethod = (typeof selectedMethod !== 'undefined' && selectedMethod === 'ldap') ? 'ldap' : 'local'; %>
@@ -115,35 +119,38 @@
                from the account's own record, regardless of this toggle. It
                exists so users know which credentials (local vs. AD) they're
                about to type in. Hidden entirely when LDAP_ENABLED is off. -->
-          <div class="auth-method-toggle" role="group" aria-label="Login method">
-            <button type="button" class="<%= initialMethod === 'local' ? 'active' : '' %>" data-method="local" id="methodLocalBtn">Local Account</button>
-            <button type="button" class="<%= initialMethod === 'ldap' ? 'active' : '' %>" data-method="ldap" id="methodLdapBtn">LDAP (AD)</button>
+          <div class="auth-method-toggle" role="group" aria-label="<%= t('Login method') %>">
+            <button type="button" class="<%= initialMethod === 'local' ? 'active' : '' %>" data-method="local" id="methodLocalBtn"><%= t('Local Account') %></button>
+            <button type="button" class="<%= initialMethod === 'ldap' ? 'active' : '' %>" data-method="ldap" id="methodLdapBtn"><%= t('LDAP (AD)') %></button>
           </div>
           <input type="hidden" name="loginMethod" id="loginMethod" value="<%= initialMethod %>" />
           <% } %>
           <div class="mb-3">
-            <label class="form-label" for="username" id="usernameLabel"><%= initialMethod === 'ldap' ? 'AD Username' : 'Username' %></label>
+            <label class="form-label" for="username" id="usernameLabel"><%= initialMethod === 'ldap' ? t('AD Username') : t('Username') %></label>
             <div class="input-group">
               <span class="input-group-text"><i class="bi bi-person"></i></span>
-              <input type="text" id="username" name="username" class="form-control" placeholder="<%= initialMethod === 'ldap' ? 'Enter your AD username' : 'Enter your username' %>" autofocus required />
+              <input type="text" id="username" name="username" class="form-control" placeholder="<%= initialMethod === 'ldap' ? t('Enter your AD username') : t('Enter your username') %>" autofocus required />
             </div>
-            <div class="invalid-feedback d-block d-none" id="usernameError">Please enter your username.</div>
+            <div class="invalid-feedback d-block d-none" id="usernameError"><%= t('Please enter your username.') %></div>
           </div>
           <div class="mb-3">
-            <label class="form-label" for="password">Password</label>
+            <label class="form-label" for="password"><%= t('Password') %></label>
             <div class="input-group">
               <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
-              <input type="password" id="password" name="password" class="form-control" placeholder="Enter your password" required />
+              <input type="password" id="password" name="password" class="form-control" placeholder="<%= t('Enter your password') %>" required />
             </div>
-            <div class="invalid-feedback d-block d-none" id="passwordError">Please enter your password.</div>
+            <div class="invalid-feedback d-block d-none" id="passwordError"><%= t('Please enter your password.') %></div>
           </div>
           <div class="text-end mb-3">
-            <a href="forgot-password.html" class="forgot-link text-decoration-none">Forgot password?</a>
+            <a href="forgot-password.html" class="forgot-link text-decoration-none"><%= t('Forgot password?') %></a>
           </div>
           <div class="d-grid">
-            <button type="submit" class="btn btn-primary">Sign In</button>
+            <button type="submit" class="btn btn-primary"><%= t('Sign In') %></button>
           </div>
         </form>
+        <div class="text-center mt-3 small">
+          <% languages.forEach(function (l, i) { %><%= i ? ' | ' : '' %><% if (l.code === lang) { %><strong><%= l.name %></strong><% } else { %><a href="<%= langUrl(l.code) %>" hreflang="<%= l.code %>" class="text-decoration-none"><%= l.name %></a><% } %><% }); %>
+        </div>
       </div>
       <!--end::Form panel-->
     </div>
@@ -201,8 +208,8 @@
           var isLdap = method === 'ldap';
           methodLdapBtn.classList.toggle('active', isLdap);
           methodLocalBtn.classList.toggle('active', !isLdap);
-          usernameLabel.textContent = isLdap ? 'AD Username' : 'Username';
-          usernameInput.placeholder = isLdap ? 'Enter your AD username' : 'Enter your username';
+          usernameLabel.textContent = isLdap ? t('AD Username') : t('Username');
+          usernameInput.placeholder = isLdap ? t('Enter your AD username') : t('Enter your username');
         }
 
         methodLocalBtn.addEventListener('click', function () { setLoginMethod('local'); });

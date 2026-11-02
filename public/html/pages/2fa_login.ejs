@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="en">
+<html lang="<%= lang %>">
   <head>
     <meta charset="utf-8" />
-    <title>Two-Factor Authentication</title>
+    <title><%= t('Two-Factor Authentication') %></title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="stylesheet" href="/css/source-sans-3.css" />
@@ -68,30 +68,31 @@
         }
       }
     </style>
+    <script src="<%= i18nScript %>"></script>
   </head>
   <body class="login-page">
     <div class="login-shell">
       <div class="login-form-panel">
-        <h2>2FA Verification</h2>
-        <p class="subtitle">Enter the 6-digit code from your authenticator app</p>
+        <h2><%= t('2FA Verification') %></h2>
+        <p class="subtitle"><%= t('Enter the 6-digit code from your authenticator app') %></p>
         <% if (error) { %>
-          <div class="alert alert-danger py-2" role="alert"><%= error %></div>
+          <div class="alert alert-danger py-2" role="alert"><%= t(error) %></div>
         <% } %>
         <form action="/login/2fa" method="post" autocomplete="off">
           <div class="mb-3">
             <div class="input-group">
               <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
-              <input type="text" name="token" class="form-control text-center" maxlength="6" required pattern="[0-9]{6}" placeholder="Enter 6-digit code" autofocus />
+              <input type="text" name="token" class="form-control text-center" maxlength="6" required pattern="[0-9]{6}" placeholder="<%= t('Enter 6-digit code') %>" autofocus />
             </div>
           </div>
           <div class="d-grid mb-3">
             <button type="submit" class="btn btn-primary">
-              <i class="bi bi-check-circle me-1"></i> Verify
+              <i class="bi bi-check-circle me-1"></i> <%= t('Verify') %>
             </button>
           </div>
         </form>
         <p class="mb-0 text-center">
-          <a href="/logout" class="text-muted text-decoration-none">Back to Login</a>
+          <a href="/logout" class="text-muted text-decoration-none"><%= t('Back to Login') %></a>
         </p>
       </div>
     </div>

@@ -1,8 +1,8 @@
 <!doctype html>
-<html lang="en">
+<html lang="<%= lang %>">
   <head>
     <meta charset="utf-8" />
-    <title>2FA Setup</title>
+    <title><%= t('2FA Setup') %></title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
     <link rel="stylesheet" href="/css/source-sans-3.css" />
@@ -80,42 +80,43 @@
         }
       }
     </style>
+    <script src="<%= i18nScript %>"></script>
   </head>
   <body class="login-page">
     <div class="login-shell">
       <div class="login-form-panel">
-        <h2>2FA Setup</h2>
-        <p class="subtitle">Enable Two-Factor Authentication for your account</p>
+        <h2><%= t('2FA Setup') %></h2>
+        <p class="subtitle"><%= t('Enable Two-Factor Authentication for your account') %></p>
         <% if (error) { %>
-          <div class="alert alert-danger py-2" role="alert"><%= error %></div>
+          <div class="alert alert-danger py-2" role="alert"><%= t(error) %></div>
         <% } %>
         <% if (qr) { %>
           <div class="text-center qr-wrap mb-3">
-            <img src="<%= qr %>" alt="QR Code" class="img-fluid rounded border bg-white p-2" />
+            <img src="<%= qr %>" alt="<%= t('QR Code') %>" class="img-fluid rounded border bg-white p-2" />
           </div>
           <p class="text-muted small text-center mb-3">
-            Scan this QR code with <strong>Google Authenticator</strong>,
-            <strong>Microsoft Authenticator</strong>, or any TOTP app.
+            <%= t('Scan this QR code with') %> <strong><%= t('Google Authenticator') %></strong>,
+            <strong><%= t('Microsoft Authenticator') %></strong><%= t(', or any TOTP app.') %>
           </p>
           <div class="text-center mb-3">
-            <div class="text-muted small mb-1">Or enter this secret manually:</div>
+            <div class="text-muted small mb-1"><%= t('Or enter this secret manually:') %></div>
             <span class="badge bg-light text-dark border px-3 py-2 secret-wrap"><%= secret.replace(/(.{4})/g, '$1 ').trim() %></span>
           </div>
           <form method="POST" action="/2fa/verify" autocomplete="off">
             <div class="mb-3">
               <div class="input-group">
                 <span class="input-group-text"><i class="bi bi-shield-lock"></i></span>
-                <input type="text" class="form-control text-center" id="token" name="token" maxlength="6" required pattern="[0-9]{6}" placeholder="Enter 6-digit code" autofocus />
+                <input type="text" class="form-control text-center" id="token" name="token" maxlength="6" required pattern="[0-9]{6}" placeholder="<%= t('Enter 6-digit code') %>" autofocus />
               </div>
             </div>
             <div class="d-grid">
               <button type="submit" class="btn btn-primary">
-                <i class="bi bi-check-circle me-1"></i> Verify &amp; Enable 2FA
+                <i class="bi bi-check-circle me-1"></i> <%= t('Verify & Enable 2FA') %>
               </button>
             </div>
           </form>
         <% } else { %>
-          <div class="alert alert-warning text-center">No QR code available. Please try again.</div>
+          <div class="alert alert-warning text-center"><%= t('No QR code available. Please try again.') %></div>
         <% } %>
       </div>
     </div>
