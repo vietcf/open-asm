@@ -653,7 +653,21 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.3.2 (Latest)
+### Version 1.3.3 (Latest)
+- No database migration: upgrading from 1.3.x only needs the new image.
+- ✨ Add IP address: leaving the address field checks every address entered
+  (`GET /network/api/ip-addresses/check?addresses=a,b`): not a valid IPv4,
+  entered twice, or already in the inventory (with the server / device using
+  it and a link to it) in red, "new address" in green; saving is blocked
+  until the addresses are fixed (the server still checks on save).
+- 🐛 Add / Edit forms showed no message when a save failed: the form came
+  back empty with no reason. Every rendered page now receives the pending
+  success / error message (middleware in `src/app.js`), and the forms that
+  had no message area got one (server, system, component, device, cluster,
+  contact, unit, tag, service mapping, catalogs). Success messages stay 8 s
+  (was 5 s).
+
+### Version 1.3.2
 - ⬆️ Upgrading from 1.3.x: new image; migration `0021` only adds indexes.
 - ⚡ Faster pages. The server and system lists (and their edit forms) took
   about 0.7-0.9 s in the database: PostgreSQL JIT-compiled their queries,

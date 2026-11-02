@@ -111,6 +111,21 @@ app.use(session({
 
 // Flash middleware for session messages
 app.use(flash());
+// Every rendered page gets the pending flash messages as successMessage /
+// errorMessage (partials/ui/flash.ejs) unless its controller passed them
+// itself: an Add / Edit form reopened after a failed save shows why.
+app.use((req, res, next) => {
+  const render = res.render.bind(res);
+  res.render = (view, options, callback) => {
+    if (typeof options === 'function') { callback = options; options = {}; }
+    const opts = options || {};
+    if (!['successMessage', 'errorMessage', 'success', 'error'].some((k) => opts[k] !== undefined)) {
+      return render(view, { ...opts, successMessage: req.flash('success')[0], errorMessage: req.flash('error')[0] }, callback);
+    }
+    return render(view, opts, callback);
+  };
+  next();
+});
 
 // 4.1. Auto-expire session after inactivity (must run after session/flash, before routes)
 app.use(sessionIdleTimeout);

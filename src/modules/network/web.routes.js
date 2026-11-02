@@ -51,6 +51,7 @@ router.get('/api/ip-addresses', can('ip_address.read'), ips.search);
 router.get('/api/ip-addresses/unassigned', can('ip_address.read'), ips.searchUnassigned);
 router.get('/api/ip-addresses/search-all', can('ip_address.read'), ips.searchAll);
 router.get('/api/ip-addresses/detail', can('ip_address.read'), ips.detail);
+router.get('/api/ip-addresses/check', can('ip_address.read'), ips.check);
 router.get('/api/domain', can('domain.read'), domains.search);
 router.get('/api/service-mapping', serviceMappings.lookup);
 router.get('/api/provider', serviceMappings.providers);

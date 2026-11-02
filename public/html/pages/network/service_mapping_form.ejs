@@ -14,6 +14,7 @@
 
 <div class="app-content">
   <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
     <form id="smForm" class="card form-card" method="POST" action="<%= isEdit ? '/network/service-mapping/' + v.id + '/edit' : '/network/service-mapping/add' %>">
       <div class="card-header form-card-header">
         <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit Service Mapping' : 'Add Service Mapping') %></h3>

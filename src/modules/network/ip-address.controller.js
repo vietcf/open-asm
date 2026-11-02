@@ -158,6 +158,21 @@ export default {
     res.json(rows.map((ip) => ({ id: ip.id, text: ip.owner_label ? `${ip.ip_address} (${req.t('assigned: {owner}', { owner: ip.owner_label })})` : ip.ip_address })));
   }),
   // IP tooltip shown on every page (detail-view.js): ?search=<address> -> [detail] or []
+  // Add form, on leaving the address field: ?addresses=a,b ->
+  // [{address, state: 'invalid' | 'duplicate' | 'exists' | 'ok', id?, owner?}] (nothing saved)
+  check: page(async (req, res) => {
+    const list = String(req.query.addresses || '').split(',').map((a) => a.trim()).filter(Boolean).slice(0, 200);
+    const existing = new Map((await IpAddress.findExisting(list.filter((a) => IPV4_REGEX.test(a)))).map((r) => [r.ip_address, r]));
+    const seen = new Set();
+    res.json(list.map((address) => {
+      if (!IPV4_REGEX.test(address)) return { address, state: 'invalid' };
+      if (seen.has(address)) return { address, state: 'duplicate' };
+      seen.add(address);
+      const found = existing.get(address);
+      return found ? { address, state: 'exists', id: found.id, owner: found.owner_label } : { address, state: 'ok' };
+    }));
+  }),
+
   detail: page(async (req, res) => {
     const address = String(req.query.search || req.query.ip || '').trim();
     if (!address) return res.status(400).json({ error: 'Search term or IP address is required' });

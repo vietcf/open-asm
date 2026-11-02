@@ -1476,5 +1476,12 @@
   "Replacement value": "Giá trị thay thế",
   "Applied when you save; the value is then deleted.": "Áp dụng khi bấm Lưu; sau đó giá trị cũ bị xoá.",
   "Records using this value. A used value cannot be deleted: it is made inactive, or replaced on those records by another value.": "Số bản ghi đang dùng giá trị này. Giá trị đang được dùng không thể xoá: chỉ có thể ngưng dùng, hoặc thay bằng giá trị khác trên các bản ghi đó.",
-  "Inactive: records keep the value, it can no longer be chosen.": "Ngưng dùng: các bản ghi giữ nguyên giá trị, nhưng không chọn được giá trị này nữa."
+  "Inactive: records keep the value, it can no longer be chosen.": "Ngưng dùng: các bản ghi giữ nguyên giá trị, nhưng không chọn được giá trị này nữa.",
+  "{1} new addresses": "{1} địa chỉ mới, chưa có trong hệ thống",
+  "New address": "Địa chỉ mới, chưa có trong hệ thống",
+  "Not a valid IPv4 address: {1}": "Không phải địa chỉ IPv4 hợp lệ: {1}",
+  "Entered twice: {1}": "Nhập trùng: {1}",
+  "Already exists: {1}": "Đã tồn tại: {1}",
+  "Open": "Mở",
+  "Fix the addresses before saving": "Hãy sửa các địa chỉ trước khi lưu"
 }

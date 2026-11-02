@@ -18,6 +18,7 @@
 
 <div class="app-content">
   <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
     <form id="componentForm" class="card form-card" method="POST"
           action="<%= isEdit ? '/system/component/' + c.id + '/edit' : '/system/component/add' %>">
       <div class="card-header form-card-header">
