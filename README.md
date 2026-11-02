@@ -654,7 +654,27 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.3.7 (Latest)
+### Version 1.3.8 (Latest)
+- ⬆️ Upgrading from 1.3.x: new image; migrations `0023` and `0024` run
+  (`0024` lists the mappings that lose their device, see below).
+- ✨ Service Mapping: the provider / channel has its own **port and
+  protocol** (e.g. Akamai on 443 HTTPS in front of an origin on 8443),
+  optional and cleared when there is no provider; shown in the list, the
+  detail and the flow diagram, and in Excel import / export. Migration
+  `0023_service_mapping_provider_port.sql`.
+- Form in the order of the traffic: Access / Allowed IPs, then Provider –
+  port – protocol, then IP address – port – protocol.
+- The **Device** field is gone: the device, else the server, holding the
+  frontend IP (its own IP before a VIP) is shown as **IP owner** in the
+  list, the detail and the flow diagram; an IP nothing holds (an external
+  destination, an IP NATed elsewhere) shows the IP only. The Device filter
+  and the device page list the mappings whose IP the device holds; search
+  matches device and server names. Migration
+  `0024_service_mapping_drop_device.js` drops the column and lists the
+  mappings whose stored device did not hold their IP (to keep that link,
+  add the IP to the device as a VIP).
+
+### Version 1.3.7
 - ⬆️ Upgrading from 1.3.x: new image; migration `0022` runs (see below).
 - 🐛 System / component IP addresses follow one rule: **a component's IPs
   are IPs of its system**; a system may also have IPs no component uses.
