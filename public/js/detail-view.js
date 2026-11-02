@@ -151,9 +151,11 @@
     load('/pentest/api/by-object?object_type=' + encodeURIComponent(objectType) + '&object_id=' + encodeURIComponent(objectId), content, (data) => {
       const rounds = data.rounds || [];
       if (!rounds.length) return '<p class="text-secondary mb-0">' + esc(tr('No pentest rounds recorded yet.')) + '</p>';
+      // a system's history also lists its components' rounds: show which target each is
+      const withTarget = rounds.some((r) => r.object_type !== objectType);
       return '<div class="table-responsive"><table class="table table-sm align-middle detail-table mb-0"><thead><tr>' +
-        ['Round Name', 'Date', 'Status', 'Participants', 'Report'].map((h) => '<th>' + esc(tr(h)) + '</th>').join('') +
-        '</tr></thead><tbody>' + rounds.map((r) => '<tr><td>' + esc(r.name) + '</td><td>' + esc(r.test_date ? date(r.test_date).split(' ')[0] : '') + '</td><td><span class="badge tag">' + esc(tr(r.status || 'NOT_STARTED')) + '</span></td><td>' +
+        (withTarget ? ['Target'] : []).concat(['Round Name', 'Date', 'Status', 'Participants', 'Report']).map((h) => '<th>' + esc(tr(h)) + '</th>').join('') +
+        '</tr></thead><tbody>' + rounds.map((r) => '<tr>' + (withTarget ? '<td>' + esc(r.target_label || '') + '</td>' : '') + '<td>' + esc(r.name) + '</td><td>' + esc(r.test_date ? date(r.test_date).split(' ')[0] : '') + '</td><td><span class="badge tag">' + esc(tr(r.status || 'NOT_STARTED')) + '</span></td><td>' +
           (esc((r.participants || []).map((p) => p.name).join(', ')) || EMPTY) + '</td><td>' +
           (r.report ? '<a href="' + esc(r.report.url) + '" download>' + esc(r.report.original_name) + '</a> <a href="/pentest/report/' + encodeURIComponent(r.report.id) + '/view" target="_blank" rel="noopener noreferrer" class="badge tag text-decoration-none">' + esc(tr('View')) + '</a>' : EMPTY) +
           '</td></tr>').join('') + '</tbody></table></div>';

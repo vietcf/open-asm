@@ -654,7 +654,16 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.3.9 (Latest)
+### Version 1.3.10 (Latest)
+- No database migration: upgrading from 1.3.9 only needs the new image.
+- ✨ Pentest target: the form has a **System** (required) and a **Sub-system**
+  (optional, lists only the chosen system's components; empty = the whole
+  system), on add and on edit (a round can be moved to another target).
+- ✨ Pentest list / quick view / export show which system a round belongs to:
+  "System" or "System / Sub-system"; filtering or viewing a system also lists
+  the rounds of its sub-systems, and search matches the system name.
+
+### Version 1.3.9
 - No database migration: upgrading from 1.3.8 only needs the new image.
 - 🐛 Service Mapping form: Provider – port – protocol and IP address – port –
   protocol each stay on one line (with the Device field gone, the Access
