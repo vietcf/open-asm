@@ -653,7 +653,8 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Unreleased
+### Version 1.3.2 (Latest)
+- ⬆️ Upgrading from 1.3.x: new image; migration `0021` only adds indexes.
 - ⚡ Faster pages. The server and system lists (and their edit forms) took
   about 0.7-0.9 s in the database: PostgreSQL JIT-compiled their queries,
   for about 1 ms of real work. Now:
@@ -674,7 +675,7 @@ when cutting a release.
     until Select2 is ready (they show again after 2 s if scripts fail), and
     the unused ApexCharts library (500 KB) is no longer loaded on every page.
 
-### Version 1.3.1 (Latest)
+### Version 1.3.1
 - No database migration: upgrading from 1.3.0 only needs the new image.
 - 🐛 Sharper text: the Source Sans 3 medium / semibold / bold faces (500,
   600, 700) are now declared in `public/css/source-sans-3.css` (the files
