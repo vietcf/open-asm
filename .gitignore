@@ -88,3 +88,7 @@ public/uploads/tmp/
 .cursor/
 .cursorrules
 trash/data/
+
+# Image archives of scripts/docker-export.sh
+openasm_*.tar.gz
+openasm_*.tar.gz.sha256
