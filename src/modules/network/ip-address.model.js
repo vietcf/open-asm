@@ -1,5 +1,5 @@
 import { pool } from '../../../config/config.js';
-import { db, Where, replaceLinks, replaceTags, subList } from '../../shared/db.js';
+import { db, Where, replaceLinks, replaceTags, subList, matchOrder } from '../../shared/db.js';
 
 // IP with links, owners (devices/servers with role 'normal' or 'vip') and the
 // most specific subnet containing it. One subquery per list (no join fan-out).
@@ -139,7 +139,8 @@ class IpAddress {
 
   // ===== Select2 lookups: [{id, ip_address, owner_label?}] =====
   static async search(search = '', limit = 20) {
-    const result = await pool.query('SELECT id, ip_address FROM ip_addresses WHERE ip_address ILIKE $1 ORDER BY ip_address LIMIT $2', [`%${search}%`, limit]);
+    const result = await pool.query(`SELECT id, ip_address FROM ip_addresses WHERE ip_address ILIKE $1
+      ORDER BY ${matchOrder('ip_address', '$3')} LIMIT $2`, [`%${search}%`, limit, search]);
     return result.rows;
   }
 
@@ -174,7 +175,7 @@ class IpAddress {
         (SELECT d.name FROM device_ip di JOIN devices d ON d.id = di.device_id WHERE di.ip_id = ip.id AND di.role = 'normal' LIMIT 1),
         (SELECT srv.name FROM server_ip sv JOIN servers srv ON srv.id = sv.server_id WHERE sv.ip_id = ip.id AND sv.role = 'normal' LIMIT 1)
       ) AS owner_label
-      FROM ip_addresses ip WHERE ${w} ORDER BY ip.ip_address LIMIT ${w.param(limit)}`, w.params);
+      FROM ip_addresses ip WHERE ${w} ORDER BY ${matchOrder('ip.ip_address', w.param(search))} LIMIT ${w.param(limit)}`, w.params);
     return result.rows;
   }
 

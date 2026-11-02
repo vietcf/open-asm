@@ -1,5 +1,5 @@
 import { pool } from '../../../config/config.js';
-import { db, Where, replaceLinks, replaceTags, jsonList } from '../../shared/db.js';
+import { db, Where, replaceLinks, replaceTags, jsonList, matchOrder } from '../../shared/db.js';
 
 // Domain with its IP ({id, ip_address} or null), systems and tags
 const SELECT_WITH_LINKS = `
@@ -98,7 +98,7 @@ class Domain {
     // ip_id / ip_address: the domain's IP, used by forms that fill an IP field from the chosen domain
     const result = await pool.query(
       `SELECT d.id, d.domain AS text, d.ip_id, ip.ip_address FROM domains d LEFT JOIN ip_addresses ip ON ip.id = d.ip_id
-        WHERE d.domain ILIKE $1 ORDER BY d.domain LIMIT $2`, [`%${search}%`, limit]);
+        WHERE d.domain ILIKE $1 ORDER BY ${matchOrder('d.domain', '$3')} LIMIT $2`, [`%${search}%`, limit, search]);
     return result.rows;
   }
 

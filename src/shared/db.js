@@ -59,6 +59,25 @@ export async function replaceTags(client, objectType, objectId, tagIds) {
   }
 }
 
+// ORDER BY terms that put the best matches of a search first: exact match,
+// then starts with, then contains (case-insensitive); within each, the
+// shortest value first (10.0.0.1 before 10.0.0.10), then alphabetical.
+// `columns`: one or more SQL expressions (best rank of any of them);
+// `param`: the placeholder of the raw search text ($1, or w.param(search)).
+//   ORDER BY ${matchOrder(['name', 'system_id'], '$1')}
+export function matchOrder(columns, param) {
+  const cols = [].concat(columns);
+  return `${matchRank(cols, param)}, LENGTH(${cols[0]}), ${cols[0]}`;
+}
+
+// Just the rank (0 exact, 1 starts with, 2 otherwise), best over `columns`,
+// for lists that keep their own order within a rank.
+export function matchRank(columns, param) {
+  const rank = (c) => `CASE WHEN LOWER(${c}) = LOWER(${param}) THEN 0 WHEN LOWER(${c}) LIKE LOWER(${param}) || '%' THEN 1 ELSE 2 END`;
+  const cols = [].concat(columns);
+  return cols.length > 1 ? `LEAST(${cols.map(rank).join(', ')})` : rank(cols[0]);
+}
+
 // JSON array of {id, name} etc. for json_agg in list queries:
 //   ${jsonList('t', { id: 't.id', name: 't.name' })} AS tags
 // Fine for one or two joined lists; several of them in one query multiply each

@@ -1,5 +1,5 @@
 import { pool } from '../../../config/config.js';
-import { db, Where, NONE, replaceLinks, replaceTags, subList } from '../../shared/db.js';
+import { db, Where, NONE, replaceLinks, replaceTags, subList, matchOrder } from '../../shared/db.js';
 
 // department_id = development department (L3), ops_department_id = operations department (L2)
 const COLUMNS = ['system_id', 'name', 'level', 'department_id', 'ops_department_id', 'alias', 'description', 'fqdn', 'scopes', 'architecture', 'updated_by'];
@@ -189,8 +189,8 @@ class System {
     const result = await pool.query(
       `SELECT id, name, system_id FROM systems
        WHERE name ILIKE $1 OR system_id ILIKE $1
-       ORDER BY name ASC LIMIT $2`,
-      [`%${search}%`, limit]
+       ORDER BY ${matchOrder(['name', 'system_id'], '$3')} LIMIT $2`,
+      [`%${search}%`, limit, search]
     );
     return result.rows.map((row) => ({ id: row.id, text: row.name ? `${row.name} (${row.system_id})` : row.system_id }));
   }
