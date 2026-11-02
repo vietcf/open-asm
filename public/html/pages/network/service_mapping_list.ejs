@@ -12,7 +12,7 @@
     { key: 'access', label: 'Access', def: true },
     { key: 'system', label: 'System', def: true },
     { key: 'device', label: 'Device' },
-    { key: 'members', label: 'Servers', def: true },
+    { key: 'members', label: 'Backends', def: true },
     { key: 'description', label: 'Description' },
     { key: 'updated', label: 'Updated' },
   ];
@@ -24,11 +24,11 @@
     endpoint: `<span class="font-monospace small">${ui.esc(vs.ip_address)}:${vs.port}</span> <span class="badge tag">${ui.esc(vs.protocol)}</span>`,
     provider: vs.provider ? `<span class="badge tag">${ui.esc(vs.provider)}</span>` : ui.dash,
     access: vs.access_mode === 'limited'
-      ? `<span class="badge tag" title="${ui.esc((vs.allowed_ips || []).join(', '))}"><i class="bi bi-shield-lock me-1"></i>${ui.esc(t('Limited'))} (${(vs.allowed_ips || []).length})</span>`
+      ? `<span class="badge tag" title="${ui.esc((vs.allowed_ips || []).join(', '))}"><i class="bi bi-shield-lock me-1"></i>${ui.esc(t('Limited'))}${(vs.allowed_ips || []).length ? ` (${vs.allowed_ips.length})` : ''}</span>`
       : `<span class="badge tag">${ui.esc(t('Full'))}</span>`,
     system: vs.system_name ? ui.esc(vs.system_name) : ui.dash,
     device: vs.device_name ? ui.esc(vs.device_name) : ui.dash,
-    members: vs.members.length ? `<span class="badge tag">${vs.members.length}</span> ` + ui.mono(vs.members.slice(0, 3).map(m => m.server_name + (m.port ? ':' + m.port : '')).concat(vs.members.length > 3 ? ['…'] : [])) : ui.dash,
+    members: vs.members.length ? `<span class="badge tag">${vs.members.length}</span> ` + ui.mono(vs.members.slice(0, 3).map(m => m.ip + (m.port ? ':' + m.port : '')).concat(vs.members.length > 3 ? ['…'] : [])) : ui.dash,
     description: ui.clip(vs.description),
     updated: ui.date(vs.updated_at),
   })[key];
@@ -107,6 +107,9 @@
                   <td class="col-actions">
                     <div class="row-actions">
                       <button type="button" class="btn btn-sm btn-outline-secondary" title="<%= t('Detail') %>" onclick="showSmDetail(this)" data-record='<%= JSON.stringify(vs) %>'><i class="bi bi-eye"></i></button>
+                      <% if (hasPermission('service_mapping.create')) { %>
+                        <a href="/network/service-mapping/<%= vs.id %>/duplicate" class="btn btn-sm btn-outline-secondary" title="<%= t('Duplicate') %>"><i class="bi bi-copy"></i></a>
+                      <% } %>
                       <% if (hasPermission('service_mapping.update')) { %>
                         <a href="/network/service-mapping/<%= vs.id %>/edit" class="btn btn-sm btn-outline-secondary" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
                       <% } %>
@@ -138,7 +141,7 @@
 <% if (hasPermission('service_mapping.create')) { %>
   <%- include('../../partials/ui/import_modal', { id: 'smImportModal', title: 'Import Service Mappings', baseUrl: '/network/service-mapping',
         instructions: ['IP address and port are required', 'Direction: inbound / outbound, Scope: public / private, Access: full / limited',
-          'Allowed IPs are required when Access is limited', 'System, device and servers are looked up by exact name', 'Server format: server_name:port, comma-separated'] }) %>
+          'Allowed IPs are optional, only used when Access is limited', 'System and device are looked up by exact name', 'Backend format: ip:port, comma-separated; the IPs must already exist'] }) %>
 <% } %>
 
 <style>
@@ -169,11 +172,11 @@
     const members = vs.members || [];
     const serversNode = members.length
       ? `<div class="sm-node sm-n-servers"><div class="sm-title mb-1">${esc(t(inbound ? 'Backend Servers' : 'Source Servers'))}</div>` +
-        members.map(m => `<div class="sm-srv${m.status === 'inactive' ? ' is-inactive' : ''}"><i class="bi bi-server ${m.status === 'inactive' ? 'text-secondary' : 'text-success'} me-1"></i>${esc(m.server_name)}${m.port ? ':' + m.port : ''}</div>`).join('') + '</div>'
+        members.map(m => `<div class="sm-srv${m.status === 'inactive' ? ' is-inactive' : ''}"><i class="bi bi-server ${m.status === 'inactive' ? 'text-secondary' : 'text-success'} me-1"></i>${esc(m.ip)}${m.port ? ':' + m.port : ''}${m.server_name ? ' <small>' + esc(m.server_name) + '</small>' : ''}</div>`).join('') + '</div>'
       : node('sm-n-servers', 'bi-server', esc(t(inbound ? 'Backend Servers' : 'Source Servers')), esc(t('None')));
     const endpoint = `${esc(vs.ip_address)}:${vs.port} · ${esc(vs.protocol)}`;
     const device = vs.device_name ? node('sm-n-entry', inbound ? 'bi-hdd-rack' : 'bi-shield', esc(vs.device_name), esc(t(inbound ? 'LB / Firewall' : 'Firewall / NAT'))) : '';
-    const sourceSub = limited ? ips.slice(0, 4).map(esc).join('<br>') + (ips.length > 4 ? '<br>+' + (ips.length - 4) : '') : esc(t(isPrivate ? 'Private network' : 'Any source'));
+    const sourceSub = limited && !ips.length ? esc(t('Sources not recorded')) : limited ? ips.slice(0, 4).map(esc).join('<br>') + (ips.length > 4 ? '<br>+' + (ips.length - 4) : '') : esc(t(isPrivate ? 'Private network' : 'Any source'));
     const parts = [];
     if (inbound) {
       parts.push(node('sm-n-source', isPrivate ? 'bi-building' : 'bi-globe', esc(t(isPrivate ? 'Partner / Branch' : (limited ? 'Allowed clients' : 'Internet'))), sourceSub));
@@ -213,10 +216,10 @@
     ));
     if (members.length) {
       const rows = members.map(m =>
-        `<tr><td>${esc(m.server_name)}</td><td>${m.port || ''}</td><td><span class="badge tag">${esc(t(cap(m.status || 'active')))}</span></td></tr>`
+        `<tr><td>${esc(m.ip)}</td><td>${m.port || ''}</td><td>${m.server_name ? esc(m.server_name) : '—'}</td><td><span class="badge tag">${esc(t(cap(m.status || 'active')))}</span></td></tr>`
       ).join('');
       body += DV.section(vs.direction === 'outbound' ? 'Source Servers' : 'Backend Servers',
-        `<table class="table table-sm mb-0"><thead><tr><th>${t('Server')}</th><th>${t('Port')}</th><th>${t('Status')}</th></tr></thead><tbody>${rows}</tbody></table>`,
+        `<table class="table table-sm mb-0"><thead><tr><th>${t('IP Address')}</th><th>${t('Port')}</th><th>${t('Server')}</th><th>${t('Status')}</th></tr></thead><tbody>${rows}</tbody></table>`,
         ' <span class="badge tag ms-1">' + members.length + '</span>');
     }
     body += DV.meta(vs);

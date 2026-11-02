@@ -56,8 +56,8 @@ class Domain {
   }
 
   // Exact (case-sensitive, like the UNIQUE constraint)
-  static async findByDomain(name) {
-    const result = await pool.query('SELECT * FROM domains WHERE domain = $1', [name]);
+  static async findByDomain(name, client) {
+    const result = await db(client).query('SELECT * FROM domains WHERE domain = $1', [name]);
     return result.rows[0] || null;
   }
 
@@ -69,6 +69,12 @@ class Domain {
   static async exists(id) {
     const result = await pool.query('SELECT 1 FROM domains WHERE id = $1', [id]);
     return result.rowCount > 0;
+  }
+
+  // Service mappings whose frontend is this domain
+  static async getServiceMappings(id, client) {
+    const result = await db(client).query('SELECT id, name FROM virtual_servers WHERE domain_id = $1 ORDER BY name', [id]);
+    return result.rows;
   }
 
   static async findFilteredList(filter = {}) {
@@ -89,7 +95,10 @@ class Domain {
 
   // Select2 lookup: [{id, text}]
   static async select2Search(search = '', limit = 20) {
-    const result = await pool.query('SELECT id, domain AS text FROM domains WHERE domain ILIKE $1 ORDER BY domain LIMIT $2', [`%${search}%`, limit]);
+    // ip_id / ip_address: the domain's IP, used by forms that fill an IP field from the chosen domain
+    const result = await pool.query(
+      `SELECT d.id, d.domain AS text, d.ip_id, ip.ip_address FROM domains d LEFT JOIN ip_addresses ip ON ip.id = d.ip_id
+        WHERE d.domain ILIKE $1 ORDER BY d.domain LIMIT $2`, [`%${search}%`, limit]);
     return result.rows;
   }
 

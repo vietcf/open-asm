@@ -82,6 +82,7 @@ export async function seedConfiguration(db) {
     ['page_size', '10,20,50', 'Page size options for list pages'],
     ['log_level', 'info', 'Minimum level of system log entries (info, warning, critical)'],
     ['log_retention_days', '30', 'Days to keep system log entries'],
+    ['api_debug_log', 'off', 'Log every REST API request with its JSON body, level debug (on / off)'],
     // Backup schedule: installs that set it in .env keep their values
     ['backup_enabled', 'on', 'Run the scheduled database backup (on / off)'],
     ['backup_frequency', ['daily', 'weekly', 'monthly'].includes(process.env.BACKUP_FREQUENCY) ? process.env.BACKUP_FREQUENCY : 'daily', 'Scheduled backup frequency (daily, weekly, monthly)'],

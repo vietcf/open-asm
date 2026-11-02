@@ -2,9 +2,10 @@ import { pool } from '../../../config/config.js';
 
 // system_log: one row per audited event.
 //   category  'security' (security audit) | 'app' (application log)
-//   level     'info' | 'warning' | 'critical'
+//   level     'debug' | 'info' | 'warning' | 'critical'
+//             (debug: REST API request log, only while api_debug_log is on)
 export const LOG_CATEGORIES = ['app', 'security'];
-export const LOG_LEVELS = ['info', 'warning', 'critical'];
+export const LOG_LEVELS = ['debug', 'info', 'warning', 'critical'];
 
 // filter = { category, search, dateFrom, dateTo, username, action, objectType,
 //            status, level, ip }; every field optional.

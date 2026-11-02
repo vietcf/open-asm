@@ -1,11 +1,12 @@
 import ServiceMapping from './service-mapping.model.js';
-import Server from '../server/server.model.js';
+import IpAddress from './ip-address.model.js';
+import Domain from './domain.model.js';
 import Device from '../device/device.model.js';
 import System from '../system/system.model.js';
 import { IPV4_REGEX } from './ip-address.service.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
-import { hasKey, assertIdsExist } from '../../shared/service.js';
+import { hasKey } from '../../shared/service.js';
 
 const PROTOCOL_OPTIONS = ['HTTP', 'HTTPS', 'TCP', 'UDP'];
 const DIRECTION_OPTIONS = ['inbound', 'outbound'];
@@ -18,37 +19,67 @@ async function assertNameAvailable(name, excludeId = null) {
   if (existing.some((v) => String(v.id) !== String(excludeId))) throw new ConflictError('Service Mapping name already exists: {name}').withParams({ name });
 }
 
-// Parallel server_id[] / member_port[] / member_status[] -> [{server_id, port, status}]
-function normalizeMembers(raw) {
-  const serverIds = [].concat(raw.server_id ?? []);
+// IPs and domains come from the inventories. Form selects send an existing record's id
+// or a newly typed value; Excel import and API callers send addresses / names. Values
+// not in the inventory yet are created in the caller's transaction (c).
+function inventoryResolver(c, updatedBy) {
+  const ips = new Map();
+  const domains = new Map();
+  return {
+    // -> {id, address} or null when blank
+    async ip(value) {
+      const v = String(value ?? '').trim();
+      if (!v) return null;
+      if (!ips.has(v)) {
+        let ip;
+        if (/^\d+$/.test(v)) {
+          ip = await IpAddress.findById(Number(v), c);
+          if (!ip) throw new NotFoundError('IP address not found');
+        } else {
+          if (!IPV4_REGEX.test(v)) throw new ValidationError('Invalid IPv4 address: {list}').withParams({ list: v });
+          ip = await IpAddress.findByAddress(v, c)
+            || await IpAddress.create({ address: v, description: 'Created from service mapping', updated_by: updatedBy }, c);
+        }
+        ips.set(v, { id: ip.id, address: ip.ip_address });
+      }
+      return ips.get(v);
+    },
+    // -> {id, name} or null when blank
+    async domain(value) {
+      const v = String(value ?? '').trim();
+      if (!v) return null;
+      if (!domains.has(v)) {
+        let d;
+        if (/^\d+$/.test(v)) {
+          d = await Domain.findById(Number(v), c);
+          if (!d) throw new NotFoundError('Domain not found');
+        } else {
+          d = await Domain.findByDomain(v, c)
+            || await Domain.create({ domain: v, description: 'Created from service mapping', record_type: 'A' }, c);
+        }
+        domains.set(v, { id: d.id, name: d.domain });
+      }
+      return domains.get(v);
+    },
+  };
+}
+
+// Parallel member_ip[] (IP id or address) / member_port[] / member_status[] -> [{ip_address_id, port, status}]
+// (first occurrence of an IP:port wins; the same IP may appear on different ports)
+async function resolveMembers(raw, resolver) {
+  const values = [].concat(raw.member_ip ?? []);
   const ports = [].concat(raw.member_port ?? []);
   const statuses = [].concat(raw.member_status ?? []);
   const seen = new Set();
   const members = [];
-  serverIds.forEach((id, i) => {
-    const sId = Number(id);
-    if (!Number.isInteger(sId) || sId <= 0 || seen.has(sId)) return;
-    seen.add(sId);
-    members.push({
-      server_id: sId,
-      port: Number(ports[i]) || null,
-      status: STATUS_OPTIONS.includes(statuses[i]) ? statuses[i] : 'active',
-    });
-  });
-  return members;
-}
-
-async function resolveLinks(input, partial) {
-  const links = {};
-  if (!partial || hasKey(input, 'server_id')) {
-    links.members = normalizeMembers(input);
-    await assertIdsExist(links.members.map((m) => m.server_id), (id) => Server.exists(id), 'server');
+  for (const [i, value] of values.entries()) {
+    const ip = await resolver.ip(value);
+    const port = Number(ports[i]) || null;
+    if (!ip || seen.has(`${ip.id}:${port}`)) continue;
+    seen.add(`${ip.id}:${port}`);
+    members.push({ ip_address_id: ip.id, port, status: STATUS_OPTIONS.includes(statuses[i]) ? statuses[i] : 'active' });
   }
-  return links;
-}
-
-async function saveLinks(id, links, c) {
-  if (links.members) await ServiceMapping.setMembers(id, links.members, c);
+  return members;
 }
 
 const str = (v) => (typeof v === 'string' ? v.trim() || null : null);
@@ -70,12 +101,11 @@ function parseAllowedIps(raw) {
   return [...new Set(list)];
 }
 
-// Allowed IPs only make sense when access is limited
+// Allowed IPs only make sense when access is limited; an empty list means "limited, sources not recorded"
 function accessFields(accessMode, allowedRaw) {
   if (accessMode !== 'limited') return { access_mode: accessMode, allowed_ips: null };
   const ips = parseAllowedIps(allowedRaw);
-  if (!ips.length) throw new ValidationError('Allowed IPs are required when access is limited');
-  return { access_mode: accessMode, allowed_ips: ips };
+  return { access_mode: accessMode, allowed_ips: ips.length ? ips : null };
 }
 
 async function assertRefs(input) {
@@ -101,9 +131,9 @@ export const getServiceMappingsForDevice = (deviceId) => ServiceMapping.findByDe
 export const getServiceMappingsForServer = (serverId) => ServiceMapping.findByServerId(serverId);
 
 // ===== Commands =====
+// ip_address / domain: id or address / name; members: member_ip[] / member_port[] / member_status[]
 export async function createServiceMapping(input, client) {
-  const name = str(input.name) || (input.domain ? `${input.domain}:${input.port}` : `${input.ip_address}:${input.port}`);
-  if (!input.ip_address) throw new ValidationError('IP Address is required');
+  if (!String(input.ip_address ?? '').trim()) throw new ValidationError('IP Address is required');
   if (!input.port) throw new ValidationError('Port is required');
   const protocol = (input.protocol || 'HTTPS').toUpperCase();
   if (!PROTOCOL_OPTIONS.includes(protocol)) throw new ValidationError('Invalid protocol: {protocol}').withParams({ protocol });
@@ -111,27 +141,31 @@ export async function createServiceMapping(input, client) {
   const scope = pick(input.scope, SCOPE_OPTIONS, 'public', 'scope');
   const access = accessFields(pick(input.access_mode, ACCESS_OPTIONS, 'full', 'access mode'), input.allowed_ips);
   await assertRefs(input);
-  await assertNameAvailable(name);
-  const links = await resolveLinks(input, false);
   const id = await withTransaction(client, async (c) => {
+    const resolve = inventoryResolver(c, input.updated_by);
+    const ip = await resolve.ip(input.ip_address);
+    const domain = await resolve.domain(input.domain);
+    const name = str(input.name) || `${domain ? domain.name : ip.address}:${input.port}`;
+    await assertNameAvailable(name);
     const created = await ServiceMapping.create({
-      name, domain: str(input.domain), provider: str(input.provider),
-      ip_address: input.ip_address, port: Number(input.port), protocol,
+      name, domain_id: domain?.id ?? null, provider: str(input.provider),
+      ip_address_id: ip.id, port: Number(input.port), protocol,
       direction, scope, ...access,
       device_id: input.device_id || null, system_id: input.system_id || null, description: str(input.description),
       updated_by: input.updated_by || 'admin',
     }, c);
-    await saveLinks(created.id, links, c);
+    await ServiceMapping.setMembers(created.id, await resolveMembers(input, resolve), c);
     return created.id;
   });
   return ServiceMapping.findByIdWithRelations(id, client);
 }
 
 export async function updateServiceMapping(id, input, client) {
-  const current = await ServiceMapping.findById(id);
+  const current = await ServiceMapping.findById(id, client);
   if (!current) throw new NotFoundError('Service Mapping not found');
   const name = hasKey(input, 'name') ? (str(input.name) || current.name) : current.name;
   if (name.toLowerCase() !== current.name.toLowerCase()) await assertNameAvailable(name, id);
+  if (hasKey(input, 'ip_address') && !String(input.ip_address ?? '').trim()) throw new ValidationError('IP Address is required');
   if (hasKey(input, 'protocol')) {
     const protocol = (input.protocol || '').toUpperCase();
     if (!PROTOCOL_OPTIONS.includes(protocol)) throw new ValidationError('Invalid protocol: {protocol}').withParams({ protocol });
@@ -143,13 +177,13 @@ export async function updateServiceMapping(id, input, client) {
       hasKey(input, 'allowed_ips') ? input.allowed_ips : current.allowed_ips)
     : {};
   await assertRefs(input);
-  const links = await resolveLinks(input, true);
   await withTransaction(client, async (c) => {
+    const resolve = inventoryResolver(c, input.updated_by);
     await ServiceMapping.update(id, {
       name,
-      domain: hasKey(input, 'domain') ? str(input.domain) : undefined,
+      domain_id: hasKey(input, 'domain') ? ((await resolve.domain(input.domain))?.id ?? null) : undefined,
       provider: hasKey(input, 'provider') ? str(input.provider) : undefined,
-      ip_address: hasKey(input, 'ip_address') ? input.ip_address : undefined,
+      ip_address_id: hasKey(input, 'ip_address') ? (await resolve.ip(input.ip_address)).id : undefined,
       port: hasKey(input, 'port') ? Number(input.port) : undefined,
       protocol: hasKey(input, 'protocol') ? (input.protocol || '').toUpperCase() : undefined,
       direction, scope, ...access,
@@ -158,7 +192,7 @@ export async function updateServiceMapping(id, input, client) {
       description: hasKey(input, 'description') ? str(input.description) : undefined,
       updated_by: input.updated_by || 'admin',
     }, c);
-    await saveLinks(id, links, c);
+    if (hasKey(input, 'member_ip')) await ServiceMapping.setMembers(id, await resolveMembers(input, resolve), c);
   });
   return ServiceMapping.findByIdWithRelations(id, client);
 }

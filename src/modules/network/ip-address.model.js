@@ -88,8 +88,8 @@ class IpAddress {
     return result.rows[0] || null;
   }
 
-  static async findByAddress(address) {
-    const result = await pool.query('SELECT * FROM ip_addresses WHERE ip_address = $1', [address]);
+  static async findByAddress(address, client) {
+    const result = await db(client).query('SELECT * FROM ip_addresses WHERE ip_address = $1', [address]);
     return result.rows[0] || null;
   }
 
@@ -186,6 +186,16 @@ class IpAddress {
       ex.query("SELECT srv.id, srv.name, sv.role FROM server_ip sv JOIN servers srv ON srv.id = sv.server_id WHERE sv.ip_id = $1 ORDER BY sv.role = 'normal' DESC, srv.name", [ipId]),
     ]);
     return { devices: devices.rows, servers: servers.rows };
+  }
+
+  // Service mappings that use the IP as their frontend IP or as a backend member
+  static async getServiceMappings(ipId, client) {
+    const result = await db(client).query(
+      `SELECT vs.id, vs.name FROM virtual_servers vs
+        WHERE vs.ip_address_id = $1
+           OR EXISTS (SELECT 1 FROM virtual_server_members m WHERE m.virtual_server_id = vs.id AND m.ip_address_id = $1)
+        ORDER BY vs.name`, [ipId]);
+    return result.rows;
   }
 
   static async getPrimaryOwnerIds(ipId, client) {

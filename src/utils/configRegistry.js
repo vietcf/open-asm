@@ -27,6 +27,7 @@ export const CONFIG_GROUPS = [
       { key: 'otp_deadline_time', type: 'number', min: 1, max: 365, default: '3', label: '2FA setup deadline (days)', help: 'Days a user has to set up 2FA once it is required' },
       { key: 'log_level', type: 'select', choices: ['info', 'warning', 'critical'], label: 'Log level', help: 'Minimum level of system log entries', required: true },
       { key: 'log_retention_days', type: 'number', min: 1, max: 3650, label: 'Log retention (days)', help: 'Days to keep system log entries', required: true },
+      { key: 'api_debug_log', type: 'select', choices: ['off', 'on'], default: 'off', label: 'API debug log', help: 'on: log every REST API request with its JSON body (level debug, secrets masked). Turn it off when done', required: true },
     ],
   },
   {

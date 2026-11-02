@@ -77,7 +77,13 @@ export async function updateDomain(id, input, client) {
   return getDomain(id, client);
 }
 
+// A domain used by a service mapping cannot be deleted.
 export async function deleteDomain(id) {
   if (!(await Domain.exists(id))) throw new NotFoundError('Domain not found');
+  const mappings = await Domain.getServiceMappings(id);
+  if (mappings.length) {
+    throw new ConflictError('Cannot delete domain: it is used by service mapping {names}. Remove it from the mapping first.')
+      .withParams({ names: mappings.map((m) => `"${m.name}"`).join(', ') });
+  }
   await Domain.remove(id);
 }

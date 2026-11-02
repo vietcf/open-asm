@@ -1,26 +1,36 @@
 import { pool } from '../../../config/config.js';
 import { db, Where, jsonList } from '../../shared/db.js';
 
-const COLUMNS = ['name', 'domain', 'provider', 'ip_address', 'port', 'protocol', 'direction', 'scope', 'access_mode', 'allowed_ips', 'device_id', 'system_id', 'description', 'updated_by'];
+const COLUMNS = ['name', 'domain_id', 'provider', 'ip_address_id', 'port', 'protocol', 'direction', 'scope', 'access_mode', 'allowed_ips', 'device_id', 'system_id', 'description', 'updated_by'];
 
+// Frontend IP / domain come from the inventories (ip_address, domain as text).
+// Members are IP:port; server_name lists the server(s) owning the IP (several for a shared VIP)
 const SELECT_WITH_LINKS = `
-  SELECT vs.*,
+  SELECT vs.*, fip.ip_address, dom.domain,
     dev.name AS device_name, sys.name AS system_name,
-    ${jsonList('srv', { server_id: 'srv.id', server_name: 'srv.name', port: 'm.port', status: 'm.status' })} AS members
+    ${jsonList('m', {
+      id: 'm.id', ip_address_id: 'ip.id', ip: 'ip.ip_address', port: 'm.port', status: 'm.status',
+      server_name: "(SELECT string_agg(s.name, ', ' ORDER BY s.name) FROM server_ip si JOIN servers s ON s.id = si.server_id WHERE si.ip_id = ip.id)",
+    })} AS members
   FROM virtual_servers vs
+  JOIN ip_addresses fip ON fip.id = vs.ip_address_id
+  LEFT JOIN domains dom ON dom.id = vs.domain_id
   LEFT JOIN devices dev ON dev.id = vs.device_id
   LEFT JOIN systems sys ON sys.id = vs.system_id
   LEFT JOIN virtual_server_members m ON m.virtual_server_id = vs.id
-  LEFT JOIN servers srv ON srv.id = m.server_id`;
-const GROUP_BY = 'GROUP BY vs.id, dev.name, sys.name';
+  LEFT JOIN ip_addresses ip ON ip.id = m.ip_address_id`;
+const GROUP_BY = 'GROUP BY vs.id, fip.ip_address, dom.domain, dev.name, sys.name';
 
 function filterWhere({ search = '', protocol, provider, device_id, system_id, direction, scope, access_mode }) {
   const w = new Where();
   w.search(search, [
-    'vs.name ILIKE ?', 'vs.domain ILIKE ?', 'vs.ip_address ILIKE ?', 'vs.provider ILIKE ?',
+    'vs.name ILIKE ?', 'vs.provider ILIKE ?',
+    'EXISTS (SELECT 1 FROM domains x WHERE x.id = vs.domain_id AND x.domain ILIKE ?)',
+    'EXISTS (SELECT 1 FROM ip_addresses x WHERE x.id = vs.ip_address_id AND x.ip_address ILIKE ?)',
     'EXISTS (SELECT 1 FROM devices x WHERE x.id = vs.device_id AND x.name ILIKE ?)',
     'EXISTS (SELECT 1 FROM systems x WHERE x.id = vs.system_id AND x.name ILIKE ?)',
-    'EXISTS (SELECT 1 FROM virtual_server_members x JOIN servers s ON s.id = x.server_id WHERE x.virtual_server_id = vs.id AND s.name ILIKE ?)',
+    'EXISTS (SELECT 1 FROM virtual_server_members x JOIN ip_addresses i ON i.id = x.ip_address_id WHERE x.virtual_server_id = vs.id AND i.ip_address ILIKE ?)',
+    'EXISTS (SELECT 1 FROM virtual_server_members x JOIN server_ip si ON si.ip_id = x.ip_address_id JOIN servers s ON s.id = si.server_id WHERE x.virtual_server_id = vs.id AND s.name ILIKE ?)',
   ]);
   if (protocol) w.add(`vs.protocol = ${w.param(protocol)}`);
   if (provider) w.add(`vs.provider = ${w.param(provider)}`);
@@ -56,8 +66,8 @@ class ServiceMapping {
     await db(client).query('DELETE FROM virtual_servers WHERE id = $1', [id]);
   }
 
-  static async findById(id) {
-    const result = await pool.query('SELECT * FROM virtual_servers WHERE id = $1', [id]);
+  static async findById(id, client) {
+    const result = await db(client).query('SELECT * FROM virtual_servers WHERE id = $1', [id]);
     return result.rows[0] || null;
   }
 
@@ -98,10 +108,10 @@ class ServiceMapping {
     return result.rows;
   }
 
-  // Virtual servers whose backend includes a specific server (Server detail page)
+  // Virtual servers whose members include one of a server's IPs (Server detail page)
   static async findByServerId(serverId) {
     const result = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE EXISTS (SELECT 1 FROM virtual_server_members x WHERE x.virtual_server_id = vs.id AND x.server_id = $1) ${GROUP_BY} ORDER BY vs.id DESC`,
+      `${SELECT_WITH_LINKS} WHERE EXISTS (SELECT 1 FROM virtual_server_members x JOIN server_ip si ON si.ip_id = x.ip_address_id WHERE x.virtual_server_id = vs.id AND si.server_id = $1) ${GROUP_BY} ORDER BY vs.id DESC`,
       [serverId]);
     return result.rows;
   }
@@ -124,17 +134,19 @@ class ServiceMapping {
     await ex.query('DELETE FROM virtual_server_members WHERE virtual_server_id = $1', [vsId]);
     for (const m of members || []) {
       await ex.query(
-        'INSERT INTO virtual_server_members (virtual_server_id, server_id, port, status) VALUES ($1, $2, $3, $4)',
-        [vsId, m.server_id, m.port || null, m.status || 'active']);
+        'INSERT INTO virtual_server_members (virtual_server_id, ip_address_id, port, status) VALUES ($1, $2, $3, $4)',
+        [vsId, m.ip_address_id, m.port || null, m.status || 'active']);
     }
   }
 
   // Select2 search
   static async select2Search(search) {
     const w = new Where();
-    w.search(search, ['vs.name ILIKE ?', 'vs.domain ILIKE ?', 'vs.ip_address ILIKE ?']);
+    w.search(search, ['vs.name ILIKE ?', 'dom.domain ILIKE ?', 'fip.ip_address ILIKE ?']);
     const result = await pool.query(
-      `SELECT vs.id, vs.name AS text FROM virtual_servers vs WHERE ${w} ORDER BY vs.name LIMIT 20`, w.params);
+      `SELECT vs.id, vs.name AS text FROM virtual_servers vs
+         JOIN ip_addresses fip ON fip.id = vs.ip_address_id LEFT JOIN domains dom ON dom.id = vs.domain_id
+        WHERE ${w} ORDER BY vs.name LIMIT 20`, w.params);
     return result.rows;
   }
 }

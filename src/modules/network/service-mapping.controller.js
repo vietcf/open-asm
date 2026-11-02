@@ -1,7 +1,6 @@
 // Web pages: /network/service-mapping (list, export, import, add, edit, delete) and lookups.
 import ServiceMapping from './service-mapping.model.js';
 import Device from '../device/device.model.js';
-import Server from '../server/server.model.js';
 import System from '../system/system.model.js';
 import * as smService from './service-mapping.service.js';
 import { IPV4_REGEX } from './ip-address.service.js';
@@ -35,25 +34,27 @@ async function formInput(req) {
     ip_address: b.ip_address, port: b.port, protocol: b.protocol,
     direction: b.direction, scope: b.scope, access_mode: b.access_mode, allowed_ips: b.allowed_ips,
     device_id: b.device_id || null, system_id: b.system_id || null, description: b.description,
-    server_id: b.server_id ?? [], member_port: b.member_port ?? [], member_status: b.member_status ?? [],
+    member_ip: b.member_ip ?? [], member_port: b.member_port ?? [], member_status: b.member_status ?? [],
     updated_by: actorName(req),
   };
 }
 
 const options = (rows, text = (r) => r.name) => (rows || []).map((r) => ({ id: r.id, text: text(r) }));
 
-async function renderForm(res, mode, vs = {}) {
+async function renderForm(res, mode, vs = {}, copiedFrom = null) {
   const [providerOptions, protocolOptions] = await Promise.all([
     smService.getProviderOptions(),
     smService.getProtocolOptions(),
   ]);
   const allProtocols = [...new Set([...PROTOCOL_OPTIONS, ...protocolOptions])];
   res.render('pages/network/service_mapping_form', {
-    mode, vs, providerOptions, protocolOptions: allProtocols, directionOptions: DIRECTION_OPTIONS, scopeOptions: SCOPE_OPTIONS, accessOptions: ACCESS_OPTIONS, statusOptions: STATUS_OPTIONS,
+    mode, vs, copiedFrom, providerOptions, protocolOptions: allProtocols, directionOptions: DIRECTION_OPTIONS, scopeOptions: SCOPE_OPTIONS, accessOptions: ACCESS_OPTIONS, statusOptions: STATUS_OPTIONS,
     selected: {
+      ip: vs.ip_address_id ? [{ id: vs.ip_address_id, text: vs.ip_address }] : [],
+      domain: vs.domain_id ? [{ id: vs.domain_id, text: vs.domain }] : [],
       device: vs.device_id ? [{ id: vs.device_id, text: vs.device_name }] : [],
       system: vs.system_id ? [{ id: vs.system_id, text: vs.system_name }] : [],
-      members: (vs.members || []).map((m) => ({ id: m.server_id, text: m.server_name, port: m.port, status: m.status })),
+      members: (vs.members || []).map((m) => ({ id: m.ip_address_id, text: m.server_name ? `${m.ip} (${m.server_name})` : m.ip, port: m.port, status: m.status })),
     },
     title: mode === 'edit' ? 'Edit Service Mapping' : 'Add Service Mapping', activeMenu: 'service-mapping',
   });
@@ -63,30 +64,30 @@ export const serviceMappingImport = excelImport({
   name: 'service-mapping',
   columns: [
     { header: 'Name (Optional - auto-generated if empty)', key: 'name' },
-    { header: 'Domain (Optional)', key: 'domain' },
+    { header: 'Domain (Optional, created if new)', key: 'domain' },
     { header: 'Provider (Optional, e.g. Akamai, Cloudflare)', key: 'provider' },
-    { header: 'IP Address (Require)', key: 'ip_address' },
+    { header: 'IP Address (Require, created if new)', key: 'ip_address' },
     { header: 'Port (Require)', key: 'port' },
     { header: 'Protocol (Optional, default HTTPS)', key: 'protocol' },
     { header: 'Direction (Optional, inbound/outbound, default inbound)', key: 'direction' },
     { header: 'Scope (Optional, public/private, default public)', key: 'scope' },
     { header: 'Access (Optional, full/limited, default full)', key: 'access_mode' },
-    { header: 'Allowed IPs (Required if Access = limited, comma-separated IP/CIDR)', key: 'allowed_ips' },
+    { header: 'Allowed IPs (Optional, only used when Access = limited, comma-separated IP/CIDR)', key: 'allowed_ips' },
     { header: 'System Name (Optional)', key: 'system' },
     { header: 'Device Name (Optional, LB device)', key: 'device' },
-    { header: 'Backend Servers (Optional, server_name:port comma-separated)', key: 'backends' },
+    { header: 'Backend IPs (Optional, ip:port comma-separated, created if new)', key: 'backends' },
     { header: 'Description (Optional)', key: 'description' },
   ],
   sample: async () => [
     { name: 'Web Production', domain: 'app.example.com', provider: 'Akamai', ip_address: '203.0.113.10', port: 443,
       protocol: 'HTTPS', direction: 'inbound', scope: 'public', access_mode: 'full', allowed_ips: '', system: '',
-      device: 'F5-01', backends: 'web-srv-01:8080,web-srv-02:8080', description: 'Production web frontend' },
+      device: 'F5-01', backends: '10.10.20.10:8080,10.10.20.11:8080', description: 'Production web frontend' },
     { name: 'Partner API', domain: 'partner.example.com', provider: 'Akamai', ip_address: '203.0.113.11', port: 443,
       protocol: 'HTTPS', direction: 'inbound', scope: 'public', access_mode: 'limited', allowed_ips: '198.51.100.0/24,192.0.2.15', system: '',
-      device: '', backends: 'api-srv-01:8080', description: 'Partner API, Akamai allow-list only' },
+      device: '', backends: '10.10.20.20:8080', description: 'Partner API, Akamai allow-list only' },
     { name: 'Partner over MPLS', domain: '', provider: 'MPLS', ip_address: '10.200.1.10', port: 8443,
       protocol: 'TCP', direction: 'inbound', scope: 'private', access_mode: 'full', allowed_ips: '', system: '',
-      device: '', backends: 'api-srv-01:8443', description: 'Partner over MPLS, NAT private IP' },
+      device: '', backends: '10.10.20.20:8443', description: 'Partner over MPLS, NAT private IP' },
   ],
   prepare: async (req) => ({ username: actorName(req) || 'admin' }),
   async check(row) {
@@ -102,7 +103,6 @@ export const serviceMappingImport = excelImport({
       row['_' + key] = String(row[key] || def).toLowerCase();
       if (!opts.includes(row['_' + key])) errors.push(`Invalid ${key}: ${row[key]}. Valid: ${opts.join(', ')}`);
     }
-    if (row._access_mode === 'limited' && !row.allowed_ips) errors.push('Allowed IPs are required when access is limited');
 
     const missing = [];
     row._deviceId = null;
@@ -121,10 +121,9 @@ export const serviceMappingImport = excelImport({
     row._members = [];
     if (row.backends) {
       for (const entry of splitList(row.backends)) {
-        const [sName, sPort] = entry.includes(':') ? [entry.slice(0, entry.lastIndexOf(':')), entry.slice(entry.lastIndexOf(':') + 1)] : [entry, null];
-        const server = await Server.findByName(sName.trim());
-        if (server) row._members.push({ server_id: server.id, port: Number(sPort) || null, status: 'active' });
-        else missing.push(`Server: ${sName.trim()}`);
+        const [ip, port] = entry.split(':').map((v) => v.trim());
+        if (IPV4_REGEX.test(ip)) row._members.push({ ip, port: Number(port) || null, status: 'active' });
+        else errors.push(`Invalid backend IP: ${ip}`);
       }
     }
     if (missing.length) errors.push(`Not found: ${missing.join(', ')}`);
@@ -141,7 +140,7 @@ export const serviceMappingImport = excelImport({
       ip_address: row.ip_address, port: Number(row.port), protocol: row._protocol,
       direction: row._direction, scope: row._scope, access_mode: row._access_mode, allowed_ips: row.allowed_ips || null,
       device_id: row._deviceId, system_id: row._systemId, description: row.description || null,
-      server_id: row._members.map((m) => m.server_id),
+      member_ip: row._members.map((m) => m.ip),
       member_port: row._members.map((m) => m.port),
       member_status: row._members.map((m) => m.status),
       updated_by: ctx.username,
@@ -184,8 +183,9 @@ export default {
         { header: req.t('Allowed IPs'), value: (r) => (r.vs.allowed_ips || []).join(', '), width: 30 },
         { header: req.t('System'), value: (r) => r.vs.system_name, width: 20 },
         { header: req.t('Device'), value: (r) => r.vs.device_name, width: 20 },
-        { header: req.t('Backend Server'), value: (r) => r.server_name, width: 24 },
+        { header: req.t('Backend IP'), value: (r) => r.ip, width: 16 },
         { header: req.t('Backend Port'), value: (r) => r.port, width: 12 },
+        { header: req.t('Server'), value: (r) => r.server_name, width: 24 },
         { header: req.t('Status'), value: (r) => r.status, width: 10 },
         { header: req.t('Description'), value: (r) => r.vs.description, width: 40 },
         { header: req.t('Updated'), value: (r) => r.vs.updated_at && new Date(r.vs.updated_at), width: 20 },
@@ -195,6 +195,18 @@ export default {
   }),
 
   addForm: page((req, res) => renderForm(res, 'add')),
+
+  // Add form prefilled from an existing mapping (another port of the same domain, etc.):
+  // name and port are cleared so the copy gets its own listener.
+  async duplicateForm(req, res) {
+    try {
+      const { id, name, port, created_at, updated_at, updated_by, ...rest } = await smService.getServiceMapping(req.params.id);
+      await renderForm(res, 'add', rest, name);
+    } catch (err) {
+      req.flash('error', errorMessage(req, err));
+      res.redirect(LIST_URL);
+    }
+  },
 
   async editForm(req, res) {
     try {

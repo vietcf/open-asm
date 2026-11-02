@@ -40,6 +40,7 @@ router.post('/service-mapping/import', can('service_mapping.create'), excelUploa
 router.get('/download/service-mapping-validation/:filename', can('service_mapping.read'), serviceMappingImport.download);
 router.get('/service-mapping/add', can('service_mapping.create'), serviceMappings.addForm);
 router.post('/service-mapping/add', can('service_mapping.create'), serviceMappings.create);
+router.get('/service-mapping/:id/duplicate', can('service_mapping.create'), serviceMappings.duplicateForm);
 router.get('/service-mapping/:id/edit', can('service_mapping.update'), serviceMappings.editForm);
 router.post('/service-mapping/:id/edit', can('service_mapping.update'), serviceMappings.update);
 router.post('/service-mapping/:id/delete', can('service_mapping.delete'), serviceMappings.remove);

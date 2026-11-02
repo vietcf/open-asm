@@ -16,7 +16,8 @@
     return `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())} ${p(x.getHours())}:${p(x.getMinutes())}:${p(x.getSeconds())}`;
   };
   const statusBadge = s => !s ? '' : (/^(failed|failure|error|denied)$/i.test(s) ? 'bg-danger' : (/^success$/i.test(s) ? 'bg-success' : 'tag'));
-  const levelBadge = l => l === 'critical' ? 'bg-danger' : (l === 'warning' ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle' : 'tag');
+  const levelBadge = l => l === 'critical' ? 'bg-danger' : (l === 'warning' ? 'bg-warning-subtle text-warning-emphasis border border-warning-subtle'
+    : (l === 'debug' ? 'bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle' : 'tag'));
   const COLUMNS = [
     { key: 'time', label: 'Time', def: true, fixed: true },
     { key: 'user', label: 'User', def: true },
@@ -122,7 +123,15 @@
                   <td data-col="status" data-label="<%= t('Result') %>"><% if (log.status) { %><span class="badge <%= statusBadge(log.status) %>"><%= t(log.status) %></span><% } else { %><span class="text-secondary">—</span><% } %></td>
                   <td data-col="level" data-label="<%= t('Severity') %>"><span class="badge <%= levelBadge(log.level) %>"><%= t(log.level) %></span></td>
                   <td data-col="ip" data-label="<%= t('IP Address') %>" class="font-monospace small"><%= log.ip_address || '—' %></td>
-                  <td data-col="description" data-label="<%= t('Description') %>"><span class="cell-clip" title="<%= log.description %>"><%= log.description %></span></td>
+                  <td data-col="description" data-label="<%= t('Description') %>">
+                    <% const descLines = String(log.description || '').split('\n'); %>
+                    <% if (descLines.length > 1) { %>
+                      <%# multi-line entries (API debug log: request line + JSON body) expand in place %>
+                      <details><summary class="small"><%= descLines[0] %></summary><pre class="small mb-0 mt-1 text-pre-wrap"><%= descLines.slice(1).join('\n') %></pre></details>
+                    <% } else { %>
+                      <span class="cell-clip" title="<%= log.description %>"><%= log.description %></span>
+                    <% } %>
+                  </td>
                   <td data-col="agent" data-label="<%= t('User agent') %>"><span class="cell-clip small text-secondary" title="<%= log.user_agent %>"><%= log.user_agent || '—' %></span></td>
                 </tr>
               <% }); %>

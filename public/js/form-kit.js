@@ -5,6 +5,7 @@
 //   data-ajax-url="/x/api/..."          options from an endpoint ({id, text|name})
 //   data-selected='[{"id":1,"text":"a"}]'  current values of an AJAX select
 //   data-tags="true"                    new values can be typed (free text)
+//                                       (extra fields of AJAX results reach the select2:select event)
 //   data-ajax-with='{"k":"#field"}'     sends #field's value as ?k= with each AJAX search
 //
 // <div data-repeater>                   rows added from <template data-repeater-template>
@@ -34,7 +35,7 @@
         // data-ajax-with='{"subnet":"#f-address"}': also sends other fields' current values
         data: (params) => Object.assign({ search: params.term },
           ...Object.entries($el.data('ajaxWith') || {}).map(([k, sel]) => ({ [k]: $(sel).val() }))),
-        processResults: (data) => ({ results: (Array.isArray(data) ? data : (data.results || [])).map((x) => ({ id: x.id, text: x.text || x.name || String(x.id) })) }),
+        processResults: (data) => ({ results: (Array.isArray(data) ? data : (data.results || [])).map((x) => ({ ...x, id: x.id, text: x.text || x.name || String(x.id) })) }),
         cache: true,
       };
       (($el.data('selected')) || []).forEach((o) => $el.append(new Option(o.text, o.id, true, true)));

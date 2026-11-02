@@ -35,6 +35,7 @@ import requirePasswordChange from './middlewares/requirePasswordChange.middlewar
 import require2fa from './middlewares/require2fa.middleware.js';
 import sessionIdleTimeout from './middlewares/sessionIdleTimeout.middleware.js';
 import auditLog from './middlewares/auditLog.middleware.js';
+import apiDebugLog from './middlewares/apiDebugLog.middleware.js';
 
 // =========================
 // Routers
@@ -281,7 +282,8 @@ app.use('/api/upload', requireLogin, uploadRouter);
 app.use('/api-docs', requireLogin, apiSwaggerRouter);
 
 // // API v1 routes (authentication handled internally)
-app.use('/api/v1', apiRouter);
+// Debug log of each request with its JSON body while api_debug_log is on (default off)
+app.use('/api/v1', apiDebugLog, apiRouter);
 
 // ===========================================
 // 404 AND ERROR HANDLERS

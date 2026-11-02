@@ -9,19 +9,27 @@ import os from 'os';
 export const SECURITY_ACTIONS = new Set(['login', 'logout', '2fa', 'change_password']);
 export const SECURITY_PATH_PREFIXES = ['/administrator', '/change-password', '/2fa'];
 
-// log_level setting: the minimum level kept for the application log.
-// Security events are always written. Cached briefly (read on every write).
-let cachedMinLevel = { value: 'info', at: 0 };
-async function minAppLevel() {
-  if (Date.now() - cachedMinLevel.at < 30000) return cachedMinLevel.value;
-  let value = 'info';
+// Log settings, read on every write: cached for 30 seconds, so a change made on
+// the configuration page takes effect within that time.
+const settingsCache = new Map();
+async function setting(key, isValid, fallback) {
+  const hit = settingsCache.get(key);
+  if (hit && Date.now() - hit.at < 30000) return hit.value;
+  let value = fallback;
   try {
-    const row = await Configuration.findById('log_level');
-    if (row && LOG_LEVELS.includes(row.value)) value = row.value;
+    const row = await Configuration.findById(key);
+    if (row && isValid(row.value)) value = row.value;
   } catch { /* keep default */ }
-  cachedMinLevel = { value, at: Date.now() };
+  settingsCache.set(key, { value, at: Date.now() });
   return value;
 }
+
+// log_level setting: the minimum level kept for the application log.
+// Security events are always written; debug entries only follow api_debug_log.
+const minAppLevel = () => setting('log_level', (v) => LOG_LEVELS.includes(v) && v !== 'debug', 'info');
+
+// api_debug_log setting: log REST API requests with their JSON body (default off)
+export const isApiDebugLogOn = async () => (await setting('api_debug_log', (v) => v === 'on' || v === 'off', 'off')) === 'on';
 
 function clientIp(req) {
   const fwd = req.headers['x-forwarded-for'];
@@ -38,12 +46,13 @@ function clientIp(req) {
  * @param {string} [options.object_type] - Related object type
  * @param {string|number} [options.object_id] - Related object ID
  * @param {'app'|'security'} [options.category] - Defaults to 'security' for SECURITY_ACTIONS, else 'app'
- * @param {'info'|'warning'|'critical'} [options.level] - Defaults to 'warning' when status is failed, else 'info'
+ * @param {'debug'|'info'|'warning'|'critical'} [options.level] - Defaults to 'warning' when status is failed, else 'info'.
+ *   debug is not filtered by log_level: its caller checks isApiDebugLogOn()
  */
 async function writeLog({ action, description, req, status, object_type, object_id, username, user_id, category, level }) {
   const cat = category || (SECURITY_ACTIONS.has(action) ? 'security' : 'app');
   const lvl = level || (status === 'failed' ? 'warning' : 'info');
-  if (cat === 'app' && LOG_LEVELS.indexOf(lvl) < LOG_LEVELS.indexOf(await minAppLevel())) return;
+  if (cat === 'app' && lvl !== 'debug' && LOG_LEVELS.indexOf(lvl) < LOG_LEVELS.indexOf(await minAppLevel())) return;
 
   const log = {
     action,

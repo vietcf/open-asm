@@ -1,8 +1,9 @@
 <%#
-  Add / Edit Service Mapping.  mode: 'add' | 'edit', vs, providerOptions, protocolOptions,
+  Add / Edit Service Mapping.  mode: 'add' | 'edit', vs, copiedFrom (source name when duplicating), providerOptions, protocolOptions,
   directionOptions, scopeOptions, accessOptions, statusOptions,
-  selected: { device [{id, text}], system [{id, text}], members [{id, text, port, status}] }
-  Provider accepts new values (typed).
+  selected: { ip, domain, device, system [{id, text}], members [{id (ip_address_id), text, port, status}] }
+  Provider, IP address, domain and backend IPs accept new values (typed); new IPs / domains are
+  created in their inventories on save. Choosing a domain fills an empty IP with the domain's IP.
 %>
 <% const isEdit = mode === 'edit'; const v = vs || {}; const sel = selected || {};
    const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -18,6 +19,9 @@
         <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit Service Mapping' : 'Add Service Mapping') %></h3>
       </div>
       <div class="card-body">
+        <% if (locals.copiedFrom) { %>
+          <div class="alert alert-info py-2 small"><i class="bi bi-copy me-1"></i><%= t('Copied from {name}. Enter the new port (and name, if needed).', { name: copiedFrom }) %></div>
+        <% } %>
         <section class="form-section">
           <h4 class="form-section-title"><%= t('General information') %></h4>
           <div class="row g-3">
@@ -48,11 +52,13 @@
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-domain"><%= t('Domain') %></label>
-              <input type="text" id="f-domain" name="domain" class="form-control" value="<%= v.domain || '' %>" maxlength="255" placeholder="<%= t('e.g. app.example.com') %>">
+              <select id="f-domain" name="domain" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/domain"
+                      data-placeholder="<%= t('Select or type a domain, e.g. app.example.com') %>" data-selected="<%= JSON.stringify(sel.domain || []) %>"></select>
             </div>
             <div class="col-md-4">
               <label class="form-label" for="f-ip"><%= t('IP Address') %> <span class="text-danger">*</span></label>
-              <input type="text" id="f-ip" name="ip_address" class="form-control" value="<%= v.ip_address || '' %>" maxlength="45" placeholder="<%= t('Public / NAT / VIP / destination IP') %>" required>
+              <select id="f-ip" name="ip_address" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/ip-addresses/search-all"
+                      data-placeholder="<%= t('Public / NAT / VIP / destination IP') %>" data-selected="<%= JSON.stringify(sel.ip || []) %>" required></select>
             </div>
             <div class="col-md-4">
               <label class="form-label" for="f-port"><%= t('Port') %> <span class="text-danger">*</span></label>
@@ -86,7 +92,7 @@
               </select>
             </div>
             <div class="col-md-9" id="f-allowed-wrap"<%- accessMode === 'limited' ? '' : ' hidden' %>>
-              <label class="form-label" for="f-allowed"><%= t('Allowed IPs') %> <span class="text-danger">*</span></label>
+              <label class="form-label" for="f-allowed"><%= t('Allowed IPs') %></label>
               <textarea id="f-allowed" name="allowed_ips" class="form-control font-monospace" rows="2"
                         placeholder="<%= t('IP or CIDR, comma or one per line, e.g. 198.51.100.0/24') %>"><%= (v.allowed_ips || []).join('\n') %></textarea>
             </div>
@@ -98,13 +104,13 @@
         </section>
 
         <section class="form-section" data-repeater id="smMembers">
-          <h4 class="form-section-title"><%= t('Servers') %></h4>
+          <h4 class="form-section-title"><%= t('Backend IPs') %></h4>
           <p class="text-body-secondary small mb-2" id="f-members-hint"></p>
           <div class="vstack gap-2" data-repeater-rows>
             <% (sel.members || []).forEach(function (m) { %>
               <div class="row g-2 align-items-start">
                 <div class="col-md-6">
-                  <select name="server_id" class="form-select js-select" data-ajax-url="/server/api/server" data-placeholder="<%= t('Select server') %>"
+                  <select name="member_ip" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/ip-addresses/search-all" data-placeholder="<%= t('Select backend IP') %>"
                           data-selected="<%= JSON.stringify([{ id: m.id, text: m.text }]) %>"></select>
                 </div>
                 <div class="col-md-2 col-5">
@@ -126,7 +132,7 @@
           <template data-repeater-template>
             <div class="row g-2 align-items-start">
               <div class="col-md-6">
-                <select name="server_id" class="form-select js-select" data-ajax-url="/server/api/server" data-placeholder="<%= t('Select server') %>"></select>
+                <select name="member_ip" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/ip-addresses/search-all" data-placeholder="<%= t('Select backend IP') %>"></select>
               </div>
               <div class="col-md-2 col-5">
                 <input type="number" name="member_port" class="form-control" min="1" max="65535" placeholder="<%= t('Port') %>">
@@ -144,7 +150,7 @@
             </div>
           </template>
           <div class="mt-2">
-            <button type="button" class="btn btn-outline-primary btn-sm" data-repeater-add><i class="bi bi-plus-lg"></i> <%= t('Add server') %></button>
+            <button type="button" class="btn btn-outline-primary btn-sm" data-repeater-add><i class="bi bi-plus-lg"></i> <%= t('Add backend IP') %></button>
           </div>
         </section>
       </div>
@@ -157,17 +163,22 @@
   (function () {
     const access = document.getElementById('f-access');
     const wrap = document.getElementById('f-allowed-wrap');
-    const allowed = document.getElementById('f-allowed');
     const direction = document.getElementById('f-direction');
     const hint = document.getElementById('f-members-hint');
     function sync() {
       const limited = access.value === 'limited';
       wrap.hidden = !limited;
-      allowed.required = limited;
       hint.textContent = direction.value === 'outbound'
         ? t('Internal servers that open the connection (source). IP / Port above is the destination.')
         : t('Backend servers that receive the traffic, with their internal port.');
     }
+    // A chosen domain with a known IP fills the IP field when it is still empty
+    $('#f-domain').on('select2:select', function (e) {
+      const d = e.params.data;
+      const $ip = $('#f-ip');
+      if (!d.ip_id || $ip.val()) return;
+      $ip.append(new Option(d.ip_address, d.ip_id, true, true)).trigger('change');
+    });
     access.addEventListener('change', sync);
     direction.addEventListener('change', sync);
     sync();

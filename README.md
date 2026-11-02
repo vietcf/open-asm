@@ -614,14 +614,29 @@ when cutting a release.
   update queries (including the shared catalog model and
   `reset_admin_password.js`) now set `updated_at`.
 - ✨ Service Mapping (`/network/service-mapping`): map an endpoint
-  (domain / IP + port) to the servers behind it. Each mapping has a
+  (domain / IP + port) to the backend IPs behind it. Each mapping has a
   **direction** (inbound: clients → our servers; outbound: our servers →
   an external destination) and a **scope** (public: Internet; private:
   NAT private IP over VPN, MPLS or another private channel). Optional
   owning System, Provider / Channel (Akamai, Cloudflare, VPN, MPLS, …),
   LB / Firewall / NAT device, and **access** Full or Limited to a list of
-  allowed source IPs / CIDRs (e.g. Akamai allow-list). Servers carry
-  their port and an active / inactive status. Full CRUD, Excel
+  allowed source IPs / CIDRs (e.g. Akamai allow-list). The list is
+  optional (Limited with no IPs = restricted, sources not recorded) and
+  is stored on the mapping itself (`allowed_ips TEXT[]`), not in the IP
+  address inventory. One mapping is one listener (IP / domain + port);
+  a domain exposing several ports gets one mapping per port, created
+  quickly with the **Duplicate** row action (copies everything except
+  name and port). Backends are **IP addresses** with a port and an
+  active / inactive status (a pool member is IP:port; a server can have
+  several IPs). The server shown next to a backend is derived from the
+  IP's owner. The frontend IP, the domain and the backend IPs all come
+  from the IP address / domain inventories: the form picks them from a
+  list or takes a typed new value, and new IPs / domains are created in
+  the inventory on save (same for Excel import, where backends are
+  `ip:port`, and for API callers that send addresses / names, e.g. a
+  future load-balancer sync). Choosing a domain that has an IP fills an
+  empty IP field. An IP or domain used by a mapping cannot be deleted
+  until it is removed from the mapping. Full CRUD, Excel
   import/export, filters, detail modal with a flow diagram that follows
   the direction, sidebar under Network. Migrations:
   `0010_virtual_servers.sql` (tables `virtual_servers`,
@@ -630,7 +645,27 @@ when cutting a release.
   `0012_service_mapping_direction_scope.sql` (existing rows become
   inbound / public), `0013_service_mapping_system_access.sql` (system,
   access mode and allowed IPs; drops member weight; member statuses
-  other than active become inactive).
+  other than active become inactive),
+  `0015_service_mapping_members_by_ip.js` (members point at
+  `ip_addresses` instead of `servers`; existing members get their
+  server's IP, members whose server has no IP are listed in the output
+  and removed; the IP reference is `ON DELETE RESTRICT`),
+  `0016_service_mapping_frontend_refs.js` (`virtual_servers.ip_address`
+  / `domain` text become `ip_address_id` / `domain_id`, both
+  `ON DELETE RESTRICT`; values not in the inventories yet are created
+  there and listed in the output). The migration test now expects 55
+  tables (it had not been updated for `0010`).
+- ✨ REST API debug log: System Configuration > Security & Logs > **API
+  debug log** (`api_debug_log`, on / off, **off by default**). While on,
+  every `/api/v1` request is written to the application log with the new
+  level **debug** and action `api_request`: method, URL, status, duration
+  and the JSON request body (pretty-printed, cut after 16,000
+  characters; values of password / token / secret / OTP / API key /
+  authorization keys are masked). The System Log page expands the body
+  in place. Debug entries are not affected by `log_level`; the setting
+  is cached for up to 30 seconds. Migration
+  `0017_system_log_debug_level.sql` adds `debug` to the level check; the
+  seed adds `api_debug_log = off`.
 - 🐛 Device import: unknown device types are now auto-created (matching
   the Add Device form behaviour) instead of failing with "Not found".
 - ✨ Backup & Restore page (`/backup`, `src/modules/backup/`): separate
