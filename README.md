@@ -653,7 +653,8 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Unreleased
+### Version 1.3.1 (Latest)
+- No database migration: upgrading from 1.3.0 only needs the new image.
 - 🐛 Sharper text: the Source Sans 3 medium / semibold / bold faces (500,
   600, 700) are now declared in `public/css/source-sans-3.css` (the files
   were already in `public/css/files/`). Headings, labels and table headers
@@ -670,7 +671,7 @@ when cutting a release.
   `/users` endpoint, PATCH and `?sort=` never existed). Checked: the 110
   routes of `/api/v1` are all documented, no documented path is missing.
 
-### Version 1.3.0 (Latest)
+### Version 1.3.0
 - ⬆️ Upgrading from 1.2.x: back up, check out `v1.3.0`, build and start
   ([Upgrading an existing install](#upgrading-an-existing-install-production)).
   Migration `0020` runs; the lines it prints list option values that were
