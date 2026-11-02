@@ -1,6 +1,6 @@
 // Privileged roles: one system each, with permissions of that system.
 import { pool } from '../../../config/config.js';
-import { db, Where, replaceLinks, jsonList } from '../../shared/db.js';
+import { db, Where, replaceLinks, jsonList, searchRank, matchOrder } from '../../shared/db.js';
 
 const SELECT_WITH_LINKS = `
   SELECT r.*,
@@ -61,7 +61,7 @@ class PrivRole {
     const { page = 1, pageSize = 10 } = filter;
     const w = filterWhere(filter);
     const result = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY r.updated_at DESC, r.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY ${searchRank(['r.name'], filter.search, w)}r.updated_at DESC, r.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return result.rows;
@@ -79,8 +79,8 @@ class PrivRole {
     const result = await pool.query(
       `SELECT r.id, r.name || CASE WHEN $3 THEN ' (' || s.name || ')' ELSE '' END AS text
        FROM priv_roles r JOIN systems s ON s.id = r.system_id
-       WHERE r.system_id = ANY($1::int[]) AND r.name ILIKE $2 ORDER BY r.name LIMIT 30`,
-      [systemIds, `%${search}%`, systemIds.length > 1]
+       WHERE r.system_id = ANY($1::int[]) AND r.name ILIKE $2 ORDER BY ${matchOrder('r.name', '$4')} LIMIT 30`,
+      [systemIds, `%${search}%`, systemIds.length > 1, search]
     );
     return result.rows;
   }

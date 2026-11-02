@@ -1,5 +1,5 @@
 import { pool } from '../../../config/config.js';
-import { Where, NONE } from '../../shared/db.js';
+import { Where, NONE, searchRank } from '../../shared/db.js';
 
 function filterWhere({ search = '', unit_id = '', position = '' }) {
   const w = new Where().search(search, ['c.name ILIKE ?', 'c.email ILIKE ?', 'c.phone ILIKE ?', 'c.position ILIKE ?', 'c.description ILIKE ?', 'u.name ILIKE ?']);
@@ -145,7 +145,7 @@ class Contact {
     const w = filterWhere(filter);
     const result = await pool.query(
       `SELECT c.*, u.name AS unit_name FROM contacts c LEFT JOIN units u ON c.unit_id = u.id
-       WHERE ${w} ORDER BY c.name LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+       WHERE ${w} ORDER BY ${searchRank(['c.name', 'c.email'], filter.search, w)}c.name LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return result.rows;
@@ -162,7 +162,7 @@ class Contact {
     const w = new Where().search(search, ['c.name ILIKE ?', 'c.email ILIKE ?']);
     const result = await pool.query(
       `SELECT c.id, c.name || COALESCE(' (' || NULLIF(split_part(c.email, '@', 1), '') || ')', '') AS text
-       FROM contacts c WHERE ${w} ORDER BY c.name LIMIT 20`,
+       FROM contacts c WHERE ${w} ORDER BY ${searchRank(['c.name', 'c.email'], search, w)}c.name LIMIT 20`,
       w.params
     );
     return result.rows;

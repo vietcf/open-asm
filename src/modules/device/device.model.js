@@ -1,5 +1,5 @@
 import { pool } from '../../../config/config.js';
-import { db, Where, replaceLinks, replaceTags, subList, matchOrder } from '../../shared/db.js';
+import { db, Where, replaceLinks, replaceTags, subList, matchOrder, searchRank } from '../../shared/db.js';
 
 const COLUMNS = ['name', 'manufacturer', 'device_role', 'platform_id', 'device_type_id', 'location', 'serial_number', 'management_address', 'description', 'updated_by'];
 
@@ -91,7 +91,8 @@ class Device {
     const { page = 1, pageSize = 10 } = filter;
     const w = filterWhere(filter);
     const result = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE ${w} ORDER BY d.updated_at DESC, d.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `${SELECT_WITH_LINKS} WHERE ${w} ORDER BY ${searchRank((p) => ['d.name', 'd.serial_number', 'd.management_address',
+        `(SELECT i.ip_address FROM device_ip x JOIN ip_addresses i ON i.id = x.ip_id WHERE x.device_id = d.id AND i.ip_address = ${p} LIMIT 1)`], filter.search, w)}d.updated_at DESC, d.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return result.rows;

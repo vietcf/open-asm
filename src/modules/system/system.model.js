@@ -1,5 +1,5 @@
 import { pool } from '../../../config/config.js';
-import { db, Where, NONE, replaceLinks, replaceTags, subList, matchOrder } from '../../shared/db.js';
+import { db, Where, NONE, replaceLinks, replaceTags, subList, matchOrder, searchRank } from '../../shared/db.js';
 
 // department_id = development department (L3), ops_department_id = operations department (L2)
 const COLUMNS = ['system_id', 'name', 'level', 'department_id', 'ops_department_id', 'alias', 'description', 'fqdn', 'scopes', 'architecture', 'updated_by'];
@@ -172,7 +172,7 @@ class System {
       LEFT JOIN units u ON s.department_id = u.id
       LEFT JOIN units uo ON s.ops_department_id = uo.id
       WHERE ${w}
-      ORDER BY s.updated_at DESC
+      ORDER BY ${searchRank(['s.name', 's.system_id'], filter.search, w)}s.updated_at DESC
       LIMIT ${limit} OFFSET ${offset}
     `, w.params);
     return result.rows;

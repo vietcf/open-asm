@@ -1,5 +1,5 @@
 import { pool } from '../../../config/config.js';
-import { db, Where, replaceLinks, replaceTags, jsonList, matchOrder } from '../../shared/db.js';
+import { db, Where, replaceLinks, replaceTags, jsonList, matchOrder, searchRank } from '../../shared/db.js';
 
 // Domain with its IP ({id, ip_address} or null), systems and tags
 const SELECT_WITH_LINKS = `
@@ -81,7 +81,7 @@ class Domain {
     const { page = 1, pageSize = 10 } = filter;
     const w = filterWhere(filter);
     const result = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY d.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY ${searchRank(['d.domain'], filter.search, w)}d.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return result.rows;

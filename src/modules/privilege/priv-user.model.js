@@ -1,6 +1,6 @@
 // Privileged accounts (priv_users) with unit, role, contacts, systems and servers.
 import { pool } from '../../../config/config.js';
-import { db, Where, replaceLinks, subList } from '../../shared/db.js';
+import { db, Where, replaceLinks, subList, searchRank } from '../../shared/db.js';
 
 // One subquery per list (no join fan-out, no GROUP BY).
 const SELECT_WITH_LINKS = `
@@ -68,7 +68,7 @@ class PrivUser {
     const { page = 1, pageSize = 10 } = filter;
     const w = filterWhere(filter);
     const result = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE ${w} ORDER BY pu.updated_at DESC, pu.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `${SELECT_WITH_LINKS} WHERE ${w} ORDER BY ${searchRank(['pu.username'], filter.search, w)}pu.updated_at DESC, pu.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return result.rows;

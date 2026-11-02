@@ -1,6 +1,6 @@
 // Firewall rules (rulefirewall) with unit, contacts and tags.
 import { pool } from '../../../config/config.js';
-import { db, Where, replaceLinks, replaceTags, jsonList } from '../../shared/db.js';
+import { db, Where, replaceLinks, replaceTags, jsonList, searchRank } from '../../shared/db.js';
 
 export const COLUMNS = ['rulename', 'firewall_name', 'src_zone', 'src', 'src_detail', 'dst_zone', 'dst', 'dst_detail', 'services', 'application', 'url',
   'action', 'ou_id', 'status', 'violation_type', 'violation_detail', 'solution_proposal', 'solution_confirm', 'description', 'audit_batch',
@@ -88,7 +88,7 @@ class RuleFirewall {
     const { page = 1, pageSize = 10 } = filter;
     const w = filterWhere(filter);
     const result = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY rf.id ASC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY ${searchRank(['rf.rulename'], filter.search, w)}rf.id ASC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return result.rows;

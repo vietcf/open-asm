@@ -6,6 +6,7 @@
 //     usageSql: 'SELECT COUNT(*) FROM server_agents u WHERE u.agent_id = t.id',
 //   });
 //   const agentService = catalogService(Agent, { entity: 'Agent', usedBy: 'server(s)' });
+import { searchRank } from '../shared/db.js';
 import { pool } from '../../config/config.js';
 import { db, Where } from './db.js';
 import { ValidationError, NotFoundError, ConflictError } from './errors.js';
@@ -41,7 +42,7 @@ export function catalogModel({ table, columns, search = ['name', 'description'],
     // Page with usage_count
     async findFilteredList({ search: term = '', page = 1, pageSize = 20 } = {}) {
       const w = filterWhere(term);
-      return all(`SELECT t.*, ${usage} AS usage_count FROM ${table} t WHERE ${w} ORDER BY t.name LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`, w.params);
+      return all(`SELECT t.*, ${usage} AS usage_count FROM ${table} t WHERE ${w} ORDER BY ${searchRank(['t.name'], term, w)}t.name LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`, w.params);
     },
     async countFiltered({ search: term = '' } = {}) {
       const w = filterWhere(term);
@@ -52,7 +53,7 @@ export function catalogModel({ table, columns, search = ['name', 'description'],
     // Select2 lookup: [{id, text}]
     async select2Search({ search: term = '', limit = 20 } = {}) {
       const w = filterWhere(term);
-      const rows = await all(`SELECT t.* FROM ${table} t WHERE ${w} ORDER BY t.name LIMIT ${w.param(limit)}`, w.params);
+      const rows = await all(`SELECT t.* FROM ${table} t WHERE ${w} ORDER BY ${searchRank(['t.name'], term, w)}t.name LIMIT ${w.param(limit)}`, w.params);
       return rows.map((row) => ({ id: row.id, text: text(row) }));
     },
   };

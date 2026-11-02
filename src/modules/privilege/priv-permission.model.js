@@ -1,6 +1,6 @@
 // Privileged permissions: named per system (UNIQUE (name, system_id)).
 import { pool } from '../../../config/config.js';
-import { db, Where } from '../../shared/db.js';
+import { db, Where, searchRank, matchOrder } from '../../shared/db.js';
 
 const SELECT_WITH_LINKS = `
   SELECT p.*,
@@ -47,7 +47,7 @@ class PrivPermission {
     const { page = 1, pageSize = 10 } = filter;
     const w = filterWhere(filter);
     const result = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE ${w} ORDER BY p.updated_at DESC, p.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `${SELECT_WITH_LINKS} WHERE ${w} ORDER BY ${searchRank(['p.name'], filter.search, w)}p.updated_at DESC, p.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return result.rows;
@@ -70,8 +70,8 @@ class PrivPermission {
   static async searchForSystem(search = '', systemId) {
     if (!systemId) return [];
     const result = await pool.query(
-      'SELECT id, name AS text FROM priv_permissions WHERE system_id = $1 AND name ILIKE $2 ORDER BY name LIMIT 50',
-      [systemId, `%${search}%`]
+      `SELECT id, name AS text FROM priv_permissions WHERE system_id = $1 AND name ILIKE $2 ORDER BY ${matchOrder('name', '$3')} LIMIT 50`,
+      [systemId, `%${search}%`, search]
     );
     return result.rows;
   }

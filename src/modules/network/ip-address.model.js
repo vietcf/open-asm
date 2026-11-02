@@ -1,5 +1,5 @@
 import { pool } from '../../../config/config.js';
-import { db, Where, replaceLinks, replaceTags, subList, matchOrder } from '../../shared/db.js';
+import { db, Where, replaceLinks, replaceTags, subList, matchOrder, searchRank } from '../../shared/db.js';
 
 // IP with links, owners (devices/servers with role 'normal' or 'vip') and the
 // most specific subnet containing it. One subquery per list (no join fan-out).
@@ -111,7 +111,7 @@ class IpAddress {
     const { page = 1, pageSize = 10 } = filter;
     const w = filterWhere(filter);
     const result = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE ${w} ORDER BY ip.updated_at DESC, ip.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `${SELECT_WITH_LINKS} WHERE ${w} ORDER BY ${searchRank(['ip.ip_address'], filter.search, w)}ip.updated_at DESC, ip.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return result.rows.map(withOwners);
@@ -146,8 +146,9 @@ class IpAddress {
 
   static async findUnassignIP({ search = '', limit = 20 }) {
     const result = await pool.query(
-      "SELECT id, ip_address FROM ip_addresses WHERE (status IS NULL OR status <> 'assigned') AND ip_address ILIKE $1 ORDER BY ip_address LIMIT $2",
-      [`%${search}%`, limit]
+      `SELECT id, ip_address FROM ip_addresses WHERE (status IS NULL OR status <> 'assigned') AND ip_address ILIKE $1
+       ORDER BY ${matchOrder('ip_address', '$3')} LIMIT $2`,
+      [`%${search}%`, limit, search]
     );
     return result.rows;
   }

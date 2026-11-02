@@ -1,5 +1,5 @@
 import { pool } from '../../../config/config.js';
-import { Where } from '../../shared/db.js';
+import { Where, searchRank } from '../../shared/db.js';
 
 const filterWhere = ({ search = '' }) => new Where().search(search, ['t.name ILIKE ?', 't.description ILIKE ?']);
 
@@ -51,7 +51,7 @@ class Tag {
     const w = filterWhere(filter);
     const result = await pool.query(
       `SELECT t.*, (SELECT COUNT(*) FROM tag_object x WHERE x.tag_id = t.id)::int AS usage_count
-       FROM tags t WHERE ${w} ORDER BY t.name LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+       FROM tags t WHERE ${w} ORDER BY ${searchRank(['t.name'], filter.search, w)}t.name LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return result.rows;
@@ -77,7 +77,7 @@ class Tag {
 
   static async select2Search(search = '') {
     const w = filterWhere({ search });
-    const result = await pool.query(`SELECT t.id, t.name AS text FROM tags t WHERE ${w} ORDER BY t.name LIMIT 20`, w.params);
+    const result = await pool.query(`SELECT t.id, t.name AS text FROM tags t WHERE ${w} ORDER BY ${searchRank(['t.name'], search, w)}t.name LIMIT 20`, w.params);
     return result.rows;
   }
 }

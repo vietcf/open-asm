@@ -78,6 +78,18 @@ export function matchRank(columns, param) {
   return cols.length > 1 ? `LEAST(${cols.map(rank).join(', ')})` : rank(cols[0]);
 }
 
+// ORDER BY prefix of a list page: while searching, best matches first (rank
+// of `columns`, see matchRank), then the page's own order; '' with no search.
+// `columns`: SQL expressions, or (param) => expressions when one needs the
+// search placeholder itself (e.g. an exact IP lookup in a subquery).
+//   ORDER BY ${searchRank(['s.name'], search, w)}s.updated_at DESC
+export function searchRank(columns, search, w) {
+  const term = String(search ?? '').trim();
+  if (!term) return '';
+  const param = w.param(term);
+  return `${matchRank(typeof columns === 'function' ? columns(param) : columns, param)}, `;
+}
+
 // JSON array of {id, name} etc. for json_agg in list queries:
 //   ${jsonList('t', { id: 't.id', name: 't.name' })} AS tags
 // Fine for one or two joined lists; several of them in one query multiply each

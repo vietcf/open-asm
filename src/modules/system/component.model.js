@@ -1,5 +1,5 @@
 import { pool } from '../../../config/config.js';
-import { db, Where, replaceLinks, replaceTags, jsonList } from '../../shared/db.js';
+import { db, Where, replaceLinks, replaceTags, jsonList, searchRank, matchOrder } from '../../shared/db.js';
 
 const COLUMNS = ['system_id', 'name', 'description', 'app_type', 'fqdn', 'updated_by'];
 const toRow = (data) => COLUMNS.map((col) => data[col] ?? null);
@@ -119,7 +119,7 @@ class SystemComponent {
     const limit = w.param(pageSize);
     const offset = w.param((page - 1) * pageSize);
     const result = await pool.query(
-      `${SELECT_WITH_RELATIONS} WHERE ${w} GROUP BY sc.id, s.name ORDER BY sc.id DESC LIMIT ${limit} OFFSET ${offset}`,
+      `${SELECT_WITH_RELATIONS} WHERE ${w} GROUP BY sc.id, s.name ORDER BY ${searchRank(['sc.name'], filter.search, w)}sc.id DESC LIMIT ${limit} OFFSET ${offset}`,
       w.params
     );
     return result.rows;
@@ -134,8 +134,8 @@ class SystemComponent {
   // Select2 lookup: [{id, text}]
   static async select2Search({ search = '', limit = 20 }) {
     const result = await pool.query(
-      'SELECT id, name FROM system_components WHERE name ILIKE $1 ORDER BY name LIMIT $2',
-      [`%${search}%`, limit]
+      `SELECT id, name FROM system_components WHERE name ILIKE $1 ORDER BY ${matchOrder('name', '$3')} LIMIT $2`,
+      [`%${search}%`, limit, search]
     );
     return result.rows.map((row) => ({ id: row.id, text: row.name }));
   }
