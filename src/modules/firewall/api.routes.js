@@ -294,9 +294,9 @@ router.get('/rules/:id', authorizePermissionJWT('rule.read'), ruleApi.getRule);
  *               firewall_name:
  *                 type: string
  *                 description: |
- *                   Firewall name (required). Values are dynamically loaded from database config table 
- *                   with config_name = 'firewall_name'. Example values: USER, SERVER, INTERNET-IN, etc.
- *                   Must select from the configured list in the system. *
+ *                   Firewall name (required). Value of the System Configuration list `firewall_name` (e.g. USER, SERVER, INTERNET-IN, etc).
+ *                   Only active values can be set; a retired value is refused, except the
+ *                   record's current one, which an update may send back unchanged.
  *               rulename:
  *                 type: string
  *                 maxLength: 255
@@ -337,22 +337,22 @@ router.get('/rules/:id', authorizePermissionJWT('rule.read'), ruleApi.getRule);
  *               action:
  *                 type: string
  *                 description: |
- *                   Action to take (required). Values are dynamically loaded from database config table 
- *                   with config_name = 'firewall_rule_action'. Example values: ALLOW, DENY, DROP, REJECT.
- *                   Must select from the configured list in the system. *
+ *                   Action to take (required). Value of the System Configuration list `firewall_rule_action` (e.g. ALLOW, DENY, DROP, REJECT).
+ *                   Only active values can be set; a retired value is refused, except the
+ *                   record's current one, which an update may send back unchanged.
  *               status:
  *                 type: string
  *                 description: |
- *                   Status of the rule (optional). Values are dynamically loaded from database config table 
- *                   with config_name = 'firewall_rule_status'. Example values: ENABLE, DISABLE.
- *                   Must select from the configured list in the system.
+ *                   Status of the rule (optional). Value of the System Configuration list `firewall_rule_status` (e.g. ENABLE, DISABLE).
+ *                   Only active values can be set; a retired value is refused, except the
+ *                   record's current one, which an update may send back unchanged.
  *               violation_type:
  *                 type: string
  *                 description: |
- *                   Violation type (optional). Values are dynamically loaded from database config table 
- *                   with config_name = 'firewall_rule_violation_type'. Example values: CDE-TO-OUT-OF-SCOPE, 
- *                   OUT-OF-SCOPE-TO-CDE, IN-CDE-NONE-SECURE-PORTS, ANY, etc.
- *                   Must select from the configured list in the system.
+ *                   Violation type (optional). Value of the System Configuration list `firewall_rule_violation_type`
+ *                   (e.g. CDE-TO-OUT-OF-SCOPE, OUT-OF-SCOPE-TO-CDE, IN-CDE-NONE-SECURE-PORTS, ANY).
+ *                   Only active values can be set; a retired value is refused, except the
+ *                   record's current one, which an update may send back unchanged.
  *               violation_detail:
  *                 type: string
  *                 description: Violation detail
@@ -437,9 +437,9 @@ router.post('/rules', authorizePermissionJWT('rule.create'), ruleApi.createRule)
  *               firewall_name:
  *                 type: string
  *                 description: |
- *                   Firewall name (required). Values are dynamically loaded from database config table 
- *                   with config_name = 'firewall_name'. Example values: USER, SERVER, INTERNET-IN, etc.
- *                   Must select from the configured list in the system. *
+ *                   Firewall name (required). Value of the System Configuration list `firewall_name` (e.g. USER, SERVER, INTERNET-IN, etc).
+ *                   Only active values can be set; a retired value is refused, except the
+ *                   record's current one, which an update may send back unchanged.
  *               rulename:
  *                 type: string
  *                 maxLength: 255
@@ -480,22 +480,22 @@ router.post('/rules', authorizePermissionJWT('rule.create'), ruleApi.createRule)
  *               action:
  *                 type: string
  *                 description: |
- *                   Action to take (required). Values are dynamically loaded from database config table 
- *                   with config_name = 'firewall_rule_action'. Example values: ALLOW, DENY, DROP, REJECT.
- *                   Must select from the configured list in the system. *
+ *                   Action to take (required). Value of the System Configuration list `firewall_rule_action` (e.g. ALLOW, DENY, DROP, REJECT).
+ *                   Only active values can be set; a retired value is refused, except the
+ *                   record's current one, which an update may send back unchanged.
  *               status:
  *                 type: string
  *                 description: |
- *                   Status of the rule (optional). Values are dynamically loaded from database config table 
- *                   with config_name = 'firewall_rule_status'. Example values: ENABLE, DISABLE.
- *                   Must select from the configured list in the system.
+ *                   Status of the rule (optional). Value of the System Configuration list `firewall_rule_status` (e.g. ENABLE, DISABLE).
+ *                   Only active values can be set; a retired value is refused, except the
+ *                   record's current one, which an update may send back unchanged.
  *               violation_type:
  *                 type: string
  *                 description: |
- *                   Violation type (optional). Values are dynamically loaded from database config table 
- *                   with config_name = 'firewall_rule_violation_type'. Example values: CDE-TO-OUT-OF-SCOPE, 
- *                   OUT-OF-SCOPE-TO-CDE, IN-CDE-NONE-SECURE-PORTS, ANY, etc.
- *                   Must select from the configured list in the system.
+ *                   Violation type (optional). Value of the System Configuration list `firewall_rule_violation_type`
+ *                   (e.g. CDE-TO-OUT-OF-SCOPE, OUT-OF-SCOPE-TO-CDE, IN-CDE-NONE-SECURE-PORTS, ANY).
+ *                   Only active values can be set; a retired value is refused, except the
+ *                   record's current one, which an update may send back unchanged.
  *               violation_detail:
  *                 type: string
  *                 description: Violation detail

@@ -33,25 +33,22 @@ router.use(['/servers', '/services', '/agents'], authenticateJWT);
  *         schema:
  *           type: string
  *         description: |
- *           Filter by status. Values are dynamically loaded from database config table 
- *           with config_name = 'server_status'. Example values: ONLINE, OFFLINE, MAINTENANCE.
- *           Must select from the configured list in the system.
+ *           Filter by status. Values of the System Configuration list `server_status` (e.g. ONLINE, OFFLINE, MAINTENANCE),
+ *           retired (inactive) values included.
  *       - in: query
  *         name: type
  *         schema:
  *           type: string
  *         description: |
- *           Filter by type. Values are dynamically loaded from database config table 
- *           with config_name = 'server_type'. Example values: PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE.
- *           Must select from the configured list in the system.
+ *           Filter by type. Values of the System Configuration list `server_type` (e.g. PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE),
+ *           retired (inactive) values included.
  *       - in: query
  *         name: location
  *         schema:
  *           type: string
  *         description: |
- *           Filter by location. Values are dynamically loaded from database config table 
- *           with config_name = 'server_location'. Example values: DC, DR, CMC, BRANCH, CLOUD.
- *           Must select from the configured list in the system.
+ *           Filter by location. Values of the System Configuration list `server_location` (e.g. DC, DR, CMC, BRANCH, CLOUD),
+ *           retired (inactive) values included.
  *       - in: query
  *         name: tags
  *         schema:
@@ -276,21 +273,21 @@ router.get('/servers/config', authorizePermissionJWT('server.read'), serverApi.g
  *               status:
  *                 type: string
  *                 description: |
- *                   Server status. Values are dynamically loaded from database config table 
- *                   with config_name = 'server_status'. Example values: ONLINE, OFFLINE, MAINTENANCE.
- *                   Must select from the configured list in the system.
+ *                   Server status. Value of the System Configuration list `server_status` (e.g. ONLINE, OFFLINE, MAINTENANCE).
+ *                   Only active values can be set; a retired value is refused, except the
+ *                   record's current one, which an update may send back unchanged.
  *               location:
  *                 type: string
  *                 description: |
- *                   Server location. Values are dynamically loaded from database config table 
- *                   with config_name = 'server_location'. Example values: DC, DR, CMC, BRANCH, CLOUD.
- *                   Must select from the configured list in the system.
+ *                   Server location. Value of the System Configuration list `server_location` (e.g. DC, DR, CMC, BRANCH, CLOUD).
+ *                   Only active values can be set; a retired value is refused, except the
+ *                   record's current one, which an update may send back unchanged.
  *               type:
  *                 type: string
  *                 description: |
- *                   Server type. Values are dynamically loaded from database config table 
- *                   with config_name = 'server_type'. Example values: PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE.
- *                   Must select from the configured list in the system.
+ *                   Server type. Value of the System Configuration list `server_type` (e.g. PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE).
+ *                   Only active values can be set; a retired value is refused, except the
+ *                   record's current one, which an update may send back unchanged.
  *               managers:
  *                 type: array
  *                 items:
@@ -407,21 +404,21 @@ router.get('/servers/:id', authorizePermissionJWT('server.read'), serverApi.getS
  *               status:
  *                 type: string
  *                 description: |
- *                   Server status. Values are dynamically loaded from database config table 
- *                   with config_name = 'server_status'. Example values: ONLINE, OFFLINE, MAINTENANCE.
- *                   Must select from the configured list in the system.
+ *                   Server status. Value of the System Configuration list `server_status` (e.g. ONLINE, OFFLINE, MAINTENANCE).
+ *                   Only active values can be set; a retired value is refused, except the
+ *                   record's current one, which an update may send back unchanged.
  *               location:
  *                 type: string
  *                 description: |
- *                   Server location. Values are dynamically loaded from database config table 
- *                   with config_name = 'server_location'. Example values: DC, DR, CMC, BRANCH, CLOUD.
- *                   Must select from the configured list in the system.
+ *                   Server location. Value of the System Configuration list `server_location` (e.g. DC, DR, CMC, BRANCH, CLOUD).
+ *                   Only active values can be set; a retired value is refused, except the
+ *                   record's current one, which an update may send back unchanged.
  *               type:
  *                 type: string
  *                 description: |
- *                   Server type. Values are dynamically loaded from database config table 
- *                   with config_name = 'server_type'. Example values: PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE.
- *                   Must select from the configured list in the system.
+ *                   Server type. Value of the System Configuration list `server_type` (e.g. PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE).
+ *                   Only active values can be set; a retired value is refused, except the
+ *                   record's current one, which an update may send back unchanged.
  *               managers:
  *                 type: array
  *                 items:
@@ -535,21 +532,21 @@ router.delete('/servers/:id', authorizePermissionJWT('server.delete'), serverApi
  *         status:
  *           type: string
  *           description: |
- *             Server status. Values are dynamically loaded from database config table 
- *             with config_name = 'server_status'. Example values: ONLINE, OFFLINE, MAINTENANCE.
- *             Must select from the configured list in the system.
+ *             Server status. Value of the System Configuration list `server_status` (e.g. ONLINE, OFFLINE, MAINTENANCE).
+ *             Only active values can be set; a retired value is refused, except the
+ *             record's current one, which an update may send back unchanged.
  *         location:
  *           type: string
  *           description: |
- *             Server location. Values are dynamically loaded from database config table 
- *             with config_name = 'server_location'. Example values: DC, DR, CMC, BRANCH, CLOUD.
- *             Must select from the configured list in the system.
+ *             Server location. Value of the System Configuration list `server_location` (e.g. DC, DR, CMC, BRANCH, CLOUD).
+ *             Only active values can be set; a retired value is refused, except the
+ *             record's current one, which an update may send back unchanged.
  *         type:
  *           type: string
  *           description: |
- *             Server type. Values are dynamically loaded from database config table 
- *             with config_name = 'server_type'. Example values: PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE.
- *             Must select from the configured list in the system.
+ *             Server type. Value of the System Configuration list `server_type` (e.g. PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE).
+ *             Only active values can be set; a retired value is refused, except the
+ *             record's current one, which an update may send back unchanged.
  *         managers:
  *           type: array
  *           items:
@@ -586,21 +583,21 @@ router.delete('/servers/:id', authorizePermissionJWT('server.delete'), serverApi
  *         status:
  *           type: string
  *           description: |
- *             Server status. Values are dynamically loaded from database config table 
- *             with config_name = 'server_status'. Example values: ONLINE, OFFLINE, MAINTENANCE.
- *             Must select from the configured list in the system.
+ *             Server status. Value of the System Configuration list `server_status` (e.g. ONLINE, OFFLINE, MAINTENANCE).
+ *             Only active values can be set; a retired value is refused, except the
+ *             record's current one, which an update may send back unchanged.
  *         location:
  *           type: string
  *           description: |
- *             Server location. Values are dynamically loaded from database config table 
- *             with config_name = 'server_location'. Example values: DC, DR, CMC, BRANCH, CLOUD.
- *             Must select from the configured list in the system.
+ *             Server location. Value of the System Configuration list `server_location` (e.g. DC, DR, CMC, BRANCH, CLOUD).
+ *             Only active values can be set; a retired value is refused, except the
+ *             record's current one, which an update may send back unchanged.
  *         type:
  *           type: string
  *           description: |
- *             Server type. Values are dynamically loaded from database config table 
- *             with config_name = 'server_type'. Example values: PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE.
- *             Must select from the configured list in the system.
+ *             Server type. Value of the System Configuration list `server_type` (e.g. PHYSICAL, VIRTUAL-MACHINE, CLOUD-INSTANCE).
+ *             Only active values can be set; a retired value is refused, except the
+ *             record's current one, which an update may send back unchanged.
  *         description:
  *           type: string
  *         created_at:

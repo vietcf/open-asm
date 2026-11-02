@@ -44,10 +44,10 @@ router.use(['/ip-addresses', '/subnets', '/domains'], authenticateJWT);
  *         schema:
  *           type: string
  *           description: |
- *             IP address status. Values are dynamically loaded from database config table 
- *             with config_name = 'ip_address_status'. Example values: reserved, assigned, inactived.
- *             Must select from the configured list in the system.
- *         description: "Filter by status (reserved, assigned, inactved)"
+ *             IP address status. Value of the System Configuration list `ip_address_status` (e.g. reserved, assigned, inactive).
+ *             Only active values can be set; a retired value is refused, except the
+ *             record's current one, which an update may send back unchanged.
+ *         description: "Filter by status (reserved, assigned, inactive)"
  *       - in: query
  *         name: systems
  *         schema:
@@ -229,9 +229,9 @@ router.get('/ip-addresses/:id', authorizePermissionJWT('ip_address.read'), ipAdd
  *               status:
  *                 type: string
  *                 description: |
- *                   IP address status. Values are dynamically loaded from database config table 
- *                   with config_name = 'ip_address_status'. Example values: reserved, assigned, inactived.
- *                   Must select from the configured list in the system.
+ *                   IP address status. Value of the System Configuration list `ip_address_status` (e.g. reserved, assigned, inactive).
+ *                   Only active values can be set; a retired value is refused, except the
+ *                   record's current one, which an update may send back unchanged.
  *               tags:
  *                 type: array
  *                 items:
@@ -288,9 +288,9 @@ router.post('/ip-addresses', authorizePermissionJWT('ip_address.create'), ipAddr
  *               status:
  *                 type: string
  *                 description: |
- *                   IP address status. Values are dynamically loaded from database config table 
- *                   with config_name = 'ip_address_status'. Example values: reserved, assigned, inactived.
- *                   Must select from the configured list in the system.
+ *                   IP address status. Value of the System Configuration list `ip_address_status` (e.g. reserved, assigned, inactive).
+ *                   Only active values can be set; a retired value is refused, except the
+ *                   record's current one, which an update may send back unchanged.
  *               tags:
  *                 type: array
  *                 items:

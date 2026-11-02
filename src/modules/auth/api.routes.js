@@ -16,7 +16,9 @@ const apiAuthRouter = express.Router();
  * /api/v1/auth/login:
  *   post:
  *     summary: User login (JWT)
+ *     description: Public endpoint (no token). Local accounts only; returns a JWT valid for JWT_EXPIRES_IN (default 8h).
  *     tags: [Auth]
+ *     security: []
  *     requestBody:
  *       required: true
  *       content:
