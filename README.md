@@ -641,6 +641,13 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
+### Unreleased
+- 🐛 Sharper text: the Source Sans 3 medium / semibold / bold faces (500,
+  600, 700) are now declared in `public/css/source-sans-3.css` (the files
+  were already in `public/css/files/`). Headings, labels and table headers
+  were drawn with bold synthesized by the browser from the regular face,
+  which looked blurry.
+
 ### Version 1.3.0 (Latest)
 - ⬆️ Upgrading from 1.2.x: back up, check out `v1.3.0`, build and start
   ([Upgrading an existing install](#upgrading-an-existing-install-production)).
