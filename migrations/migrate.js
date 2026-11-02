@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 // Open ASM database migrations — see migrations/README.md.
 //
-//   node migrations/migrate.js [up]        apply pending migrations, then seed (default)
+//   node migrations/migrate.js [up]        apply pending migrations (default); seeds only a
+//                                          fresh install (no roles yet)
 //   node migrations/migrate.js up --dry-run  show what would run, change nothing
+//   node migrations/migrate.js seed        run the seeds explicitly
 //   node migrations/migrate.js status      list applied / pending migrations
 //   node migrations/migrate.js create <name>   scaffold versions/NNNN_<name>.sql
 //   node migrations/migrate.js repair      accept cosmetic edits to applied files
@@ -116,9 +118,32 @@ async function up({ dryRun }) {
     }
     if (!pending.length) console.log('[migrate] schema up to date');
 
-    const admin = await runSeeds(client);
-    printAdminBanner(admin);
-    await handleInitialPasswordFile(client, admin);
+    // Seeds only initialize a fresh install (no roles yet). An existing
+    // database is never seeded implicitly: data a new version needs ships as
+    // a migration, and `migrate.js seed` runs the seeds on demand.
+    const { rows: [{ fresh }] } = await client.query('SELECT NOT EXISTS (SELECT 1 FROM roles) AS fresh');
+    if (fresh) await seed(client);
+    else console.log('[migrate] existing data: seeds skipped (run `npm run seed` to apply them explicitly)');
+    await handleInitialPasswordFile(client, { created: false });
+    console.log('[migrate] done');
+  }));
+}
+
+async function seed(client) {
+  console.log('[migrate] seeding roles, permissions, default configuration and the initial admin');
+  const admin = await runSeeds(client);
+  printAdminBanner(admin);
+  await handleInitialPasswordFile(client, admin);
+}
+
+// Explicit seeding (`npm run seed`): adds missing roles, permissions and
+// default configuration, and the admin when there is no superadmin. Never
+// overwrites edited values, but re-grants the default role permissions.
+async function seedCommand() {
+  await withDb(client => withLock(client, async () => {
+    const { rows: [{ ready }] } = await client.query(`SELECT to_regclass('public.roles') IS NOT NULL AS ready`);
+    if (!ready) throw new MigrationError('No schema yet: run `migrate.js up` first');
+    await seed(client);
     console.log('[migrate] done');
   }));
 }
@@ -175,13 +200,14 @@ async function repair() {
 const [command = 'up', ...args] = process.argv.slice(2);
 const commands = {
   up: () => up({ dryRun: args.includes('--dry-run') }),
+  seed: seedCommand,
   status,
   create: () => create(args.join('_')),
   repair,
 };
 
 if (!commands[command]) {
-  console.error(`Unknown command "${command}". Use: up [--dry-run] | status | create <name> | repair`);
+  console.error(`Unknown command "${command}". Use: up [--dry-run] | seed | status | create <name> | repair`);
   process.exit(2);
 }
 
