@@ -1,5 +1,5 @@
 import { pool } from '../../../config/config.js';
-import { Where } from '../../shared/db.js';
+import { Where, searchRank } from '../../shared/db.js';
 
 // Rows referencing a unit (it cannot be deleted while any exist)
 const USAGE_SQL = {
@@ -59,7 +59,7 @@ class Unit {
     const { page = 1, pageSize = 20 } = filter;
     const w = filterWhere(filter);
     const result = await pool.query(
-      `SELECT u.*, ${usageColumns} FROM units u WHERE ${w} ORDER BY u.name LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `SELECT u.*, ${usageColumns} FROM units u WHERE ${w} ORDER BY ${searchRank(['u.name'], filter.search, w)}u.name LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return result.rows;
@@ -87,7 +87,7 @@ class Unit {
 
   static async select2Search(search = '') {
     const w = filterWhere({ search });
-    const result = await pool.query(`SELECT u.id, u.name AS text FROM units u WHERE ${w} ORDER BY u.name LIMIT 20`, w.params);
+    const result = await pool.query(`SELECT u.id, u.name AS text FROM units u WHERE ${w} ORDER BY ${searchRank(['u.name'], search, w)}u.name LIMIT 20`, w.params);
     return result.rows;
   }
 }

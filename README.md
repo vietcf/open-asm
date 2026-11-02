@@ -654,7 +654,20 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.3.5 (Latest)
+### Version 1.3.6 (Latest)
+- No database migration: upgrading from 1.3.x only needs the new image.
+- ✨ Exact matches first everywhere you search, like Service Mapping in 1.3.5:
+  every list page search (servers and devices also by exact IP, systems by
+  name or System ID, users by username or email, contacts by name or email…)
+  and the remaining pickers (servers, components, contacts, tags, units, free
+  IPs, privileged roles / permissions, catalogs). Exact match, then "starts
+  with", then the page's usual order; with no search the order is unchanged.
+  Results are the same, only their order changes (checked on every existing
+  value of every list). Subnets keep their own order when searching an IP /
+  CIDR (most specific subnet first), the system log stays by time. Helper
+  `searchRank()` in `src/shared/db.js`.
+
+### Version 1.3.5
 - No database migration: upgrading from 1.3.x only needs the new image.
 - ✨ Search results put the best match first: exact match, then "starts
   with", then "contains" (case-insensitive; shortest first within each, so

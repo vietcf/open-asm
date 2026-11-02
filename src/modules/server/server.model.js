@@ -1,5 +1,5 @@
 import { pool } from '../../../config/config.js';
-import { db, Where, NONE, replaceLinks, replaceTags, subList } from '../../shared/db.js';
+import { db, Where, NONE, replaceLinks, replaceTags, subList, searchRank, matchOrder } from '../../shared/db.js';
 
 // Server with platform and every link. ip_addresses carry role ('normal' or 'vip').
 // One subquery per list (no join fan-out, no GROUP BY).
@@ -109,7 +109,8 @@ class Server {
     const { page = 1, pageSize = 10 } = filter;
     const w = filterWhere(filter);
     const res = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE ${w} ORDER BY s.updated_at DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `${SELECT_WITH_LINKS} WHERE ${w} ORDER BY ${searchRank((p) => ['s.name',
+        `(SELECT i.ip_address FROM server_ip x JOIN ip_addresses i ON i.id = x.ip_id WHERE x.server_id = s.id AND i.ip_address = ${p} LIMIT 1)`], filter.search, w)}s.updated_at DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return res.rows;
@@ -123,7 +124,7 @@ class Server {
 
   // Select2 lookup: [{id, text}]
   static async select2Search({ search = '', limit = 20 }) {
-    const res = await pool.query('SELECT id, name AS text FROM servers WHERE name ILIKE $1 ORDER BY name LIMIT $2', [`%${search}%`, limit]);
+    const res = await pool.query(`SELECT id, name AS text FROM servers WHERE name ILIKE $1 ORDER BY ${matchOrder('name', '$3')} LIMIT $2`, [`%${search}%`, limit, search]);
     return res.rows;
   }
 

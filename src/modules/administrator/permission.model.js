@@ -1,6 +1,6 @@
 // Application permissions ("<resource>.<action>").
 import { pool } from '../../../config/config.js';
-import { db, Where } from '../../shared/db.js';
+import { db, Where, searchRank } from '../../shared/db.js';
 
 const SELECT = `SELECT p.*, (SELECT COUNT(*)::int FROM role_permissions x WHERE x.permission_id = p.id) AS role_count FROM permissions p`;
 
@@ -49,7 +49,7 @@ class Permission {
   static async findFilteredList(filter = {}) {
     const { page = 1, pageSize = 10 } = filter;
     const w = filterWhere(filter);
-    const result = await pool.query(`${SELECT} WHERE ${w} ORDER BY p.name LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`, w.params);
+    const result = await pool.query(`${SELECT} WHERE ${w} ORDER BY ${searchRank(['p.name'], filter.search, w)}p.name LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`, w.params);
     return result.rows;
   }
 

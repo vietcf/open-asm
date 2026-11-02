@@ -1,5 +1,5 @@
 import { pool } from '../../../config/config.js';
-import { db, Where, replaceLinks, jsonList } from '../../shared/db.js';
+import { db, Where, replaceLinks, jsonList, searchRank } from '../../shared/db.js';
 
 // Cluster with its systems and members (ip + the server/device owning it)
 const SELECT_WITH_LINKS = `
@@ -80,7 +80,7 @@ class Cluster {
     const { page = 1, pageSize = 20 } = filter;
     const w = filterWhere(filter);
     const result = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE ${w} GROUP BY cl.id ORDER BY cl.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `${SELECT_WITH_LINKS} WHERE ${w} GROUP BY cl.id ORDER BY ${searchRank(['cl.name'], filter.search, w)}cl.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return result.rows;

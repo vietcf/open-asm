@@ -1,6 +1,6 @@
 // Application roles and their permissions (role_permissions).
 import { pool } from '../../../config/config.js';
-import { db, Where, replaceLinks, jsonList } from '../../shared/db.js';
+import { db, Where, replaceLinks, jsonList, searchRank } from '../../shared/db.js';
 
 export const SUPERADMIN = 'superadmin';
 
@@ -52,7 +52,7 @@ class Role {
     const { page = 1, pageSize = 10 } = filter;
     const w = filterWhere(filter);
     const result = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE ${w} GROUP BY r.id ORDER BY r.name LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `${SELECT_WITH_LINKS} WHERE ${w} GROUP BY r.id ORDER BY ${searchRank(['r.name'], filter.search, w)}r.name LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return result.rows;

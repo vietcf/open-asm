@@ -1,6 +1,6 @@
 // Application users (login accounts) with their role.
 import { pool } from '../../../config/config.js';
-import { db, Where } from '../../shared/db.js';
+import { db, Where, searchRank } from '../../shared/db.js';
 
 const SELECT = 'SELECT u.*, r.name AS role_name FROM users u LEFT JOIN roles r ON r.id = u.role_id';
 
@@ -72,7 +72,7 @@ class User {
   static async findFilteredList(filter = {}) {
     const { page = 1, pageSize = 10 } = filter;
     const w = filterWhere(filter);
-    const result = await pool.query(`${SELECT} WHERE ${w} ORDER BY u.id LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`, w.params);
+    const result = await pool.query(`${SELECT} WHERE ${w} ORDER BY ${searchRank(['u.username', 'u.email'], filter.search, w)}u.id LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`, w.params);
     return result.rows;
   }
 
