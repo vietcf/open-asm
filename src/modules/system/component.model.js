@@ -132,12 +132,21 @@ class SystemComponent {
   }
 
   // Select2 lookup: [{id, text}]
-  static async select2Search({ search = '', limit = 20 }) {
+  static async select2Search({ search = '', limit = 20, systemId = null }) {
+    // systemId: only that system's components, text = the component's name
+    if (systemId) {
+      const { rows } = await pool.query(
+        `SELECT id, name FROM system_components WHERE system_id = $1 AND name ILIKE $2 ORDER BY ${matchOrder(['name'], '$4')} LIMIT $3`,
+        [systemId, `%${search}%`, limit, search]);
+      return rows.map((row) => ({ id: row.id, text: row.name }));
+    }
+    // text "System / Component"; found by the component's or the system's name
     const result = await pool.query(
-      `SELECT id, name FROM system_components WHERE name ILIKE $1 ORDER BY ${matchOrder('name', '$3')} LIMIT $2`,
+      `SELECT sc.id, sc.name, s.name AS system_name FROM system_components sc JOIN systems s ON s.id = sc.system_id
+       WHERE sc.name ILIKE $1 OR s.name ILIKE $1 ORDER BY ${matchOrder(['sc.name', 's.name'], '$3')} LIMIT $2`,
       [`%${search}%`, limit, search]
     );
-    return result.rows.map((row) => ({ id: row.id, text: row.name }));
+    return result.rows.map((row) => ({ id: row.id, text: `${row.system_name} / ${row.name}` }));
   }
 }
 

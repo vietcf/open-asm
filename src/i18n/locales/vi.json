@@ -1494,5 +1494,9 @@
   "Invalid provider port: {port}": "Port của provider không hợp lệ: {port}",
   "Invalid provider protocol: {protocol}": "Protocol của provider không hợp lệ: {protocol}",
   "IP owner": "IP thuộc",
-  "Device holding the IP": "Device đang giữ IP"
+  "Device holding the IP": "Device đang giữ IP",
+  "Sub-system": "Hệ thống con",
+  "Whole system": "Toàn bộ hệ thống",
+  "Empty: the pentest covers the whole system.": "Để trống: pentest toàn bộ hệ thống.",
+  "The sub-system does not belong to the selected system": "Hệ thống con không thuộc hệ thống đã chọn"
 }

@@ -137,10 +137,10 @@ export default {
     res.redirect(LIST_URL);
   },
 
-  // Select2 lookup (pentest object picker)
+  // Select2 lookup (pentest target picker); ?system_id= limits it to that system's components
   async lookup(req, res, next) {
     try {
-      res.json(await SystemComponent.select2Search({ search: String(req.query.search || '').trim() }));
+      res.json(await SystemComponent.select2Search({ search: String(req.query.search || '').trim(), systemId: Number(req.query.system_id) || null }));
     } catch (err) {
       next(err);
     }
