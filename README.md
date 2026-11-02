@@ -654,7 +654,26 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.3.6 (Latest)
+### Version 1.3.7 (Latest)
+- ⬆️ Upgrading from 1.3.x: new image; migration `0022` runs (see below).
+- 🐛 System / component IP addresses follow one rule: **a component's IPs
+  are IPs of its system**; a system may also have IPs no component uses.
+  - IPs added to a component are added to its system (as before).
+  - IPs taken off a component, or of a deleted component, leave the system
+    too, unless another component of the system still uses them (before:
+    they stayed in the system when edited, and left it even when another
+    component used them when deleted).
+  - A component moved to another system takes its IPs along.
+  - An IP taken off a system (System form / API, or the Systems field of the
+    IP address form / API) is taken off that system's components too.
+  - The System and Component forms explain this under the IP field. Rules in
+    `src/modules/system/system-ip-links.js`.
+- Migration `0022_component_ips_in_system.js`: removes duplicate
+  system / IP links and adds the missing unique constraint on `system_ip`
+  (duplicates could be created before), and adds to each system the IPs of
+  its components that it lacked. Counts are printed in the migration output.
+
+### Version 1.3.6
 - No database migration: upgrading from 1.3.x only needs the new image.
 - ✨ Exact matches first everywhere you search, like Service Mapping in 1.3.5:
   every list page search (servers and devices also by exact IP, systems by

@@ -6,6 +6,7 @@ import IpAddress from '../network/ip-address.model.js';
 import Tag from '../organize/tag.model.js';
 import FileUpload from '../file/file-upload.model.js';
 import { removeRoundsOf } from '../pentest/pentest.service.js';
+import { addToSystem, releaseFromSystem } from './system-ip-links.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
 import { toStringList, toNullableString, hasKey, loadOptions, assertOption, resolveRelations, saveRelations } from '../../shared/service.js';
@@ -59,11 +60,6 @@ async function normalize(input, current = null) {
   return data;
 }
 
-// IPs given to a component are also linked to its system.
-async function linkIpsToSystem(systemId, ipIds, client) {
-  if (ipIds && ipIds.length) await System.addIPs(systemId, ipIds, client);
-}
-
 // ===== Commands =====
 // input: {system_id, name, app_type?, description?, fqdn?, contacts?, ips?, tags?, updated_by?}
 export async function createComponent(input, client) {
@@ -72,7 +68,7 @@ export async function createComponent(input, client) {
   const id = await withTransaction(client, async (c) => {
     const created = await SystemComponent.create({ ...data, updated_by: input.updated_by || 'admin' }, c);
     await saveRelations(created.id, links, RELATIONS, c);
-    await linkIpsToSystem(data.system_id, links.ips, c);
+    await addToSystem(data.system_id, links.ips || [], c); // a component's IPs are IPs of its system
     return created.id;
   });
   return SystemComponent.findByIdWithRelations(id);
@@ -87,25 +83,32 @@ export async function updateComponent(id, input, client) {
 
   const data = await normalize(input, current);
   const links = await resolveRelations(input, RELATIONS, { partial: true });
+  const oldIps = await SystemComponent.getIpIds(id);
   await withTransaction(client, async (c) => {
     await SystemComponent.update(id, { ...data, updated_by: input.updated_by || 'admin' }, c);
     await saveRelations(id, links, RELATIONS, c);
-    await linkIpsToSystem(data.system_id, links.ips, c);
+    // IPs taken off the component (all of them when it moves to another system)
+    // leave the old system unless another of its components uses them; the
+    // component's IPs are IPs of its (new) system.
+    const newIps = links.ips || oldIps;
+    const moved = String(data.system_id) !== String(current.system_id);
+    await releaseFromSystem(current.system_id, moved ? oldIps : oldIps.filter((ip) => !newIps.includes(ip)), c);
+    await addToSystem(data.system_id, newIps, c);
   });
   return SystemComponent.findByIdWithRelations(id);
 }
 
-// The component's IPs are unlinked from its system too; tags and pentest
-// rounds have no foreign key and are removed here.
+// The component's IPs leave its system too, unless another component of the
+// system uses them; tags and pentest rounds have no foreign key and are removed here.
 export async function deleteComponent(id) {
   const component = await SystemComponent.findById(id);
   if (!component) throw new NotFoundError('Component not found');
   const ipIds = await SystemComponent.getIpIds(id);
   const files = await withTransaction(null, async (c) => {
-    for (const ipId of ipIds) await System.removeIP(component.system_id, ipId, c);
     await SystemComponent.setTags(id, [], c);
     const removed = await removeRoundsOf('system_component', id, c);
-    await SystemComponent.delete(id, c);
+    await SystemComponent.delete(id, c); // its IP links cascade
+    await releaseFromSystem(component.system_id, ipIds, c);
     return removed;
   });
   FileUpload.unlinkFiles(files);
