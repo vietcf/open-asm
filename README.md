@@ -604,6 +604,8 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
+- 🐛 Device import: unknown device types are now auto-created (matching
+  the Add Device form behaviour) instead of failing with "Not found".
 - ✨ Backup & Restore page (`/backup`, `src/modules/backup/`): separate
   Backup section (back up now, upload, download, delete) and Restore
   section with a warning that restoring replaces the entire database and

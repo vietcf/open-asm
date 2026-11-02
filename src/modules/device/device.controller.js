@@ -98,7 +98,7 @@ export const deviceImport = excelImport({
     if (row.location && ctx.locations.length && !ctx.locations.includes(row.location)) errors.push(`Invalid location: ${row.location}. Valid values: ${ctx.locations.join(', ')}`);
 
     const missing = [];
-    row.typeId = row.type ? (await resolveNames([row.type], (n) => DeviceType.findByNameExact(n), 'Device Type', missing))[0] : null;
+    row.typeId = row.type ? (await resolveNames([row.type], (n) => DeviceType.findByNameExact(n), 'Device Type', []))[0] : null;
     row.platformId = row.platform ? (await resolveNames([row.platform], (n) => Platform.findByNameExact(n), 'Platform', missing))[0] : null;
     row.contactIds = await resolveNames(splitList(row.manager), (n) => Contact.findByEmailSearch(n), 'Manager', missing);
     row.tagIds = await resolveNames(splitList(row.tag), (n) => Tag.findByNameExact(n), 'Tag', missing);
@@ -113,6 +113,7 @@ export const deviceImport = excelImport({
   },
   duplicateKeys: (row) => ['n:' + String(row.deviceName).toLowerCase(), ...row.ipList.map((ip) => 'ip:' + ip)],
   async save(row, client, ctx) {
+    if (!row.typeId && row.type) row.typeId = (await deviceTypes.findOrCreate(row.type, client)).id;
     const note = ['Note: This IP address was automatically created from device import feature', `Device: ${row.deviceName}`,
       `Device Type: ${row.type}`, `Location: ${row.location || 'N/A'}`, `Serial: ${row.serial || 'N/A'}`, `Management: ${row.management || 'N/A'}`,
       `Manufacturer: ${row.manufacturer || 'N/A'}`, `Device Role: ${row.role || 'N/A'}`, `Description: ${row.description || 'N/A'}`].join('\n');
