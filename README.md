@@ -42,21 +42,22 @@ A comprehensive network and system management platform built with Node.js, Expre
 
 ## 📋 Prerequisites
 
-### For Docker Compose (Recommended)
-- **Docker** >= 20.0.0
-- **Docker Compose** >= 2.0.0
-
-### For Local Development
-- **Node.js** >= 22.0.0
-- **PostgreSQL** >= 15.0
-- **PM2** (for production deployment)
-- **Nginx** (recommended for reverse proxy)
-- **pg_dump** (for database backups)
-- **gzip** (for backup compression)
+- **Docker** with **Docker Compose ≥ 2.24**. Nothing else: Node.js, nginx and
+  the PostgreSQL client are in the images.
+- Only with an external database: **PostgreSQL 15**, an existing database
+  (it may be empty) and a user that owns it. (The in-app backup uses
+  `pg_dump` 15, which cannot dump a newer server.)
 
 ## 🛠️ Installation
 
-### Docker Compose Installation (Recommended)
+Two ways, one command each. Then open **https://localhost** (self-signed
+certificate: accept the browser warning) and sign in with the initial admin:
+
+```bash
+cat data/initial-admin-password.txt    # user "admin"; you choose a new password at first login
+```
+
+### A. Database in Docker (default)
 
 ```bash
 git clone https://github.com/vietcf/open-asm.git
@@ -64,46 +65,56 @@ cd open-asm
 docker compose up -d
 ```
 
-That's it — no configuration needed. Then open **https://localhost** (self-signed
-certificate: accept the browser warning) and log in with the initial admin account:
+No settings needed. PostgreSQL runs in the `openasm_db` container, its data
+in `./pgdata/`. To set the database password, do it before the first start
+(see Settings below).
+
+### B. External database
 
 ```bash
-cat data/initial-admin-password.txt
+git clone https://github.com/vietcf/open-asm.git
+cd open-asm
+cp .env.docker.sample .env.docker      # fill in the POSTGRES_* lines of the "External PostgreSQL" block
+docker compose -f docker-compose.external-db.yml up -d
 ```
 
-You must change that password at first login; the file is deleted automatically
-on the next start after that. (The password is also printed once in
-`docker compose logs app`.)
+Only the app and nginx run in Docker. A database on the Docker host itself
+is `POSTGRES_HOST=host.docker.internal`. Use the same `-f
+docker-compose.external-db.yml` with every later `docker compose` command.
 
-What happens on the first start (all automatic, all skipped on later starts):
+### Settings
 
-| Step | Result |
-|---|---|
-| Postgres starts, healthcheck waits until it accepts connections | `./pgdata/` |
-| `SESSION_SECRET` / `JWT_SECRET` generated | `./data/secrets.env` |
-| Self-signed TLS certificate generated for nginx (if `./ssl/` has none) | `./ssl/nginx-selfsigned.{crt,key}` |
-| Database schema (`migrations/migrate.js up`), then — empty database only — the init seed: roles, permissions, default configuration, initial admin | see [`migrations/README.md`](migrations/README.md) |
-| App starts; nginx starts once the app is healthy | ports 80 → 443 |
+None are required. To change one, copy `.env.docker.sample` to `.env.docker`
+and uncomment only what you change: database, initial admin, UI language,
+LDAP, S3, sign-in lockout. Defaults are in `docker/defaults.env` (do not edit
+it). Everything else is set in the app: **Administrator → System
+Configuration**. After changing `.env.docker`: `docker compose up -d` again.
 
-If anything fails the app does not start: `docker compose logs app`.
+> The database password and the initial admin are used once, on the first
+> start against an empty database. Set them before that.
 
-**Configuration (optional).** Defaults live in `docker/defaults.env`. To change
-anything — DB password, admin username/email/password, LDAP, S3, backups… —
-create `.env.docker`; every variable in it overrides the default:
+### What stays on the host
 
-```bash
-cp .env.docker.sample .env.docker   # then edit; only keep what you want to change
-docker compose up -d
-```
+| Path | Content | Keep it when upgrading |
+|---|---|---|
+| `./pgdata/` | database (case A only) | yes |
+| `./data/` | generated `SESSION_SECRET` / `JWT_SECRET`, initial admin password | yes (losing it signs everyone out and invalidates API tokens) |
+| `./public/uploads/` | uploaded files | yes |
+| `./backups/` | database backups | yes |
+| `./ssl/` | TLS certificate (self-signed one generated on the first start) | yes |
 
-> Set `POSTGRES_PASSWORD` / `ADMIN_*` **before the first start**: Postgres and
-> the admin account are created once, from the values present at that moment.
+### Common tasks
 
+- Logs / startup errors: `docker compose logs app`
 - Your own certificate: put it in `./ssl/` as `nginx-selfsigned.crt` / `nginx-selfsigned.key`, then `docker compose restart nginx`.
 - Lost the admin password: `docker compose exec app npm run admin:reset-password`
 - Cannot sign in after a restore: `docker compose exec app node migrations/tools/reset_admin_password.js [username] --disable-2fa`
-- Update to a new version: see [Upgrading an existing install](#upgrading-an-existing-install-production) below.
-- Requires Docker Compose ≥ 2.24 (for the optional `.env.docker`).
+- New version: [Upgrading an existing install](#upgrading-an-existing-install-production).
+- Server without Internet: build there from an archive, see [Docker Image Management](#docker-image-management).
+
+**Access:** web https://localhost · API docs https://localhost/api-docs ·
+pgAdmin http://localhost:8888 (case A) · PostgreSQL `127.0.0.1:5432` on the
+Docker host only (case A)
 
 ### Seed data: what runs when
 
@@ -148,6 +159,8 @@ docker compose logs app | grep migrate
 docker compose exec app npm run migrate:status
 ```
 
+- External database (case B): back it up with `docker compose -f docker-compose.external-db.yml exec app sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$POSTGRES_DB"' | gzip > backups/before-upgrade.sql.gz`
+  (or your usual tooling), and add `-f docker-compose.external-db.yml` to steps 3–5.
 - A failing migration is rolled back, the app does not start, and the log
   says why. The versions applied before it stay applied: fix the cause and
   start again, or restore the backup and check out the previous version.
@@ -159,80 +172,22 @@ docker compose exec app npm run migrate:status
   data into a fresh install instead, see
   [Data migration](migrations/README.md#data-migration-existing-install--fresh-install).
 
-**Access:**
-- Web Interface: https://localhost
-- API Documentation: https://localhost/api-docs
-- PgAdmin: http://localhost:8888
-- Postgres: `127.0.0.1:5432` on the Docker host only
+### Development
 
-### Local Development Installation
-
-1. **Install dependencies**:
 ```bash
-npm install
+docker compose -f docker-compose.yml -f docker-compose.dev.yml watch   # live code sync, no rebuild per change
 ```
 
-2. **Configure environment**:
-```bash
-cp .env.sample .env
-# Edit .env with your configuration (POSTGRES_*, ADMIN_*)
-```
-
-3. **Setup database**:
-```bash
-# Create PostgreSQL database (name must match POSTGRES_DB in .env)
-createdb openasm
-
-# Create schema and apply migrations; on this empty database also the init
-# seed: roles, permissions, configuration, initial admin (prints the
-# generated admin password once if ADMIN_PASSWORD is empty).
-# Run it again after every `git pull`: it only applies new migrations.
-npm run migrate
-```
-
-4. **Start the application**:
-```bash
-# Development
-npm run dev
-
-# Production
-npm start
-```
+Running Node directly (`npm install`, `npm run migrate`, `npm run dev`)
+also works: create `.env` from `.env.docker.sample` with `POSTGRES_HOST`
+pointing at your database and `NODE_ENV=development`.
 
 ## 🔧 Configuration
 
 ### Environment Variables
 
-Create a `.env` file with the following variables:
-
-```env
-# Database Configuration
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_DB=open_asm
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=your_password
-
-# Application Configuration
-NODE_ENV=production
-PORT=3000
-SESSION_SECRET=your_session_secret
-
-# JWT Configuration
-JWT_SECRET=your_jwt_secret
-JWT_EXPIRES_IN=24h
-
-# Backup directory (schedule and retention: System Configuration > Backup)
-BACKUP_DIR=./backups
-
-# File Upload Configuration
-UPLOAD_DIR=./public/uploads
-MAX_FILE_SIZE=10485760
-
-# SSL Configuration (for HTTPS)
-SSL_CERT_PATH=./ssl/cert.pem
-SSL_KEY_PATH=./ssl/key.pem
-```
+See [Settings](#settings): `.env.docker` (start from `.env.docker.sample`)
+over `docker/defaults.env`.
 
 ### System Configuration (admin UI)
 
@@ -259,13 +214,6 @@ Adding a setting: declare it in `src/utils/configRegistry.js` (group, type,
 limits, label), add its default to `migrations/lib/seed.js`, translate the
 label in `src/i18n/locales/vi.json`. A change to the stored format of an
 existing key needs a data migration (see `migrations/README.md`).
-
-### Docker Configuration
-
-Docker needs no configuration file: defaults come from `docker/defaults.env`,
-and an optional `.env.docker` (start from `.env.docker.sample`) overrides any of
-them. `POSTGRES_HOST` must stay `db` — the Postgres service name in
-`docker-compose.yml` — not `localhost`/`127.0.0.1`.
 
 ## 🐳 Docker Commands
 
@@ -326,23 +274,76 @@ still there.
 
 ### Logs and Monitoring
 ```bash
-# View logs
-docker compose logs -f app
+docker compose logs -f app      # app: startup, migrations, audit / application log (JSON lines)
+docker compose logs -f nginx    # web access log
 docker compose logs -f db
-docker compose logs -f nginx
-
-# Check container status
 docker compose ps
 ```
 
-All containers use the `json-file` logging driver capped at 10MB × 3 files
-(see the `x-logging` block in `docker-compose.yml`) — Docker rotates them
-automatically, no separate logrotate setup needed. Nginx logs to
-stdout/stderr (the base image's default), so they show up in
-`docker compose logs -f nginx` like any other container instead of being
-written to a host-mounted file — this is what keeps them under Docker's
-log-size cap. Database backups and old `system_log` DB rows are cleaned up
-separately by the app's own scheduled jobs (see below).
+**Size limit.** Every container uses the `json-file` driver capped at
+**10 MB × 3 files, older files compressed** (`x-logging` block at the top of
+`docker-compose.yml`; change `max-size` / `max-file` there, then
+`docker compose up -d`). Docker rotates and deletes them itself: the logs can
+never fill the disk and no logrotate is needed. Nginx logs to stdout too, so
+the same cap applies. The `system_log` table is pruned by the app
+(`log_retention_days`, see Scheduled Maintenance Jobs).
+
+**App events on the console.** Every entry of the System Log (sign-in,
+2FA, changes to users / roles / configuration, every data change, API debug
+entries) is also printed by the app container as one JSON line:
+
+```json
+{"time":"2026-11-02T08:15:02.113Z","app":"open-asm","type":"audit","category":"security","level":"warning","action":"login","status":"failed","user":"admin","user_id":null,"src_ip":"10.1.2.3","object_type":null,"object_id":null,"description":"Login failed: invalid username or password","user_agent":"Mozilla/5.0 ..."}
+```
+
+`category` is `security` or `app`; `level` is `debug`, `info`, `warning` or
+`critical`; the `log_level` setting filters the `app` category like on the
+System Log page. Other console lines (startup, migrations, errors) are plain
+text; collectors can keep only the lines that start with `{"time"`.
+
+#### Forwarding to IBM QRadar (not set up by default)
+
+Pick one; both keep the 30 MB local cap above.
+
+**1. Docker → syslog directly (simplest).** Send the app container's log to
+QRadar over syslog, in `docker-compose.yml` under `app:` (replaces
+`logging: *default-logging` for this one service):
+
+```yaml
+    logging:
+      driver: syslog
+      options:
+        syslog-address: "tcp://QRADAR_IP:514"   # udp://… also works; tcp+tls:// with syslog-tls-* options
+        syslog-format: rfc5424
+        tag: "open-asm"
+```
+
+Then `docker compose up -d`. With a non-local driver Docker keeps a local
+copy for `docker compose logs` (its "dual logging" cache, 5 × 20 MB by
+default). If QRadar is unreachable at start the container does not start:
+use `udp://`, or method 2.
+
+**2. Host agent (keeps docker logging as is).** Have rsyslog or Filebeat on the
+Docker host read
+`/var/lib/docker/containers/<app container id>/*-json.log` and forward the
+`log` field of each line to QRadar. Example for rsyslog
+(`/etc/rsyslog.d/open-asm.conf`):
+
+```
+module(load="imfile")
+input(type="imfile" File="/var/lib/docker/containers/*/*-json.log" Tag="open-asm" Severity="info" Facility="local5")
+local5.* @@QRADAR_IP:514
+```
+
+(`docker inspect -f '{{.LogPath}}' openasm_app` gives the exact file;
+restrict the glob to it if other containers run on the host.)
+
+**On the QRadar side:** add a Log Source of type *Universal DSM* (or a
+custom one) with protocol *Syslog*, identifier = the Docker host, and a
+JSON-based custom property extraction (`$.action`, `$.status`, `$.user`,
+`$.src_ip`, `$.category`, `$.level`, `$.description`). Map for example
+`action=login` + `status=failed` to an authentication-failure event, and
+`category=security` events to a higher severity.
 
 ### Scheduled Maintenance Jobs
 
@@ -351,7 +352,7 @@ all visible in `docker compose logs -f app`:
 
 | Job | Schedule | What it does | Config |
 |---|---|---|---|
-| Database backup | Daily 2:00 AM by default | `pg_dump \| gzip` to `./backups/`, keeps the N most recent scheduled backups | System Configuration > Backup (on/off, frequency, hour, number kept); `BACKUP_DIR` in `.env.docker` |
+| Database backup | Daily 2:00 AM by default | `pg_dump \| gzip` to `./backups/`, keeps the N most recent scheduled backups | System Configuration > Backup (on/off, frequency, hour, number kept) |
 | System log cleanup | Daily 2:00 AM | Deletes `system_log` DB rows older than the retention window | `log_retention_days` in System Configuration (admin UI), default 30 |
 | Temp file cleanup | Every 6 hours | Removes stale files from `public/uploads/temp` (>24h) and `public/uploads/import` (>2h) | not configurable |
 
@@ -480,63 +481,9 @@ Adding a feature: copy the shape of `src/modules/system/`, mount
 
 ### Production Deployment
 
-1. **Using Docker Compose**:
-```bash
-# Clone repository
-git clone https://github.com/vietcf/open-asm.git
-cd open-asm
-
-# Optional: override defaults (DB password, admin account, ...) BEFORE first start
-cp .env.docker.sample .env.docker
-
-# Deploy
-docker compose up -d
-```
-
-**Updating an existing deployment** (after pulling new code):
-```bash
-git pull
-docker compose up --build -d   # rebuilds/recreates the app container; it runs
-                                # migrations automatically before starting (idempotent)
-```
-
-2. **Using PM2**:
-```bash
-# Install PM2
-npm install -g pm2
-
-# Start application
-pm2 start ecosystem.config.json
-
-# Save PM2 configuration
-pm2 save
-pm2 startup
-```
-
-3. **Using Nginx**:
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-    return 301 https://$server_name$request_uri;
-}
-
-server {
-    listen 443 ssl;
-    server_name your-domain.com;
-    
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-    
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
+Same as [Installation](#-installation) (case A or B), then
+[Upgrading an existing install](#upgrading-an-existing-install-production)
+for every new version.
 
 ## 🌐 Languages (Vietnamese / English)
 
@@ -671,6 +618,23 @@ docker compose up -d app
 See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
+
+### Unreleased
+- ✨ External PostgreSQL: `docker compose -f docker-compose.external-db.yml up -d`
+  runs only the app and nginx; the `POSTGRES_*` settings go in `.env.docker`.
+- ✨ Every System Log entry is also printed by the app container as one JSON
+  line (`docker compose logs app`), for log collectors / a SIEM. README:
+  forwarding to IBM QRadar (docs only, nothing set up by default).
+- 🔧 Container logs: rotated files are now gzip-compressed (cap unchanged:
+  10 MB × 3 per container).
+- 🧹 Settings: `.env.sample` removed; `.env.docker.sample` keeps only what
+  can be changed (database, initial admin, language, secrets, sign-in
+  lockout, LDAP, S3, certificate name), all commented out. Removed from it:
+  `NODE_ENV`, `PORT`, `UPLOADS_DIR`, `BACKUP_DIR` (fixed by the container
+  and its volumes), `SITE_NAME` and backup schedule (set in the app).
+  Existing `.env.docker` files keep working.
+- 📝 README installation rewritten: case A (database in Docker) and case B
+  (external database), one command each.
 
 ### Version 1.2.2 (Latest)
 - ✨ `scripts/docker-export.sh` / `scripts/docker-import.sh`: build the

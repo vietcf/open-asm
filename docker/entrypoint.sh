@@ -4,7 +4,8 @@
 # idempotent and skipped when already done.
 #   1. SESSION_SECRET / JWT_SECRET: generated once, persisted in /app/data
 #   2. self-signed TLS certificate for nginx in /app/ssl, if none exists
-#   3. database migrations + seeds + initial admin (migrations/migrate.js up)
+#   3. database migrations (migrations/migrate.js up); on an empty database
+#      also the init seed: roles, permissions, configuration, initial admin
 #   4. exec the app (CMD, default: npm start)
 set -eu
 
