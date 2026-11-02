@@ -62,6 +62,20 @@ export async function runAndRedirect(req, res, url, action, successMessage, erro
 // Wraps an async page handler: unexpected errors go to the error page.
 export const page = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
+// "Duplicate" row action: the Add form prefilled from an existing record.
+// load(id) -> record; copy(record) -> the fields to prefill (fields that must be
+// unique, e.g. name or address, left out); render(res, copy, sourceName).
+export const duplicatePage = (listUrl, load, copy, render) => async (req, res) => {
+  try {
+    const record = await load(req.params.id);
+    const { id, created_at, updated_at, updated_by, ...rest } = record;
+    await render(res, copy(rest), record.name || record.ip_address);
+  } catch (err) {
+    req.flash('error', errorMessage(req, err));
+    res.redirect(listUrl);
+  }
+};
+
 // Select2 AJAX: ?search= -> [{id, text}]
 export const lookup = (search) => page(async (req, res) => {
   res.json(await search(String(req.query.search || '').trim()));

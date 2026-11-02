@@ -37,6 +37,7 @@ router.post('/server/import', can('server.create'), excelUpload, serverImport.im
 router.get('/download/server-validation/:filename', can('server.read'), serverImport.download);
 router.get('/server/add', can('server.create'), servers.addForm);
 router.post('/server/add', can('server.create'), servers.create);
+router.get('/server/:id/duplicate', can('server.create'), servers.duplicateForm);
 router.get('/server/:id/edit', can('server.update'), servers.editForm);
 router.post('/server/:id/edit', can('server.update'), servers.update);
 router.post('/server/:id/delete', can('server.delete'), servers.remove);

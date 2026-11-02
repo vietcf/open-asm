@@ -18,6 +18,7 @@ function mountPages(path, pages, imports, permission) {
   router.post(`${path}/validate-import`, can(`${permission}.create`), excelUpload, imports.validate);
   router.post(`${path}/import`, can(`${permission}.create`), excelUpload, imports.import);
   router.get(`${path}/add`, can(`${permission}.create`), pages.addForm);
+  if (pages.duplicateForm) router.get(`${path}/:id/duplicate`, can(`${permission}.create`), pages.duplicateForm);
   router.post(`${path}/add`, can(`${permission}.create`), pages.create);
   router.get(`${path}/:id/edit`, can(`${permission}.update`), pages.editForm);
   router.post(`${path}/:id/edit`, can(`${permission}.update`), pages.update);

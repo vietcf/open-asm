@@ -5,7 +5,7 @@ import System from '../system/system.model.js';
 import * as smService from './service-mapping.service.js';
 import { IPV4_REGEX } from './ip-address.service.js';
 import { excelImport, splitList, resolveNames } from '../../shared/excelImport.js';
-import { parseListQuery, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, runAndRedirect, page, lookup } from '../../shared/web.js';
+import { parseListQuery, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, runAndRedirect, page, lookup, duplicatePage } from '../../shared/web.js';
 import { sendExcel } from '../../utils/excelExport.js';
 
 const LIST_URL = '/network/service-mapping';
@@ -196,17 +196,9 @@ export default {
 
   addForm: page((req, res) => renderForm(res, 'add')),
 
-  // Add form prefilled from an existing mapping (another port of the same domain, etc.):
-  // name and port are cleared so the copy gets its own listener.
-  async duplicateForm(req, res) {
-    try {
-      const { id, name, port, created_at, updated_at, updated_by, ...rest } = await smService.getServiceMapping(req.params.id);
-      await renderForm(res, 'add', rest, name);
-    } catch (err) {
-      req.flash('error', errorMessage(req, err));
-      res.redirect(LIST_URL);
-    }
-  },
+  // Another port of the same domain, etc.: name and port are cleared so the copy gets its own listener
+  duplicateForm: duplicatePage(LIST_URL, smService.getServiceMapping, ({ name, port, ...rest }) => rest,
+    (res, vs, source) => renderForm(res, 'add', vs, source)),
 
   async editForm(req, res) {
     try {

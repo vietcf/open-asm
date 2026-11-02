@@ -19,6 +19,7 @@
         <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit Server' : 'Add Server') %></h3>
       </div>
       <div class="card-body">
+        <%- include('../../partials/ui/copied_from', { copiedFrom: locals.copiedFrom, hint: 'Enter a name and IP addresses for the copy.' }) %>
         <section class="form-section">
           <h4 class="form-section-title"><%= t('General information') %></h4>
           <div class="row g-3">

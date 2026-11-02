@@ -15,6 +15,7 @@
         <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit IP Address' : 'Add IP Address') %></h3>
       </div>
       <div class="card-body">
+        <%- include('../../partials/ui/copied_from', { copiedFrom: locals.copiedFrom, hint: 'Enter the new address(es).' }) %>
         <section class="form-section">
           <h4 class="form-section-title"><%= t('General information') %></h4>
           <div class="row g-3">

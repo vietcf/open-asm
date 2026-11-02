@@ -113,6 +113,9 @@
                   <td class="col-actions">
                     <div class="row-actions">
                       <button type="button" class="btn btn-sm btn-outline-secondary" title="<%= t('Detail') %>" onclick="showServerDetail(this)" data-record='<%= JSON.stringify(server) %>'><i class="bi bi-eye"></i></button>
+                      <% if (hasPermission('server.create')) { %>
+                        <a href="/server/server/<%= server.id %>/duplicate" class="btn btn-sm btn-outline-secondary" title="<%= t('Duplicate') %>"><i class="bi bi-copy"></i></a>
+                      <% } %>
                       <% if (hasPermission('server.update')) { %>
                         <a href="/server/server/<%= server.id %>/edit" class="btn btn-sm btn-outline-secondary" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
                       <% } %>

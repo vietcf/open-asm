@@ -11,7 +11,7 @@ import * as serverService from './server.service.js';
 import { IPV4_REGEX } from '../network/ip-address.service.js';
 import { assignedAddresses, ensureIpAddresses } from '../network/ip-ownership.js';
 import { excelImport, splitList, resolveNames } from '../../shared/excelImport.js';
-import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, runAndRedirect, page, lookup } from '../../shared/web.js';
+import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, runAndRedirect, page, lookup, duplicatePage } from '../../shared/web.js';
 import { sendExcel } from '../../utils/excelExport.js';
 import { pageOptions } from '../../shared/options.js';
 
@@ -44,11 +44,11 @@ const formInput = (req, mode) => {
 
 const options = (rows, text = (r) => r.name) => (rows || []).map((r) => ({ id: r.id, text: text(r) }));
 
-async function renderForm(res, mode, server = {}) {
+async function renderForm(res, mode, server = {}, copiedFrom = null) {
   const ips = server.ip_addresses || [];
   res.render('pages/server/server_form', {
     ...(await pageOptions('platforms', 'services', 'agents', 'tags')),
-    mode, server, ...(await serverService.getFormOptions()),
+    mode, server, copiedFrom, ...(await serverService.getFormOptions()),
     selected: {
       ips: options(ips.filter((ip) => ip.role !== 'vip'), (ip) => ip.ip_address),
       vips: options(ips.filter((ip) => ip.role === 'vip'), (ip) => ip.ip_address),
@@ -177,6 +177,9 @@ export default {
   }),
 
   addForm: page((req, res) => renderForm(res, 'add')),
+  // Name, IP addresses are left empty (unique to the source); VIPs are set when editing
+  duplicateForm: duplicatePage(LIST_URL, (id) => serverService.getServerWithLinks(id), ({ name, ip_addresses, ...rest }) => rest,
+    (res, server, source) => renderForm(res, 'add', server, source)),
 
   async editForm(req, res) {
     try {

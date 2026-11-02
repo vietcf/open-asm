@@ -7,7 +7,7 @@ import System from '../system/system.model.js';
 import * as ipService from './ip-address.service.js';
 import { IPV4_REGEX } from './ip-address.service.js';
 import { excelImport, splitList, resolveNames } from '../../shared/excelImport.js';
-import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, runAndRedirect, page, lookupByIds } from '../../shared/web.js';
+import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, runAndRedirect, page, lookupByIds, duplicatePage } from '../../shared/web.js';
 import { sendExcel } from '../../utils/excelExport.js';
 
 const LIST_URL = '/network/ip-address';
@@ -28,9 +28,9 @@ const formInput = (req) => {
   return { description: b.description, status: b.status ?? '', tags: b.tags ?? [], contacts: b.contacts ?? [], systems: b.systems ?? [], updated_by: actorName(req) };
 };
 
-async function renderForm(res, mode, ip = {}) {
+async function renderForm(res, mode, ip = {}, copiedFrom = null) {
   res.render('pages/network/ip_address_form', {
-    mode, ip, ...(await linkOptions()),
+    mode, ip, copiedFrom, ...(await linkOptions()),
     title: mode === 'edit' ? 'Edit IP Address' : 'Add IP Address', activeMenu: 'ip-address',
   });
 }
@@ -115,6 +115,10 @@ export default {
   }),
 
   addForm: page((req, res) => renderForm(res, 'add')),
+  // The address is left empty; an "assigned" status belongs to the source's owner
+  duplicateForm: duplicatePage(LIST_URL, ipService.getIpAddress,
+    ({ ip_address, status, ...rest }) => ({ ...rest, status: status === 'assigned' ? null : status }),
+    (res, ip, source) => renderForm(res, 'add', ip, source)),
 
   async editForm(req, res) {
     try {

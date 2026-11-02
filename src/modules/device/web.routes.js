@@ -36,6 +36,7 @@ router.post('/device/import', can('device.create'), excelUpload, deviceImport.im
 router.get('/download/device-validation/:filename', can('device.read'), deviceImport.download);
 router.get('/device/add', can('device.create'), devices.addForm);
 router.post('/device/add', can('device.create'), devices.create);
+router.get('/device/:id/duplicate', can('device.create'), devices.duplicateForm);
 router.get('/device/:id/edit', can('device.update'), devices.editForm);
 router.post('/device/:id/edit', can('device.update'), devices.update);
 router.post('/device/:id/delete', can('device.delete'), devices.remove);

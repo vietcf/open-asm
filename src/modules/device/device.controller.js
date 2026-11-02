@@ -9,7 +9,7 @@ import * as deviceService from './device.service.js';
 import { IPV4_REGEX } from '../network/ip-address.service.js';
 import { assignedAddresses, ensureIpAddresses } from '../network/ip-ownership.js';
 import { excelImport, splitList, resolveNames } from '../../shared/excelImport.js';
-import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, runAndRedirect, page, lookup } from '../../shared/web.js';
+import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, runAndRedirect, page, lookup, duplicatePage } from '../../shared/web.js';
 import { sendExcel } from '../../utils/excelExport.js';
 import { pageOptions } from '../../shared/options.js';
 
@@ -42,11 +42,11 @@ async function formInput(req, mode) {
 
 const options = (rows, text = (r) => r.name) => (rows || []).map((r) => ({ id: r.id, text: text(r) }));
 
-async function renderForm(res, mode, device = {}) {
+async function renderForm(res, mode, device = {}, copiedFrom = null) {
   const ips = device.ip_addresses || [];
   res.render('pages/device/device_form', {
     ...(await pageOptions('deviceTypes', 'platforms', 'tags')),
-    mode, device, locationOptions: await deviceService.getLocationOptions(),
+    mode, device, copiedFrom, locationOptions: await deviceService.getLocationOptions(),
     selected: {
       ips: options(ips.filter((ip) => ip.role !== 'vip'), (ip) => ip.ip_address),
       vips: options(ips.filter((ip) => ip.role === 'vip'), (ip) => ip.ip_address),
@@ -169,6 +169,9 @@ export default {
   }),
 
   addForm: page((req, res) => renderForm(res, 'add')),
+  // Name, IP addresses and serial number are left empty (unique to the source); VIPs are set when editing
+  duplicateForm: duplicatePage(LIST_URL, (id) => deviceService.getDevice(id), ({ name, serial_number, ip_addresses, ...rest }) => rest,
+    (res, device, source) => renderForm(res, 'add', device, source)),
 
   async editForm(req, res) {
     try {

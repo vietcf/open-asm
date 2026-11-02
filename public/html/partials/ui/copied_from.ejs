@@ -1,0 +1,7 @@
+<%#
+  Notice at the top of an Add form opened by the Duplicate row action.
+  include('../../partials/ui/copied_from', { copiedFrom: 'web-01', hint: 'Enter a name and IP addresses for the copy.' })
+%>
+<% if (locals.copiedFrom) { %>
+  <div class="alert alert-info py-2 small"><i class="bi bi-copy me-1"></i><%= t('Copied from {name}.', { name: copiedFrom }) %><% if (locals.hint) { %> <%= t(hint) %><% } %></div>
+<% } %>

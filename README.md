@@ -666,6 +666,14 @@ when cutting a release.
   is cached for up to 30 seconds. Migration
   `0017_system_log_debug_level.sql` adds `debug` to the level check; the
   seed adds `api_debug_log = off`.
+- ✨ **Duplicate** row action (copy icon, needs the create permission) on
+  the IP address, Server and Device lists, like Service Mapping: opens
+  the Add form prefilled from that record, with a "Copied from …"
+  notice. Fields that must be unique are left empty: the address (IP;
+  an "assigned" status is dropped too), the name and own IP addresses
+  (server, device), the serial number (device). VIPs are not copied (they
+  are set when editing). Shared helper `duplicatePage` in
+  `src/shared/web.js`, notice partial `partials/ui/copied_from.ejs`.
 - 🐛 Deleting an IP address no longer silently removes it from its
   clusters: the delete is refused with the cluster names until the IP is
   removed from them. Deleting a server / device with "delete IPs" keeps
