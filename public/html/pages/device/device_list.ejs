@@ -151,6 +151,7 @@
     if (!d) return;
     const ips = d.ip_addresses || [];
     let body = DV.section('Overview', DV.rows(
+      DV.multiline(d.description) ? DV.field('Description', DV.multiline(d.description)) : '',
       DV.field('Device Type', DV.text(d.device_type_name)),
       DV.field('Platform', DV.text(d.platform_name)),
       DV.field('Manufacturer', DV.text(d.manufacturer)),
@@ -158,8 +159,7 @@
       DV.field('Serial Number', DV.text(d.serial_number)),
       DV.field('Location', DV.text(d.location ? DV.optionLabel(LOCATION_OPTIONS, d.location) : '')),
       DV.field('Tags', DV.chips((d.tags || []).map((tg) => tg.name))),
-      DV.field('Managers', DV.contacts(d.contacts)),
-      DV.multiline(d.description) ? DV.field('Description', DV.multiline(d.description)) : ''
+      DV.field('Managers', DV.contacts(d.contacts))
     ));
     body += DV.section('Network', DV.rows(
       DV.field('Management Address', DV.text(d.management_address)),

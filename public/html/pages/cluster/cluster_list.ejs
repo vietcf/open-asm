@@ -123,8 +123,8 @@
         members.map((m) => '<tr><td>' + DV.ipLink(m.ip) + '</td><td>' + (DV.text(m.role) || DV.EMPTY) + '</td><td>' + owner(m) + '</td></tr>').join('') + '</tbody></table></div>'
       : '<p class="text-secondary small mb-0 detail-pad">' + DV.esc(t('No members')) + '</p>';
     let body = DV.section('Overview', DV.rows(
-      DV.field('Systems', DV.linkChips(c.systems || [], (s) => '/system/system?search=' + encodeURIComponent(s.name))),
-      DV.multiline(c.description) ? DV.field('Description', DV.multiline(c.description)) : ''
+      DV.multiline(c.description) ? DV.field('Description', DV.multiline(c.description)) : '',
+      DV.field('Systems', DV.linkChips(c.systems || [], (s) => '/system/system?search=' + encodeURIComponent(s.name)))
     ));
     body += DV.section('Members', table, ' <span class="badge tag ms-1">' + members.length + '</span>');
     body += DV.meta(c);

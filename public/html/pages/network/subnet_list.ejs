@@ -130,11 +130,11 @@
     const usage = '<div class="d-flex align-items-center gap-2"><div class="progress flex-grow-1" style="height:8px" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100">' +
       '<div class="progress-bar" style="width:' + pct + '%"></div></div><span class="small text-nowrap">' + s.ip_count + ' / ' + Number(s.capacity).toLocaleString('en') + ' (' + pct + '%)</span></div>';
     let body = DV.section('Overview', DV.rows(
+      DV.multiline(s.description) ? DV.field('Description', DV.multiline(s.description)) : '',
       DV.field('Zone', DV.text(s.zone) || DV.EMPTY),
       DV.field('Environment', DV.text(s.environment) || DV.EMPTY),
       DV.field('Gateway', s.gateway_ip_address ? DV.ipLink(s.gateway_ip_address) : DV.EMPTY),
-      DV.field('Tags', DV.chips((s.tags || []).map((x) => x.name))),
-      DV.multiline(s.description) ? DV.field('Description', DV.multiline(s.description)) : ''
+      DV.field('Tags', DV.chips((s.tags || []).map((x) => x.name)))
     ));
     body += DV.section('IP Addresses', DV.rows(
       DV.field('Usage', usage),

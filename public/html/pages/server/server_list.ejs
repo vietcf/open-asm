@@ -158,13 +158,13 @@
     const ips = s.ip_addresses || [];
     const opt = (key) => (s[key] ? DV.optionLabel(SERVER_OPTIONS[key], s[key]) : '');
     let body = DV.section('Overview', DV.rows(
+      DV.multiline(s.description) ? DV.field('Description', DV.multiline(s.description)) : '',
       DV.field('Status', DV.text(opt('status'))),
       DV.field('Type', DV.text(opt('type'))),
       DV.field('Location', DV.text(opt('location'))),
       DV.field('Platform', DV.text(s.platform_name)),
       DV.field('Tags', DV.chips((s.tags || []).map((tg) => tg.name))),
-      DV.field('Managers', DV.contacts(s.managers)),
-      DV.multiline(s.description) ? DV.field('Description', DV.multiline(s.description)) : ''
+      DV.field('Managers', DV.contacts(s.managers))
     ));
     body += DV.section('Network', DV.rows(
       DV.field('IP Addresses', DV.ipLinks(ips.filter((ip) => ip.role !== 'vip'))),

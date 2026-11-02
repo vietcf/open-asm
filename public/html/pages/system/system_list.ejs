@@ -176,13 +176,13 @@
     const domains = s.domains || [];
 
     let body = DV.section('Overview', DV.rows(
+      DV.multiline(s.description) ? DV.field('Description', DV.multiline(s.description)) : '',
       DV.field('Operations department (L2)', DV.unit(s.ops_department_id, s.ops_department_name)),
       DV.field('Development department (L3)', DV.unit(s.department_id, s.department_name)),
       DV.field('Alias', DV.text(DV.toArray(s.alias).join(', '))),
       DV.field('Architecture', DV.chips(s.architecture, (v) => DV.optionLabel(SYSTEM_OPTIONS.architecture, v))),
       DV.field('Tags', DV.chips((s.tags || []).map((tg) => tg.name || tg))),
-      DV.field('Managers', DV.contacts(s.contacts)),
-      DV.multiline(s.description) ? DV.field('Description', DV.multiline(s.description)) : ''
+      DV.field('Managers', DV.contacts(s.contacts))
     ));
     if (scopes.length || urls.length || domains.length) {
       body += DV.section('Access', DV.rows(
@@ -224,11 +224,11 @@
             (c.app_type ? '<span class="badge tag ms-auto">' + DV.esc(c.app_type) + '</span>' : '') +
           '</button>' +
           '<div class="collapse" id="' + id + '"><div class="detail-component-body">' + DV.rows(
+            DV.multiline(c.description) ? DV.field('Description', DV.multiline(c.description)) : '',
             DV.field('IP Addresses', DV.ipLinks(c.ips)),
             DV.field('Access URLs', DV.urlList(c.fqdn)),
             DV.field('Managers', DV.contacts(c.contacts)),
-            DV.field('Tags', DV.chips((c.tags || []).map((tg) => tg.name || tg))),
-            DV.multiline(c.description) ? DV.field('Description', DV.multiline(c.description)) : ''
+            DV.field('Tags', DV.chips((c.tags || []).map((tg) => tg.name || tg)))
           ) + (c.updated_at ? '<div class="detail-meta px-3 pb-2">' + DV.esc(t('Updated')) + ' ' + DV.esc(DV.date(c.updated_at)) + '</div>' : '') + '</div></div>' +
         '</div>';
       }).join('') + '</div>';

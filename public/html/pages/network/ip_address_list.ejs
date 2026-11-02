@@ -158,9 +158,9 @@
       (o.role === 'vip' ? ' <span class="badge text-bg-warning">VIP</span>' : '') + '</div>').join('') : DV.EMPTY;
     const sn = ip.subnet;
     let body = DV.section('Overview', DV.rows(
+      DV.multiline(ip.description) ? DV.field('Description', DV.multiline(ip.description)) : '',
       DV.field('Status', DV.text(DV.optionLabel(IP_STATUS, ip.status)) || DV.EMPTY),
-      DV.field('Server/Device', ownerHtml),
-      DV.multiline(ip.description) ? DV.field('Description', DV.multiline(ip.description)) : ''
+      DV.field('Server/Device', ownerHtml)
     ));
     body += DV.section('Subnet', sn ? DV.rows(
       DV.field('Subnet', '<a href="/network/subnet-address?search=' + encodeURIComponent(sn.address) + '" class="font-monospace">' + DV.esc(sn.address) + '</a>'),

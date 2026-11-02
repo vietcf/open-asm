@@ -129,10 +129,10 @@
     if (!c) return;
     const appType = c.app_type ? DV.optionLabel(APP_TYPE_OPTIONS, c.app_type) : '';
     let body = DV.section('Overview', DV.rows(
+      DV.multiline(c.description) ? DV.field('Description', DV.multiline(c.description)) : '',
       DV.field('System', DV.text(c.system_name)),
       DV.field('Tags', DV.chips((c.tags || []).map((tg) => tg.name || tg))),
-      DV.field('Managers', DV.contacts(c.contacts)),
-      DV.multiline(c.description) ? DV.field('Description', DV.multiline(c.description)) : ''
+      DV.field('Managers', DV.contacts(c.contacts))
     ));
     body += DV.section('Access', DV.rows(
       DV.field('Access URLs', DV.urlList(c.fqdn)),

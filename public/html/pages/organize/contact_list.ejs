@@ -124,11 +124,11 @@
     if (!c) return;
     const body = '<div class="row g-3"><div class="col-md-8">' +
       DV.section('Overview', DV.rows(
+        DV.multiline(c.description) ? DV.field('Description', DV.multiline(c.description)) : '',
         DV.field('Email', c.email ? '<a href="mailto:' + DV.esc(c.email) + '">' + DV.esc(c.email) + '</a>' : ''),
         DV.field('Phone', DV.text(c.phone)),
         DV.field('Position', DV.text(c.position ? DV.optionLabel(POSITION_OPTIONS, c.position) : '')),
-        DV.field('Organization', DV.unit(c.unit_id, c.unit_name)),
-        DV.multiline(c.description) ? DV.field('Description', DV.multiline(c.description)) : ''
+        DV.field('Organization', DV.unit(c.unit_id, c.unit_name))
       )) +
       '</div><div class="col-md-4 text-center"><div id="contactQr" class="detail-qr text-secondary small">' + DV.esc(t('Loading...')) + '</div>' +
       '<div class="small text-secondary mt-1">' + DV.esc(t('Scan to save contact')) + '</div></div></div>' + DV.meta(c);

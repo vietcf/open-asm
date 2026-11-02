@@ -152,12 +152,12 @@
     const val = (v) => DV.text(v) || DV.EMPTY;
     const end = (zone, addr, detail) => DV.rows(DV.field('Zone', val(zone)), DV.field('Address', '<span class="font-monospace">' + val(addr) + '</span>'), detail ? DV.field('Detail', DV.multiline(detail)) : '');
     let body = DV.section('Overview', DV.rows(
+      DV.multiline(r.description) ? DV.field('Description', DV.multiline(r.description)) : '',
       DV.field('Firewall Name', opt('firewall_name')), DV.field('Audit Batch', val(r.audit_batch)),
       DV.field('Action', opt('action')), DV.field('Status', opt('status')),
       DV.field('Service', val(r.services)), DV.field('Application', val(r.application)),
       r.url ? DV.field('URL', DV.urlList([r.url])) : '',
-      DV.field('OU (Unit)', val(r.ou_name)), DV.field('Work Order', val(r.work_order)),
-      DV.multiline(r.description) ? DV.field('Description', DV.multiline(r.description)) : ''
+      DV.field('OU (Unit)', val(r.ou_name)), DV.field('Work Order', val(r.work_order))
     ));
     body += DV.section('Source', end(r.src_zone, r.src, r.src_detail));
     body += DV.section('Destination', end(r.dst_zone, r.dst, r.dst_detail));

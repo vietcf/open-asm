@@ -128,12 +128,12 @@
     const a = DV.record(button);
     if (!a) return;
     let body = DV.section('Overview', DV.rows(
+      DV.multiline(a.description) ? DV.field('Description', DV.multiline(a.description)) : '',
       DV.field('Account Type', DV.esc(DV.optionLabel(ACCOUNT_TYPES, a.account_type))),
       DV.field('Management Method', DV.esc(DV.optionLabel(MANAGE_TYPES, a.manage_type))),
       DV.field('Role', DV.text(a.role && a.role.name) || DV.EMPTY),
       DV.field('Organize Unit', DV.text(a.organize && a.organize.name) || DV.EMPTY),
-      a.app_url ? DV.field('Application URL', DV.urlList([a.app_url])) : '',
-      DV.multiline(a.description) ? DV.field('Description', DV.multiline(a.description)) : ''
+      a.app_url ? DV.field('Application URL', DV.urlList([a.app_url])) : ''
     ));
     body += DV.section('Links', DV.rows(
       DV.field('Systems', DV.linkChips(a.systems || [], (s) => '/system/system?search=' + encodeURIComponent(s.name))),

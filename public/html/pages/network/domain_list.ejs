@@ -114,11 +114,11 @@
     const d = DV.record(button);
     if (!d) return;
     let body = DV.section('Overview', DV.rows(
+      DV.multiline(d.description) ? DV.field('Description', DV.multiline(d.description)) : '',
       DV.field('Record Type', DV.text(d.record_type) || DV.EMPTY),
       DV.field('IP Address', d.ip ? DV.ipLink(d.ip.ip_address) : DV.EMPTY),
       DV.field('Systems', DV.linkChips(d.systems || [], (s) => '/system/system?search=' + encodeURIComponent(s.name))),
-      DV.field('Tags', DV.chips((d.tags || []).map((x) => x.name))),
-      DV.multiline(d.description) ? DV.field('Description', DV.multiline(d.description)) : ''
+      DV.field('Tags', DV.chips((d.tags || []).map((x) => x.name)))
     ));
     DV.open('domainDetailModal', { title: d.domain, body, recordId: d.id });
   }
