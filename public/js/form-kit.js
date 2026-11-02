@@ -13,6 +13,10 @@
 //   [data-repeater-remove] (in a row)   removes its row; window.FormKit.addRow(box, fill)
 //                                       adds one from script (fill(rowElement) sets values)
 //
+// <input data-unique="server.name">    checked when left: already used? (src/utils/uniqueChecks.js)
+//   data-unique-exclude="12"            the record being edited
+//   data-unique-scope='{"system_id":"#f-system"}'  other fields the rule depends on
+//
 // <div data-attachments ...>            partials/ui/file_attachments.ejs
 //   existing files + uploads through /api/upload, kept in hidden inputs
 (function () {
@@ -124,8 +128,59 @@
     });
   }
 
+  // Unique field: when left (or a scope field changes), ask /api/unique-check.
+  // Already used -> red message with a link to that record, and the submit is
+  // blocked; the save still checks on the server.
+  function initUnique(input) {
+    const box = document.createElement('div');
+    box.className = 'small mt-1';
+    box.setAttribute('aria-live', 'polite');
+    input.insertAdjacentElement('afterend', box);
+    const initial = input.value.trim();
+    const scope = JSON.parse(input.dataset.uniqueScope || '{}');
+    let last = null;
+    let blocking = false;
+    const show = (html, ok) => {
+      box.innerHTML = html;
+      box.className = 'small mt-1 ' + (ok ? 'text-success' : 'text-danger');
+      input.classList.toggle('is-invalid', Boolean(html) && !ok);
+    };
+    const release = () => { if (blocking) { input.setCustomValidity(''); blocking = false; } };
+    async function check() {
+      const value = input.value.trim();
+      const params = new URLSearchParams({ field: input.dataset.unique, value });
+      if (input.dataset.uniqueExclude) params.set('exclude', input.dataset.uniqueExclude);
+      Object.entries(scope).forEach(([column, selector]) => params.set(`scope[${column}]`, $(selector).val() || ''));
+      const query = params.toString();
+      if (query === last) return;
+      last = query;
+      release();
+      if (!value) return show('', true);
+      try {
+        const res = await fetch('/api/unique-check?' + query, { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+        if (!res.ok) throw new Error(String(res.status));
+        const r = await res.json();
+        if (query !== last) return; // the field changed while checking
+        if (r.state === 'taken') {
+          input.setCustomValidity(tr('This value is already used'));
+          blocking = true;
+          return show('<i class="bi bi-exclamation-circle me-1"></i>' + esc(tr('Already used by: {1}').replace('{1}', r.existing.label)) +
+            ' <a href="' + esc(r.existing.url) + '" target="_blank" rel="noopener">' + esc(tr('Open')) + '</a>', false);
+        }
+        show(r.state === 'ok' && value !== initial ? '<i class="bi bi-check-circle me-1"></i>' + esc(tr('Available')) : '', true);
+      } catch (e) {
+        last = null; // could not check: the server still refuses duplicates on save
+        show('', true);
+      }
+    }
+    input.addEventListener('blur', check);
+    input.addEventListener('input', () => { if (blocking) { release(); show('', true); last = null; } });
+    Object.values(scope).forEach((selector) => $(selector).on('change', () => { if (input.value.trim()) check(); }));
+  }
+
   $(function () {
     document.querySelectorAll('select.js-select').forEach(initSelect); // template content is not in the DOM
+    document.querySelectorAll('input[data-unique]').forEach(initUnique);
     document.querySelectorAll('[data-attachments]').forEach(initAttachments);
     document.querySelectorAll('[data-repeater]').forEach(initRepeater);
   });

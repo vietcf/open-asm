@@ -21,7 +21,7 @@
               <% if (isEdit) { %>
                 <input type="text" id="f-name" class="form-control font-monospace" value="<%= p.name %>" disabled>
               <% } else { %>
-                <input type="text" id="f-name" name="name" class="form-control font-monospace" required placeholder="asset.read"
+                <input type="text" id="f-name" name="name" data-unique="permission.name" class="form-control font-monospace" required placeholder="asset.read"
                        pattern="[a-zA-Z0-9_]+\.(read|create|update|delete)">
                 <div class="form-text"><%= t('Format: resource.read | resource.create | resource.update | resource.delete') %></div>
               <% } %>

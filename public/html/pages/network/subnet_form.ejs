@@ -20,7 +20,7 @@
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label" for="f-address"><%= t('Subnet Address') %> <span class="text-danger">*</span></label>
-              <input type="text" id="f-address" <%= isEdit ? '' : 'name=address' %> class="form-control font-monospace" value="<%= s.address || '' %>"
+              <input type="text" id="f-address" <%= isEdit ? '' : 'name=address' %><%- isEdit ? '' : ' data-unique="subnet.address"' %> class="form-control font-monospace" value="<%= s.address || '' %>"
                      <%= isEdit ? 'disabled' : 'required' %> placeholder="192.168.1.0/24" pattern="\d{1,3}(\.\d{1,3}){3}/\d{1,2}">
             </div>
             <div class="col-md-6">

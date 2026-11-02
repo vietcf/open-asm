@@ -20,7 +20,7 @@
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label" for="f-username"><%= t('Account Name') %> <span class="text-danger">*</span></label>
-              <input type="text" id="f-username" name="username" class="form-control" value="<%= a.username || '' %>" maxlength="50" required>
+              <input type="text" id="f-username" name="username" data-unique="priv_account.username" data-unique-exclude="<%= a.id || '' %>" class="form-control" value="<%= a.username || '' %>" maxlength="50" required>
             </div>
             <div class="col-md-3">
               <label class="form-label" for="f-account-type"><%= t('Account Type') %> <span class="text-danger">*</span></label>
