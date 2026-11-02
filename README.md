@@ -300,17 +300,29 @@ files through `asset()` (`<%= asset('/css/custom.css') %>` adds
 right away. Use `asset()` for any new local stylesheet or script.
 
 ### Docker Image Management
+
+**Build on one machine, deploy on a server without registry / Internet
+access.** Both scripts only build / save / load images: they never start,
+stop or change a container.
+
 ```bash
-# Save Docker images
-./save-docker-images.sh
+# On the build machine (project checked out at the version to ship, e.g. v1.2.1):
+# builds openasm_app:<version> for linux/amd64 and saves it with postgres,
+# nginx and pgadmin into ./openasm_<version>_<YYYYmmdd-HHMMSS>.tar.gz + .sha256
+scripts/docker-export.sh                   # -o DIR | --app-only | --no-build | --platform linux/arm64
 
-# Or manually save specific image (tag must match the `image:` value
-# in docker-compose.yml, currently openasm_app:1.2.1)
-sudo docker save openasm_app:1.2.1 | gzip > openasm_app_1.2.1.tar.gz
-
-# Load Docker image
-sudo docker load < openasm_app_1.2.1.tar.gz
+# Copy the .tar.gz and its .sha256 to the server, then in that directory:
+scripts/docker-import.sh                   # checks the .sha256, loads the newest archive here
+scripts/docker-import.sh /path/to/openasm_1.2.1_20261102-143433.tar.gz   # or a given file
 ```
+
+"Newest" is the highest version, then the latest time in the file name.
+After the import, start the version as described in
+[Upgrading an existing install](#upgrading-an-existing-install-production)
+(`docker-compose.yml` on the server must use the same `openasm_app` tag;
+`docker compose up -d --no-build` uses the loaded image). Git Bash works on
+Windows. `save-docker-images.sh` (save every local `openasm_app` tag) is
+still there.
 
 ### Logs and Monitoring
 ```bash
