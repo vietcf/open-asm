@@ -672,7 +672,16 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.2.1 (Latest)
+### Version 1.2.2 (Latest)
+- ✨ `scripts/docker-export.sh` / `scripts/docker-import.sh`: build the
+  images on one machine and load them on a server without registry /
+  Internet access (archive `openasm_<version>_<time>.tar.gz` + `.sha256`;
+  the import loads the newest one of the current directory). They never
+  start, stop or change a container. See
+  [Docker Image Management](#docker-image-management).
+- No database migration: upgrading from 1.2.1 only needs the new image.
+
+### Version 1.2.1
 - ⬆️ **Upgrading from 1.1.0 / 1.2.0**: follow
   [Upgrading an existing install](#upgrading-an-existing-install-production)
   with `v1.2.1`. From 1.1.0 the entrypoint adopts the database and applies
