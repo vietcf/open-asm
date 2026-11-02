@@ -13,10 +13,10 @@
       <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu" data-accordion="false">
         <% if (
           hasPermission('system.read') ||
-          hasPermission('ip_address.read') || hasPermission('subnet.read') || hasPermission('domain.read') ||
+          hasPermission('ip_address.read') || hasPermission('subnet.read') || hasPermission('domain.read') || hasPermission('service_mapping.read') ||
           hasPermission('server.read') || hasPermission('service.read') || hasPermission('agent.read') ||
           hasPermission('device.read') || hasPermission('device_type.read') || hasPermission('platform.read') ||
-          hasPermission('cluster.read') || hasPermission('virtual_server.read') ||
+          hasPermission('cluster.read') ||
           hasPermission('contact.read') || hasPermission('unit.read') || hasPermission('tag.read')
         ) { %>
         <li class="nav-header"><%= t('ASSET MANAGEMENT') %></li>
@@ -48,8 +48,8 @@
         </li>
         <% } %>
         <!-- Network -->
-        <% if (hasPermission('ip_address.read') || hasPermission('subnet.read') || hasPermission('domain.read')) { %>
-        <li class="nav-item<%= isMenuOpen(['ip-address', 'subnet-address', 'domain']) ? ' menu-open' : '' %>">
+        <% if (hasPermission('ip_address.read') || hasPermission('subnet.read') || hasPermission('domain.read') || hasPermission('service_mapping.read')) { %>
+        <li class="nav-item<%= isMenuOpen(['ip-address', 'subnet-address', 'domain', 'service-mapping']) ? ' menu-open' : '' %>">
           <a href="#" class="nav-link">
             <i class="nav-icon bi bi-diagram-3"></i>
             <p>
@@ -57,7 +57,7 @@
               <i class="nav-arrow bi bi-chevron-right"></i>
             </p>
           </a>
-          <ul class="nav nav-treeview"<%= isMenuOpen(['ip-address', 'subnet-address', 'domain']) ? ' style="display: block;"' : '' %>>
+          <ul class="nav nav-treeview"<%= isMenuOpen(['ip-address', 'subnet-address', 'domain', 'service-mapping']) ? ' style="display: block;"' : '' %>>
             <% if (hasPermission('ip_address.read')) { %>
             <li class="nav-item">
               <a href="/network/ip-address" class="nav-link<%= (activeMenu === 'ip-address') ? ' active' : '' %>">
@@ -79,6 +79,14 @@
               <a href="/network/domain" class="nav-link<%= (activeMenu === 'domain') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'domain') ? ' text-primary' : '' %>"></i>
                 <p><%= t('Domain') %></p>
+              </a>
+            </li>
+            <% } %>
+            <% if (hasPermission('service_mapping.read')) { %>
+            <li class="nav-item">
+              <a href="/network/service-mapping" class="nav-link<%= (activeMenu === 'service-mapping') ? ' active' : '' %>">
+                <i class="nav-icon bi bi-circle<%= (activeMenu === 'service-mapping') ? ' text-primary' : '' %>"></i>
+                <p><%= t('Service Mapping') %></p>
               </a>
             </li>
             <% } %>
@@ -124,16 +132,16 @@
         </li>
         <% } %>
         <!-- Device Management -->
-        <% if (hasPermission('device.read') || hasPermission('device_type.read') || hasPermission('platform.read') || hasPermission('virtual_server.read')) { %>
-        <li class="nav-item<%= isMenuOpen(['device', 'device-type', 'device-platform', 'virtual-server']) ? ' menu-open' : '' %>">
-          <a href="#" class="nav-link<%= isMenuOpen(['device', 'device-type', 'device-platform', 'virtual-server']) ? ' active' : '' %>" style="<%= isMenuOpen(['device', 'device-type', 'device-platform', 'virtual-server']) ? 'background-color: #495057;' : '' %>">
+        <% if (hasPermission('device.read') || hasPermission('device_type.read') || hasPermission('platform.read')) { %>
+        <li class="nav-item<%= isMenuOpen(['device', 'device-type', 'device-platform']) ? ' menu-open' : '' %>">
+          <a href="#" class="nav-link<%= isMenuOpen(['device', 'device-type', 'device-platform']) ? ' active' : '' %>" style="<%= isMenuOpen(['device', 'device-type', 'device-platform']) ? 'background-color: #495057;' : '' %>">
             <i class="nav-icon bi bi-cpu"></i>
             <p>
               <%= t('Device') %>
               <i class="nav-arrow bi bi-chevron-right"></i>
             </p>
           </a>
-          <ul class="nav nav-treeview"<%= isMenuOpen(['device', 'device-type', 'device-platform', 'virtual-server']) ? ' style="display: block;"' : '' %>>
+          <ul class="nav nav-treeview"<%= isMenuOpen(['device', 'device-type', 'device-platform']) ? ' style="display: block;"' : '' %>>
             <% if (hasPermission('device.read')) { %>
             <li class="nav-item">
               <a href="/device/device" class="nav-link<%= (activeMenu === 'device') ? ' active' : '' %>">
@@ -155,14 +163,6 @@
               <a href="/device/platform" class="nav-link<%= (activeMenu === 'device-platform') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'device-platform') ? ' text-primary' : '' %>"></i>
                 <p><%= t('Device Platform') %></p>
-              </a>
-            </li>
-            <% } %>
-            <% if (hasPermission('virtual_server.read')) { %>
-            <li class="nav-item">
-              <a href="/device/virtual-server" class="nav-link<%= (activeMenu === 'virtual-server') ? ' active' : '' %>">
-                <i class="nav-icon bi bi-circle<%= (activeMenu === 'virtual-server') ? ' text-primary' : '' %>"></i>
-                <p><%= t('Virtual Server') %></p>
               </a>
             </li>
             <% } %>

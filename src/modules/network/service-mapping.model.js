@@ -1,32 +1,38 @@
 import { pool } from '../../../config/config.js';
 import { db, Where, jsonList } from '../../shared/db.js';
 
-const COLUMNS = ['name', 'domain', 'provider', 'ip_address', 'port', 'protocol', 'device_id', 'description', 'updated_by'];
+const COLUMNS = ['name', 'domain', 'provider', 'ip_address', 'port', 'protocol', 'direction', 'scope', 'access_mode', 'allowed_ips', 'device_id', 'system_id', 'description', 'updated_by'];
 
 const SELECT_WITH_LINKS = `
   SELECT vs.*,
-    dev.name AS device_name,
-    ${jsonList('srv', { server_id: 'srv.id', server_name: 'srv.name', port: 'm.port', weight: 'm.weight', status: 'm.status' })} AS members
+    dev.name AS device_name, sys.name AS system_name,
+    ${jsonList('srv', { server_id: 'srv.id', server_name: 'srv.name', port: 'm.port', status: 'm.status' })} AS members
   FROM virtual_servers vs
   LEFT JOIN devices dev ON dev.id = vs.device_id
+  LEFT JOIN systems sys ON sys.id = vs.system_id
   LEFT JOIN virtual_server_members m ON m.virtual_server_id = vs.id
   LEFT JOIN servers srv ON srv.id = m.server_id`;
-const GROUP_BY = 'GROUP BY vs.id, dev.name';
+const GROUP_BY = 'GROUP BY vs.id, dev.name, sys.name';
 
-function filterWhere({ search = '', protocol, provider, device_id }) {
+function filterWhere({ search = '', protocol, provider, device_id, system_id, direction, scope, access_mode }) {
   const w = new Where();
   w.search(search, [
     'vs.name ILIKE ?', 'vs.domain ILIKE ?', 'vs.ip_address ILIKE ?', 'vs.provider ILIKE ?',
     'EXISTS (SELECT 1 FROM devices x WHERE x.id = vs.device_id AND x.name ILIKE ?)',
+    'EXISTS (SELECT 1 FROM systems x WHERE x.id = vs.system_id AND x.name ILIKE ?)',
     'EXISTS (SELECT 1 FROM virtual_server_members x JOIN servers s ON s.id = x.server_id WHERE x.virtual_server_id = vs.id AND s.name ILIKE ?)',
   ]);
   if (protocol) w.add(`vs.protocol = ${w.param(protocol)}`);
   if (provider) w.add(`vs.provider = ${w.param(provider)}`);
   if (device_id) w.add(`vs.device_id = ${w.param(Number(device_id))}`);
+  if (direction) w.add(`vs.direction = ${w.param(direction)}`);
+  if (scope) w.add(`vs.scope = ${w.param(scope)}`);
+  if (access_mode) w.add(`vs.access_mode = ${w.param(access_mode)}`);
+  if (system_id) w.add(`vs.system_id = ${w.param(Number(system_id))}`);
   return w;
 }
 
-class VirtualServer {
+class ServiceMapping {
   static async create(data, client) {
     const cols = COLUMNS.filter((c) => data[c] !== undefined);
     const vals = cols.map((c) => data[c]);
@@ -118,8 +124,8 @@ class VirtualServer {
     await ex.query('DELETE FROM virtual_server_members WHERE virtual_server_id = $1', [vsId]);
     for (const m of members || []) {
       await ex.query(
-        'INSERT INTO virtual_server_members (virtual_server_id, server_id, port, weight, status) VALUES ($1, $2, $3, $4, $5)',
-        [vsId, m.server_id, m.port || null, m.weight || 1, m.status || 'active']);
+        'INSERT INTO virtual_server_members (virtual_server_id, server_id, port, status) VALUES ($1, $2, $3, $4)',
+        [vsId, m.server_id, m.port || null, m.status || 'active']);
     }
   }
 
@@ -133,4 +139,4 @@ class VirtualServer {
   }
 }
 
-export default VirtualServer;
+export default ServiceMapping;

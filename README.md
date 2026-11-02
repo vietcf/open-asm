@@ -604,12 +604,24 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
-- ✨ Virtual Server management (`/device/virtual-server`): track frontend
-  listeners (domain/IP + port) and their backend servers, supporting
-  direct, CDN (Akamai, Cloudflare) and LB device scenarios. Full CRUD,
-  Excel import/export, detail modal, sidebar under Device Management.
-  Migration `0010_virtual_servers.sql` adds `virtual_servers` and
-  `virtual_server_members` tables.
+- ✨ Service Mapping (`/network/service-mapping`): map an endpoint
+  (domain / IP + port) to the servers behind it. Each mapping has a
+  **direction** (inbound: clients → our servers; outbound: our servers →
+  an external destination) and a **scope** (public: Internet; private:
+  NAT private IP over VPN, MPLS or another private channel). Optional
+  owning System, Provider / Channel (Akamai, Cloudflare, VPN, MPLS, …),
+  LB / Firewall / NAT device, and **access** Full or Limited to a list of
+  allowed source IPs / CIDRs (e.g. Akamai allow-list). Servers carry
+  their port and an active / inactive status. Full CRUD, Excel
+  import/export, filters, detail modal with a flow diagram that follows
+  the direction, sidebar under Network. Migrations:
+  `0010_virtual_servers.sql` (tables `virtual_servers`,
+  `virtual_server_members`), `0011_rename_virtual_server_permissions.sql`
+  (`virtual_server.*` → `service_mapping.*`),
+  `0012_service_mapping_direction_scope.sql` (existing rows become
+  inbound / public), `0013_service_mapping_system_access.sql` (system,
+  access mode and allowed IPs; drops member weight; member statuses
+  other than active become inactive).
 - 🐛 Device import: unknown device types are now auto-created (matching
   the Add Device form behaviour) instead of failing with "Not found".
 - ✨ Backup & Restore page (`/backup`, `src/modules/backup/`): separate
