@@ -1,33 +1,27 @@
 import { pool } from '../../../config/config.js';
-import { db, Where, replaceLinks, replaceTags, jsonList } from '../../shared/db.js';
+import { db, Where, replaceLinks, replaceTags, subList } from '../../shared/db.js';
 
 // IP with links, owners (devices/servers with role 'normal' or 'vip') and the
-// most specific subnet containing it.
+// most specific subnet containing it. One subquery per list (no join fan-out).
 const SELECT_WITH_LINKS = `
   SELECT ip.*,
-    ${jsonList('t', { id: 't.id', name: 't.name' })} AS tags,
-    ${jsonList('c', { id: 'c.id', name: 'c.name', email: 'c.email', phone: 'c.phone' })} AS contacts,
-    ${jsonList('s', { id: 's.id', name: 's.name', system_id: 's.system_id' })} AS systems,
-    ${jsonList('d', { id: 'd.id', name: 'd.name', role: 'di.role' })} AS devices,
-    ${jsonList('srv', { id: 'srv.id', name: 'srv.name', role: 'svi.role' })} AS servers,
+    ${subList({ id: 't.id', name: 't.name' },
+      "FROM tag_object tobj JOIN tags t ON t.id = tobj.tag_id WHERE tobj.object_type = 'ip_address' AND tobj.object_id = ip.id", 't.id')} AS tags,
+    ${subList({ id: 'c.id', name: 'c.name', email: 'c.email', phone: 'c.phone' },
+      'FROM ip_contact ic JOIN contacts c ON c.id = ic.contact_id WHERE ic.ip_id = ip.id', 'c.id')} AS contacts,
+    ${subList({ id: 's.id', name: 's.name', system_id: 's.system_id' },
+      'FROM system_ip si JOIN systems s ON s.id = si.system_id WHERE si.ip_id = ip.id', 's.id')} AS systems,
+    ${subList({ id: 'd.id', name: 'd.name', role: 'di.role' },
+      'FROM device_ip di JOIN devices d ON d.id = di.device_id WHERE di.ip_id = ip.id', 'd.id')} AS devices,
+    ${subList({ id: 'srv.id', name: 'srv.name', role: 'svi.role' },
+      'FROM server_ip svi JOIN servers srv ON srv.id = svi.server_id WHERE svi.ip_id = ip.id', 'srv.id')} AS servers,
     sn.subnet
   FROM ip_addresses ip
-  LEFT JOIN tag_object tobj ON tobj.object_type = 'ip_address' AND tobj.object_id = ip.id
-  LEFT JOIN tags t ON t.id = tobj.tag_id
-  LEFT JOIN ip_contact ic ON ic.ip_id = ip.id
-  LEFT JOIN contacts c ON c.id = ic.contact_id
-  LEFT JOIN system_ip si ON si.ip_id = ip.id
-  LEFT JOIN systems s ON s.id = si.system_id
-  LEFT JOIN device_ip di ON di.ip_id = ip.id
-  LEFT JOIN devices d ON d.id = di.device_id
-  LEFT JOIN server_ip svi ON svi.ip_id = ip.id
-  LEFT JOIN servers srv ON srv.id = svi.server_id
   LEFT JOIN LATERAL (
     SELECT jsonb_build_object('id', x.id, 'address', x.address, 'description', x.description, 'zone', x.zone,
       'environment', x.environment, 'prefix_length', masklen(x.address)) AS subnet
     FROM subnets x WHERE x.address >>= ip.ip_address::inet ORDER BY masklen(x.address) DESC LIMIT 1
   ) sn ON TRUE`;
-const GROUP_BY = 'GROUP BY ip.id, sn.subnet';
 
 // device / server = primary owner (legacy single-owner fields kept for the API)
 function withOwners(row) {
@@ -99,12 +93,12 @@ class IpAddress {
   }
 
   static async findByIdWithDetails(id) {
-    const result = await pool.query(`${SELECT_WITH_LINKS} WHERE ip.id = $1 ${GROUP_BY}`, [id]);
+    const result = await pool.query(`${SELECT_WITH_LINKS} WHERE ip.id = $1`, [id]);
     return withOwners(result.rows[0]);
   }
 
   static async findByAddressWithDetails(address) {
-    const result = await pool.query(`${SELECT_WITH_LINKS} WHERE ip.ip_address = $1 ${GROUP_BY}`, [address]);
+    const result = await pool.query(`${SELECT_WITH_LINKS} WHERE ip.ip_address = $1`, [address]);
     return withOwners(result.rows[0]);
   }
 
@@ -117,7 +111,7 @@ class IpAddress {
     const { page = 1, pageSize = 10 } = filter;
     const w = filterWhere(filter);
     const result = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY ip.updated_at DESC, ip.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `${SELECT_WITH_LINKS} WHERE ${w} ORDER BY ip.updated_at DESC, ip.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return result.rows.map(withOwners);

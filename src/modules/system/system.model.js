@@ -1,5 +1,5 @@
 import { pool } from '../../../config/config.js';
-import { db, Where, NONE, replaceLinks, replaceTags, jsonList } from '../../shared/db.js';
+import { db, Where, NONE, replaceLinks, replaceTags, subList } from '../../shared/db.js';
 
 // department_id = development department (L3), ops_department_id = operations department (L2)
 const COLUMNS = ['system_id', 'name', 'level', 'department_id', 'ops_department_id', 'alias', 'description', 'fqdn', 'scopes', 'architecture', 'updated_by'];
@@ -150,32 +150,28 @@ class System {
       SELECT s.*,
         u.name AS department_name,
         uo.name AS ops_department_name,
-        ${jsonList('t', { id: 't.id', name: 't.name' })} AS tags,
-        ${jsonList('c', { id: 'c.id', name: 'c.name', email: 'c.email' })} AS contacts,
-        ${jsonList('ip', { id: 'ip.id', ip: 'ip.ip_address', server_name: 'srv.name', subnet_zone: 'sub.zone', subnet_environment: 'sub.environment' })} AS ip_addresses,
-        ${jsonList('d', { id: 'd.id', domain: 'd.domain' })} AS domains,
-        ${jsonList('f', { id: 'f.id', name: 'f.original_name', url: 'f.file_path' })} AS docs
+        ${subList({ id: 't.id', name: 't.name' },
+          "FROM tag_object tobj JOIN tags t ON t.id = tobj.tag_id WHERE tobj.object_type = 'system' AND tobj.object_id = s.id", 't.id')} AS tags,
+        ${subList({ id: 'c.id', name: 'c.name', email: 'c.email' },
+          'FROM system_contact sc JOIN contacts c ON c.id = sc.contact_id WHERE sc.system_id = s.id', 'c.id')} AS contacts,
+        ${subList({ id: 'ip.id', ip: 'ip.ip_address', server_name: 'srv.name', subnet_zone: 'sub.zone', subnet_environment: 'sub.environment' },
+          `FROM system_ip sip JOIN ip_addresses ip ON ip.id = sip.ip_id
+           LEFT JOIN server_ip svi ON svi.ip_id = ip.id AND svi.role = 'normal'
+           LEFT JOIN servers srv ON srv.id = svi.server_id
+           LEFT JOIN LATERAL (
+             SELECT zone, environment FROM subnets x
+             WHERE x.address >>= ip.ip_address::inet
+             ORDER BY masklen(x.address) DESC LIMIT 1
+           ) sub ON true
+           WHERE sip.system_id = s.id`, 'ip.id')} AS ip_addresses,
+        ${subList({ id: 'd.id', domain: 'd.domain' },
+          'FROM system_domain sd JOIN domains d ON d.id = sd.domain_id WHERE sd.system_id = s.id', 'd.id')} AS domains,
+        ${subList({ id: 'f.id', name: 'f.original_name', url: 'f.file_path' },
+          "FROM file_uploads f WHERE f.object_type = 'system' AND f.object_id = s.id", 'f.id')} AS docs
       FROM systems s
       LEFT JOIN units u ON s.department_id = u.id
       LEFT JOIN units uo ON s.ops_department_id = uo.id
-      LEFT JOIN tag_object tobj ON tobj.object_type = 'system' AND tobj.object_id = s.id
-      LEFT JOIN tags t ON t.id = tobj.tag_id
-      LEFT JOIN system_contact sc ON sc.system_id = s.id
-      LEFT JOIN contacts c ON c.id = sc.contact_id
-      LEFT JOIN system_ip sip ON sip.system_id = s.id
-      LEFT JOIN ip_addresses ip ON ip.id = sip.ip_id
-      LEFT JOIN server_ip svi ON svi.ip_id = ip.id AND svi.role = 'normal'
-      LEFT JOIN servers srv ON srv.id = svi.server_id
-      LEFT JOIN LATERAL (
-        SELECT zone, environment FROM subnets sub
-        WHERE sub.address >>= ip.ip_address::inet
-        ORDER BY masklen(sub.address) DESC LIMIT 1
-      ) sub ON true
-      LEFT JOIN system_domain sd ON sd.system_id = s.id
-      LEFT JOIN domains d ON d.id = sd.domain_id
-      LEFT JOIN file_uploads f ON f.object_type = 'system' AND f.object_id = s.id
       WHERE ${w}
-      GROUP BY s.id, u.name, uo.name
       ORDER BY s.updated_at DESC
       LIMIT ${limit} OFFSET ${offset}
     `, w.params);

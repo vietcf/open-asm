@@ -1,30 +1,24 @@
 import { pool } from '../../../config/config.js';
-import { db, Where, NONE, replaceLinks, replaceTags, jsonList } from '../../shared/db.js';
+import { db, Where, NONE, replaceLinks, replaceTags, subList } from '../../shared/db.js';
 
 // Server with platform and every link. ip_addresses carry role ('normal' or 'vip').
+// One subquery per list (no join fan-out, no GROUP BY).
 const SELECT_WITH_LINKS = `
   SELECT s.*, p.name AS platform_name, p.description AS os_description,
-    ${jsonList('ip', { id: 'ip.id', ip_address: 'ip.ip_address', description: 'ip.description', status: 'ip.status', role: 'svi.role' })} AS ip_addresses,
-    ${jsonList('t', { id: 't.id', name: 't.name', description: 't.description' })} AS tags,
-    ${jsonList('c', { id: 'c.id', name: 'c.name', email: 'c.email', phone: 'c.phone' })} AS managers,
-    ${jsonList('sys', { id: 'sys.id', name: 'sys.name', system_id: 'sys.system_id' })} AS systems,
-    ${jsonList('sv', { id: 'sv.id', name: 'sv.name', description: 'sv.description' })} AS services,
-    ${jsonList('ag', { id: 'ag.id', name: 'ag.name', version: 'ag.version', description: 'ag.description' })} AS agents
+    ${subList({ id: 'ip.id', ip_address: 'ip.ip_address', description: 'ip.description', status: 'ip.status', role: 'svi.role' },
+      'FROM server_ip svi JOIN ip_addresses ip ON ip.id = svi.ip_id WHERE svi.server_id = s.id', 'ip.id')} AS ip_addresses,
+    ${subList({ id: 't.id', name: 't.name', description: 't.description' },
+      "FROM tag_object tobj JOIN tags t ON t.id = tobj.tag_id WHERE tobj.object_type = 'server' AND tobj.object_id = s.id", 't.id')} AS tags,
+    ${subList({ id: 'c.id', name: 'c.name', email: 'c.email', phone: 'c.phone' },
+      'FROM server_contact sc JOIN contacts c ON c.id = sc.contact_id WHERE sc.server_id = s.id', 'c.id')} AS managers,
+    ${subList({ id: 'sys.id', name: 'sys.name', system_id: 'sys.system_id' },
+      'FROM server_system ss JOIN systems sys ON sys.id = ss.system_id WHERE ss.server_id = s.id', 'sys.id')} AS systems,
+    ${subList({ id: 'sv.id', name: 'sv.name', description: 'sv.description' },
+      'FROM server_services sss JOIN services sv ON sv.id = sss.service_id WHERE sss.server_id = s.id', 'sv.id')} AS services,
+    ${subList({ id: 'ag.id', name: 'ag.name', version: 'ag.version', description: 'ag.description' },
+      'FROM server_agents sa JOIN agents ag ON ag.id = sa.agent_id WHERE sa.server_id = s.id', 'ag.id')} AS agents
   FROM servers s
-  LEFT JOIN platforms p ON p.id = s.os_id
-  LEFT JOIN server_ip svi ON svi.server_id = s.id
-  LEFT JOIN ip_addresses ip ON ip.id = svi.ip_id
-  LEFT JOIN tag_object tobj ON tobj.object_type = 'server' AND tobj.object_id = s.id
-  LEFT JOIN tags t ON t.id = tobj.tag_id
-  LEFT JOIN server_contact sc ON sc.server_id = s.id
-  LEFT JOIN contacts c ON c.id = sc.contact_id
-  LEFT JOIN server_system ss ON ss.server_id = s.id
-  LEFT JOIN systems sys ON sys.id = ss.system_id
-  LEFT JOIN server_services sss ON sss.server_id = s.id
-  LEFT JOIN services sv ON sv.id = sss.service_id
-  LEFT JOIN server_agents sa ON sa.server_id = s.id
-  LEFT JOIN agents ag ON ag.id = sa.agent_id`;
-const GROUP_BY = 'GROUP BY s.id, p.name, p.description';
+  LEFT JOIN platforms p ON p.id = s.os_id`;
 
 // REST detail shape: os as an object
 function withOs(row) {
@@ -82,7 +76,7 @@ class Server {
   }
 
   static async findById(id, client) {
-    const res = await db(client).query(`${SELECT_WITH_LINKS} WHERE s.id = $1 ${GROUP_BY}`, [id]);
+    const res = await db(client).query(`${SELECT_WITH_LINKS} WHERE s.id = $1`, [id]);
     return res.rows[0] || null;
   }
 
@@ -97,7 +91,7 @@ class Server {
     if (name) w.add(`s.name = ${w.param(name)}`);
     if (ip_address) w.add(`EXISTS (SELECT 1 FROM server_ip x JOIN ip_addresses i ON i.id = x.ip_id WHERE x.server_id = s.id AND i.ip_address = ${w.param(ip_address)})`);
     if (!w.clauses.length) return [];
-    const res = await pool.query(`${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY s.updated_at DESC`, w.params);
+    const res = await pool.query(`${SELECT_WITH_LINKS} WHERE ${w} ORDER BY s.updated_at DESC`, w.params);
     return res.rows.map(withOs);
   }
 
@@ -115,7 +109,7 @@ class Server {
     const { page = 1, pageSize = 10 } = filter;
     const w = filterWhere(filter);
     const res = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY s.updated_at DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `${SELECT_WITH_LINKS} WHERE ${w} ORDER BY s.updated_at DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return res.rows;

@@ -497,3 +497,15 @@ textarea.form-control { min-height: 6rem; }
 .dashboard-tile-label { display: block; font-size: .8125rem; color: var(--bs-secondary-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dashboard-bar + .dashboard-bar { margin-top: .625rem; }
 .dashboard-bar .progress { height: .5rem; }
+
+/* Selects become Select2 controls only once the page scripts have run
+   (form-kit.js). Until then keep them at the finished control's height and
+   invisible, so the form does not jump (a multi-select is a tall list box) and
+   no raw option list flashes. If the scripts fail they show again after 2s. */
+select.js-select:not(.select2-hidden-accessible) {
+  height: calc(1.5em + .75rem + 2px);
+  overflow: hidden;
+  opacity: 0;
+  animation: js-select-reveal 0s 2s forwards;
+}
+@keyframes js-select-reveal { to { opacity: 1; } }

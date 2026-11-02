@@ -653,7 +653,29 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.3.1 (Latest)
+### Version 1.3.2 (Latest)
+- ⬆️ Upgrading from 1.3.x: new image; migration `0021` only adds indexes.
+- ⚡ Faster pages. The server and system lists (and their edit forms) took
+  about 0.7-0.9 s in the database: PostgreSQL JIT-compiled their queries,
+  for about 1 ms of real work. Now:
+  - JIT is off for the app's own connections (`options: '-c jit=off'` in
+    `config/config.js`; no change to the PostgreSQL configuration, also for an
+    external database). Server list 905 → ~20 ms, system list 818 → ~5 ms,
+    privileged accounts 522 → ~3 ms (whole page handler, warm).
+  - The server, system, IP address, device and privileged-account queries read
+    each list (IPs, tags, contacts, systems, services, agents…) with its own
+    subquery (`subList()` in `src/shared/db.js`) instead of joining all of
+    them at once, which multiplied rows and made the planner expect millions
+    of rows. Same results (checked record by record against the old queries);
+    with JIT forced on they now take < 1 ms instead of 0.7 s.
+  - Migration `0021_link_table_indexes.sql`: indexes on the link tables those
+    subqueries look up (`tag_object`, `system_ip`, `system_contact`,
+    `file_uploads`, `priv_user_*`).
+  - Edit forms no longer jump while loading: selects keep their final height
+    until Select2 is ready (they show again after 2 s if scripts fail), and
+    the unused ApexCharts library (500 KB) is no longer loaded on every page.
+
+### Version 1.3.1
 - No database migration: upgrading from 1.3.0 only needs the new image.
 - 🐛 Sharper text: the Source Sans 3 medium / semibold / bold faces (500,
   600, 700) are now declared in `public/css/source-sans-3.css` (the files

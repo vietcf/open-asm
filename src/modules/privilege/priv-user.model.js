@@ -1,24 +1,21 @@
 // Privileged accounts (priv_users) with unit, role, contacts, systems and servers.
 import { pool } from '../../../config/config.js';
-import { db, Where, replaceLinks, jsonList } from '../../shared/db.js';
+import { db, Where, replaceLinks, subList } from '../../shared/db.js';
 
+// One subquery per list (no join fan-out, no GROUP BY).
 const SELECT_WITH_LINKS = `
   SELECT pu.*,
     CASE WHEN u.id IS NULL THEN NULL ELSE jsonb_build_object('id', u.id, 'name', u.name) END AS organize,
     CASE WHEN r.id IS NULL THEN NULL ELSE jsonb_build_object('id', r.id, 'name', r.name) END AS role,
-    ${jsonList('c', { id: 'c.id', name: 'c.name', email: 'c.email' })} AS contacts,
-    ${jsonList('s', { id: 's.id', name: 's.name' })} AS systems,
-    ${jsonList('srv', { id: 'srv.id', name: 'srv.name' })} AS servers
+    ${subList({ id: 'c.id', name: 'c.name', email: 'c.email' },
+      'FROM priv_user_contacts puc JOIN contacts c ON c.id = puc.contact_id WHERE puc.user_id = pu.id', 'c.id')} AS contacts,
+    ${subList({ id: 's.id', name: 's.name' },
+      'FROM priv_user_systems pus JOIN systems s ON s.id = pus.system_id WHERE pus.user_id = pu.id', 's.id')} AS systems,
+    ${subList({ id: 'srv.id', name: 'srv.name' },
+      'FROM priv_user_servers pusv JOIN servers srv ON srv.id = pusv.server_id WHERE pusv.user_id = pu.id', 'srv.id')} AS servers
   FROM priv_users pu
   LEFT JOIN units u ON u.id = pu.organize_id
-  LEFT JOIN priv_roles r ON r.id = pu.role_id
-  LEFT JOIN priv_user_contacts puc ON puc.user_id = pu.id
-  LEFT JOIN contacts c ON c.id = puc.contact_id
-  LEFT JOIN priv_user_systems pus ON pus.user_id = pu.id
-  LEFT JOIN systems s ON s.id = pus.system_id
-  LEFT JOIN priv_user_servers pusv ON pusv.user_id = pu.id
-  LEFT JOIN servers srv ON srv.id = pusv.server_id`;
-const GROUP_BY = 'GROUP BY pu.id, u.id, r.id';
+  LEFT JOIN priv_roles r ON r.id = pu.role_id`;
 
 // filter: {search, system_ids[], organize_id, contact_ids[], account_type[], manage_type[]}
 function filterWhere({ search = '', system_ids = [], organize_id, contact_ids = [], account_type = [], manage_type = [] }) {
@@ -58,7 +55,7 @@ class PrivUser {
   }
 
   static async findById(id) {
-    const result = await pool.query(`${SELECT_WITH_LINKS} WHERE pu.id = $1 ${GROUP_BY}`, [id]);
+    const result = await pool.query(`${SELECT_WITH_LINKS} WHERE pu.id = $1`, [id]);
     return result.rows[0] || null;
   }
 
@@ -71,7 +68,7 @@ class PrivUser {
     const { page = 1, pageSize = 10 } = filter;
     const w = filterWhere(filter);
     const result = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY pu.updated_at DESC, pu.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `${SELECT_WITH_LINKS} WHERE ${w} ORDER BY pu.updated_at DESC, pu.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return result.rows;
