@@ -1,7 +1,19 @@
 import { pool } from '../../../config/config.js';
 import { db, Where, replaceTags, jsonList } from '../../shared/db.js';
 
-const IP_OR_CIDR = /^\d{1,3}(\.\d{1,3}){3}(\/\d{1,2})?$/;
+// Full IP (1.2.3.4) or CIDR (1.2.3.0/24)
+const FULL_IP = /^\d{1,3}(\.\d{1,3}){3}$/;
+const FULL_CIDR = /^\d{1,3}(\.\d{1,3}){3}\/\d{1,2}$/;
+
+// Search mode: 'ip' (find containing subnets), 'cidr' (find containing or
+// contained), or 'text' (ILIKE on address, description, zone, environment).
+// Partial numeric prefixes like "10.0.0" or "10." fall into 'text'.
+function searchMode(q) {
+  if (!q) return 'text';
+  if (FULL_CIDR.test(q)) return 'cidr';
+  if (FULL_IP.test(q)) return 'ip';
+  return 'text';
+}
 
 // Subnet with gateway IP, tags and the number of IP records inside it
 const SELECT_WITH_LINKS = `
@@ -15,11 +27,20 @@ const SELECT_WITH_LINKS = `
 const GROUP_BY = 'GROUP BY s.id, gw.ip_address';
 
 // filter: {search, tags[], zone, environment}; zone / environment accept NONE.
-// A search that looks like an IP or CIDR finds the subnets containing it.
+// - full IP: subnets containing it, smallest (most specific) first
+// - CIDR: subnets containing OR contained by it, smallest containing first
+// - text (including partial like "10.0."): ILIKE on address/description/zone/env
 function filterWhere({ search = '', tags = [], zone, environment }) {
   const w = new Where();
-  if (search && IP_OR_CIDR.test(search)) w.add(`s.address >>= ${w.param(search)}::inet`);
-  else w.search(search, ['s.address::text ILIKE ?', 's.description ILIKE ?', 's.zone ILIKE ?', 's.environment ILIKE ?']);
+  const mode = searchMode(search);
+  if (mode === 'ip') {
+    w.add(`s.address >>= ${w.param(search)}::inet`);
+  } else if (mode === 'cidr') {
+    const p = w.param(search);
+    w.add(`(s.address >>= ${p}::inet OR s.address <<= ${p}::inet)`);
+  } else {
+    w.search(search, ['s.address::text ILIKE ?', 's.description ILIKE ?', 's.zone ILIKE ?', 's.environment ILIKE ?']);
+  }
   if (tags.length) w.add(`EXISTS (SELECT 1 FROM tag_object x WHERE x.object_type = 'subnet' AND x.object_id = s.id AND x.tag_id = ANY(${w.param(tags.map(Number))}))`);
   for (const [col, value] of [['zone', zone], ['environment', environment]]) {
     if (value) w.anyOf([value], (v) => `s.${col} = ${w.param(v[0])}`, `COALESCE(s.${col}, '') = ''`);
@@ -86,8 +107,8 @@ class Subnet {
   static async findFilteredList(filter = {}) {
     const { page = 1, pageSize = 10, search = '' } = filter;
     const w = filterWhere(filter);
-    // an IP / CIDR search lists the most specific subnet first
-    const order = search && IP_OR_CIDR.test(search) ? 'masklen(s.address) DESC' : 's.updated_at DESC, s.id DESC';
+    const mode = searchMode(search);
+    const order = mode === 'ip' || mode === 'cidr' ? 'masklen(s.address) DESC' : 's.updated_at DESC, s.id DESC';
     const result = await pool.query(
       `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY ${order} LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
