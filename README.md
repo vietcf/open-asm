@@ -619,6 +619,9 @@ when cutting a release.
   converts existing rows; also a `migrate:data` step). Deleting a system,
   component or system attachment likewise removes files only after the
   transaction commits.
+- 🐛 With `FILE_UPLOAD_DRIVER=s3` the upload middleware was a Promise, not a
+  middleware, so form uploads (pentest report, system attachments) failed;
+  it now resolves the S3 handler on first use.
 - ♻️ Dashboard moved to `pages/dashboard/dashboard.ejs` on the kit; only
   the sections the user may read are queried (one query for all tile
   counts, top subnets ranked in SQL). New Pentest Rounds tile; IP status

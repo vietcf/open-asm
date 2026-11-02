@@ -37,8 +37,8 @@ function fileFilter(req, file, cb) {
 function createUploadMiddleware({ fieldName = 'file', folder = 'misc', maxCount = 10 } = {}) {
   let storage;
   if (FILE_UPLOAD_DRIVER === 's3') {
-    // Dynamic import for ESM compatibility
-    return (async () => {
+    // Dynamic import for ESM compatibility: the multer handler is built on first use
+    const ready = (async () => {
       const multerS3 = (await import('multer-s3')).default;
       const AWS = (await import('aws-sdk')).default;
       AWS.config.update({
@@ -59,6 +59,8 @@ function createUploadMiddleware({ fieldName = 'file', folder = 'misc', maxCount 
       const upload = multer({ storage, fileFilter, limits: { fileSize: MAX_FILE_SIZE } });
       return upload.array(fieldName, maxCount);
     })();
+    ready.catch(() => {}); // reported per request below, not as an unhandled rejection
+    return (req, res, next) => ready.then((handler) => handler(req, res, next)).catch(next);
   } else {
     storage = multer.diskStorage({
       destination: function (req, file, cb) {
