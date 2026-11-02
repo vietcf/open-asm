@@ -22,7 +22,7 @@ export async function seedPermissionsAndRoles(db) {
     'role', 'permission',
     'configuration', 'system_log',
     'priv_account', 'priv_role', 'priv_permission', 'rule', 'pentest', 'cluster',
-    'backup'
+    'virtual_server', 'backup'
   ];
   const actions = ['create', 'read', 'update', 'delete'];
   const permissionValues = [];

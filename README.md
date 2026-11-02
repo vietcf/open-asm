@@ -604,6 +604,12 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
+- ✨ Virtual Server management (`/device/virtual-server`): track frontend
+  listeners (domain/IP + port) and their backend servers, supporting
+  direct, CDN (Akamai, Cloudflare) and LB device scenarios. Full CRUD,
+  Excel import/export, detail modal, sidebar under Device Management.
+  Migration `0010_virtual_servers.sql` adds `virtual_servers` and
+  `virtual_server_members` tables.
 - 🐛 Device import: unknown device types are now auto-created (matching
   the Add Device form behaviour) instead of failing with "Not found".
 - ✨ Backup & Restore page (`/backup`, `src/modules/backup/`): separate

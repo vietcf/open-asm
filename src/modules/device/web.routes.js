@@ -1,6 +1,7 @@
-// Web routes of the Device module (devices, device types, platforms), mounted at /device.
+// Web routes of the Device module (devices, device types, platforms, virtual servers), mounted at /device.
 import express from 'express';
 import devices, { deviceImport } from './device.controller.js';
+import virtualServers, { virtualServerImport } from './virtual-server.controller.js';
 import DeviceType from './device-type.model.js';
 import Platform from './platform.model.js';
 import deviceTypes from './device-type.service.js';
@@ -40,6 +41,19 @@ router.get('/device/:id/edit', can('device.update'), devices.editForm);
 router.post('/device/:id/edit', can('device.update'), devices.update);
 router.post('/device/:id/delete', can('device.delete'), devices.remove);
 
+// Virtual Servers
+router.get('/virtual-server', can('virtual_server.read'), virtualServers.list);
+router.get('/virtual-server/export', can('virtual_server.read'), virtualServers.export);
+router.get('/virtual-server/template', can('virtual_server.create'), virtualServerImport.template);
+router.post('/virtual-server/validate-import', can('virtual_server.create'), excelUpload, virtualServerImport.validate);
+router.post('/virtual-server/import', can('virtual_server.create'), excelUpload, virtualServerImport.import);
+router.get('/download/virtual-server-validation/:filename', can('virtual_server.read'), virtualServerImport.download);
+router.get('/virtual-server/add', can('virtual_server.create'), virtualServers.addForm);
+router.post('/virtual-server/add', can('virtual_server.create'), virtualServers.create);
+router.get('/virtual-server/:id/edit', can('virtual_server.update'), virtualServers.editForm);
+router.post('/virtual-server/:id/edit', can('virtual_server.update'), virtualServers.update);
+router.post('/virtual-server/:id/delete', can('virtual_server.delete'), virtualServers.remove);
+
 // Catalogs
 mountCatalogPages(router, '/type', typePages, 'device_type', can);
 mountCatalogPages(router, '/platform', platformPages, 'platform', can);
@@ -52,5 +66,7 @@ router.get('/api/device-type', typePages.lookup);
 router.get('/api/device-type/ids', typePages.lookupByIds);
 router.get('/api/platform', platformPages.lookup);
 router.get('/api/platform/ids', platformPages.lookupByIds);
+router.get('/api/virtual-server', virtualServers.lookup);
+router.get('/api/provider', virtualServers.providers);
 
 export default router;
