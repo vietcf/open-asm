@@ -383,58 +383,70 @@ driver (see Logs and Monitoring above), not by an app-level job.
 
 ## 📊 API Documentation
 
-### Base URL
-- **Development**: http://localhost:3000/api/v1
-- **Production**: https://localhost/api/v1
+REST API under **`/api/v1`**, JSON in and out. The full reference is the
+**Swagger UI at https://localhost/api-docs** (sign in to the web app first):
+every endpoint with its parameters, bodies, responses and a "Try it out"
+button. The same short guide as below is at the top of that page.
+
+### Using Swagger UI
+
+1. Open **/api-docs** (web sign-in required) and expand **Auth → POST /api/v1/auth/login**.
+2. **Try it out**, enter a local account's username / password, **Execute**: copy the `token`.
+3. Click **Authorize** (top right), paste the token (without `Bearer`), **Authorize**.
+   It is kept when the page is reloaded; **Logout** in that dialog removes it.
+4. Expand any endpoint → **Try it out** → **Execute**: the request is sent with the
+   token; the page shows the `curl` equivalent and the response.
+
+Use the filter box to find an endpoint by tag. Sections follow the menu:
+Auth, System, Component, Server, Services, Agents, Device, Device Types,
+Platforms, Cluster, IPAddress, Subnet, Domain, Rule, PentestRound, Contact,
+OrganizationUnit, Tags.
 
 ### Authentication
-All API endpoints require JWT authentication:
 
 ```bash
-# Login to get token
-curl -X POST https://localhost/api/v1/auth/login \
+# 1. token (local account whose first-login password change is done; LDAP accounts cannot get one)
+curl -k -X POST https://localhost/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin123"}'
+  -d '{"username": "api-user", "password": "..."}'
+# -> {"token": "eyJhbGciOi..."}
 
-# Use token in requests
-curl -X GET https://localhost/api/v1/systems \
-  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+# 2. every other call
+curl -k https://localhost/api/v1/systems?page=1&pageSize=20 \
+  -H "Authorization: Bearer eyJhbGciOi..."
 ```
 
-### Available Endpoints
+- The token lasts `JWT_EXPIRES_IN` (default `8h`, see `.env.docker.sample`) and
+  carries the user's permissions **as they were at login**: after a role change,
+  log in again. Use a dedicated account with only the permissions it needs.
+- 401 = missing / invalid / expired token, 403 = permission missing.
+- `-k`: the default certificate is self-signed.
 
-#### Systems API
-- `GET /api/v1/systems` - List all systems
-- `POST /api/v1/systems` - Create new system
-- `GET /api/v1/systems/:id` - Get system by ID
-- `PUT /api/v1/systems/:id` - Update system
-- `DELETE /api/v1/systems/:id` - Delete system
-- `GET /api/v1/systems/find?name=system_name` - Find systems by name
+### Conventions
 
-#### Components API
-- `GET /api/v1/components` - List all components
-- `POST /api/v1/components` - Create new component
-- `GET /api/v1/components/:id` - Get component by ID
-- `PUT /api/v1/components/:id` - Update component
-- `DELETE /api/v1/components/:id` - Delete component
-- `GET /api/v1/components/find?name=component_name` - Find components by name
+| Topic | Rule |
+|---|---|
+| Lists | `?search=&page=1&pageSize=10` (max 100) → `{"data": [...], "pagination": {"page", "pageSize", "totalCount", "totalPages", "hasNext", "hasPrev"}}`; filters per endpoint (see Swagger) |
+| Update | `PUT /…/{id}` is partial: fields left out keep their value; a link list that is sent (`tags`, `contacts`, `systems`…) replaces the current links |
+| Errors | 400 validation · 401 token · 403 permission · 404 not found · 409 conflict (duplicate, or still in use). Body `{"success": false, "message": "…"}`, or `{"error": "…"}` for auth, IP addresses, subnets, domains |
+| Configured values | status / type / location / position… are values of a System Configuration list; `GET /…/config` (devices, servers, ip-addresses, contacts, rules) returns the values that can be set. A retired value is refused, except the record's current value sent back unchanged |
+| Deletes | refused (409) while the record is used, e.g. an IP address assigned to a server or used by a cluster / service mapping |
+| Debugging | System Configuration › Security & Logs › **API debug log** = on logs every request with its JSON body (secrets masked) in the System Log, level debug |
 
-#### Other APIs
-- **Devices**: `/api/v1/devices`
-- **Servers**: `/api/v1/servers`
-- **IP Addresses**: `/api/v1/ip-addresses`
-- **Subnets**: `/api/v1/subnets`
-- **Domains**: `/api/v1/domains`
-- **Firewall Rules**: `/api/v1/rules`
-- **Contacts**: `/api/v1/contacts`
-- **Users**: `/api/v1/users`
+### Resources
 
-### API Features
-- **Partial Updates**: Use PATCH or PUT with only changed fields
-- **Pagination**: `?page=1&pageSize=10`
-- **Search**: `?search=keyword`
-- **Filtering**: `?tags[]=1&tags[]=2`
-- **Sorting**: `?sort=name&order=asc`
+`/auth/login` · `/systems` · `/components` · `/servers` · `/services` ·
+`/agents` · `/devices` · `/device-types` · `/platforms` · `/clusters` ·
+`/ip-addresses` · `/subnets` · `/domains` · `/rules` · `/pentest-rounds` ·
+`/contacts` · `/units` · `/tags` — 110 operations, all documented in Swagger.
+
+### Keeping the docs right
+
+Each module documents its routes in JSDoc `@swagger` blocks in
+`src/modules/<module>/api.routes.js`, next to the route; shared parts
+(security scheme, tags and their order, the guide above, the `Rule` schema)
+are in `src/api/swagger.js`. Every new or changed route updates its block in
+the same commit. The UI is built from these blocks when the app starts.
 
 ## 🔐 Security
 
@@ -641,7 +653,25 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.3.0 (Latest)
+### Version 1.3.1 (Latest)
+- No database migration: upgrading from 1.3.0 only needs the new image.
+- 🐛 Sharper text: the Source Sans 3 medium / semibold / bold faces (500,
+  600, 700) are now declared in `public/css/source-sans-3.css` (the files
+  were already in `public/css/files/`). Headings, labels and table headers
+  were drawn with bold synthesized by the browser from the regular face,
+  which looked blurry.
+- 📝 Swagger (`/api-docs`): a usage guide at the top of the page (token,
+  conventions, errors, configured values, debug log), sections ordered and all
+  described, token kept across reloads. Fixed: the firewall `Rule` schema was
+  missing from the served spec (broken references) and `GET /systems/find`,
+  `GET /components/find` were sent without the token from "Try it out"; login
+  is marked public. Descriptions of configured fields explain retired values;
+  `GET /contacts/config` returns active positions only, like the other
+  `/config` endpoints. README "API Documentation" rewritten (the listed
+  `/users` endpoint, PATCH and `?sort=` never existed). Checked: the 110
+  routes of `/api/v1` are all documented, no documented path is missing.
+
+### Version 1.3.0
 - ⬆️ Upgrading from 1.2.x: back up, check out `v1.3.0`, build and start
   ([Upgrading an existing install](#upgrading-an-existing-install-production)).
   Migration `0020` runs; the lines it prints list option values that were

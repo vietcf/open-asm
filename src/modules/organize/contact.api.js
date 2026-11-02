@@ -1,6 +1,7 @@
 // REST: /api/v1/contacts
 import * as contactService from './contact.service.js';
 import { apiHandler, apiPage, handleServiceError } from '../../shared/api.js';
+import { toValueLabel } from '../../shared/service.js';
 
 export default {
   // List / search: ?query=&page=&pageSize= (no query = every contact)
@@ -19,10 +20,10 @@ export default {
     res.json({ success: true, data, count: data.length });
   }, handleServiceError),
 
-  // Allowed values of the enum fields
+  // Values that can be set (retired ones left out)
   getConfig: apiHandler(async (req, res) => {
     const positions = await contactService.getPositionOptions();
-    res.json({ success: true, data: { position: positions.map((o) => ({ value: o.id, label: o.text })) } });
+    res.json({ success: true, data: { position: toValueLabel(positions) } });
   }, handleServiceError),
 
   getContactById: apiHandler(async (req, res) => {
