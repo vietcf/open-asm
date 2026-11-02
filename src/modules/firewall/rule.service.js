@@ -59,8 +59,12 @@ async function normalize(input, current = null) {
   const options = await getRuleOptions();
   for (const field of Object.keys(OPTION_FIELDS)) {
     if (!data[field]) continue;
+    if (current && data[field] === current[field]) continue; // unchanged: kept even when retired
     const value = canonical(options[field], data[field]);
     if (options[field].length && !value) throw new ValidationError('Invalid {field} value: {value}').withParams({ field, value: data[field] });
+    if (value && options[field].find((o) => o.id === value).inactive) {
+      throw new ValidationError('{value} is no longer in use for {label}').withParams({ value, label: field });
+    }
     if (value) data[field] = value;
   }
   if (!current || hasKey(input, 'ou_id')) {

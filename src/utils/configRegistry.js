@@ -7,7 +7,11 @@
 //   number    integer >= min
 //   select    one of `choices`
 //   int_list  comma-separated positive integers, unique, ascending ("10,20,50")
-//   options   option list, stored as JSON [{"value","label"}, ...]
+//   options   option list, stored as JSON [{"value","label"}, ...]; an item
+//             with "active": false is retired: records keep it, it can no
+//             longer be chosen. `usedBy` lists the table columns holding its
+//             values (multi: a JSONB array of values), for the usage counts
+//             and the "replace with" of the editor (src/utils/optionUsage.js).
 //
 // Only the keys listed here can be written from the UI (there is no raw
 // key/value editor). `label` / `help` are English i18n keys.
@@ -42,55 +46,55 @@ export const CONFIG_GROUPS = [
   {
     id: 'system', section: 'Assets', label: 'System', icon: 'bi-list-ul',
     fields: [
-      { key: 'system_level', type: 'options', label: 'System levels' },
-      { key: 'system_user_scope', type: 'options', label: 'User scopes' },
-      { key: 'system_arch', type: 'options', label: 'Architectures' },
-      { key: 'system_app_type', type: 'options', label: 'Component app types' },
+      { key: 'system_level', type: 'options', usedBy: [{ table: 'systems', column: 'level', label: 'Systems' }], label: 'System levels' },
+      { key: 'system_user_scope', type: 'options', usedBy: [{ table: 'systems', column: 'scopes', multi: true, label: 'Systems' }], label: 'User scopes' },
+      { key: 'system_arch', type: 'options', usedBy: [{ table: 'systems', column: 'architecture', multi: true, label: 'Systems' }], label: 'Architectures' },
+      { key: 'system_app_type', type: 'options', usedBy: [{ table: 'system_components', column: 'app_type', label: 'Components' }], label: 'Component app types' },
     ],
   },
   {
     id: 'server-device', section: 'Assets', label: 'Server & Device', icon: 'bi-hdd-stack',
     fields: [
-      { key: 'server_type', type: 'options', label: 'Server types' },
-      { key: 'server_status', type: 'options', label: 'Server statuses' },
+      { key: 'server_type', type: 'options', usedBy: [{ table: 'servers', column: 'type', label: 'Servers' }], label: 'Server types' },
+      { key: 'server_status', type: 'options', usedBy: [{ table: 'servers', column: 'status', label: 'Servers' }], label: 'Server statuses' },
       { key: 'device_status', type: 'options', label: 'Device statuses' },
-      { key: 'device_location', type: 'options', label: 'Locations', help: 'Used by servers and devices' },
+      { key: 'device_location', type: 'options', usedBy: [{ table: 'servers', column: 'location', label: 'Servers' }, { table: 'devices', column: 'location', label: 'Devices' }], label: 'Locations', help: 'Used by servers and devices' },
     ],
   },
   {
     id: 'network', section: 'Assets', label: 'Network', icon: 'bi-diagram-3',
     fields: [
       { key: 'ip_address_type', type: 'options', label: 'IP address types' },
-      { key: 'ip_address_status', type: 'options', label: 'IP address statuses' },
-      { key: 'network_domain_record_type', type: 'options', label: 'DNS record types' },
+      { key: 'ip_address_status', type: 'options', usedBy: [{ table: 'ip_addresses', column: 'status', label: 'IP addresses' }], label: 'IP address statuses' },
+      { key: 'network_domain_record_type', type: 'options', usedBy: [{ table: 'domains', column: 'record_type', label: 'Domains' }], label: 'DNS record types' },
     ],
   },
   {
     id: 'firewall', section: 'Security', label: 'Firewall', icon: 'bi-bricks',
     fields: [
-      { key: 'firewall_name', type: 'options', label: 'Firewall names' },
-      { key: 'firewall_rule_action', type: 'options', label: 'Rule actions' },
-      { key: 'firewall_rule_status', type: 'options', label: 'Rule statuses' },
-      { key: 'firewall_rule_violation_type', type: 'options', label: 'Violation types' },
+      { key: 'firewall_name', type: 'options', usedBy: [{ table: 'rulefirewall', column: 'firewall_name', label: 'Firewall rules' }], label: 'Firewall names' },
+      { key: 'firewall_rule_action', type: 'options', usedBy: [{ table: 'rulefirewall', column: 'action', label: 'Firewall rules' }], label: 'Rule actions' },
+      { key: 'firewall_rule_status', type: 'options', usedBy: [{ table: 'rulefirewall', column: 'status', label: 'Firewall rules' }], label: 'Rule statuses' },
+      { key: 'firewall_rule_violation_type', type: 'options', usedBy: [{ table: 'rulefirewall', column: 'violation_type', label: 'Firewall rules' }], label: 'Violation types' },
     ],
   },
   {
     id: 'priv-account', section: 'Security', label: 'Privileged Accounts', icon: 'bi-key',
     fields: [
-      { key: 'priv_account_type', type: 'options', label: 'Account types' },
-      { key: 'priv_account_manage_type', type: 'options', label: 'Management methods' },
+      { key: 'priv_account_type', type: 'options', usedBy: [{ table: 'priv_users', column: 'account_type', label: 'Privileged accounts' }], label: 'Account types' },
+      { key: 'priv_account_manage_type', type: 'options', usedBy: [{ table: 'priv_users', column: 'manage_type', label: 'Privileged accounts' }], label: 'Management methods' },
     ],
   },
   {
     id: 'organization', section: 'Assets', label: 'Organization', icon: 'bi-people',
     fields: [
-      { key: 'contact_position', type: 'options', label: 'Contact positions' },
+      { key: 'contact_position', type: 'options', usedBy: [{ table: 'contacts', column: 'position', label: 'Contacts' }], label: 'Contact positions' },
     ],
   },
   {
     id: 'pentest', section: 'Security', label: 'Pentest', icon: 'bi-bug',
     fields: [
-      { key: 'pentest_status', type: 'options', label: 'Pentest statuses' },
+      { key: 'pentest_status', type: 'options', usedBy: [{ table: 'pentest_rounds', column: 'status', label: 'Pentest rounds' }], label: 'Pentest statuses' },
     ],
   },
 ];
@@ -106,7 +110,7 @@ export function fieldFor(key) {
   return FIELDS.get(key) || null;
 }
 
-// Stored text -> [{value, label}]. Also reads the older shapes still found
+// Stored text -> [{value, label, active?: false}]. Also reads the older shapes still found
 // in databases created before migration 0004 ({levels: [...]}, {key}, plain
 // strings, comma-separated text).
 export function parseOptions(text) {
@@ -121,7 +125,9 @@ export function parseOptions(text) {
     .map(item => {
       if (item !== null && typeof item === 'object') {
         const value = String(item.value ?? item.key ?? '').trim();
-        return { value, label: String(item.label ?? value).trim() || value };
+        const option = { value, label: String(item.label ?? value).trim() || value };
+        if (item.active === false) option.active = false;
+        return option;
       }
       const value = String(item ?? '').trim();
       return { value, label: value };
@@ -195,7 +201,7 @@ export function validateField(field, raw, storedValues = new Set()) {
         if (CONTROL_CHARS.test(label)) return { error: '{field} has an invalid value', params: {} };
         if (seen.has(value)) return { error: '{field}: duplicate value "{value}"', params: { value } };
         seen.add(value);
-        out.push({ value, label });
+        out.push(item.active === false ? { value, label, active: false } : { value, label });
       }
       return { value: JSON.stringify(out) };
     }

@@ -44,9 +44,7 @@
               <label class="form-label" for="f-level"><%= t('Level') %></label>
               <select id="f-level" name="level" class="form-select js-select" data-placeholder="<%= t('Select level') %>">
                 <option value=""></option>
-                <% (levelOptions || []).forEach(function (o) { %>
-                  <option value="<%= o.id %>" <%= String(s.level) === String(o.id) ? 'selected' : '' %>><%= o.text %></option>
-                <% }) %>
+                <%- ui.options(levelOptions, s.level) %>
               </select>
             </div>
             <div class="col-md-8">
@@ -73,17 +71,13 @@
             <div class="col-md-6">
               <label class="form-label" for="f-scopes"><%= t('Scope user access') %></label>
               <select id="f-scopes" name="scopes[]" class="form-select js-select" multiple data-placeholder="<%= t('Select scopes (optional)') %>">
-                <% (scopeOptions || []).forEach(function (o) { %>
-                  <option value="<%= o.id %>" <%= has(s.scopes, o.id) ? 'selected' : '' %>><%= o.text %></option>
-                <% }) %>
+                <%- ui.options(scopeOptions, s.scopes) %>
               </select>
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-architecture"><%= t('Architecture') %></label>
               <select id="f-architecture" name="architecture[]" class="form-select js-select" multiple data-placeholder="<%= t('Select architecture types (optional)') %>">
-                <% (architectureOptions || []).forEach(function (o) { %>
-                  <option value="<%= o.id %>" <%= has(s.architecture, o.id) ? 'selected' : '' %>><%= o.text %></option>
-                <% }) %>
+                <%- ui.options(architectureOptions, s.architecture) %>
               </select>
             </div>
             <div class="col-12">

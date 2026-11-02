@@ -52,9 +52,7 @@
                 <label class="form-label small"><%= t('Position') %></label>
                 <select name="position" class="form-select js-filter" data-placeholder="<%= t('All') %>">
                   <option value=""></option>
-                  <% (positionOptions || []).forEach(function (o) { %>
-                    <option value="<%= o.id %>" <%= filterPosition === o.id ? 'selected' : '' %>><%= o.text %></option>
-                  <% }); %>
+                  <%- ui.options(positionOptions, filterPosition, { all: true }) %>
                 </select>
               </div>
             </div>

@@ -5,7 +5,7 @@ import IpAddress from './ip-address.model.js';
 import Tag from '../organize/tag.model.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
-import { hasKey, toNullableString, loadOptions, resolveRelations, saveRelations } from '../../shared/service.js';
+import { hasKey, toNullableString, loadOptions, assertOption, resolveRelations, saveRelations } from '../../shared/service.js';
 
 const RELATIONS = {
   systems: { label: 'system', exists: (id) => System.exists(id), save: (id, ids, c) => Domain.setSystems(id, ids, c) },
@@ -47,11 +47,14 @@ export async function createDomain(input, client) {
   if (!name) throw new ValidationError('Domain name is required');
   if (await Domain.findByDomain(name)) throw new ConflictError('Domain already exists');
   const ip_id = await ipIdOf(input.ip_id);
+  const record_type = recordTypeOf(input.record_type);
+  // a given type must be choosable; the default 'A' is not checked (as before)
+  if (toNullableString(input.record_type)) await assertOption('network_domain_record_type', record_type, 'record type');
   const relations = await resolveRelations(input, RELATIONS);
 
   try {
     const id = await withTransaction(client, async (c) => {
-      const d = await Domain.create({ domain: name, description: toNullableString(input.description), ip_id, record_type: recordTypeOf(input.record_type) }, c);
+      const d = await Domain.create({ domain: name, description: toNullableString(input.description), ip_id, record_type }, c);
       await saveRelations(d.id, relations, RELATIONS, c);
       return d.id;
     });
@@ -68,6 +71,7 @@ export async function updateDomain(id, input, client) {
   const ip_id = hasKey(input, 'ip_id') ? await ipIdOf(input.ip_id) : current.ip_id;
   const description = hasKey(input, 'description') ? toNullableString(input.description) : current.description;
   const record_type = hasKey(input, 'record_type') ? recordTypeOf(input.record_type) : current.record_type;
+  if (hasKey(input, 'record_type')) await assertOption('network_domain_record_type', record_type, 'record type', current.record_type);
   const relations = await resolveRelations(input, RELATIONS, { partial: true });
 
   await withTransaction(client, async (c) => {

@@ -35,7 +35,7 @@
     updated: ui.date(r.updated_at),
   })[key];
   const filterSelect = (name, label, list) => `<div class="col-md-3"><label class="form-label small">${t(label)}</label>
-    <select name="${name}" class="form-select js-filter" multiple data-placeholder="${t('All')}">${ui.options(list, f[name])}</select></div>`;
+    <select name="${name}" class="form-select js-filter" multiple data-placeholder="${t('All')}">${ui.options(list, f[name], { all: true })}</select></div>`;
 %>
 <%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'Firewall Rule' }] }) %>
 

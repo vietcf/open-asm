@@ -24,31 +24,45 @@ export const toNullableString = (value) => (typeof value === 'string' ? value.tr
 
 export const hasKey = (input, key) => Object.prototype.hasOwnProperty.call(input, key);
 
-// Option list stored in the configuration table as [{value, label}],
-// returned as {id, text} (the shape the views and Select2 use).
+// Option list stored in the configuration table as [{value, label, active?}],
+// returned as {id, text, inactive?} (the shape the views and Select2 use).
+// Retired values (active: false) are included, flagged inactive: records keep
+// showing their label, and ui.options() / DV hide them from the choices.
 export async function loadOptions(configKey) {
   try {
     const config = await Configuration.findById(configKey);
     const parsed = config && config.value ? JSON.parse(config.value) : null;
     if (Array.isArray(parsed)) {
-      return parsed.map(item => (typeof item === 'object'
-        ? { id: String(item.value), text: String(item.label ?? item.value) }
-        : { id: String(item), text: String(item) }));
+      return parsed.map(item => {
+        if (typeof item !== 'object' || item === null) return { id: String(item), text: String(item) };
+        const option = { id: String(item.value), text: String(item.label ?? item.value) };
+        if (item.active === false) option.inactive = true;
+        return option;
+      });
     }
   } catch (e) { /* unreadable value: no options */ }
   return [];
 }
 
-// {id, text} options as the REST config endpoints return them: [{value, label}]
-export const toValueLabel = (options) => options.map((o) => ({ value: o.id, label: o.text }));
+// Options that can still be chosen
+export const activeOptions = (options) => options.filter((o) => !o.inactive);
 
-// Value must be one of the configured options; no options configured = no restriction.
-export async function assertOption(configKey, value, label) {
+// {id, text} options as the REST config endpoints return them: [{value, label}],
+// choosable values only
+export const toValueLabel = (options) => activeOptions(options).map((o) => ({ value: o.id, label: o.text }));
+
+// A value set on a record must be a choosable option of the list. `current`:
+// the record's stored value, accepted unchanged even when it has been retired
+// or removed from the list since (saving a form must never drop it). An empty
+// list accepts anything.
+export async function assertOption(configKey, value, label, current) {
   if (value === undefined || value === null || value === '') return;
+  if (current !== undefined && current !== null && String(value) === String(current)) return;
   const options = await loadOptions(configKey);
-  if (options.length && !options.some(o => o.id === String(value))) {
-    throw new ValidationError(`Invalid ${label}: ${value}`);
-  }
+  if (!options.length) return;
+  const found = options.find(o => o.id === String(value));
+  if (!found) throw new ValidationError(`Invalid ${label}: ${value}`);
+  if (found.inactive) throw new ValidationError('{value} is no longer in use for {label}').withParams({ value, label });
 }
 
 // Throws listing every id for which existsFn resolves false.

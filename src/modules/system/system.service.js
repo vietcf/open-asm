@@ -62,18 +62,21 @@ const blankToNull = (v) => (v === undefined || v === null || v === '' ? null : v
 
 async function assertLevel(level) {
   if (level === null) return;
-  const options = await getLevelOptions();
-  if (!options.some((o) => o.id === String(level))) throw new ValidationError(`Invalid level: ${level}`);
+  const found = (await getLevelOptions()).find((o) => o.id === String(level));
+  if (!found) throw new ValidationError(`Invalid level: ${level}`);
+  if (found.inactive) throw new ValidationError('{value} is no longer in use for {label}').withParams({ value: level, label: 'level' });
 }
 async function assertDepartment(id) {
   if (id !== null) await assertIdsExist([id], (x) => Unit.exists(x), 'department (unit)');
 }
-// Scopes / architecture outside the configured options are dropped, not rejected.
-async function keepConfigured(values, loader) {
+// Scopes / architecture outside the choosable options are dropped, not rejected;
+// values the record already has (`kept`) stay, even when retired since.
+async function keepConfigured(values, loader, kept) {
   const list = toStringList(values);
   if (!list.length) return null;
-  const allowed = (await loader()).map((o) => o.id);
-  const valid = list.filter((v) => allowed.includes(v));
+  const allowed = (await loader()).filter((o) => !o.inactive).map((o) => o.id);
+  const own = toStringList(kept);
+  const valid = list.filter((v) => allowed.includes(v) || own.includes(v));
   return valid.length ? valid : null;
 }
 export async function assertSystemIdAvailable(systemId, excludeId = null) {
@@ -95,8 +98,8 @@ async function normalize(input, current = null) {
     alias: pick('alias', (v) => toStringList(v)),
     description: pick('description', (v) => (v === undefined ? null : v)),
     fqdn: pick('fqdn', (v) => toStringList(v)),
-    scopes: current && !hasKey(input, 'scopes') ? current.scopes : await keepConfigured(input.scopes, getScopeOptions),
-    architecture: current && !hasKey(input, 'architecture') ? current.architecture : await keepConfigured(input.architecture, getArchitectureOptions),
+    scopes: current && !hasKey(input, 'scopes') ? current.scopes : await keepConfigured(input.scopes, getScopeOptions, current?.scopes),
+    architecture: current && !hasKey(input, 'architecture') ? current.architecture : await keepConfigured(input.architecture, getArchitectureOptions, current?.architecture),
   };
   if (Array.isArray(data.alias) && !data.alias.length) data.alias = null;
 

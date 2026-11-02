@@ -42,9 +42,7 @@
               <label class="form-label" for="f-app-type"><%= t('App Type') %></label>
               <select id="f-app-type" name="app_type" class="form-select js-select" data-placeholder="<%= t('Select app type') %>">
                 <option value=""></option>
-                <% (appTypeOptions || []).forEach(function (o) { %>
-                  <option value="<%= o.id %>" <%= String(c.app_type) === String(o.id) ? 'selected' : '' %>><%= o.text %></option>
-                <% }) %>
+                <%- ui.options(appTypeOptions, c.app_type) %>
               </select>
             </div>
             <div class="col-md-6">

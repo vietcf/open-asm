@@ -84,7 +84,7 @@ export async function updateIpAddress(id, input, client) {
   if (!current) throw new NotFoundError('IP address not found');
   const description = hasKey(input, 'description') ? text(input.description) : current.description;
   const status = hasKey(input, 'status') ? statusOf(input.status) : current.status;
-  if (hasKey(input, 'status')) await assertOption('ip_address_status', status, 'status');
+  if (hasKey(input, 'status')) await assertOption('ip_address_status', status, 'status', current.status);
   const relations = await resolveRelations(input, RELATIONS, { partial: true });
 
   await withTransaction(client, async (c) => {

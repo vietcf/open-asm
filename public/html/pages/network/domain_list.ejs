@@ -39,7 +39,7 @@
             <div class="row g-2">
               <div class="col-md-4">
                 <label class="form-label small"><%= t('Record Type') %></label>
-                <select name="record_type" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"><%- ui.options(recordTypeOptions, f.record_type) %></select>
+                <select name="record_type" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"><%- ui.options(recordTypeOptions, f.record_type, { all: true }) %></select>
               </div>
               <div class="col-md-4">
                 <label class="form-label small"><%= t('Systems') %></label>

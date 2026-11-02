@@ -11,6 +11,7 @@ import { pool } from '../../config/config.js';
 import {
   LANGUAGES, DEFAULT_LANGUAGE, normalizeLanguage, fromAcceptLanguage, createTranslator,
 } from '../i18n/index.js';
+import { withTranslator } from '../utils/viewHelpers.js';
 
 const COOKIE = 'lang';
 const ONE_YEAR = 365 * 24 * 3600 * 1000;
@@ -49,6 +50,7 @@ export default async function i18n(req, res, next) {
   req.t = t;
   res.locals.lang = lang;
   res.locals.t = t;
+  res.locals.ui = withTranslator(t);
   res.locals.languages = Object.values(LANGUAGES);
   // URL of the current page with ?lang=xx replaced, for the switcher links.
   res.locals.langUrl = (code) => {

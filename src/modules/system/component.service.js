@@ -55,7 +55,7 @@ async function normalize(input, current = null) {
       throw new ConflictError("Component name '{name}' already exists in this system").withParams({ name: data.name });
     }
   }
-  if (!current || hasKey(input, 'app_type')) await assertOption('system_app_type', data.app_type, 'app_type');
+  if (!current || hasKey(input, 'app_type')) await assertOption('system_app_type', data.app_type, 'app_type', current?.app_type);
   return data;
 }
 

@@ -9,7 +9,7 @@ export const EMAIL_REGEX = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 export const getPositionOptions = () => loadOptions('contact_position');
 
 // No positions configured = free text
-const validatePosition = (position) => assertOption('contact_position', position, 'position');
+const validatePosition = (position, current) => assertOption('contact_position', position, 'position', current);
 
 // unit_id: '' | null | undefined all mean "no unit"; anything else must
 // resolve to an existing unit.
@@ -88,7 +88,7 @@ export async function updateContact(id, input) {
 
   const position = has('position') ? (typeof input.position === 'string' ? input.position.trim() : current.position) : current.position;
   if (has('position') && !position) throw new ValidationError('Position must not be empty if provided');
-  if (has('position')) await validatePosition(position);
+  if (has('position')) await validatePosition(position, current.position);
 
   const description = has('description') ? (typeof input.description === 'string' ? input.description.trim() : current.description) : current.description;
 

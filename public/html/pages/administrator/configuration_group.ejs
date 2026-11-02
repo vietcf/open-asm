@@ -70,15 +70,19 @@
                   <th class="col-index">#</th>
                   <th style="width: 35%"><%= t('Value') %> <i class="bi bi-info-circle text-muted" title="<%= t('Values cannot contain commas, quotes, angle brackets, backticks or backslashes. Saved values are fixed; only their label can change.') %>"></i></th>
                   <th><%= t('Label') %></th>
+                  <th class="text-end text-nowrap" style="width: 1%"><%= t('In use') %> <i class="bi bi-info-circle text-muted" title="<%= t('Records using this value. A used value cannot be deleted: it is made inactive, or replaced on those records by another value.') %>"></i></th>
+                  <th class="text-center text-nowrap" style="width: 1%"><%= t('Active') %> <i class="bi bi-info-circle text-muted" title="<%= t('Inactive: records keep the value, it can no longer be chosen.') %>"></i></th>
                   <% if (canEdit) { %><th class="col-actions"></th><% } %>
                 </tr>
               </thead>
               <tbody>
-                <% f.value.forEach(function (o, i) { %>
-                  <tr data-existing="1">
+                <% f.value.forEach(function (o, i) { const used = (f.usage || {})[o.value] || 0; %>
+                  <tr data-existing="1" data-count="<%= used %>"<%- o.active === false ? ' class="table-secondary"' : '' %>>
                     <td class="col-index js-index"><%= i + 1 %></td>
                     <td><input type="text" class="form-control form-control-sm font-monospace js-value" value="<%= o.value %>" readonly tabindex="-1"></td>
                     <td><input type="text" class="form-control form-control-sm js-label" value="<%= o.label %>" maxlength="255" <%= canEdit ? '' : 'disabled' %>></td>
+                    <td class="text-end"><span class="badge rounded-pill <%= used ? 'text-bg-info' : 'text-bg-light' %>"><%= used %></span></td>
+                    <td class="text-center"><div class="form-check form-switch d-inline-block m-0"><input type="checkbox" class="form-check-input js-active" <%= o.active === false ? '' : 'checked' %> <%= canEdit ? '' : 'disabled' %> aria-label="<%= t('Active') %>"></div></td>
                     <% if (canEdit) { %>
                       <td class="col-actions">
                         <button type="button" class="btn btn-outline-secondary btn-sm js-up" title="<%= t('Move up') %>"><i class="bi bi-arrow-up"></i></button>
@@ -89,13 +93,15 @@
                   </tr>
                 <% }) %>
                 <tr class="js-empty<%= f.value.length ? ' d-none' : '' %>">
-                  <td colspan="4" class="text-center text-muted py-3"><%= t('No options yet') %></td>
+                  <td colspan="6" class="text-center text-muted py-3"><%= t('No options yet') %></td>
                 </tr>
               </tbody>
             </table>
           </div>
           <%# Pre-filled with the current list: a submit without the script keeps it as is. %>
           <input type="hidden" name="fields[<%= f.key %>]" class="js-json" value="<%= JSON.stringify(f.value) %>" <%= canEdit ? '' : 'disabled' %>>
+          <%# {"removed value": "replacement"}, filled by the delete dialog %>
+          <input type="hidden" name="replace[<%= f.key %>]" class="js-replace" value="{}" <%= canEdit ? '' : 'disabled' %>>
         </div>
       <% }) %>
 
@@ -117,6 +123,8 @@
     <td class="col-index js-index"></td>
     <td><input type="text" class="form-control form-control-sm font-monospace js-value" maxlength="100" placeholder="<%= t('e.g. ACTIVE') %>"></td>
     <td><input type="text" class="form-control form-control-sm js-label" maxlength="255" placeholder="<%= t('Shown in lists; empty = value') %>"></td>
+    <td class="text-end"><span class="badge rounded-pill text-bg-light">0</span></td>
+    <td class="text-center"><div class="form-check form-switch d-inline-block m-0"><input type="checkbox" class="form-check-input js-active" checked aria-label="<%= t('Active') %>"></div></td>
     <td class="col-actions">
       <button type="button" class="btn btn-outline-secondary btn-sm js-up" title="<%= t('Move up') %>"><i class="bi bi-arrow-up"></i></button>
       <button type="button" class="btn btn-outline-secondary btn-sm js-down" title="<%= t('Move down') %>"><i class="bi bi-arrow-down"></i></button>
@@ -124,6 +132,34 @@
     </td>
   </tr>
 </template>
+
+<div class="modal fade" id="optionRemoveModal" tabindex="-1" aria-labelledby="optionRemoveTitle" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="optionRemoveTitle"><%= t('Delete a value in use') %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
+      </div>
+      <div class="modal-body">
+        <p class="js-remove-text"></p>
+        <div class="form-check mb-2">
+          <input class="form-check-input" type="radio" name="optionRemoveMode" id="optionRemoveRetire" value="retire" checked>
+          <label class="form-check-label" for="optionRemoveRetire"><strong><%= t('Make it inactive') %></strong><br><small class="text-muted"><%= t('Records keep the value; it can no longer be chosen.') %></small></label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="optionRemoveMode" id="optionRemoveReplace" value="replace">
+          <label class="form-check-label" for="optionRemoveReplace"><strong><%= t('Replace it on those records with') %></strong></label>
+          <select class="form-select form-select-sm mt-1 js-remove-target" aria-label="<%= t('Replacement value') %>"></select>
+          <small class="text-muted"><%= t('Applied when you save; the value is then deleted.') %></small>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+        <button type="button" class="btn btn-danger btn-sm js-remove-apply"><%= t('Apply') %></button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 (function () {
@@ -168,7 +204,8 @@
       } else if (btn.classList.contains('js-down') && row.nextElementSibling && !row.nextElementSibling.classList.contains('js-empty')) {
         tbody.insertBefore(row.nextElementSibling, row);
       } else if (btn.classList.contains('js-remove')) {
-        if (row.dataset.existing && !window.confirm(tr('Remove this option? Records that already use it keep the value, but it will no longer be offered in lists.'))) return;
+        if (Number(row.dataset.count) > 0) return askRemoval(card, row);
+        if (row.dataset.existing && !window.confirm(tr('Delete this value? No record uses it.'))) return;
         row.remove();
       } else {
         return;
@@ -176,6 +213,56 @@
       renumber(card);
       markDirty();
     });
+  });
+
+  // A value used by records: make it inactive, or replace it on those records
+  // (replace[<key>] = {"value": "replacement"}, applied by the server on save)
+  var modalEl = document.getElementById('optionRemoveModal');
+  var pending = null;
+  function askRemoval(card, row) {
+    var value = row.querySelector('.js-value').value.trim();
+    var select = modalEl.querySelector('.js-remove-target');
+    select.innerHTML = '';
+    card.querySelectorAll('tbody tr:not(.js-empty)').forEach(function (other) {
+      var v = other.querySelector('.js-value').value.trim();
+      if (other === row || !v || !other.querySelector('.js-active').checked) return;
+      var opt = document.createElement('option');
+      opt.value = v;
+      opt.textContent = (other.querySelector('.js-label').value.trim() || v) + ' (' + v + ')';
+      select.appendChild(opt);
+    });
+    var canReplace = select.options.length > 0;
+    modalEl.querySelector('#optionRemoveReplace').disabled = !canReplace;
+    select.disabled = !canReplace;
+    modalEl.querySelector('#optionRemoveRetire').checked = true;
+    modalEl.querySelector('.js-remove-text').textContent =
+      tr('"{value}" is used by {count} record(s). What should happen to them?').replace('{value}', value).replace('{count}', row.dataset.count);
+    pending = { card: card, row: row, value: value };
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+  }
+  modalEl.querySelector('.js-remove-target').addEventListener('change', function () {
+    modalEl.querySelector('#optionRemoveReplace').checked = true;
+  });
+  modalEl.querySelector('.js-remove-apply').addEventListener('click', function () {
+    if (!pending) return;
+    var replace = modalEl.querySelector('#optionRemoveReplace').checked;
+    if (replace) {
+      var input = pending.card.querySelector('.js-replace');
+      var map = JSON.parse(input.value || '{}');
+      map[pending.value] = modalEl.querySelector('.js-remove-target').value;
+      input.value = JSON.stringify(map);
+      pending.row.remove();
+    } else {
+      pending.row.querySelector('.js-active').checked = false;
+      pending.row.classList.add('table-secondary');
+    }
+    renumber(pending.card);
+    markDirty();
+    pending = null;
+    bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+  });
+  form.addEventListener('change', function (e) {
+    if (e.target.classList.contains('js-active')) e.target.closest('tr').classList.toggle('table-secondary', !e.target.checked);
   });
 
   form.addEventListener('input', markDirty);
@@ -195,7 +282,9 @@
         if (!value || badChars) { problem = problem || valueInput; return; }
         if (seen[value]) { problem = problem || valueInput; return; }
         seen[value] = true;
-        items.push({ value: value, label: label || value });
+        var item = { value: value, label: label || value };
+        if (!row.querySelector('.js-active').checked) item.active = false;
+        items.push(item);
       });
       card.querySelector('.js-json').value = JSON.stringify(items);
     });

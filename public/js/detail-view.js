@@ -21,9 +21,12 @@
   const EMPTY = '<span class="text-secondary">—</span>';
   const toArray = (v) => (Array.isArray(v) ? v : (v === null || v === undefined || v === '' ? [] : [v]));
 
+  // a retired option (inactive) is marked "(inactive)", like ui.optionLabel
   function optionLabel(options, value) {
     const found = (options || []).find((o) => String(o.id ?? o.value) === String(value));
-    return found ? (found.text ?? found.label) : value;
+    if (!found) return value;
+    const label = found.text ?? found.label;
+    return found.inactive ? label + ' (' + tr('inactive') + ')' : label;
   }
   function chips(values, toLabel) {
     const list = toArray(values).filter((v) => v !== null && v !== undefined && String(v).trim() !== '');

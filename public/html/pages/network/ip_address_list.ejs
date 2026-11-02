@@ -58,7 +58,7 @@
             <div class="row g-2">
               <div class="col-md-4">
                 <label class="form-label small"><%= t('Status') %></label>
-                <select name="status" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"><%- ui.options([NONE_OPTION, ...statusOptions], f.status) %></select>
+                <select name="status" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"><%- ui.options([NONE_OPTION, ...statusOptions], f.status, { all: true }) %></select>
               </div>
               <div class="col-md-4">
                 <label class="form-label small"><%= t('Zone') %></label>

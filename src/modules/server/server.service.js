@@ -68,8 +68,9 @@ async function normalize(input, current = null) {
   if (!data.name) throw new ValidationError('Server name is required');
   if (changed('name') && data.name !== current?.name) await assertNameAvailable(data.name, current?.id ?? null);
   if (changed('os') && data.os && !(await Platform.exists(data.os))) throw new ValidationError(`Invalid platform (os) ID: ${data.os}`);
-  if (changed('status')) await assertOption('server_status', data.status, 'status');
-  if (changed('location')) await assertOption('device_location', data.location, 'location');
+  if (changed('status')) await assertOption('server_status', data.status, 'status', current?.status);
+  if (changed('type')) await assertOption('server_type', data.type, 'type', current?.type);
+  if (changed('location')) await assertOption('device_location', data.location, 'location', current?.location);
   return data;
 }
 

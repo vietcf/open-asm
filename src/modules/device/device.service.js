@@ -51,7 +51,7 @@ async function normalize(input, current = null) {
     if (!(await DeviceType.exists(data.device_type_id))) throw new ValidationError('Invalid device_type_id');
   }
   if (changed('platform_id') && data.platform_id && !(await Platform.exists(data.platform_id))) throw new ValidationError('Invalid platform_id');
-  if (changed('location')) await assertOption('device_location', data.location, 'location');
+  if (changed('location')) await assertOption('device_location', data.location, 'location', current?.location);
   return data;
 }
 

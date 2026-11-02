@@ -205,15 +205,37 @@ JSON editor: every key has its own editor and server-side validation.
 | Number list | `page_size` (used by every list, the first value is the default) | 1–10 values from 1 to 1000; stored sorted, without duplicates |
 | Option grid | `system_level`, `server_type`, `firewall_name`, … | up to 200 rows; each value unique, max 100 characters, without `, < > " ' \` \`; label optional (defaults to the value) |
 
-Option lists are stored as `[{"value": "...", "label": "..."}]`. A saved
-value is fixed (records refer to it); only its label can change. Removing an
-option leaves records that use it untouched, it is just no longer offered.
-Values saved before these rules existed are kept as they are.
+Option lists are stored as `[{"value": "...", "label": "..."}]`; a retired
+value has `"active": false`. The **value** is what records store and never
+changes; the **label** can change at any time (every page shows the new one).
+Each row of the grid shows how many records use the value (**In use**) and an
+**Active** switch.
+
+| Action | Value not used (0) | Value used by records (N > 0) |
+|---|---|---|
+| Edit the label | saved | saved; records show the new label |
+| Switch **Active** off | retired | retired: records keep it |
+| **Delete** | deleted | dialog: **make it inactive** (records keep it) or **replace it with** another active value (all N records changed in the same transaction as the save, then the value is deleted; logged in the System Log) |
+
+The server enforces the same rule: a used value posted as deleted without a
+replacement is kept as inactive, so no record ever holds a value missing from
+its list.
+
+A record with a **retired value**: its lists / detail show the label with
+"(inactive)"; list filters still offer it, last; its edit form shows it
+selected, and saving keeps it. It can no longer be chosen: new records,
+imports, the API and edits that change the field to it are refused ("… is no
+longer in use"); the API option endpoints (`/…/config`) return active values
+only. A Duplicate copy shows it too, but must get an active value before it
+can be saved. Values removed before 1.3.0 but
+still used by records were added back as retired by migration
+`0020_retired_option_values.js`.
 
 Adding a setting: declare it in `src/utils/configRegistry.js` (group, type,
-limits, label), add its default to `migrations/lib/seed.js`, translate the
-label in `src/i18n/locales/vi.json`. A change to the stored format of an
-existing key needs a data migration (see `migrations/README.md`).
+limits, label; for an option list also `usedBy`, the table columns holding its
+values), add its default to `migrations/lib/seed.js`, translate the label in
+`src/i18n/locales/vi.json`. A change to the stored format of an existing key
+needs a data migration (see `migrations/README.md`).
 
 ## 🐳 Docker Commands
 
@@ -635,6 +657,15 @@ when cutting a release.
   Existing `.env.docker` files keep working.
 - 📝 README installation rewritten: case A (database in Docker) and case B
   (external database), one command each.
+- ✨ Option lists (System Configuration): values used by records can no
+  longer be deleted silently. Each value shows how many records use it and
+  can be made **inactive** (records keep it, it can no longer be chosen) or,
+  on delete, **replaced** by another value on all those records. Edit forms
+  keep a record's retired value instead of clearing it on save (before, saving
+  any form blanked a value removed from its list); new records / imports / API
+  cannot use retired values. Migration `0020_retired_option_values.js` adds
+  values already removed but still used back as retired. Server type and DNS
+  record type are now validated like the other lists.
 
 ### Version 1.2.2 (Latest)
 - ✨ `scripts/docker-export.sh` / `scripts/docker-import.sh`: build the
