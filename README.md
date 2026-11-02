@@ -82,7 +82,7 @@ What happens on the first start (all automatic, all skipped on later starts):
 | Postgres starts, healthcheck waits until it accepts connections | `./pgdata/` |
 | `SESSION_SECRET` / `JWT_SECRET` generated | `./data/secrets.env` |
 | Self-signed TLS certificate generated for nginx (if `./ssl/` has none) | `./ssl/nginx-selfsigned.{crt,key}` |
-| Database schema, default data, initial admin (`migrations/migrate.js up`) | see [`migrations/README.md`](migrations/README.md) |
+| Database schema (`migrations/migrate.js up`), then — empty database only — the init seed: roles, permissions, default configuration, initial admin | see [`migrations/README.md`](migrations/README.md) |
 | App starts; nginx starts once the app is healthy | ports 80 → 443 |
 
 If anything fails the app does not start: `docker compose logs app`.
@@ -102,8 +102,62 @@ docker compose up -d
 - Your own certificate: put it in `./ssl/` as `nginx-selfsigned.crt` / `nginx-selfsigned.key`, then `docker compose restart nginx`.
 - Lost the admin password: `docker compose exec app npm run admin:reset-password`
 - Cannot sign in after a restore: `docker compose exec app node migrations/tools/reset_admin_password.js [username] --disable-2fa`
-- Update to a new version: `git pull && docker compose up -d --build` (migrations run automatically; no nginx restart needed).
+- Update to a new version: see [Upgrading an existing install](#upgrading-an-existing-install-production) below.
 - Requires Docker Compose ≥ 2.24 (for the optional `.env.docker`).
+
+### Seed data: what runs when
+
+| Data | Fresh install (empty database) | Upgrade / restart (database has data) |
+|---|---|---|
+| Schema changes (`migrations/versions/`) | all applied | only the new versions, automatically |
+| **Init seed**: roles, permissions, default configuration, initial admin | automatic, once | **never automatic** — data a new version needs ships as a migration |
+| **Sample data** (demo systems, servers, IPs…) | never automatic | never automatic |
+
+Run them explicitly only when you want them:
+
+```bash
+docker compose exec app npm run seed          # init seed: adds missing roles/permissions/config, admin if none;
+                                              # never overwrites edited values, but re-grants the default
+                                              # permissions of superadmin / admin / viewer
+docker compose exec app npm run seed:sample   # demo data, development only
+```
+
+### Upgrading an existing install (production)
+
+Upgrades are migrations only: the app container applies the versions the
+database does not have yet, in order, each in its own transaction, before
+the app starts. Your data, users, role permissions and configuration are
+kept; the init seed does not run.
+
+```bash
+# 1. Back up the database (and keep public/uploads/: files are not in the database)
+docker exec openasm_db pg_dump -U postgres -d openasm | gzip > backups/before-upgrade_$(date +%Y%m%d_%H%M%S).sql.gz
+
+# 2. Get the new version
+git fetch --tags
+git checkout vX.Y.Z
+
+# 3. Optional: see which migrations will run
+docker compose run --rm app node migrations/migrate.js up --dry-run
+
+# 4. Build and start: migrations run automatically, then the app starts
+docker compose up -d --build
+
+# 5. Check the result
+docker compose logs app | grep migrate
+docker compose exec app npm run migrate:status
+```
+
+- A failing migration is rolled back, the app does not start, and the log
+  says why. The versions applied before it stay applied: fix the cause and
+  start again, or restore the backup and check out the previous version.
+- New permissions of a version are granted to superadmin / admin / viewer
+  by its migration. **Custom roles get nothing new**: grant them on the
+  Roles page if needed.
+- Read the version's Changelog entry below for anything specific to it.
+- Moving to another server or keeping the old database untouched: copy the
+  data into a fresh install instead, see
+  [Data migration](migrations/README.md#data-migration-existing-install--fresh-install).
 
 **Access:**
 - Web Interface: https://localhost
@@ -129,9 +183,10 @@ cp .env.sample .env
 # Create PostgreSQL database (name must match POSTGRES_DB in .env)
 createdb openasm
 
-# Create schema, apply pending migrations, seed data + initial admin (prints
-# the generated admin password once if ADMIN_PASSWORD is empty).
-# Run it again after every `git pull`; no-op when up to date.
+# Create schema and apply migrations; on this empty database also the init
+# seed: roles, permissions, configuration, initial admin (prints the
+# generated admin password once if ADMIN_PASSWORD is empty).
+# Run it again after every `git pull`: it only applies new migrations.
 npm run migrate
 ```
 
@@ -250,11 +305,11 @@ right away. Use `asset()` for any new local stylesheet or script.
 ./save-docker-images.sh
 
 # Or manually save specific image (tag must match the `image:` value
-# in docker-compose.yml, currently openasm_app:1.2.0)
-sudo docker save openasm_app:1.2.0 | gzip > openasm_app_1.2.0.tar.gz
+# in docker-compose.yml, currently openasm_app:1.2.1)
+sudo docker save openasm_app:1.2.1 | gzip > openasm_app_1.2.1.tar.gz
 
 # Load Docker image
-sudo docker load < openasm_app_1.2.0.tar.gz
+sudo docker load < openasm_app_1.2.1.tar.gz
 ```
 
 ### Logs and Monitoring
@@ -538,7 +593,9 @@ then one `NNNN_name.sql` per change), applied by `node migrations/migrate.js up`
 Docker runs it before every app start; it is a no-op when nothing is pending.
 
 ```bash
-npm run migrate                                   # apply pending migrations + seeds
+npm run migrate                                   # apply pending migrations (+ init seed on an empty database)
+npm run seed                                      # init seed, explicitly (never automatic on existing data)
+npm run seed:sample                               # demo data (development)
 npm run migrate:status                            # applied / pending list
 npm run migrate:create -- add_owner_to_servers    # scaffold the next migration
 SOURCE_POSTGRES_DB=openasm_old npm run migrate:data   # copy an existing install into this fresh one
@@ -603,14 +660,30 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.2.0 (Latest)
-- ⬆️ **Upgrading from 1.1.0**: back up the database, check out `v1.2.0`,
-  `docker compose build app` and `docker compose up -d`. The entrypoint
-  adopts the 1.1.0 database and applies migrations `0002` → `0018`.
-  Watch the app log for the lines `0015` / `0016` print (service mapping
-  members removed, IPs / domains created). Alternative that leaves the
-  old database untouched: copy it into a fresh 1.2.0 install, see
-  [Data migration](migrations/README.md#data-migration-existing-install--fresh-install).
+### Version 1.2.1 (Latest)
+- ⬆️ **Upgrading from 1.1.0 / 1.2.0**: follow
+  [Upgrading an existing install](#upgrading-an-existing-install-production)
+  with `v1.2.1`. From 1.1.0 the entrypoint adopts the database and applies
+  migrations `0002` → `0019`; watch the app log for the lines `0015` /
+  `0016` / `0019` print. Prefer 1.2.1 over 1.2.0 for production.
+- 🐛 Upgrades no longer run the seed: `migrate.js up` seeds only an empty
+  database (fresh install, no roles yet). On an existing database the seed
+  re-granted the default permissions of superadmin / admin / viewer on
+  every start, undoing permissions removed on the Roles page. The init
+  seed now runs on demand with `npm run seed`; demo data with
+  `npm run seed:sample` (never automatic).
+- Migration `0019_permissions_config_since_1_1_0.js` brings what the seed
+  added after 1.1.0 to upgraded databases: permissions
+  `service_mapping.*` and `backup.create/read/delete/restore` (granted
+  like the seed: superadmin all, admin `service_mapping.*`, viewer
+  `service_mapping.read`; custom roles get nothing) and configuration
+  `backup_*`, `api_debug_log` (existing values kept).
+- 📝 README: "Seed data: what runs when" and "Upgrading an existing
+  install (production)".
+
+### Version 1.2.0
+- ⬆️ Upgrading from 1.1.0: use 1.2.1 instead (1.2.0 seeds the database on
+  every start, see above).
 - ✨ Every editable object records `created_at` / `updated_at`, and every
   edit form shows "Created … | Updated … · by" in its footer (detail
   modals already show the same line). Migration

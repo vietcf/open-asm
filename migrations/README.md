@@ -24,7 +24,9 @@ migrations/
 
 | Command | What it does |
 |---|---|
-| `npm run migrate` | Apply pending migrations, then seeds. Docker runs this before every app start. |
+| `npm run migrate` | Apply pending migrations; on an empty database (no roles yet) also the init seed. Docker runs this before every app start. |
+| `npm run seed` | Run the init seed explicitly (roles, permissions, default configuration, admin if none). Never automatic on a database with data. |
+| `npm run seed:sample` | Demo data for development. Never automatic. |
 | `npm run migrate -- --dry-run` | Show what would run; changes nothing. |
 | `npm run migrate:status` | List every version as `applied` / `adopted` / `pending`, plus any problem. |
 | `npm run migrate:create -- add_owner_to_servers` | Create `versions/NNNN_add_owner_to_servers.sql` with the next number. |
@@ -54,9 +56,13 @@ In Docker: `docker compose exec app npm run migrate:status`, and so on.
 5. Applies each pending file in its own transaction. A failure rolls that
    file back completely, stops the run, and exits with code 1. Files applied
    before it stay applied.
-6. Runs the seeds in one transaction: roles/permissions, default
-   configuration (`ON CONFLICT DO NOTHING`, so UI edits are never
-   overwritten), and the initial admin account.
+6. **Fresh install only** (the `roles` table is empty): runs the init seed
+   in one transaction: roles/permissions, default configuration
+   (`ON CONFLICT DO NOTHING`), and the initial admin account. A database
+   that already holds data is never seeded by `up` (the log says "seeds
+   skipped"): an upgrade only applies migrations. `npm run seed` runs the
+   init seed on demand; it never overwrites edited values but re-grants the
+   default permissions of superadmin / admin / viewer.
 
 ## Writing a schema change (alter)
 
@@ -102,8 +108,11 @@ Rules:
 - **Rolling back:** there are no down migrations. Restore the latest backup
   (see the main README), or write a new forward migration that undoes the
   change.
-- **New permission or config key?** Add it to `lib/seed.js`, not to a
-  migration. Seeds run on every deploy and only insert what is missing.
+- **New permission or config key?** Add it to `lib/seed.js` (fresh
+  installs) **and** ship a migration that inserts it into existing
+  databases (`ON CONFLICT DO NOTHING`, granting a new permission like the
+  seed does): upgrades never run the seed. Example:
+  `0019_permissions_config_since_1_1_0.js`.
 - **Changing a table that already holds data** (rename/split/drop a column,
   new format or meaning of stored values, moving data between tables)
   always ships with its data migration, in the same release:

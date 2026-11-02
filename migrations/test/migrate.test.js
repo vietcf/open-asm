@@ -111,6 +111,34 @@ test('existing v1.1.0 database (no history) is adopted, not re-created', async (
   assert.equal((await q(db, 'SELECT name FROM agents'))[0].name, 'keep-me');
 });
 
+test('upgrading a database with data does not seed; migrations add new permissions/config; seed runs on demand', async () => {
+  const db = await freshDb();
+  await q(db, fs.readFileSync(path.join(VERSIONS, '0001_baseline.sql'), 'utf8'));
+  // a v1.1.0 install where device.create was taken away from the admin role
+  await q(db, `INSERT INTO roles (name, description) VALUES ('superadmin', 's'), ('admin', 'a'), ('viewer', 'v')`);
+  await q(db, `INSERT INTO permissions (name, description) VALUES ('device.create', 'c'), ('device.read', 'r')`);
+  await q(db, `INSERT INTO role_permissions (role_id, permission_id)
+               SELECT r.id, p.id FROM roles r, permissions p WHERE r.name = 'admin' AND p.name = 'device.read'`);
+  const perms = (role) => q(db, `SELECT p.name FROM role_permissions rp JOIN roles r ON r.id = rp.role_id
+                                 JOIN permissions p ON p.id = rp.permission_id WHERE r.name = '${role}' ORDER BY p.name`)
+    .then((rows) => rows.map((x) => x.name));
+
+  const r = await migrate(db);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /seeds skipped/);
+  assert.doesNotMatch(r.out, /administrator account created/);
+  assert.equal((await q(db, 'SELECT * FROM users')).length, 0);
+  assert.deepEqual(await perms('admin'), ['device.read', 'service_mapping.create', 'service_mapping.delete', 'service_mapping.read', 'service_mapping.update']);
+  assert.deepEqual(await perms('viewer'), ['service_mapping.read']);
+  assert.ok((await perms('superadmin')).includes('backup.restore'));
+  assert.equal((await q(db, `SELECT value FROM configuration WHERE key = 'api_debug_log'`))[0].value, 'off');
+
+  const s = await migrate(db, ['seed']);
+  assert.equal(s.code, 0, s.out);
+  assert.equal((await q(db, 'SELECT * FROM users')).length, 1);
+  assert.ok((await perms('admin')).includes('device.create')); // the seed re-grants the defaults
+});
+
 test('incomplete existing database is refused', async () => {
   const db = await freshDb();
   await q(db, 'CREATE TABLE users (id serial primary key)');
