@@ -4,7 +4,8 @@
   const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
   const COLUMNS = [
     { key: 'name', label: 'Name', def: true, fixed: true },
-    { key: 'type', label: 'Type', def: true },
+    { key: 'direction', label: 'Direction', def: true },
+    { key: 'scope', label: 'Scope', def: true },
     { key: 'domain', label: 'Domain', def: true },
     { key: 'endpoint', label: 'Endpoint', def: true },
     { key: 'provider', label: 'Provider / Channel', def: true },
@@ -17,7 +18,8 @@
   ];
   const cell = (vs, key) => ({
     name: ui.esc(vs.name),
-    type: `<span class="badge tag">${ui.esc(t(cap(vs.direction)))}</span> <span class="badge tag">${ui.esc(t(cap(vs.scope)))}</span>`,
+    direction: `<span class="text-nowrap"><i class="bi ${vs.direction === 'outbound' ? 'bi-box-arrow-up-right' : 'bi-box-arrow-in-down-right'} me-1"></i>${ui.esc(t(cap(vs.direction)))}</span>`,
+    scope: `<span class="badge tag">${ui.esc(t(cap(vs.scope)))}</span>`,
     domain: vs.domain ? `<span class="font-monospace small">${ui.esc(vs.domain)}</span>` : ui.dash,
     endpoint: `<span class="font-monospace small">${ui.esc(vs.ip_address)}:${vs.port}</span> <span class="badge tag">${ui.esc(vs.protocol)}</span>`,
     provider: vs.provider ? `<span class="badge tag">${ui.esc(vs.provider)}</span>` : ui.dash,
@@ -51,7 +53,7 @@
         <%- include('../../partials/ui/list_toolbar', {
               search, searchPlaceholder: 'Search by name, domain, IP, system, device, server...',
               filtersId: 'smFilters', activeFilterCount,
-              columns: { tableId: 'smTable', storageKey: 'openasm.serviceMappingList.columns.v2', list: COLUMNS },
+              columns: { tableId: 'smTable', storageKey: 'openasm.serviceMappingList.columns.v3', list: COLUMNS },
               exportUrl: '/network/service-mapping/export' + currentQuery,
               importModal: hasPermission('service_mapping.create') ? 'smImportModal' : null,
               addUrl: hasPermission('service_mapping.create') ? '/network/service-mapping/add' : null, addLabel: 'Add Service Mapping' }) %>
@@ -197,7 +199,8 @@
     let body = DV.section('Service Flow', smFlow(vs));
     body += DV.section('Overview', DV.rows(
       DV.multiline(vs.description) ? DV.field('Description', DV.multiline(vs.description)) : '',
-      DV.field('Type', DV.chips([t(cap(vs.direction)), t(cap(vs.scope))])),
+      DV.field('Direction', DV.chips([t(cap(vs.direction))])),
+      DV.field('Scope', DV.chips([t(cap(vs.scope))])),
       DV.field('System', DV.text(vs.system_name)),
       DV.field('Domain', DV.text(vs.domain)),
       DV.field('Provider / Channel', vs.provider ? DV.chips([vs.provider]) : ''),
