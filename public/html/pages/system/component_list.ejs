@@ -134,10 +134,14 @@
       DV.field('Tags', DV.chips((c.tags || []).map((tg) => tg.name || tg))),
       DV.field('Managers', DV.contacts(c.contacts))
     ));
-    body += DV.section('Access', DV.rows(
-      DV.field('Access URLs', DV.urlList(c.fqdn)),
-      DV.field('IP Addresses', DV.ipLinks(c.ips))
-    ));
+    const ips = c.ips || [];
+    const ipTable = ips.length
+      ? '<div class="table-responsive"><table class="table table-sm align-middle detail-table mb-0"><thead><tr><th>' + DV.esc(t('IP Address')) + '</th><th>' + DV.esc(t('Server')) + '</th><th>' + DV.esc(t('Zone')) + ' / ' + DV.esc(t('Environment')) + '</th></tr></thead><tbody>' +
+        ips.map((ip) => '<tr><td>' + DV.ipLink(ip.ip) + '</td><td>' + (DV.text(ip.server_name) || DV.EMPTY) + '</td><td>' + (DV.text([ip.subnet_zone, ip.subnet_environment].filter(Boolean).join(' / ')) || DV.EMPTY) + '</td></tr>').join('') +
+        '</tbody></table></div>'
+      : '';
+    body += DV.section('Access', DV.rows(DV.field('Access URLs', DV.urlList(c.fqdn))) + ipTable,
+      ips.length ? ' <span class="badge tag ms-1">' + ips.length + '</span>' : '');
     body += DV.meta(c);
     DV.open('componentDetailModal', {
       title: c.name,

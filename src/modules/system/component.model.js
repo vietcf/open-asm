@@ -25,13 +25,13 @@ function filterWhere({ search = '', filterTags = [], filterContacts = [], system
   return w;
 }
 
-// Components with system name, tags, contacts and IPs (`ips`: [{id, ip, server_name}])
+// Components with system name, tags, contacts and IPs
 const SELECT_WITH_RELATIONS = `
   SELECT sc.*,
     s.name AS system_name,
     ${jsonList('t', { id: 't.id', name: 't.name' })} AS tags,
     ${jsonList('c', { id: 'c.id', name: 'c.name', email: 'c.email' })} AS contacts,
-    ${jsonList('ip', { id: 'ip.id', ip: 'ip.ip_address', server_name: 'srv.name' })} AS ips
+    ${jsonList('ip', { id: 'ip.id', ip: 'ip.ip_address', server_name: 'srv.name', subnet_zone: 'sub.zone', subnet_environment: 'sub.environment' })} AS ips
   FROM system_components sc
   LEFT JOIN systems s ON sc.system_id = s.id
   LEFT JOIN tag_object tobj ON tobj.object_type = 'component' AND tobj.object_id = sc.id
@@ -41,7 +41,12 @@ const SELECT_WITH_RELATIONS = `
   LEFT JOIN system_component_ip sci ON sci.component_id = sc.id
   LEFT JOIN ip_addresses ip ON ip.id = sci.ip_id
   LEFT JOIN server_ip svi ON svi.ip_id = ip.id AND svi.role = 'normal'
-  LEFT JOIN servers srv ON srv.id = svi.server_id`;
+  LEFT JOIN servers srv ON srv.id = svi.server_id
+  LEFT JOIN LATERAL (
+    SELECT zone, environment FROM subnets sub
+    WHERE sub.address >>= ip.ip_address::inet
+    ORDER BY masklen(sub.address) DESC LIMIT 1
+  ) sub ON true`;
 
 class SystemComponent {
   static async create(data, client) {

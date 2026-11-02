@@ -225,11 +225,14 @@
           '</button>' +
           '<div class="collapse" id="' + id + '"><div class="detail-component-body">' + DV.rows(
             DV.multiline(c.description) ? DV.field('Description', DV.multiline(c.description)) : '',
-            DV.field('IP Addresses', DV.ipLinks(c.ips)),
             DV.field('Access URLs', DV.urlList(c.fqdn)),
             DV.field('Managers', DV.contacts(c.contacts)),
             DV.field('Tags', DV.chips((c.tags || []).map((tg) => tg.name || tg)))
-          ) + (c.updated_at ? '<div class="detail-meta px-3 pb-2">' + DV.esc(t('Updated')) + ' ' + DV.esc(DV.date(c.updated_at)) + '</div>' : '') + '</div></div>' +
+          ) + ((c.ips || []).length
+            ? '<div class="table-responsive"><table class="table table-sm align-middle detail-table mb-0"><thead><tr><th>' + DV.esc(t('IP Address')) + '</th><th>' + DV.esc(t('Server')) + '</th><th>' + DV.esc(t('Zone')) + ' / ' + DV.esc(t('Environment')) + '</th></tr></thead><tbody>' +
+              (c.ips || []).map(function (ip) { return '<tr><td>' + DV.ipLink(ip.ip) + '</td><td>' + (DV.text(ip.server_name) || DV.EMPTY) + '</td><td>' + (DV.text([ip.subnet_zone, ip.subnet_environment].filter(Boolean).join(' / ')) || DV.EMPTY) + '</td></tr>'; }).join('') +
+              '</tbody></table></div>' : '') +
+          (c.updated_at ? '<div class="detail-meta px-3 pb-2">' + DV.esc(t('Updated')) + ' ' + DV.esc(DV.date(c.updated_at)) + '</div>' : '') + '</div></div>' +
         '</div>';
       }).join('') + '</div>';
     });
