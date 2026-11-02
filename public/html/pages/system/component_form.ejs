@@ -71,7 +71,7 @@
               <label class="form-label" for="f-ips"><%= t('IP Addresses') %></label>
               <select id="f-ips" name="ips[]" class="form-select js-select" multiple data-ajax-url="/network/api/ip-addresses"
                       data-placeholder="<%= t('Select IP addresses') %>" data-selected="<%= JSON.stringify(sel.ips || []) %>"></select>
-              <div class="form-text"><%= t('Also linked to the system') %></div>
+              <div class="form-text"><%= t('Also IPs of the system. Removing one here removes it from the system too, unless another component of the system uses it.') %></div>
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-tags"><%= t('Tags') %></label>

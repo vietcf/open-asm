@@ -5,6 +5,7 @@ import Contact from '../organize/contact.model.js';
 import System from '../system/system.model.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
+import { dropComponentIpsOutsideSystem } from '../system/system-ip-links.js';
 import { hasKey, loadOptions, assertOption, resolveRelations, saveRelations, toStringList } from '../../shared/service.js';
 
 // Octet-bounded IPv4
@@ -90,6 +91,8 @@ export async function updateIpAddress(id, input, client) {
   await withTransaction(client, async (c) => {
     await IpAddress.update(id, { description, status, updated_by: input.updated_by }, c);
     await saveRelations(id, relations, RELATIONS, c);
+    // a system taken off the IP takes the IP off that system's components too
+    if (relations.systems) await dropComponentIpsOutsideSystem({ ipId: Number(id) }, c);
   });
   return IpAddress.findByIdWithDetails(id);
 }

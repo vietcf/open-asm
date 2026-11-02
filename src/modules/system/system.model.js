@@ -111,15 +111,6 @@ class System {
   static setDomains(id, ids, client) { return replaceLinks(client, 'system_domain', 'system_id', id, 'domain_id', ids); }
   static setTags(id, ids, client) { return replaceTags(client, 'system', id, ids); }
 
-  static async addIPs(id, ipIds, client) {
-    if (!ipIds || !ipIds.length) return;
-    await db(client).query('INSERT INTO system_ip (system_id, ip_id) SELECT $1, unnest($2::int[]) ON CONFLICT DO NOTHING', [id, ipIds]);
-  }
-
-  static async removeIP(id, ipId, client) {
-    await db(client).query('DELETE FROM system_ip WHERE system_id = $1 AND ip_id = $2', [id, ipId]);
-  }
-
   static async getIpIds(id) {
     const result = await pool.query('SELECT ip_id FROM system_ip WHERE system_id = $1', [id]);
     return result.rows.map((row) => row.ip_id);

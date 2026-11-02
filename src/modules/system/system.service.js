@@ -10,6 +10,7 @@ import FileUpload from '../file/file-upload.model.js';
 import { removeRoundsOf } from '../pentest/pentest.service.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
+import { dropComponentIpsOutsideSystem } from './system-ip-links.js';
 import { toStringList, hasKey, loadOptions, assertIdsExist, resolveRelations, saveRelations } from '../../shared/service.js';
 
 const RELATIONS = {
@@ -139,6 +140,8 @@ export async function updateSystem(id, input, client) {
   return withTransaction(client, async (c) => {
     await System.update(id, { ...data, updated_by: input.updated_by || 'admin' }, c);
     await saveRelations(id, links, RELATIONS, c);
+    // an IP taken off the system is taken off its components too
+    if (links.ip_addresses) await dropComponentIpsOutsideSystem({ systemId: Number(id) }, c);
     return System.findById(id, c);
   });
 }
