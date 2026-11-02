@@ -606,6 +606,10 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
+- ♻️ System Configuration: the nine groups no longer sit in one horizontal
+  tab bar that scrolled sideways. They are gathered under three headings
+  (Application, Assets, Security; `section` in `src/utils/configRegistry.js`)
+  in a side list, and a grouped select on narrow screens.
 - ♻️ Pentest rebuilt on the module template and UI kit: one Add/Edit page
   (`pentest_form.ejs`), a kit list with Target type / Status (several at
   once) / test date filters and Excel export (`/pentest/export`). The

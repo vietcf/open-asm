@@ -10,7 +10,9 @@
 
 <div class="app-content">
   <div class="container-fluid">
-    <%- include('../../partials/ui/config_tabs', { groups, current: group.id }) %>
+    <div class="row g-3">
+    <div class="col-lg-3 col-xl-2"><%- include('../../partials/ui/config_tabs', { groups, current: group.id }) %></div>
+    <div class="col-lg-9 col-xl-10">
     <%- include('../../partials/ui/flash') %>
 
     <form id="configGroupForm" method="POST" action="/administrator/configuration/<%= group.id %>?_method=PUT">
@@ -105,6 +107,8 @@
         </div>
       <% } %>
     </form>
+    </div>
+    </div>
   </div>
 </div>
 
@@ -123,6 +127,9 @@
 
 <script>
 (function () {
+  // Narrow screens: the group select navigates
+  var nav = document.querySelector('[data-config-nav]');
+  if (nav) nav.addEventListener('change', function () { window.location.href = nav.value; });
   var form = document.getElementById('configGroupForm');
   if (!form) return;
   var tr = window.t || function (s) { return s; };

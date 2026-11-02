@@ -14,14 +14,14 @@
 
 export const CONFIG_GROUPS = [
   {
-    id: 'general', label: 'General', icon: 'bi-sliders',
+    id: 'general', section: 'Application', label: 'General', icon: 'bi-sliders',
     fields: [
       { key: 'site_name', type: 'text', label: 'Site name', help: 'Shown in the header and page titles', required: true },
       { key: 'page_size', type: 'int_list', label: 'Page size options', help: 'Rows per page offered on list pages; the first one is the default', required: true },
     ],
   },
   {
-    id: 'security', label: 'Security & Logs', icon: 'bi-shield-lock',
+    id: 'security', section: 'Application', label: 'Security & Logs', icon: 'bi-shield-lock',
     fields: [
       { key: 'session_idle_timeout_minutes', type: 'number', min: 0, max: 10080, default: '30', label: 'Session idle timeout (minutes)', help: '0 disables the automatic logout' },
       { key: 'otp_deadline_time', type: 'number', min: 1, max: 365, default: '3', label: '2FA setup deadline (days)', help: 'Days a user has to set up 2FA once it is required' },
@@ -30,7 +30,7 @@ export const CONFIG_GROUPS = [
     ],
   },
   {
-    id: 'system', label: 'System', icon: 'bi-list-ul',
+    id: 'system', section: 'Assets', label: 'System', icon: 'bi-list-ul',
     fields: [
       { key: 'system_level', type: 'options', label: 'System levels' },
       { key: 'system_user_scope', type: 'options', label: 'User scopes' },
@@ -39,7 +39,7 @@ export const CONFIG_GROUPS = [
     ],
   },
   {
-    id: 'server-device', label: 'Server & Device', icon: 'bi-hdd-stack',
+    id: 'server-device', section: 'Assets', label: 'Server & Device', icon: 'bi-hdd-stack',
     fields: [
       { key: 'server_type', type: 'options', label: 'Server types' },
       { key: 'server_status', type: 'options', label: 'Server statuses' },
@@ -48,7 +48,7 @@ export const CONFIG_GROUPS = [
     ],
   },
   {
-    id: 'network', label: 'Network', icon: 'bi-diagram-3',
+    id: 'network', section: 'Assets', label: 'Network', icon: 'bi-diagram-3',
     fields: [
       { key: 'ip_address_type', type: 'options', label: 'IP address types' },
       { key: 'ip_address_status', type: 'options', label: 'IP address statuses' },
@@ -56,7 +56,7 @@ export const CONFIG_GROUPS = [
     ],
   },
   {
-    id: 'firewall', label: 'Firewall', icon: 'bi-bricks',
+    id: 'firewall', section: 'Security', label: 'Firewall', icon: 'bi-bricks',
     fields: [
       { key: 'firewall_name', type: 'options', label: 'Firewall names' },
       { key: 'firewall_rule_action', type: 'options', label: 'Rule actions' },
@@ -65,20 +65,20 @@ export const CONFIG_GROUPS = [
     ],
   },
   {
-    id: 'priv-account', label: 'Privileged Accounts', icon: 'bi-key',
+    id: 'priv-account', section: 'Security', label: 'Privileged Accounts', icon: 'bi-key',
     fields: [
       { key: 'priv_account_type', type: 'options', label: 'Account types' },
       { key: 'priv_account_manage_type', type: 'options', label: 'Management methods' },
     ],
   },
   {
-    id: 'organization', label: 'Organization', icon: 'bi-people',
+    id: 'organization', section: 'Assets', label: 'Organization', icon: 'bi-people',
     fields: [
       { key: 'contact_position', type: 'options', label: 'Contact positions' },
     ],
   },
   {
-    id: 'pentest', label: 'Pentest', icon: 'bi-bug',
+    id: 'pentest', section: 'Security', label: 'Pentest', icon: 'bi-bug',
     fields: [
       { key: 'pentest_status', type: 'options', label: 'Pentest statuses' },
     ],
