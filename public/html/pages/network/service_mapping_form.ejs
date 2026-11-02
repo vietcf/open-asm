@@ -54,8 +54,9 @@
               <select id="f-domain" name="domain" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/domain"
                       data-placeholder="<%= t('Select or type a domain, e.g. app.example.com') %>" data-selected="<%= JSON.stringify(sel.domain || []) %>"></select>
             </div>
-            <%# In the order of the traffic: who may connect (enforced by the provider or at the NAT IP),
-                then the provider (CDN / WAF / private channel), then the IP it reaches %>
+            <%# In the order of the traffic, one group per line (w-100 breaks): who may connect (enforced by
+                the provider or at the NAT IP), then provider - port - protocol, then IP - port - protocol %>
+            <div class="w-100 mt-0" aria-hidden="true"></div>
             <div class="col-md-3">
               <label class="form-label" for="f-access"><%= t('Access') %></label>
               <select id="f-access" name="access_mode" class="form-select">
@@ -69,6 +70,7 @@
               <textarea id="f-allowed" name="allowed_ips" class="form-control font-monospace" rows="2"
                         placeholder="<%= t('IP or CIDR, comma or one per line, e.g. 198.51.100.0/24') %>"><%= (v.allowed_ips || []).join('\n') %></textarea>
             </div>
+            <div class="w-100 mt-0" aria-hidden="true"></div>
             <div class="col-md-6">
               <label class="form-label" for="f-provider"><%= t('Provider / Channel') %></label>
               <select id="f-provider" name="provider" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/provider"
@@ -88,6 +90,7 @@
                 <% }) %>
               </select>
             </div>
+            <div class="w-100 mt-0" aria-hidden="true"></div>
             <div class="col-md-6">
               <label class="form-label" for="f-ip"><%= t('IP Address') %> <span class="text-danger">*</span></label>
               <select id="f-ip" name="ip_address" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/ip-addresses/search-all"
