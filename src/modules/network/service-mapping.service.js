@@ -1,7 +1,6 @@
 import ServiceMapping from './service-mapping.model.js';
 import IpAddress from './ip-address.model.js';
 import Domain from './domain.model.js';
-import Device from '../device/device.model.js';
 import System from '../system/system.model.js';
 import { IPV4_REGEX } from './ip-address.service.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
@@ -109,7 +108,6 @@ function accessFields(accessMode, allowedRaw) {
 }
 
 async function assertRefs(input) {
-  if (input.device_id && !(await Device.exists(input.device_id))) throw new NotFoundError('Device not found');
   if (input.system_id && !(await System.exists(input.system_id))) throw new NotFoundError('System not found');
 }
 
@@ -130,8 +128,23 @@ export const getProtocolOptions = () => ServiceMapping.getDistinctProtocols();
 export const getServiceMappingsForDevice = (deviceId) => ServiceMapping.findByDeviceId(deviceId);
 export const getServiceMappingsForServer = (serverId) => ServiceMapping.findByServerId(serverId);
 
+// Port / protocol the provider (CDN, WAF, VPN...) listens on: both optional,
+// cleared when there is no provider. -> {provider, provider_port, provider_protocol}
+function providerFields(provider, rawPort, rawProtocol) {
+  if (!provider) return { provider: null, provider_port: null, provider_protocol: null };
+  const portText = String(rawPort ?? '').trim();
+  const port = portText ? Number(portText) : null;
+  if (port !== null && !(Number.isInteger(port) && port >= 1 && port <= 65535)) {
+    throw new ValidationError('Invalid provider port: {port}').withParams({ port: portText });
+  }
+  const protocol = String(rawProtocol ?? '').trim().toUpperCase() || null;
+  if (protocol && !PROTOCOL_OPTIONS.includes(protocol)) throw new ValidationError('Invalid provider protocol: {protocol}').withParams({ protocol });
+  return { provider, provider_port: port, provider_protocol: protocol };
+}
+
 // ===== Commands =====
-// ip_address / domain: id or address / name; members: member_ip[] / member_port[] / member_status[]
+// ip_address / domain: id or address / name; members: member_ip[] / member_port[] / member_status[];
+// provider_port / provider_protocol: where the provider listens (optional)
 export async function createServiceMapping(input, client) {
   if (!String(input.ip_address ?? '').trim()) throw new ValidationError('IP Address is required');
   if (!input.port) throw new ValidationError('Port is required');
@@ -140,6 +153,7 @@ export async function createServiceMapping(input, client) {
   const direction = pick(input.direction, DIRECTION_OPTIONS, 'inbound', 'direction');
   const scope = pick(input.scope, SCOPE_OPTIONS, 'public', 'scope');
   const access = accessFields(pick(input.access_mode, ACCESS_OPTIONS, 'full', 'access mode'), input.allowed_ips);
+  const providerData = providerFields(str(input.provider), input.provider_port, input.provider_protocol);
   await assertRefs(input);
   const id = await withTransaction(client, async (c) => {
     const resolve = inventoryResolver(c, input.updated_by);
@@ -148,10 +162,10 @@ export async function createServiceMapping(input, client) {
     const name = str(input.name) || `${domain ? domain.name : ip.address}:${input.port}`;
     await assertNameAvailable(name);
     const created = await ServiceMapping.create({
-      name, domain_id: domain?.id ?? null, provider: str(input.provider),
+      name, domain_id: domain?.id ?? null, ...providerData,
       ip_address_id: ip.id, port: Number(input.port), protocol,
       direction, scope, ...access,
-      device_id: input.device_id || null, system_id: input.system_id || null, description: str(input.description),
+      system_id: input.system_id || null, description: str(input.description),
       updated_by: input.updated_by || 'admin',
     }, c);
     await ServiceMapping.setMembers(created.id, await resolveMembers(input, resolve), c);
@@ -176,18 +190,22 @@ export async function updateServiceMapping(id, input, client) {
     ? accessFields(pick(hasKey(input, 'access_mode') ? input.access_mode : current.access_mode, ACCESS_OPTIONS, 'full', 'access mode'),
       hasKey(input, 'allowed_ips') ? input.allowed_ips : current.allowed_ips)
     : {};
+  const providerData = ['provider', 'provider_port', 'provider_protocol'].some((k) => hasKey(input, k))
+    ? providerFields(hasKey(input, 'provider') ? str(input.provider) : current.provider,
+      hasKey(input, 'provider_port') ? input.provider_port : current.provider_port,
+      hasKey(input, 'provider_protocol') ? input.provider_protocol : current.provider_protocol)
+    : {};
   await assertRefs(input);
   await withTransaction(client, async (c) => {
     const resolve = inventoryResolver(c, input.updated_by);
     await ServiceMapping.update(id, {
       name,
       domain_id: hasKey(input, 'domain') ? ((await resolve.domain(input.domain))?.id ?? null) : undefined,
-      provider: hasKey(input, 'provider') ? str(input.provider) : undefined,
+      ...providerData,
       ip_address_id: hasKey(input, 'ip_address') ? (await resolve.ip(input.ip_address)).id : undefined,
       port: hasKey(input, 'port') ? Number(input.port) : undefined,
       protocol: hasKey(input, 'protocol') ? (input.protocol || '').toUpperCase() : undefined,
       direction, scope, ...access,
-      device_id: hasKey(input, 'device_id') ? (input.device_id || null) : undefined,
       system_id: hasKey(input, 'system_id') ? (input.system_id || null) : undefined,
       description: hasKey(input, 'description') ? str(input.description) : undefined,
       updated_by: input.updated_by || 'admin',

@@ -1,6 +1,5 @@
 // Web pages: /network/service-mapping (list, export, import, add, edit, delete) and lookups.
 import ServiceMapping from './service-mapping.model.js';
-import Device from '../device/device.model.js';
 import System from '../system/system.model.js';
 import * as smService from './service-mapping.service.js';
 import { IPV4_REGEX } from './ip-address.service.js';
@@ -30,10 +29,10 @@ function listFilter(query) {
 async function formInput(req) {
   const b = req.body;
   return {
-    name: b.name, domain: b.domain, provider: b.provider,
+    name: b.name, domain: b.domain, provider: b.provider, provider_port: b.provider_port, provider_protocol: b.provider_protocol,
     ip_address: b.ip_address, port: b.port, protocol: b.protocol,
     direction: b.direction, scope: b.scope, access_mode: b.access_mode, allowed_ips: b.allowed_ips,
-    device_id: b.device_id || null, system_id: b.system_id || null, description: b.description,
+    system_id: b.system_id || null, description: b.description,
     member_ip: b.member_ip ?? [], member_port: b.member_port ?? [], member_status: b.member_status ?? [],
     updated_by: actorName(req),
   };
@@ -52,7 +51,6 @@ async function renderForm(res, mode, vs = {}, copiedFrom = null) {
     selected: {
       ip: vs.ip_address_id ? [{ id: vs.ip_address_id, text: vs.ip_address }] : [],
       domain: vs.domain_id ? [{ id: vs.domain_id, text: vs.domain }] : [],
-      device: vs.device_id ? [{ id: vs.device_id, text: vs.device_name }] : [],
       system: vs.system_id ? [{ id: vs.system_id, text: vs.system_name }] : [],
       members: (vs.members || []).map((m) => ({ id: m.ip_address_id, text: m.server_name ? `${m.ip} (${m.server_name})` : m.ip, port: m.port, status: m.status })),
     },
@@ -66,6 +64,8 @@ export const serviceMappingImport = excelImport({
     { header: 'Name (Optional - auto-generated if empty)', key: 'name' },
     { header: 'Domain (Optional, created if new)', key: 'domain' },
     { header: 'Provider (Optional, e.g. Akamai, Cloudflare)', key: 'provider' },
+    { header: 'Provider Port (Optional)', key: 'provider_port' },
+    { header: 'Provider Protocol (Optional, HTTP/HTTPS/TCP/UDP)', key: 'provider_protocol' },
     { header: 'IP Address (Require, created if new)', key: 'ip_address' },
     { header: 'Port (Require)', key: 'port' },
     { header: 'Protocol (Optional, default HTTPS)', key: 'protocol' },
@@ -74,20 +74,19 @@ export const serviceMappingImport = excelImport({
     { header: 'Access (Optional, full/limited, default full)', key: 'access_mode' },
     { header: 'Allowed IPs (Optional, only used when Access = limited, comma-separated IP/CIDR)', key: 'allowed_ips' },
     { header: 'System Name (Optional)', key: 'system' },
-    { header: 'Device Name (Optional, LB device)', key: 'device' },
     { header: 'Backend IPs (Optional, ip:port comma-separated, created if new)', key: 'backends' },
     { header: 'Description (Optional)', key: 'description' },
   ],
   sample: async () => [
     { name: 'Web Production', domain: 'app.example.com', provider: 'Akamai', ip_address: '203.0.113.10', port: 443,
       protocol: 'HTTPS', direction: 'inbound', scope: 'public', access_mode: 'full', allowed_ips: '', system: '',
-      device: 'F5-01', backends: '10.10.20.10:8080,10.10.20.11:8080', description: 'Production web frontend' },
+      backends: '10.10.20.10:8080,10.10.20.11:8080', description: 'Production web frontend' },
     { name: 'Partner API', domain: 'partner.example.com', provider: 'Akamai', ip_address: '203.0.113.11', port: 443,
       protocol: 'HTTPS', direction: 'inbound', scope: 'public', access_mode: 'limited', allowed_ips: '198.51.100.0/24,192.0.2.15', system: '',
-      device: '', backends: '10.10.20.20:8080', description: 'Partner API, Akamai allow-list only' },
+      backends: '10.10.20.20:8080', description: 'Partner API, Akamai allow-list only' },
     { name: 'Partner over MPLS', domain: '', provider: 'MPLS', ip_address: '10.200.1.10', port: 8443,
       protocol: 'TCP', direction: 'inbound', scope: 'private', access_mode: 'full', allowed_ips: '', system: '',
-      device: '', backends: '10.10.20.20:8443', description: 'Partner over MPLS, NAT private IP' },
+      backends: '10.10.20.20:8443', description: 'Partner over MPLS, NAT private IP' },
   ],
   prepare: async (req) => ({ username: actorName(req) || 'admin' }),
   async check(row) {
@@ -105,12 +104,6 @@ export const serviceMappingImport = excelImport({
     }
 
     const missing = [];
-    row._deviceId = null;
-    if (row.device) {
-      const found = await Device.findByName(row.device);
-      if (found) row._deviceId = found.id;
-      else missing.push(`Device: ${row.device}`);
-    }
     row._systemId = null;
     if (row.system) {
       const found = (await System.findByNameExact(row.system))[0];
@@ -137,9 +130,10 @@ export const serviceMappingImport = excelImport({
   async save(row, client, ctx) {
     await smService.createServiceMapping({
       name: row._name, domain: row.domain || null, provider: row.provider || null,
+      provider_port: row.provider_port || null, provider_protocol: row.provider_protocol || null,
       ip_address: row.ip_address, port: Number(row.port), protocol: row._protocol,
       direction: row._direction, scope: row._scope, access_mode: row._access_mode, allowed_ips: row.allowed_ips || null,
-      device_id: row._deviceId, system_id: row._systemId, description: row.description || null,
+      system_id: row._systemId, description: row.description || null,
       member_ip: row._members.map((m) => m.ip),
       member_port: row._members.map((m) => m.port),
       member_status: row._members.map((m) => m.status),
@@ -174,6 +168,8 @@ export default {
         { header: req.t('Name'), value: (r) => r.vs.name, width: 28 },
         { header: req.t('Domain'), value: (r) => r.vs.domain, width: 28 },
         { header: req.t('Provider'), value: (r) => r.vs.provider, width: 14 },
+        { header: req.t('Provider port'), value: (r) => r.vs.provider_port, width: 10 },
+        { header: req.t('Provider protocol'), value: (r) => r.vs.provider_protocol, width: 10 },
         { header: req.t('IP Address'), value: (r) => r.vs.ip_address, width: 16 },
         { header: req.t('Port'), value: (r) => r.vs.port, width: 8 },
         { header: req.t('Protocol'), value: (r) => r.vs.protocol, width: 10 },
@@ -182,7 +178,7 @@ export default {
         { header: req.t('Access'), value: (r) => r.vs.access_mode, width: 10 },
         { header: req.t('Allowed IPs'), value: (r) => (r.vs.allowed_ips || []).join(', '), width: 30 },
         { header: req.t('System'), value: (r) => r.vs.system_name, width: 20 },
-        { header: req.t('Device'), value: (r) => r.vs.device_name, width: 20 },
+        { header: req.t('IP owner'), value: (r) => r.vs.ip_owner_name, width: 20 },
         { header: req.t('Backend IP'), value: (r) => r.ip, width: 16 },
         { header: req.t('Backend Port'), value: (r) => r.port, width: 12 },
         { header: req.t('Server'), value: (r) => r.server_name, width: 24 },
