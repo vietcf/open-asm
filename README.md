@@ -641,7 +641,12 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Unreleased
+### Version 1.3.0 (Latest)
+- ⬆️ Upgrading from 1.2.x: back up, check out `v1.3.0`, build and start
+  ([Upgrading an existing install](#upgrading-an-existing-install-production)).
+  Migration `0020` runs; the lines it prints list option values that were
+  removed from their list but are still used, now kept as inactive. An
+  existing `.env.docker` keeps working.
 - ✨ External PostgreSQL: `docker compose -f docker-compose.external-db.yml up -d`
   runs only the app and nginx; the `POSTGRES_*` settings go in `.env.docker`.
 - ✨ Every System Log entry is also printed by the app container as one JSON
@@ -667,7 +672,7 @@ when cutting a release.
   values already removed but still used back as retired. Server type and DNS
   record type are now validated like the other lists.
 
-### Version 1.2.2 (Latest)
+### Version 1.2.2
 - ✨ `scripts/docker-export.sh` / `scripts/docker-import.sh`: build the
   images on one machine and load them on a server without registry /
   Internet access (archive `openasm_<version>_<time>.tar.gz` + `.sha256`;
