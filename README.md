@@ -654,7 +654,19 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.3.4 (Latest)
+### Version 1.3.5 (Latest)
+- No database migration: upgrading from 1.3.x only needs the new image.
+- ✨ Search results put the best match first: exact match, then "starts
+  with", then "contains" (case-insensitive; shortest first within each, so
+  `10.0.0.1` comes before `10.0.0.10`). Applies to the IP address, domain,
+  device, system and service mapping pickers of the Service Mapping form
+  (and everywhere they are used) and to the Service Mapping list search
+  (exact name / domain / frontend IP first, newest first within a rank).
+  Before, results were alphabetical (or newest first) and cut at 20, so an
+  exact match could come last or not be offered at all. Helpers
+  `matchOrder()` / `matchRank()` in `src/shared/db.js`.
+
+### Version 1.3.4
 - No database migration: upgrading from 1.3.x only needs the new image.
 - ✨ Every Add / Edit form checks its unique fields when you leave them, like
   the IP address field: already used → red "Already used by: …" with a link

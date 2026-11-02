@@ -1,5 +1,5 @@
 import { pool } from '../../../config/config.js';
-import { db, Where, jsonList } from '../../shared/db.js';
+import { db, Where, jsonList, matchOrder, matchRank } from '../../shared/db.js';
 
 const COLUMNS = ['name', 'domain_id', 'provider', 'ip_address_id', 'port', 'protocol', 'direction', 'scope', 'access_mode', 'allowed_ips', 'device_id', 'system_id', 'description', 'updated_by'];
 
@@ -89,8 +89,11 @@ class ServiceMapping {
   static async findFilteredList(filter = {}) {
     const { page = 1, pageSize = 20 } = filter;
     const w = filterWhere(filter);
+    // searching: exact name / domain / frontend IP matches first, then starts with, then the rest
+    const search = String(filter.search || '').trim();
+    const rank = search ? `${matchRank(['vs.name', 'fip.ip_address', "COALESCE(dom.domain, '')"], w.param(search))}, ` : '';
     const result = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY vs.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY ${rank}vs.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params);
     return result.rows;
   }
@@ -146,7 +149,7 @@ class ServiceMapping {
     const result = await pool.query(
       `SELECT vs.id, vs.name AS text FROM virtual_servers vs
          JOIN ip_addresses fip ON fip.id = vs.ip_address_id LEFT JOIN domains dom ON dom.id = vs.domain_id
-        WHERE ${w} ORDER BY vs.name LIMIT 20`, w.params);
+        WHERE ${w} ORDER BY ${matchOrder(['vs.name', 'fip.ip_address', "COALESCE(dom.domain, '')"], w.param(String(search || '').trim()))} LIMIT 20`, w.params);
     return result.rows;
   }
 }

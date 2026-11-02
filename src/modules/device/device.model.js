@@ -1,5 +1,5 @@
 import { pool } from '../../../config/config.js';
-import { db, Where, replaceLinks, replaceTags, subList } from '../../shared/db.js';
+import { db, Where, replaceLinks, replaceTags, subList, matchOrder } from '../../shared/db.js';
 
 const COLUMNS = ['name', 'manufacturer', 'device_role', 'platform_id', 'device_type_id', 'location', 'serial_number', 'management_address', 'description', 'updated_by'];
 
@@ -115,7 +115,8 @@ class Device {
 
   // Select2 lookup: [{id, text}]
   static async select2Search(search = '', limit = 20) {
-    const result = await pool.query('SELECT id, name AS text FROM devices WHERE name ILIKE $1 ORDER BY name LIMIT $2', [`%${search}%`, limit]);
+    const result = await pool.query(`SELECT id, name AS text FROM devices WHERE name ILIKE $1
+      ORDER BY ${matchOrder('name', '$3')} LIMIT $2`, [`%${search}%`, limit, search]);
     return result.rows;
   }
 
