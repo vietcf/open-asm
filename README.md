@@ -571,7 +571,8 @@ markup, CSS or scripts:
 | Cell helpers | `ui.*` (`src/utils/viewHelpers.js`) | `ui.text`, `ui.clip`, `ui.chips`, `ui.mono`, `ui.date`, `ui.optionLabel`, `ui.options` (static `<option>` list) |
 | Mobile cards | `.table-stack` (`custom.css`) | cells need `data-label`, title cell `.stack-title` |
 | Detail modal | `partials/ui/detail_modal.ejs` + `public/js/detail-view.js` | `DV.open(id, { title, subtitle, body })`, `DV.section`, `DV.rows`, `DV.chips`, ... |
-| Form | `.form-card` / `.form-section`, `partials/ui/form_actions.ejs` | `public/js/form-kit.js`: `select.js-select`, `[data-attachments]` |
+| Form | `.form-card` / `.form-section`, `partials/ui/form_actions.ejs` | `public/js/form-kit.js`: `select.js-select`, `[data-attachments]`, `input[data-unique]` |
+| Unique field | `input data-unique="server.name"` (+ `data-unique-exclude`, `data-unique-scope`) | checked when left against `src/utils/uniqueChecks.js` (same rule as the save); a new unique field gets an entry there |
 | Attachments | `partials/ui/file_attachments.ejs` | upload + existing files with delete |
 | Confirm | `form[data-confirm="..."]` (`public/js/ui-kit.js`) | asks before submitting (deletes) |
 
@@ -653,7 +654,22 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.3.3 (Latest)
+### Version 1.3.4 (Latest)
+- No database migration: upgrading from 1.3.x only needs the new image.
+- ✨ Every Add / Edit form checks its unique fields when you leave them, like
+  the IP address field: already used → red "Already used by: …" with a link
+  to that record and the save is blocked; free → green "Available". Same
+  rule as the save (case-insensitive where the save is, within the same
+  system for components / privileged roles / permissions, per firewall and
+  audit batch for rule names; the record being edited is ignored). Fields:
+  server, device, cluster, service mapping, system (name and System ID),
+  component, contact email, unit, tag, domain, subnet address, privileged
+  account / role / permission, user (username and email), role, permission,
+  device type, platform, service, agent, firewall rule name. One endpoint
+  (`GET /api/unique-check`) and one registry (`src/utils/uniqueChecks.js`);
+  it needs the read permission of the entity.
+
+### Version 1.3.3
 - No database migration: upgrading from 1.3.x only needs the new image.
 - ✨ Add IP address: leaving the address field checks every address entered
   (`GET /network/api/ip-addresses/check?addresses=a,b`): not a valid IPv4,

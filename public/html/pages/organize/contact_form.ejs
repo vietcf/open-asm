@@ -22,7 +22,7 @@
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-email"><%= t('Email') %> <span class="text-danger">*</span></label>
-              <input type="email" id="f-email" name="email" class="form-control" value="<%= c.email || '' %>" maxlength="255" placeholder="<%= t('Enter email address') %>" required>
+              <input type="email" id="f-email" name="email" data-unique="contact.email" data-unique-exclude="<%= c.id || '' %>" class="form-control" value="<%= c.email || '' %>" maxlength="255" placeholder="<%= t('Enter email address') %>" required>
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-position"><%= t('Position') %> <span class="text-danger">*</span></label>

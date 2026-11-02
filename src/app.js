@@ -43,6 +43,7 @@ import apiDebugLog from './middlewares/apiDebugLog.middleware.js';
 import authRouter from './modules/auth/web.routes.js';
 import dashboardRouter from './modules/dashboard/web.routes.js';
 import requireLogin from './middlewares/requireLogin.middleware.js';
+import { UNIQUE_CHECKS, checkUnique } from './utils/uniqueChecks.js';
 import networkRouter from './modules/network/web.routes.js';
 import systemRouter from './modules/system/web.routes.js';
 import pentestRouter from './modules/pentest/web.routes.js';
@@ -288,6 +289,22 @@ app.use('/backup', requireLogin, require2fa, backupRouter);
 
 // //Upload route to get upload patch file
 app.use('/api/upload', requireLogin, uploadRouter); 
+// Add / Edit forms: is this value of a unique field free? (src/utils/uniqueChecks.js)
+//   ?field=server.name&value=web-01&exclude=<id being edited>&scope[system_id]=3
+app.get('/api/unique-check', requireLogin, require2fa, async (req, res) => {
+  const check = UNIQUE_CHECKS[req.query.field];
+  if (!check) return res.status(400).json({ error: 'Unknown field' });
+  if (!res.locals.hasPermission(check.permission)) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    // scope[<column>]=value (Express 5's simple query parser keeps the brackets in the key)
+    const scope = Object.fromEntries(Object.entries(req.query)
+      .map(([k, v]) => [k.match(/^scope\[(\w+)\]$/)?.[1], v]).filter(([k]) => k));
+    res.json(await checkUnique(req.query.field, req.query.value, { excludeId: req.query.exclude, scope }));
+  } catch (err) {
+    console.error('unique-check failed:', err.message);
+    res.status(500).json({ error: 'Check failed' });
+  }
+});
 
 // ===========================================
 // API ROUTES

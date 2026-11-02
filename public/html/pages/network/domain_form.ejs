@@ -22,7 +22,7 @@
               <% if (isEdit) { %>
                 <input type="text" id="f-domain" class="form-control" value="<%= d.domain %>" disabled>
               <% } else { %>
-                <input type="text" id="f-domain" name="domain" class="form-control" required maxlength="255" placeholder="www.example.com">
+                <input type="text" id="f-domain" name="domain" data-unique="domain.domain" class="form-control" required maxlength="255" placeholder="www.example.com">
               <% } %>
             </div>
             <div class="col-md-3">

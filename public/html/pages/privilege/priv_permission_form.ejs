@@ -18,7 +18,7 @@
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label" for="f-name"><%= t('Permission Name') %> <span class="text-danger">*</span></label>
-              <input type="text" id="f-name" name="name" class="form-control" value="<%= p.name || '' %>" required>
+              <input type="text" id="f-name" name="name" data-unique="priv_permission.name" data-unique-exclude="<%= p.id || '' %>" data-unique-scope='{"system_id":"#f-system"}' class="form-control" value="<%= p.name || '' %>" required>
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-system"><%= t('System') %> <span class="text-danger">*</span></label>

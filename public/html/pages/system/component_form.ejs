@@ -37,7 +37,7 @@
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-name"><%= t('Component Name') %> <span class="text-danger">*</span></label>
-              <input type="text" id="f-name" name="name" class="form-control" value="<%= c.name || '' %>" maxlength="255" placeholder="<%= t('Enter component name') %>" required>
+              <input type="text" id="f-name" name="name" data-unique="component.name" data-unique-exclude="<%= c.id || '' %>" data-unique-scope='{"system_id":"#f-system"}' class="form-control" value="<%= c.name || '' %>" maxlength="255" placeholder="<%= t('Enter component name') %>" required>
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-app-type"><%= t('App Type') %></label>

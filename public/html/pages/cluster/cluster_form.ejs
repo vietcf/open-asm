@@ -20,7 +20,7 @@
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label" for="f-name"><%= t('Cluster Name') %> <span class="text-danger">*</span></label>
-              <input type="text" id="f-name" name="name" class="form-control" value="<%= c.name || '' %>" maxlength="255" required
+              <input type="text" id="f-name" name="name" data-unique="cluster.name" data-unique-exclude="<%= c.id || '' %>" class="form-control" value="<%= c.name || '' %>" maxlength="255" required
                      data-check-url="/cluster/api/check-name" data-exclude-id="<%= c.id || '' %>">
               <div class="invalid-feedback"><%= t('Cluster name already exists') %></div>
             </div>

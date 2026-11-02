@@ -1483,5 +1483,8 @@
   "Entered twice: {1}": "Nhập trùng: {1}",
   "Already exists: {1}": "Đã tồn tại: {1}",
   "Open": "Mở",
-  "Fix the addresses before saving": "Hãy sửa các địa chỉ trước khi lưu"
+  "Fix the addresses before saving": "Hãy sửa các địa chỉ trước khi lưu",
+  "This value is already used": "Giá trị này đã được sử dụng",
+  "Already used by: {1}": "Đã được dùng bởi: {1}",
+  "Available": "Có thể dùng"
 }

@@ -16,7 +16,7 @@
           <div class="row g-3">
             <div class="col-md-8">
               <label class="form-label" for="f-name"><%= t('Unit Name') %> <span class="text-danger">*</span></label>
-              <input type="text" id="f-name" name="name" class="form-control" value="<%= u.name || '' %>" maxlength="255" placeholder="<%= t('Enter unit name') %>" required>
+              <input type="text" id="f-name" name="name" data-unique="unit.name" data-unique-exclude="<%= u.id || '' %>" class="form-control" value="<%= u.name || '' %>" maxlength="255" placeholder="<%= t('Enter unit name') %>" required>
             </div>
             <div class="col-md-4">
               <label class="form-label" for="f-code"><%= t('Code') %></label>

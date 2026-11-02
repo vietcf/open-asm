@@ -26,7 +26,7 @@
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label" for="f-name"><%= t('Name') %></label>
-              <input type="text" id="f-name" name="name" class="form-control" value="<%= v.name || '' %>" maxlength="255" placeholder="<%= t('Auto-generated from domain:port if empty') %>">
+              <input type="text" id="f-name" name="name" data-unique="service_mapping.name" data-unique-exclude="<%= v.id || '' %>" class="form-control" value="<%= v.name || '' %>" maxlength="255" placeholder="<%= t('Auto-generated from domain:port if empty') %>">
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-system"><%= t('System') %></label>

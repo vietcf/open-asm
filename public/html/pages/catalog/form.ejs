@@ -23,7 +23,7 @@
                 <% if (f.type === 'textarea') { %>
                   <textarea id="<%= id %>" name="<%= f.key %>" class="form-control" rows="3" placeholder="<%= f.placeholder ? t(f.placeholder) : '' %>"><%= r[f.key] || '' %></textarea>
                 <% } else { %>
-                  <input type="text" id="<%= id %>" name="<%= f.key %>" class="form-control" value="<%= r[f.key] || '' %>"
+                  <input type="text" id="<%= id %>" name="<%= f.key %>" class="form-control" value="<%= r[f.key] || '' %>"<%- f.key === 'name' ? ' data-unique="' + c.permission + '.name" data-unique-exclude="' + (r.id || '') + '"' : '' %>
                          maxlength="<%= f.maxlength || 255 %>" placeholder="<%= f.placeholder ? t(f.placeholder) : '' %>"<%= f.required ? ' required' : '' %>>
                 <% } %>
               </div>

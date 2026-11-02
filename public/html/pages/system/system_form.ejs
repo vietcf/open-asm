@@ -35,11 +35,11 @@
           <div class="row g-3">
             <div class="col-md-4">
               <label class="form-label" for="f-system-id"><%= t('System Code') %> <span class="text-danger">*</span></label>
-              <input type="text" id="f-system-id" name="system_id" class="form-control" value="<%= s.system_id || '' %>" maxlength="50" placeholder="<%= t('Enter system ID') %>" required>
+              <input type="text" id="f-system-id" name="system_id" data-unique="system.system_id" data-unique-exclude="<%= s.id || '' %>" class="form-control" value="<%= s.system_id || '' %>" maxlength="50" placeholder="<%= t('Enter system ID') %>" required>
             </div>
             <div class="col-md-8">
               <label class="form-label" for="f-name"><%= t('System Name') %> <span class="text-danger">*</span></label>
-              <input type="text" id="f-name" name="name" class="form-control" value="<%= s.name || '' %>" maxlength="255" placeholder="<%= t('Enter system name') %>" required>
+              <input type="text" id="f-name" name="name" data-unique="system.name" data-unique-exclude="<%= s.id || '' %>" class="form-control" value="<%= s.name || '' %>" maxlength="255" placeholder="<%= t('Enter system name') %>" required>
             </div>
             <div class="col-md-4">
               <label class="form-label" for="f-level"><%= t('Level') %></label>

@@ -3,9 +3,9 @@
 %>
 <%
   const isEdit = mode === 'edit'; const r = locals.rule || {};
-  const input = (name, label, { required, width = 'col-md-4', type = 'text', placeholder = '' } = {}) => `<div class="${width}">
+  const input = (name, label, { required, width = 'col-md-4', type = 'text', placeholder = '', extra = '' } = {}) => `<div class="${width}">
     <label class="form-label" for="f-${name}">${t(label)}${required ? ' <span class="text-danger">*</span>' : ''}</label>
-    <input type="${type}" id="f-${name}" name="${name}" class="form-control" value="${ui.esc(r[name] || '')}"${required ? ' required' : ''} placeholder="${ui.esc(placeholder)}"></div>`;
+    <input type="${type}" id="f-${name}" name="${name}" class="form-control" value="${ui.esc(r[name] || '')}"${required ? ' required' : ''} placeholder="${ui.esc(placeholder)}"${extra}></div>`;
   const area = (name, label, width = 'col-md-6', rows = 2) => `<div class="${width}">
     <label class="form-label" for="f-${name}">${t(label)}</label>
     <textarea id="f-${name}" name="${name}" class="form-control" rows="${rows}">${ui.esc(r[name] || '')}</textarea></div>`;
@@ -30,7 +30,7 @@
           <h4 class="form-section-title"><%= t('General information') %></h4>
           <div class="row g-3">
             <%- select('firewall_name', 'Firewall Name', true) %>
-            <%- input('rulename', 'Rule Name', { required: true, width: 'col-md-5' }) %>
+            <%- input('rulename', 'Rule Name', { required: true, width: 'col-md-5', extra: ` data-unique="rule.rulename" data-unique-exclude="${r.id || ''}" data-unique-scope='{"firewall_name":"#f-firewall_name","audit_batch":"#f-audit_batch"}'` }) %>
             <%- input('audit_batch', 'Audit Batch', { required: true, width: 'col-md-2', placeholder: '2024-01' }) %>
             <%- input('src_zone', 'Source Zone', { width: 'col-md-3' }) %>
             <%- input('src', 'Source', { required: true, width: 'col-md-4' }) %>

@@ -26,7 +26,7 @@
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label" for="f-name"><%= t('Server Name') %> <span class="text-danger">*</span></label>
-              <input type="text" id="f-name" name="name" class="form-control" value="<%= s.name || '' %>" maxlength="255" placeholder="<%= t('Enter server name') %>" required>
+              <input type="text" id="f-name" name="name" data-unique="server.name" data-unique-exclude="<%= s.id || '' %>" class="form-control" value="<%= s.name || '' %>" maxlength="255" placeholder="<%= t('Enter server name') %>" required>
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-os"><%= t('Platform') %></label>

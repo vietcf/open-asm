@@ -22,7 +22,7 @@
           <div class="row g-3">
             <div class="col-md-6">
               <label class="form-label" for="f-name"><%= t('Device Name') %> <span class="text-danger">*</span></label>
-              <input type="text" id="f-name" name="name" class="form-control" value="<%= d.name || '' %>" maxlength="255" placeholder="<%= t('Enter device name') %>" required>
+              <input type="text" id="f-name" name="name" data-unique="device.name" data-unique-exclude="<%= d.id || '' %>" class="form-control" value="<%= d.name || '' %>" maxlength="255" placeholder="<%= t('Enter device name') %>" required>
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-type"><%= t('Device Type') %> <span class="text-danger">*</span></label>
