@@ -48,7 +48,7 @@ export const rolePages = pagesFor({
   url: '/administrator/roles', view: 'role', activeMenu: 'role-management',
   labels: { title: 'Role Management', add: 'Add Role', edit: 'Edit Role', added: 'Role added successfully', updated: 'Role updated successfully', deleted: 'Role deleted successfully' },
   service: { list: roleService.listRoles, get: roleService.getRole, create: roleService.createRole, update: roleService.updateRole, remove: roleService.deleteRole },
-  formLocals: async () => ({ permissionGrid: permissionGrid(await Permission.findAll()), actions: ['read', 'create', 'update', 'delete'] }),
+  formLocals: async () => ({ permissionGrid: permissionGrid(await Permission.findAll()), actions: ['read', 'create', 'update', 'delete', 'restore'] }),
 });
 
 export const permissionPages = pagesFor({

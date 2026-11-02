@@ -21,7 +21,8 @@ export async function seedPermissionsAndRoles(db) {
     'server', 'subnet', 'platform', 'service', 'system', 'ip_address',
     'role', 'permission',
     'configuration', 'system_log',
-    'priv_account', 'priv_role', 'priv_permission', 'rule', 'pentest', 'cluster'
+    'priv_account', 'priv_role', 'priv_permission', 'rule', 'pentest', 'cluster',
+    'backup'
   ];
   const actions = ['create', 'read', 'update', 'delete'];
   const permissionValues = [];
@@ -30,6 +31,10 @@ export async function seedPermissionsAndRoles(db) {
       permissionValues.push(`('${entity}.${action}', '${action.charAt(0).toUpperCase() + action.slice(1)} ${entity.replace('_', ' ')}')`);
     }
   }
+  permissionValues.push(`('backup.restore', 'Restore backup')`);
+  // Backups are never edited: no backup.update
+  const updateIdx = permissionValues.indexOf(`('backup.update', 'Update backup')`);
+  if (updateIdx >= 0) permissionValues.splice(updateIdx, 1);
   await db.query(`
     INSERT INTO permissions (name, description) VALUES
       ${permissionValues.join(',\n      ')}
@@ -50,9 +55,9 @@ export async function seedPermissionsAndRoles(db) {
       [roleMap['superadmin'], permId]
     );
   }
-  // Admin: all except user, role, permission
+  // Admin: all except user, role, permission and backup (a dump holds password hashes)
   for (const permName of Object.keys(permMap)) {
-    if (!permName.startsWith('user.') && !permName.startsWith('role.') && !permName.startsWith('permission.')) {
+    if (!permName.startsWith('user.') && !permName.startsWith('role.') && !permName.startsWith('permission.') && !permName.startsWith('backup.')) {
       await db.query(
         'INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
         [roleMap['admin'], permMap[permName]]
@@ -61,7 +66,7 @@ export async function seedPermissionsAndRoles(db) {
   }
   // Viewer: read-only, except user, role, permission
   for (const permName of Object.keys(permMap)) {
-    if (permName.endsWith('.read') && !permName.startsWith('user.') && !permName.startsWith('role.') && !permName.startsWith('permission.')) {
+    if (permName.endsWith('.read') && !permName.startsWith('user.') && !permName.startsWith('role.') && !permName.startsWith('permission.') && !permName.startsWith('backup.')) {
       await db.query(
         'INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2) ON CONFLICT DO NOTHING',
         [roleMap['viewer'], permMap[permName]]
@@ -77,6 +82,11 @@ export async function seedConfiguration(db) {
     ['page_size', '10,20,50', 'Page size options for list pages'],
     ['log_level', 'info', 'Minimum level of system log entries (info, warning, critical)'],
     ['log_retention_days', '30', 'Days to keep system log entries'],
+    // Backup schedule: installs that set it in .env keep their values
+    ['backup_enabled', 'on', 'Run the scheduled database backup (on / off)'],
+    ['backup_frequency', ['daily', 'weekly', 'monthly'].includes(process.env.BACKUP_FREQUENCY) ? process.env.BACKUP_FREQUENCY : 'daily', 'Scheduled backup frequency (daily, weekly, monthly)'],
+    ['backup_hour', '2', 'Hour of the day (0-23, server time) of the scheduled backup'],
+    ['backup_retention', /^[1-9][0-9]{0,2}$/.test(process.env.BACKUP_RETENTION || '') ? process.env.BACKUP_RETENTION : '7', 'Scheduled backups to keep'],
   ];
   for (const [key, value, description] of simpleConfigs) {
     await db.query(

@@ -376,6 +376,15 @@
           </a>
         </li>
         <% } %>
+        <% if (hasPermission('backup.read')) { %>
+        <!-- Backup & Restore -->
+        <li class="nav-item">
+          <a href="/backup" class="nav-link<%= (activeMenu === 'backup') ? ' active' : '' %>">
+            <i class="nav-icon bi bi-database"></i>
+            <p><%= t('Backup & Restore') %></p>
+          </a>
+        </li>
+        <% } %>
         <% if (
           hasPermission('configuration.read')
         ) { %>

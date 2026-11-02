@@ -17,7 +17,7 @@ A comprehensive network and system management platform built with Node.js, Expre
 - **File Upload Management**: Handle file uploads with AWS S3 integration
 - **System Monitoring**: Real-time system status and logging
 - **API Documentation**: Swagger/OpenAPI integration
-- **Automated Database Backup**: Scheduled PostgreSQL backups with configurable retention
+- **Database Backup & Restore**: Scheduled PostgreSQL backups (schedule and retention set in the UI), on-demand backups, upload, download and one-click restore
 
 ### Security Features
 - **Password Management**: Secure password hashing with bcrypt
@@ -166,9 +166,7 @@ SESSION_SECRET=your_session_secret
 JWT_SECRET=your_jwt_secret
 JWT_EXPIRES_IN=24h
 
-# Backup Configuration
-BACKUP_FREQUENCY=daily
-BACKUP_RETENTION=7
+# Backup directory (schedule and retention: System Configuration > Backup)
 BACKUP_DIR=./backups
 
 # File Upload Configuration
@@ -285,7 +283,7 @@ all visible in `docker compose logs -f app`:
 
 | Job | Schedule | What it does | Config |
 |---|---|---|---|
-| Database backup | Daily 2:00 AM | `pg_dump \| gzip` to `./backups/`, keeps the N most recent | `BACKUP_FREQUENCY`, `BACKUP_RETENTION` in `.env.docker` |
+| Database backup | Daily 2:00 AM by default | `pg_dump \| gzip` to `./backups/`, keeps the N most recent scheduled backups | System Configuration > Backup (on/off, frequency, hour, number kept); `BACKUP_DIR` in `.env.docker` |
 | System log cleanup | Daily 2:00 AM | Deletes `system_log` DB rows older than the retention window | `log_retention_days` in System Configuration (admin UI), default 30 |
 | Temp file cleanup | Every 6 hours | Removes stale files from `public/uploads/temp` (>24h) and `public/uploads/import` (>2h) | not configurable |
 
@@ -563,41 +561,40 @@ alter: [`migrations/README.md`](migrations/README.md).**
 
 **Backup & Restore:**
 
-A scheduled job already does this automatically — see "Scheduled Maintenance Jobs" above (`BACKUP_FREQUENCY`/`BACKUP_RETENTION` in `.env.docker`, files land in `./backups/` as `backup_<timestamp>.sql.gz`). These are **plain SQL dumps** (`pg_dump` with no `--clean`/`--if-exists`), so restoring into a database that already has the schema will fail on `CREATE TABLE ... already exists` — the target database must be dropped and recreated first.
+Open **Backup & Restore** in the admin menu (permissions `backup.read`,
+`backup.create`, `backup.delete`, `backup.restore`; by default only
+`superadmin` has them, because a dump contains password hashes).
+
+- **Schedule**: System Configuration > Backup (on/off, daily / weekly on
+  Sunday / monthly on the 1st, hour of the day in server time, number of
+  scheduled backups to keep). Changes apply immediately, no restart.
+- **Back up now**, **Download**, **Delete**, and **Upload backup** (a `.sql`
+  or `.sql.gz` made by `pg_dump`, checked before it is listed).
+- Files are in `BACKUP_DIR` (`./backups`): `backup_*` scheduled (pruned to the
+  number kept), `manual_*`, `upload_*` (both kept until deleted) and
+  `pre-restore_*` (the last 3 are kept).
+- **Restore** replaces the whole database with a backup. You type `RESTORE`
+  to confirm; the app first saves the current data as `pre-restore_*`, then
+  drops the `public` schema and loads the dump **in one transaction**, so a
+  failing backup leaves the database exactly as it was. Afterwards pending
+  migrations run (a backup from an older version is brought up to date) and
+  the settings and schedule are reloaded. Everything saved after the backup
+  was made is lost, and you may be asked to sign in again. Uploaded files
+  (`public/uploads`) are not part of a database backup.
+
+By hand, without the UI:
 
 ```bash
-# Docker Compose (see docker-compose.yml for the actual container/db names
-# if yours differ from openasm_db / openasm / postgres)
+# Backup (Docker Compose; adjust container / database names)
+docker exec openasm_db pg_dump -U postgres -d openasm | gzip > backups/manual_$(date +%Y%m%d_%H%M%S).sql.gz
 
-# 1. Create a backup on demand (same command the scheduled job runs)
-docker exec openasm_db pg_dump -U postgres -d openasm | gzip > backups/backup_$(date +%Y%m%d_%H%M%S).sql.gz
-
-# 2. To restore: stop the app first so nothing writes during the restore
+# Restore: stop the app, load into a recreated database, start the app
 docker compose stop app
-
-# 3. Take a fresh safety backup of the current state before overwriting it —
-#    skip only if you're deliberately discarding everything since the last backup
-docker exec openasm_db pg_dump -U postgres -d openasm | gzip > backups/pre-restore-safety_$(date +%Y%m%d_%H%M%S).sql.gz
-
-# 4. Drop and recreate the database, then load the chosen backup into it
 docker exec openasm_db psql -U postgres -c "DROP DATABASE openasm;"
 docker exec openasm_db psql -U postgres -c "CREATE DATABASE openasm;"
-gunzip -c backups/backup_20260101_120000.sql.gz | docker exec -i openasm_db psql -U postgres -d openasm
-
-# 5. Bring the app back up
+gunzip -c backups/manual_20260101_120000.sql.gz | docker exec -i openasm_db psql -U postgres -d openasm
 docker compose up -d app
 ```
-
-```bash
-# Bare-host Postgres (no Docker) — same idea, run directly against the DB
-pg_dump -h localhost -U postgres -d openasm | gzip > backup_$(date +%Y%m%d_%H%M%S).sql.gz
-
-dropdb -h localhost -U postgres openasm
-createdb -h localhost -U postgres openasm
-gunzip -c backup_20260101_120000.sql.gz | psql -h localhost -U postgres -d openasm
-```
-
-Restoring **replaces the entire database** — everything written after the backup's timestamp is gone once step 4 runs, which is why step 3 (a fresh safety backup of the current state) is not optional unless you mean to discard it.
 
 ## 📝 Changelog
 
@@ -606,6 +603,22 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
+- ✨ Backup & Restore page (`/backup`, `src/modules/backup/`): back up now,
+  download, delete, upload a dump and restore it from the UI. The restore
+  is atomic (a failing dump changes nothing), takes a `pre-restore_*` copy
+  first, needs the typed word `RESTORE` and the new `backup.restore`
+  permission, then runs pending migrations. New permissions `backup.read`,
+  `backup.create`, `backup.delete`, `backup.restore` (seeded for
+  `superadmin`).
+- ♻️ Backup settings moved from `.env` to System Configuration > Backup
+  (on/off, frequency, hour, number kept) and apply without a restart.
+  Installs that set `BACKUP_FREQUENCY` / `BACKUP_RETENTION` keep those
+  values as the initial ones; `BACKUP_DIR` stays in `.env`.
+- 🐛 A failed `pg_dump` was reported as a successful backup (`pg_dump | gzip`
+  hides its exit code and gzip still wrote a ~20-byte file), and retention
+  ordered files by `birthtime`, which Linux does not keep. Dumps are now
+  written to a `.partial` file and renamed only on success; retention uses
+  the modification time.
 - ♻️ System Configuration: the nine groups no longer sit in one horizontal
   tab bar that scrolled sideways. They are gathered under three headings
   (Application, Assets, Security; `section` in `src/utils/configRegistry.js`)

@@ -3,6 +3,7 @@ import Configuration from './configuration.model.js';
 import { CONFIG_GROUPS, findGroup, parseOptions, validateField } from '../../utils/configRegistry.js';
 import { withTransaction } from '../../shared/transaction.js';
 import { siteConfig } from '../../utils/siteConfig.js';
+import { reschedule } from '../backup/backup.scheduler.js';
 
 const configurationController = {};
 
@@ -73,6 +74,7 @@ configurationController.saveConfigurationGroup = async (req, res, next) => {
       }
     });
     await siteConfig.initialize();
+    if (group.id === 'backup') await reschedule();
     req.flash('success', t('{group} settings saved', { group: t(group.label) }));
     res.redirect(back);
   } catch (err) {

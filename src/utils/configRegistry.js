@@ -30,6 +30,15 @@ export const CONFIG_GROUPS = [
     ],
   },
   {
+    id: 'backup', section: 'Application', label: 'Backup', icon: 'bi-database',
+    fields: [
+      { key: 'backup_enabled', type: 'select', choices: ['on', 'off'], label: 'Scheduled backup', help: 'on: back up the database automatically', required: true },
+      { key: 'backup_frequency', type: 'select', choices: ['daily', 'weekly', 'monthly'], label: 'Backup frequency', help: 'Weekly runs on Sunday, monthly on the 1st', required: true },
+      { key: 'backup_hour', type: 'number', min: 0, max: 23, label: 'Backup hour (0-23)', help: 'Server time', required: true },
+      { key: 'backup_retention', type: 'number', min: 1, max: 365, label: 'Scheduled backups to keep', help: 'Older scheduled backups are deleted; manual and uploaded ones are kept', required: true },
+    ],
+  },
+  {
     id: 'system', section: 'Assets', label: 'System', icon: 'bi-list-ul',
     fields: [
       { key: 'system_level', type: 'options', label: 'System levels' },

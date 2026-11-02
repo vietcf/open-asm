@@ -50,6 +50,7 @@ import privAccountRouter from './modules/privilege/web.routes.js';
 import serverRouter from './modules/server/web.routes.js';
 import organizeRouter from './modules/organize/web.routes.js';
 import administratorRouter from './modules/administrator/web.routes.js';
+import backupRouter from './modules/backup/web.routes.js';
 import deviceRoutes from './modules/device/web.routes.js';
 import uploadRouter from './modules/file/web.routes.js';
 import firewallRouter from './modules/firewall/web.routes.js';
@@ -267,6 +268,7 @@ app.use('/device', requireLogin, require2fa, deviceRoutes);
 app.use('/priv-account', requireLogin, require2fa, privAccountRouter);
 app.use('/firewall', requireLogin, require2fa, firewallRouter);
 app.use('/administrator', requireLogin, require2fa, administratorRouter);
+app.use('/backup', requireLogin, require2fa, backupRouter);
 
 // //Upload route to get upload patch file
 app.use('/api/upload', requireLogin, uploadRouter); 
@@ -334,13 +336,10 @@ try {
   console.log('Temp files cleanup job not available:', err.message);
 }
 
-// Start scheduled backup job for database
+// Scheduled database backup (schedule from System Configuration > Backup)
 try {
-  const backupJob = await import('./utils/backupJob.js');
-  if (backupJob.default && typeof backupJob.default.start === 'function') {
-    backupJob.default.start();
-    console.log('✅ Database backup job started');
-  }
+  const { reschedule } = await import('./modules/backup/backup.scheduler.js');
+  await reschedule();
 } catch (err) {
-  console.log('Database backup job not available:', err.message);
+  console.error('Database backup job not available:', err.message);
 }
