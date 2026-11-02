@@ -250,11 +250,11 @@ right away. Use `asset()` for any new local stylesheet or script.
 ./save-docker-images.sh
 
 # Or manually save specific image (tag must match the `image:` value
-# in docker-compose.yml, currently openasm_app:1.1.0)
-sudo docker save openasm_app:1.1.0 | gzip > openasm_app_1.1.0.tar.gz
+# in docker-compose.yml, currently openasm_app:1.2.0)
+sudo docker save openasm_app:1.2.0 | gzip > openasm_app_1.2.0.tar.gz
 
 # Load Docker image
-sudo docker load < openasm_app_1.1.0.tar.gz
+sudo docker load < openasm_app_1.2.0.tar.gz
 ```
 
 ### Logs and Monitoring
@@ -603,7 +603,14 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Unreleased
+### Version 1.2.0 (Latest)
+- ⬆️ **Upgrading from 1.1.0**: back up the database, check out `v1.2.0`,
+  `docker compose build app` and `docker compose up -d`. The entrypoint
+  adopts the 1.1.0 database and applies migrations `0002` → `0018`.
+  Watch the app log for the lines `0015` / `0016` print (service mapping
+  members removed, IPs / domains created). Alternative that leaves the
+  old database untouched: copy it into a fresh 1.2.0 install, see
+  [Data migration](migrations/README.md#data-migration-existing-install--fresh-install).
 - ✨ Every editable object records `created_at` / `updated_at`, and every
   edit form shows "Created … | Updated … · by" in its footer (detail
   modals already show the same line). Migration
@@ -966,7 +973,7 @@ when cutting a release.
   with a `?v=<mtime>` version (nginx caches `/css` and `/js` for a year as
   immutable, so unversioned URLs kept serving the old files).
 
-### Version 1.1.0 (Latest)
+### Version 1.1.0
 - 🎉 First tracked release of this baseline. Full asset/network/security
   management feature set (devices, servers, subnets, IP addresses,
   clusters, systems, firewall rules, privileged accounts, pentest
