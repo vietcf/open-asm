@@ -61,7 +61,22 @@ export async function replaceTags(client, objectType, objectId, tagIds) {
 
 // JSON array of {id, name} etc. for json_agg in list queries:
 //   ${jsonList('t', { id: 't.id', name: 't.name' })} AS tags
+// Fine for one or two joined lists; several of them in one query multiply each
+// other's rows (and the planner's estimates): use subList() instead.
 export function jsonList(nullCheck, fields) {
   const obj = Object.entries(fields).map(([k, v]) => `'${k}', ${v}`).join(', ');
   return `COALESCE(json_agg(DISTINCT jsonb_build_object(${obj})) FILTER (WHERE ${nullCheck}.id IS NOT NULL), '[]')`;
+}
+
+// JSON array of objects built by a correlated subquery: one small query per
+// parent row, so lists never multiply each other and the parent query needs
+// no GROUP BY (LIMIT applies first). `from` is the subquery's FROM ... WHERE,
+// tied to the parent alias; ordered by `orderBy` (id: the order jsonList gave).
+// Duplicate objects are dropped, like jsonList's DISTINCT (some link tables
+// have no unique constraint).
+//   ${subList({ id: 't.id', name: 't.name' },
+//     `FROM tag_object x JOIN tags t ON t.id = x.tag_id WHERE x.object_type = 'server' AND x.object_id = s.id`, 't.id')} AS tags
+export function subList(fields, from, orderBy) {
+  const obj = Object.entries(fields).map(([k, v]) => `'${k}', ${v}`).join(', ');
+  return `COALESCE((SELECT json_agg(o ORDER BY k) FROM (SELECT DISTINCT jsonb_build_object(${obj}) AS o, ${orderBy} AS k ${from}) sub_list), '[]')`;
 }

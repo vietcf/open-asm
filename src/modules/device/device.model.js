@@ -1,24 +1,21 @@
 import { pool } from '../../../config/config.js';
-import { db, Where, replaceLinks, replaceTags, jsonList } from '../../shared/db.js';
+import { db, Where, replaceLinks, replaceTags, subList } from '../../shared/db.js';
 
 const COLUMNS = ['name', 'manufacturer', 'device_role', 'platform_id', 'device_type_id', 'location', 'serial_number', 'management_address', 'description', 'updated_by'];
 
 // Device with type, platform and links. ip_addresses carry role ('normal' or 'vip').
+// One subquery per list (no join fan-out, no GROUP BY).
 const SELECT_WITH_LINKS = `
   SELECT d.*, dt.name AS device_type_name, p.name AS platform_name,
-    ${jsonList('ip', { id: 'ip.id', ip_address: 'ip.ip_address', description: 'ip.description', status: 'ip.status', role: 'di.role' })} AS ip_addresses,
-    ${jsonList('t', { id: 't.id', name: 't.name', description: 't.description' })} AS tags,
-    ${jsonList('c', { id: 'c.id', name: 'c.name', email: 'c.email', phone: 'c.phone' })} AS contacts
+    ${subList({ id: 'ip.id', ip_address: 'ip.ip_address', description: 'ip.description', status: 'ip.status', role: 'di.role' },
+      'FROM device_ip di JOIN ip_addresses ip ON ip.id = di.ip_id WHERE di.device_id = d.id', 'ip.id')} AS ip_addresses,
+    ${subList({ id: 't.id', name: 't.name', description: 't.description' },
+      "FROM tag_object tobj JOIN tags t ON t.id = tobj.tag_id WHERE tobj.object_type = 'device' AND tobj.object_id = d.id", 't.id')} AS tags,
+    ${subList({ id: 'c.id', name: 'c.name', email: 'c.email', phone: 'c.phone' },
+      'FROM device_contact dc JOIN contacts c ON c.id = dc.contact_id WHERE dc.device_id = d.id', 'c.id')} AS contacts
   FROM devices d
   LEFT JOIN device_types dt ON d.device_type_id = dt.id
-  LEFT JOIN platforms p ON d.platform_id = p.id
-  LEFT JOIN device_ip di ON di.device_id = d.id
-  LEFT JOIN ip_addresses ip ON ip.id = di.ip_id
-  LEFT JOIN tag_object tobj ON tobj.object_type = 'device' AND tobj.object_id = d.id
-  LEFT JOIN tags t ON t.id = tobj.tag_id
-  LEFT JOIN device_contact dc ON dc.device_id = d.id
-  LEFT JOIN contacts c ON c.id = dc.contact_id`;
-const GROUP_BY = 'GROUP BY d.id, dt.name, p.name';
+  LEFT JOIN platforms p ON d.platform_id = p.id`;
 
 // filter: {search, device_type_id, platform_id, location, manufacturer, device_role, tags[]}
 function filterWhere({ search = '', device_type_id, platform_id, location, manufacturer, device_role, tags = [] }) {
@@ -66,7 +63,7 @@ class Device {
   }
 
   static async getFullDetail(id, client) {
-    const result = await db(client).query(`${SELECT_WITH_LINKS} WHERE d.id = $1 ${GROUP_BY}`, [id]);
+    const result = await db(client).query(`${SELECT_WITH_LINKS} WHERE d.id = $1`, [id]);
     return result.rows[0] || null;
   }
 
@@ -76,7 +73,7 @@ class Device {
     if (name) w.add(`d.name = ${w.param(name)}`);
     if (ip_address) w.add(`EXISTS (SELECT 1 FROM device_ip x JOIN ip_addresses i ON i.id = x.ip_id WHERE x.device_id = d.id AND i.ip_address = ${w.param(ip_address)})`);
     if (!w.clauses.length) return [];
-    const result = await pool.query(`${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY d.updated_at DESC, d.id DESC`, w.params);
+    const result = await pool.query(`${SELECT_WITH_LINKS} WHERE ${w} ORDER BY d.updated_at DESC, d.id DESC`, w.params);
     return result.rows;
   }
 
@@ -94,7 +91,7 @@ class Device {
     const { page = 1, pageSize = 10 } = filter;
     const w = filterWhere(filter);
     const result = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY d.updated_at DESC, d.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `${SELECT_WITH_LINKS} WHERE ${w} ORDER BY d.updated_at DESC, d.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return result.rows;
