@@ -654,7 +654,13 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.3.8 (Latest)
+### Version 1.3.9 (Latest)
+- No database migration: upgrading from 1.3.8 only needs the new image.
+- 🐛 Service Mapping form: Provider – port – protocol and IP address – port –
+  protocol each stay on one line (with the Device field gone, the Access
+  field shared their line and pushed the protocol to the next one).
+
+### Version 1.3.8
 - ⬆️ Upgrading from 1.3.x: new image; migrations `0023` and `0024` run
   (`0024` lists the mappings that lose their device, see below).
 - ✨ Service Mapping: the provider / channel has its own **port and
