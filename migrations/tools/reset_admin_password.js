@@ -19,7 +19,7 @@ async function run() {
   const hash = await bcrypt.hash(password, 10);
   const twofaCols = disable2fa ? ', twofa_enabled = FALSE, twofa_secret = NULL' : '';
   const { rowCount } = await pool.query(
-    `UPDATE users SET password_hash = $1, must_change_password = TRUE, is_active = TRUE${twofaCols}
+    `UPDATE users SET password_hash = $1, must_change_password = TRUE, is_active = TRUE${twofaCols}, updated_at = CURRENT_TIMESTAMP
      WHERE LOWER(username) = $2 AND auth_source = 'local'`,
     [hash, username]
   );

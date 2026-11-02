@@ -49,7 +49,7 @@ function pagesFor({ url, entity, view, activeMenu, labels, service, exportColumn
 
 const commonColumns = (t) => [
   { header: t('Description'), value: (r) => r.description, width: 36 },
-  { header: t('Updated'), value: (r) => r.updated_date, width: 20 },
+  { header: t('Updated'), value: (r) => r.updated_at, width: 20 },
   { header: t('Updated By'), value: (r) => r.updated_by, width: 16 },
 ];
 

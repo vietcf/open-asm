@@ -65,7 +65,7 @@
           <div class="alert mt-2 mb-0 d-none" id="memberFileResult" role="status"></div>
         </section>
       </div>
-      <%- include('../../partials/ui/form_actions', { cancelUrl: '/cluster', submitLabel: isEdit ? 'Save Changes' : 'Add Cluster' }) %>
+      <%- include('../../partials/ui/form_actions', { cancelUrl: '/cluster', submitLabel: isEdit ? 'Save Changes' : 'Add Cluster', record: c }) %>
     </form>
   </div>
 </div>

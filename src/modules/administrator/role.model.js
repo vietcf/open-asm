@@ -24,7 +24,7 @@ class Role {
   }
 
   static async update(id, { name, description }, client) {
-    await db(client).query('UPDATE roles SET name = $1, description = $2 WHERE id = $3', [name, description ?? null, id]);
+    await db(client).query('UPDATE roles SET name = $1, description = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3', [name, description ?? null, id]);
   }
 
   // role_permissions cascades

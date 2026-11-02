@@ -28,7 +28,7 @@ export function catalogModel({ table, columns, search = ['name', 'description'],
     async update(id, data) {
       const keys = columns.filter((c) => hasKey(data, c));
       if (!keys.length) return this.findById(id);
-      return one(`UPDATE ${table} SET ${keys.map((c, i) => `${c} = $${i + 1}`).join(', ')} WHERE id = $${keys.length + 1} RETURNING *`,
+      return one(`UPDATE ${table} SET ${keys.map((c, i) => `${c} = $${i + 1}`).join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${keys.length + 1} RETURNING *`,
         [...keys.map((c) => data[c] ?? null), id]);
     },
     delete: (id) => pool.query(`DELETE FROM ${table} WHERE id = $1`, [id]),

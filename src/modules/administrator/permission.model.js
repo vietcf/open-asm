@@ -14,7 +14,7 @@ class Permission {
 
   // The name is immutable (code checks it)
   static async update(id, { description }, client) {
-    await db(client).query('UPDATE permissions SET description = $1 WHERE id = $2', [description ?? null, id]);
+    await db(client).query('UPDATE permissions SET description = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [description ?? null, id]);
   }
 
   // role_permissions cascades

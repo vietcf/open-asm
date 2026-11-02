@@ -34,7 +34,7 @@ class User {
   static async update(id, data, client) {
     const cols = COLUMNS.concat(['twofa_secret', 'twofa_enabled']).filter((c) => data[c] !== undefined);
     if (!cols.length) return;
-    await db(client).query(`UPDATE users SET ${cols.map((c, i) => `${c} = $${i + 1}`).join(', ')} WHERE id = $${cols.length + 1}`, [...cols.map((c) => data[c]), id]);
+    await db(client).query(`UPDATE users SET ${cols.map((c, i) => `${c} = $${i + 1}`).join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${cols.length + 1}`, [...cols.map((c) => data[c]), id]);
   }
 
   static async remove(id, client) {

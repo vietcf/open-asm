@@ -14,7 +14,7 @@
     permissions: ui.chips(r.permissions.map(p => p.name)),
     accounts: r.account_count ? `<a href="/priv-account/account?search=${encodeURIComponent(r.name)}"><span class="badge tag">${r.account_count}</span></a>` : ui.dash,
     description: ui.clip(r.description),
-    updated: ui.date(r.updated_date),
+    updated: ui.date(r.updated_at),
   })[key];
 %>
 <%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'Privileged Account', href: '/priv-account/account' }, { label: 'Privileged Role List' }] }) %>

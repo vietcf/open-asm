@@ -47,7 +47,7 @@ class PrivUser {
 
   static async update(id, data, client) {
     await db(client).query(
-      `UPDATE priv_users SET ${COLUMNS.map((c, i) => `${c} = $${i + 1}`).join(', ')}, updated_date = CURRENT_TIMESTAMP WHERE id = $${COLUMNS.length + 1}`,
+      `UPDATE priv_users SET ${COLUMNS.map((c, i) => `${c} = $${i + 1}`).join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${COLUMNS.length + 1}`,
       [...COLUMNS.map((c) => data[c] ?? null), id]
     );
   }
@@ -71,7 +71,7 @@ class PrivUser {
     const { page = 1, pageSize = 10 } = filter;
     const w = filterWhere(filter);
     const result = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY pu.updated_date DESC, pu.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY pu.updated_at DESC, pu.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return result.rows;

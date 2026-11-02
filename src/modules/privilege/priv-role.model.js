@@ -33,7 +33,7 @@ class PrivRole {
 
   static async update(id, { name, description, system_id, updated_by }, client) {
     await db(client).query(
-      'UPDATE priv_roles SET name = $1, description = $2, system_id = $3, updated_by = $4, updated_date = CURRENT_TIMESTAMP WHERE id = $5',
+      'UPDATE priv_roles SET name = $1, description = $2, system_id = $3, updated_by = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5',
       [name, description ?? null, system_id, updated_by ?? null, id]
     );
   }
@@ -61,7 +61,7 @@ class PrivRole {
     const { page = 1, pageSize = 10 } = filter;
     const w = filterWhere(filter);
     const result = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY r.updated_date DESC, r.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY r.updated_at DESC, r.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
     return result.rows;

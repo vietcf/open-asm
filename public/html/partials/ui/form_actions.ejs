@@ -1,8 +1,25 @@
 <%#
-  Footer of an Add/Edit form card: Cancel + primary submit.
-  include('../../partials/ui/form_actions', { cancelUrl: '/system/system', submitLabel: 'Save Changes' })
+  Footer of an Add/Edit form card: Cancel + primary submit, and on edit the record's
+  "Created ... | Updated ..." line (times shown in the browser's locale, like DV.meta).
+  include('../../partials/ui/form_actions', { cancelUrl: '/system/system', submitLabel: 'Save Changes', record: s })
 %>
+<% const rec = locals.record || {};
+   const iso = (v) => { const d = v ? new Date(v) : null; return d && !isNaN(d) ? d.toISOString() : null; };
+   const created = iso(rec.created_at), updated = iso(rec.updated_at); %>
 <div class="card-footer form-actions">
+  <% if (rec.id && (created || updated)) { %>
+    <div class="form-meta small text-body-secondary me-auto align-self-center">
+      <% if (created) { %><%= t('Created') %> <time datetime="<%= created %>" data-local-time><%= created %></time><% } %>
+      <% if (created && updated) { %><span class="mx-2">|</span><% } %>
+      <% if (updated) { %><%= t('Updated') %> <time datetime="<%= updated %>" data-local-time><%= updated %></time><% if (rec.updated_by) { %> · <%= rec.updated_by %><% } %><% } %>
+    </div>
+    <script>
+      document.querySelectorAll('time[data-local-time]').forEach(function (el) {
+        el.textContent = new Date(el.dateTime).toLocaleString(document.documentElement.lang || undefined,
+          { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+      });
+    </script>
+  <% } %>
   <a href="<%= cancelUrl %>" class="btn btn-outline-secondary"><%= t('Cancel') %></a>
   <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> <%= t(locals.submitLabel || 'Save') %></button>
 </div>

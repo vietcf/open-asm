@@ -66,7 +66,7 @@ export default {
         { header: req.t('Application URL'), value: (a) => a.app_url, width: 32 },
         { header: req.t('Contacts'), value: (a) => names(a.contacts) },
         { header: req.t('Description'), value: (a) => a.description, width: 32 },
-        { header: req.t('Updated'), value: (a) => a.updated_date, width: 20 },
+        { header: req.t('Updated'), value: (a) => a.updated_at, width: 20 },
         { header: req.t('Updated By'), value: (a) => a.updated_by, width: 16 },
       ],
       rows: items,

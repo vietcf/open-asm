@@ -604,6 +604,15 @@ See `package.json`'s `version` field and the `image:` tag in
 when cutting a release.
 
 ### Unreleased
+- ✨ Every editable object records `created_at` / `updated_at`, and every
+  edit form shows "Created … | Updated … · by" in its footer (detail
+  modals already show the same line). Migration
+  `0014_created_updated_timestamps.sql` adds the columns to agents,
+  services, domains, tags, roles, permissions, platforms, units and users
+  (existing rows get the migration time) and renames `updated_date` to
+  `updated_at` on `priv_users`, `priv_roles`, `priv_permissions`. All
+  update queries (including the shared catalog model and
+  `reset_admin_password.js`) now set `updated_at`.
 - ✨ Service Mapping (`/network/service-mapping`): map an endpoint
   (domain / IP + port) to the servers behind it. Each mapping has a
   **direction** (inbound: clients → our servers; outbound: our servers →

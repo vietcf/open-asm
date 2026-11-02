@@ -12,7 +12,7 @@
     system: ui.text(p.system?.name),
     roles: p.role_count ? `<span class="badge tag">${p.role_count}</span>` : ui.dash,
     description: ui.clip(p.description),
-    updated: ui.date(p.updated_date),
+    updated: ui.date(p.updated_at),
   })[key];
 %>
 <%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'Privileged Account', href: '/priv-account/account' }, { label: 'Privileged Permission List' }] }) %>

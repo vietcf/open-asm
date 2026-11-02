@@ -19,7 +19,7 @@ class Unit {
   }
 
   static async update(id, { name, code, description }) {
-    const result = await pool.query('UPDATE units SET name = $1, code = $2, description = $3 WHERE id = $4 RETURNING *', [name, code || null, description, id]);
+    const result = await pool.query('UPDATE units SET name = $1, code = $2, description = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *', [name, code || null, description, id]);
     return result.rows[0];
   }
 

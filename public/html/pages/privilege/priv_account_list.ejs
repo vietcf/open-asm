@@ -23,7 +23,7 @@
     organize: ui.text(a.organize?.name),
     contacts: ui.chips(a.contacts.map(x => x.name)),
     description: ui.clip(a.description),
-    updated: ui.date(a.updated_date),
+    updated: ui.date(a.updated_at),
   })[key];
 %>
 <%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'Privileged Account' }] }) %>
@@ -140,7 +140,7 @@
       (a.servers || []).length ? DV.field('Servers', DV.linkChips(a.servers, (s) => '/server/server?search=' + encodeURIComponent(s.name))) : '',
       DV.field('Contacts', DV.contacts(a.contacts || []))
     ));
-    body += DV.meta({ ...a, updated_at: a.updated_date });
+    body += DV.meta(a);
     DV.open('accountDetailModal', { title: a.username, body, recordId: a.id });
   }
 </script>

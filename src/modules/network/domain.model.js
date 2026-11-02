@@ -40,7 +40,7 @@ class Domain {
 
   // The name is immutable
   static async update(id, { description, ip_id, record_type }, client) {
-    await db(client).query('UPDATE domains SET description = $1, ip_id = $2, record_type = $3 WHERE id = $4',
+    await db(client).query('UPDATE domains SET description = $1, ip_id = $2, record_type = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4',
       [description ?? null, ip_id ?? null, record_type ?? null, id]);
   }
 

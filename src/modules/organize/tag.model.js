@@ -10,7 +10,7 @@ class Tag {
   }
 
   static async update(id, { name, description }) {
-    const result = await pool.query('UPDATE tags SET name = $1, description = $2 WHERE id = $3 RETURNING *', [name, description, id]);
+    const result = await pool.query('UPDATE tags SET name = $1, description = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING *', [name, description, id]);
     return result.rows[0];
   }
 

@@ -17,7 +17,7 @@ export default async (pool) => {
   }
   // Insert all permissions
   await pool.query(`
-    INSERT INTO priv_permissions (name, description, updated_date, updated_by, system_id)
+    INSERT INTO priv_permissions (name, description, updated_at, updated_by, system_id)
     VALUES
       ${permissionValues.join(',\n      ')}
     ON CONFLICT (name, system_id) DO NOTHING;

@@ -120,6 +120,7 @@
       DV.field('Systems', DV.linkChips(d.systems || [], (s) => '/system/system?search=' + encodeURIComponent(s.name))),
       DV.field('Tags', DV.chips((d.tags || []).map((x) => x.name)))
     ));
+    body += DV.meta(d);
     DV.open('domainDetailModal', { title: d.domain, body, recordId: d.id });
   }
 </script>
