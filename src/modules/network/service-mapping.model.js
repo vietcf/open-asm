@@ -1,13 +1,15 @@
 import { pool } from '../../../config/config.js';
 import { db, Where, jsonList, matchOrder, matchRank } from '../../shared/db.js';
 
-const COLUMNS = ['name', 'domain_id', 'provider', 'ip_address_id', 'port', 'protocol', 'direction', 'scope', 'access_mode', 'allowed_ips', 'device_id', 'system_id', 'description', 'updated_by'];
+const COLUMNS = ['name', 'domain_id', 'provider', 'provider_port', 'provider_protocol', 'ip_address_id', 'port', 'protocol', 'direction', 'scope', 'access_mode', 'allowed_ips', 'system_id', 'description', 'updated_by'];
 
 // Frontend IP / domain come from the inventories (ip_address, domain as text).
-// Members are IP:port; server_name lists the server(s) owning the IP (several for a shared VIP)
+// ip_owner_name / ip_owner_type: the device, else the server, holding the frontend
+// IP (its own IP before a VIP); none for an IP nothing holds (e.g. an external
+// destination). Members are IP:port; server_name lists the server(s) owning the IP.
 const SELECT_WITH_LINKS = `
   SELECT vs.*, fip.ip_address, dom.domain,
-    dev.name AS device_name, sys.name AS system_name,
+    own.name AS ip_owner_name, own.kind AS ip_owner_type, own.id AS ip_owner_id, sys.name AS system_name,
     ${jsonList('m', {
       id: 'm.id', ip_address_id: 'ip.id', ip: 'ip.ip_address', port: 'm.port', status: 'm.status',
       server_name: "(SELECT string_agg(s.name, ', ' ORDER BY s.name) FROM server_ip si JOIN servers s ON s.id = si.server_id WHERE si.ip_id = ip.id)",
@@ -15,11 +17,17 @@ const SELECT_WITH_LINKS = `
   FROM virtual_servers vs
   JOIN ip_addresses fip ON fip.id = vs.ip_address_id
   LEFT JOIN domains dom ON dom.id = vs.domain_id
-  LEFT JOIN devices dev ON dev.id = vs.device_id
+  LEFT JOIN LATERAL (
+    SELECT * FROM (
+      SELECT d.id, d.name, 'device' AS kind, (di.role <> 'normal')::int AS rank FROM device_ip di JOIN devices d ON d.id = di.device_id WHERE di.ip_id = vs.ip_address_id
+      UNION ALL
+      SELECT s.id, s.name, 'server', 2 + (si.role <> 'normal')::int FROM server_ip si JOIN servers s ON s.id = si.server_id WHERE si.ip_id = vs.ip_address_id
+    ) o ORDER BY rank, id LIMIT 1
+  ) own ON TRUE
   LEFT JOIN systems sys ON sys.id = vs.system_id
   LEFT JOIN virtual_server_members m ON m.virtual_server_id = vs.id
   LEFT JOIN ip_addresses ip ON ip.id = m.ip_address_id`;
-const GROUP_BY = 'GROUP BY vs.id, fip.ip_address, dom.domain, dev.name, sys.name';
+const GROUP_BY = 'GROUP BY vs.id, fip.ip_address, dom.domain, own.id, own.name, own.kind, sys.name';
 
 function filterWhere({ search = '', protocol, provider, device_id, system_id, direction, scope, access_mode }) {
   const w = new Where();
@@ -27,14 +35,16 @@ function filterWhere({ search = '', protocol, provider, device_id, system_id, di
     'vs.name ILIKE ?', 'vs.provider ILIKE ?',
     'EXISTS (SELECT 1 FROM domains x WHERE x.id = vs.domain_id AND x.domain ILIKE ?)',
     'EXISTS (SELECT 1 FROM ip_addresses x WHERE x.id = vs.ip_address_id AND x.ip_address ILIKE ?)',
-    'EXISTS (SELECT 1 FROM devices x WHERE x.id = vs.device_id AND x.name ILIKE ?)',
+    'EXISTS (SELECT 1 FROM device_ip x JOIN devices d ON d.id = x.device_id WHERE x.ip_id = vs.ip_address_id AND d.name ILIKE ?)',
+    'EXISTS (SELECT 1 FROM server_ip x JOIN servers s ON s.id = x.server_id WHERE x.ip_id = vs.ip_address_id AND s.name ILIKE ?)',
     'EXISTS (SELECT 1 FROM systems x WHERE x.id = vs.system_id AND x.name ILIKE ?)',
     'EXISTS (SELECT 1 FROM virtual_server_members x JOIN ip_addresses i ON i.id = x.ip_address_id WHERE x.virtual_server_id = vs.id AND i.ip_address ILIKE ?)',
     'EXISTS (SELECT 1 FROM virtual_server_members x JOIN server_ip si ON si.ip_id = x.ip_address_id JOIN servers s ON s.id = si.server_id WHERE x.virtual_server_id = vs.id AND s.name ILIKE ?)',
   ]);
   if (protocol) w.add(`vs.protocol = ${w.param(protocol)}`);
   if (provider) w.add(`vs.provider = ${w.param(provider)}`);
-  if (device_id) w.add(`vs.device_id = ${w.param(Number(device_id))}`);
+  // device_id: mappings whose frontend IP the device holds
+  if (device_id) w.add(`EXISTS (SELECT 1 FROM device_ip x WHERE x.ip_id = vs.ip_address_id AND x.device_id = ${w.param(Number(device_id))})`);
   if (direction) w.add(`vs.direction = ${w.param(direction)}`);
   if (scope) w.add(`vs.scope = ${w.param(scope)}`);
   if (access_mode) w.add(`vs.access_mode = ${w.param(access_mode)}`);
@@ -104,10 +114,10 @@ class ServiceMapping {
     return parseInt(result.rows[0].count, 10);
   }
 
-  // Virtual servers on a specific device (Device detail page)
+  // Mappings whose frontend IP the device holds (Device detail page)
   static async findByDeviceId(deviceId) {
     const result = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE vs.device_id = $1 ${GROUP_BY} ORDER BY vs.id DESC`, [deviceId]);
+      `${SELECT_WITH_LINKS} WHERE EXISTS (SELECT 1 FROM device_ip x WHERE x.ip_id = vs.ip_address_id AND x.device_id = $1) ${GROUP_BY} ORDER BY vs.id DESC`, [deviceId]);
     return result.rows;
   }
 

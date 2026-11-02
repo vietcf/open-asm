@@ -1488,5 +1488,11 @@
   "Already used by: {1}": "Đã được dùng bởi: {1}",
   "Available": "Có thể dùng",
   "Also IPs of the system. Removing one here removes it from the system too, unless another component of the system uses it.": "Cũng là IP của system. Gỡ IP ở đây thì IP cũng bị gỡ khỏi system, trừ khi một component khác của system vẫn dùng IP đó.",
-  "Includes the IPs of its components. Removing an IP here also removes it from the components.": "Bao gồm IP của các component. Gỡ IP ở đây thì IP cũng bị gỡ khỏi các component."
+  "Includes the IPs of its components. Removing an IP here also removes it from the components.": "Bao gồm IP của các component. Gỡ IP ở đây thì IP cũng bị gỡ khỏi các component.",
+  "Provider port": "Port của provider",
+  "Provider protocol": "Protocol của provider",
+  "Invalid provider port: {port}": "Port của provider không hợp lệ: {port}",
+  "Invalid provider protocol: {protocol}": "Protocol của provider không hợp lệ: {protocol}",
+  "IP owner": "IP thuộc",
+  "Device holding the IP": "Device đang giữ IP"
 }
