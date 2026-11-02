@@ -9,6 +9,7 @@
 
 <div class="app-content">
   <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
     <form id="clusterForm" class="card form-card" method="POST" action="<%= isEdit ? '/cluster/' + c.id + '/edit' : '/cluster/add' %>">
       <div class="card-header form-card-header">
         <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit Cluster' : 'Add Cluster') %></h3>

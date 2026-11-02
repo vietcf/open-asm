@@ -10,6 +10,7 @@
 
 <div class="app-content">
   <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
     <form class="card form-card" method="POST" action="<%= isEdit ? '/device/device/' + d.id + '/edit' : '/device/device/add' %>">
       <div class="card-header form-card-header">
         <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit Device' : 'Add Device') %></h3>

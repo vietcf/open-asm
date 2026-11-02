@@ -151,6 +151,17 @@ class IpAddress {
     return result.rows;
   }
 
+  // Addresses already in the inventory, with the device / server owning each (Add form check)
+  static async findExisting(addresses) {
+    const result = await pool.query(`
+      SELECT ip.id, ip.ip_address, COALESCE(
+        (SELECT d.name FROM device_ip di JOIN devices d ON d.id = di.device_id WHERE di.ip_id = ip.id ORDER BY di.role = 'normal' DESC LIMIT 1),
+        (SELECT srv.name FROM server_ip sv JOIN servers srv ON srv.id = sv.server_id WHERE sv.ip_id = ip.id ORDER BY sv.role = 'normal' DESC LIMIT 1)
+      ) AS owner_label
+      FROM ip_addresses ip WHERE ip.ip_address = ANY($1::text[])`, [addresses]);
+    return result.rows;
+  }
+
   // Assigned or not (VIP picker, subnet gateway picker). subnet: a validated CIDR.
   static async searchAllForVip({ search = '', excludeDeviceId, excludeServerId, subnet, limit = 20 }) {
     const w = new Where();

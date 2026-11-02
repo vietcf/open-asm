@@ -24,7 +24,9 @@
               <% if (isEdit) { %>
                 <input type="text" id="f-address" class="form-control font-monospace" value="<%= ip.ip_address %>" disabled>
               <% } else { %>
-                <input type="text" id="f-address" name="address" class="form-control font-monospace" required placeholder="192.168.1.10, 192.168.1.11">
+                <input type="text" id="f-address" name="address" class="form-control font-monospace" required placeholder="192.168.1.10, 192.168.1.11" autocomplete="off" aria-describedby="f-address-check">
+                <%# filled when the field is left: format / duplicate / already in the inventory %>
+                <div id="f-address-check" class="small mt-1" aria-live="polite"></div>
                 <div class="form-text"><%= t('Several addresses can be separated by commas') %></div>
               <% } %>
             </div>
@@ -65,3 +67,56 @@
     </form>
   </div>
 </div>
+
+<% if (!isEdit) { %>
+<script>
+  // Leaving the address field checks the addresses (format, repeated, already in
+  // the inventory) and blocks the submit while one is wrong. The server checks again.
+  (function () {
+    var input = document.getElementById('f-address');
+    var box = document.getElementById('f-address-check');
+    var esc = function (v) { return String(v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+    var last = null;
+    function show(html, ok) {
+      box.innerHTML = html;
+      box.className = 'small mt-1 ' + (ok ? 'text-success' : 'text-danger');
+      input.classList.toggle('is-invalid', !ok && !!html);
+      input.classList.toggle('is-valid', ok && !!html);
+    }
+    async function check() {
+      var value = input.value.trim();
+      if (value === last) return;
+      last = value;
+      if (!value) { input.setCustomValidity(''); show('', true); return; }
+      try {
+        var res = await fetch('/network/api/ip-addresses/check?addresses=' + encodeURIComponent(value), { credentials: 'same-origin', headers: { Accept: 'application/json' } });
+        if (!res.ok) throw new Error(res.status);
+        var rows = await res.json();
+        if (value !== input.value.trim()) return; // changed while checking
+        var bad = rows.filter(function (r) { return r.state !== 'ok'; });
+        if (!bad.length) {
+          input.setCustomValidity('');
+          show('<i class="bi bi-check-circle me-1"></i>' + esc(rows.length > 1 ? t('{1} new addresses').replace('{1}', rows.length) : t('New address')), true);
+          return;
+        }
+        var lines = bad.map(function (r) {
+          if (r.state === 'invalid') return esc(t('Not a valid IPv4 address: {1}').replace('{1}', r.address));
+          if (r.state === 'duplicate') return esc(t('Entered twice: {1}').replace('{1}', r.address));
+          return esc(t('Already exists: {1}').replace('{1}', r.address)) + (r.owner ? ' (' + esc(r.owner) + ')' : '') +
+            ' <a href="/network/ip-address/' + r.id + '/edit" target="_blank" rel="noopener">' + esc(t('Open')) + '</a>';
+        });
+        input.setCustomValidity(t('Fix the addresses before saving'));
+        show('<i class="bi bi-exclamation-circle me-1"></i>' + lines.join('<br>'), false);
+      } catch (e) {
+        last = null; // could not check: the server still refuses duplicates on save
+        input.setCustomValidity('');
+        show('', true);
+      }
+    }
+    input.addEventListener('blur', check);
+    input.addEventListener('input', function () {
+      if (input.validationMessage) { input.setCustomValidity(''); show('', true); last = null; }
+    });
+  })();
+</script>
+<% } %>

@@ -5,7 +5,7 @@
 <% const flashSuccess = locals.successMessage || locals.success; %>
 <% const flashError = locals.errorMessage || locals.error; %>
 <% if (flashSuccess) { %>
-  <div class="alert alert-success alert-dismissible fade show" role="status" data-autohide="5000">
+  <div class="alert alert-success alert-dismissible fade show" role="status" data-autohide="8000">
     <i class="bi bi-check-circle me-2"></i><%= t(flashSuccess) %>
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<%= t('Close') %>"></button>
   </div>

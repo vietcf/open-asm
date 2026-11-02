@@ -9,6 +9,7 @@
 
 <div class="app-content">
   <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
     <form class="card form-card" method="POST" action="<%= isEdit ? c.base + '/' + r.id + '/edit' : c.base + '/add' %>">
       <div class="card-header form-card-header">
         <h3 class="card-title mb-0"><%= t(isEdit ? c.labels.edit : c.labels.add) %></h3>
