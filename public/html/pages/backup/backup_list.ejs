@@ -116,6 +116,11 @@
                   <td class="col-actions">
                     <div class="row-actions">
                       <button type="button" class="btn btn-sm btn-outline-danger" title="<%= t('Restore') %>" data-restore="<%= b.name %>"><i class="bi bi-arrow-counterclockwise"></i> <%= t('Restore') %></button>
+                      <% if (canDelete) { %>
+                        <form action="/backup/<%= encodeURIComponent(b.name) %>/delete" method="POST" data-confirm="<%= t('Delete {1}?', { 1: b.name }) %>">
+                          <button type="submit" class="btn btn-sm btn-outline-secondary btn-delete" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
+                        </form>
+                      <% } %>
                     </div>
                   </td>
                 </tr>
