@@ -1,31 +1,41 @@
 <%
   const f = filter;
-  const activeFilterCount = [f.direction, f.scope, f.access_mode, f.protocol, f.provider, f.device_id, f.system_id].filter(Boolean).length;
+  const activeFilterCount = [f.access_mode, f.protocol, f.provider, f.partner, f.device_id, f.system_id].filter(Boolean).length;
   const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+  const flowOf = (vs) => flows.find((x) => x.id === vs.direction + '-' + vs.scope) || flows[0];
+  const currentFlow = f.direction && f.scope ? f.direction + '-' + f.scope : '';
   const COLUMNS = [
     { key: 'name', label: 'Name', def: true, fixed: true },
-    { key: 'direction', label: 'Direction', def: true },
-    { key: 'scope', label: 'Scope', def: true },
+    { key: 'flow', label: 'Flow', def: true },
+    { key: 'direction', label: 'Direction' },
+    { key: 'scope', label: 'Scope' },
     { key: 'domain', label: 'Domain', def: true },
     { key: 'endpoint', label: 'Endpoint', def: true },
+    { key: 'partners', label: 'Partners', def: true },
+    { key: 'nat', label: 'NAT range' },
     { key: 'provider', label: 'Provider / Channel', def: true },
-    { key: 'access', label: 'Access', def: true },
+    { key: 'access', label: 'Access' },
     { key: 'system', label: 'System', def: true },
     { key: 'owner', label: 'IP owner' },
-    { key: 'members', label: 'Backends', def: true },
+    { key: 'members', label: 'Backends / Sources', def: true },
     { key: 'description', label: 'Description' },
     { key: 'updated', label: 'Updated' },
   ];
   const cell = (vs, key) => ({
     name: ui.esc(vs.name),
+    flow: `<span class="badge tag text-nowrap"><i class="bi ${flowOf(vs).icon} me-1"></i>${ui.esc(t(flowOf(vs).label))}</span>`,
+    partners: (vs.partner_ips || []).length
+      ? ui.chips([...new Set(vs.partner_ips.map((p) => p.partner || p.address))].slice(0, 3)) + (new Set(vs.partner_ips.map((p) => p.partner || p.address)).size > 3 ? ' …' : '')
+      : ui.dash,
+    nat: vs.nat_subnet ? `<span class="font-monospace small">${ui.esc(vs.nat_subnet)}</span>` : ui.dash,
     direction: `<span class="text-nowrap"><i class="bi ${vs.direction === 'outbound' ? 'bi-box-arrow-up-right' : 'bi-box-arrow-in-down-right'} me-1"></i>${ui.esc(t(cap(vs.direction)))}</span>`,
     scope: `<span class="badge tag">${ui.esc(t(cap(vs.scope)))}</span>`,
     domain: vs.domain ? `<span class="font-monospace small">${ui.esc(vs.domain)}</span>` : ui.dash,
-    endpoint: `<span class="font-monospace small">${ui.esc(vs.ip_address)}:${vs.port}</span> <span class="badge tag">${ui.esc(vs.protocol)}</span>`,
+    endpoint: `<span class="font-monospace small">${vs.ip_address ? ui.esc(vs.ip_address) : (vs.nat_subnet ? ui.esc(vs.nat_subnet) : '—')}:${vs.port}</span> <span class="badge tag">${ui.esc(vs.protocol)}</span>`,
     provider: vs.provider ? `<span class="badge tag">${ui.esc(vs.provider)}</span>` +
       (vs.provider_port || vs.provider_protocol ? ` <span class="font-monospace small">${vs.provider_port ? ':' + vs.provider_port : ''} ${ui.esc(vs.provider_protocol || '')}</span>` : '') : ui.dash,
     access: vs.access_mode === 'limited'
-      ? `<span class="badge tag" title="${ui.esc((vs.allowed_ips || []).join(', '))}"><i class="bi bi-shield-lock me-1"></i>${ui.esc(t('Limited'))}${(vs.allowed_ips || []).length ? ` (${vs.allowed_ips.length})` : ''}</span>`
+      ? `<span class="badge tag" title="${ui.esc((vs.partner_ips || []).map((p) => p.address).join(', '))}"><i class="bi bi-shield-lock me-1"></i>${ui.esc(t('Limited'))}${(vs.partner_ips || []).length ? ` (${vs.partner_ips.length})` : ''}</span>`
       : `<span class="badge tag">${ui.esc(t('Full'))}</span>`,
     system: vs.system_name ? ui.esc(vs.system_name) : ui.dash,
     owner: vs.ip_owner_name ? `<i class="bi ${vs.ip_owner_type === 'device' ? 'bi-hdd-rack' : 'bi-server'} me-1 text-secondary"></i>${ui.esc(vs.ip_owner_name)}` : ui.dash,
@@ -35,8 +45,7 @@
   })[key];
   const simpleFilter = (name, label, options, labelOf) => ({ name, label, options, labelOf: labelOf || ((o) => o) });
   const FILTERS = [
-    simpleFilter('direction', 'Direction', directionOptions, (o) => t(cap(o))),
-    simpleFilter('scope', 'Scope', scopeOptions, (o) => t(cap(o))),
+    simpleFilter('partner', 'Partner', partnerOptions || []),
     simpleFilter('access_mode', 'Access', ['full', 'limited'], (o) => t(o === 'full' ? 'Full' : 'Limited')),
     simpleFilter('protocol', 'Protocol', protocolOptions || []),
     simpleFilter('provider', 'Provider / Channel', providerOptions || []),
@@ -49,12 +58,21 @@
     <%- include('../../partials/ui/flash') %>
 
     <div class="card list-card">
+      <%# One tab per flow (direction + scope) %>
+      <ul class="nav nav-tabs px-3 pt-2">
+        <li class="nav-item"><a class="nav-link<%= currentFlow ? '' : ' active' %>" href="/network/service-mapping"><%= t('All') %></a></li>
+        <% flows.forEach(function (fl) { const [d, sc] = fl.id.split('-'); %>
+          <li class="nav-item"><a class="nav-link<%= currentFlow === fl.id ? ' active' : '' %>" href="/network/service-mapping?direction=<%= d %>&scope=<%= sc %>" title="<%= t(fl.path) %>"><i class="bi <%= fl.icon %> me-1"></i><%= t(fl.label) %></a></li>
+        <% }) %>
+      </ul>
       <form class="list-filter-form" method="get" action="/network/service-mapping">
         <input type="hidden" name="pageSize" value="<%= pageSize %>">
+        <% if (f.direction) { %><input type="hidden" name="direction" value="<%= f.direction %>"><% } %>
+        <% if (f.scope) { %><input type="hidden" name="scope" value="<%= f.scope %>"><% } %>
         <%- include('../../partials/ui/list_toolbar', {
               search, searchPlaceholder: 'Search by name, domain, IP, system, device, server...',
               filtersId: 'smFilters', activeFilterCount,
-              columns: { tableId: 'smTable', storageKey: 'openasm.serviceMappingList.columns.v3', list: COLUMNS },
+              columns: { tableId: 'smTable', storageKey: 'openasm.serviceMappingList.columns.v4', list: COLUMNS },
               exportUrl: '/network/service-mapping/export' + currentQuery,
               importModal: hasPermission('service_mapping.create') ? 'smImportModal' : null,
               addUrl: hasPermission('service_mapping.create') ? '/network/service-mapping/add' : null, addLabel: 'Add Service Mapping' }) %>
@@ -141,8 +159,10 @@
 <%- include('../../partials/ui/detail_modal', { id: 'smDetailModal' }) %>
 <% if (hasPermission('service_mapping.create')) { %>
   <%- include('../../partials/ui/import_modal', { id: 'smImportModal', title: 'Import Service Mappings', baseUrl: '/network/service-mapping',
-        instructions: ['IP address and port are required', 'Direction: inbound / outbound, Scope: public / private, Access: full / limited',
-          'Allowed IPs are optional, only used when Access is limited', 'System is looked up by exact name; the device / server is the one holding the IP', 'Backend format: ip:port, comma-separated; the IPs must already exist'] }) %>
+        instructions: ['Flow = Direction + Scope: inbound public (public exposure), inbound private (private connectivity), outbound private (partner connectivity), outbound public (internet connectivity)',
+          'Port is required; the IP is the public / NAT service / NAT / egress IP of the flow (optional for partner connectivity with a NAT range)',
+          'Partner IPs: IP/CIDR[Partner], comma-separated: the allowed sources of inbound (Access = limited for public), the destinations of outbound',
+          'System is looked up by exact name; the NAT range by its CIDR in the subnet inventory', 'Backend / source format: ip:port, comma-separated'] }) %>
 <% } %>
 
 <style>
@@ -167,37 +187,58 @@
     return (before || '') + '<small><i class="bi ' + (m.owner_type === 'device' ? 'bi-hdd-rack' : 'bi-server') + ' me-1 text-secondary"></i>' + DV.esc(m.owner_name) + '</small>';
   }
 
+  // Asset mapping: the device / server holding an IP of the flow, on its own line
+  const ownerLine = (name, type) => (name ? '<br><i class="bi ' + (type === 'device' ? 'bi-hdd-rack' : 'bi-server') + ' me-1"></i>' + DV.esc(name) : '');
+  const FLOW_LABEL = <%- jsonSafe(Object.fromEntries(flows.map((fl) => [fl.id, { label: t(fl.label), icon: fl.icon }]))) %>;
+
+  // Service Flow, one diagram per flow (direction-scope):
+  //   inbound-public    users / partners -> domain -> CDN -> public IP:port -> NAT / reverse proxy -> backends
+  //   inbound-private   partner VPN IPs -> VPN / lease line -> NAT service IP:port (NAT range) -> backends
+  //   outbound-private  internal IPs -> NAT IP (NAT range) -> VPN / lease line -> partner IPs:port
+  //   outbound-public   internal IPs -> firewall / proxy -> egress public IP -> internet IPs (domain):port
   function smFlow(vs) {
     const esc = DV.esc;
-    const inbound = vs.direction !== 'outbound';
-    const isPrivate = vs.scope === 'private';
-    const limited = vs.access_mode === 'limited';
-    const ips = vs.allowed_ips || [];
+    const flow = vs.direction + '-' + vs.scope;
     const node = (cls, icon, title, sub) =>
       `<div class="sm-node ${cls}"><i class="bi ${icon}"></i><div class="sm-title">${title}</div>${sub ? '<small>' + sub + '</small>' : ''}</div>`;
     const arrow = (label) => `<div class="sm-arrow"><i class="bi bi-arrow-right"></i>${label ? '<span>' + esc(label) + '</span>' : ''}</div>`;
     const members = vs.members || [];
-    const serversNode = members.length
-      ? `<div class="sm-node sm-n-servers"><div class="sm-title mb-1">${esc(t(inbound ? 'Backend Servers' : 'Source Servers'))}</div>` +
+    const membersNode = (title) => members.length
+      ? `<div class="sm-node sm-n-servers"><div class="sm-title mb-1">${esc(t(title))}</div>` +
         members.map(m => `<div class="sm-srv${m.status === 'inactive' ? ' is-inactive' : ''}"><i class="bi bi-server ${m.status === 'inactive' ? 'text-secondary' : 'text-success'} me-1"></i>${esc(m.ip)}${m.port ? ':' + m.port : ''}${memberOwner(m, '<br>')}</div>`).join('') + '</div>'
-      : node('sm-n-servers', 'bi-server', esc(t(inbound ? 'Backend Servers' : 'Source Servers')), esc(t('None')));
-    const endpoint = `${esc(vs.ip_address)}:${vs.port} · ${esc(vs.protocol)}`;
-    // where the provider listens, when known: "<br>:443 · HTTPS"
+      : node('sm-n-servers', 'bi-server', esc(t(title)), esc(t('None')));
+    // partner IPs grouped by partner: "Bank A" then its IPs (with the asset holding an IP, if any)
+    const partners = vs.partner_ips || [];
+    const partnersNode = (title, icon, port) => {
+      if (!partners.length) return node('sm-n-source', icon, esc(t(title)), esc(t('Not recorded')));
+      const groups = new Map();
+      partners.forEach((p) => { const k = p.partner || t('Unnamed partner'); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p); });
+      return `<div class="sm-node sm-n-source text-start"><div class="sm-title mb-1"><i class="bi ${icon} me-1"></i>${esc(t(title))}</div>` +
+        [...groups].map(([name, ips]) => `<div class="small"><strong>${esc(name)}</strong><br>` +
+          ips.slice(0, 5).map((p) => `<span class="font-monospace">${esc(p.address)}${port ? ':' + port : ''}</span>${ownerLine(p.owner_name, p.owner_type)}`).join('<br>') +
+          (ips.length > 5 ? '<br>+' + (ips.length - 5) : '') + '</div>').join('') + '</div>';
+    };
+    const ourIp = (title, icon, withPort) => node('sm-n-entry', icon, esc(t(title)),
+      (vs.ip_address ? `<span class="font-monospace">${esc(vs.ip_address)}${withPort ? ':' + vs.port + ' · ' + esc(vs.protocol) : ''}</span>` : '') +
+      (vs.nat_subnet ? (vs.ip_address ? '<br>' : '') + esc(t('NAT range')) + ' <span class="font-monospace">' + esc(vs.nat_subnet) + '</span>' : '') +
+      ownerLine(vs.ip_owner_name, vs.ip_owner_type));
     const providerEnd = vs.provider_port || vs.provider_protocol
       ? '<br>' + [vs.provider_port ? ':' + vs.provider_port : '', esc(vs.provider_protocol || '')].filter(Boolean).join(' · ') : '';
-    // the device / server holding the IP, shown under it (none for an IP nothing holds)
-    const ipEnd = endpoint + (vs.ip_owner_name ? '<br><i class="bi ' + (vs.ip_owner_type === 'device' ? 'bi-hdd-rack' : 'bi-server') + ' me-1"></i>' + esc(vs.ip_owner_name) : '');
-    const sourceSub = limited && !ips.length ? esc(t('Sources not recorded')) : limited ? ips.slice(0, 4).map(esc).join('<br>') + (ips.length > 4 ? '<br>+' + (ips.length - 4) : '') : esc(t(isPrivate ? 'Private network' : 'Any source'));
+    const channel = (kind) => (vs.provider ? [arrow(''), node('sm-n-edge', kind === 'cdn' ? 'bi-cloud' : 'bi-signpost-split', esc(vs.provider), esc(t(kind === 'cdn' ? 'CDN / WAF' : 'VPN / Lease line')) + providerEnd)] : []);
+    const gateway = (title) => (vs.gateway_ip ? [arrow(''), node('sm-n-edge', 'bi-shield-check', esc(t(title)), `<span class="font-monospace">${esc(vs.gateway_ip)}</span>` + ownerLine(vs.gateway_owner_name, vs.gateway_owner_type))] : []);
     const parts = [];
-    if (inbound) {
-      parts.push(node('sm-n-source', isPrivate ? 'bi-building' : 'bi-globe', esc(t(isPrivate ? 'Partner / Branch' : (limited ? 'Allowed clients' : 'Internet'))), sourceSub));
-      if (vs.provider) parts.push(arrow(vs.domain || ''), node('sm-n-edge', isPrivate ? 'bi-signpost-split' : 'bi-cloud', esc(vs.provider), esc(t(isPrivate ? 'Private channel' : 'CDN / WAF')) + providerEnd));
-      parts.push(arrow(vs.provider ? '' : (vs.domain || '')), node('sm-n-entry', 'bi-door-open', esc(t(isPrivate ? 'NAT IP' : 'Public IP / VIP')), ipEnd));
-      parts.push(arrow(''), serversNode);
+    if (flow === 'inbound-public') {
+      parts.push(vs.access_mode === 'limited' ? partnersNode('Allowed partners', 'bi-people') : node('sm-n-source', 'bi-globe', esc(t('Users (Internet)')), esc(t('Any source'))));
+      if (vs.domain) parts.push(arrow(''), node('sm-n-edge', 'bi-at', esc(vs.domain), esc(t('Domain'))));
+      parts.push(...channel('cdn'), arrow(''), ourIp('Public IP', 'bi-door-open', true), ...gateway('NAT / Reverse proxy'), arrow(''), membersNode('Backend Servers'));
+    } else if (flow === 'inbound-private') {
+      parts.push(partnersNode('Partner VPN IPs', 'bi-building'), ...channel('vpn'), arrow(''), ourIp('NAT service IP', 'bi-door-open', true), arrow(''), membersNode('Backend Servers'));
+    } else if (flow === 'outbound-private') {
+      parts.push(membersNode('Internal IPs'), arrow(''), ourIp('NAT IP', 'bi-shuffle', false), ...channel('vpn'), arrow(''), partnersNode('Partner IPs', 'bi-building', vs.port + ' · ' + vs.protocol));
     } else {
-      parts.push(serversNode);
-      if (vs.provider) parts.push(arrow(''), node('sm-n-edge', isPrivate ? 'bi-signpost-split' : 'bi-cloud', esc(vs.provider), esc(t(isPrivate ? 'Private channel' : 'Provider')) + providerEnd));
-      parts.push(arrow(''), node('sm-n-source', isPrivate ? 'bi-building' : 'bi-globe', esc(vs.domain || t(isPrivate ? 'Private destination' : 'Internet destination')), ipEnd));
+      parts.push(membersNode('Internal IPs'), ...gateway('Firewall / NAT gateway / Proxy'), arrow(''), ourIp('Egress public IP', 'bi-box-arrow-up-right', false), arrow(vs.domain || ''),
+        partners.length ? partnersNode('Internet destination', 'bi-globe', vs.port + ' · ' + vs.protocol)
+          : node('sm-n-source', 'bi-globe', esc(vs.domain || t('Internet destination')), ':' + vs.port + ' · ' + esc(vs.protocol)));
     }
     return `<div class="sm-flow">${parts.join('')}</div>`;
   }
@@ -207,33 +248,41 @@
     if (!vs) return;
     const esc = DV.esc;
     const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+    const flow = FLOW_LABEL[vs.direction + '-' + vs.scope] || {};
     const members = vs.members || [];
+    const partners = vs.partner_ips || [];
+    const asset = (name, type) => (name ? DV.text(name + ' (' + t(type === 'device' ? 'Device' : 'Server') + ')') : '');
     let body = DV.section('Service Flow', smFlow(vs));
     body += DV.section('Overview', DV.rows(
       DV.multiline(vs.description) ? DV.field('Description', DV.multiline(vs.description)) : '',
-      DV.field('Direction', DV.chips([t(cap(vs.direction))])),
-      DV.field('Scope', DV.chips([t(cap(vs.scope))])),
+      DV.field('Flow', '<span class="badge tag"><i class="bi ' + esc(flow.icon || '') + ' me-1"></i>' + esc(flow.label || '') + '</span>'),
       DV.field('System', DV.text(vs.system_name)),
       DV.field('Domain', DV.text(vs.domain)),
       DV.field('Provider / Channel', vs.provider ? DV.chips([vs.provider]) : ''),
-      vs.provider ? DV.field('Provider port', DV.text(vs.provider_port)) : '',
-      vs.provider ? DV.field('Provider protocol', vs.provider_protocol ? DV.chips([vs.provider_protocol]) : '') : '',
-      DV.field('IP Address', DV.text(vs.ip_address)),
+      vs.provider && (vs.provider_port || vs.provider_protocol) ? DV.field('Provider port', DV.text([vs.provider_port, vs.provider_protocol].filter(Boolean).join(' · '))) : '',
+      DV.field('IP Address', vs.ip_address ? DV.text(vs.ip_address) : ''),
+      vs.ip_address ? DV.field('IP owner', asset(vs.ip_owner_name, vs.ip_owner_type)) : '',
+      vs.nat_subnet ? DV.field('NAT range', DV.text(vs.nat_subnet + (vs.nat_subnet_zone ? ' · ' + vs.nat_subnet_zone : ''))) : '',
+      vs.gateway_ip ? DV.field('Gateway / Proxy IP', DV.text(vs.gateway_ip + (vs.gateway_owner_name ? ' — ' + vs.gateway_owner_name : ''))) : '',
       DV.field('Port', DV.text(vs.port)),
       DV.field('Protocol', DV.chips([vs.protocol])),
-      DV.field('Access', DV.chips([t(vs.access_mode === 'limited' ? 'Limited' : 'Full')])),
-      vs.access_mode === 'limited' ? DV.field('Allowed IPs', DV.chips(vs.allowed_ips || [])) : '',
-      DV.field('IP owner', vs.ip_owner_name ? DV.text(vs.ip_owner_name + ' (' + t(vs.ip_owner_type === 'device' ? 'Device' : 'Server') + ')') : '')
+      vs.direction === 'inbound' && vs.scope === 'public' ? DV.field('Access', DV.chips([t(vs.access_mode === 'limited' ? 'Limited' : 'Full')])) : ''
     ));
+    if (partners.length) {
+      const rows = partners.map((p) => `<tr><td class="font-monospace">${esc(p.address)}</td><td>${esc(p.partner || '—')}</td><td>${p.owner_name ? memberOwner(p) : '—'}</td></tr>`).join('');
+      body += DV.section(vs.direction === 'outbound' ? 'Partner IPs (destination)' : 'Partner IPs (source)',
+        `<table class="table table-sm mb-0"><thead><tr><th>${t('IP / CIDR')}</th><th>${t('Partner')}</th><th>${t('Server/Device')}</th></tr></thead><tbody>${rows}</tbody></table>`,
+        ' <span class="badge tag ms-1">' + partners.length + '</span>');
+    }
     if (members.length) {
       const rows = members.map(m =>
         `<tr><td>${esc(m.ip)}</td><td>${m.port || ''}</td><td>${memberOwner(m) || '—'}</td><td><span class="badge tag">${esc(t(cap(m.status || 'active')))}</span></td></tr>`
       ).join('');
-      body += DV.section(vs.direction === 'outbound' ? 'Source Servers' : 'Backend Servers',
+      body += DV.section(vs.direction === 'outbound' ? 'Internal IPs (source)' : 'Backend Servers',
         `<table class="table table-sm mb-0"><thead><tr><th>${t('IP Address')}</th><th>${t('Port')}</th><th>${t('Server/Device')}</th><th>${t('Status')}</th></tr></thead><tbody>${rows}</tbody></table>`,
         ' <span class="badge tag ms-1">' + members.length + '</span>');
     }
     body += DV.meta(vs);
-    DV.open('smDetailModal', { title: vs.name, subtitle: vs.domain ? '<span class="font-monospace small">' + esc(vs.domain) + '</span>' : '', body });
+    DV.open('smDetailModal', { title: vs.name, subtitle: '<i class="bi ' + esc(flow.icon || '') + ' me-1"></i>' + esc(flow.label || '') + (vs.domain ? ' · <span class="font-monospace small">' + esc(vs.domain) + '</span>' : ''), body });
   }
 </script>

@@ -1,13 +1,17 @@
 import { pool } from '../../../config/config.js';
-import { db, Where, jsonList, matchOrder, matchRank } from '../../shared/db.js';
+import { db, Where, jsonList, subList, matchOrder, matchRank } from '../../shared/db.js';
 
-const COLUMNS = ['name', 'domain_id', 'provider', 'provider_port', 'provider_protocol', 'ip_address_id', 'port', 'protocol', 'direction', 'scope', 'access_mode', 'allowed_ips', 'system_id', 'description', 'updated_by'];
+const COLUMNS = ['name', 'domain_id', 'provider', 'provider_port', 'provider_protocol', 'ip_address_id', 'port', 'protocol', 'direction', 'scope',
+  'access_mode', 'nat_subnet_id', 'gateway_ip_address_id', 'system_id', 'description', 'updated_by'];
 
-// Frontend IP / domain come from the inventories (ip_address, domain as text).
-// ip_owner_name / ip_owner_type: the device, else the server, holding the frontend
-// IP (its own IP before a VIP); none for an IP nothing holds (e.g. an external
-// destination). Members are IP:port; server_name lists the server(s) owning the IP,
-// owner_name / owner_type the device, else the server, holding it (same rule).
+// Flows (direction x scope, see migration 0033): our IP (ip_address_id: public /
+// NAT service / NAT / egress IP), the NAT range (nat_subnet_id), the gateway
+// (NAT / reverse proxy, or firewall / proxy), partner IPs (allowed sources or
+// destinations, with the partner's name) and members (backends or sources).
+// Asset mapping: every IP of the flow names the device, else the server,
+// holding it in the inventory (ip_owner_*, gateway_owner_*, members[].owner_*,
+// partner_ips[].owner_*); none for an IP nothing holds. Members' server_name
+// lists the server(s) owning the IP.
 const IP_OWNER = (ipId) => `
     SELECT * FROM (
       SELECT d.id, d.name, 'device' AS kind, (di.role <> 'normal')::int AS rank FROM device_ip di JOIN devices d ON d.id = di.device_id WHERE di.ip_id = ${ipId}
@@ -17,22 +21,31 @@ const IP_OWNER = (ipId) => `
 const SELECT_WITH_LINKS = `
   SELECT vs.*, fip.ip_address, dom.domain,
     own.name AS ip_owner_name, own.kind AS ip_owner_type, own.id AS ip_owner_id, sys.name AS system_name,
+    nsub.address::text AS nat_subnet, nsub.zone AS nat_subnet_zone,
+    gip.ip_address AS gateway_ip, gwo.name AS gateway_owner_name, gwo.kind AS gateway_owner_type,
+    ${subList({ id: 'p.id', address: 'p.address', partner: 'p.partner', owner_name: 'po.name', owner_type: 'po.kind' },
+      `FROM virtual_server_partner_ips p
+       LEFT JOIN LATERAL (${IP_OWNER("(SELECT x.id FROM ip_addresses x WHERE x.ip_address = p.address LIMIT 1)")}) po ON TRUE
+       WHERE p.virtual_server_id = vs.id`, 'p.position')} AS partner_ips,
     ${jsonList('m', {
       id: 'm.id', ip_address_id: 'ip.id', ip: 'ip.ip_address', port: 'm.port', status: 'm.status',
       server_name: "(SELECT string_agg(s.name, ', ' ORDER BY s.name) FROM server_ip si JOIN servers s ON s.id = si.server_id WHERE si.ip_id = ip.id)",
       owner_name: 'mo.name', owner_type: 'mo.kind',
     })} AS members
   FROM virtual_servers vs
-  JOIN ip_addresses fip ON fip.id = vs.ip_address_id
+  LEFT JOIN ip_addresses fip ON fip.id = vs.ip_address_id
   LEFT JOIN domains dom ON dom.id = vs.domain_id
   LEFT JOIN LATERAL (${IP_OWNER('vs.ip_address_id')}) own ON TRUE
+  LEFT JOIN subnets nsub ON nsub.id = vs.nat_subnet_id
+  LEFT JOIN ip_addresses gip ON gip.id = vs.gateway_ip_address_id
+  LEFT JOIN LATERAL (${IP_OWNER('vs.gateway_ip_address_id')}) gwo ON TRUE
   LEFT JOIN systems sys ON sys.id = vs.system_id
   LEFT JOIN virtual_server_members m ON m.virtual_server_id = vs.id
   LEFT JOIN ip_addresses ip ON ip.id = m.ip_address_id
   LEFT JOIN LATERAL (${IP_OWNER('ip.id')}) mo ON TRUE`;
-const GROUP_BY = 'GROUP BY vs.id, fip.ip_address, dom.domain, own.id, own.name, own.kind, sys.name';
+const GROUP_BY = 'GROUP BY vs.id, fip.ip_address, dom.domain, own.id, own.name, own.kind, sys.name, nsub.address, nsub.zone, gip.ip_address, gwo.id, gwo.name, gwo.kind';
 
-function filterWhere({ search = '', protocol, provider, device_id, system_id, direction, scope, access_mode }) {
+function filterWhere({ search = '', protocol, provider, device_id, system_id, direction, scope, access_mode, partner }) {
   const w = new Where();
   w.search(search, [
     'vs.name ILIKE ?', 'vs.provider ILIKE ?',
@@ -43,7 +56,10 @@ function filterWhere({ search = '', protocol, provider, device_id, system_id, di
     'EXISTS (SELECT 1 FROM systems x WHERE x.id = vs.system_id AND x.name ILIKE ?)',
     'EXISTS (SELECT 1 FROM virtual_server_members x JOIN ip_addresses i ON i.id = x.ip_address_id WHERE x.virtual_server_id = vs.id AND i.ip_address ILIKE ?)',
     'EXISTS (SELECT 1 FROM virtual_server_members x JOIN server_ip si ON si.ip_id = x.ip_address_id JOIN servers s ON s.id = si.server_id WHERE x.virtual_server_id = vs.id AND s.name ILIKE ?)',
+    'EXISTS (SELECT 1 FROM virtual_server_partner_ips x WHERE x.virtual_server_id = vs.id AND (x.address ILIKE ? OR x.partner ILIKE ?))',
+    'EXISTS (SELECT 1 FROM ip_addresses x WHERE x.id = vs.gateway_ip_address_id AND x.ip_address ILIKE ?)',
   ]);
+  if (partner) w.add(`EXISTS (SELECT 1 FROM virtual_server_partner_ips x WHERE x.virtual_server_id = vs.id AND x.partner = ${w.param(partner)})`);
   if (protocol) w.add(`vs.protocol = ${w.param(protocol)}`);
   if (provider) w.add(`vs.provider = ${w.param(provider)}`);
   // device_id: mappings whose frontend IP the device holds
@@ -104,7 +120,7 @@ class ServiceMapping {
     const w = filterWhere(filter);
     // searching: exact name / domain / frontend IP matches first, then starts with, then the rest
     const search = String(filter.search || '').trim();
-    const rank = search ? `${matchRank(['vs.name', 'fip.ip_address', "COALESCE(dom.domain, '')"], w.param(search))}, ` : '';
+    const rank = search ? `${matchRank(['vs.name', "COALESCE(fip.ip_address, '')", "COALESCE(dom.domain, '')"], w.param(search))}, ` : '';
     const result = await pool.query(
       `${SELECT_WITH_LINKS} WHERE ${w} ${GROUP_BY} ORDER BY ${rank}vs.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params);
@@ -144,7 +160,23 @@ class ServiceMapping {
     return result.rows.map((r) => r.protocol);
   }
 
+  // Partner names already used (filter of the list)
+  static async getDistinctPartners() {
+    const result = await pool.query("SELECT DISTINCT partner FROM virtual_server_partner_ips WHERE COALESCE(partner, '') <> '' ORDER BY partner");
+    return result.rows.map((r) => r.partner);
+  }
+
   // ===== Links =====
+  // rows: [{address, partner}] in their order
+  static async setPartnerIps(vsId, rows, client) {
+    const ex = db(client);
+    await ex.query('DELETE FROM virtual_server_partner_ips WHERE virtual_server_id = $1', [vsId]);
+    for (const [i, r] of (rows || []).entries()) {
+      await ex.query('INSERT INTO virtual_server_partner_ips (virtual_server_id, address, partner, position) VALUES ($1, $2, $3, $4)',
+        [vsId, r.address, r.partner || null, i]);
+    }
+  }
+
   static async setMembers(vsId, members, client) {
     const ex = db(client);
     await ex.query('DELETE FROM virtual_server_members WHERE virtual_server_id = $1', [vsId]);
@@ -161,8 +193,8 @@ class ServiceMapping {
     w.search(search, ['vs.name ILIKE ?', 'dom.domain ILIKE ?', 'fip.ip_address ILIKE ?']);
     const result = await pool.query(
       `SELECT vs.id, vs.name AS text FROM virtual_servers vs
-         JOIN ip_addresses fip ON fip.id = vs.ip_address_id LEFT JOIN domains dom ON dom.id = vs.domain_id
-        WHERE ${w} ORDER BY ${matchOrder(['vs.name', 'fip.ip_address', "COALESCE(dom.domain, '')"], w.param(String(search || '').trim()))} LIMIT 20`, w.params);
+         LEFT JOIN ip_addresses fip ON fip.id = vs.ip_address_id LEFT JOIN domains dom ON dom.id = vs.domain_id
+        WHERE ${w} ORDER BY ${matchOrder(['vs.name', "COALESCE(fip.ip_address, '')", "COALESCE(dom.domain, '')"], w.param(String(search || '').trim()))} LIMIT 20`, w.params);
     return result.rows;
   }
 }

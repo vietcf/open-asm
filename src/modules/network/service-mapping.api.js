@@ -5,13 +5,14 @@
 import ServiceMapping from './service-mapping.model.js';
 import IpAddress from './ip-address.model.js';
 import Domain from './domain.model.js';
+import Subnet from './subnet.model.js';
 import System from '../system/system.model.js';
 import * as smService from './service-mapping.service.js';
 import { apiHandler, apiPage, apiActor, paginated } from '../../shared/api.js';
 import { ValidationError, NotFoundError } from '../../shared/errors.js';
 
-const FIELDS = ['name', 'domain_id', 'ip_address_id', 'port', 'protocol', 'direction', 'scope', 'access_mode', 'allowed_ips',
-  'provider', 'provider_port', 'provider_protocol', 'system_id', 'description', 'members'];
+const FIELDS = ['name', 'domain_id', 'ip_address_id', 'port', 'protocol', 'direction', 'scope', 'access_mode', 'allowed_ips', 'partner_ips',
+  'nat_subnet_id', 'gateway_ip_address_id', 'provider', 'provider_port', 'provider_protocol', 'system_id', 'description', 'members'];
 const STATUS_OPTIONS = ['active', 'inactive'];
 const has = (body, key) => Object.prototype.hasOwnProperty.call(body, key);
 
@@ -54,7 +55,7 @@ async function toInput(body, req) {
   const unknown = Object.keys(body).filter((k) => !FIELDS.includes(k));
   if (unknown.length) throw new ValidationError(`Invalid field(s): ${unknown.join(', ')}`);
   const input = { updated_by: apiActor(req) };
-  for (const key of ['name', 'port', 'protocol', 'direction', 'scope', 'access_mode', 'allowed_ips', 'provider', 'provider_port', 'provider_protocol', 'description']) {
+  for (const key of ['name', 'port', 'protocol', 'direction', 'scope', 'access_mode', 'allowed_ips', 'partner_ips', 'provider', 'provider_port', 'provider_protocol', 'description']) {
     if (has(body, key)) input[key] = body[key];
   }
   if (has(body, 'port') && !(Number.isInteger(Number(body.port)) && Number(body.port) >= 1 && Number(body.port) <= 65535)) {
@@ -64,6 +65,16 @@ async function toInput(body, req) {
     const id = toId(body.ip_address_id, 'ip_address_id');
     await assertExists(id, 'IP address', (x) => IpAddress.exists(x));
     input.ip_address = id === null ? '' : String(id);
+  }
+  if (has(body, 'gateway_ip_address_id')) {
+    const id = toId(body.gateway_ip_address_id, 'gateway_ip_address_id');
+    await assertExists(id, 'IP address', (x) => IpAddress.exists(x));
+    input.gateway_ip = id === null ? '' : String(id);
+  }
+  if (has(body, 'nat_subnet_id')) {
+    const id = toId(body.nat_subnet_id, 'nat_subnet_id');
+    await assertExists(id, 'Subnet', (x) => Subnet.exists(x));
+    input.nat_subnet = id === null ? '' : String(id);
   }
   if (has(body, 'domain_id')) {
     const id = toId(body.domain_id, 'domain_id');
@@ -105,7 +116,7 @@ export default {
 
   create: apiHandler(async (req, res) => {
     const body = req.body || {};
-    if (!has(body, 'ip_address_id') || body.ip_address_id === null || body.ip_address_id === '') throw new ValidationError('ip_address_id is required');
+    // which IPs are required depends on the flow (direction-scope), checked by the service
     if (!has(body, 'port')) throw new ValidationError('port is required');
     res.status(201).json(await smService.createServiceMapping(await toInput(body, req)));
   }),
