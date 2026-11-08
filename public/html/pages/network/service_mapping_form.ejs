@@ -10,7 +10,6 @@
    const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
    const flow = (v.direction || 'inbound') + '-' + (v.scope || 'public');
    const accessMode = v.access_mode || 'full';
-   const partnerTags = !(partnerOptions || []).length;
    const partnerRow = function (p) { p = p || {}; return { address: p.address || '', partner: p.partner || '', port: p.port || '', protocol: p.protocol || '', domain: p.domain || '' }; };
    // one partner IP row: IP, then port / protocol (outbound), domain (internet connectivity), partner
    const partnerCells = function (r) {
@@ -19,8 +18,9 @@
        '<div class="col-md-2 col-6" data-flows="outbound-private outbound-public"><select name="partner_protocol" class="form-select" aria-label="' + ui.esc(t('Protocol')) + '"><option value="">' + ui.esc(t('Protocol')) + '</option>' +
          (protocolOptions || []).map(function (pr) { return '<option value="' + ui.esc(pr) + '"' + (r.protocol === pr ? ' selected' : '') + '>' + ui.esc(pr) + '</option>'; }).join('') + '</select></div>' +
        '<div class="col-md-2" data-flows="outbound-public"><input type="text" name="partner_domain" class="form-control font-monospace" value="' + ui.esc(r.domain) + '" maxlength="253" placeholder="' + ui.esc(t('Domain (optional)')) + '"></div>' +
-       '<div class="col-md"><select name="partner_name" class="form-select js-select"' + (partnerTags ? ' data-tags="true"' : '') + ' data-placeholder="' + ui.esc(t('Partner')) + '"><option value=""></option>' +
-         ui.options(partnerOptions, r.partner ? [r.partner] : []) + (partnerTags && r.partner ? '<option value="' + ui.esc(r.partner) + '" selected>' + ui.esc(r.partner) + '</option>' : '') + '</select></div>' +
+       // pick a partner, or type a new one (added to the partner list on save)
+       '<div class="col-md"><select name="partner_name" class="form-select js-select" data-tags="true" data-placeholder="' + ui.esc(t('Pick or type a partner')) + '"><option value=""></option>' +
+         ui.options(partnerOptions, r.partner ? [r.partner] : []) + '</select></div>' +
        '<div class="col-md-auto"><button type="button" class="btn btn-outline-secondary w-100" data-repeater-remove title="' + ui.esc(t('Remove')) + '"><i class="bi bi-x-lg"></i></button></div>';
    }; %>
 <%- include('../../partials/ui/page_header', { breadcrumbs: [
@@ -105,7 +105,7 @@
                 <div class="row g-2 align-items-start"><%- partnerCells(partnerRow({})) %></div>
               </template>
               <div class="mt-2"><button type="button" class="btn btn-outline-primary btn-sm" data-repeater-add><i class="bi bi-plus-lg"></i> <%= t('Add partner IP') %></button></div>
-              <div class="form-text"><%= t('Partner names are configured in System Configuration > Network.') %></div>
+              <div class="form-text"><%= t('Pick a partner or type a new one: it is added to the partner list (System Configuration > Network).') %></div>
             </div>
           </section>
 

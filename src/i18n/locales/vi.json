@@ -1664,7 +1664,6 @@
   "One partner IP per row (no CIDR range), with the partner name.": "Mỗi dòng một IP đối tác (không nhập dải CIDR), kèm tên đối tác.",
   "One partner IP per row with its own port and protocol (no CIDR range).": "Mỗi dòng một IP đối tác với port và protocol riêng (không nhập dải CIDR).",
   "One destination IP per row with its domain (optional), port and protocol (no CIDR range).": "Mỗi dòng một IP đích với domain (không bắt buộc), port và protocol riêng (không nhập dải CIDR).",
-  "Partner names are configured in System Configuration > Network.": "Tên đối tác cấu hình tại Cấu hình hệ thống > Mạng.",
   "NAT IP is required": "Cần nhập NAT IP",
   "At least one destination IP is required": "Cần ít nhất một IP đích",
   "Every partner IP needs its port and protocol": "Mỗi IP đối tác cần có port và protocol",
@@ -1692,5 +1691,8 @@
   "Filter by partner, IP or domain...": "Lọc theo đối tác, IP hoặc domain...",
   "Internal user → Domain → IP:Port → Backend IP:Port": "Người dùng nội bộ → Domain → IP:Port → Backend IP:Port",
   "IP is required": "Cần nhập IP",
-  "IP": "IP"
+  "IP": "IP",
+  "Pick or type a partner": "Chọn hoặc gõ tên đối tác",
+  "Pick a partner or type a new one: it is added to the partner list (System Configuration > Network).": "Chọn đối tác có sẵn hoặc gõ tên mới: tên mới được thêm vào danh sách đối tác (Cấu hình hệ thống > Mạng).",
+  "Partner name is too long (max 100 characters): {value}": "Tên đối tác quá dài (tối đa 100 ký tự): {value}"
 }
