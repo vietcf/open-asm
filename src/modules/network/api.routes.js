@@ -1081,7 +1081,8 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *       required: [ip_address_id]
  *       properties:
  *         ip_address_id: { type: integer, description: Backend IP address id }
- *         port: { type: integer, nullable: true, minimum: 1, maximum: 65535 }
+ *         port: { type: integer, nullable: true, minimum: 1, maximum: 65535, description: Backend port (inbound); outbound sources have none }
+ *         protocol: { type: string, nullable: true, enum: [HTTP, HTTPS, TCP, UDP], description: 'Backend protocol (inbound), e.g. HTTP behind an HTTPS VIP' }
  *         status: { type: string, enum: [active, inactive], default: active }
  *     ServiceMappingInput:
  *       type: object
@@ -1089,27 +1090,28 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *         name:
  *           type: string
  *           description: Unique (case-insensitive). Default "<domain or IP>:<port>".
- *         ip_address_id: { type: integer, nullable: true, description: 'Our IP of the flow: public IP (inbound public), NAT service IP (inbound private), NAT IP (outbound private; optional with nat_subnet_id), egress public IP (outbound public)' }
- *         port: { type: integer, minimum: 1, maximum: 65535, description: 'Port of our IP (inbound) or of the partner / destination (outbound). Required on create.' }
- *         nat_subnet_id: { type: integer, nullable: true, description: 'NAT range (subnet id) of the private flows; the NAT IP must be in it' }
- *         gateway_ip_address_id: { type: integer, nullable: true, description: 'NAT / reverse proxy IP (inbound public) or firewall / NAT gateway / proxy IP (outbound public)' }
+ *         ip_address_id: { type: integer, description: 'Our IP of the flow (required): public IP on its FW / LB (inbound public), NAT service IP (inbound private), NAT IP (outbound private), egress public IP (outbound public)' }
+ *         port: { type: integer, nullable: true, minimum: 1, maximum: 65535, description: 'Port of our IP: required for inbound; empty for outbound (each partner IP has its own)' }
  *         partner_ips:
  *           type: array
- *           description: 'Partner IPs / CIDRs with the partner name (System Configuration list service_mapping_partner): the allowed sources of inbound (access_mode limited for public), the destinations of outbound. Replaces every row.'
+ *           description: 'Partner IP addresses (single IPv4, no CIDR) with the partner name (System Configuration list service_mapping_partner): the allowed sources of inbound (access_mode limited for public), the destinations of outbound with their own port / protocol (required) and, for internet connectivity, domain (optional). Replaces every row.'
  *           items:
  *             type: object
  *             properties:
- *               address: { type: string, example: 198.51.100.0/24 }
+ *               address: { type: string, example: 198.51.100.10, description: Single IPv4 address }
  *               partner: { type: string, nullable: true, example: Bank A }
+ *               port: { type: integer, nullable: true, example: 443, description: Outbound destinations only (required there) }
+ *               protocol: { type: string, nullable: true, enum: [HTTP, HTTPS, TCP, UDP], description: Outbound destinations only (required there) }
+ *               domain: { type: string, nullable: true, example: api.bank.example, description: Internet connectivity destinations only (optional) }
  *         protocol: { type: string, enum: [HTTP, HTTPS, TCP, UDP], default: HTTPS }
  *         domain_id: { type: integer, nullable: true }
- *         direction: { type: string, enum: [inbound, outbound], default: inbound, description: 'Flow = direction + scope: inbound public = public exposure, inbound private = private connectivity, outbound private = partner connectivity, outbound public = internet connectivity' }
- *         scope: { type: string, enum: [public, private], default: public }
+ *         direction: { type: string, enum: [inbound, outbound], default: inbound, description: 'Flow = direction + scope: inbound public = public exposure, inbound internal = internal exposure, inbound private = private connectivity, outbound private = partner connectivity, outbound public = internet connectivity' }
+ *         scope: { type: string, enum: [public, private, internal], default: public, description: 'internal: inbound only (internal exposure)' }
  *         access_mode: { type: string, enum: [full, limited], default: full }
  *         allowed_ips:
  *           type: array
  *           items: { type: string }
- *           description: 'Older form of partner_ips: "IP/CIDR" or "IP/CIDR[Partner]" strings'
+ *           description: 'Older form of partner_ips: "IP[Partner]", "IP:port/protocol[Partner]" or "IP:port/protocol@domain[Partner]" strings'
  *         provider: { type: string, nullable: true, description: 'CDN / WAF / private channel in front (e.g. Akamai, MPLS): a value of the System Configuration list `service_mapping_provider` (case-insensitive); retired values are refused' }
  *         provider_port: { type: integer, nullable: true }
  *         provider_protocol: { type: string, enum: [HTTP, HTTPS, TCP, UDP], nullable: true }
@@ -1143,11 +1145,6 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *         direction: { type: string }
  *         scope: { type: string }
  *         access_mode: { type: string }
- *         nat_subnet_id: { type: integer, nullable: true }
- *         nat_subnet: { type: string, nullable: true, description: NAT range CIDR }
- *         gateway_ip_address_id: { type: integer, nullable: true }
- *         gateway_ip: { type: string, nullable: true }
- *         gateway_owner_name: { type: string, nullable: true, description: Device, else server, holding the gateway IP }
  *         partner_ips:
  *           type: array
  *           items:
@@ -1156,6 +1153,9 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *               id: { type: integer }
  *               address: { type: string }
  *               partner: { type: string, nullable: true }
+ *               port: { type: integer, nullable: true }
+ *               protocol: { type: string, nullable: true }
+ *               domain: { type: string, nullable: true }
  *               owner_name: { type: string, nullable: true, description: Device, else server, holding the IP in the inventory }
  *               owner_type: { type: string, enum: [device, server], nullable: true }
  *         provider: { type: string, nullable: true }
@@ -1194,7 +1194,7 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *       - { in: query, name: protocol, schema: { type: string } }
  *       - { in: query, name: provider, schema: { type: string } }
  *       - { in: query, name: direction, schema: { type: string, enum: [inbound, outbound] } }
- *       - { in: query, name: scope, schema: { type: string, enum: [public, private] } }
+ *       - { in: query, name: scope, schema: { type: string, enum: [public, private, internal] } }
  *       - { in: query, name: access_mode, schema: { type: string, enum: [full, limited] } }
  *       - { in: query, name: system_id, schema: { type: integer } }
  *     responses:

@@ -52,7 +52,6 @@ router.get('/api/ip-addresses/unassigned', can('ip_address.read'), ips.searchUna
 router.get('/api/ip-addresses/search-all', can('ip_address.read'), ips.searchAll);
 router.get('/api/ip-addresses/detail', can('ip_address.read'), ips.detail);
 router.get('/api/ip-addresses/check', can('ip_address.read'), ips.check);
-router.get('/api/subnets', canPick('subnet.read'), subnets.lookup);
 router.get('/api/subnets/containing', can('ip_address.read'), subnets.containing);
 router.get('/api/subnets/:id/detail', can('subnet.read'), subnets.detail);
 router.get('/api/domain', can('domain.read'), domains.search);

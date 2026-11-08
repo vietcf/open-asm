@@ -657,7 +657,56 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.6.0 (Latest)
+### Version 1.7.0 (Latest)
+- ⬆️ Upgrading from 1.6.x: new image; migrations `0034` and `0035` run (see below). The service
+  mapping import template changed (NAT range and gateway columns removed,
+  partner IP syntax): download the new one.
+- ✏️ Service mapping flows refined:
+  | Flow | Path |
+  |---|---|
+  | Inbound · Public Exposure | Partners (limited on the CDN) or Internet → Domain → CDN (its own port / protocol) → **Public IP:Port** on its FW / LB → Backends IP:Port |
+  | Inbound · **Internal Exposure** (new) | Internal users → Domain (optional) → **VIP IP:Port + protocol** on its LB → Backends IP:Port + protocol |
+  | Inbound · Private Connectivity | Partner VPN IPs → VPN / lease line → **one NAT service IP:Port** → Backends IP:Port |
+  | Outbound · Partner Connectivity | Internal IPs (**no port**) → **one NAT IP** → VPN / lease line → **each partner IP with its own port + protocol** |
+  | Outbound · Internet Connectivity | Internal IPs (**no port**) → **one egress public IP** → **each destination IP with its own domain (optional) + port + protocol** |
+  - Our IP (public / NAT service / NAT / egress) is required in every flow and
+    sits on its FW / LB / NAT device, shown through the asset mapping: the
+    NAT / reverse proxy and firewall / proxy IP fields and the NAT range are
+    gone.
+  - The VPN / lease line only carries the traffic: no provider port /
+    protocol (only the CDN keeps them); Internet Connectivity has no channel.
+  - Partner IPs are **single IP addresses** (no CIDR): the partner's hosts,
+    kept apart from the subnet inventory (internal ranges only). A CIDR a
+    mapping already had is kept until it is replaced; new ones are refused.
+  - Outbound mappings have no port / protocol of their own (their partner
+    IPs carry them) and no mapping domain (internet destinations carry
+    theirs).
+  - Import / export / API: partner IPs as `IP[Partner]` (inbound sources),
+    `IP:port/protocol[Partner]` (partner connectivity),
+    `IP:port/protocol@domain[Partner]` (internet); REST `partner_ips[]` gain
+    `port`, `protocol`, `domain`; `nat_subnet_id` / `gateway_ip_address_id`
+    are gone.
+  - **Internal Exposure** (`direction` inbound, `scope` **internal**): an
+    application published inside the company, not through the internet: no
+    CDN, channel or partner IPs. It has its own tab, Service Flow, import /
+    export (`scope` internal) and API value.
+  - **Backends have a protocol** (inbound flows), e.g. HTTPS on the VIP and
+    HTTP on the backends when the LB offloads TLS: form column, Service Flow,
+    detail, export ("Backend Protocol"), import `ip:port/protocol`, REST
+    `members[].protocol`. Existing backends have none.
+- 🐛 Service mapping form: the separators between parts are the same for
+  every flow (they followed the DOM order, not the order shown per flow).
+- 🐛 Selects that accept a typed value (e.g. the partner name while the
+  partner list is empty) always show their search box: short lists hid it,
+  so nothing could be typed.
+- Migration `0034_partner_ip_ports.js`: partner IPs get `port`, `protocol`,
+  `domain`; the port / protocol (and, for internet connectivity, the domain)
+  of every outbound mapping move to its partner IPs; outbound source ports
+  are emptied; `nat_subnet_id` and `gateway_ip_address_id` (no data) are
+  dropped. Counts are printed.
+- Migration `0035_internal_exposure.sql`: `virtual_server_members.protocol`.
+
+### Version 1.6.0
 - ⬆️ Upgrading from 1.5.x: new image; migration `0033` runs (see below).
   The service mapping import template changed (Partner IPs header, NAT
   range and gateway columns): download the new one.

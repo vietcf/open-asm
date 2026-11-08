@@ -47,6 +47,8 @@
       opts.minimumResultsForSearch = 10;
     }
     if ($el.data('tags')) {
+      // new values are typed: the search box must always show (minimumResultsForSearch hides it on short lists)
+      delete opts.minimumResultsForSearch;
       opts.tags = true;
       opts.createTag = (params) => {
         const term = $.trim(params.term);

@@ -2,16 +2,16 @@ import { pool } from '../../../config/config.js';
 import { db, Where, jsonList, subList, matchOrder, matchRank } from '../../shared/db.js';
 
 const COLUMNS = ['name', 'domain_id', 'provider', 'provider_port', 'provider_protocol', 'ip_address_id', 'port', 'protocol', 'direction', 'scope',
-  'access_mode', 'nat_subnet_id', 'gateway_ip_address_id', 'system_id', 'description', 'updated_by'];
+  'access_mode', 'system_id', 'description', 'updated_by'];
 
-// Flows (direction x scope, see migration 0033): our IP (ip_address_id: public /
-// NAT service / NAT / egress IP), the NAT range (nat_subnet_id), the gateway
-// (NAT / reverse proxy, or firewall / proxy), partner IPs (allowed sources or
-// destinations, with the partner's name) and members (backends or sources).
+// Flows (direction x scope, see migrations 0033 / 0034): our IP (ip_address_id:
+// public / NAT service / NAT / egress IP, on its FW / LB device), partner IPs
+// (allowed sources, or the outbound destinations with their own port, protocol
+// and, for internet connectivity, domain) and members (backends, or outbound
+// sources without port).
 // Asset mapping: every IP of the flow names the device, else the server,
-// holding it in the inventory (ip_owner_*, gateway_owner_*, members[].owner_*,
-// partner_ips[].owner_*); none for an IP nothing holds. Members' server_name
-// lists the server(s) owning the IP.
+// holding it in the inventory (ip_owner_*, members[].owner_*, partner_ips[].owner_*);
+// none for an IP nothing holds. Members' server_name lists the server(s) owning the IP.
 const IP_OWNER = (ipId) => `
     SELECT * FROM (
       SELECT d.id, d.name, 'device' AS kind, (di.role <> 'normal')::int AS rank FROM device_ip di JOIN devices d ON d.id = di.device_id WHERE di.ip_id = ${ipId}
@@ -21,14 +21,12 @@ const IP_OWNER = (ipId) => `
 const SELECT_WITH_LINKS = `
   SELECT vs.*, fip.ip_address, dom.domain,
     own.name AS ip_owner_name, own.kind AS ip_owner_type, own.id AS ip_owner_id, sys.name AS system_name,
-    nsub.address::text AS nat_subnet, nsub.zone AS nat_subnet_zone,
-    gip.ip_address AS gateway_ip, gwo.name AS gateway_owner_name, gwo.kind AS gateway_owner_type,
-    ${subList({ id: 'p.id', address: 'p.address', partner: 'p.partner', owner_name: 'po.name', owner_type: 'po.kind' },
+    ${subList({ id: 'p.id', address: 'p.address', partner: 'p.partner', port: 'p.port', protocol: 'p.protocol', domain: 'p.domain', owner_name: 'po.name', owner_type: 'po.kind' },
       `FROM virtual_server_partner_ips p
        LEFT JOIN LATERAL (${IP_OWNER("(SELECT x.id FROM ip_addresses x WHERE x.ip_address = p.address LIMIT 1)")}) po ON TRUE
        WHERE p.virtual_server_id = vs.id`, 'p.position')} AS partner_ips,
     ${jsonList('m', {
-      id: 'm.id', ip_address_id: 'ip.id', ip: 'ip.ip_address', port: 'm.port', status: 'm.status',
+      id: 'm.id', ip_address_id: 'ip.id', ip: 'ip.ip_address', port: 'm.port', protocol: 'm.protocol', status: 'm.status',
       server_name: "(SELECT string_agg(s.name, ', ' ORDER BY s.name) FROM server_ip si JOIN servers s ON s.id = si.server_id WHERE si.ip_id = ip.id)",
       owner_name: 'mo.name', owner_type: 'mo.kind',
     })} AS members
@@ -36,14 +34,11 @@ const SELECT_WITH_LINKS = `
   LEFT JOIN ip_addresses fip ON fip.id = vs.ip_address_id
   LEFT JOIN domains dom ON dom.id = vs.domain_id
   LEFT JOIN LATERAL (${IP_OWNER('vs.ip_address_id')}) own ON TRUE
-  LEFT JOIN subnets nsub ON nsub.id = vs.nat_subnet_id
-  LEFT JOIN ip_addresses gip ON gip.id = vs.gateway_ip_address_id
-  LEFT JOIN LATERAL (${IP_OWNER('vs.gateway_ip_address_id')}) gwo ON TRUE
   LEFT JOIN systems sys ON sys.id = vs.system_id
   LEFT JOIN virtual_server_members m ON m.virtual_server_id = vs.id
   LEFT JOIN ip_addresses ip ON ip.id = m.ip_address_id
   LEFT JOIN LATERAL (${IP_OWNER('ip.id')}) mo ON TRUE`;
-const GROUP_BY = 'GROUP BY vs.id, fip.ip_address, dom.domain, own.id, own.name, own.kind, sys.name, nsub.address, nsub.zone, gip.ip_address, gwo.id, gwo.name, gwo.kind';
+const GROUP_BY = 'GROUP BY vs.id, fip.ip_address, dom.domain, own.id, own.name, own.kind, sys.name';
 
 function filterWhere({ search = '', protocol, provider, device_id, system_id, direction, scope, access_mode, partner }) {
   const w = new Where();
@@ -56,8 +51,7 @@ function filterWhere({ search = '', protocol, provider, device_id, system_id, di
     'EXISTS (SELECT 1 FROM systems x WHERE x.id = vs.system_id AND x.name ILIKE ?)',
     'EXISTS (SELECT 1 FROM virtual_server_members x JOIN ip_addresses i ON i.id = x.ip_address_id WHERE x.virtual_server_id = vs.id AND i.ip_address ILIKE ?)',
     'EXISTS (SELECT 1 FROM virtual_server_members x JOIN server_ip si ON si.ip_id = x.ip_address_id JOIN servers s ON s.id = si.server_id WHERE x.virtual_server_id = vs.id AND s.name ILIKE ?)',
-    'EXISTS (SELECT 1 FROM virtual_server_partner_ips x WHERE x.virtual_server_id = vs.id AND (x.address ILIKE ? OR x.partner ILIKE ?))',
-    'EXISTS (SELECT 1 FROM ip_addresses x WHERE x.id = vs.gateway_ip_address_id AND x.ip_address ILIKE ?)',
+    'EXISTS (SELECT 1 FROM virtual_server_partner_ips x WHERE x.virtual_server_id = vs.id AND (x.address ILIKE ? OR x.partner ILIKE ? OR x.domain ILIKE ?))',
   ]);
   if (partner) w.add(`EXISTS (SELECT 1 FROM virtual_server_partner_ips x WHERE x.virtual_server_id = vs.id AND x.partner = ${w.param(partner)})`);
   if (protocol) w.add(`vs.protocol = ${w.param(protocol)}`);
@@ -167,13 +161,13 @@ class ServiceMapping {
   }
 
   // ===== Links =====
-  // rows: [{address, partner}] in their order
+  // rows: [{address, partner, port, protocol, domain}] in their order
   static async setPartnerIps(vsId, rows, client) {
     const ex = db(client);
     await ex.query('DELETE FROM virtual_server_partner_ips WHERE virtual_server_id = $1', [vsId]);
     for (const [i, r] of (rows || []).entries()) {
-      await ex.query('INSERT INTO virtual_server_partner_ips (virtual_server_id, address, partner, position) VALUES ($1, $2, $3, $4)',
-        [vsId, r.address, r.partner || null, i]);
+      await ex.query('INSERT INTO virtual_server_partner_ips (virtual_server_id, address, partner, port, protocol, domain, position) VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        [vsId, r.address, r.partner || null, r.port || null, r.protocol || null, r.domain || null, i]);
     }
   }
 
@@ -182,8 +176,8 @@ class ServiceMapping {
     await ex.query('DELETE FROM virtual_server_members WHERE virtual_server_id = $1', [vsId]);
     for (const m of members || []) {
       await ex.query(
-        'INSERT INTO virtual_server_members (virtual_server_id, ip_address_id, port, status) VALUES ($1, $2, $3, $4)',
-        [vsId, m.ip_address_id, m.port || null, m.status || 'active']);
+        'INSERT INTO virtual_server_members (virtual_server_id, ip_address_id, port, protocol, status) VALUES ($1, $2, $3, $4, $5)',
+        [vsId, m.ip_address_id, m.port || null, m.protocol || null, m.status || 'active']);
     }
   }
 

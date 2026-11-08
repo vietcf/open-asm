@@ -5,14 +5,13 @@
 import ServiceMapping from './service-mapping.model.js';
 import IpAddress from './ip-address.model.js';
 import Domain from './domain.model.js';
-import Subnet from './subnet.model.js';
 import System from '../system/system.model.js';
 import * as smService from './service-mapping.service.js';
 import { apiHandler, apiPage, apiActor, paginated } from '../../shared/api.js';
 import { ValidationError, NotFoundError } from '../../shared/errors.js';
 
 const FIELDS = ['name', 'domain_id', 'ip_address_id', 'port', 'protocol', 'direction', 'scope', 'access_mode', 'allowed_ips', 'partner_ips',
-  'nat_subnet_id', 'gateway_ip_address_id', 'provider', 'provider_port', 'provider_protocol', 'system_id', 'description', 'members'];
+  'provider', 'provider_port', 'provider_protocol', 'system_id', 'description', 'members'];
 const STATUS_OPTIONS = ['active', 'inactive'];
 const has = (body, key) => Object.prototype.hasOwnProperty.call(body, key);
 
@@ -28,11 +27,12 @@ async function assertExists(id, field, find) {
   if (id !== null && !(await find(id))) throw new ValidationError(`${field} not found: {id}`).withParams({ id });
 }
 
-// [{ip_address_id, port?, status?}] -> the service's parallel member_ip / member_port / member_status
+// [{ip_address_id, port?, protocol?, status?}] -> the service's parallel member_ip / member_port / member_protocol / member_status
 async function toMembers(raw) {
   if (!Array.isArray(raw)) throw new ValidationError('members must be an array of {ip_address_id, port, status}');
   const member_ip = [];
   const member_port = [];
+  const member_protocol = [];
   const member_status = [];
   for (const m of raw) {
     const id = toId(m?.ip_address_id, 'members[].ip_address_id');
@@ -42,11 +42,12 @@ async function toMembers(raw) {
     if (port !== null && !(Number.isInteger(port) && port >= 1 && port <= 65535)) throw new ValidationError('Invalid members[].port: {port}').withParams({ port: m.port });
     const status = m.status ? String(m.status).toLowerCase() : 'active';
     if (!STATUS_OPTIONS.includes(status)) throw new ValidationError('Invalid members[].status: {status}').withParams({ status: m.status });
+    member_protocol.push(m.protocol ? String(m.protocol) : '');
     member_ip.push(String(id));
     member_port.push(port);
     member_status.push(status);
   }
-  return { member_ip, member_port, member_status };
+  return { member_ip, member_port, member_protocol, member_status };
 }
 
 // JSON body -> service input; only the keys present are passed (PUT is partial)
@@ -58,23 +59,13 @@ async function toInput(body, req) {
   for (const key of ['name', 'port', 'protocol', 'direction', 'scope', 'access_mode', 'allowed_ips', 'partner_ips', 'provider', 'provider_port', 'provider_protocol', 'description']) {
     if (has(body, key)) input[key] = body[key];
   }
-  if (has(body, 'port') && !(Number.isInteger(Number(body.port)) && Number(body.port) >= 1 && Number(body.port) <= 65535)) {
+  if (has(body, 'port') && body.port !== null && !(Number.isInteger(Number(body.port)) && Number(body.port) >= 1 && Number(body.port) <= 65535)) {
     throw new ValidationError('Invalid port: {port}').withParams({ port: body.port });
   }
   if (has(body, 'ip_address_id')) {
     const id = toId(body.ip_address_id, 'ip_address_id');
     await assertExists(id, 'IP address', (x) => IpAddress.exists(x));
     input.ip_address = id === null ? '' : String(id);
-  }
-  if (has(body, 'gateway_ip_address_id')) {
-    const id = toId(body.gateway_ip_address_id, 'gateway_ip_address_id');
-    await assertExists(id, 'IP address', (x) => IpAddress.exists(x));
-    input.gateway_ip = id === null ? '' : String(id);
-  }
-  if (has(body, 'nat_subnet_id')) {
-    const id = toId(body.nat_subnet_id, 'nat_subnet_id');
-    await assertExists(id, 'Subnet', (x) => Subnet.exists(x));
-    input.nat_subnet = id === null ? '' : String(id);
   }
   if (has(body, 'domain_id')) {
     const id = toId(body.domain_id, 'domain_id');
@@ -116,8 +107,7 @@ export default {
 
   create: apiHandler(async (req, res) => {
     const body = req.body || {};
-    // which IPs are required depends on the flow (direction-scope), checked by the service
-    if (!has(body, 'port')) throw new ValidationError('port is required');
+    // which IPs and ports are required depends on the flow (direction-scope), checked by the service
     res.status(201).json(await smService.createServiceMapping(await toInput(body, req)));
   }),
 

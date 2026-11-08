@@ -12,7 +12,6 @@
     { key: 'domain', label: 'Domain', def: true },
     { key: 'endpoint', label: 'Endpoint', def: true },
     { key: 'partners', label: 'Partners', def: true },
-    { key: 'nat', label: 'NAT range' },
     { key: 'provider', label: 'Provider / Channel', def: true },
     { key: 'access', label: 'Access' },
     { key: 'system', label: 'System', def: true },
@@ -27,11 +26,13 @@
     partners: (vs.partner_ips || []).length
       ? ui.chips([...new Set(vs.partner_ips.map((p) => p.partner || p.address))].slice(0, 3)) + (new Set(vs.partner_ips.map((p) => p.partner || p.address)).size > 3 ? ' …' : '')
       : ui.dash,
-    nat: vs.nat_subnet ? `<span class="font-monospace small">${ui.esc(vs.nat_subnet)}</span>` : ui.dash,
     direction: `<span class="text-nowrap"><i class="bi ${vs.direction === 'outbound' ? 'bi-box-arrow-up-right' : 'bi-box-arrow-in-down-right'} me-1"></i>${ui.esc(t(cap(vs.direction)))}</span>`,
     scope: `<span class="badge tag">${ui.esc(t(cap(vs.scope)))}</span>`,
     domain: vs.domain ? `<span class="font-monospace small">${ui.esc(vs.domain)}</span>` : ui.dash,
-    endpoint: `<span class="font-monospace small">${vs.ip_address ? ui.esc(vs.ip_address) : (vs.nat_subnet ? ui.esc(vs.nat_subnet) : '—')}:${vs.port}</span> <span class="badge tag">${ui.esc(vs.protocol)}</span>`,
+    // inbound: our IP:port; outbound: our NAT / egress IP (the ports are on the partner IPs)
+    endpoint: vs.port
+      ? `<span class="font-monospace small">${ui.esc(vs.ip_address || '—')}:${vs.port}</span> <span class="badge tag">${ui.esc(vs.protocol || '')}</span>`
+      : `<span class="font-monospace small">${ui.esc(vs.ip_address || '—')}</span>`,
     provider: vs.provider ? `<span class="badge tag">${ui.esc(vs.provider)}</span>` +
       (vs.provider_port || vs.provider_protocol ? ` <span class="font-monospace small">${vs.provider_port ? ':' + vs.provider_port : ''} ${ui.esc(vs.provider_protocol || '')}</span>` : '') : ui.dash,
     access: vs.access_mode === 'limited'
@@ -159,10 +160,10 @@
 <%- include('../../partials/ui/detail_modal', { id: 'smDetailModal' }) %>
 <% if (hasPermission('service_mapping.create')) { %>
   <%- include('../../partials/ui/import_modal', { id: 'smImportModal', title: 'Import Service Mappings', baseUrl: '/network/service-mapping',
-        instructions: ['Flow = Direction + Scope: inbound public (public exposure), inbound private (private connectivity), outbound private (partner connectivity), outbound public (internet connectivity)',
-          'Port is required; the IP is the public / NAT service / NAT / egress IP of the flow (optional for partner connectivity with a NAT range)',
-          'Partner IPs: IP/CIDR[Partner], comma-separated: the allowed sources of inbound (Access = limited for public), the destinations of outbound',
-          'System is looked up by exact name; the NAT range by its CIDR in the subnet inventory', 'Backend / source format: ip:port, comma-separated'] }) %>
+        instructions: ['Flow = Direction + Scope: inbound public (public exposure), inbound internal (internal exposure), inbound private (private connectivity), outbound private (partner connectivity), outbound public (internet connectivity)',
+          'IP = the public / NAT service / NAT / egress IP of the flow; Port / Protocol: required for inbound, empty for outbound',
+          'Partner IPs (single IPs, no CIDR), comma-separated: IP[Partner] = allowed sources of inbound; IP:port/protocol[Partner] = partner connectivity destinations; IP:port/protocol@domain[Partner] = internet destinations (domain optional)',
+          'System is looked up by exact name', 'Backends: ip:port/protocol (protocol optional), comma-separated; outbound sources: ip, comma-separated'] }) %>
 <% } %>
 
 <style>
@@ -192,10 +193,11 @@
   const FLOW_LABEL = <%- jsonSafe(Object.fromEntries(flows.map((fl) => [fl.id, { label: t(fl.label), icon: fl.icon }]))) %>;
 
   // Service Flow, one diagram per flow (direction-scope):
-  //   inbound-public    users / partners -> domain -> CDN -> public IP:port -> NAT / reverse proxy -> backends
-  //   inbound-private   partner VPN IPs -> VPN / lease line -> NAT service IP:port (NAT range) -> backends
-  //   outbound-private  internal IPs -> NAT IP (NAT range) -> VPN / lease line -> partner IPs:port
-  //   outbound-public   internal IPs -> firewall / proxy -> egress public IP -> internet IPs (domain):port
+  //   inbound-public    users / partners (limited on the CDN) -> domain -> CDN -> public IP:port (on its FW / LB) -> backends
+  //   inbound-internal  internal users -> domain -> VIP IP:port (on its LB) -> backends
+  //   inbound-private   partner VPN IPs -> VPN / lease line -> NAT service IP:port -> backends
+  //   outbound-private  internal IPs -> NAT IP -> VPN / lease line -> each partner IP:port / protocol
+  //   outbound-public   internal IPs -> egress public IP -> each internet IP (domain):port / protocol
   function smFlow(vs) {
     const esc = DV.esc;
     const flow = vs.direction + '-' + vs.scope;
@@ -205,40 +207,44 @@
     const members = vs.members || [];
     const membersNode = (title) => members.length
       ? `<div class="sm-node sm-n-servers"><div class="sm-title mb-1">${esc(t(title))}</div>` +
-        members.map(m => `<div class="sm-srv${m.status === 'inactive' ? ' is-inactive' : ''}"><i class="bi bi-server ${m.status === 'inactive' ? 'text-secondary' : 'text-success'} me-1"></i>${esc(m.ip)}${m.port ? ':' + m.port : ''}${memberOwner(m, '<br>')}</div>`).join('') + '</div>'
+        members.map(m => `<div class="sm-srv${m.status === 'inactive' ? ' is-inactive' : ''}"><i class="bi bi-server ${m.status === 'inactive' ? 'text-secondary' : 'text-success'} me-1"></i>${esc(m.ip)}${m.port ? ':' + m.port : ''}${m.protocol ? ' · ' + esc(m.protocol) : ''}${memberOwner(m, '<br>')}</div>`).join('') + '</div>'
       : node('sm-n-servers', 'bi-server', esc(t(title)), esc(t('None')));
     // partner IPs grouped by partner: "Bank A" then its IPs (with the asset holding an IP, if any)
     const partners = vs.partner_ips || [];
-    const partnersNode = (title, icon, port) => {
+    const dest = (p) => `<span class="font-monospace">${esc(p.address)}${p.port ? ':' + p.port : ''}</span>${p.protocol ? ' · ' + esc(p.protocol) : ''}${p.domain ? '<br><span class="font-monospace">' + esc(p.domain) + '</span>' : ''}`;
+    const partnersNode = (title, icon) => {
       if (!partners.length) return node('sm-n-source', icon, esc(t(title)), esc(t('Not recorded')));
       const groups = new Map();
       partners.forEach((p) => { const k = p.partner || t('Unnamed partner'); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p); });
       return `<div class="sm-node sm-n-source text-start"><div class="sm-title mb-1"><i class="bi ${icon} me-1"></i>${esc(t(title))}</div>` +
         [...groups].map(([name, ips]) => `<div class="small"><strong>${esc(name)}</strong><br>` +
-          ips.slice(0, 5).map((p) => `<span class="font-monospace">${esc(p.address)}${port ? ':' + port : ''}</span>${ownerLine(p.owner_name, p.owner_type)}`).join('<br>') +
+          ips.slice(0, 5).map((p) => dest(p) + ownerLine(p.owner_name, p.owner_type)).join('<br>') +
           (ips.length > 5 ? '<br>+' + (ips.length - 5) : '') + '</div>').join('') + '</div>';
     };
+    // our IP and the device holding it (FW / LB / NAT): the asset mapping
     const ourIp = (title, icon, withPort) => node('sm-n-entry', icon, esc(t(title)),
-      (vs.ip_address ? `<span class="font-monospace">${esc(vs.ip_address)}${withPort ? ':' + vs.port + ' · ' + esc(vs.protocol) : ''}</span>` : '') +
-      (vs.nat_subnet ? (vs.ip_address ? '<br>' : '') + esc(t('NAT range')) + ' <span class="font-monospace">' + esc(vs.nat_subnet) + '</span>' : '') +
+      (vs.ip_address ? `<span class="font-monospace">${esc(vs.ip_address)}${withPort && vs.port ? ':' + vs.port + ' · ' + esc(vs.protocol || '') : ''}</span>` : esc(t('Not recorded'))) +
       ownerLine(vs.ip_owner_name, vs.ip_owner_type));
     const providerEnd = vs.provider_port || vs.provider_protocol
       ? '<br>' + [vs.provider_port ? ':' + vs.provider_port : '', esc(vs.provider_protocol || '')].filter(Boolean).join(' · ') : '';
-    const channel = (kind) => (vs.provider ? [arrow(''), node('sm-n-edge', kind === 'cdn' ? 'bi-cloud' : 'bi-signpost-split', esc(vs.provider), esc(t(kind === 'cdn' ? 'CDN / WAF' : 'VPN / Lease line')) + providerEnd)] : []);
-    const gateway = (title) => (vs.gateway_ip ? [arrow(''), node('sm-n-edge', 'bi-shield-check', esc(t(title)), `<span class="font-monospace">${esc(vs.gateway_ip)}</span>` + ownerLine(vs.gateway_owner_name, vs.gateway_owner_type))] : []);
+    // a CDN shows where it listens; a VPN / lease line only carries the traffic
+    const channel = (kind) => (vs.provider ? [arrow(''), node('sm-n-edge', kind === 'cdn' ? 'bi-cloud' : 'bi-signpost-split', esc(vs.provider), esc(t(kind === 'cdn' ? 'CDN / WAF' : 'VPN / Lease line')) + (kind === 'cdn' ? providerEnd : ''))] : []);
     const parts = [];
     if (flow === 'inbound-public') {
-      parts.push(vs.access_mode === 'limited' ? partnersNode('Allowed partners', 'bi-people') : node('sm-n-source', 'bi-globe', esc(t('Users (Internet)')), esc(t('Any source'))));
+      parts.push(vs.access_mode === 'limited' ? partnersNode(vs.provider ? 'Allowed partners (limited on the CDN)' : 'Allowed partners', 'bi-people') : node('sm-n-source', 'bi-globe', esc(t('Users (Internet)')), esc(t('Any source'))));
       if (vs.domain) parts.push(arrow(''), node('sm-n-edge', 'bi-at', esc(vs.domain), esc(t('Domain'))));
-      parts.push(...channel('cdn'), arrow(''), ourIp('Public IP', 'bi-door-open', true), ...gateway('NAT / Reverse proxy'), arrow(''), membersNode('Backend Servers'));
+      // the public IP's FW / LB device comes from the asset mapping (ownerLine)
+      parts.push(...channel('cdn'), arrow(''), ourIp('Public IP (FW / LB)', 'bi-door-open', true), arrow(''), membersNode('Backend Servers'));
+    } else if (flow === 'inbound-internal') {
+      parts.push(node('sm-n-source', 'bi-house-door', esc(t('Internal users')), esc(t('Internal network'))));
+      if (vs.domain) parts.push(arrow(''), node('sm-n-edge', 'bi-at', esc(vs.domain), esc(t('Domain'))));
+      parts.push(arrow(''), ourIp('VIP (LB)', 'bi-diagram-3', true), arrow(''), membersNode('Backend Servers'));
     } else if (flow === 'inbound-private') {
       parts.push(partnersNode('Partner VPN IPs', 'bi-building'), ...channel('vpn'), arrow(''), ourIp('NAT service IP', 'bi-door-open', true), arrow(''), membersNode('Backend Servers'));
     } else if (flow === 'outbound-private') {
-      parts.push(membersNode('Internal IPs'), arrow(''), ourIp('NAT IP', 'bi-shuffle', false), ...channel('vpn'), arrow(''), partnersNode('Partner IPs', 'bi-building', vs.port + ' · ' + vs.protocol));
+      parts.push(membersNode('Internal IPs'), arrow(''), ourIp('NAT IP', 'bi-shuffle', false), ...channel('vpn'), arrow(''), partnersNode('Partner IPs', 'bi-building'));
     } else {
-      parts.push(membersNode('Internal IPs'), ...gateway('Firewall / NAT gateway / Proxy'), arrow(''), ourIp('Egress public IP', 'bi-box-arrow-up-right', false), arrow(vs.domain || ''),
-        partners.length ? partnersNode('Internet destination', 'bi-globe', vs.port + ' · ' + vs.protocol)
-          : node('sm-n-source', 'bi-globe', esc(vs.domain || t('Internet destination')), ':' + vs.port + ' · ' + esc(vs.protocol)));
+      parts.push(membersNode('Internal IPs'), arrow(''), ourIp('Egress public IP', 'bi-box-arrow-up-right', false), arrow(''), partnersNode('Internet destinations', 'bi-globe'));
     }
     return `<div class="sm-flow">${parts.join('')}</div>`;
   }
@@ -257,29 +263,34 @@
       DV.multiline(vs.description) ? DV.field('Description', DV.multiline(vs.description)) : '',
       DV.field('Flow', '<span class="badge tag"><i class="bi ' + esc(flow.icon || '') + ' me-1"></i>' + esc(flow.label || '') + '</span>'),
       DV.field('System', DV.text(vs.system_name)),
-      DV.field('Domain', DV.text(vs.domain)),
+      vs.domain ? DV.field('Domain', DV.text(vs.domain)) : '',
       DV.field('Provider / Channel', vs.provider ? DV.chips([vs.provider]) : ''),
-      vs.provider && (vs.provider_port || vs.provider_protocol) ? DV.field('Provider port', DV.text([vs.provider_port, vs.provider_protocol].filter(Boolean).join(' · '))) : '',
+      vs.provider && vs.direction === 'inbound' && vs.scope === 'public' && (vs.provider_port || vs.provider_protocol) ? DV.field('Provider port', DV.text([vs.provider_port, vs.provider_protocol].filter(Boolean).join(' · '))) : '',
       DV.field('IP Address', vs.ip_address ? DV.text(vs.ip_address) : ''),
       vs.ip_address ? DV.field('IP owner', asset(vs.ip_owner_name, vs.ip_owner_type)) : '',
-      vs.nat_subnet ? DV.field('NAT range', DV.text(vs.nat_subnet + (vs.nat_subnet_zone ? ' · ' + vs.nat_subnet_zone : ''))) : '',
-      vs.gateway_ip ? DV.field('Gateway / Proxy IP', DV.text(vs.gateway_ip + (vs.gateway_owner_name ? ' — ' + vs.gateway_owner_name : ''))) : '',
-      DV.field('Port', DV.text(vs.port)),
-      DV.field('Protocol', DV.chips([vs.protocol])),
+      vs.port ? DV.field('Port', DV.text(vs.port)) : '',
+      vs.protocol ? DV.field('Protocol', DV.chips([vs.protocol])) : '',
       vs.direction === 'inbound' && vs.scope === 'public' ? DV.field('Access', DV.chips([t(vs.access_mode === 'limited' ? 'Limited' : 'Full')])) : ''
     ));
     if (partners.length) {
-      const rows = partners.map((p) => `<tr><td class="font-monospace">${esc(p.address)}</td><td>${esc(p.partner || '—')}</td><td>${p.owner_name ? memberOwner(p) : '—'}</td></tr>`).join('');
-      body += DV.section(vs.direction === 'outbound' ? 'Partner IPs (destination)' : 'Partner IPs (source)',
-        `<table class="table table-sm mb-0"><thead><tr><th>${t('IP / CIDR')}</th><th>${t('Partner')}</th><th>${t('Server/Device')}</th></tr></thead><tbody>${rows}</tbody></table>`,
+      // outbound destinations carry their own port / protocol (and domain for internet connectivity)
+      const out = vs.direction === 'outbound';
+      const withDomain = out && vs.scope === 'public';
+      const head = [t('IP')].concat(out ? [t('Port'), t('Protocol')] : [], withDomain ? [t('Domain')] : [], [t('Partner'), t('Server/Device')]);
+      const rows = partners.map((p) => '<tr><td class="font-monospace">' + esc(p.address) + '</td>' +
+        (out ? '<td>' + esc(p.port || '') + '</td><td>' + (p.protocol ? '<span class="badge tag">' + esc(p.protocol) + '</span>' : '') + '</td>' : '') +
+        (withDomain ? '<td class="font-monospace">' + esc(p.domain || '—') + '</td>' : '') +
+        '<td>' + esc(p.partner || '—') + '</td><td>' + (p.owner_name ? memberOwner(p) : '—') + '</td></tr>').join('');
+      body += DV.section(out ? (withDomain ? 'Internet destinations' : 'Partner IPs (destination)') : 'Partner IPs (source)',
+        '<table class="table table-sm mb-0"><thead><tr>' + head.map((h) => '<th>' + esc(h) + '</th>').join('') + '</tr></thead><tbody>' + rows + '</tbody></table>',
         ' <span class="badge tag ms-1">' + partners.length + '</span>');
     }
     if (members.length) {
       const rows = members.map(m =>
-        `<tr><td>${esc(m.ip)}</td><td>${m.port || ''}</td><td>${memberOwner(m) || '—'}</td><td><span class="badge tag">${esc(t(cap(m.status || 'active')))}</span></td></tr>`
+        `<tr><td>${esc(m.ip)}</td><td>${m.port || ''}</td>${vs.direction === 'outbound' ? '' : '<td>' + (m.protocol ? '<span class="badge tag">' + esc(m.protocol) + '</span>' : '') + '</td>'}<td>${memberOwner(m) || '—'}</td><td><span class="badge tag">${esc(t(cap(m.status || 'active')))}</span></td></tr>`
       ).join('');
       body += DV.section(vs.direction === 'outbound' ? 'Internal IPs (source)' : 'Backend Servers',
-        `<table class="table table-sm mb-0"><thead><tr><th>${t('IP Address')}</th><th>${t('Port')}</th><th>${t('Server/Device')}</th><th>${t('Status')}</th></tr></thead><tbody>${rows}</tbody></table>`,
+        `<table class="table table-sm mb-0"><thead><tr><th>${t('IP Address')}</th><th>${t('Port')}</th>${vs.direction === 'outbound' ? '' : '<th>' + t('Protocol') + '</th>'}<th>${t('Server/Device')}</th><th>${t('Status')}</th></tr></thead><tbody>${rows}</tbody></table>`,
         ' <span class="badge tag ms-1">' + members.length + '</span>');
     }
     body += DV.meta(vs);
