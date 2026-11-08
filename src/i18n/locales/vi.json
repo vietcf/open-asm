@@ -1650,10 +1650,8 @@
   "Port is required; the IP is the public / NAT service / NAT / egress IP of the flow (optional for partner connectivity with a NAT range)": "Port bắt buộc; IP là public / NAT dịch vụ / NAT / egress IP của luồng (không bắt buộc với Partner Connectivity khi có dải NAT)",
   "System is looked up by exact name; the NAT range by its CIDR in the subnet inventory": "Hệ thống tìm theo đúng tên; dải NAT tìm theo CIDR trong danh mục subnet",
   "Backend / source format: ip:port, comma-separated": "Định dạng backend / nguồn: ip:port, cách nhau dấu phẩy",
-  "Public IP (on the FW / LB)": "Public IP (gán trên FW / LB)",
   "Who may connect (limited on the CDN)": "Ai được kết nối vào (giới hạn trên CDN)",
   "Allowed partners (limited on the CDN)": "Đối tác được phép (giới hạn trên CDN)",
-  "Public IP (FW / LB)": "Public IP (FW / LB)",
   "One IP address of the partner per row (no CIDR range), with the partner's name (list configured in System Configuration > Network).": "Mỗi dòng một IP của đối tác (không nhập dải CIDR), kèm tên đối tác (danh sách cấu hình tại Cấu hình hệ thống > Mạng).",
   "Partner IPs: IP[Partner], comma-separated, single IP addresses only (no CIDR): the allowed sources of inbound (Access = limited for public), the destinations of outbound": "IP đối tác: IP[Đối tác], cách nhau dấu phẩy, chỉ IP đơn (không CIDR): nguồn được phép của inbound (Access = limited với public), đích của outbound",
   "Partner IPs are single IP addresses, not ranges (CIDR): {ips}": "IP đối tác chỉ nhận IP đơn, không nhận dải (CIDR): {ips}",
@@ -1700,7 +1698,6 @@
   "Select an IP from the IP inventory": "Chọn IP trong danh mục IP",
   "Select a domain from the domain inventory": "Chọn domain trong danh mục domain",
   "System is looked up by exact name; IPs and the domain must already exist in their inventories (they are never created by the import)": "Hệ thống tìm theo đúng tên; IP và domain phải có sẵn trong danh mục (import không tự tạo)",
-  "User → Domain → CDN → Public IP:Port (FW) → NAT private IP (optional) → Backend": "Người dùng → Domain → CDN → Public IP:Port (FW) → NAT IP private (tùy chọn) → Backend",
   "NAT to a private IP (optional)": "NAT vào IP private (không bắt buộc)",
   "Public IP → NAT → this private IP (e.g. a VIP on the LB) → backends": "Public IP → NAT → IP private này (VD: VIP trên LB) → backend",
   "Private port": "Port private",
@@ -1708,5 +1705,6 @@
   "Private IP": "IP private",
   "NAT private IP": "NAT IP private",
   "Invalid NAT port: {port}": "Port NAT không hợp lệ: {port}",
-  "Partner IPs are picked from the IP inventory (add them there first). Pick a partner or type its name (configured partners are in System Configuration > Network).": "IP đối tác chọn từ danh mục IP (thêm IP vào danh mục trước). Chọn đối tác hoặc gõ tên đối tác (danh sách đối tác cấu hình tại Cấu hình hệ thống > Mạng)."
+  "Partner IPs are picked from the IP inventory (add them there first). Pick a partner or type its name (configured partners are in System Configuration > Network).": "IP đối tác chọn từ danh mục IP (thêm IP vào danh mục trước). Chọn đối tác hoặc gõ tên đối tác (danh sách đối tác cấu hình tại Cấu hình hệ thống > Mạng).",
+  "User → Domain → CDN → Public IP:Port → NAT private IP (optional) → Backend": "Người dùng → Domain → CDN → Public IP:Port → NAT IP private (tùy chọn) → Backend"
 }

@@ -18,7 +18,7 @@ const ACCESS_OPTIONS = ['full', 'limited'];
 const STATUS_OPTIONS = ['active', 'inactive'];
 // Flows = direction-scope (migration 0033)
 export const FLOWS = [
-  { id: 'inbound-public', label: 'Public Exposure', icon: 'bi-globe', path: 'User → Domain → CDN → Public IP:Port (FW) → NAT private IP (optional) → Backend' },
+  { id: 'inbound-public', label: 'Public Exposure', icon: 'bi-globe', path: 'User → Domain → CDN → Public IP:Port → NAT private IP (optional) → Backend' },
   { id: 'inbound-internal', label: 'Internal Exposure', icon: 'bi-house-door', path: 'Internal user → Domain → IP:Port → Backend IP:Port' },
   { id: 'inbound-private', label: 'Private Connectivity', icon: 'bi-building-lock', path: 'Partner → VPN / Lease line → NAT service IP:Port → Backend' },
   { id: 'outbound-private', label: 'Partner Connectivity', icon: 'bi-signpost-split', path: 'Internal IP → NAT IP → VPN / Lease line → each partner IP:Port' },
