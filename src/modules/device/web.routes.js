@@ -5,7 +5,7 @@ import DeviceType from './device-type.model.js';
 import Platform from './platform.model.js';
 import deviceTypes from './device-type.service.js';
 import platforms from './platform.service.js';
-import requirePermission from '../../middlewares/requirePermission.middleware.js';
+import requirePermission, { canPick } from '../../middlewares/requirePermission.middleware.js';
 import excelUpload from '../../middlewares/excelUpload.middleware.js';
 import { catalogPages, mountCatalogPages } from '../../shared/catalogWeb.js';
 
@@ -46,12 +46,12 @@ mountCatalogPages(router, '/type', typePages, 'device_type', can);
 mountCatalogPages(router, '/platform', platformPages, 'platform', can);
 
 // Select2 lookups, open to any signed-in user
-router.get('/api/device', devices.lookup);
-router.get('/api/manufacturer', devices.manufacturers);
-router.get('/api/device-role', devices.roles);
-router.get('/api/device-type', typePages.lookup);
-router.get('/api/device-type/ids', typePages.lookupByIds);
-router.get('/api/platform', platformPages.lookup);
-router.get('/api/platform/ids', platformPages.lookupByIds);
+router.get('/api/device', canPick('device.read'), devices.lookup);
+router.get('/api/manufacturer', canPick('device.read'), devices.manufacturers);
+router.get('/api/device-role', canPick('device.read'), devices.roles);
+router.get('/api/device-type', canPick('device_type.read'), typePages.lookup);
+router.get('/api/device-type/ids', canPick('device_type.read'), typePages.lookupByIds);
+router.get('/api/platform', canPick('platform.read'), platformPages.lookup);
+router.get('/api/platform/ids', canPick('platform.read'), platformPages.lookupByIds);
 
 export default router;

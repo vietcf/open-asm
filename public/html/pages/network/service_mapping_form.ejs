@@ -73,9 +73,12 @@
             <div class="w-100 mt-0" aria-hidden="true"></div>
             <div class="col-md-6">
               <label class="form-label" for="f-provider"><%= t('Provider / Channel') %></label>
-              <select id="f-provider" name="provider" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/provider"
-                      data-placeholder="<%= t('CDN/WAF (Akamai, Cloudflare) or private channel (VPN, MPLS)') %>"
-                      data-selected="<%= JSON.stringify(v.provider ? [{ id: v.provider, text: v.provider }] : []) %>"></select>
+              <select id="f-provider" name="provider" class="form-select js-select"
+                      data-placeholder="<%= t('CDN/WAF (Akamai, Cloudflare) or private channel (VPN, MPLS)') %>">
+                <option value=""></option>
+                <%- ui.options(providerOptions, v.provider) %>
+              </select>
+              <div class="form-text"><%= t('List configured in System Configuration > Network') %></div>
             </div>
             <div class="col-md-3 col-6">
               <label class="form-label" for="f-provider-port"><%= t('Provider port') %></label>

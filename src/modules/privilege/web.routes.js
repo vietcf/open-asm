@@ -22,6 +22,7 @@ mountPages('/role', rolePages, 'priv_role');
 mountPages('/permission', permissionPages, 'priv_permission');
 
 // AJAX pickers of the account / role forms
+router.get('/api/systems', can('priv_account.create', 'priv_account.update', 'priv_role.create', 'priv_role.update', 'priv_permission.create', 'priv_permission.update'), pickers.systems);
 router.get('/api/roles', can('priv_account.create', 'priv_account.update', 'priv_role.read'), pickers.roles);
 router.get('/api/permissions', can('priv_role.create', 'priv_role.update', 'priv_permission.read'), pickers.permissions);
 

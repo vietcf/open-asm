@@ -38,11 +38,12 @@ export const mono = (values) => (toArray(values).length ? `<span class="font-mon
 // selected = ids (or {id} objects) to mark selected.
 // Retired options (inactive) are left out unless selected, so a record keeps
 // its value when its form is saved; a selected value missing from the list is
-// added too. { all: true } (list filters): every option, retired ones last,
+// added too. Hidden options (hidden: e.g. units that have sub-units) are left
+// out the same way, without the "(inactive)" mark. { all: true } (list filters): every option, retired ones last,
 // nothing added (filters have their own extra choices such as "(Not set)").
 export function options(list, selected, { all = false, t = (s) => s } = {}) {
   const ids = new Set(toArray(selected).map((s) => String(s && typeof s === 'object' ? s.id : s)));
-  const items = (list || []).filter((o) => all || !o.inactive || ids.has(String(o.id)));
+  const items = (list || []).filter((o) => (all ? !o.hidden : !o.inactive && !o.hidden) || ids.has(String(o.id)));
   if (all) items.sort((a, b) => Number(Boolean(a.inactive)) - Number(Boolean(b.inactive)));
   if (!all) {
     const known = new Set(items.map((o) => String(o.id)));

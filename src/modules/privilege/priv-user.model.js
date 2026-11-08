@@ -1,6 +1,7 @@
 // Privileged accounts (priv_users) with unit, role, contacts, systems and servers.
 import { pool } from '../../../config/config.js';
 import { db, Where, replaceLinks, subList, searchRank } from '../../shared/db.js';
+import { managedSystemsSql } from './priv-scope.js';
 
 // One subquery per list (no join fan-out, no GROUP BY).
 const SELECT_WITH_LINKS = `
@@ -17,9 +18,15 @@ const SELECT_WITH_LINKS = `
   LEFT JOIN units u ON u.id = pu.organize_id
   LEFT JOIN priv_roles r ON r.id = pu.role_id`;
 
-// filter: {search, system_ids[], organize_id, contact_ids[], account_type[], manage_type[]}
-function filterWhere({ search = '', system_ids = [], organize_id, contact_ids = [], account_type = [], manage_type = [] }) {
+// Seen: one of its systems is managed by the scope (priv-scope.js)
+const visibleIn = (p) => `EXISTS (SELECT 1 FROM priv_user_systems x WHERE x.user_id = pu.id AND x.system_id IN (${managedSystemsSql(p)}))`;
+// Changeable: every one of its systems is managed
+const editableIn = (p) => `NOT EXISTS (SELECT 1 FROM priv_user_systems x WHERE x.user_id = pu.id AND x.system_id NOT IN (${managedSystemsSql(p)}))`;
+
+// filter: {search, system_ids[], organize_id, contact_ids[], account_type[], manage_type[], scope}
+function filterWhere({ search = '', system_ids = [], organize_id, contact_ids = [], account_type = [], manage_type = [], scope = null }) {
   const w = new Where();
+  if (scope) w.add(visibleIn(w.param(scope.userId)));
   w.search(search, ['pu.username ILIKE ?', 'pu.description ILIKE ?', 'pu.app_url ILIKE ?',
     'EXISTS (SELECT 1 FROM priv_roles x WHERE x.id = pu.role_id AND x.name ILIKE ?)',
     'EXISTS (SELECT 1 FROM priv_user_servers x JOIN servers sv ON sv.id = x.server_id WHERE x.user_id = pu.id AND sv.name ILIKE ?)']);
@@ -54,9 +61,14 @@ class PrivUser {
     await db(client).query('DELETE FROM priv_users WHERE id = $1', [id]);
   }
 
-  static async findById(id) {
-    const result = await pool.query(`${SELECT_WITH_LINKS} WHERE pu.id = $1`, [id]);
-    return result.rows[0] || null;
+  // scope: null, or only when it is seen there; can_edit tells whether the scope may change it
+  static async findById(id, scope = null) {
+    const result = scope
+      ? await pool.query(`SELECT * FROM (${SELECT_WITH_LINKS.replace('SELECT pu.*,', `SELECT pu.*, ${editableIn('$2')} AS can_edit,`)} WHERE pu.id = $1 AND ${visibleIn('$2')}) x`, [id, scope.userId])
+      : await pool.query(`${SELECT_WITH_LINKS} WHERE pu.id = $1`, [id]);
+    const row = result.rows[0] || null;
+    if (row && !scope) row.can_edit = true;
+    return row;
   }
 
   static async findByUsername(username) {
@@ -67,10 +79,12 @@ class PrivUser {
   static async findFilteredList(filter = {}) {
     const { page = 1, pageSize = 10 } = filter;
     const w = filterWhere(filter);
+    const select = filter.scope ? SELECT_WITH_LINKS.replace('SELECT pu.*,', `SELECT pu.*, ${editableIn(w.param(filter.scope.userId))} AS can_edit,`) : SELECT_WITH_LINKS;
     const result = await pool.query(
-      `${SELECT_WITH_LINKS} WHERE ${w} ORDER BY ${searchRank(['pu.username'], filter.search, w)}pu.updated_at DESC, pu.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
+      `${select} WHERE ${w} ORDER BY ${searchRank(['pu.username'], filter.search, w)}pu.updated_at DESC, pu.id DESC LIMIT ${w.param(pageSize)} OFFSET ${w.param((page - 1) * pageSize)}`,
       w.params
     );
+    if (!filter.scope) result.rows.forEach((r) => { r.can_edit = true; });
     return result.rows;
   }
 

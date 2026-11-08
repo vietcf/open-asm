@@ -5,7 +5,8 @@ import { apiHandler, apiPage, handleServiceError } from '../../shared/api.js';
 export default {
   listUnits: apiHandler(async (req, res) => {
     const { search, page, pageSize } = apiPage({ pageSize: 20, ...req.query });
-    const { items, totalCount } = await unitService.listUnits({ search, page, pageSize });
+    const q = (k) => (typeof req.query[k] === 'string' ? req.query[k].trim() : '');
+    const { items, totalCount } = await unitService.listUnits({ search, page, pageSize, parent_id: q('parent_id'), level: q('level') });
     res.json({ totalCount, page, pageSize, totalPages: Math.max(1, Math.ceil(totalCount / pageSize)), units: items });
   }),
 

@@ -1,6 +1,8 @@
 // Middleware for JWT authentication and role/permission authorization
 import jwt from 'jsonwebtoken';
-const JWT_SECRET = process.env.JWT_SECRET || 'VcB_your_jwt_secret';
+import { JWT_SECRET } from '../shared/secrets.js';
+import User from '../modules/administrator/user.model.js';
+import { getUserPermissions } from '../modules/auth/auth.service.js';
 
 // Authenticate: verify JWT and attach user info to req.user
 export function authenticateJWT(req, res, next) {
@@ -9,13 +11,24 @@ export function authenticateJWT(req, res, next) {
     return res.status(401).json({ error: 'Missing or invalid token' });
   }
   const token = authHeader.split(' ')[1];
+  let decoded;
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-    next();
+    decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
   } catch (err) {
     return res.status(401).json({ error: 'Invalid token' });
   }
+  // The token only names the user: the account must still be active, and its
+  // role and permissions are the current ones (a deactivated or downgraded
+  // user loses API access at once, not when the token expires).
+  User.findById(Number(decoded.sub) || 0)
+    .then(async (user) => {
+      if (!user || !user.is_active || user.auth_source !== 'local' || user.username !== decoded.username) {
+        return res.status(401).json({ error: 'Invalid token' });
+      }
+      req.user = { sub: user.id, username: user.username, role: user.role_name, role_id: user.role_id, permissions: await getUserPermissions(user.role_id) };
+      next();
+    })
+    .catch(() => res.status(500).json({ error: 'Authentication failed' }));
 }
 
 // Authorize by role (string or array)

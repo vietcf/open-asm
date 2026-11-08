@@ -1,10 +1,11 @@
 import { pool } from '../../../config/config.js';
 import { Where, NONE, searchRank } from '../../shared/db.js';
+import { unitSubtree } from './unit.model.js';
 
 function filterWhere({ search = '', unit_id = '', position = '' }) {
   const w = new Where().search(search, ['c.name ILIKE ?', 'c.email ILIKE ?', 'c.phone ILIKE ?', 'c.position ILIKE ?', 'c.description ILIKE ?', 'u.name ILIKE ?']);
   if (unit_id === NONE) w.add('c.unit_id IS NULL');
-  else if (unit_id) w.add(`c.unit_id = ${w.param(Number(unit_id))}`);
+  else if (unit_id) w.add(`c.unit_id IN ${unitSubtree(w.param(Number(unit_id)))}`); // the unit and its sub-units
   if (position) w.add(`c.position = ${w.param(position)}`);
   return w;
 }
@@ -137,6 +138,14 @@ class Contact {
   static async exists(id) {
     const res = await pool.query('SELECT 1 FROM contacts WHERE id = $1', [id]);
     return res.rowCount > 0;
+  }
+
+  // Every contact of the given units (unit detail / export), by name
+  static async findByUnitIds(unitIds) {
+    if (!unitIds.length) return [];
+    const result = await pool.query(
+      'SELECT id, name, email, phone, position, unit_id FROM contacts WHERE unit_id = ANY($1::int[]) ORDER BY name, id', [unitIds]);
+    return result.rows;
   }
 
   // Page of contacts with their unit name; filter: {search, unit_id, position}

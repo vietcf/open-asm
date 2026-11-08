@@ -51,3 +51,14 @@ export function requireAllPermissions(...permissions) {
     next();
   };
 }
+
+// Select2 pickers / lookups of shared lists (systems, contacts, servers...):
+// the list's own read permission, or any create / update permission (the
+// pickers fill the forms of other modules). A signed-in user with neither
+// gets 403 instead of every name, email and address.
+export function canPick(readPermission) {
+  return (req, res, next) => {
+    if (res.locals.hasPermission(readPermission) || (req.permissions || []).some((p) => /\.(create|update)$/.test(p))) return next();
+    return forbidden(req, res);
+  };
+}

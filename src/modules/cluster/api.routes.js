@@ -35,6 +35,10 @@ router.use(['/clusters'], authenticateJWT);
  *                 type: integer
  *               name:
  *                 type: string
+ *               namespace:
+ *                 type: string
+ *                 nullable: true
+ *                 description: OCP / Kubernetes namespace of the system on this cluster
  *           description: Systems served by this cluster (read-only here; set via the systems field on write)
  *         members:
  *           type: array
@@ -61,7 +65,7 @@ router.use(['/clusters'], authenticateJWT);
  *         id: 1
  *         name: "OpenShift Production"
  *         description: "Production OpenShift cluster"
- *         systems: [{ id: 8, name: "System 001" }]
+ *         systems: [{ id: 8, name: "System 001", namespace: "ns-system-001" }]
  *         members: [{ ip_address_id: 6, ip: "10.1.1.1", role: "master", server_name: "Server A", device_name: null }]
  *         updated_at: "2026-01-20T10:30:00Z"
  *         updated_by: "admin"
@@ -131,8 +135,20 @@ router.use(['/clusters'], authenticateJWT);
  *               systems:
  *                 type: array
  *                 items:
- *                   type: integer
- *                 description: System IDs this cluster serves
+ *                   oneOf:
+ *                     - type: integer
+ *                       description: System ID (no namespace)
+ *                     - type: object
+ *                       required: [system_id]
+ *                       properties:
+ *                         system_id:
+ *                           type: integer
+ *                         namespace:
+ *                           type: string
+ *                           nullable: true
+ *                           maxLength: 63
+ *                           description: Optional; lowercase letters, digits and "-"; unique within the cluster
+ *                 description: 'Systems this cluster serves, e.g. [{ "system_id": 8, "namespace": "ns-payment" }, 9]. Replaces every system link.'
  *     responses:
  *       201:
  *         description: Cluster created
@@ -190,7 +206,20 @@ router.use(['/clusters'], authenticateJWT);
  *               systems:
  *                 type: array
  *                 items:
- *                   type: integer
+ *                   oneOf:
+ *                     - type: integer
+ *                       description: System ID (no namespace)
+ *                     - type: object
+ *                       required: [system_id]
+ *                       properties:
+ *                         system_id:
+ *                           type: integer
+ *                         namespace:
+ *                           type: string
+ *                           nullable: true
+ *                           maxLength: 63
+ *                           description: Optional; lowercase letters, digits and "-"; unique within the cluster
+ *                 description: 'Systems this cluster serves, e.g. [{ "system_id": 8, "namespace": "ns-payment" }, 9]. Replaces every system link.'
  *     responses:
  *       200:
  *         description: Cluster updated

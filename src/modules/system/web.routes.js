@@ -2,7 +2,7 @@
 import express from 'express';
 import systems from './system.controller.js';
 import components from './component.controller.js';
-import requirePermission from '../../middlewares/requirePermission.middleware.js';
+import requirePermission, { canPick } from '../../middlewares/requirePermission.middleware.js';
 import createUploadMiddleware from '../../middlewares/fileUpload.middleware.js';
 
 const router = express.Router();
@@ -36,9 +36,9 @@ router.post('/component/:id/edit', can('system.update'), components.update);
 router.post('/component/:id/delete', can('system.delete'), components.remove);
 
 // AJAX. Select2 lookups are open to any signed-in user, like the other modules'.
-router.get('/api/system', systems.lookup);
-router.get('/api/system/ids', systems.lookupByIds);
-router.get('/api/component', components.lookup);
+router.get('/api/system', canPick('system.read'), systems.lookup);
+router.get('/api/system/ids', canPick('system.read'), systems.lookupByIds);
+router.get('/api/component', canPick('system.read'), components.lookup);
 router.get('/api/system/:id/components', can('system.read'), systems.components);
 
 export default router;

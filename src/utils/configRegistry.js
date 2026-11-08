@@ -67,6 +67,7 @@ export const CONFIG_GROUPS = [
       { key: 'ip_address_type', type: 'options', label: 'IP address types' },
       { key: 'ip_address_status', type: 'options', usedBy: [{ table: 'ip_addresses', column: 'status', label: 'IP addresses' }], label: 'IP address statuses' },
       { key: 'network_domain_record_type', type: 'options', usedBy: [{ table: 'domains', column: 'record_type', label: 'Domains' }], label: 'DNS record types' },
+      { key: 'service_mapping_provider', type: 'options', usedBy: [{ table: 'virtual_servers', column: 'provider', label: 'Service Mappings' }], label: 'Service mapping providers / channels', help: 'CDN / WAF (Akamai, Cloudflare) or private channel (VPN, MPLS) in front of a service mapping' },
     ],
   },
   {
@@ -83,6 +84,8 @@ export const CONFIG_GROUPS = [
     fields: [
       { key: 'priv_account_type', type: 'options', usedBy: [{ table: 'priv_users', column: 'account_type', label: 'Privileged accounts' }], label: 'Account types' },
       { key: 'priv_account_manage_type', type: 'options', usedBy: [{ table: 'priv_users', column: 'manage_type', label: 'Privileged accounts' }], label: 'Management methods' },
+      { key: 'priv_scope_enforced', type: 'select', choices: ['off', 'on'], default: 'off', required: true, label: "Limit to the user's units",
+        help: "on: users without the \"no unit limit\" permission only see privileged accounts, roles and permissions of the systems whose L2 or L3 department is their unit (or one of their extra units). Assign the units in User Management first" },
     ],
   },
   {

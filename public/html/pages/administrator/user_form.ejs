@@ -1,5 +1,5 @@
 <%#
-  Add / Edit User.  mode, user, roleOptions ([{id, text}]), isSelf (editing own account), passwordRule (message)
+  Add / Edit User.  mode, user, roleOptions / unitOptions ([{id, text}]), isSelf (editing own account), passwordRule (message)
   Local accounts have a password here; LDAP accounts sign in against the directory.
 %>
 <% const isEdit = mode === 'edit'; const u = locals.user || {}; const local = (u.auth_source || 'local') === 'local'; %>
@@ -52,6 +52,25 @@
                 <% if (isSelf) { %><input type="hidden" name="is_active" value="on"><% } %>
               </div>
             <% } %>
+          </div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('Organization') %></h4>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label" for="f-unit"><%= t('Unit') %></label>
+              <select id="f-unit" name="unit_id" class="form-select js-select" data-placeholder="<%= t('Select unit') %>">
+                <option value=""></option><%- ui.options(unitOptions, u.unit_id ? [u.unit_id] : []) %>
+              </select>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label" for="f-scope-units"><%= t('Extra units to see') %></label>
+              <select id="f-scope-units" name="scope_units" class="form-select js-select" multiple data-placeholder="<%= t('None') %>">
+                <%- ui.options(unitOptions, (u.scope_units || []).map(function (x) { return x.id; })) %>
+              </select>
+            </div>
+            <div class="col-12 form-text mt-1"><%= t('Privileged accounts, roles and permissions: while "Limit to the user\'s units" is on, the user sees the systems whose L2 or L3 department is one of these units (unless their role may see everything).') %></div>
           </div>
         </section>
 

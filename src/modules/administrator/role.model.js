@@ -3,6 +3,9 @@ import { pool } from '../../../config/config.js';
 import { db, Where, replaceLinks, jsonList, searchRank } from '../../shared/db.js';
 
 export const SUPERADMIN = 'superadmin';
+// Built-in roles (seeded): they cannot be renamed, edited or deleted, and their names are reserved
+export const BUILTIN_ROLES = [SUPERADMIN, 'admin', 'viewer'];
+export const isBuiltinRole = (name) => BUILTIN_ROLES.includes(String(name || '').trim().toLowerCase());
 
 const SELECT_WITH_LINKS = `
   SELECT r.*,

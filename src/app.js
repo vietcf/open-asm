@@ -43,6 +43,7 @@ import apiDebugLog from './middlewares/apiDebugLog.middleware.js';
 import authRouter from './modules/auth/web.routes.js';
 import dashboardRouter from './modules/dashboard/web.routes.js';
 import requireLogin from './middlewares/requireLogin.middleware.js';
+import { SESSION_SECRET } from './shared/secrets.js';
 import { UNIQUE_CHECKS, checkUnique } from './utils/uniqueChecks.js';
 import networkRouter from './modules/network/web.routes.js';
 import systemRouter from './modules/system/web.routes.js';
@@ -87,6 +88,17 @@ if (process.env.NODE_ENV === 'production' && (!process.env.SESSION_SECRET || !pr
 }
 
 // 3. Core middleware
+// Security headers on every response (nginx drops its server-level add_header
+// in locations that set their own): no framing (clickjacking), no MIME
+// sniffing, no plugins / <base> hijack, referrer kept to this origin.
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'same-origin');
+  res.setHeader('Content-Security-Policy', "frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'");
+  next();
+});
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 // _method override only for POST forms: allowing it on GET would let a plain
@@ -99,7 +111,7 @@ const PgSessionStore = connectPgSimple(session);
 app.use(session({
   store: new PgSessionStore({ pool, tableName: 'session', pruneSessionInterval: 15 * 60 }),
   name: 'openasm.sid',
-  secret: process.env.SESSION_SECRET || 'dev-only-session-secret',
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -228,7 +240,17 @@ app.set('layout', 'layouts/layout');
 // as forced downloads with sniffing disabled — they're arbitrary files
 // uploaded by any authenticated user, so this closes the stored-XSS vector
 // (a .html/.svg upload would otherwise render/execute in the app's origin).
-app.use('/uploads', express.static(path.join(__dirname, '../public/uploads'), {
+// Only for a signed-in user (2FA done) holding the read permission of the
+// module the folder belongs to; import results (temp) are served by their own
+// download routes, and tmp holds the uploads of forms being filled in.
+const UPLOAD_FOLDER_PERMISSION = { system: 'system.read', pentest: 'pentest.read', tmp: null };
+app.use('/uploads', requireLogin, require2fa, (req, res, next) => {
+  const folder = decodeURIComponent(req.path).split('/').filter(Boolean)[0] || '';
+  if (!Object.prototype.hasOwnProperty.call(UPLOAD_FOLDER_PERMISSION, folder)) return res.status(404).send('Not found');
+  const permission = UPLOAD_FOLDER_PERMISSION[folder];
+  if (permission && !res.locals.hasPermission(permission)) return res.status(403).send('Forbidden');
+  next();
+}, express.static(path.join(__dirname, '../public/uploads'), {
   setHeaders: (res, filePath) => {
     res.setHeader('Content-Disposition', `attachment; filename="${path.basename(filePath)}"`);
     res.setHeader('X-Content-Type-Options', 'nosniff');

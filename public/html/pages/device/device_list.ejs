@@ -136,8 +136,7 @@
   </div>
 </div>
 
-<%- include('../../partials/ui/detail_modal', { id: 'deviceDetailModal', pentestType: 'device' }) %>
-<%- include('../../partials/ui/pentest_quick_view') %>
+<%- include('../../partials/ui/detail_modal', { id: 'deviceDetailModal' }) %>
 <%- include('../../partials/ui/delete_ip_modal') %>
 <% if (hasPermission('device.create')) { %>
   <%- include('../../partials/ui/import_modal', { id: 'deviceImportModal', title: 'Import Devices', baseUrl: '/device/device',
@@ -163,7 +162,8 @@
       DV.field('Managers', DV.contacts(d.contacts))
     ));
     body += DV.section('Network', DV.rows(
-      DV.field('Management Address', DV.text(d.management_address)),
+      // "https://10.10.1.1[kvm], 10.10.1.1:22[ssh]": one link per address, [label] as a badge
+      DV.field('Management Address', DV.urlList(String(d.management_address || '').split(',').map((v) => v.trim()).filter(Boolean))),
       DV.field('IP Addresses', DV.ipLinks(ips.filter((ip) => ip.role !== 'vip'))),
       DV.field('VIP IP Address(es)', DV.ipLinks(ips.filter((ip) => ip.role === 'vip')))
     ), ' <span class="badge tag ms-1">' + ips.length + '</span>');

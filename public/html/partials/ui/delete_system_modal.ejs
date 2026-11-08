@@ -1,0 +1,30 @@
+<%#
+  Delete confirmation for a system that still has components (sub-systems).
+  A delete form opts in with data-delete-system="<system name>",
+  data-component-count="<n>" and a hidden <input name="delete_components">;
+  public/js/ui-kit.js shows this dialog and fills delete_components with
+  "true" (also delete the components) or "false" (the server then refuses).
+%>
+<div class="modal fade" id="deleteSystemModal" tabindex="-1" aria-labelledby="deleteSystemModalTitle" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="deleteSystemModalTitle"><%= t('Confirm Delete') %></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
+      </div>
+      <div class="modal-body">
+        <p><%= t('Are you sure you want to delete the system: ') %><strong data-delete-system-name></strong>?</p>
+        <p class="mb-2"><%= t('Components of this system') %>: <strong data-delete-system-count></strong></p>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="deleteSystemComponents">
+          <label class="form-check-label" for="deleteSystemComponents"><%= t('Also delete all components of this system') %></label>
+        </div>
+        <div class="form-text"><%= t('Unchecked: a system that still has components is not deleted.') %></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal"><%= t('Cancel') %></button>
+        <button type="button" class="btn btn-danger btn-sm" data-delete-system-confirm><%= t('Delete') %></button>
+      </div>
+    </div>
+  </div>
+</div>

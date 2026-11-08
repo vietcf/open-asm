@@ -1,5 +1,6 @@
 // Web pages: /administrator/users (list, add, edit, delete).
 import Role from './role.model.js';
+import Unit from '../organize/unit.model.js';
 import * as userService from './user.service.js';
 import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, runAndRedirect, page } from '../../shared/web.js';
 import { PASSWORD_RULE_MESSAGE } from '../../shared/password.js';
@@ -8,11 +9,12 @@ const LIST_URL = '/administrator/users';
 const listFilter = (query) => ({
   role_id: queryList(query, 'role_id'), auth_source: queryList(query, 'auth_source'), status: queryValue(query, 'status'), twofa: queryValue(query, 'twofa'),
 });
-const actor = (req) => req.session.user;
+// The signed-in admin, with their permissions (no granting beyond them)
+const actor = (req) => (req.session.user ? { ...req.session.user, permissions: req.permissions || [] } : null);
 
 async function renderForm(req, res, mode, user = {}) {
   res.render('pages/administrator/user_form', {
-    mode, user, roleOptions: await Role.options(), isSelf: String(user.id) === String(actor(req)?.id), passwordRule: PASSWORD_RULE_MESSAGE,
+    mode, user, roleOptions: await Role.options(), unitOptions: await Unit.options(), isSelf: String(user.id) === String(actor(req)?.id), passwordRule: PASSWORD_RULE_MESSAGE,
     title: mode === 'edit' ? 'Edit User' : 'Add User', activeMenu: 'user-management',
   });
 }
@@ -39,7 +41,7 @@ export default {
     }
   },
 
-  create: (req, res) => runAndRedirect(req, res, LIST_URL, () => userService.createUser(req.body), 'User added successfully', `${LIST_URL}/add`),
+  create: (req, res) => runAndRedirect(req, res, LIST_URL, () => userService.createUser(req.body, null, actor(req)), 'User added successfully', `${LIST_URL}/add`),
   update: (req, res) => runAndRedirect(req, res, LIST_URL, () => userService.updateUser(req.params.id, req.body, actor(req)), 'User updated successfully', `${LIST_URL}/${req.params.id}/edit`),
   remove: (req, res) => runAndRedirect(req, res, LIST_URL, () => userService.deleteUser(req.params.id, actor(req)), 'User deleted successfully'),
 };

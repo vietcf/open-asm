@@ -6,7 +6,7 @@
     { key: 'users', label: 'Users', def: true },
   ];
   const cell = (r, key) => ({
-    name: ui.esc(r.name) + (r.name === superadmin ? ` <i class="bi bi-lock text-secondary" title="${t('Built-in role')}"></i>` : ''),
+    name: ui.esc(r.name) + ((locals.builtinRoles || [superadmin]).includes(r.name) ? ` <i class="bi bi-lock text-secondary" title="${t('Built-in role')}"></i>` : ''),
     description: ui.clip(r.description),
     permissions: `<span class="badge tag">${r.permissions.length}</span>`,
     users: r.user_count ? `<a href="/administrator/users?role_id=${r.id}"><span class="badge tag">${r.user_count}</span></a>` : ui.dash,
@@ -44,10 +44,10 @@
                   <% COLUMNS.forEach(function (c) { %><td data-col="<%= c.key %>" data-label="<%= t(c.label) %>"<%- c.key === 'name' ? ' class="fw-medium"' : '' %>><%- cell(r, c.key) %></td><% }) %>
                   <td class="col-actions">
                     <div class="row-actions">
-                      <% if (r.name !== superadmin && hasPermission('role.update')) { %>
+                      <% if (!(locals.builtinRoles || [superadmin]).includes(r.name) && hasPermission('role.update')) { %>
                         <a href="/administrator/roles/<%= r.id %>/edit" class="btn btn-sm btn-outline-secondary" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
                       <% } %>
-                      <% if (r.name !== superadmin && hasPermission('role.delete')) { %>
+                      <% if (!(locals.builtinRoles || [superadmin]).includes(r.name) && hasPermission('role.delete')) { %>
                         <form action="/administrator/roles/<%= r.id %>/delete" method="POST" data-confirm="<%= t('Delete {1}?', { 1: r.name }) %>">
                           <button type="submit" class="btn btn-sm btn-outline-secondary btn-delete" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
                         </form>

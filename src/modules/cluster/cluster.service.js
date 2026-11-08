@@ -4,7 +4,7 @@ import System from '../system/system.model.js';
 import IpAddress from '../network/ip-address.model.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
-import { toIdArray, hasKey, assertIdsExist } from '../../shared/service.js';
+import { hasKey, assertIdsExist } from '../../shared/service.js';
 
 async function assertNameAvailable(name, excludeId = null) {
   const existing = await Cluster.findByNameExact(name);
@@ -26,6 +26,32 @@ function normalizeMembers(rawIpIds, rawRoles) {
   return members;
 }
 
+// Kubernetes namespace: DNS-1123 label (lowercase letters, digits, '-', max 63)
+const NAMESPACE_REGEX = /^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$/;
+
+// systems: ids, or {system_id, namespace?} objects (API / form rows)
+// -> [{system_id, namespace}]; the namespace is optional, lower-cased, and
+// unique within the cluster. The first occurrence of a system wins.
+function normalizeSystems(raw) {
+  const seen = new Set();
+  const namespaces = new Set();
+  const systems = [];
+  for (const item of [].concat(raw ?? [])) {
+    const isObject = item && typeof item === 'object';
+    const systemId = Number(isObject ? item.system_id ?? item.id : item);
+    if (!Number.isInteger(systemId) || systemId <= 0 || seen.has(systemId)) continue;
+    const namespace = String((isObject ? item.namespace : '') ?? '').trim().toLowerCase() || null;
+    if (namespace && !NAMESPACE_REGEX.test(namespace)) {
+      throw new ValidationError('Invalid namespace: {namespace} (lowercase letters, digits and "-", max 63)').withParams({ namespace });
+    }
+    if (namespace && namespaces.has(namespace)) throw new ValidationError('Namespace {namespace} is used by two systems of this cluster').withParams({ namespace });
+    seen.add(systemId);
+    if (namespace) namespaces.add(namespace);
+    systems.push({ system_id: systemId, namespace });
+  }
+  return systems;
+}
+
 async function resolveLinks(input, partial) {
   const links = {};
   if (!partial || hasKey(input, 'member_ip_id') || hasKey(input, 'member_role')) {
@@ -33,8 +59,8 @@ async function resolveLinks(input, partial) {
     await assertIdsExist(links.members.map((m) => m.ip_address_id), (id) => IpAddress.exists(id), 'IP address');
   }
   if (!partial || hasKey(input, 'systems')) {
-    links.systems = toIdArray(input.systems);
-    await assertIdsExist(links.systems, (id) => System.exists(id), 'system');
+    links.systems = normalizeSystems(input.systems);
+    await assertIdsExist(links.systems.map((s) => s.system_id), (id) => System.exists(id), 'system');
   }
   return links;
 }
@@ -62,7 +88,7 @@ export const getRoleOptions = () => Cluster.getDistinctRoles();
 export const getClustersForSystem = (systemId) => Cluster.findBySystemId(systemId);
 
 // ===== Commands =====
-// input: {name, description?, member_ip_id[]?, member_role[]?, systems[]?, updated_by?}
+// input: {name, description?, member_ip_id[]?, member_role[]?, systems[]? (ids or {system_id, namespace?}), updated_by?}
 export async function createCluster(input, client) {
   const name = String(input.name || '').trim();
   if (!name) throw new ValidationError('Cluster name is required');

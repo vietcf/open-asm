@@ -11,7 +11,8 @@
   ];
   const cell = (c, key) => ({
     name: ui.esc(c.name),
-    systems: ui.chips(c.systems.map(s => s.name)),
+    // "System · namespace"
+    systems: ui.chips(c.systems.map(s => s.namespace ? s.name + ' · ' + s.namespace : s.name)),
     members: c.members.length ? `<span class="badge tag">${c.members.length}</span> ` + ui.mono(c.members.slice(0, 3).map(m => m.ip).concat(c.members.length > 3 ? ['…'] : [])) : ui.dash,
     roles: ui.chips([...new Set(c.members.map(m => m.role).filter(Boolean))]),
     description: ui.clip(c.description),
@@ -107,10 +108,17 @@
 <%- include('../../partials/ui/detail_modal', { id: 'clusterDetailModal' }) %>
 <% if (hasPermission('cluster.create')) { %>
   <%- include('../../partials/ui/import_modal', { id: 'clusterImportModal', title: 'Import Clusters', baseUrl: '/cluster',
-        instructions: ['One row per member; rows with the same cluster name make one cluster', 'IP addresses and systems must already exist', 'A cluster is created only when all of its rows are valid'] }) %>
+        instructions: ['One row per member; rows with the same cluster name make one cluster', 'IP addresses and systems must already exist', 'System namespace: put it in brackets after the name, e.g. System 001[ns-payment], System 002', 'A cluster is created only when all of its rows are valid'] }) %>
 <% } %>
 
 <script>
+  // One line per system: "System — namespace" (namespace omitted when not set)
+  function clusterSystems(systems) {
+    if (!systems || !systems.length) return DV.EMPTY;
+    return '<ul class="detail-list">' + systems.map((s) => '<li><a href="/system/system?search=' + encodeURIComponent(s.name) + '" target="_blank" rel="noopener noreferrer">' + DV.esc(s.name) + '</a>' +
+      (s.namespace ? ' <span class="text-secondary">—</span> <span class="font-monospace small">' + DV.esc(s.namespace) + '</span>' : '') + '</li>').join('') + '</ul>';
+  }
+
   function showClusterDetail(button) {
     const c = DV.record(button);
     if (!c) return;
@@ -124,7 +132,7 @@
       : '<p class="text-secondary small mb-0 detail-pad">' + DV.esc(t('No members')) + '</p>';
     let body = DV.section('Overview', DV.rows(
       DV.multiline(c.description) ? DV.field('Description', DV.multiline(c.description)) : '',
-      DV.field('Systems', DV.linkChips(c.systems || [], (s) => '/system/system?search=' + encodeURIComponent(s.name)))
+      DV.field('Systems', clusterSystems(c.systems))
     ));
     body += DV.section('Members', table, ' <span class="badge tag ms-1">' + members.length + '</span>');
     body += DV.meta(c);

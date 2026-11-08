@@ -7,6 +7,7 @@ import Tag from '../organize/tag.model.js';
 import FileUpload from '../file/file-upload.model.js';
 import { removeRoundsOf } from '../pentest/pentest.service.js';
 import { addToSystem, releaseFromSystem } from './system-ip-links.js';
+import * as systemContacts from './system-contact-links.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
 import { toStringList, toNullableString, hasKey, loadOptions, assertOption, resolveRelations, saveRelations } from '../../shared/service.js';
@@ -69,6 +70,7 @@ export async function createComponent(input, client) {
     const created = await SystemComponent.create({ ...data, updated_by: input.updated_by || 'admin' }, c);
     await saveRelations(created.id, links, RELATIONS, c);
     await addToSystem(data.system_id, links.ips || [], c); // a component's IPs are IPs of its system
+    await systemContacts.addToSystem(data.system_id, links.contacts || [], c); // and its managers are managers of it
     return created.id;
   });
   return SystemComponent.findByIdWithRelations(id);
@@ -84,6 +86,7 @@ export async function updateComponent(id, input, client) {
   const data = await normalize(input, current);
   const links = await resolveRelations(input, RELATIONS, { partial: true });
   const oldIps = await SystemComponent.getIpIds(id);
+  const oldContacts = await SystemComponent.getContactIds(id);
   await withTransaction(client, async (c) => {
     await SystemComponent.update(id, { ...data, updated_by: input.updated_by || 'admin' }, c);
     await saveRelations(id, links, RELATIONS, c);
@@ -94,22 +97,31 @@ export async function updateComponent(id, input, client) {
     const moved = String(data.system_id) !== String(current.system_id);
     await releaseFromSystem(current.system_id, moved ? oldIps : oldIps.filter((ip) => !newIps.includes(ip)), c);
     await addToSystem(data.system_id, newIps, c);
+    // same for managers
+    const newContacts = links.contacts || oldContacts;
+    await systemContacts.releaseFromSystem(current.system_id, moved ? oldContacts : oldContacts.filter((x) => !newContacts.includes(x)), c);
+    await systemContacts.addToSystem(data.system_id, newContacts, c);
   });
   return SystemComponent.findByIdWithRelations(id);
 }
 
-// The component's IPs leave its system too, unless another component of the
-// system uses them; tags and pentest rounds have no foreign key and are removed here.
+// The component's IPs and managers leave its system too, unless another
+// component of the system has them; tags and pentest rounds have no foreign
+// key and are removed here. Returns the files to unlink after commit.
+export async function removeComponent(component, client) {
+  const ipIds = await SystemComponent.getIpIds(component.id);
+  const contactIds = await SystemComponent.getContactIds(component.id, client);
+  await SystemComponent.setTags(component.id, [], client);
+  const removed = await removeRoundsOf('system_component', component.id, client);
+  await SystemComponent.delete(component.id, client); // its IP and manager links cascade
+  await releaseFromSystem(component.system_id, ipIds, client);
+  await systemContacts.releaseFromSystem(component.system_id, contactIds, client);
+  return removed;
+}
+
 export async function deleteComponent(id) {
   const component = await SystemComponent.findById(id);
   if (!component) throw new NotFoundError('Component not found');
-  const ipIds = await SystemComponent.getIpIds(id);
-  const files = await withTransaction(null, async (c) => {
-    await SystemComponent.setTags(id, [], c);
-    const removed = await removeRoundsOf('system_component', id, c);
-    await SystemComponent.delete(id, c); // its IP links cascade
-    await releaseFromSystem(component.system_id, ipIds, c);
-    return removed;
-  });
+  const files = await withTransaction(null, (c) => removeComponent(component, c));
   FileUpload.unlinkFiles(files);
 }

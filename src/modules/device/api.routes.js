@@ -408,6 +408,8 @@ router.use(['/devices', '/device-types', '/platforms'], authenticateJWT);
  *           type: string
  *         management_address:
  *           type: string
+ *           maxLength: 255
+ *           description: 'Free text, comma-separated; a [label] after an address is shown as a badge, e.g. "https://10.10.1.1[kvm], 10.10.1.1:22[ssh]"'
  *         manufacturer:
  *           type: string
  *         device_role:

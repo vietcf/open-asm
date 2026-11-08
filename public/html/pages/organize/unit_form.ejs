@@ -1,4 +1,4 @@
-<%# Add / Edit Unit.  mode: 'add' | 'edit', unit %>
+<%# Add / Edit Unit.  mode: 'add' | 'edit', unit, parentOptions [{id, text: path}] (without this unit and its sub-units) %>
 <% const isEdit = mode === 'edit'; const u = unit || {}; %>
 <%- include('../../partials/ui/page_header', { breadcrumbs: [
   { label: 'Organization' }, { label: 'Organization Unit', href: '/organize/unit' }, { label: isEdit ? 'Edit Unit' : 'Add Unit' }
@@ -21,6 +21,14 @@
             <div class="col-md-4">
               <label class="form-label" for="f-code"><%= t('Code') %></label>
               <input type="text" id="f-code" name="code" class="form-control" value="<%= u.code || '' %>" maxlength="50" placeholder="<%= t('e.g. IT, HR') %>">
+            </div>
+            <div class="col-md-8">
+              <label class="form-label" for="f-parent"><%= t('Parent unit') %></label>
+              <select id="f-parent" name="parent_id" class="form-select js-select" data-placeholder="<%= t('None (top level)') %>">
+                <option value=""></option>
+                <%- ui.options(parentOptions, u.parent_id ? [u.parent_id] : []) %>
+              </select>
+              <div class="form-text"><%= t('Other pages (contacts, systems, accounts, firewall rules) pick only lowest-level units, those without sub-units.') %></div>
             </div>
             <div class="col-12">
               <label class="form-label" for="f-description"><%= t('Description') %></label>

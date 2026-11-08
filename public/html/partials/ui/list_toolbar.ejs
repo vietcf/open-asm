@@ -28,7 +28,7 @@
       <%- include('columns_menu', { tableId: columns.tableId, storageKey: columns.storageKey, columns: columns.list }) %>
     <% } %>
     <% if (locals.exportUrl) { %>
-      <a href="<%= exportUrl %>" class="btn btn-outline-secondary" title="<%= t('Export') %>"><i class="bi bi-download"></i><span class="btn-text"> <%= t('Export') %></span></a>
+      <a href="<%= exportUrl %>" class="btn btn-outline-secondary" data-export-link title="<%= t('Export') %>"><i class="bi bi-download"></i><span class="btn-text"> <%= t('Export') %></span></a>
     <% } %>
     <% if (locals.importModal) { %>
       <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#<%= importModal %>" title="<%= t('Import') %>"><i class="bi bi-upload"></i><span class="btn-text"> <%= t('Import') %></span></button>

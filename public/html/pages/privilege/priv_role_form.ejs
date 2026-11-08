@@ -1,5 +1,6 @@
 <%#
-  Add / Edit Privileged Role.  mode, record (role). Permissions are those of the chosen system (AJAX picker).
+  Add / Edit Privileged Role.  mode, record (role), canGlobal (may tick "All systems").
+  Permissions: those of the chosen system and the "All systems" ones; any for an "All systems" role (AJAX picker).
 %>
 <% const isEdit = mode === 'edit'; const r = locals.record || {}; %>
 <%- include('../../partials/ui/page_header', { breadcrumbs: [
@@ -22,15 +23,25 @@
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-system"><%= t('System') %> <span class="text-danger">*</span></label>
-              <select id="f-system" name="system_id" class="form-select js-select" required data-placeholder="<%= t('Select system') %>"
-                      data-ajax-url="/system/api/system" data-selected="<%= JSON.stringify(r.system ? [{ id: r.system.id, text: r.system.name }] : []) %>"></select>
+              <div id="f-system-box"<%- r.all_systems ? ' class="d-none"' : '' %>>
+                <select id="f-system" name="system_id" class="form-select js-select" <%= r.all_systems ? '' : 'required' %> data-placeholder="<%= t('Select system') %>"
+                        data-ajax-url="/priv-account/api/systems" data-selected="<%= JSON.stringify(r.system ? [{ id: r.system.id, text: r.system.name }] : []) %>"></select>
+              </div>
+              <% if (canGlobal) { %>
+                <div class="form-check mt-2">
+                  <input class="form-check-input" type="checkbox" id="f-all-systems" name="all_systems" <%= r.all_systems ? 'checked' : '' %>>
+                  <label class="form-check-label" for="f-all-systems"><%= t('All systems') %></label>
+                </div>
+                <div class="form-text"><%= t('Can be picked for any system. Only administrators can tick it.') %></div>
+              <% } %>
+              <input type="hidden" id="f-all-flag" value="<%= r.all_systems ? 'on' : '' %>">
             </div>
             <div class="col-12">
               <label class="form-label" for="f-permissions"><%= t('Permissions') %></label>
               <select id="f-permissions" name="permissions" class="form-select js-select" multiple data-placeholder="<%= t('Select system first') %>"
-                      data-ajax-url="/priv-account/api/permissions" data-ajax-with='{"system_id":"#f-system"}'
+                      data-ajax-url="/priv-account/api/permissions" data-ajax-with='{"system_id":"#f-system","all_systems":"#f-all-flag"}'
                       data-selected="<%= JSON.stringify((r.permissions || []).map(p => ({ id: p.id, text: p.name }))) %>"></select>
-              <div class="form-text"><%= t('Only permissions of the selected system') %></div>
+              <div class="form-text"><%= t('Permissions of the selected system and "All systems" permissions; any permission for an "All systems" role') %></div>
             </div>
             <div class="col-12">
               <label class="form-label" for="f-description"><%= t('Description') %></label>
@@ -45,6 +56,14 @@
 </div>
 
 <script>
-  // permissions belong to one system: clear them when the system changes
+  // permissions depend on the system: clear them when the system changes
   $('#f-system').on('change', () => $('#f-permissions').val(null).trigger('change'));
+  // "All systems": no system; the picker then offers every permission
+  $('#f-all-systems').on('change', function () {
+    const all = this.checked;
+    $('#f-all-flag').val(all ? 'on' : '');
+    $('#f-system-box').toggleClass('d-none', all);
+    $('#f-system').prop('required', !all);
+    if (all) $('#f-system').val(null).trigger('change');
+  });
 </script>

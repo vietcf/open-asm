@@ -44,7 +44,7 @@
                   <option value=""></option>
                   <option value="__none__" <%= filterUnitId === '__none__' ? 'selected' : '' %>><%= t('(Not set)') %></option>
                   <% (units || []).forEach(function (u) { %>
-                    <option value="<%= u.id %>" <%= String(filterUnitId) === String(u.id) ? 'selected' : '' %>><%= u.name %></option>
+                    <option value="<%= u.id %>" <%= String(filterUnitId) === String(u.id) ? 'selected' : '' %>><%= u.text %></option>
                   <% }); %>
                 </select>
               </div>

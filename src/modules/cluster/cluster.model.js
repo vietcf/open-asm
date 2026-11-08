@@ -1,10 +1,10 @@
 import { pool } from '../../../config/config.js';
-import { db, Where, replaceLinks, jsonList, searchRank } from '../../shared/db.js';
+import { db, Where, jsonList, searchRank } from '../../shared/db.js';
 
-// Cluster with its systems and members (ip + the server/device owning it)
+// Cluster with its systems (and the namespace each runs in) and members (ip + the server/device owning it)
 const SELECT_WITH_LINKS = `
   SELECT cl.*,
-    ${jsonList('s', { id: 's.id', name: 's.name' })} AS systems,
+    ${jsonList('s', { id: 's.id', name: 's.name', namespace: 'cs.namespace' })} AS systems,
     ${jsonList('cm', { id: 'cm.id', ip_address_id: 'ip.id', ip: 'ip.ip_address', role: 'cm.role', server_name: 'srv.name', device_name: 'dev.name' })} AS members
   FROM clusters cl
   LEFT JOIN cluster_system cs ON cs.cluster_id = cl.id
@@ -20,6 +20,7 @@ const SELECT_WITH_LINKS = `
 function filterWhere({ search = '', role = [], system_id = [] }) {
   const w = new Where();
   w.search(search, ['cl.name ILIKE ?', 'cl.description ILIKE ?',
+    'EXISTS (SELECT 1 FROM cluster_system x WHERE x.cluster_id = cl.id AND x.namespace ILIKE ?)',
     'EXISTS (SELECT 1 FROM cluster_members x JOIN ip_addresses i ON i.id = x.ip_address_id WHERE x.cluster_id = cl.id AND i.ip_address::text ILIKE ?)']);
   const roles = [].concat(role || []).filter(Boolean);
   if (roles.length) w.add(`EXISTS (SELECT 1 FROM cluster_members x WHERE x.cluster_id = cl.id AND x.role = ANY(${w.param(roles)}))`);
@@ -109,7 +110,14 @@ class Cluster {
     }
   }
 
-  static setSystems(id, ids, client) { return replaceLinks(client, 'cluster_system', 'cluster_id', id, 'system_id', ids); }
+  // systems: [{system_id, namespace}]
+  static async setSystems(clusterId, systems, client) {
+    const ex = db(client);
+    await ex.query('DELETE FROM cluster_system WHERE cluster_id = $1', [clusterId]);
+    for (const s of systems || []) {
+      await ex.query('INSERT INTO cluster_system (cluster_id, system_id, namespace) VALUES ($1, $2, $3)', [clusterId, s.system_id, s.namespace || null]);
+    }
+  }
 }
 
 export default Cluster;

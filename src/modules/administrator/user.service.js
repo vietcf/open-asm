@@ -6,9 +6,10 @@ import bcrypt from 'bcrypt';
 import User from './user.model.js';
 import Role, { SUPERADMIN } from './role.model.js';
 import Configuration from './configuration.model.js';
+import Unit from '../organize/unit.model.js';
 import { ValidationError, NotFoundError, ConflictError, ForbiddenError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
-import { toNullableString } from '../../shared/service.js';
+import { toNullableString, toIdArray, assertIdsExist } from '../../shared/service.js';
 import { isStrongPassword, PASSWORD_RULE_MESSAGE } from '../../shared/password.js';
 
 // Letters, digits, dot, dash, underscore: no spaces or lookalike characters
@@ -34,6 +35,19 @@ async function twofaDeadline() {
 }
 
 // The last active superadmin must stay an active superadmin
+// No privilege escalation: someone who is not superadmin may only create, edit
+// or delete users whose role grants nothing beyond their own permissions, and
+// only give such roles (actor = {id, role_name, permissions}).
+async function assertWithinActor(actor, roleId) {
+  if (!actor || actor.role_name === SUPERADMIN) return;
+  const role = roleId ? await Role.findById(roleId) : null;
+  if (!role) return;
+  const own = new Set(actor.permissions || []);
+  if (role.name === SUPERADMIN || (role.permissions || []).some((p) => !own.has(p.name))) {
+    throw new ForbiddenError('You cannot manage users whose role has more permissions than yours');
+  }
+}
+
 async function assertSuperadminRemains(current, next) {
   const losing = current.role_name === SUPERADMIN && current.is_active && (next === null || !next.is_active || next.role_name !== SUPERADMIN);
   if (losing && (await User.countActiveWithRole(SUPERADMIN, current.id)) === 0) {
@@ -41,7 +55,7 @@ async function assertSuperadminRemains(current, next) {
   }
 }
 
-// input: {username, email, fullname, role_id, auth_source, password, repeat_password, require_twofa, must_change_password, is_active}
+// input: {username, email, fullname, role_id, unit_id, scope_units[], auth_source, password, repeat_password, require_twofa, must_change_password, is_active}
 async function normalize(input, current = null) {
   const username = typeof input.username === 'string' ? input.username.trim() : '';
   const email = toNullableString(input.email);
@@ -55,9 +69,15 @@ async function normalize(input, current = null) {
   const role = await Role.findById(parseInt(input.role_id, 10) || 0);
   if (!role) throw new ValidationError('Role is required');
 
+  // Unit (privileged accounts are limited to the systems of the user's units)
+  const unit_id = parseInt(input.unit_id, 10) || null;
+  if (unit_id && !(await Unit.exists(unit_id))) throw new ValidationError('Invalid unit');
+  const scopeUnits = toIdArray(input.scope_units).filter((id) => id !== unit_id);
+  await assertIdsExist(scopeUnits, (id) => Unit.exists(id), 'unit');
+
   const auth_source = input.auth_source === 'ldap' ? 'ldap' : 'local';
   const data = {
-    username, email, fullname: toNullableString(input.fullname), role_id: role.id, auth_source,
+    username, email, fullname: toNullableString(input.fullname), role_id: role.id, unit_id, auth_source,
     require_twofa: flag(input.require_twofa),
     // AD owns LDAP passwords
     must_change_password: auth_source === 'local' && flag(input.must_change_password),
@@ -82,19 +102,26 @@ async function normalize(input, current = null) {
     data.twofa_setup_deadline = null;
     if (current?.require_twofa) Object.assign(data, { twofa_secret: null, twofa_enabled: false });
   }
-  return { data, role };
+  return { data, role, scopeUnits };
 }
 
-export async function createUser(input, client) {
-  const { data } = await normalize(input);
-  const user = await User.create(data, client);
-  return User.findById(user.id);
+export async function createUser(input, client, actor = null) {
+  const { data, scopeUnits } = await normalize(input);
+  await assertWithinActor(actor, data.role_id);
+  const id = await withTransaction(client, async (c) => {
+    const user = await User.create(data, c);
+    await User.setScopeUnits(user.id, scopeUnits, c);
+    return user.id;
+  });
+  return User.findById(id);
 }
 
 // actor: the signed-in admin ({id})
 export async function updateUser(id, input, actor, client) {
   const current = await getUser(id);
-  const { data, role } = await normalize(input, current);
+  await assertWithinActor(actor, current.role_id);
+  const { data, role, scopeUnits } = await normalize(input, current);
+  await assertWithinActor(actor, data.role_id);
   const self = String(actor?.id) === String(current.id);
   if (self && !data.is_active) throw new ForbiddenError('You cannot deactivate your own account');
   if (self && data.role_id !== current.role_id) throw new ForbiddenError('You cannot change the role of your own account');
@@ -105,6 +132,7 @@ export async function updateUser(id, input, actor, client) {
     || data.twofa_secret !== undefined;
   await withTransaction(client, async (c) => {
     await User.update(id, data, c);
+    await User.setScopeUnits(id, scopeUnits, c);
     if (accessChanged && !self) await User.endSessions(current.id, c);
   });
   return User.findById(id);
@@ -113,6 +141,7 @@ export async function updateUser(id, input, actor, client) {
 export async function deleteUser(id, actor) {
   const current = await getUser(id);
   if (String(actor?.id) === String(current.id)) throw new ForbiddenError('You cannot delete your own account');
+  await assertWithinActor(actor, current.role_id);
   await assertSuperadminRemains(current, null);
   await withTransaction(null, async (c) => {
     await User.endSessions(current.id, c);

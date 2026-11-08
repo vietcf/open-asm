@@ -98,6 +98,13 @@ class Subnet {
     return result.rows[0]?.contains === true;
   }
 
+  // Every subnet containing an IP, smallest (most specific) first
+  static async findAllContaining(ip) {
+    const result = await pool.query(
+      'SELECT id, address, description FROM subnets WHERE address >>= $1::inet ORDER BY masklen(address) DESC', [ip]);
+    return result.rows;
+  }
+
   // Most specific subnet containing an IP or a smaller subnet
   static async findContainingSubnet(ipOrSubnet) {
     const result = await pool.query('SELECT * FROM subnets WHERE address >>= $1::inet ORDER BY masklen(address) DESC LIMIT 1', [ipOrSubnet]);

@@ -468,6 +468,17 @@ router.delete('/contacts/:id', authorizePermissionJWT('contact.delete'), contact
  *           type: integer
  *           default: 20
  *         description: "Page size (default: 20)"
+ *       - in: query
+ *         name: parent_id
+ *         schema:
+ *           type: string
+ *         description: 'A unit ID: its sub-units at every level; "__none__": top-level units only'
+ *       - in: query
+ *         name: level
+ *         schema:
+ *           type: string
+ *           enum: [parent, leaf]
+ *         description: 'parent: units that have sub-units; leaf: lowest-level units (no sub-unit)'
  *     responses:
  *       200:
  *         description: List of organization units
@@ -594,6 +605,10 @@ router.get('/units/:id', authorizePermissionJWT('unit.read'), unitApi.getUnit);
  *               description:
  *                 type: string
  *                 description: Description (optional)
+ *               parent_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 description: Parent unit ID (null = top level); cannot be the unit itself or one of its sub-units
  *     responses:
  *       201:
  *         description: Created organization unit
@@ -640,6 +655,10 @@ router.post('/units', authorizePermissionJWT('unit.create'), unitApi.createUnit)
  *               description:
  *                 type: string
  *                 description: Description (optional)
+ *               parent_id:
+ *                 type: integer
+ *                 nullable: true
+ *                 description: Parent unit ID (null = top level); cannot be the unit itself or one of its sub-units
  *     responses:
  *       200:
  *         description: Updated organization unit

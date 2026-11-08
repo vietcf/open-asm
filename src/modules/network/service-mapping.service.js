@@ -5,7 +5,7 @@ import System from '../system/system.model.js';
 import { IPV4_REGEX } from './ip-address.service.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
-import { hasKey } from '../../shared/service.js';
+import { hasKey, loadOptions } from '../../shared/service.js';
 
 const PROTOCOL_OPTIONS = ['HTTP', 'HTTPS', 'TCP', 'UDP'];
 const DIRECTION_OPTIONS = ['inbound', 'outbound'];
@@ -142,6 +142,20 @@ function providerFields(provider, rawPort, rawProtocol) {
   return { provider, provider_port: port, provider_protocol: protocol };
 }
 
+// Provider / channel: one of the System Configuration list service_mapping_provider
+// (matched case-insensitively, stored as configured); a retired value is refused
+// unless the record already has it. An empty list accepts any value.
+async function configuredProvider(value, current = null) {
+  if (!value) return null;
+  if (current && value.toLowerCase() === current.toLowerCase()) return current;
+  const options = await loadOptions('service_mapping_provider');
+  if (!options.length) return value;
+  const found = options.find((o) => o.id.toLowerCase() === value.toLowerCase());
+  if (!found) throw new ValidationError('Invalid provider: {value}. Configure it in System Configuration > Network').withParams({ value });
+  if (found.inactive) throw new ValidationError('{value} is no longer in use for {label}').withParams({ value: found.id, label: 'provider' });
+  return found.id;
+}
+
 // ===== Commands =====
 // ip_address / domain: id or address / name; members: member_ip[] / member_port[] / member_status[];
 // provider_port / provider_protocol: where the provider listens (optional)
@@ -153,7 +167,7 @@ export async function createServiceMapping(input, client) {
   const direction = pick(input.direction, DIRECTION_OPTIONS, 'inbound', 'direction');
   const scope = pick(input.scope, SCOPE_OPTIONS, 'public', 'scope');
   const access = accessFields(pick(input.access_mode, ACCESS_OPTIONS, 'full', 'access mode'), input.allowed_ips);
-  const providerData = providerFields(str(input.provider), input.provider_port, input.provider_protocol);
+  const providerData = providerFields(await configuredProvider(str(input.provider)), input.provider_port, input.provider_protocol);
   await assertRefs(input);
   const id = await withTransaction(client, async (c) => {
     const resolve = inventoryResolver(c, input.updated_by);
@@ -191,7 +205,7 @@ export async function updateServiceMapping(id, input, client) {
       hasKey(input, 'allowed_ips') ? input.allowed_ips : current.allowed_ips)
     : {};
   const providerData = ['provider', 'provider_port', 'provider_protocol'].some((k) => hasKey(input, k))
-    ? providerFields(hasKey(input, 'provider') ? str(input.provider) : current.provider,
+    ? providerFields(hasKey(input, 'provider') ? await configuredProvider(str(input.provider), current.provider) : current.provider,
       hasKey(input, 'provider_port') ? input.provider_port : current.provider_port,
       hasKey(input, 'provider_protocol') ? input.provider_protocol : current.provider_protocol)
     : {};

@@ -3,7 +3,7 @@ import express from 'express';
 import contacts, { contactImport } from './contact.controller.js';
 import units from './unit.controller.js';
 import tags from './tag.controller.js';
-import requirePermission from '../../middlewares/requirePermission.middleware.js';
+import requirePermission, { canPick } from '../../middlewares/requirePermission.middleware.js';
 import excelUpload from '../../middlewares/excelUpload.middleware.js';
 
 const router = express.Router();
@@ -41,13 +41,14 @@ router.post('/tag/:id/edit', can('tag.update'), tags.update);
 router.post('/tag/:id/delete', can('tag.delete'), tags.remove);
 
 // AJAX lookups, open to any signed-in user (pickers on other modules' forms)
-router.get('/api/contact', contacts.lookup);
-router.get('/api/contact/ids', contacts.lookupByIds);
-router.get('/api/contact/:id/qrcode', contacts.qrcode);
-router.get('/api/unit', units.lookup);
-router.get('/api/unit/ids', units.lookupByIds);
-router.get('/api/unit/:id/detail', units.detail);
-router.get('/api/tag', tags.lookup);
-router.get('/api/tag/ids', tags.lookupByIds);
+router.get('/api/contact', canPick('contact.read'), contacts.lookup);
+router.get('/api/contact/ids', canPick('contact.read'), contacts.lookupByIds);
+router.get('/api/contact/:id/qrcode', can('contact.read'), contacts.qrcode);
+router.get('/api/unit', canPick('unit.read'), units.lookup);
+router.get('/api/unit/ids', canPick('unit.read'), units.lookupByIds);
+router.get('/api/unit/:id/detail', canPick('unit.read'), units.detail);
+router.get('/api/unit/:id/members', can('unit.read'), units.members);
+router.get('/api/tag', canPick('tag.read'), tags.lookup);
+router.get('/api/tag/ids', canPick('tag.read'), tags.lookupByIds);
 
 export default router;

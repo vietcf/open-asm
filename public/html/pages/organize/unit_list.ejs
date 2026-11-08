@@ -1,6 +1,10 @@
 <%
+  const f = filter || {};
+  const activeFilterCount = [f.parent_id, f.level].filter(Boolean).length;
   const COLUMNS = [
     { key: 'name', label: 'Unit Name', def: true, fixed: true },
+    { key: 'parent', label: 'Parent unit', def: true },
+    { key: 'children', label: 'Sub-units', def: true },
     { key: 'code', label: 'Code', def: true },
     { key: 'description', label: 'Description', def: true },
     { key: 'contacts', label: 'Contacts', def: true },
@@ -11,6 +15,8 @@
   const count = (n) => (n ? `<span class="badge tag">${n}</span>` : ui.dash);
   const cell = (u, key) => ({
     name: ui.esc(u.name),
+    parent: u.parent_path ? `<span class="small">${ui.esc(u.parent_path)}</span>` : ui.dash,
+    children: count(u.children_count),
     code: u.code ? `<span class="font-monospace small">${ui.esc(u.code)}</span>` : ui.dash,
     description: ui.clip(u.description),
     contacts: count(u.contacts_count),
@@ -30,9 +36,36 @@
         <input type="hidden" name="pageSize" value="<%= pageSize %>">
         <%- include('../../partials/ui/list_toolbar', {
               search, searchPlaceholder: 'Search Unit Name...',
+              filtersId: 'unitFilters', activeFilterCount,
               columns: { tableId: 'unitTable', storageKey: 'openasm.unitList.columns', list: COLUMNS },
               exportUrl: '/organize/unit/export' + currentQuery,
               addUrl: hasPermission('unit.create') ? '/organize/unit/add' : null, addLabel: 'Add Unit' }) %>
+        <div class="collapse<%= activeFilterCount ? ' show' : '' %>" id="unitFilters">
+          <div class="list-filters">
+            <div class="row g-2">
+              <div class="col-md-6 col-xl-4">
+                <label class="form-label small"><%= t('Parent unit') %></label>
+                <select name="parent_id" class="form-select js-filter" data-placeholder="<%= t('All') %>">
+                  <option value=""></option>
+                  <option value="__none__" <%= f.parent_id === '__none__' ? 'selected' : '' %>><%= t('(None - top level)') %></option>
+                  <%- ui.options(parentOptions, f.parent_id ? [f.parent_id] : [], { all: true }) %>
+                </select>
+                <div class="form-text"><%= t('Lists its sub-units at every level') %></div>
+              </div>
+              <div class="col-md-6 col-xl-4">
+                <label class="form-label small"><%= t('Level') %></label>
+                <select name="level" class="form-select js-filter" data-placeholder="<%= t('All') %>">
+                  <option value=""></option>
+                  <option value="parent" <%= f.level === 'parent' ? 'selected' : '' %>><%= t('Has sub-units') %></option>
+                  <option value="leaf" <%= f.level === 'leaf' ? 'selected' : '' %>><%= t('Lowest level (no sub-unit)') %></option>
+                </select>
+              </div>
+            </div>
+            <% if (activeFilterCount) { %>
+              <div class="mt-2 text-end"><a href="#" class="small" data-clear-filters><i class="bi bi-x-circle me-1"></i><%= t('Clear All Filters') %></a></div>
+            <% } %>
+          </div>
+        </div>
       </form>
 
       <div class="table-responsive">
@@ -52,6 +85,7 @@
                   <% COLUMNS.forEach(function (c) { %><td data-col="<%= c.key %>" data-label="<%= t(c.label) %>"<%- c.key === 'name' ? ' class="fw-medium"' : '' %>><%- cell(unit, c.key) %></td><% }) %>
                   <td class="col-actions">
                     <div class="row-actions">
+                      <button type="button" class="btn btn-sm btn-outline-secondary" title="<%= t('Detail') %>" onclick="showUnitDetail(this)" data-record='<%= JSON.stringify(unit) %>'><i class="bi bi-eye"></i></button>
                       <% if (hasPermission('unit.update')) { %>
                         <a href="/organize/unit/<%= unit.id %>/edit" class="btn btn-sm btn-outline-secondary" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
                       <% } %>
@@ -66,7 +100,7 @@
               <% }); %>
             <% } else { %>
               <tr><td colspan="<%= COLUMNS.length + 2 %>">
-                <%- include('../../partials/ui/empty_state', { icon: 'bi-diagram-3', message: 'No units found', filtered: !!search, clearUrl: '/organize/unit',
+                <%- include('../../partials/ui/empty_state', { icon: 'bi-diagram-3', message: 'No units found', filtered: !!search || activeFilterCount > 0, clearUrl: '/organize/unit',
                       actionUrl: hasPermission('unit.create') ? '/organize/unit/add' : null, actionLabel: 'Add Unit' }) %>
               </td></tr>
             <% } %>
@@ -78,3 +112,50 @@
     </div>
   </div>
 </div>
+
+<%- include('../../partials/ui/detail_modal', { id: 'unitDetailModal' }) %>
+
+<script>
+  function showUnitDetail(button) {
+    const u = DV.record(button);
+    if (!u) return;
+    const count = (n) => DV.text(String(n || 0));
+    let body = DV.section('Overview', DV.rows(
+      DV.field('Code', u.code ? '<span class="font-monospace">' + DV.esc(u.code) + '</span>' : ''),
+      DV.field('Parent unit', DV.text(u.parent_path)),
+      DV.field('Sub-units', '<span id="unitChildren" class="text-secondary small">' + DV.esc(t('Loading...')) + '</span>'),
+      DV.multiline(u.description) ? DV.field('Description', DV.multiline(u.description)) : '',
+      DV.field('Systems', count(u.systems_count)),
+      DV.field('Privileged Accounts', count(u.priv_users_count)),
+      DV.field('Firewall Rules', count(u.rulefirewall_count))
+    ));
+    body += DV.section('Members', '<div id="unitMembers" class="text-secondary small detail-pad">' + DV.esc(t('Loading...')) + '</div>',
+      ' <span class="badge tag ms-1">' + (u.contacts_count || 0) + '</span>');
+    body += DV.meta(u);
+    DV.open('unitDetailModal', { title: u.name, subtitle: u.code ? '<span class="font-monospace">' + DV.esc(u.code) + '</span>' : '', body });
+    DV.load('/organize/api/unit/' + encodeURIComponent(u.id) + '/members', document.getElementById('unitMembers'), (data) => {
+      const children = (data && data.children) || [];
+      const el = document.getElementById('unitChildren');
+      if (el) {
+        el.classList.remove('text-secondary', 'small');
+        el.innerHTML = children.length
+          ? '<div class="chip-list">' + children.map((c) => '<a href="/organize/unit?search=' + encodeURIComponent(c.name) + '" class="badge tag text-decoration-none">' + DV.esc(c.name) + (c.children_count ? ' (' + c.children_count + ')' : '') + '</a>').join('') + '</div>'
+          : DV.EMPTY;
+      }
+      return renderUnitMembers(data);
+    });
+  }
+
+  // Every contact of the unit: name, email, phone, position
+  function renderUnitMembers(data) {
+    const members = (data && data.members) || [];
+    if (!members.length) return '<span class="text-secondary">' + DV.esc(t('No members')) + '</span>';
+    return '<div class="table-responsive"><table class="table table-sm align-middle detail-table mb-0"><thead><tr>' +
+      ['Name', 'Email', 'Phone', 'Position'].map((h) => '<th>' + DV.esc(t(h)) + '</th>').join('') + '</tr></thead><tbody>' +
+      members.map((m) => '<tr><td><a href="/organize/contact?search=' + encodeURIComponent(m.email || m.name) + '" target="_blank" rel="noopener noreferrer">' + DV.esc(m.name) + '</a></td>' +
+        '<td>' + (m.email ? '<a href="mailto:' + DV.esc(m.email) + '">' + DV.esc(m.email) + '</a>' : DV.EMPTY) + '</td>' +
+        '<td class="text-nowrap">' + (DV.text(m.phone) || DV.EMPTY) + '</td>' +
+        '<td>' + (DV.text(m.position_label) || DV.EMPTY) + '</td></tr>').join('') +
+      '</tbody></table></div>';
+  }
+</script>

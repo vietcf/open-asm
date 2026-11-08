@@ -5,9 +5,10 @@ import Unit from '../organize/unit.model.js';
 import Contact from '../organize/contact.model.js';
 import System from '../system/system.model.js';
 import Server from '../server/server.model.js';
-import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
+import { ValidationError, NotFoundError, ConflictError, ForbiddenError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
 import { toNullableString, loadOptions, resolveRelations, saveRelations } from '../../shared/service.js';
+import { managedSystemIds } from './priv-scope.js';
 
 const RELATIONS = {
   contacts: { label: 'contact', exists: (id) => Contact.exists(id), save: (id, ids, c) => PrivUser.setContacts(id, ids, c) },
@@ -38,10 +39,19 @@ export async function listAccounts(filter) {
   return { items, totalCount };
 }
 
-export async function getAccount(id) {
-  const account = await PrivUser.findById(id);
+// scope (priv-scope.js): an account it does not see is "not found"
+export async function getAccount(id, scope = null) {
+  const account = await PrivUser.findById(id, scope);
   if (!account) throw new NotFoundError('Privileged account not found');
   return account;
+}
+
+// Changing an account: every one of its systems (current and new) must be managed by the scope
+async function assertManaged(scope, systemIds, current = null) {
+  if (!scope) return;
+  if (current && !current.can_edit) throw new ForbiddenError('This account also belongs to systems outside your units; you cannot change it');
+  const managed = new Set(await managedSystemIds(scope));
+  if (systemIds.some((id) => !managed.has(Number(id)))) throw new ForbiddenError('You can only use systems managed by your units');
 }
 
 // ===== Commands =====
@@ -85,14 +95,15 @@ async function normalize(input, id = null) {
   if (!role_id) throw new ValidationError('Role is required');
   const role = await PrivRole.findById(role_id);
   if (!role) throw new ValidationError('Invalid role');
-  if (!relations.systems.includes(role.system_id)) throw new ValidationError('The role must belong to one of the selected systems');
+  if (!role.all_systems && !relations.systems.includes(role.system_id)) throw new ValidationError('The role must belong to one of the selected systems');
 
   const data = { username, description: toNullableString(input.description), organize_id, role_id, account_type, manage_type, app_url, updated_by: input.updated_by };
   return { data, relations };
 }
 
-export async function createAccount(input, client) {
+export async function createAccount(input, client, scope = null) {
   const { data, relations } = await normalize(input);
+  await assertManaged(scope, relations.systems);
   const id = await withTransaction(client, async (c) => {
     const account = await PrivUser.create(data, c);
     await saveRelations(account.id, relations, RELATIONS, c);
@@ -102,9 +113,10 @@ export async function createAccount(input, client) {
 }
 
 // Full update (the form always sends every field)
-export async function updateAccount(id, input, client) {
-  if (!(await PrivUser.findById(id))) throw new NotFoundError('Privileged account not found');
+export async function updateAccount(id, input, client, scope = null) {
+  const current = await getAccount(id, scope);
   const { data, relations } = await normalize(input, id);
+  await assertManaged(scope, relations.systems, current);
   await withTransaction(client, async (c) => {
     await PrivUser.update(id, data, c);
     await saveRelations(id, relations, RELATIONS, c);
@@ -112,8 +124,9 @@ export async function updateAccount(id, input, client) {
   return PrivUser.findById(id);
 }
 
-export async function deleteAccount(id) {
-  if (!(await PrivUser.findById(id))) throw new NotFoundError('Privileged account not found');
+export async function deleteAccount(id, scope = null) {
+  const current = await getAccount(id, scope);
+  await assertManaged(scope, [], current);
   await PrivUser.remove(id);
 }
 

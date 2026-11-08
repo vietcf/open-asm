@@ -22,6 +22,11 @@ export default {
     get: systemService.getSystem,
     create: systemService.createSystem,
     update: systemService.updateSystem,
-    remove: systemService.deleteSystem,
+  }),
+
+  // ?delete_components=true also deletes the system's components
+  remove: apiHandler(async (req, res) => {
+    await systemService.deleteSystem(req.params.id, { deleteComponents: String(req.query.delete_components) === 'true' });
+    res.status(204).end();
   }),
 };

@@ -5,7 +5,7 @@ import Service from './service.model.js';
 import Agent from './agent.model.js';
 import services from './service.service.js';
 import agents from './agent.service.js';
-import requirePermission from '../../middlewares/requirePermission.middleware.js';
+import requirePermission, { canPick } from '../../middlewares/requirePermission.middleware.js';
 import excelUpload from '../../middlewares/excelUpload.middleware.js';
 import { catalogPages, mountCatalogPages } from '../../shared/catalogWeb.js';
 
@@ -48,10 +48,10 @@ mountCatalogPages(router, '/service', servicePages, 'service', can);
 mountCatalogPages(router, '/agent', agentPages, 'agent', can);
 
 // Select2 lookups, open to any signed-in user
-router.get('/api/server', servers.lookup);
-router.get('/api/service', servicePages.lookup);
-router.get('/api/service/ids', servicePages.lookupByIds);
-router.get('/api/agent', agentPages.lookup);
-router.get('/api/agent/ids', agentPages.lookupByIds);
+router.get('/api/server', canPick('server.read'), servers.lookup);
+router.get('/api/service', canPick('service.read'), servicePages.lookup);
+router.get('/api/service/ids', canPick('service.read'), servicePages.lookupByIds);
+router.get('/api/agent', canPick('agent.read'), agentPages.lookup);
+router.get('/api/agent/ids', canPick('agent.read'), agentPages.lookupByIds);
 
 export default router;

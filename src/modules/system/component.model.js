@@ -97,6 +97,11 @@ class SystemComponent {
     return result.rowCount > 0;
   }
 
+  static async findBySystemId(systemId, client) {
+    const result = await db(client).query('SELECT * FROM system_components WHERE system_id = $1 ORDER BY id', [systemId]);
+    return result.rows;
+  }
+
   static async countBySystemId(systemId, client) {
     const result = await db(client).query('SELECT COUNT(*) FROM system_components WHERE system_id = $1', [systemId]);
     return parseInt(result.rows[0].count, 10);
@@ -106,6 +111,11 @@ class SystemComponent {
   static setContacts(id, ids, client) { return replaceLinks(client, 'system_component_contact', 'component_id', id, 'contact_id', ids); }
   static setIPs(id, ids, client) { return replaceLinks(client, 'system_component_ip', 'component_id', id, 'ip_id', ids); }
   static setTags(id, ids, client) { return replaceTags(client, 'component', id, ids); }
+
+  static async getContactIds(id, client) {
+    const result = await db(client).query('SELECT contact_id FROM system_component_contact WHERE component_id = $1', [id]);
+    return result.rows.map((row) => row.contact_id);
+  }
 
   static async getIpIds(id) {
     const result = await pool.query('SELECT ip_id FROM system_component_ip WHERE component_id = $1', [id]);

@@ -270,6 +270,10 @@ router.get('/servers/config', authorizePermissionJWT('server.read'), serverApi.g
  *               os:
  *                 type: integer
  *                 description: Platform (OS) ID
+ *               os_version:
+ *                 type: string
+ *                 maxLength: 100
+ *                 description: OS version, free text (e.g. "22.04 LTS")
  *               status:
  *                 type: string
  *                 description: |
@@ -401,6 +405,10 @@ router.get('/servers/:id', authorizePermissionJWT('server.read'), serverApi.getS
  *               os:
  *                 type: integer
  *                 description: Platform (OS) ID
+ *               os_version:
+ *                 type: string
+ *                 maxLength: 100
+ *                 description: OS version, free text (e.g. "22.04 LTS")
  *               status:
  *                 type: string
  *                 description: |
@@ -460,6 +468,7 @@ router.get('/servers/:id', authorizePermissionJWT('server.read'), serverApi.getS
  *           example:
  *             name: "Example Server"
  *             os: 1
+ *             os_version: "22.04 LTS"
  *             status: "ONLINE"
  *             location: "DC"
  *             type: "PHYSICAL"
@@ -529,6 +538,9 @@ router.delete('/servers/:id', authorizePermissionJWT('server.delete'), serverApi
  *           type: string
  *         os:
  *           type: integer
+ *         os_version:
+ *           type: string
+ *           nullable: true
  *         status:
  *           type: string
  *           description: |
@@ -608,6 +620,10 @@ router.delete('/servers/:id', authorizePermissionJWT('server.delete'), serverApi
  *           format: date-time
  *         updated_by:
  *           type: string
+ *         os_version:
+ *           type: string
+ *           nullable: true
+ *           description: OS version (free text)
  *         os:
  *           type: object
  *           properties:

@@ -92,3 +92,6 @@ trash/data/
 # Image archives of scripts/docker-export.sh
 openasm_*.tar.gz
 openasm_*.tar.gz.sha256
+
+# Generated secrets and the initial admin password (docker/entrypoint.sh)
+data/

@@ -78,7 +78,7 @@ export default {
     const filter = listFilter(req.query);
     const [{ items, totalCount }, units, positionOptions] = await Promise.all([
       contactService.listContacts({ search, page: pageNo, pageSize, ...filter }),
-      Unit.findAll(),
+      Unit.pathOptions(), // every unit; a parent also lists its sub-units' contacts
       contactService.getPositionOptions(),
     ]);
     res.render('pages/organize/contact_list', {
