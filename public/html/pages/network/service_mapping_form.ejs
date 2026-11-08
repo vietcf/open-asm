@@ -59,17 +59,21 @@
             </div>
             <div class="col-12">
               <label class="form-label"><%= t('Flow') %> <span class="text-danger">*</span></label>
-              <div class="row g-2 sm-flow-pick">
-                <% flows.forEach(function (f) { %>
-                  <div class="col-md-6 col-xl">
-                    <input type="radio" class="btn-check" name="flow" id="flow-<%= f.id %>" value="<%= f.id %>" <%= flow === f.id ? 'checked' : '' %> autocomplete="off">
-                    <label class="btn btn-outline-primary w-100" for="flow-<%= f.id %>">
-                      <div class="fw-medium"><i class="bi <%= f.icon %> me-1"></i><%= t(f.id.startsWith('inbound') ? 'Inbound' : 'Outbound') %> · <%= t(f.label) %></div>
-                      <div class="sm-flow-path"><%= t(f.path) %></div>
-                    </label>
-                  </div>
-                <% }) %>
-              </div>
+              <%# one row per direction %>
+              <% [['inbound', 'Inbound', 'bi-box-arrow-in-down-right'], ['outbound', 'Outbound', 'bi-box-arrow-up-right']].forEach(function (dir) { %>
+                <div class="small text-secondary fw-medium mt-2 mb-1"><i class="bi <%= dir[2] %> me-1"></i><%= t(dir[1]) %></div>
+                <div class="row g-2 sm-flow-pick">
+                  <% flows.filter(function (f) { return f.id.startsWith(dir[0] + '-'); }).forEach(function (f) { %>
+                    <div class="col-md-4">
+                      <input type="radio" class="btn-check" name="flow" id="flow-<%= f.id %>" value="<%= f.id %>" <%= flow === f.id ? 'checked' : '' %> autocomplete="off">
+                      <label class="btn btn-outline-primary w-100" for="flow-<%= f.id %>">
+                        <div class="fw-medium"><i class="bi <%= f.icon %> me-1"></i><%= t(f.label) %></div>
+                        <div class="sm-flow-path"><%= t(f.path) %></div>
+                      </label>
+                    </div>
+                  <% }) %>
+                </div>
+              <% }) %>
             </div>
           </div>
         </section>

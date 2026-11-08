@@ -1687,5 +1687,8 @@
   "Invalid flow: {direction} {scope}": "Luồng không hợp lệ: {direction} {scope}",
   "Internal": "Nội bộ",
   "Flow = Direction + Scope: inbound public (public exposure), inbound internal (internal exposure), inbound private (private connectivity), outbound private (partner connectivity), outbound public (internet connectivity)": "Luồng = Direction + Scope: inbound public (Public Exposure), inbound internal (Internal Exposure), inbound private (Private Connectivity), outbound private (Partner Connectivity), outbound public (Internet Connectivity)",
-  "Backends: ip:port/protocol (protocol optional), comma-separated; outbound sources: ip, comma-separated": "Backend: ip:port/protocol (protocol không bắt buộc), cách nhau dấu phẩy; nguồn outbound: ip, cách nhau dấu phẩy"
+  "Backends: ip:port/protocol (protocol optional), comma-separated; outbound sources: ip, comma-separated": "Backend: ip:port/protocol (protocol không bắt buộc), cách nhau dấu phẩy; nguồn outbound: ip, cách nhau dấu phẩy",
+  "All inbound": "Tất cả inbound",
+  "All outbound": "Tất cả outbound",
+  "Search by name, description, domain, IP, partner, system, device, server...": "Tìm theo tên, mô tả, domain, IP, đối tác, hệ thống, thiết bị, máy chủ..."
 }
