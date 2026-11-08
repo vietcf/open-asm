@@ -6,7 +6,6 @@ import { IPV4_REGEX } from './ip-address.service.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
 import { hasKey, loadOptions } from '../../shared/service.js';
-import Configuration from '../administrator/configuration.model.js';
 
 const PROTOCOL_OPTIONS = ['HTTP', 'HTTPS', 'TCP', 'UDP'];
 const DIRECTION_OPTIONS = ['inbound', 'outbound'];
@@ -19,9 +18,9 @@ async function assertNameAvailable(name, excludeId = null) {
   if (existing.some((v) => String(v.id) !== String(excludeId))) throw new ConflictError('Service Mapping name already exists: {name}').withParams({ name });
 }
 
-// IPs and domains come from the inventories. Form selects send an existing record's id
-// or a newly typed value; Excel import and API callers send addresses / names. Values
-// not in the inventory yet are created in the caller's transaction (c).
+// IPs and domains come from the inventories: form selects send an existing record's
+// id, Excel import and API callers send addresses / names. A value not in its
+// inventory is refused (it is never created from a service mapping).
 function inventoryResolver(c, updatedBy) {
   const ips = new Map();
   const domains = new Map();
@@ -37,8 +36,9 @@ function inventoryResolver(c, updatedBy) {
           if (!ip) throw new NotFoundError('IP address not found');
         } else {
           if (!IPV4_REGEX.test(v)) throw new ValidationError('Invalid IPv4 address: {list}').withParams({ list: v });
-          ip = await IpAddress.findByAddress(v, c)
-            || await IpAddress.create({ address: v, description: 'Created from service mapping', updated_by: updatedBy }, c);
+          // never created from here: the IP must already be in the IP inventory
+          ip = await IpAddress.findByAddress(v, c);
+          if (!ip) throw new ValidationError('IP address {ip} is not in the IP inventory: add it there first').withParams({ ip: v });
         }
         ips.set(v, { id: ip.id, address: ip.ip_address });
       }
@@ -54,8 +54,9 @@ function inventoryResolver(c, updatedBy) {
           d = await Domain.findById(Number(v), c);
           if (!d) throw new NotFoundError('Domain not found');
         } else {
-          d = await Domain.findByDomain(v, c)
-            || await Domain.create({ domain: v, description: 'Created from service mapping', record_type: 'A' }, c);
+          // never created from here: the domain must already be in the domain inventory
+          d = await Domain.findByDomain(v, c);
+          if (!d) throw new ValidationError('Domain {domain} is not in the domain inventory: add it there first').withParams({ domain: v });
         }
         domains.set(v, { id: d.id, name: d.domain });
       }
@@ -209,9 +210,10 @@ async function configuredOption(key, value, label, current = null) {
 }
 const configuredProvider = (value, current = null) => configuredOption('service_mapping_provider', value, 'provider', current);
 
-// Partner name: picked from the System Configuration list service_mapping_partner
-// (its spelling, case-insensitive; a retired one is refused) or typed as a new
-// partner, which rememberPartners() adds to the list.
+// Partner name: one of the System Configuration list service_mapping_partner (its
+// spelling, case-insensitive; a retired one is refused) or a typed name, kept on
+// the partner IP row only. Service mappings are an extension: they never create
+// objects (IPs, domains, configuration values...) in the rest of the system.
 async function partnerName(value) {
   if (!value) return null;
   if (value.length > 100) throw new ValidationError('Partner name is too long (max 100 characters): {value}').withParams({ value });
@@ -220,20 +222,6 @@ async function partnerName(value) {
   return found ? found.id : value;
 }
 
-// New partner names of the saved rows join the list, so they can be picked next time
-async function rememberPartners(partners, client, updatedBy) {
-  const row = await Configuration.findByKey('service_mapping_partner');
-  let list;
-  try { list = row?.value ? JSON.parse(row.value) : []; } catch { list = []; }
-  if (!Array.isArray(list)) list = [];
-  const known = new Set(list.map((o) => String(o && typeof o === 'object' ? o.value : o).toLowerCase()));
-  const added = [];
-  for (const p of partners) {
-    if (p.partner && !known.has(p.partner.toLowerCase())) { known.add(p.partner.toLowerCase()); added.push({ value: p.partner, label: p.partner }); }
-  }
-  if (!added.length) return;
-  await Configuration.upsert('service_mapping_partner', { value: JSON.stringify([...list, ...added]), description: 'Service mapping partners', updatedBy: updatedBy || null }, client);
-}
 
 // The four flows (direction-scope) and what each one keeps
 const FLOWS = {
@@ -319,7 +307,6 @@ export async function createServiceMapping(input, client) {
       updated_by: input.updated_by || 'admin',
     }, c);
     await ServiceMapping.setPartnerIps(created.id, partners, c);
-    await rememberPartners(partners, c, input.updated_by);
     await ServiceMapping.setMembers(created.id, sourcesWithoutPort(data.direction, await resolveMembers(input, resolve)), c);
     return created.id;
   });
@@ -350,7 +337,6 @@ export async function updateServiceMapping(id, input, client) {
       updated_by: input.updated_by || 'admin',
     }, c);
     await ServiceMapping.setPartnerIps(id, partners, c);
-    await rememberPartners(partners, c, input.updated_by);
     if (hasKey(input, 'member_ip')) await ServiceMapping.setMembers(id, sourcesWithoutPort(data.direction, await resolveMembers(input, resolve)), c);
     else if (data.direction === 'outbound' && current.direction !== 'outbound') {
       await ServiceMapping.setMembers(id, sourcesWithoutPort('outbound', (current.members || []).map((m) => ({ ip_address_id: m.ip_address_id, port: m.port, protocol: m.protocol, status: m.status }))), c);

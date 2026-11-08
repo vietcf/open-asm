@@ -3,8 +3,8 @@
   providerOptions, partnerOptions, protocolOptions, accessOptions, statusOptions,
   selected: { ip, domain, system [{id, text}], partners [{address, partner, port, protocol, domain}], members [{id (ip_address_id), text, port, status}] }
   The flow (direction-scope) comes right after name and system; it decides which parts show, their order (the traffic's)
-  and their labels. Outbound flows: sources without port, one NAT / egress IP, each partner IP with its own port / protocol
-  (and domain for internet connectivity). IPs and the domain accept new values (typed): they are created in their inventories.
+  and their labels; IPs and the domain are picked from their inventories (never created here). Outbound flows: sources without port, one NAT / egress IP, each partner IP with its own port / protocol
+  (and a free-text domain for internet connectivity).
 %>
 <% const isEdit = mode === 'edit'; const v = vs || {}; const sel = selected || {};
    const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -18,7 +18,7 @@
        '<div class="col-md-2 col-6" data-flows="outbound-private outbound-public"><select name="partner_protocol" class="form-select" aria-label="' + ui.esc(t('Protocol')) + '"><option value="">' + ui.esc(t('Protocol')) + '</option>' +
          (protocolOptions || []).map(function (pr) { return '<option value="' + ui.esc(pr) + '"' + (r.protocol === pr ? ' selected' : '') + '>' + ui.esc(pr) + '</option>'; }).join('') + '</select></div>' +
        '<div class="col-md-2" data-flows="outbound-public"><input type="text" name="partner_domain" class="form-control font-monospace" value="' + ui.esc(r.domain) + '" maxlength="253" placeholder="' + ui.esc(t('Domain (optional)')) + '"></div>' +
-       // pick a partner, or type a new one (added to the partner list on save)
+       // pick a partner, or type a name (kept on this row only)
        '<div class="col-md"><select name="partner_name" class="form-select js-select" data-tags="true" data-placeholder="' + ui.esc(t('Pick or type a partner')) + '"><option value=""></option>' +
          ui.options(partnerOptions, r.partner ? [r.partner] : []) + '</select></div>' +
        '<div class="col-md-auto"><button type="button" class="btn btn-outline-secondary w-100" data-repeater-remove title="' + ui.esc(t('Remove')) + '"><i class="bi bi-x-lg"></i></button></div>';
@@ -105,7 +105,7 @@
                 <div class="row g-2 align-items-start"><%- partnerCells(partnerRow({})) %></div>
               </template>
               <div class="mt-2"><button type="button" class="btn btn-outline-primary btn-sm" data-repeater-add><i class="bi bi-plus-lg"></i> <%= t('Add partner IP') %></button></div>
-              <div class="form-text"><%= t('Pick a partner or type a new one: it is added to the partner list (System Configuration > Network).') %></div>
+              <div class="form-text"><%= t('Pick a partner or type its name (configured partners are in System Configuration > Network).') %></div>
             </div>
           </section>
 
@@ -114,8 +114,8 @@
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label" for="f-domain"><%= t('Domain (optional)') %></label>
-                <select id="f-domain" name="domain" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/domain"
-                        data-placeholder="<%= t('Select or type a domain, e.g. app.example.com') %>" data-selected="<%= JSON.stringify(sel.domain || []) %>"></select>
+                <select id="f-domain" name="domain" class="form-select js-select" data-ajax-url="/network/api/domain"
+                        data-placeholder="<%= t('Select a domain from the domain inventory') %>" data-selected="<%= JSON.stringify(sel.domain || []) %>"></select>
               </div>
             </div>
           </section>
@@ -151,8 +151,8 @@
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label" for="f-ip"><span data-label='{"inbound-public":"<%= t('Public IP (on the FW / LB)') %>","inbound-internal":"<%= t('IP') %>","inbound-private":"<%= t('NAT service IP') %>","outbound-private":"<%= t('NAT IP') %>","outbound-public":"<%= t('Egress public IP') %>"}'></span> <span class="text-danger">*</span></label>
-                <select id="f-ip" name="ip_address" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/ip-addresses/search-all"
-                        data-placeholder="<%= t('Select or type an IP') %>" data-selected="<%= JSON.stringify(sel.ip || []) %>"></select>
+                <select id="f-ip" name="ip_address" class="form-select js-select" data-ajax-url="/network/api/ip-addresses/search-all"
+                        data-placeholder="<%= t('Select an IP from the IP inventory') %>" data-selected="<%= JSON.stringify(sel.ip || []) %>"></select>
               </div>
               <div class="w-100 mt-0" aria-hidden="true"></div>
               <div class="col-md-3 col-6" data-flows="inbound-public inbound-internal inbound-private">
@@ -176,7 +176,7 @@
               <% (sel.members || []).forEach(function (m) { %>
                 <div class="row g-2 align-items-start">
                   <div class="col-md-5">
-                    <select name="member_ip" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/ip-addresses/search-all" data-placeholder="<%= t('Select IP') %>"
+                    <select name="member_ip" class="form-select js-select" data-ajax-url="/network/api/ip-addresses/search-all" data-placeholder="<%= t('Select IP') %>"
                             data-selected="<%= JSON.stringify([{ id: m.id, text: m.text }]) %>"></select>
                   </div>
                   <div class="col-md-2 col-4" data-flows="inbound-public inbound-internal inbound-private"><input type="number" name="member_port" class="form-control" value="<%= m.port || '' %>" min="1" max="65535" placeholder="<%= t('Port') %>"></div>
@@ -194,7 +194,7 @@
             </div>
             <template data-repeater-template>
               <div class="row g-2 align-items-start">
-                <div class="col-md-5"><select name="member_ip" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/ip-addresses/search-all" data-placeholder="<%= t('Select IP') %>"></select></div>
+                <div class="col-md-5"><select name="member_ip" class="form-select js-select" data-ajax-url="/network/api/ip-addresses/search-all" data-placeholder="<%= t('Select IP') %>"></select></div>
                 <div class="col-md-2 col-4" data-flows="inbound-public inbound-internal inbound-private"><input type="number" name="member_port" class="form-control" min="1" max="65535" placeholder="<%= t('Port') %>"></div>
                 <div class="col-md-2 col-4" data-flows="inbound-public inbound-internal inbound-private">
                   <select name="member_protocol" class="form-select" aria-label="<%= t('Protocol') %>"><option value=""><%= t('Protocol') %></option><% (protocolOptions || []).forEach(function (p) { %><option value="<%= p %>"><%= p %></option><% }) %></select>

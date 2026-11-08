@@ -657,7 +657,24 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.7.4 (Latest)
+### Version 1.7.5 (Latest)
+- No database migration: upgrading from 1.7.4 only needs the new image. The
+  service mapping import template headers changed (IPs / domain "must
+  exist"): download the new one.
+- ✏️ Service mappings **never create IP addresses or domains** any more
+  (they used to, described "Created from service mapping"): the form only
+  picks existing IPs (our IP, backends / sources) and domains, and the import
+  and API refuse an IP or a domain that is not in its inventory ("add it
+  there first"). The partner IPs and the internet destination domains stay
+  free text (external, not part of the inventories). IPs / domains created
+  that way before are kept.
+- ✏️ Service mappings are an **extension** that describes the service flows:
+  they never insert anything in the rest of the system. A typed partner name
+  stays on its partner IP row and is **no longer added** to the System
+  Configuration list `service_mapping_partner` (1.7.3 did); the dropdown still
+  offers the configured partners and the names already used.
+
+### Version 1.7.4
 - No database migration: upgrading from 1.7.3 only needs the new image.
 - ✏️ Public Exposure limited to partner IPs: the limit is on the CDN, or on
   the FW when there is no CDN. The form title follows the CDN / WAF field
