@@ -92,10 +92,24 @@ class Subnet {
     return result.rowCount > 0;
   }
 
+  // Whether an address (text) lies inside a subnet (CIDR text)
+  static async containsAddress(subnetAddress, address) {
+    const result = await pool.query('SELECT $1::inet >>= $2::inet AS contains', [subnetAddress, address]);
+    return result.rows[0]?.contains === true;
+  }
+
   // Whether an IP record lies inside the subnet (the gateway must)
   static async isIpInSubnet(subnetAddress, ipId) {
     const result = await pool.query('SELECT $1::inet >>= ip_address::inet AS contains FROM ip_addresses WHERE id = $2', [subnetAddress, ipId]);
     return result.rows[0]?.contains === true;
+  }
+
+  // Select2: subnets by address / description, [{id, text: "10.0.0.0/24 - description"}]
+  static async select2Search(search = '') {
+    const result = await pool.query(
+      `SELECT id, address::text || CASE WHEN COALESCE(description, '') <> '' THEN ' - ' || description ELSE '' END AS text
+         FROM subnets WHERE address::text ILIKE $1 OR description ILIKE $1 OR zone ILIKE $1 ORDER BY address LIMIT 30`, [`%${search}%`]);
+    return result.rows;
   }
 
   // Every subnet containing an IP, smallest (most specific) first

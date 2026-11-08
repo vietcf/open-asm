@@ -14,6 +14,14 @@ const DIRECTION_OPTIONS = ['inbound', 'outbound'];
 const SCOPE_OPTIONS = ['public', 'private'];
 const ACCESS_OPTIONS = ['full', 'limited'];
 const STATUS_OPTIONS = ['active', 'inactive'];
+// Flows = direction-scope (migration 0033)
+export const FLOWS = [
+  { id: 'inbound-public', label: 'Public Exposure', icon: 'bi-globe', path: 'User → Domain → CDN → Public IP:Port → NAT / Reverse proxy → Backend' },
+  { id: 'inbound-private', label: 'Private Connectivity', icon: 'bi-building-lock', path: 'Partner → VPN / Lease line → NAT service IP:Port → Backend' },
+  { id: 'outbound-private', label: 'Partner Connectivity', icon: 'bi-signpost-split', path: 'Internal IP → NAT IP → VPN / Lease line → Partner IP:Port' },
+  { id: 'outbound-public', label: 'Internet Connectivity', icon: 'bi-cloud-arrow-up', path: 'Internal IP → Firewall / Proxy → Egress public IP → Internet IP:Port' },
+];
+const partnerText = (p) => (p.partner ? `${p.address}[${p.partner}]` : p.address);
 
 function listFilter(query) {
   return {
@@ -24,15 +32,18 @@ function listFilter(query) {
     scope: queryValue(query, 'scope'),
     access_mode: queryValue(query, 'access_mode'),
     system_id: queryValue(query, 'system_id'),
+    partner: queryValue(query, 'partner'),
   };
 }
 
 async function formInput(req) {
   const b = req.body;
+  const [direction, scope] = String(b.flow || `${b.direction || ''}-${b.scope || ''}`).split('-');
   return {
     name: b.name, domain: b.domain, provider: b.provider, provider_port: b.provider_port, provider_protocol: b.provider_protocol,
-    ip_address: b.ip_address, port: b.port, protocol: b.protocol,
-    direction: b.direction, scope: b.scope, access_mode: b.access_mode, allowed_ips: b.allowed_ips,
+    ip_address: b.ip_address, port: b.port, protocol: b.protocol, gateway_ip: b.gateway_ip, nat_subnet: b.nat_subnet,
+    direction, scope, access_mode: b.access_mode,
+    partner_ip: b.partner_ip ?? [], partner_name: b.partner_name ?? [],
     system_id: b.system_id || null, description: b.description,
     member_ip: b.member_ip ?? [], member_port: b.member_port ?? [], member_status: b.member_status ?? [],
     updated_by: actorName(req),
@@ -42,15 +53,19 @@ async function formInput(req) {
 const options = (rows, text = (r) => r.name) => (rows || []).map((r) => ({ id: r.id, text: text(r) }));
 
 async function renderForm(res, mode, vs = {}, copiedFrom = null) {
-  const [providerOptions, protocolOptions] = await Promise.all([
+  const [providerOptions, protocolOptions, partnerOptions] = await Promise.all([
     loadOptions('service_mapping_provider'),
     smService.getProtocolOptions(),
+    loadOptions('service_mapping_partner'),
   ]);
   const allProtocols = [...new Set([...PROTOCOL_OPTIONS, ...protocolOptions])];
   res.render('pages/network/service_mapping_form', {
-    mode, vs, copiedFrom, providerOptions, protocolOptions: allProtocols, directionOptions: DIRECTION_OPTIONS, scopeOptions: SCOPE_OPTIONS, accessOptions: ACCESS_OPTIONS, statusOptions: STATUS_OPTIONS,
+    mode, vs, copiedFrom, providerOptions, partnerOptions, flows: FLOWS, protocolOptions: allProtocols, accessOptions: ACCESS_OPTIONS, statusOptions: STATUS_OPTIONS,
     selected: {
       ip: vs.ip_address_id ? [{ id: vs.ip_address_id, text: vs.ip_address }] : [],
+      gateway: vs.gateway_ip_address_id ? [{ id: vs.gateway_ip_address_id, text: vs.gateway_ip }] : [],
+      natSubnet: vs.nat_subnet_id ? [{ id: vs.nat_subnet_id, text: vs.nat_subnet }] : [],
+      partners: vs.partner_ips || [],
       domain: vs.domain_id ? [{ id: vs.domain_id, text: vs.domain }] : [],
       system: vs.system_id ? [{ id: vs.system_id, text: vs.system_name }] : [],
       members: (vs.members || []).map((m) => ({ id: m.ip_address_id, text: m.owner_name ? `${m.ip} (${m.owner_name})` : m.ip, port: m.port, status: m.status })),
@@ -67,16 +82,18 @@ export const serviceMappingImport = excelImport({
     { header: 'Provider (Optional, e.g. Akamai, Cloudflare)', key: 'provider' },
     { header: 'Provider Port (Optional)', key: 'provider_port' },
     { header: 'Provider Protocol (Optional, HTTP/HTTPS/TCP/UDP)', key: 'provider_protocol' },
-    { header: 'IP Address (Require, created if new)', key: 'ip_address' },
+    { header: 'IP Address (Public / NAT service / NAT / egress IP, created if new)', key: 'ip_address' },
     { header: 'Port (Require)', key: 'port' },
     { header: 'Protocol (Optional, default HTTPS)', key: 'protocol' },
     { header: 'Direction (Optional, inbound/outbound, default inbound)', key: 'direction' },
     { header: 'Scope (Optional, public/private, default public)', key: 'scope' },
     { header: 'Access (Optional, full/limited, default full)', key: 'access_mode' },
-    { header: 'Allowed IPs (Optional, only used when Access = limited, comma-separated IP/CIDR)', key: 'allowed_ips' },
+    { header: 'Partner IPs (Optional, IP/CIDR[Partner] comma-separated: allowed sources of inbound, destinations of outbound)', key: 'allowed_ips' },
     { header: 'System Name (Optional)', key: 'system' },
     { header: 'Backend IPs (Optional, ip:port comma-separated, created if new)', key: 'backends' },
     { header: 'Description (Optional)', key: 'description' },
+    { header: 'NAT Range (Optional, subnet CIDR, private flows)', key: 'nat_subnet' },
+    { header: 'Gateway / Proxy IP (Optional, NAT / reverse proxy or firewall / proxy)', key: 'gateway_ip' },
   ],
   sample: async () => [
     { name: 'Web Production', domain: 'app.example.com', provider: 'Akamai', ip_address: '203.0.113.10', port: 443,
@@ -84,16 +101,20 @@ export const serviceMappingImport = excelImport({
       backends: '10.10.20.10:8080,10.10.20.11:8080', description: 'Production web frontend' },
     { name: 'Partner API', domain: 'partner.example.com', provider: 'Akamai', ip_address: '203.0.113.11', port: 443,
       protocol: 'HTTPS', direction: 'inbound', scope: 'public', access_mode: 'limited', allowed_ips: '198.51.100.0/24,192.0.2.15', system: '',
-      backends: '10.10.20.20:8080', description: 'Partner API, Akamai allow-list only' },
+      backends: '10.10.20.20:8080', description: 'Partner API, Akamai allow-list only', allowed_ips: '198.51.100.0/24[Bank A],192.0.2.15[Bank B]' },
     { name: 'Partner over MPLS', domain: '', provider: 'MPLS', ip_address: '10.200.1.10', port: 8443,
-      protocol: 'TCP', direction: 'inbound', scope: 'private', access_mode: 'full', allowed_ips: '', system: '',
-      backends: '10.10.20.20:8443', description: 'Partner over MPLS, NAT private IP' },
+      protocol: 'TCP', direction: 'inbound', scope: 'private', access_mode: 'limited', allowed_ips: '172.30.5.0/24[Bank A]', system: '',
+      backends: '10.10.20.20:8443', description: 'Partner over MPLS, NAT service IP', nat_subnet: '10.200.1.0/24' },
+    { name: 'Bank A settlement', domain: '', provider: 'MPLS', ip_address: '10.200.2.5', port: 443,
+      protocol: 'HTTPS', direction: 'outbound', scope: 'private', access_mode: 'full', allowed_ips: '172.30.9.10[Bank A]', system: '',
+      backends: '10.10.30.15', description: 'Outbound to the partner over MPLS through the NAT range', nat_subnet: '10.200.2.0/24' },
   ],
   prepare: async (req) => ({ username: actorName(req) || 'admin' }),
   async check(row) {
     const errors = [];
-    if (!row.ip_address) errors.push('IP Address is required');
-    else if (!IPV4_REGEX.test(row.ip_address)) errors.push(`Invalid IP format: ${row.ip_address}`);
+    // which IPs a flow requires is checked on save (service)
+    if (row.ip_address && !IPV4_REGEX.test(row.ip_address)) errors.push(`Invalid IP format: ${row.ip_address}`);
+    if (row.gateway_ip && !IPV4_REGEX.test(row.gateway_ip)) errors.push(`Invalid gateway IP: ${row.gateway_ip}`);
     if (!row.port) errors.push('Port is required');
     else if (isNaN(Number(row.port)) || Number(row.port) < 1 || Number(row.port) > 65535) errors.push(`Invalid port: ${row.port}`);
     const protocol = (row.protocol || 'HTTPS').toUpperCase();
@@ -122,7 +143,7 @@ export const serviceMappingImport = excelImport({
     }
     if (missing.length) errors.push(`Not found: ${missing.join(', ')}`);
 
-    row._name = row.name || (row.domain ? `${row.domain}:${row.port}` : `${row.ip_address}:${row.port}`);
+    row._name = row.name || `${row.domain || row.ip_address || splitList(row.allowed_ips)[0]?.replace(/\[.*$/, '') || 'mapping'}:${row.port}`;
     let skip;
     if ((await ServiceMapping.findByNameExact(row._name)).length) skip = 'Service Mapping name already exists';
     return { errors, skip };
@@ -132,8 +153,9 @@ export const serviceMappingImport = excelImport({
     await smService.createServiceMapping({
       name: row._name, domain: row.domain || null, provider: row.provider || null,
       provider_port: row.provider_port || null, provider_protocol: row.provider_protocol || null,
-      ip_address: row.ip_address, port: Number(row.port), protocol: row._protocol,
-      direction: row._direction, scope: row._scope, access_mode: row._access_mode, allowed_ips: row.allowed_ips || null,
+      ip_address: row.ip_address || null, port: Number(row.port), protocol: row._protocol,
+      gateway_ip: row.gateway_ip || null, nat_subnet: row.nat_subnet || null,
+      direction: row._direction, scope: row._scope, access_mode: row._access_mode, allowed_ips: row.allowed_ips || '',
       system_id: row._systemId, description: row.description || null,
       member_ip: row._members.map((m) => m.ip),
       member_port: row._members.map((m) => m.port),
@@ -148,13 +170,14 @@ export default {
   list: page(async (req, res) => {
     const { page: pageNo, pageSize, search } = parseListQuery(req, res);
     const filter = listFilter(req.query);
-    const [{ items, totalCount }, providerOptions] = await Promise.all([
+    const [{ items, totalCount }, providerOptions, partnerOptions] = await Promise.all([
       smService.listServiceMappings({ search, page: pageNo, pageSize, ...filter }),
       smService.getProviderOptions(),
+      smService.getPartnerOptions(),
     ]);
     res.render('pages/network/service_mapping_list', {
       vsList: items, search, page: pageNo, pageSize, totalCount, totalPages: totalPagesOf(totalCount, pageSize),
-      filter, protocolOptions: PROTOCOL_OPTIONS, directionOptions: DIRECTION_OPTIONS, scopeOptions: SCOPE_OPTIONS, providerOptions,
+      filter, protocolOptions: PROTOCOL_OPTIONS, directionOptions: DIRECTION_OPTIONS, scopeOptions: SCOPE_OPTIONS, providerOptions, partnerOptions, flows: FLOWS,
       ...takeFlash(req), title: 'Service Mapping', activeMenu: 'service-mapping',
     });
   }),
@@ -174,10 +197,13 @@ export default {
         { header: req.t('IP Address'), value: (r) => r.vs.ip_address, width: 16 },
         { header: req.t('Port'), value: (r) => r.vs.port, width: 8 },
         { header: req.t('Protocol'), value: (r) => r.vs.protocol, width: 10 },
+        { header: req.t('Flow'), value: (r) => req.t(FLOWS.find((f) => f.id === `${r.vs.direction}-${r.vs.scope}`)?.label || ''), width: 22 },
         { header: req.t('Direction'), value: (r) => r.vs.direction, width: 10 },
         { header: req.t('Scope'), value: (r) => r.vs.scope, width: 10 },
         { header: req.t('Access'), value: (r) => r.vs.access_mode, width: 10 },
-        { header: req.t('Allowed IPs'), value: (r) => (r.vs.allowed_ips || []).join(', '), width: 30 },
+        { header: req.t('Partner IPs'), value: (r) => (r.vs.partner_ips || []).map(partnerText).join(', '), width: 36 },
+        { header: req.t('NAT range'), value: (r) => r.vs.nat_subnet, width: 18 },
+        { header: req.t('Gateway / Proxy IP'), value: (r) => r.vs.gateway_ip, width: 16 },
         { header: req.t('System'), value: (r) => r.vs.system_name, width: 20 },
         { header: req.t('IP owner'), value: (r) => r.vs.ip_owner_name, width: 20 },
         { header: req.t('Backend IP'), value: (r) => r.ip, width: 16 },

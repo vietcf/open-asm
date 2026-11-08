@@ -117,6 +117,11 @@ export async function seedConfiguration(db) {
       description: 'Firewall names'
     },
     {
+      key: 'service_mapping_partner',
+      value: [],
+      description: 'Service mapping partners'
+    },
+    {
       key: 'service_mapping_provider',
       value: [
         { value: 'Akamai', label: 'Akamai' },

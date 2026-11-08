@@ -2,6 +2,7 @@ import ServiceMapping from './service-mapping.model.js';
 import IpAddress from './ip-address.model.js';
 import Domain from './domain.model.js';
 import System from '../system/system.model.js';
+import Subnet from './subnet.model.js';
 import { IPV4_REGEX } from './ip-address.service.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
@@ -89,22 +90,56 @@ function pick(value, options, fallback, label) {
   return v;
 }
 
-// "1.2.3.4, 10.0.0.0/8 5.6.7.8" (comma / space / newline separated) or an array -> list of IPs / CIDRs
-function parseAllowedIps(raw) {
-  const list = [].concat(raw ?? []).flatMap((v) => String(v).split(/[\s,;]+/)).map((v) => v.trim()).filter(Boolean);
-  const invalid = list.filter((ip) => {
-    const [addr, mask] = ip.split('/');
-    return !IPV4_REGEX.test(addr) || (mask !== undefined && !(/^\d{1,2}$/.test(mask) && Number(mask) <= 32));
-  });
-  if (invalid.length) throw new ValidationError('Invalid allowed IP: {ips}').withParams({ ips: invalid.join(', ') });
-  return [...new Set(list)];
+const isIpOrCidr = (v) => {
+  const [addr, mask] = String(v).split('/');
+  return IPV4_REGEX.test(addr) && (mask === undefined || (/^\d{1,2}$/.test(mask) && Number(mask) <= 32));
+};
+
+// Partner IPs ([{address, partner}]: the allowed sources of flows 1 / 2, the
+// destinations of flows 3 / 4) from any input shape, or null when none is given:
+//   partner_ips  [{address, partner}] or ["ip[partner]"]   (API)
+//   partner_ip[] / partner_name[]                           (form rows)
+//   allowed_ips  "ip[partner], ip, ..." or an array         (import, older API clients)
+async function partnerRows(input) {
+  let rows;
+  if (hasKey(input, 'partner_ips')) {
+    rows = [].concat(input.partner_ips ?? []).map((r) => (r && typeof r === 'object' ? { address: r.address, partner: r.partner } : partnerCell(r)));
+  } else if (hasKey(input, 'partner_ip')) {
+    const names = [].concat(input.partner_name ?? []);
+    rows = [].concat(input.partner_ip ?? []).map((address, i) => ({ address, partner: names[i] }));
+  } else if (hasKey(input, 'allowed_ips')) {
+    rows = [].concat(input.allowed_ips ?? []).flatMap((v) => String(v).split(/[,;\n]+/)).map(partnerCell);
+  } else {
+    return null;
+  }
+  const seen = new Set();
+  const out = [];
+  for (const r of rows) {
+    const address = String(r.address ?? '').trim();
+    if (!address) continue;
+    if (!isIpOrCidr(address)) throw new ValidationError('Invalid partner IP: {ips}').withParams({ ips: address });
+    const partner = await configuredOption('service_mapping_partner', str(r.partner), 'partner');
+    const key = `${address}|${partner || ''}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ address, partner });
+  }
+  return out;
 }
 
-// Allowed IPs only make sense when access is limited; an empty list means "limited, sources not recorded"
-function accessFields(accessMode, allowedRaw) {
-  if (accessMode !== 'limited') return { access_mode: accessMode, allowed_ips: null };
-  const ips = parseAllowedIps(allowedRaw);
-  return { access_mode: accessMode, allowed_ips: ips.length ? ips : null };
+// "203.0.113.10[Bank A]" -> { address, partner }
+function partnerCell(value) {
+  const m = String(value ?? '').trim().match(/^(.+?)\s*\[(.*)\]$/);
+  return m ? { address: m[1].trim(), partner: m[2].trim() } : { address: String(value ?? '').trim(), partner: null };
+}
+
+// NAT range: a subnet id or its CIDR -> {id, address} or null
+async function resolveSubnet(value) {
+  const v = String(value ?? '').trim();
+  if (!v) return null;
+  const subnet = /^\d+$/.test(v) ? await Subnet.findById(Number(v)) : await Subnet.findByAddress(v);
+  if (!subnet) throw new ValidationError('NAT range not found in the subnet inventory: {value}').withParams({ value: v });
+  return { id: subnet.id, address: String(subnet.address) };
 }
 
 async function assertRefs(input) {
@@ -142,68 +177,100 @@ function providerFields(provider, rawPort, rawProtocol) {
   return { provider, provider_port: port, provider_protocol: protocol };
 }
 
-// Provider / channel: one of the System Configuration list service_mapping_provider
-// (matched case-insensitively, stored as configured); a retired value is refused
-// unless the record already has it. An empty list accepts any value.
-async function configuredProvider(value, current = null) {
+// Provider / channel (service_mapping_provider) and partner (service_mapping_partner):
+// a value of the System Configuration list (matched case-insensitively, stored as
+// configured); a retired value is refused unless the record already has it. An
+// empty list accepts any value.
+async function configuredOption(key, value, label, current = null) {
   if (!value) return null;
   if (current && value.toLowerCase() === current.toLowerCase()) return current;
-  const options = await loadOptions('service_mapping_provider');
+  const options = await loadOptions(key);
   if (!options.length) return value;
   const found = options.find((o) => o.id.toLowerCase() === value.toLowerCase());
-  if (!found) throw new ValidationError('Invalid provider: {value}. Configure it in System Configuration > Network').withParams({ value });
-  if (found.inactive) throw new ValidationError('{value} is no longer in use for {label}').withParams({ value: found.id, label: 'provider' });
+  if (!found) throw new ValidationError(`Invalid ${label}: {value}. Configure it in System Configuration > Network`).withParams({ value });
+  if (found.inactive) throw new ValidationError('{value} is no longer in use for {label}').withParams({ value: found.id, label });
   return found.id;
+}
+const configuredProvider = (value, current = null) => configuredOption('service_mapping_provider', value, 'provider', current);
+
+// The four flows (direction-scope) and what each one keeps
+const FLOWS = {
+  'inbound-public': { ipRequired: 'Public IP is required', gateway: true, accessChoice: true },
+  'inbound-private': { ipRequired: 'NAT service IP is required', natRange: true, access: 'limited' },
+  'outbound-private': { natRange: true, needsIpOrRange: true, partnersRequired: 'At least one partner IP is required', access: 'full' },
+  'outbound-public': { ipRequired: 'Egress public IP is required', gateway: true, partnersOrDomain: true, access: 'full' },
+};
+
+// Flow fields of a mapping: the input over the current values (update), checked
+// for its flow. -> { data (virtual_servers columns), partners ([{address, partner}]) }
+async function flowData(input, current, resolve, domain) {
+  const has = (k) => !current || hasKey(input, k);
+  const direction = has('direction') ? pick(input.direction, DIRECTION_OPTIONS, 'inbound', 'direction') : current.direction;
+  const scope = has('scope') ? pick(input.scope, SCOPE_OPTIONS, 'public', 'scope') : current.scope;
+  const flow = FLOWS[`${direction}-${scope}`];
+  const keep = (id, address) => (id ? { id, address } : null);
+  let ip = hasKey(input, 'ip_address') ? await resolve.ip(input.ip_address) : keep(current?.ip_address_id, current?.ip_address);
+  let gateway = hasKey(input, 'gateway_ip') ? await resolve.ip(input.gateway_ip) : keep(current?.gateway_ip_address_id, current?.gateway_ip);
+  let natRange = hasKey(input, 'nat_subnet') ? await resolveSubnet(input.nat_subnet) : keep(current?.nat_subnet_id, current?.nat_subnet);
+  let partners = await partnerRows(input);
+  if (partners === null) partners = (current?.partner_ips || []).map((p) => ({ address: p.address, partner: p.partner }));
+
+  const port = has('port') ? Number(input.port) : current.port;
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new ValidationError(input.port ? 'Invalid port: {port}' : 'Port is required').withParams({ port: input.port });
+  const protocol = has('protocol') ? String(input.protocol || 'HTTPS').toUpperCase() : current.protocol;
+  if (!PROTOCOL_OPTIONS.includes(protocol)) throw new ValidationError('Invalid protocol: {protocol}').withParams({ protocol });
+
+  const access_mode = flow.accessChoice ? (has('access_mode') ? pick(input.access_mode, ACCESS_OPTIONS, 'full', 'access mode') : current.access_mode) : flow.access;
+  if (flow.accessChoice && access_mode === 'full') partners = []; // open to everyone: no partner list
+  if (!flow.natRange) natRange = null;
+  if (!flow.gateway) gateway = null;
+
+  if (flow.ipRequired && !ip) throw new ValidationError(flow.ipRequired);
+  if (flow.needsIpOrRange && !ip && !natRange) throw new ValidationError('NAT IP or NAT range is required');
+  if (flow.partnersRequired && !partners.length) throw new ValidationError(flow.partnersRequired);
+  if (flow.partnersOrDomain && !partners.length && !domain) throw new ValidationError('A destination IP or domain is required');
+  if (ip && natRange && !(await Subnet.containsAddress(natRange.address, ip.address))) {
+    throw new ValidationError('The NAT IP {ip} is not in the NAT range {range}').withParams({ ip: ip.address, range: natRange.address });
+  }
+  return {
+    data: { direction, scope, access_mode, port, protocol, ip_address_id: ip?.id ?? null, gateway_ip_address_id: gateway?.id ?? null, nat_subnet_id: natRange?.id ?? null },
+    partners, firstAddress: ip?.address || partners[0]?.address || null,
+  };
 }
 
 // ===== Commands =====
-// ip_address / domain: id or address / name; members: member_ip[] / member_port[] / member_status[];
-// provider_port / provider_protocol: where the provider listens (optional)
+// ip_address / gateway_ip / domain: id or address / name (new ones are created in
+// the inventories); nat_subnet: subnet id or CIDR; partner IPs: see partnerRows;
+// members: member_ip[] / member_port[] / member_status[]; provider_port /
+// provider_protocol: where the provider listens (optional). The flow
+// (direction-scope) decides which of them are kept and required (FLOWS).
 export async function createServiceMapping(input, client) {
-  if (!String(input.ip_address ?? '').trim()) throw new ValidationError('IP Address is required');
-  if (!input.port) throw new ValidationError('Port is required');
-  const protocol = (input.protocol || 'HTTPS').toUpperCase();
-  if (!PROTOCOL_OPTIONS.includes(protocol)) throw new ValidationError('Invalid protocol: {protocol}').withParams({ protocol });
-  const direction = pick(input.direction, DIRECTION_OPTIONS, 'inbound', 'direction');
-  const scope = pick(input.scope, SCOPE_OPTIONS, 'public', 'scope');
-  const access = accessFields(pick(input.access_mode, ACCESS_OPTIONS, 'full', 'access mode'), input.allowed_ips);
   const providerData = providerFields(await configuredProvider(str(input.provider)), input.provider_port, input.provider_protocol);
   await assertRefs(input);
   const id = await withTransaction(client, async (c) => {
     const resolve = inventoryResolver(c, input.updated_by);
-    const ip = await resolve.ip(input.ip_address);
     const domain = await resolve.domain(input.domain);
-    const name = str(input.name) || `${domain ? domain.name : ip.address}:${input.port}`;
+    const { data, partners, firstAddress } = await flowData(input, null, resolve, domain);
+    const name = str(input.name) || `${domain ? domain.name : firstAddress}:${data.port}`;
     await assertNameAvailable(name);
     const created = await ServiceMapping.create({
-      name, domain_id: domain?.id ?? null, ...providerData,
-      ip_address_id: ip.id, port: Number(input.port), protocol,
-      direction, scope, ...access,
+      name, domain_id: domain?.id ?? null, ...providerData, ...data,
       system_id: input.system_id || null, description: str(input.description),
       updated_by: input.updated_by || 'admin',
     }, c);
+    await ServiceMapping.setPartnerIps(created.id, partners, c);
     await ServiceMapping.setMembers(created.id, await resolveMembers(input, resolve), c);
     return created.id;
   });
   return ServiceMapping.findByIdWithRelations(id, client);
 }
 
+// Partial update: the keys sent change; the flow is checked as a whole
 export async function updateServiceMapping(id, input, client) {
-  const current = await ServiceMapping.findById(id, client);
+  const current = await ServiceMapping.findByIdWithRelations(id, client);
   if (!current) throw new NotFoundError('Service Mapping not found');
   const name = hasKey(input, 'name') ? (str(input.name) || current.name) : current.name;
   if (name.toLowerCase() !== current.name.toLowerCase()) await assertNameAvailable(name, id);
-  if (hasKey(input, 'ip_address') && !String(input.ip_address ?? '').trim()) throw new ValidationError('IP Address is required');
-  if (hasKey(input, 'protocol')) {
-    const protocol = (input.protocol || '').toUpperCase();
-    if (!PROTOCOL_OPTIONS.includes(protocol)) throw new ValidationError('Invalid protocol: {protocol}').withParams({ protocol });
-  }
-  const direction = hasKey(input, 'direction') ? pick(input.direction, DIRECTION_OPTIONS, 'inbound', 'direction') : undefined;
-  const scope = hasKey(input, 'scope') ? pick(input.scope, SCOPE_OPTIONS, 'public', 'scope') : undefined;
-  const access = hasKey(input, 'access_mode') || hasKey(input, 'allowed_ips')
-    ? accessFields(pick(hasKey(input, 'access_mode') ? input.access_mode : current.access_mode, ACCESS_OPTIONS, 'full', 'access mode'),
-      hasKey(input, 'allowed_ips') ? input.allowed_ips : current.allowed_ips)
-    : {};
   const providerData = ['provider', 'provider_port', 'provider_protocol'].some((k) => hasKey(input, k))
     ? providerFields(hasKey(input, 'provider') ? await configuredProvider(str(input.provider), current.provider) : current.provider,
       hasKey(input, 'provider_port') ? input.provider_port : current.provider_port,
@@ -212,22 +279,21 @@ export async function updateServiceMapping(id, input, client) {
   await assertRefs(input);
   await withTransaction(client, async (c) => {
     const resolve = inventoryResolver(c, input.updated_by);
+    const domain = hasKey(input, 'domain') ? await resolve.domain(input.domain) : (current.domain_id ? { id: current.domain_id, name: current.domain } : null);
+    const { data, partners } = await flowData(input, current, resolve, domain);
     await ServiceMapping.update(id, {
-      name,
-      domain_id: hasKey(input, 'domain') ? ((await resolve.domain(input.domain))?.id ?? null) : undefined,
-      ...providerData,
-      ip_address_id: hasKey(input, 'ip_address') ? (await resolve.ip(input.ip_address)).id : undefined,
-      port: hasKey(input, 'port') ? Number(input.port) : undefined,
-      protocol: hasKey(input, 'protocol') ? (input.protocol || '').toUpperCase() : undefined,
-      direction, scope, ...access,
+      name, domain_id: domain?.id ?? null, ...providerData, ...data,
       system_id: hasKey(input, 'system_id') ? (input.system_id || null) : undefined,
       description: hasKey(input, 'description') ? str(input.description) : undefined,
       updated_by: input.updated_by || 'admin',
     }, c);
+    await ServiceMapping.setPartnerIps(id, partners, c);
     if (hasKey(input, 'member_ip')) await ServiceMapping.setMembers(id, await resolveMembers(input, resolve), c);
   });
   return ServiceMapping.findByIdWithRelations(id, client);
 }
+
+export const getPartnerOptions = () => ServiceMapping.getDistinctPartners();
 
 export async function deleteServiceMapping(id) {
   if (!(await ServiceMapping.exists(id))) throw new NotFoundError('Service Mapping not found');

@@ -657,7 +657,44 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.5.0 (Latest)
+### Version 1.6.0 (Latest)
+- ⬆️ Upgrading from 1.5.x: new image; migration `0033` runs (see below).
+  The service mapping import template changed (Partner IPs header, NAT
+  range and gateway columns): download the new one.
+- ✨ **Service mapping flows** (Service Exposure Model). The flow is chosen
+  right after Name and System; the form shows its parts in the order of the
+  traffic, with their own labels:
+  | Flow | Path |
+  |---|---|
+  | Inbound · **Public Exposure** | User / partners → Domain (opt.) → CDN (opt.) → **Public IP:Port** + protocol → NAT / reverse proxy IP (opt.) → Backends |
+  | Inbound · **Private Connectivity** | **Partner VPN IPs** → VPN / lease line → **NAT service IP:Port** (in a NAT range, opt.) → Backends |
+  | Outbound · **Partner Connectivity** | Internal IPs → **NAT IP** and / or **NAT range** → VPN / lease line → **Partner IPs:Port** |
+  | Outbound · **Internet Connectivity** | Internal IPs → firewall / NAT gateway / proxy (opt.) → **Egress public IP** → Internet IPs and / or domain **:Port** |
+  - **Partner IPs** (IP / CIDR + partner name, System Configuration list
+    `service_mapping_partner`, empty = any name) replace "Allowed IPs": the
+    allowed sources of Public Exposure (Access "Limited to partner IPs") and
+    Private Connectivity, the destinations of the outbound flows.
+  - The **NAT range** is a subnet of the inventory; a NAT IP must lie in it.
+  - **Asset mapping**: every IP of the flow (our IP, gateway, backends /
+    sources, partner IPs found in the inventory) shows the device, else the
+    server, holding it.
+  - **Service Flow** diagram drawn per flow, partner IPs grouped by partner.
+  - List: one tab per flow, Flow / Partners / NAT range columns, Partner
+    filter; search matches partner IPs and names. Export adds the flow,
+    partner IPs (`IP[Partner]`), NAT range and gateway IP.
+  - REST API: `partner_ips: [{address, partner}]`, `nat_subnet_id`,
+    `gateway_ip_address_id`; `ip_address_id` is required by the flows that
+    need it (not by Partner Connectivity with a NAT range); `allowed_ips` is
+    still accepted (`IP` or `IP[Partner]` strings).
+- Migration `0033_service_mapping_flows.js`: table
+  `virtual_server_partner_ips`, columns `nat_subnet_id`,
+  `gateway_ip_address_id`, `ip_address_id` may be empty; `allowed_ips` move to
+  partner IPs (no name) and the column is dropped; the destination IP of
+  existing outbound mappings becomes a partner IP and their IP is emptied
+  (set the NAT / egress IP when editing them); list `service_mapping_partner`
+  created empty. Counts are printed.
+
+### Version 1.5.0
 - ⬆️ Upgrading from 1.4.x: new image; migration `0032` runs (new table only).
 - ✨ **Permission Matrix** (Privileged Accounts > Permission Matrix,
   `priv_role.read`): pick a system to see its role × permission matrix (its
