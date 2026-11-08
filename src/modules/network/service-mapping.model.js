@@ -2,7 +2,7 @@ import { pool } from '../../../config/config.js';
 import { db, Where, jsonList, subList, matchOrder, matchRank } from '../../shared/db.js';
 
 const COLUMNS = ['name', 'domain_id', 'provider', 'provider_port', 'provider_protocol', 'ip_address_id', 'port', 'protocol', 'direction', 'scope',
-  'access_mode', 'system_id', 'description', 'updated_by'];
+  'access_mode', 'nat_ip_address_id', 'nat_port', 'system_id', 'description', 'updated_by'];
 
 // Flows (direction x scope, see migrations 0033 / 0034): our IP (ip_address_id:
 // public / NAT service / NAT / egress IP, on its FW / LB device), partner IPs
@@ -21,6 +21,7 @@ const IP_OWNER = (ipId) => `
 const SELECT_WITH_LINKS = `
   SELECT vs.*, fip.ip_address, dom.domain,
     own.name AS ip_owner_name, own.kind AS ip_owner_type, own.id AS ip_owner_id, sys.name AS system_name,
+    nip.ip_address AS nat_ip, nown.name AS nat_owner_name, nown.kind AS nat_owner_type,
     ${subList({ id: 'p.id', address: 'p.address', partner: 'p.partner', port: 'p.port', protocol: 'p.protocol', domain: 'p.domain', owner_name: 'po.name', owner_type: 'po.kind' },
       `FROM virtual_server_partner_ips p
        LEFT JOIN LATERAL (${IP_OWNER("(SELECT x.id FROM ip_addresses x WHERE x.ip_address = p.address LIMIT 1)")}) po ON TRUE
@@ -34,11 +35,13 @@ const SELECT_WITH_LINKS = `
   LEFT JOIN ip_addresses fip ON fip.id = vs.ip_address_id
   LEFT JOIN domains dom ON dom.id = vs.domain_id
   LEFT JOIN LATERAL (${IP_OWNER('vs.ip_address_id')}) own ON TRUE
+  LEFT JOIN ip_addresses nip ON nip.id = vs.nat_ip_address_id
+  LEFT JOIN LATERAL (${IP_OWNER('vs.nat_ip_address_id')}) nown ON TRUE
   LEFT JOIN systems sys ON sys.id = vs.system_id
   LEFT JOIN virtual_server_members m ON m.virtual_server_id = vs.id
   LEFT JOIN ip_addresses ip ON ip.id = m.ip_address_id
   LEFT JOIN LATERAL (${IP_OWNER('ip.id')}) mo ON TRUE`;
-const GROUP_BY = 'GROUP BY vs.id, fip.ip_address, dom.domain, own.id, own.name, own.kind, sys.name';
+const GROUP_BY = 'GROUP BY vs.id, fip.ip_address, dom.domain, own.id, own.name, own.kind, sys.name, nip.ip_address, nown.id, nown.name, nown.kind';
 
 function filterWhere({ search = '', protocol, provider, device_id, system_id, direction, scope, access_mode, partner }) {
   const w = new Where();
@@ -46,6 +49,7 @@ function filterWhere({ search = '', protocol, provider, device_id, system_id, di
     'vs.name ILIKE ?', 'vs.provider ILIKE ?', 'vs.description ILIKE ?',
     'EXISTS (SELECT 1 FROM domains x WHERE x.id = vs.domain_id AND x.domain ILIKE ?)',
     'EXISTS (SELECT 1 FROM ip_addresses x WHERE x.id = vs.ip_address_id AND x.ip_address ILIKE ?)',
+    'EXISTS (SELECT 1 FROM ip_addresses x WHERE x.id = vs.nat_ip_address_id AND x.ip_address ILIKE ?)',
     'EXISTS (SELECT 1 FROM device_ip x JOIN devices d ON d.id = x.device_id WHERE x.ip_id = vs.ip_address_id AND d.name ILIKE ?)',
     'EXISTS (SELECT 1 FROM server_ip x JOIN servers s ON s.id = x.server_id WHERE x.ip_id = vs.ip_address_id AND s.name ILIKE ?)',
     'EXISTS (SELECT 1 FROM systems x WHERE x.id = vs.system_id AND x.name ILIKE ?)',

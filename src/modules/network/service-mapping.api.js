@@ -11,7 +11,7 @@ import { apiHandler, apiPage, apiActor, paginated } from '../../shared/api.js';
 import { ValidationError, NotFoundError } from '../../shared/errors.js';
 
 const FIELDS = ['name', 'domain_id', 'ip_address_id', 'port', 'protocol', 'direction', 'scope', 'access_mode', 'allowed_ips', 'partner_ips',
-  'provider', 'provider_port', 'provider_protocol', 'system_id', 'description', 'members'];
+  'provider', 'provider_port', 'provider_protocol', 'nat_ip_address_id', 'nat_port', 'system_id', 'description', 'members'];
 const STATUS_OPTIONS = ['active', 'inactive'];
 const has = (body, key) => Object.prototype.hasOwnProperty.call(body, key);
 
@@ -67,6 +67,12 @@ async function toInput(body, req) {
     await assertExists(id, 'IP address', (x) => IpAddress.exists(x));
     input.ip_address = id === null ? '' : String(id);
   }
+  if (has(body, 'nat_ip_address_id')) {
+    const id = toId(body.nat_ip_address_id, 'nat_ip_address_id');
+    await assertExists(id, 'IP address', (x) => IpAddress.exists(x));
+    input.nat_ip = id === null ? '' : String(id);
+  }
+  if (has(body, 'nat_port')) input.nat_port = body.nat_port;
   if (has(body, 'domain_id')) {
     const id = toId(body.domain_id, 'domain_id');
     await assertExists(id, 'Domain', (x) => Domain.exists(x));

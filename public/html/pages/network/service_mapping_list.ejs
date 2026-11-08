@@ -253,7 +253,10 @@
       parts.push(vs.access_mode === 'limited' ? partnersNode(vs.provider ? 'Allowed partners (limited on the CDN)' : 'Allowed partners (limited on the FW)', 'bi-people') : node('sm-n-source', 'bi-globe', esc(t('Users (Internet)')), esc(t('Any source'))));
       if (vs.domain) parts.push(arrow(''), node('sm-n-edge', 'bi-at', esc(vs.domain), esc(t('Domain'))));
       // the public IP's FW / LB device comes from the asset mapping (ownerLine)
-      parts.push(...channel('cdn'), arrow(''), ourIp('Public IP (FW / LB)', 'bi-door-open', true), arrow(''), membersNode('Backend Servers'));
+      // optional NAT of the public IP to a private IP (with the device holding it) before the backends
+      const nat = vs.nat_ip ? [arrow('NAT'), node('sm-n-entry', 'bi-shuffle', esc(t('Private IP')),
+        DV.ipLink(vs.nat_ip) + (vs.nat_port || vs.port ? '<span class="font-monospace">:' + (vs.nat_port || vs.port) + '</span>' : '') + ownerLine(vs.nat_owner_name, vs.nat_owner_type))] : [];
+      parts.push(...channel('cdn'), arrow(''), ourIp('Public IP (FW / LB)', 'bi-door-open', true), ...nat, arrow(''), membersNode('Backend Servers'));
     } else if (flow === 'inbound-internal') {
       parts.push(node('sm-n-source', 'bi-house-door', esc(t('Internal users')), esc(t('Internal network'))));
       if (vs.domain) parts.push(arrow(''), node('sm-n-edge', 'bi-at', esc(vs.domain), esc(t('Domain'))));
@@ -286,6 +289,7 @@
       DV.field('Provider / Channel', vs.provider ? DV.chips([vs.provider]) : ''),
       vs.provider && vs.direction === 'inbound' && vs.scope === 'public' && (vs.provider_port || vs.provider_protocol) ? DV.field('Provider port', DV.text([vs.provider_port, vs.provider_protocol].filter(Boolean).join(' · '))) : '',
       DV.field('IP Address', vs.ip_address ? DV.ipLink(vs.ip_address) : ''),
+      vs.nat_ip ? DV.field('NAT private IP', DV.ipLink(vs.nat_ip) + (vs.nat_port ? ':' + esc(vs.nat_port) : '') + (vs.nat_owner_name ? ' — ' + esc(vs.nat_owner_name) : '')) : '',
       vs.ip_address ? DV.field('IP owner', asset(vs.ip_owner_name, vs.ip_owner_type)) : '',
       vs.port ? DV.field('Port', DV.text(vs.port)) : '',
       vs.protocol ? DV.field('Protocol', DV.chips([vs.protocol])) : '',
