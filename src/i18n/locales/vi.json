@@ -1700,7 +1700,6 @@
   "Select an IP from the IP inventory": "Chọn IP trong danh mục IP",
   "Select a domain from the domain inventory": "Chọn domain trong danh mục domain",
   "System is looked up by exact name; IPs and the domain must already exist in their inventories (they are never created by the import)": "Hệ thống tìm theo đúng tên; IP và domain phải có sẵn trong danh mục (import không tự tạo)",
-  "Pick a partner or type its name (configured partners are in System Configuration > Network).": "Chọn đối tác hoặc gõ tên đối tác (danh sách đối tác cấu hình tại Cấu hình hệ thống > Mạng).",
   "User → Domain → CDN → Public IP:Port (FW) → NAT private IP (optional) → Backend": "Người dùng → Domain → CDN → Public IP:Port (FW) → NAT IP private (tùy chọn) → Backend",
   "NAT to a private IP (optional)": "NAT vào IP private (không bắt buộc)",
   "Public IP → NAT → this private IP (e.g. a VIP on the LB) → backends": "Public IP → NAT → IP private này (VD: VIP trên LB) → backend",
@@ -1708,5 +1707,6 @@
   "Same as the public port": "Giống port public",
   "Private IP": "IP private",
   "NAT private IP": "NAT IP private",
-  "Invalid NAT port: {port}": "Port NAT không hợp lệ: {port}"
+  "Invalid NAT port: {port}": "Port NAT không hợp lệ: {port}",
+  "Partner IPs are picked from the IP inventory (add them there first). Pick a partner or type its name (configured partners are in System Configuration > Network).": "IP đối tác chọn từ danh mục IP (thêm IP vào danh mục trước). Chọn đối tác hoặc gõ tên đối tác (danh sách đối tác cấu hình tại Cấu hình hệ thống > Mạng)."
 }

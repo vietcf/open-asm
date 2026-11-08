@@ -152,7 +152,8 @@ export default {
       search: String(req.query.search || '').trim(), subnet,
       excludeDeviceId: req.query.exclude_device_id || undefined, excludeServerId: req.query.exclude_server_id || undefined,
     });
-    res.json(rows.map((ip) => ({ id: ip.id, text: ip.owner_label ? `${ip.ip_address} (${req.t('assigned: {owner}', { owner: ip.owner_label })})` : ip.ip_address })));
+    const byAddress = req.query.value === 'address';
+    res.json(rows.map((ip) => ({ id: byAddress ? ip.ip_address : ip.id, text: ip.owner_label ? `${ip.ip_address} (${req.t('assigned: {owner}', { owner: ip.owner_label })})` : ip.ip_address })));
   }),
   // IP tooltip shown on every page (detail-view.js): ?search=<address> -> [detail] or []
   // Add form, on leaving the address field: ?addresses=a,b ->

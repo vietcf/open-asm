@@ -2,6 +2,7 @@
   Add / Edit Service Mapping.  mode: 'add' | 'edit', vs, copiedFrom (source name when duplicating), flows [{id, label, icon, path}],
   providerOptions, partnerOptions, protocolOptions, accessOptions, statusOptions,
   selected: { ip, domain, system [{id, text}], partners [{address, partner, port, protocol, domain}], members [{id (ip_address_id), text, port, status}] }
+  Partner IPs are picked from the IP inventory (the address is the value); one partner per row.
   The flow (direction-scope) comes right after name and system; it decides which parts show, their order (the traffic's)
   and their labels; IPs and the domain are picked from their inventories (never created here). Outbound flows: sources without port, one NAT / egress IP, each partner IP with its own port / protocol
   (and a free-text domain for internet connectivity).
@@ -11,15 +12,16 @@
    const flow = (v.direction || 'inbound') + '-' + (v.scope || 'public');
    const accessMode = v.access_mode || 'full';
    const partnerRow = function (p) { p = p || {}; return { address: p.address || '', partner: p.partner || '', port: p.port || '', protocol: p.protocol || '', domain: p.domain || '' }; };
-   // one partner IP row: IP, then port / protocol (outbound), domain (internet connectivity), partner
+   // one partner IP row (one line): IP from the IP inventory, port / protocol (outbound), domain (internet connectivity), partner
    const partnerCells = function (r) {
-     return '<div class="col-md-3"><input type="text" name="partner_ip" class="form-control font-monospace" value="' + ui.esc(r.address) + '" placeholder="198.51.100.10" maxlength="15" aria-label="' + ui.esc(t('IP')) + '"></div>' +
-       '<div class="col-md-2 col-6" data-flows="outbound-private outbound-public"><input type="number" name="partner_port" class="form-control" value="' + ui.esc(r.port) + '" min="1" max="65535" placeholder="' + ui.esc(t('Port')) + '"></div>' +
+     return '<div class="col-md-3"><select name="partner_ip" class="form-select js-select" data-ajax-url="/network/api/ip-addresses/search-all?value=address" data-placeholder="' + ui.esc(t('Select an IP from the IP inventory')) + '"' +
+         ' data-selected="' + ui.esc(JSON.stringify(r.address ? [{ id: r.address, text: r.address }] : [])) + '" aria-label="' + ui.esc(t('IP')) + '"></select></div>' +
+       '<div class="col-md-1 col-6 sm-port" data-flows="outbound-private outbound-public"><input type="number" name="partner_port" class="form-control" value="' + ui.esc(r.port) + '" min="1" max="65535" placeholder="' + ui.esc(t('Port')) + '"></div>' +
        '<div class="col-md-2 col-6" data-flows="outbound-private outbound-public"><select name="partner_protocol" class="form-select" aria-label="' + ui.esc(t('Protocol')) + '"><option value="">' + ui.esc(t('Protocol')) + '</option>' +
          (protocolOptions || []).map(function (pr) { return '<option value="' + ui.esc(pr) + '"' + (r.protocol === pr ? ' selected' : '') + '>' + ui.esc(pr) + '</option>'; }).join('') + '</select></div>' +
        '<div class="col-md-2" data-flows="outbound-public"><input type="text" name="partner_domain" class="form-control font-monospace" value="' + ui.esc(r.domain) + '" maxlength="253" placeholder="' + ui.esc(t('Domain (optional)')) + '"></div>' +
        // pick a partner, or type a name (kept on this row only)
-       '<div class="col-md"><select name="partner_name" class="form-select js-select" data-tags="true" data-placeholder="' + ui.esc(t('Pick or type a partner')) + '"><option value=""></option>' +
+       '<div class="col-md min-w-0"><select name="partner_name" class="form-select js-select" data-tags="true" data-placeholder="' + ui.esc(t('Pick or type a partner')) + '"><option value=""></option>' +
          ui.options(partnerOptions, r.partner ? [r.partner] : []) + '</select></div>' +
        '<div class="col-md-auto"><button type="button" class="btn btn-outline-secondary w-100" data-repeater-remove title="' + ui.esc(t('Remove')) + '"><i class="bi bi-x-lg"></i></button></div>';
    }; %>
@@ -28,6 +30,8 @@
 ] }) %>
 <style>
   .sm-flow-pick .btn-check + label { text-align: left; height: 100%; }
+  #smPartners .sm-port { min-width: 6.5rem; }
+  #smPartners .min-w-0 { min-width: 0; }
   .sm-flow-pick .sm-flow-path { font-size: .75rem; color: var(--bs-secondary-color); }
   .btn-check:checked + label .sm-flow-path { color: inherit; opacity: .85; }
   /* parts are reordered per flow (flex order) and some are hidden: every shown part gets the same
@@ -98,14 +102,14 @@
               <p class="text-body-secondary small mb-2" data-label='{"inbound-public":"<%= t('One partner IP per row (no CIDR range), with the partner name.') %>","inbound-private":"<%= t('One partner IP per row (no CIDR range), with the partner name.') %>","outbound-private":"<%= t('One partner IP per row with its own port and protocol (no CIDR range).') %>","outbound-public":"<%= t('One destination IP per row with its domain (optional), port and protocol (no CIDR range).') %>"}'></p>
               <div class="vstack gap-2" data-repeater-rows>
                 <% (sel.partners || []).forEach(function (p) { %>
-                  <div class="row g-2 align-items-start"><%- partnerCells(partnerRow(p)) %></div>
+                  <div class="row g-2 align-items-start flex-md-nowrap"><%- partnerCells(partnerRow(p)) %></div>
                 <% }) %>
               </div>
               <template data-repeater-template>
-                <div class="row g-2 align-items-start"><%- partnerCells(partnerRow({})) %></div>
+                <div class="row g-2 align-items-start flex-md-nowrap"><%- partnerCells(partnerRow({})) %></div>
               </template>
               <div class="mt-2"><button type="button" class="btn btn-outline-primary btn-sm" data-repeater-add><i class="bi bi-plus-lg"></i> <%= t('Add partner IP') %></button></div>
-              <div class="form-text"><%= t('Pick a partner or type its name (configured partners are in System Configuration > Network).') %></div>
+              <div class="form-text"><%= t('Partner IPs are picked from the IP inventory (add them there first). Pick a partner or type its name (configured partners are in System Configuration > Network).') %></div>
             </div>
           </section>
 
