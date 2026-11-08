@@ -1,0 +1,172 @@
+<%#
+  Permission Matrix.  systemId, system, data ({matrix, versions, lastSigned, diff} of the chosen system),
+  scopeUnits (unit limit note), download (version id whose Word file starts downloading)
+  Each version is a snapshot: its Word document (to sign) never changes; the signed PDF is uploaded on its row.
+%>
+<%
+  const canUpdate = hasPermission('priv_role.update');
+  const isSuperadmin = user && user.role_name === 'superadmin';
+  const d = (v) => { if (!v) return ''; const x = new Date(v); return isNaN(x) ? '' : String(x.getDate()).padStart(2, '0') + '/' + String(x.getMonth() + 1).padStart(2, '0') + '/' + x.getFullYear(); };
+  const m = data && data.matrix;
+  const has = m ? new Set(m.granted.map(function (g) { return g[0] + ':' + g[1]; })) : new Set();
+  const today = new Date().toISOString().slice(0, 10);
+%>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'Privileged Account', href: '/priv-account/account' }, { label: 'Permission Matrix' }] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
+    <% if (locals.scopeUnits) { %>
+      <div class="alert <%= scopeUnits.length ? 'alert-info' : 'alert-warning' %> py-2 small">
+        <i class="bi bi-funnel me-1"></i>
+        <% if (scopeUnits.length) { %><%= t('Limited to the systems of your units:') %> <strong><%= scopeUnits.join(', ') %></strong>
+        <% } else { %><%= t('Your account does not manage the privileged accounts of a unit yet, so no data is shown. Ask an administrator to set your unit and tick "Manages the privileged accounts of their unit" in User Management.') %><% } %>
+      </div>
+    <% } %>
+
+    <div class="card mb-3">
+      <div class="card-body">
+        <form method="get" action="/priv-account/matrix" class="row g-2 align-items-end">
+          <div class="col-md-6 col-xl-5">
+            <label class="form-label" for="f-system"><%= t('System') %></label>
+            <select id="f-system" name="system_id" class="form-select js-select" data-placeholder="<%= t('Select system') %>" data-ajax-url="/priv-account/api/systems"
+                    data-selected="<%= JSON.stringify(system ? [{ id: system.id, text: system.name }] : []) %>" onchange="this.form.submit()"></select>
+          </div>
+          <div class="col-auto"><button type="submit" class="btn btn-outline-secondary"><i class="bi bi-grid-3x3"></i> <%= t('Show matrix') %></button></div>
+        </form>
+      </div>
+    </div>
+
+    <% if (!m) { %>
+      <% if (!systemId) { %>
+        <div class="text-secondary"><i class="bi bi-info-circle me-1"></i><%= t('Choose a system to see its permission matrix (role x permission) and its versions.') %></div>
+      <% } %>
+    <% } else { %>
+      <%# ----- changes since the last signed version ----- %>
+      <% if (!data.lastSigned) { %>
+        <div class="alert alert-secondary py-2 small"><i class="bi bi-file-earmark me-1"></i><%= t('No signed version yet.') %></div>
+      <% } else if (!data.diff.count) { %>
+        <div class="alert alert-success py-2 small"><i class="bi bi-check-circle me-1"></i><%= t('The matrix matches the last signed version v{1} ({2}).', { 1: data.lastSigned.version, 2: d(data.lastSigned.signed_at) }) %></div>
+      <% } else { const df = data.diff; %>
+        <div class="alert alert-warning py-2 small">
+          <i class="bi bi-exclamation-triangle me-1"></i><strong><%= t('The matrix changed since the last signed version v{1} ({2}): {3} change(s).', { 1: data.lastSigned.version, 2: d(data.lastSigned.signed_at), 3: df.count }) %></strong>
+          <ul class="mb-0 mt-1">
+            <% if (df.roles.added.length) { %><li><%= t('Roles added') %>: <%= df.roles.added.join(', ') %></li><% } %>
+            <% if (df.roles.removed.length) { %><li><%= t('Roles removed') %>: <%= df.roles.removed.join(', ') %></li><% } %>
+            <% if (df.permissions.added.length) { %><li><%= t('Permissions added') %>: <%= df.permissions.added.join(', ') %></li><% } %>
+            <% if (df.permissions.removed.length) { %><li><%= t('Permissions removed') %>: <%= df.permissions.removed.join(', ') %></li><% } %>
+            <% if (df.grants.added.length) { %><li><%= t('Granted') %>: <%= df.grants.added.map(function (g) { return g[0] + ' → ' + g[1]; }).join(', ') %></li><% } %>
+            <% if (df.grants.removed.length) { %><li><%= t('Revoked') %>: <%= df.grants.removed.map(function (g) { return g[0] + ' → ' + g[1]; }).join(', ') %></li><% } %>
+          </ul>
+        </div>
+      <% } %>
+
+      <%# ----- current matrix ----- %>
+      <div class="card list-card mb-3">
+        <div class="card-header list-toolbar">
+          <div class="me-auto">
+            <h5 class="mb-0"><%= m.system.name %><% if (m.system.code) { %> <span class="text-secondary small font-monospace">(<%= m.system.code %>)</span><% } %></h5>
+            <div class="small text-secondary"><%= t('Operations department (L2)') %>: <%= m.system.ops_department || '—' %> · <%= t('Development department (L3)') %>: <%= m.system.department || '—' %></div>
+          </div>
+          <% if (canUpdate) { %>
+            <form method="post" action="/priv-account/matrix/versions" class="list-actions d-flex gap-2 align-items-center">
+              <input type="hidden" name="system_id" value="<%= m.system.id %>">
+              <input type="text" name="note" class="form-control form-control-sm" maxlength="500" placeholder="<%= t('Note (optional)') %>" style="max-width: 16rem">
+              <button type="submit" class="btn btn-primary text-nowrap"><i class="bi bi-file-earmark-word"></i> <%= t('New version (Word)') %></button>
+            </form>
+          <% } %>
+        </div>
+        <div class="table-responsive">
+          <% if (!m.roles.length || !m.permissions.length) { %>
+            <p class="text-secondary small p-3 mb-0"><%= t('No roles or permissions recorded for this system.') %></p>
+          <% } else { %>
+            <table class="table table-sm table-bordered align-middle mb-0">
+              <thead>
+                <tr>
+                  <th style="min-width: 14rem"><%= t('Permission') %></th>
+                  <% m.roles.forEach(function (r) { %>
+                    <th class="text-center small" title="<%= r.description || '' %>"><%= r.name %><% if (r.all_systems) { %> <i class="bi bi-globe2 text-secondary" title="<%= t('All systems') %>"></i><% } %>
+                      <div class="fw-normal text-secondary"><%= t('{1} account(s)', { 1: r.account_count }) %></div></th>
+                  <% }) %>
+                </tr>
+              </thead>
+              <tbody>
+                <% m.permissions.forEach(function (p) { %>
+                  <tr>
+                    <td><span class="font-monospace small"><%= p.name %></span><% if (p.all_systems) { %> <i class="bi bi-globe2 text-secondary" title="<%= t('All systems') %>"></i><% } %>
+                      <% if (p.description) { %><div class="small text-secondary"><%= p.description %></div><% } %></td>
+                    <% m.roles.forEach(function (r) { %>
+                      <td class="text-center"><% if (has.has(r.id + ':' + p.id)) { %><i class="bi bi-check-lg text-success fw-bold" aria-label="<%= t('Yes') %>"></i><% } %></td>
+                    <% }) %>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          <% } %>
+        </div>
+      </div>
+
+      <%# ----- versions ----- %>
+      <div class="card list-card">
+        <div class="card-header"><h5 class="mb-0"><i class="bi bi-clock-history me-1"></i><%= t('Versions') %></h5></div>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle table-stack mb-0">
+            <thead>
+              <tr><th><%= t('Version') %></th><th><%= t('Created') %></th><th><%= t('Status') %></th><th><%= t('Signed on') %></th><th><%= t('Note') %></th><th class="col-actions"><%= t('Actions') %></th></tr>
+            </thead>
+            <tbody>
+              <% if (!data.versions.length) { %>
+                <tr><td colspan="6" class="text-secondary small"><%= t('No version yet. "New version (Word)" saves the current matrix and gives its Word document to sign.') %></td></tr>
+              <% } %>
+              <% data.versions.forEach(function (v) { const signed = v.status === 'signed'; %>
+                <tr>
+                  <td data-label="<%= t('Version') %>" class="fw-medium">v<%= v.version %></td>
+                  <td data-label="<%= t('Created') %>"><span class="small text-nowrap"><%= d(v.created_at) %></span><% if (v.created_by) { %> <span class="small text-secondary">· <%= v.created_by %></span><% } %></td>
+                  <td data-label="<%= t('Status') %>"><span class="badge <%= signed ? 'text-bg-success' : 'text-bg-warning' %>"><%= t(signed ? 'Signed' : 'Draft') %></span></td>
+                  <td data-label="<%= t('Signed on') %>"><span class="small"><%= d(v.signed_at) %></span><% if (v.signed_uploaded_by) { %> <span class="small text-secondary">· <%= v.signed_uploaded_by %></span><% } %></td>
+                  <td data-label="<%= t('Note') %>" class="small"><%= v.note || '' %></td>
+                  <td class="col-actions">
+                    <div class="row-actions">
+                      <a href="/priv-account/matrix/version/<%= v.id %>/word" class="btn btn-sm btn-outline-secondary" title="<%= t('Word (to sign)') %>"><i class="bi bi-file-earmark-word"></i></a>
+                      <% if (signed) { %>
+                        <a href="/priv-account/matrix/version/<%= v.id %>/signed?inline=1" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success" title="<%= t('Signed PDF') %>"><i class="bi bi-file-earmark-pdf"></i></a>
+                      <% } else if (canUpdate) { %>
+                        <button type="button" class="btn btn-sm btn-outline-primary" title="<%= t('Upload signed PDF') %>" data-bs-toggle="collapse" data-bs-target="#sign-<%= v.id %>"><i class="bi bi-upload"></i></button>
+                      <% } %>
+                      <% if (canUpdate && (!signed || isSuperadmin)) { %>
+                        <form action="/priv-account/matrix/version/<%= v.id %>/delete" method="POST" data-confirm="<%= t('Delete version v{1}?', { 1: v.version }) %>">
+                          <input type="hidden" name="system_id" value="<%= m.system.id %>">
+                          <button type="submit" class="btn btn-sm btn-outline-secondary btn-delete" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
+                        </form>
+                      <% } %>
+                    </div>
+                  </td>
+                </tr>
+                <% if (!signed && canUpdate) { %>
+                  <tr class="collapse" id="sign-<%= v.id %>">
+                    <td colspan="6">
+                      <form action="/priv-account/matrix/version/<%= v.id %>/signed" method="POST" enctype="multipart/form-data" class="row g-2 align-items-end">
+                        <input type="hidden" name="system_id" value="<%= m.system.id %>">
+                        <div class="col-md-4"><label class="form-label small"><%= t('Signed PDF of v{1}', { 1: v.version }) %></label><input type="file" name="file" accept="application/pdf,.pdf" class="form-control form-control-sm" required></div>
+                        <div class="col-md-2"><label class="form-label small"><%= t('Signed on') %></label><input type="date" name="signed_at" class="form-control form-control-sm" value="<%= today %>" max="<%= today %>" required></div>
+                        <div class="col-md-4"><label class="form-label small"><%= t('Note') %></label><input type="text" name="note" class="form-control form-control-sm" maxlength="500"></div>
+                        <div class="col-md-2"><button type="submit" class="btn btn-sm btn-primary w-100"><i class="bi bi-check2-circle"></i> <%= t('Save signed copy') %></button></div>
+                      </form>
+                    </td>
+                  </tr>
+                <% } %>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<% if (download) { %>
+<script>
+  // The version just made: start its Word download
+  document.addEventListener('DOMContentLoaded', function () { window.location.href = '/priv-account/matrix/version/<%= Number(download) %>/word'; });
+</script>
+<% } %>
