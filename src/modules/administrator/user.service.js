@@ -9,7 +9,7 @@ import Configuration from './configuration.model.js';
 import Unit from '../organize/unit.model.js';
 import { ValidationError, NotFoundError, ConflictError, ForbiddenError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
-import { toNullableString, toIdArray, assertIdsExist } from '../../shared/service.js';
+import { toNullableString } from '../../shared/service.js';
 import { isStrongPassword, PASSWORD_RULE_MESSAGE } from '../../shared/password.js';
 
 // Letters, digits, dot, dash, underscore: no spaces or lookalike characters
@@ -55,7 +55,7 @@ async function assertSuperadminRemains(current, next) {
   }
 }
 
-// input: {username, email, fullname, role_id, unit_id, scope_units[], auth_source, password, repeat_password, require_twofa, must_change_password, is_active}
+// input: {username, email, fullname, role_id, unit_id, priv_unit_admin, auth_source, password, repeat_password, require_twofa, must_change_password, is_active}
 async function normalize(input, current = null) {
   const username = typeof input.username === 'string' ? input.username.trim() : '';
   const email = toNullableString(input.email);
@@ -69,15 +69,14 @@ async function normalize(input, current = null) {
   const role = await Role.findById(parseInt(input.role_id, 10) || 0);
   if (!role) throw new ValidationError('Role is required');
 
-  // Unit (privileged accounts are limited to the systems of the user's units)
+  // Unit, and whether they manage its privileged accounts (needs a unit)
   const unit_id = parseInt(input.unit_id, 10) || null;
   if (unit_id && !(await Unit.exists(unit_id))) throw new ValidationError('Invalid unit');
-  const scopeUnits = toIdArray(input.scope_units).filter((id) => id !== unit_id);
-  await assertIdsExist(scopeUnits, (id) => Unit.exists(id), 'unit');
+  const priv_unit_admin = Boolean(unit_id) && flag(input.priv_unit_admin);
 
   const auth_source = input.auth_source === 'ldap' ? 'ldap' : 'local';
   const data = {
-    username, email, fullname: toNullableString(input.fullname), role_id: role.id, unit_id, auth_source,
+    username, email, fullname: toNullableString(input.fullname), role_id: role.id, unit_id, priv_unit_admin, auth_source,
     require_twofa: flag(input.require_twofa),
     // AD owns LDAP passwords
     must_change_password: auth_source === 'local' && flag(input.must_change_password),
@@ -102,25 +101,21 @@ async function normalize(input, current = null) {
     data.twofa_setup_deadline = null;
     if (current?.require_twofa) Object.assign(data, { twofa_secret: null, twofa_enabled: false });
   }
-  return { data, role, scopeUnits };
+  return { data, role };
 }
 
 export async function createUser(input, client, actor = null) {
-  const { data, scopeUnits } = await normalize(input);
+  const { data } = await normalize(input);
   await assertWithinActor(actor, data.role_id);
-  const id = await withTransaction(client, async (c) => {
-    const user = await User.create(data, c);
-    await User.setScopeUnits(user.id, scopeUnits, c);
-    return user.id;
-  });
-  return User.findById(id);
+  const user = await User.create(data, client);
+  return User.findById(user.id);
 }
 
 // actor: the signed-in admin ({id})
 export async function updateUser(id, input, actor, client) {
   const current = await getUser(id);
   await assertWithinActor(actor, current.role_id);
-  const { data, role, scopeUnits } = await normalize(input, current);
+  const { data, role } = await normalize(input, current);
   await assertWithinActor(actor, data.role_id);
   const self = String(actor?.id) === String(current.id);
   if (self && !data.is_active) throw new ForbiddenError('You cannot deactivate your own account');
@@ -132,7 +127,6 @@ export async function updateUser(id, input, actor, client) {
     || data.twofa_secret !== undefined;
   await withTransaction(client, async (c) => {
     await User.update(id, data, c);
-    await User.setScopeUnits(id, scopeUnits, c);
     if (accessChanged && !self) await User.endSessions(current.id, c);
   });
   return User.findById(id);

@@ -7,7 +7,7 @@ const USAGE_SQL = {
   systems: 'SELECT COUNT(*) FROM systems WHERE department_id = u.id OR ops_department_id = u.id',
   priv_users: 'SELECT COUNT(*) FROM priv_users WHERE organize_id = u.id',
   rulefirewall: 'SELECT COUNT(*) FROM rulefirewall WHERE ou_id = u.id',
-  users: 'SELECT COUNT(*) FROM users x WHERE x.unit_id = u.id OR EXISTS (SELECT 1 FROM user_scope_units su WHERE su.user_id = x.id AND su.unit_id = u.id)',
+  users: 'SELECT COUNT(*) FROM users x WHERE x.unit_id = u.id',
 };
 const usageColumns = Object.entries(USAGE_SQL).map(([key, sql]) => `(${sql})::int AS ${key}_count`).join(', ');
 

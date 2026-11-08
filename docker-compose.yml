@@ -13,7 +13,7 @@ x-logging: &default-logging
 services:
   app:
     build: .
-    image: openasm_app:1.4.0
+    image: openasm_app:1.4.1
     container_name: openasm_app
     restart: always
     logging: *default-logging

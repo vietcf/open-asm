@@ -657,7 +657,21 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.4.0 (Latest)
+### Version 1.4.1 (Latest)
+- ⬆️ Upgrading from 1.4.0: new image; migration `0031` runs.
+- ✏️ User Management: one **Unit** per user and a tick **"Manages the
+  privileged accounts of their unit"** (`users.priv_unit_admin`) replace
+  "Unit" + "Extra units to see". While "Limit to the user's units" is on, a
+  user (without the "no unit limit" permission) sees and manages the
+  privileged accounts, roles and permissions of the systems whose L2 or L3
+  department is their unit only when the tick is on. The User list shows the
+  unit (🔑 when ticked).
+- Migration `0031_user_managed_units.sql`: a user without a unit but with
+  extra units gets the first of them; users who had a unit or extra units get
+  the tick (same access to their own unit as before); `user_scope_units` is
+  dropped.
+
+### Version 1.4.0
 - ⬆️ Upgrading from 1.3.x: new image; migrations `0025`–`0030` run (see the
   entries below). After upgrading: assign units to users (User Management)
   before turning on "Limit to the user's units"; API clients of accounts with
@@ -791,7 +805,8 @@ when cutting a release.
   delete such roles and permissions; everyone else can still pick them.
 - ✨ Privileged data **limited to the user's units**: users get a **Unit**
   and **Extra units to see** (User Management; `users.unit_id`,
-  `user_scope_units`). While System Configuration > Privileged Accounts >
+  `user_scope_units`; replaced in 1.4.1 by one unit and a "manages the
+  privileged accounts of their unit" tick). While System Configuration > Privileged Accounts >
   "Limit to the user's units" (`priv_scope_enforced`, **off** by default) is
   on, a user without the new permission `priv_account.all_scope` (admin and
   superadmin have it; grant it to other roles to let them see everything)
