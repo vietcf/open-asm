@@ -657,7 +657,13 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.7.3 (Latest)
+### Version 1.7.4 (Latest)
+- No database migration: upgrading from 1.7.3 only needs the new image.
+- ✏️ Public Exposure limited to partner IPs: the limit is on the CDN, or on
+  the FW when there is no CDN. The form title follows the CDN / WAF field
+  ("limited on the CDN" / "limited on the FW"), and so does the Service Flow.
+
+### Version 1.7.3
 - No database migration: upgrading from 1.7.2 only needs the new image.
 - ✏️ Partner IP rows (one IP, one partner): the partner is picked from a
   dropdown (the configured partners and the names already used) or **typed**
