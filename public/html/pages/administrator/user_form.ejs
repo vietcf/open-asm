@@ -64,13 +64,13 @@
                 <option value=""></option><%- ui.options(unitOptions, u.unit_id ? [u.unit_id] : []) %>
               </select>
             </div>
-            <div class="col-md-8">
-              <label class="form-label" for="f-scope-units"><%= t('Extra units to see') %></label>
-              <select id="f-scope-units" name="scope_units" class="form-select js-select" multiple data-placeholder="<%= t('None') %>">
-                <%- ui.options(unitOptions, (u.scope_units || []).map(function (x) { return x.id; })) %>
-              </select>
+            <div class="col-md-8 d-flex flex-column justify-content-end">
+              <div class="form-check mb-1">
+                <input class="form-check-input" type="checkbox" id="f-priv-admin" name="priv_unit_admin" <%= u.priv_unit_admin ? 'checked' : '' %>>
+                <label class="form-check-label" for="f-priv-admin"><%= t('Manages the privileged accounts of their unit') %></label>
+              </div>
+              <div class="form-text mt-0"><%= t('Sees and manages the privileged accounts, roles and permissions of the systems whose L2 or L3 department is this unit. Applies while "Limit to the user\'s units" is on.') %></div>
             </div>
-            <div class="col-12 form-text mt-1"><%= t('Privileged accounts, roles and permissions: while "Limit to the user\'s units" is on, the user sees the systems whose L2 or L3 department is one of these units (unless their role may see everything).') %></div>
           </div>
         </section>
 

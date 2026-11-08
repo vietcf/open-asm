@@ -2,9 +2,9 @@
 //
 // While the setting priv_scope_enforced is on, a user without the permission
 // priv_account.all_scope (superadmin has every permission) only works on the
-// systems their units manage: systems whose L2 (ops_department_id) or L3
-// (department_id) is the user's unit (users.unit_id) or one of their extra
-// units (user_scope_units).
+// systems of their unit: systems whose L2 (ops_department_id) or L3
+// (department_id) is the user's unit (users.unit_id), and only when they
+// manage the privileged accounts of their unit (users.priv_unit_admin).
 //   accounts   seen when one of their systems is managed, changed only when
 //              all of them are
 //   roles / permissions   of a managed system; "all systems" ones are seen
@@ -15,8 +15,7 @@
 import { pool } from '../../../config/config.js';
 import Configuration from '../administrator/configuration.model.js';
 
-export const userUnitsSql = (p) =>
-  `SELECT unit_id FROM users WHERE id = ${p} AND unit_id IS NOT NULL UNION SELECT unit_id FROM user_scope_units WHERE user_id = ${p}`;
+export const userUnitsSql = (p) => `SELECT unit_id FROM users WHERE id = ${p} AND unit_id IS NOT NULL AND priv_unit_admin`;
 
 export const managedSystemsSql = (p) =>
   `SELECT s.id FROM systems s WHERE s.ops_department_id IN (${userUnitsSql(p)}) OR s.department_id IN (${userUnitsSql(p)})`;

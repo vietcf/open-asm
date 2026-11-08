@@ -85,7 +85,7 @@ export const CONFIG_GROUPS = [
       { key: 'priv_account_type', type: 'options', usedBy: [{ table: 'priv_users', column: 'account_type', label: 'Privileged accounts' }], label: 'Account types' },
       { key: 'priv_account_manage_type', type: 'options', usedBy: [{ table: 'priv_users', column: 'manage_type', label: 'Privileged accounts' }], label: 'Management methods' },
       { key: 'priv_scope_enforced', type: 'select', choices: ['off', 'on'], default: 'off', required: true, label: "Limit to the user's units",
-        help: "on: users without the \"no unit limit\" permission only see privileged accounts, roles and permissions of the systems whose L2 or L3 department is their unit (or one of their extra units). Assign the units in User Management first" },
+        help: "on: users without the \"no unit limit\" permission only see privileged accounts, roles and permissions of the systems whose L2 or L3 department is their unit, and only when they manage the privileged accounts of their unit (User Management). Set the units first" },
     ],
   },
   {

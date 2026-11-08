@@ -35,7 +35,7 @@
       <div class="alert <%= scopeUnits.length ? 'alert-info' : 'alert-warning' %> py-2 small">
         <i class="bi bi-funnel me-1"></i>
         <% if (scopeUnits.length) { %><%= t('Limited to the systems of your units:') %> <strong><%= scopeUnits.join(', ') %></strong>
-        <% } else { %><%= t('Your account has no unit yet, so no data is shown. Ask an administrator to assign your unit in User Management.') %><% } %>
+        <% } else { %><%= t('Your account does not manage the privileged accounts of a unit yet, so no data is shown. Ask an administrator to set your unit and tick "Manages the privileged accounts of their unit" in User Management.') %><% } %>
       </div>
     <% } %>
 
