@@ -206,7 +206,7 @@
 
   // Service Flow, one diagram per flow (direction-scope):
   //   inbound-public    users / partners (limited on the CDN) -> domain -> CDN -> public IP:port (on its FW / LB) -> backends
-  //   inbound-internal  internal users -> domain -> VIP IP:port (on its LB) -> backends
+  //   inbound-internal  internal users -> domain -> IP:port -> backends
   //   inbound-private   partner VPN IPs -> VPN / lease line -> NAT service IP:port -> backends
   //   outbound-private  internal IPs -> NAT IP -> VPN / lease line -> each partner IP:port / protocol
   //   outbound-public   internal IPs -> egress public IP -> each internet IP (domain):port / protocol
@@ -224,14 +224,21 @@
     // partner IPs grouped by partner: "Bank A" then its IPs (with the asset holding an IP, if any)
     const partners = vs.partner_ips || [];
     const dest = (p) => `${DV.ipLink(p.address)}${p.port ? '<span class="font-monospace">:' + p.port + '</span>' : ''}${p.protocol ? ' · ' + esc(p.protocol) : ''}${p.domain ? '<br><span class="font-monospace">' + esc(p.domain) + '</span>' : ''}`;
+    // at most PARTNERS_SHOWN partners on the diagram; "see all" jumps to the full, filterable table below
+    const PARTNERS_SHOWN = 10;
     const partnersNode = (title, icon) => {
       if (!partners.length) return node('sm-n-source', icon, esc(t(title)), esc(t('Not recorded')));
       const groups = new Map();
       partners.forEach((p) => { const k = p.partner || t('Unnamed partner'); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(p); });
+      const list = [...groups];
+      const more = list.length - PARTNERS_SHOWN;
       return `<div class="sm-node sm-n-source text-start"><div class="sm-title mb-1"><i class="bi ${icon} me-1"></i>${esc(t(title))}</div>` +
-        [...groups].map(([name, ips]) => `<div class="small"><strong>${esc(name)}</strong><br>` +
+        list.slice(0, PARTNERS_SHOWN).map(([name, ips]) => `<div class="small"><strong>${esc(name)}</strong><br>` +
           ips.slice(0, 5).map((p) => dest(p) + ownerLine(p.owner_name, p.owner_type)).join('<br>') +
-          (ips.length > 5 ? '<br>+' + (ips.length - 5) : '') + '</div>').join('') + '</div>';
+          (ips.length > 5 ? '<br>+' + (ips.length - 5) : '') + '</div>').join('') +
+        (more > 0 || partners.length > PARTNERS_SHOWN
+          ? `<button type="button" class="btn btn-link btn-sm p-0 mt-1 text-start" data-sm-show-partners>${esc(more > 0 ? t('+{1} partner(s) · See all', { 1: more }) : t('See all'))}</button>` : '') +
+        '</div>';
     };
     // our IP and the device holding it (FW / LB / NAT): the asset mapping
     const ourIp = (title, icon, withPort) => node('sm-n-entry', icon, esc(t(title)),
@@ -250,7 +257,7 @@
     } else if (flow === 'inbound-internal') {
       parts.push(node('sm-n-source', 'bi-house-door', esc(t('Internal users')), esc(t('Internal network'))));
       if (vs.domain) parts.push(arrow(''), node('sm-n-edge', 'bi-at', esc(vs.domain), esc(t('Domain'))));
-      parts.push(arrow(''), ourIp('VIP (LB)', 'bi-diagram-3', true), arrow(''), membersNode('Backend Servers'));
+      parts.push(arrow(''), ourIp('IP', 'bi-diagram-3', true), arrow(''), membersNode('Backend Servers'));
     } else if (flow === 'inbound-private') {
       parts.push(partnersNode('Partner VPN IPs', 'bi-building'), ...channel('vpn'), arrow(''), ourIp('NAT service IP', 'bi-door-open', true), arrow(''), membersNode('Backend Servers'));
     } else if (flow === 'outbound-private') {
@@ -289,12 +296,13 @@
       const out = vs.direction === 'outbound';
       const withDomain = out && vs.scope === 'public';
       const head = [t('IP')].concat(out ? [t('Port'), t('Protocol')] : [], withDomain ? [t('Domain')] : [], [t('Partner'), t('Server/Device')]);
-      const rows = partners.map((p) => '<tr><td>' + DV.ipLink(p.address) + '</td>' +
+      const rows = partners.map((p) => '<tr data-sm-partner-row="' + esc([p.partner, p.address, p.domain, p.port, p.protocol].filter(Boolean).join(' ').toLowerCase()) + '"><td>' + DV.ipLink(p.address) + '</td>' +
         (out ? '<td>' + esc(p.port || '') + '</td><td>' + (p.protocol ? '<span class="badge tag">' + esc(p.protocol) + '</span>' : '') + '</td>' : '') +
         (withDomain ? '<td class="font-monospace">' + esc(p.domain || '—') + '</td>' : '') +
         '<td>' + esc(p.partner || '—') + '</td><td>' + (p.owner_name ? memberOwner(p) : '—') + '</td></tr>').join('');
       body += DV.section(out ? (withDomain ? 'Internet destinations' : 'Partner IPs (destination)') : 'Partner IPs (source)',
-        '<table class="table table-sm mb-0"><thead><tr>' + head.map((h) => '<th>' + esc(h) + '</th>').join('') + '</tr></thead><tbody>' + rows + '</tbody></table>',
+        '<div id="smPartners">' + (partners.length > 10 ? '<div class="detail-pad pb-0"><input type="search" class="form-control form-control-sm" data-sm-partner-filter placeholder="' + esc(t('Filter by partner, IP or domain...')) + '"></div>' : '') +
+        '<div class="table-responsive" style="max-height: 24rem"><table class="table table-sm mb-0"><thead class="sticky-top"><tr>' + head.map((h) => '<th>' + esc(h) + '</th>').join('') + '</tr></thead><tbody>' + rows + '</tbody></table></div></div>',
         ' <span class="badge tag ms-1">' + partners.length + '</span>');
     }
     if (members.length) {
@@ -313,4 +321,22 @@
 <script>
   // IP tooltips of the list's IP links
   document.addEventListener('DOMContentLoaded', () => DV.enhance(document.getElementById('smTable')));
+</script>
+
+<script>
+  // Service Flow "see all partners": the full table of the detail, filtered as you type
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('[data-sm-show-partners]')) return;
+    const box = document.getElementById('smPartners');
+    if (!box) return;
+    box.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const filter = box.querySelector('[data-sm-partner-filter]');
+    if (filter) setTimeout(() => filter.focus(), 300);
+  });
+  document.addEventListener('input', (e) => {
+    const filter = e.target.closest('[data-sm-partner-filter]');
+    if (!filter) return;
+    const q = filter.value.trim().toLowerCase();
+    filter.closest('#smPartners').querySelectorAll('[data-sm-partner-row]').forEach((tr) => { tr.hidden = q !== '' && !tr.dataset.smPartnerRow.includes(q); });
+  });
 </script>

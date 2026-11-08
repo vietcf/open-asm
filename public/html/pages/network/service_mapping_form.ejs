@@ -150,7 +150,7 @@
           <section class="form-section mb-0" data-flows="inbound-public inbound-internal inbound-private outbound-private outbound-public" data-order='{"inbound-public":4,"inbound-internal":2,"inbound-private":3,"outbound-private":2,"outbound-public":2}'>
             <div class="row g-3">
               <div class="col-md-6">
-                <label class="form-label" for="f-ip"><span data-label='{"inbound-public":"<%= t('Public IP (on the FW / LB)') %>","inbound-internal":"<%= t('VIP (on the LB)') %>","inbound-private":"<%= t('NAT service IP') %>","outbound-private":"<%= t('NAT IP') %>","outbound-public":"<%= t('Egress public IP') %>"}'></span> <span class="text-danger">*</span></label>
+                <label class="form-label" for="f-ip"><span data-label='{"inbound-public":"<%= t('Public IP (on the FW / LB)') %>","inbound-internal":"<%= t('IP') %>","inbound-private":"<%= t('NAT service IP') %>","outbound-private":"<%= t('NAT IP') %>","outbound-public":"<%= t('Egress public IP') %>"}'></span> <span class="text-danger">*</span></label>
                 <select id="f-ip" name="ip_address" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/ip-addresses/search-all"
                         data-placeholder="<%= t('Select or type an IP') %>" data-selected="<%= JSON.stringify(sel.ip || []) %>"></select>
               </div>

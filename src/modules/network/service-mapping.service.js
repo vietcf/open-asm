@@ -218,8 +218,8 @@ const FLOWS = {
   'inbound-private': { ipRequired: 'NAT service IP is required', access: 'limited', channel: true },
   // internal IPs -> one NAT IP -> each partner IP with its own port / protocol (no mapping port)
   'outbound-private': { ipRequired: 'NAT IP is required', partnersRequired: 'At least one partner IP is required', partnerPorts: true, access: 'full', channel: true },
-  // internal users -> domain (optional) -> VIP IP:port on its LB -> backends: no CDN, channel or partner IPs
-  'inbound-internal': { ipRequired: 'VIP is required', access: 'full', domain: true, noPartners: true },
+  // internal users -> domain (optional) -> IP:port -> backends: no CDN, channel or partner IPs
+  'inbound-internal': { ipRequired: 'IP is required', access: 'full', domain: true, noPartners: true },
   // internal IPs -> one egress public IP -> each destination IP with its own domain (optional), port / protocol
   'outbound-public': { ipRequired: 'Egress public IP is required', partnersRequired: 'At least one destination IP is required', partnerPorts: true, partnerDomain: true, access: 'full' },
 };

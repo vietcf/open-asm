@@ -1676,10 +1676,6 @@
   "System is looked up by exact name": "Hệ thống tìm theo đúng tên",
   "Backends: ip:port, comma-separated; outbound sources: ip, comma-separated": "Backend: ip:port, cách nhau dấu phẩy; nguồn outbound: ip, cách nhau dấu phẩy",
   "Internal Exposure": "Internal Exposure (công bố nội bộ)",
-  "Internal user → Domain → VIP IP:Port (LB) → Backend IP:Port": "Người dùng nội bộ → Domain → VIP IP:Port (LB) → Backend IP:Port",
-  "VIP (on the LB)": "VIP (gán trên LB)",
-  "VIP (LB)": "VIP (LB)",
-  "VIP is required": "Cần nhập VIP",
   "Internal users": "Người dùng nội bộ",
   "Internal network": "Mạng nội bộ",
   "Backend Protocol": "Protocol backend",
@@ -1690,5 +1686,11 @@
   "Backends: ip:port/protocol (protocol optional), comma-separated; outbound sources: ip, comma-separated": "Backend: ip:port/protocol (protocol không bắt buộc), cách nhau dấu phẩy; nguồn outbound: ip, cách nhau dấu phẩy",
   "All inbound": "Tất cả inbound",
   "All outbound": "Tất cả outbound",
-  "Search by name, description, domain, IP, partner, system, device, server...": "Tìm theo tên, mô tả, domain, IP, đối tác, hệ thống, thiết bị, máy chủ..."
+  "Search by name, description, domain, IP, partner, system, device, server...": "Tìm theo tên, mô tả, domain, IP, đối tác, hệ thống, thiết bị, máy chủ...",
+  "+{1} partner(s) · See all": "+{1} đối tác · Xem tất cả",
+  "See all": "Xem tất cả",
+  "Filter by partner, IP or domain...": "Lọc theo đối tác, IP hoặc domain...",
+  "Internal user → Domain → IP:Port → Backend IP:Port": "Người dùng nội bộ → Domain → IP:Port → Backend IP:Port",
+  "IP is required": "Cần nhập IP",
+  "IP": "IP"
 }
