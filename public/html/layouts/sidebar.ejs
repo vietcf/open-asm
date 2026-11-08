@@ -244,7 +244,7 @@
           hasPermission('priv_role.read') ||
           hasPermission('priv_permission.read')
         ) { %>
-        <li class="nav-item<%= isMenuOpen(['priv-account-list', 'priv-role-list', 'priv-permission-list']) ? ' menu-open' : '' %>">
+        <li class="nav-item<%= isMenuOpen(['priv-account-list', 'priv-role-list', 'priv-permission-list', 'priv-matrix']) ? ' menu-open' : '' %>">
           <a href="#" class="nav-link">
             <i class="nav-icon bi bi-person-lock"></i>
             <p>
@@ -252,7 +252,7 @@
               <i class="nav-arrow bi bi-chevron-right"></i>
             </p>
           </a>
-          <ul class="nav nav-treeview"<%= isMenuOpen(['priv-account-list', 'priv-role-list', 'priv-permission-list']) ? ' style="display: block;"' : '' %>>
+          <ul class="nav nav-treeview"<%= isMenuOpen(['priv-account-list', 'priv-role-list', 'priv-permission-list', 'priv-matrix']) ? ' style="display: block;"' : '' %>>
             <% if (hasPermission('priv_account.read')) { %>
             <li class="nav-item">
               <a href="/priv-account/account" class="nav-link<%= (activeMenu === 'priv-account-list') ? ' active' : '' %>">
@@ -274,6 +274,14 @@
               <a href="/priv-account/permission" class="nav-link<%= (activeMenu === 'priv-permission-list') ? ' active' : '' %>">
                 <i class="nav-icon bi bi-circle<%= (activeMenu === 'priv-permission-list') ? ' text-primary' : '' %>"></i>
                 <p><%= t('Permission List') %></p>
+              </a>
+            </li>
+            <% } %>
+            <% if (hasPermission('priv_role.read')) { %>
+            <li class="nav-item">
+              <a href="/priv-account/matrix" class="nav-link<%= (activeMenu === 'priv-matrix') ? ' active' : '' %>">
+                <i class="nav-icon bi bi-circle<%= (activeMenu === 'priv-matrix') ? ' text-primary' : '' %>"></i>
+                <p><%= t('Permission Matrix') %></p>
               </a>
             </li>
             <% } %>

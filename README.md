@@ -657,7 +657,32 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.4.1 (Latest)
+### Version 1.5.0 (Latest)
+- ⬆️ Upgrading from 1.4.x: new image; migration `0032` runs (new table only).
+- ✨ **Permission Matrix** (Privileged Accounts > Permission Matrix,
+  `priv_role.read`): pick a system to see its role × permission matrix (its
+  own roles and permissions, plus the "All systems" ones it uses; number of
+  accounts per role), limited to the user's unit like the other privileged
+  pages.
+  - **Versions**: "New version (Word)" (`priv_role.update`) saves a snapshot of
+    the matrix as v1, v2, v3... of the system and downloads its **Word
+    document to sign** (system, L2 / L3 departments, version, date, the
+    matrix, "Prepared by / Reviewed by / Approved by" signature boxes;
+    landscape when it has more than 5 roles). A version's Word document is
+    always built from its snapshot, so it never changes.
+  - **Signed copy**: upload the **signed PDF** on the version's row (with the
+    signing date; checked to be a PDF, max 25 MB): the version becomes
+    *Signed*. Signed PDFs are stored in `uploads/priv-matrix` and only served
+    by the matrix routes (permission and unit checked).
+  - The page warns when the current matrix differs from the **last signed
+    version** and lists the changes (roles / permissions added or removed,
+    permissions granted or revoked).
+  - Drafts can be deleted; a signed version only by superadmin.
+- Migration `0032_priv_matrix_versions.sql`: table `priv_matrix_versions`
+  (system, version, snapshot, status draft / signed, signed date and file).
+- Dependency: `docx` (Word generation).
+
+### Version 1.4.1
 - ⬆️ Upgrading from 1.4.0: new image; migration `0031` runs.
 - ✏️ User Management: one **Unit** per user and a tick **"Manages the
   privileged accounts of their unit"** (`users.priv_unit_admin`) replace
