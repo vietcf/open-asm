@@ -657,7 +657,17 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.8.0 (Latest)
+### Version 1.8.1 (Latest)
+- No database migration: upgrading from 1.8.0 only needs the new image. The
+  service mapping import template header "Partner IPs" changed (must exist):
+  download the new one.
+- ✏️ Service mapping **partner IPs are picked from the IP inventory** (a
+  select, like the other IPs): add the IP there first. Form, import and API
+  refuse a partner IP that is not in the inventory; partner IPs saved before
+  that are not in it are kept as they are. Each partner (IP, port, protocol,
+  domain, partner name) stays on **one line** of the form.
+
+### Version 1.8.0
 - ⬆️ Upgrading from 1.7.x: new image; migration `0036` runs (new columns
   only). The service mapping import template gains a last column "NAT
   Private IP": download the new one.

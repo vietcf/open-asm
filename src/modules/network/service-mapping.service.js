@@ -107,7 +107,7 @@ function pick(value, options, fallback, label) {
 //   allowed_ips  "ip:port/protocol@domain[partner], ip, ..." or an array                             (import, older API clients)
 // withPorts (outbound): every row needs its port and protocol; withDomain (internet
 // connectivity): a row may have a domain. Otherwise they are dropped.
-async function partnerRows(input, current = null, { withPorts = false, withDomain = false } = {}) {
+async function partnerRows(input, current, resolve, { withPorts = false, withDomain = false } = {}) {
   const kept = new Set((current?.partner_ips || []).map((p) => p.address));
   let rows;
   if (hasKey(input, 'partner_ips')) {
@@ -126,10 +126,13 @@ async function partnerRows(input, current = null, { withPorts = false, withDomai
   const seen = new Set();
   const out = [];
   for (const r of rows) {
-    const address = String(r.address ?? '').trim();
+    let address = String(r.address ?? '').trim();
     if (!address) continue;
-    if (!IPV4_REGEX.test(address) && !kept.has(address)) {
-      throw new ValidationError(address.includes('/') ? 'Partner IPs are single IP addresses, not ranges (CIDR): {ips}' : 'Invalid partner IP: {ips}').withParams({ ips: address });
+    // an IP of the IP inventory (id or address; never created here). Partner IPs saved
+    // before 1.8.1 that are not in the inventory stay as they are.
+    if (!kept.has(address)) {
+      if (address.includes('/')) throw new ValidationError('Partner IPs are single IP addresses, not ranges (CIDR): {ips}').withParams({ ips: address });
+      address = (await resolve.ip(address)).address;
     }
     const partner = await partnerName(str(r.partner));
     let port = null;
@@ -264,7 +267,7 @@ async function flowData(input, current, resolve, domain) {
   natPort = natPort === '' || natPort === null ? null : Number(natPort);
   if (natPort !== null && !(Number.isInteger(natPort) && natPort >= 1 && natPort <= 65535)) throw new ValidationError('Invalid NAT port: {port}').withParams({ port: input.nat_port });
   if (!flow.natIp || !natIp) { natIp = null; natPort = null; }
-  let partners = await partnerRows(input, current, { withPorts: Boolean(flow.partnerPorts), withDomain: Boolean(flow.partnerDomain) });
+  let partners = await partnerRows(input, current, resolve, { withPorts: Boolean(flow.partnerPorts), withDomain: Boolean(flow.partnerDomain) });
   if (partners === null) {
     partners = (current?.partner_ips || []).map((p) => ({ address: p.address, partner: p.partner,
       port: flow.partnerPorts ? p.port : null, protocol: flow.partnerPorts ? p.protocol : null, domain: flow.partnerDomain ? p.domain : null }));

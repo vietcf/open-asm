@@ -99,7 +99,7 @@ export const serviceMappingImport = excelImport({
     { header: 'Direction (Optional, inbound/outbound, default inbound)', key: 'direction' },
     { header: 'Scope (Optional, public/private, default public)', key: 'scope' }, // also "internal" (inbound internal exposure)
     { header: 'Access (Optional, full/limited, default full)', key: 'access_mode' },
-    { header: 'Partner IPs (Optional, comma-separated: IP[Partner] for inbound sources, IP:port/protocol@domain[Partner] for outbound destinations)', key: 'allowed_ips' },
+    { header: 'Partner IPs (Optional, comma-separated, must exist in the IP inventory: IP[Partner] for inbound sources, IP:port/protocol@domain[Partner] for outbound destinations)', key: 'allowed_ips' },
     { header: 'System Name (Optional)', key: 'system' },
     { header: 'Backend IPs (Optional, ip:port comma-separated, must exist in the IP inventory)', key: 'backends' }, // ip:port/protocol accepted
     { header: 'Description (Optional)', key: 'description' },
