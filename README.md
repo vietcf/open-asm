@@ -657,7 +657,15 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.7.1 (Latest)
+### Version 1.7.2 (Latest)
+- No database migration: upgrading from 1.7.1 only needs the new image.
+- ✏️ Service Flow shows at most **10 partners**; with more, "+N partner(s) ·
+  See all" jumps to the full partner table of the detail, which scrolls, keeps
+  its header and, past 10 rows, has a filter (partner, IP, domain, port).
+- ✏️ Internal Exposure asks for an **IP** (any IP; it need not be a VIP on a
+  load balancer): form label, Service Flow and flow path say "IP".
+
+### Version 1.7.1
 - No database migration: upgrading from 1.7.0 only needs the new image.
 - ✏️ Service Mapping list: two levels of tabs, **All / Inbound / Outbound**,
   then the flows of the chosen direction (Public / Internal / Private,
