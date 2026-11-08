@@ -83,7 +83,7 @@
           <%# --- partner IPs: allowed sources (inbound) or destinations with their own port / protocol (outbound) --- %>
           <section class="form-section mb-0" id="part-partners" data-flows="inbound-public inbound-private outbound-private outbound-public"
                    data-order='{"inbound-public":3,"inbound-private":1,"outbound-private":4,"outbound-public":3}'>
-            <h4 class="form-section-title" data-label='{"inbound-public":"<%= t('Who may connect (limited on the CDN)') %>","inbound-private":"<%= t('Partner VPN IPs (source)') %>","outbound-private":"<%= t('Partner IPs (destination)') %>","outbound-public":"<%= t('Internet destinations') %>"}'></h4>
+            <h4 class="form-section-title" data-cdn-label="<%= t('Who may connect (limited on the CDN)') %>" data-fw-label="<%= t('Who may connect (limited on the FW)') %>" data-label='{"inbound-public":"<%= t('Who may connect (limited on the CDN)') %>","inbound-private":"<%= t('Partner VPN IPs (source)') %>","outbound-private":"<%= t('Partner IPs (destination)') %>","outbound-public":"<%= t('Internet destinations') %>"}'></h4>
             <div class="row g-3 mb-2" id="f-access-wrap">
               <div class="col-md-4">
                 <label class="form-label" for="f-access"><%= t('Access') %></label>
@@ -232,6 +232,9 @@
       form.querySelectorAll('[data-flows]').forEach((el) => { el.hidden = !el.dataset.flows.split(' ').includes(flow); });
       form.querySelectorAll('[data-order]').forEach((el) => { const o = JSON.parse(el.dataset.order); if (o[flow] !== undefined) el.style.order = o[flow]; });
       form.querySelectorAll('[data-label]').forEach((el) => { const l = JSON.parse(el.dataset.label); if (l[flow]) el.textContent = l[flow]; });
+      // public exposure: the partner IPs are limited on the CDN, or on the FW without a CDN
+      const allowTitle = form.querySelector('[data-cdn-label]');
+      if (flow === 'inbound-public') allowTitle.textContent = $('#f-provider').val() ? allowTitle.dataset.cdnLabel : allowTitle.dataset.fwLabel;
       // Public exposure: Internet-wide or limited to partner IPs (on the CDN); private inbound is always limited to its partners
       document.getElementById('f-access-wrap').hidden = flow !== 'inbound-public';
       partnerList.hidden = flow === 'inbound-public' && access.value !== 'limited';
@@ -247,6 +250,7 @@
     });
     form.querySelectorAll('input[name="flow"]').forEach((r) => r.addEventListener('change', sync));
     access.addEventListener('change', sync);
+    $('#f-provider').on('change', sync);
     // a row just added follows the flow too
     form.addEventListener('click', (e) => { if (e.target.closest('[data-repeater-add]')) setTimeout(sync); });
     sync();

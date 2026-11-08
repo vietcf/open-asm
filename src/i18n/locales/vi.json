@@ -1694,5 +1694,7 @@
   "IP": "IP",
   "Pick or type a partner": "Chọn hoặc gõ tên đối tác",
   "Pick a partner or type a new one: it is added to the partner list (System Configuration > Network).": "Chọn đối tác có sẵn hoặc gõ tên mới: tên mới được thêm vào danh sách đối tác (Cấu hình hệ thống > Mạng).",
-  "Partner name is too long (max 100 characters): {value}": "Tên đối tác quá dài (tối đa 100 ký tự): {value}"
+  "Partner name is too long (max 100 characters): {value}": "Tên đối tác quá dài (tối đa 100 ký tự): {value}",
+  "Who may connect (limited on the FW)": "Ai được kết nối vào (giới hạn trên FW)",
+  "Allowed partners (limited on the FW)": "Đối tác được phép (giới hạn trên FW)"
 }

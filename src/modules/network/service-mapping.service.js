@@ -237,7 +237,8 @@ async function rememberPartners(partners, client, updatedBy) {
 
 // The four flows (direction-scope) and what each one keeps
 const FLOWS = {
-  // the public IP sits on the FW / LB device (shown through the asset mapping); partner IPs are limited on the CDN
+  // the public IP sits on the FW / LB device (shown through the asset mapping); partner IPs are limited on the CDN,
+  // or on the FW when there is no CDN
   // channel: the provider may be set; providerPort: it has its own port / protocol (a CDN listens on
   // its own port; a VPN / lease line only carries the traffic to the NAT IP:port)
   'inbound-public': { ipRequired: 'Public IP is required', accessChoice: true, channel: true, providerPort: true, domain: true },

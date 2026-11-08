@@ -205,7 +205,7 @@
   const FLOW_LABEL = <%- jsonSafe(Object.fromEntries(flows.map((fl) => [fl.id, { label: t(fl.label), icon: fl.icon }]))) %>;
 
   // Service Flow, one diagram per flow (direction-scope):
-  //   inbound-public    users / partners (limited on the CDN) -> domain -> CDN -> public IP:port (on its FW / LB) -> backends
+  //   inbound-public    users / partners (limited on the CDN, or on the FW without CDN) -> domain -> CDN -> public IP:port (on its FW / LB) -> backends
   //   inbound-internal  internal users -> domain -> IP:port -> backends
   //   inbound-private   partner VPN IPs -> VPN / lease line -> NAT service IP:port -> backends
   //   outbound-private  internal IPs -> NAT IP -> VPN / lease line -> each partner IP:port / protocol
@@ -250,7 +250,7 @@
     const channel = (kind) => (vs.provider ? [arrow(''), node('sm-n-edge', kind === 'cdn' ? 'bi-cloud' : 'bi-signpost-split', esc(vs.provider), esc(t(kind === 'cdn' ? 'CDN / WAF' : 'VPN / Lease line')) + (kind === 'cdn' ? providerEnd : ''))] : []);
     const parts = [];
     if (flow === 'inbound-public') {
-      parts.push(vs.access_mode === 'limited' ? partnersNode(vs.provider ? 'Allowed partners (limited on the CDN)' : 'Allowed partners', 'bi-people') : node('sm-n-source', 'bi-globe', esc(t('Users (Internet)')), esc(t('Any source'))));
+      parts.push(vs.access_mode === 'limited' ? partnersNode(vs.provider ? 'Allowed partners (limited on the CDN)' : 'Allowed partners (limited on the FW)', 'bi-people') : node('sm-n-source', 'bi-globe', esc(t('Users (Internet)')), esc(t('Any source'))));
       if (vs.domain) parts.push(arrow(''), node('sm-n-edge', 'bi-at', esc(vs.domain), esc(t('Domain'))));
       // the public IP's FW / LB device comes from the asset mapping (ownerLine)
       parts.push(...channel('cdn'), arrow(''), ourIp('Public IP (FW / LB)', 'bi-door-open', true), arrow(''), membersNode('Backend Servers'));
