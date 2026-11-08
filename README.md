@@ -657,7 +657,18 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.7.0 (Latest)
+### Version 1.7.1 (Latest)
+- No database migration: upgrading from 1.7.0 only needs the new image.
+- ✏️ Service Mapping list: two levels of tabs, **All / Inbound / Outbound**,
+  then the flows of the chosen direction (Public / Internal / Private,
+  Partner / Internet); the form groups the flow cards by direction.
+- ✏️ The search also matches the description (besides names, domains,
+  partner names / IPs / destination domains, IPs, systems, devices, servers).
+- ✨ Every IP of a service mapping (list, detail, Service Flow: our IP,
+  backends / sources, partner IPs) links to the IP list searched for it, in a
+  new tab, with the IP tooltip on hover.
+
+### Version 1.7.0
 - ⬆️ Upgrading from 1.6.x: new image; migrations `0034` and `0035` run (see below). The service
   mapping import template changed (NAT range and gateway columns removed,
   partner IP syntax): download the new one.

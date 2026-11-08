@@ -43,7 +43,7 @@ const GROUP_BY = 'GROUP BY vs.id, fip.ip_address, dom.domain, own.id, own.name, 
 function filterWhere({ search = '', protocol, provider, device_id, system_id, direction, scope, access_mode, partner }) {
   const w = new Where();
   w.search(search, [
-    'vs.name ILIKE ?', 'vs.provider ILIKE ?',
+    'vs.name ILIKE ?', 'vs.provider ILIKE ?', 'vs.description ILIKE ?',
     'EXISTS (SELECT 1 FROM domains x WHERE x.id = vs.domain_id AND x.domain ILIKE ?)',
     'EXISTS (SELECT 1 FROM ip_addresses x WHERE x.id = vs.ip_address_id AND x.ip_address ILIKE ?)',
     'EXISTS (SELECT 1 FROM device_ip x JOIN devices d ON d.id = x.device_id WHERE x.ip_id = vs.ip_address_id AND d.name ILIKE ?)',

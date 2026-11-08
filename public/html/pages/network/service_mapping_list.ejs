@@ -20,6 +20,10 @@
     { key: 'description', label: 'Description' },
     { key: 'updated', label: 'Updated' },
   ];
+  // every IP links to the IP list searched for it (new tab); hover shows its details
+  const ipA = (ip, suffix) => (ip
+    ? `<a href="/network/ip-address?search=${encodeURIComponent(ip)}" target="_blank" rel="noopener noreferrer" class="ip-hover-link font-monospace small" data-ip="${ui.esc(ip)}">${ui.esc(ip)}</a>${suffix || ''}`
+    : '<span class="text-secondary">—</span>');
   const cell = (vs, key) => ({
     name: ui.esc(vs.name),
     flow: `<span class="badge tag text-nowrap"><i class="bi ${flowOf(vs).icon} me-1"></i>${ui.esc(t(flowOf(vs).label))}</span>`,
@@ -31,8 +35,8 @@
     domain: vs.domain ? `<span class="font-monospace small">${ui.esc(vs.domain)}</span>` : ui.dash,
     // inbound: our IP:port; outbound: our NAT / egress IP (the ports are on the partner IPs)
     endpoint: vs.port
-      ? `<span class="font-monospace small">${ui.esc(vs.ip_address || '—')}:${vs.port}</span> <span class="badge tag">${ui.esc(vs.protocol || '')}</span>`
-      : `<span class="font-monospace small">${ui.esc(vs.ip_address || '—')}</span>`,
+      ? `${ipA(vs.ip_address, `<span class="font-monospace small">:${vs.port}</span>`)} <span class="badge tag">${ui.esc(vs.protocol || '')}</span>`
+      : ipA(vs.ip_address),
     provider: vs.provider ? `<span class="badge tag">${ui.esc(vs.provider)}</span>` +
       (vs.provider_port || vs.provider_protocol ? ` <span class="font-monospace small">${vs.provider_port ? ':' + vs.provider_port : ''} ${ui.esc(vs.provider_protocol || '')}</span>` : '') : ui.dash,
     access: vs.access_mode === 'limited'
@@ -40,7 +44,7 @@
       : `<span class="badge tag">${ui.esc(t('Full'))}</span>`,
     system: vs.system_name ? ui.esc(vs.system_name) : ui.dash,
     owner: vs.ip_owner_name ? `<i class="bi ${vs.ip_owner_type === 'device' ? 'bi-hdd-rack' : 'bi-server'} me-1 text-secondary"></i>${ui.esc(vs.ip_owner_name)}` : ui.dash,
-    members: vs.members.length ? `<span class="badge tag">${vs.members.length}</span> ` + ui.mono(vs.members.slice(0, 3).map(m => m.ip + (m.port ? ':' + m.port : '')).concat(vs.members.length > 3 ? ['…'] : [])) : ui.dash,
+    members: vs.members.length ? `<span class="badge tag">${vs.members.length}</span> ` + vs.members.slice(0, 3).map(m => ipA(m.ip, m.port ? `<span class="font-monospace small">:${m.port}</span>` : '')).join(', ') + (vs.members.length > 3 ? ' …' : '') : ui.dash,
     description: ui.clip(vs.description),
     updated: ui.date(vs.updated_at),
   })[key];
@@ -60,18 +64,26 @@
 
     <div class="card list-card">
       <%# One tab per flow (direction + scope) %>
+      <%# Two levels: All / Inbound / Outbound, then the flows of the chosen direction %>
       <ul class="nav nav-tabs px-3 pt-2">
-        <li class="nav-item"><a class="nav-link<%= currentFlow ? '' : ' active' %>" href="/network/service-mapping"><%= t('All') %></a></li>
-        <% flows.forEach(function (fl) { const [d, sc] = fl.id.split('-'); %>
-          <li class="nav-item"><a class="nav-link<%= currentFlow === fl.id ? ' active' : '' %>" href="/network/service-mapping?direction=<%= d %>&scope=<%= sc %>" title="<%= t(fl.path) %>"><i class="bi <%= fl.icon %> me-1"></i><%= t(fl.label) %></a></li>
-        <% }) %>
+        <li class="nav-item"><a class="nav-link<%= f.direction ? '' : ' active' %>" href="/network/service-mapping"><%= t('All') %></a></li>
+        <li class="nav-item"><a class="nav-link<%= f.direction === 'inbound' ? ' active' : '' %>" href="/network/service-mapping?direction=inbound"><i class="bi bi-box-arrow-in-down-right me-1"></i><%= t('Inbound') %></a></li>
+        <li class="nav-item"><a class="nav-link<%= f.direction === 'outbound' ? ' active' : '' %>" href="/network/service-mapping?direction=outbound"><i class="bi bi-box-arrow-up-right me-1"></i><%= t('Outbound') %></a></li>
       </ul>
+      <% if (f.direction) { %>
+        <div class="d-flex flex-wrap gap-2 px-3 pt-2">
+          <a class="btn btn-sm <%= f.scope ? 'btn-outline-secondary' : 'btn-secondary' %>" href="/network/service-mapping?direction=<%= f.direction %>"><%= t(f.direction === 'inbound' ? 'All inbound' : 'All outbound') %></a>
+          <% flows.filter(function (fl) { return fl.id.startsWith(f.direction + '-'); }).forEach(function (fl) { const sc = fl.id.split('-')[1]; %>
+            <a class="btn btn-sm <%= currentFlow === fl.id ? 'btn-secondary' : 'btn-outline-secondary' %>" href="/network/service-mapping?direction=<%= f.direction %>&scope=<%= sc %>" title="<%= t(fl.path) %>"><i class="bi <%= fl.icon %> me-1"></i><%= t(fl.label) %></a>
+          <% }) %>
+        </div>
+      <% } %>
       <form class="list-filter-form" method="get" action="/network/service-mapping">
         <input type="hidden" name="pageSize" value="<%= pageSize %>">
         <% if (f.direction) { %><input type="hidden" name="direction" value="<%= f.direction %>"><% } %>
         <% if (f.scope) { %><input type="hidden" name="scope" value="<%= f.scope %>"><% } %>
         <%- include('../../partials/ui/list_toolbar', {
-              search, searchPlaceholder: 'Search by name, domain, IP, system, device, server...',
+              search, searchPlaceholder: 'Search by name, description, domain, IP, partner, system, device, server...',
               filtersId: 'smFilters', activeFilterCount,
               columns: { tableId: 'smTable', storageKey: 'openasm.serviceMappingList.columns.v4', list: COLUMNS },
               exportUrl: '/network/service-mapping/export' + currentQuery,
@@ -207,11 +219,11 @@
     const members = vs.members || [];
     const membersNode = (title) => members.length
       ? `<div class="sm-node sm-n-servers"><div class="sm-title mb-1">${esc(t(title))}</div>` +
-        members.map(m => `<div class="sm-srv${m.status === 'inactive' ? ' is-inactive' : ''}"><i class="bi bi-server ${m.status === 'inactive' ? 'text-secondary' : 'text-success'} me-1"></i>${esc(m.ip)}${m.port ? ':' + m.port : ''}${m.protocol ? ' · ' + esc(m.protocol) : ''}${memberOwner(m, '<br>')}</div>`).join('') + '</div>'
+        members.map(m => `<div class="sm-srv${m.status === 'inactive' ? ' is-inactive' : ''}"><i class="bi bi-server ${m.status === 'inactive' ? 'text-secondary' : 'text-success'} me-1"></i>${DV.ipLink(m.ip)}${m.port ? ':' + m.port : ''}${m.protocol ? ' · ' + esc(m.protocol) : ''}${memberOwner(m, '<br>')}</div>`).join('') + '</div>'
       : node('sm-n-servers', 'bi-server', esc(t(title)), esc(t('None')));
     // partner IPs grouped by partner: "Bank A" then its IPs (with the asset holding an IP, if any)
     const partners = vs.partner_ips || [];
-    const dest = (p) => `<span class="font-monospace">${esc(p.address)}${p.port ? ':' + p.port : ''}</span>${p.protocol ? ' · ' + esc(p.protocol) : ''}${p.domain ? '<br><span class="font-monospace">' + esc(p.domain) + '</span>' : ''}`;
+    const dest = (p) => `${DV.ipLink(p.address)}${p.port ? '<span class="font-monospace">:' + p.port + '</span>' : ''}${p.protocol ? ' · ' + esc(p.protocol) : ''}${p.domain ? '<br><span class="font-monospace">' + esc(p.domain) + '</span>' : ''}`;
     const partnersNode = (title, icon) => {
       if (!partners.length) return node('sm-n-source', icon, esc(t(title)), esc(t('Not recorded')));
       const groups = new Map();
@@ -223,7 +235,7 @@
     };
     // our IP and the device holding it (FW / LB / NAT): the asset mapping
     const ourIp = (title, icon, withPort) => node('sm-n-entry', icon, esc(t(title)),
-      (vs.ip_address ? `<span class="font-monospace">${esc(vs.ip_address)}${withPort && vs.port ? ':' + vs.port + ' · ' + esc(vs.protocol || '') : ''}</span>` : esc(t('Not recorded'))) +
+      (vs.ip_address ? `${DV.ipLink(vs.ip_address)}${withPort && vs.port ? '<span class="font-monospace">:' + vs.port + '</span> · ' + esc(vs.protocol || '') : ''}` : esc(t('Not recorded'))) +
       ownerLine(vs.ip_owner_name, vs.ip_owner_type));
     const providerEnd = vs.provider_port || vs.provider_protocol
       ? '<br>' + [vs.provider_port ? ':' + vs.provider_port : '', esc(vs.provider_protocol || '')].filter(Boolean).join(' · ') : '';
@@ -266,7 +278,7 @@
       vs.domain ? DV.field('Domain', DV.text(vs.domain)) : '',
       DV.field('Provider / Channel', vs.provider ? DV.chips([vs.provider]) : ''),
       vs.provider && vs.direction === 'inbound' && vs.scope === 'public' && (vs.provider_port || vs.provider_protocol) ? DV.field('Provider port', DV.text([vs.provider_port, vs.provider_protocol].filter(Boolean).join(' · '))) : '',
-      DV.field('IP Address', vs.ip_address ? DV.text(vs.ip_address) : ''),
+      DV.field('IP Address', vs.ip_address ? DV.ipLink(vs.ip_address) : ''),
       vs.ip_address ? DV.field('IP owner', asset(vs.ip_owner_name, vs.ip_owner_type)) : '',
       vs.port ? DV.field('Port', DV.text(vs.port)) : '',
       vs.protocol ? DV.field('Protocol', DV.chips([vs.protocol])) : '',
@@ -277,7 +289,7 @@
       const out = vs.direction === 'outbound';
       const withDomain = out && vs.scope === 'public';
       const head = [t('IP')].concat(out ? [t('Port'), t('Protocol')] : [], withDomain ? [t('Domain')] : [], [t('Partner'), t('Server/Device')]);
-      const rows = partners.map((p) => '<tr><td class="font-monospace">' + esc(p.address) + '</td>' +
+      const rows = partners.map((p) => '<tr><td>' + DV.ipLink(p.address) + '</td>' +
         (out ? '<td>' + esc(p.port || '') + '</td><td>' + (p.protocol ? '<span class="badge tag">' + esc(p.protocol) + '</span>' : '') + '</td>' : '') +
         (withDomain ? '<td class="font-monospace">' + esc(p.domain || '—') + '</td>' : '') +
         '<td>' + esc(p.partner || '—') + '</td><td>' + (p.owner_name ? memberOwner(p) : '—') + '</td></tr>').join('');
@@ -287,7 +299,7 @@
     }
     if (members.length) {
       const rows = members.map(m =>
-        `<tr><td>${esc(m.ip)}</td><td>${m.port || ''}</td>${vs.direction === 'outbound' ? '' : '<td>' + (m.protocol ? '<span class="badge tag">' + esc(m.protocol) + '</span>' : '') + '</td>'}<td>${memberOwner(m) || '—'}</td><td><span class="badge tag">${esc(t(cap(m.status || 'active')))}</span></td></tr>`
+        `<tr><td>${DV.ipLink(m.ip)}</td><td>${m.port || ''}</td>${vs.direction === 'outbound' ? '' : '<td>' + (m.protocol ? '<span class="badge tag">' + esc(m.protocol) + '</span>' : '') + '</td>'}<td>${memberOwner(m) || '—'}</td><td><span class="badge tag">${esc(t(cap(m.status || 'active')))}</span></td></tr>`
       ).join('');
       body += DV.section(vs.direction === 'outbound' ? 'Internal IPs (source)' : 'Backend Servers',
         `<table class="table table-sm mb-0"><thead><tr><th>${t('IP Address')}</th><th>${t('Port')}</th>${vs.direction === 'outbound' ? '' : '<th>' + t('Protocol') + '</th>'}<th>${t('Server/Device')}</th><th>${t('Status')}</th></tr></thead><tbody>${rows}</tbody></table>`,
@@ -296,4 +308,9 @@
     body += DV.meta(vs);
     DV.open('smDetailModal', { title: vs.name, subtitle: '<i class="bi ' + esc(flow.icon || '') + ' me-1"></i>' + esc(flow.label || '') + (vs.domain ? ' · <span class="font-monospace small">' + esc(vs.domain) + '</span>' : ''), body });
   }
+</script>
+
+<script>
+  // IP tooltips of the list's IP links
+  document.addEventListener('DOMContentLoaded', () => DV.enhance(document.getElementById('smTable')));
 </script>
