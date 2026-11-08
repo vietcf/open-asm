@@ -229,7 +229,8 @@ const FLOWS = {
   // or on the FW when there is no CDN
   // channel: the provider may be set; providerPort: it has its own port / protocol (a CDN listens on
   // its own port; a VPN / lease line only carries the traffic to the NAT IP:port)
-  'inbound-public': { ipRequired: 'Public IP is required', accessChoice: true, channel: true, providerPort: true, domain: true },
+  // optional NAT of the public IP to a private IP (e.g. a VIP on the LB) before the backends
+  'inbound-public': { ipRequired: 'Public IP is required', accessChoice: true, channel: true, providerPort: true, domain: true, natIp: true },
   // the partner reaches one NAT service IP:port
   'inbound-private': { ipRequired: 'NAT service IP is required', access: 'limited', channel: true },
   // internal IPs -> one NAT IP -> each partner IP with its own port / protocol (no mapping port)
@@ -258,6 +259,11 @@ async function flowData(input, current, resolve, domain) {
   if (!flow) throw new ValidationError('Invalid flow: {direction} {scope}').withParams({ direction, scope });
   const keep = (id, address) => (id ? { id, address } : null);
   let ip = hasKey(input, 'ip_address') ? await resolve.ip(input.ip_address) : keep(current?.ip_address_id, current?.ip_address);
+  let natIp = hasKey(input, 'nat_ip') ? await resolve.ip(input.nat_ip) : keep(current?.nat_ip_address_id, current?.nat_ip);
+  let natPort = hasKey(input, 'nat_port') ? String(input.nat_port ?? '').trim() : current?.nat_port ?? null;
+  natPort = natPort === '' || natPort === null ? null : Number(natPort);
+  if (natPort !== null && !(Number.isInteger(natPort) && natPort >= 1 && natPort <= 65535)) throw new ValidationError('Invalid NAT port: {port}').withParams({ port: input.nat_port });
+  if (!flow.natIp || !natIp) { natIp = null; natPort = null; }
   let partners = await partnerRows(input, current, { withPorts: Boolean(flow.partnerPorts), withDomain: Boolean(flow.partnerDomain) });
   if (partners === null) {
     partners = (current?.partner_ips || []).map((p) => ({ address: p.address, partner: p.partner,
@@ -280,14 +286,14 @@ async function flowData(input, current, resolve, domain) {
   if (flow.ipRequired && !ip) throw new ValidationError(flow.ipRequired);
   if (flow.partnersRequired && !partners.length) throw new ValidationError(flow.partnersRequired);
   return {
-    data: { direction, scope, access_mode, port, protocol, ip_address_id: ip?.id ?? null },
+    data: { direction, scope, access_mode, port, protocol, ip_address_id: ip?.id ?? null, nat_ip_address_id: natIp?.id ?? null, nat_port: natPort },
     partners, firstAddress: partners[0]?.domain || ip?.address || partners[0]?.address || null, firstPort: port || partners[0]?.port || null, flow,
   };
 }
 
 // ===== Commands =====
-// ip_address / domain: id or address / name (new ones are created in
-// the inventories); partner IPs: see partnerRows; members: member_ip[] /
+// ip_address / nat_ip / domain: id or address / name of existing records (never
+// created here); partner IPs: see partnerRows; members: member_ip[] /
 // member_port[] / member_status[] (outbound sources have no port); provider_port /
 // provider_protocol: where the provider listens (optional). The flow
 // (direction-scope) decides which of them are kept and required (FLOWS).

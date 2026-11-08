@@ -1092,6 +1092,8 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *           description: Unique (case-insensitive). Default "<domain or IP>:<port>".
  *         ip_address_id: { type: integer, description: 'Our IP of the flow (required): public IP on its FW / LB (inbound public), NAT service IP (inbound private), NAT IP (outbound private), egress public IP (outbound public)' }
  *         port: { type: integer, nullable: true, minimum: 1, maximum: 65535, description: 'Port of our IP: required for inbound; empty for outbound (each partner IP has its own)' }
+ *         nat_ip_address_id: { type: integer, nullable: true, description: 'Public exposure only: the private IP the public IP is NATed to (e.g. a VIP on the LB), optional' }
+ *         nat_port: { type: integer, nullable: true, minimum: 1, maximum: 65535, description: 'Port of the NAT private IP (empty = the public port)' }
  *         partner_ips:
  *           type: array
  *           description: 'Partner IP addresses (single IPv4, no CIDR) with the partner name (System Configuration list service_mapping_partner): the allowed sources of inbound (access_mode limited for public), the destinations of outbound with their own port / protocol (required) and, for internet connectivity, domain (optional). Replaces every row.'

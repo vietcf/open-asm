@@ -657,7 +657,20 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.7.5 (Latest)
+### Version 1.8.0 (Latest)
+- ⬆️ Upgrading from 1.7.x: new image; migration `0036` runs (new columns
+  only). The service mapping import template gains a last column "NAT
+  Private IP": download the new one.
+- ✨ Public Exposure can **NAT its public IP to a private IP** before the
+  backends (optional): `… → Public IP:Port (FW) → NAT → private IP[:port]
+  (e.g. a VIP on the LB) → backends`. The private IP is picked from the IP
+  inventory (never created), its port is optional (empty = the public port),
+  and the device holding it shows in the Service Flow and the detail. Form,
+  export ("NAT private IP"), import (`ip` or `ip:port`), search, REST
+  `nat_ip_address_id` / `nat_port`.
+- Migration `0036_public_exposure_nat_ip.sql`: `virtual_servers.nat_ip_address_id`, `nat_port`.
+
+### Version 1.7.5
 - No database migration: upgrading from 1.7.4 only needs the new image. The
   service mapping import template headers changed (IPs / domain "must
   exist"): download the new one.

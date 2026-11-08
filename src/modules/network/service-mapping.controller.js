@@ -18,7 +18,7 @@ const ACCESS_OPTIONS = ['full', 'limited'];
 const STATUS_OPTIONS = ['active', 'inactive'];
 // Flows = direction-scope (migration 0033)
 export const FLOWS = [
-  { id: 'inbound-public', label: 'Public Exposure', icon: 'bi-globe', path: 'User → Domain → CDN → Public IP:Port (FW / LB) → Backend' },
+  { id: 'inbound-public', label: 'Public Exposure', icon: 'bi-globe', path: 'User → Domain → CDN → Public IP:Port (FW) → NAT private IP (optional) → Backend' },
   { id: 'inbound-internal', label: 'Internal Exposure', icon: 'bi-house-door', path: 'Internal user → Domain → IP:Port → Backend IP:Port' },
   { id: 'inbound-private', label: 'Private Connectivity', icon: 'bi-building-lock', path: 'Partner → VPN / Lease line → NAT service IP:Port → Backend' },
   { id: 'outbound-private', label: 'Partner Connectivity', icon: 'bi-signpost-split', path: 'Internal IP → NAT IP → VPN / Lease line → each partner IP:Port' },
@@ -45,7 +45,7 @@ async function formInput(req) {
   const [direction, scope] = String(b.flow || `${b.direction || ''}-${b.scope || ''}`).split('-');
   return {
     name: b.name, domain: b.domain, provider: b.provider, provider_port: b.provider_port, provider_protocol: b.provider_protocol,
-    ip_address: b.ip_address, port: b.port, protocol: b.protocol,
+    ip_address: b.ip_address, port: b.port, protocol: b.protocol, nat_ip: b.nat_ip, nat_port: b.nat_port,
     direction, scope, access_mode: b.access_mode,
     partner_ip: b.partner_ip ?? [], partner_name: b.partner_name ?? [], partner_port: b.partner_port ?? [], partner_protocol: b.partner_protocol ?? [], partner_domain: b.partner_domain ?? [],
     system_id: b.system_id || null, description: b.description,
@@ -75,6 +75,7 @@ async function renderForm(res, mode, vs = {}, copiedFrom = null) {
     mode, vs, copiedFrom, providerOptions, partnerOptions, flows: FLOWS, protocolOptions: allProtocols, accessOptions: ACCESS_OPTIONS, statusOptions: STATUS_OPTIONS,
     selected: {
       ip: vs.ip_address_id ? [{ id: vs.ip_address_id, text: vs.ip_address }] : [],
+      natIp: vs.nat_ip_address_id ? [{ id: vs.nat_ip_address_id, text: vs.nat_ip }] : [],
       partners: vs.partner_ips || [],
       domain: vs.domain_id ? [{ id: vs.domain_id, text: vs.domain }] : [],
       system: vs.system_id ? [{ id: vs.system_id, text: vs.system_name }] : [],
@@ -102,6 +103,7 @@ export const serviceMappingImport = excelImport({
     { header: 'System Name (Optional)', key: 'system' },
     { header: 'Backend IPs (Optional, ip:port comma-separated, must exist in the IP inventory)', key: 'backends' }, // ip:port/protocol accepted
     { header: 'Description (Optional)', key: 'description' },
+    { header: 'NAT Private IP (Optional, public exposure: ip or ip:port, must exist in the IP inventory)', key: 'nat_ip' },
   ],
   sample: async () => [
     { name: 'Web Production', domain: 'app.example.com', provider: 'Akamai', ip_address: '203.0.113.10', port: 443,
@@ -159,6 +161,11 @@ export const serviceMappingImport = excelImport({
     if (row.ip_address && IPV4_REGEX.test(row.ip_address) && !(await IpAddress.findByAddress(row.ip_address))) missing.push(`IP address: ${row.ip_address}`);
     for (const m of row._members) if (!(await IpAddress.findByAddress(m.ip))) missing.push(`IP address: ${m.ip}`);
     if (row.domain && !(await Domain.findByDomain(row.domain))) missing.push(`Domain: ${row.domain}`);
+    const [natIp, natPort] = String(row.nat_ip || '').split(':').map((v) => v.trim());
+    row._natIp = natIp || null;
+    row._natPort = natPort || null;
+    if (row._natIp && !IPV4_REGEX.test(row._natIp)) errors.push(`Invalid NAT private IP: ${row._natIp}`);
+    else if (row._natIp && !(await IpAddress.findByAddress(row._natIp))) missing.push(`IP address: ${row._natIp}`);
     if (missing.length) errors.push(`Not found: ${missing.join(', ')}`);
 
     // default name: domain:port, or the first destination "ip:port" of an outbound mapping
@@ -173,7 +180,7 @@ export const serviceMappingImport = excelImport({
     await smService.createServiceMapping({
       name: row._name, domain: row.domain || null, provider: row.provider || null,
       provider_port: row.provider_port || null, provider_protocol: row.provider_protocol || null,
-      ip_address: row.ip_address || null, port: Number(row.port), protocol: row._protocol,
+      ip_address: row.ip_address || null, port: Number(row.port), protocol: row._protocol, nat_ip: row._natIp, nat_port: row._natPort,
       direction: row._direction, scope: row._scope, access_mode: row._access_mode, allowed_ips: row.allowed_ips || '',
       system_id: row._systemId, description: row.description || null,
       member_ip: row._members.map((m) => m.ip),
@@ -224,6 +231,7 @@ export default {
         { header: req.t('Partner IPs'), value: (r) => (r.vs.partner_ips || []).map(partnerText).join(', '), width: 36 },
         { header: req.t('System'), value: (r) => r.vs.system_name, width: 20 },
         { header: req.t('IP owner'), value: (r) => r.vs.ip_owner_name, width: 20 },
+        { header: req.t('NAT private IP'), value: (r) => (r.vs.nat_ip ? `${r.vs.nat_ip}${r.vs.nat_port ? `:${r.vs.nat_port}` : ''}` : ''), width: 18 },
         { header: req.t('Backend IP'), value: (r) => r.ip, width: 16 },
         { header: req.t('Backend Port'), value: (r) => r.port, width: 12 },
         { header: req.t('Backend Protocol'), value: (r) => r.protocol, width: 12 },

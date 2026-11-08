@@ -168,6 +168,22 @@
             </div>
           </section>
 
+          <%# --- public exposure: optional NAT of the public IP to a private IP (e.g. a VIP on the LB) --- %>
+          <section class="form-section mb-0" data-flows="inbound-public" data-order='{"inbound-public":5}'>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label" for="f-nat-ip"><%= t('NAT to a private IP (optional)') %></label>
+                <select id="f-nat-ip" name="nat_ip" class="form-select js-select" data-ajax-url="/network/api/ip-addresses/search-all"
+                        data-placeholder="<%= t('Select an IP from the IP inventory') %>" data-selected="<%= JSON.stringify(sel.natIp || []) %>"></select>
+                <div class="form-text"><%= t('Public IP → NAT → this private IP (e.g. a VIP on the LB) → backends') %></div>
+              </div>
+              <div class="col-md-3 col-6">
+                <label class="form-label" for="f-nat-port"><%= t('Private port') %></label>
+                <input type="number" id="f-nat-port" name="nat_port" class="form-control" value="<%= v.nat_port || '' %>" min="1" max="65535" placeholder="<%= t('Same as the public port') %>">
+              </div>
+            </div>
+          </section>
+
           <%# --- members: backends with their port / protocol (inbound) or internal source IPs without port (outbound) --- %>
           <section class="form-section mb-0" data-repeater id="smMembers" data-flows="inbound-public inbound-internal inbound-private outbound-private outbound-public"
                    data-order='{"inbound-public":6,"inbound-internal":3,"inbound-private":4,"outbound-private":1,"outbound-public":1}'>
