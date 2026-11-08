@@ -31,7 +31,7 @@ function withOs(row) {
 // filter: {search, status, type, location, os[], tags[], ip[], manager[], systems[], services[]}; NONE = not set
 function filterWhere({ search = '', status = '', type = '', location = '', os = [], tags = [], ip = [], manager = [], systems = [], services = [] }) {
   const w = new Where();
-  w.search(search, ['s.name ILIKE ?', 's.description ILIKE ?',
+  w.search(search, ['s.name ILIKE ?', 's.description ILIKE ?', 's.os_version ILIKE ?',
     'EXISTS (SELECT 1 FROM server_ip x JOIN ip_addresses i ON i.id = x.ip_id WHERE x.server_id = s.id AND i.ip_address::text ILIKE ?)']);
   if (status) w.add(`s.status = ${w.param(status)}`);
   if (type === NONE) w.add("(s.type IS NULL OR s.type = '')");
@@ -50,18 +50,18 @@ function filterWhere({ search = '', status = '', type = '', location = '', os = 
 }
 
 class Server {
-  static async create({ name, os, status, location, type, description, username }, client) {
+  static async create({ name, os, os_version, status, location, type, description, username }, client) {
     const res = await db(client).query(
-      'INSERT INTO servers (name, os_id, status, location, type, description, updated_by) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
-      [name, os || null, status || null, location || null, type || null, description || null, username]
+      'INSERT INTO servers (name, os_id, status, location, type, description, updated_by, os_version) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
+      [name, os || null, status || null, location || null, type || null, description || null, username, os_version || null]
     );
     return res.rows[0].id;
   }
 
-  static async update(id, { name, os, status, location, type, description, username }, client) {
+  static async update(id, { name, os, os_version, status, location, type, description, username }, client) {
     await db(client).query(
-      'UPDATE servers SET name = $1, os_id = $2, status = $3, location = $4, type = $5, description = $6, updated_at = NOW(), updated_by = $7 WHERE id = $8',
-      [name, os || null, status || null, location || null, type || null, description || null, username, id]
+      'UPDATE servers SET name = $1, os_id = $2, status = $3, location = $4, type = $5, description = $6, updated_at = NOW(), updated_by = $7, os_version = $9 WHERE id = $8',
+      [name, os || null, status || null, location || null, type || null, description || null, username, id, os_version || null]
     );
   }
 
@@ -93,6 +93,12 @@ class Server {
     if (!w.clauses.length) return [];
     const res = await pool.query(`${SELECT_WITH_LINKS} WHERE ${w} ORDER BY s.updated_at DESC`, w.params);
     return res.rows.map(withOs);
+  }
+
+  // OS versions already recorded (form suggestions)
+  static async distinctOsVersions() {
+    const res = await pool.query("SELECT DISTINCT os_version FROM servers WHERE COALESCE(TRIM(os_version), '') <> '' ORDER BY os_version");
+    return res.rows.map((r) => r.os_version);
   }
 
   static async findByName(name) {

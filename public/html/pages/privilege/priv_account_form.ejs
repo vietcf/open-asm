@@ -51,7 +51,7 @@
             <div class="col-md-6">
               <label class="form-label" for="f-systems"><%= t('Systems') %> <span class="text-danger">*</span></label>
               <select id="f-systems" name="systems" class="form-select js-select" multiple required data-placeholder="<%= t('Select systems') %>"
-                      data-ajax-url="/system/api/system" data-selected="<%= JSON.stringify((a.systems || []).map(s => ({ id: s.id, text: s.name }))) %>"></select>
+                      data-ajax-url="/priv-account/api/systems" data-selected="<%= JSON.stringify((a.systems || []).map(s => ({ id: s.id, text: s.name }))) %>"></select>
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-role"><%= t('Role') %> <span class="text-danger">*</span></label>

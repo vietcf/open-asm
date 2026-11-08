@@ -18,7 +18,7 @@ const RELATIONS = {
   services: { label: 'service', exists: (id) => Service.exists(id), save: (id, ids, c) => Server.setServices(id, ids, c) },
   tags: { label: 'tag', exists: (id) => Tag.exists(id), save: (id, ids, c) => Server.setTags(id, ids, c) },
 };
-const FIELDS = ['name', 'description', 'os', 'status', 'type', 'location', 'ip_addresses', 'vip_ip_addresses'];
+const FIELDS = ['name', 'description', 'os', 'os_version', 'status', 'type', 'location', 'ip_addresses', 'vip_ip_addresses'];
 
 // ===== Options ({id, text}); location shares Device's list =====
 export const getServerLocationOptions = () => loadOptions('device_location');
@@ -26,8 +26,9 @@ export const getServerStatusOptions = () => loadOptions('server_status');
 export const getServerTypeOptions = () => loadOptions('server_type');
 
 export async function getFormOptions() {
-  const [locations, statusOptions, typesOptions] = await Promise.all([getServerLocationOptions(), getServerStatusOptions(), getServerTypeOptions()]);
-  return { locations, statusOptions, typesOptions };
+  const [locations, statusOptions, typesOptions, osVersionOptions] = await Promise.all([
+    getServerLocationOptions(), getServerStatusOptions(), getServerTypeOptions(), Server.distinctOsVersions()]);
+  return { locations, statusOptions, typesOptions, osVersionOptions };
 }
 
 // ===== Queries =====
@@ -61,11 +62,12 @@ const trimOrNull = (v) => (typeof v === 'string' ? v.trim() || null : (v ?? null
 async function normalize(input, current = null) {
   const pick = (key, currentKey = key) => (current && !hasKey(input, key) ? current[currentKey] : trimOrNull(input[key]));
   const data = {
-    name: pick('name'), description: pick('description'), os: pick('os', 'os_id'),
+    name: pick('name'), description: pick('description'), os: pick('os', 'os_id'), os_version: pick('os_version'),
     status: pick('status'), type: pick('type'), location: pick('location'),
   };
   const changed = (key) => !current || hasKey(input, key);
   if (!data.name) throw new ValidationError('Server name is required');
+  if (data.os_version && data.os_version.length > 100) throw new ValidationError('OS version is too long (max 100 characters)');
   if (changed('name') && data.name !== current?.name) await assertNameAvailable(data.name, current?.id ?? null);
   if (changed('os') && data.os && !(await Platform.exists(data.os))) throw new ValidationError(`Invalid platform (os) ID: ${data.os}`);
   if (changed('status')) await assertOption('server_status', data.status, 'status', current?.status);
@@ -75,7 +77,7 @@ async function normalize(input, current = null) {
 }
 
 // ===== Commands =====
-// input: {name, os?, status?, location?, type?, description?, ip_addresses,
+// input: {name, os?, os_version?, status?, location?, type?, description?, ip_addresses,
 //         managers?, systems?, agents?, services?, tags?, updated_by?}
 export async function createServer(input, client) {
   const data = await normalize(input);

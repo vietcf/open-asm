@@ -12,15 +12,27 @@ import { sendExcel } from '../../utils/excelExport.js';
 const LIST_URL = '/cluster';
 const listFilter = (query) => ({ role: queryList(query, 'role'), system_id: queryList(query, 'system_id') });
 
+// System rows: parallel system_id[] / system_namespace[]
 const formInput = (req) => {
   const b = req.body;
-  return { name: b.name, description: b.description, member_ip_id: b.member_ip_id ?? [], member_role: b.member_role ?? [], systems: b.systems ?? [], updated_by: actorName(req) };
+  const namespaces = [].concat(b.system_namespace ?? []);
+  const systems = [].concat(b.system_id ?? []).map((id, i) => ({ system_id: id, namespace: namespaces[i] }));
+  return { name: b.name, description: b.description, member_ip_id: b.member_ip_id ?? [], member_role: b.member_role ?? [], systems, updated_by: actorName(req) };
 };
+
+// "System 001[ns-payment]" -> { name: 'System 001', namespace: 'ns-payment' }
+function parseSystemCell(value) {
+  const m = String(value).match(/^(.+?)\s*\[(.*)\]$/);
+  return m ? { name: m[1].trim(), namespace: m[2].trim() } : { name: String(value).trim(), namespace: '' };
+}
+
+// "System 001 (ns-payment)" for exports
+const systemLabel = (s) => (s.namespace ? `${s.name} (${s.namespace})` : s.name);
 
 async function renderForm(res, mode, cluster = {}) {
   res.render('pages/cluster/cluster_form', {
     mode, cluster, roleOptions: await clusterService.getRoleOptions(),
-    selectedSystems: (cluster.systems || []).map((s) => ({ id: s.id, text: s.name })),
+    systemRows: (cluster.systems || []).map((s) => ({ id: s.id, text: s.name, namespace: s.namespace || '' })),
     title: mode === 'edit' ? 'Edit Cluster' : 'Add Cluster', activeMenu: 'cluster',
   });
 }
@@ -37,7 +49,7 @@ export const clusterImport = excelImport({
     { header: 'System Name (Optional, comma-separated if multiple)', key: 'systems' },
   ],
   sample: async () => [
-    { name: 'OpenShift Production', description: 'Production OpenShift cluster', ip: '10.10.10.11', role: 'master', systems: 'System 001' },
+    { name: 'OpenShift Production', description: 'Production OpenShift cluster', ip: '10.10.10.11', role: 'master', systems: 'System 001[ns-system-001], System 002' },
     { name: 'OpenShift Production', description: '', ip: '10.10.10.12', role: 'worker', systems: '' },
   ],
   prepare: async (req) => ({ username: actorName(req) || 'admin' }),
@@ -50,7 +62,9 @@ export const clusterImport = excelImport({
       if (!row.ipId) errors.push(`IP address not found: ${row.ip}. Please create it first.`);
     }
     const missing = [];
-    row.systemIds = await resolveNames(splitList(row.systems), (n) => System.findByNameExact(n), 'System', missing);
+    const cells = splitList(row.systems).map(parseSystemCell);
+    const ids = await resolveNames(cells.map((c) => c.name), (n) => System.findByNameExact(n), 'System', missing);
+    row.systemRows = ids.length === cells.length ? cells.map((c, i) => ({ system_id: ids[i], namespace: c.namespace })) : [];
     if (missing.length) errors.push(`Not found: ${missing.join(', ')}`);
     return { errors };
   },
@@ -68,7 +82,7 @@ export const clusterImport = excelImport({
     description: rows.map((r) => r.description).find(Boolean) || null,
     member_ip_id: rows.map((r) => r.ipId),
     member_role: rows.map((r) => r.role),
-    systems: [...new Set(rows.flatMap((r) => r.systemIds))],
+    systems: rows.flatMap((r) => r.systemRows), // the first namespace given for a system wins
     updated_by: ctx.username,
   }, client),
   resultUrl: (file) => `/cluster/download/cluster-validation/${file}`,
@@ -97,7 +111,7 @@ export default {
       columns: [
         { header: req.t('Cluster Name'), value: (r) => r.cluster.name, width: 28 },
         { header: req.t('Description'), value: (r) => r.cluster.description, width: 36 },
-        { header: req.t('Systems'), value: (r) => r.cluster.systems.map((s) => s.name) },
+        { header: req.t('Systems'), value: (r) => r.cluster.systems.map(systemLabel) },
         { header: req.t('IP Address'), value: (r) => r.ip, width: 16 },
         { header: req.t('Role'), value: (r) => r.role, width: 14 },
         { header: req.t('Server'), value: (r) => r.server_name, width: 22 },

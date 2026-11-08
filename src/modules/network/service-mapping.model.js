@@ -6,27 +6,30 @@ const COLUMNS = ['name', 'domain_id', 'provider', 'provider_port', 'provider_pro
 // Frontend IP / domain come from the inventories (ip_address, domain as text).
 // ip_owner_name / ip_owner_type: the device, else the server, holding the frontend
 // IP (its own IP before a VIP); none for an IP nothing holds (e.g. an external
-// destination). Members are IP:port; server_name lists the server(s) owning the IP.
+// destination). Members are IP:port; server_name lists the server(s) owning the IP,
+// owner_name / owner_type the device, else the server, holding it (same rule).
+const IP_OWNER = (ipId) => `
+    SELECT * FROM (
+      SELECT d.id, d.name, 'device' AS kind, (di.role <> 'normal')::int AS rank FROM device_ip di JOIN devices d ON d.id = di.device_id WHERE di.ip_id = ${ipId}
+      UNION ALL
+      SELECT s.id, s.name, 'server', 2 + (si.role <> 'normal')::int FROM server_ip si JOIN servers s ON s.id = si.server_id WHERE si.ip_id = ${ipId}
+    ) o ORDER BY rank, id LIMIT 1`;
 const SELECT_WITH_LINKS = `
   SELECT vs.*, fip.ip_address, dom.domain,
     own.name AS ip_owner_name, own.kind AS ip_owner_type, own.id AS ip_owner_id, sys.name AS system_name,
     ${jsonList('m', {
       id: 'm.id', ip_address_id: 'ip.id', ip: 'ip.ip_address', port: 'm.port', status: 'm.status',
       server_name: "(SELECT string_agg(s.name, ', ' ORDER BY s.name) FROM server_ip si JOIN servers s ON s.id = si.server_id WHERE si.ip_id = ip.id)",
+      owner_name: 'mo.name', owner_type: 'mo.kind',
     })} AS members
   FROM virtual_servers vs
   JOIN ip_addresses fip ON fip.id = vs.ip_address_id
   LEFT JOIN domains dom ON dom.id = vs.domain_id
-  LEFT JOIN LATERAL (
-    SELECT * FROM (
-      SELECT d.id, d.name, 'device' AS kind, (di.role <> 'normal')::int AS rank FROM device_ip di JOIN devices d ON d.id = di.device_id WHERE di.ip_id = vs.ip_address_id
-      UNION ALL
-      SELECT s.id, s.name, 'server', 2 + (si.role <> 'normal')::int FROM server_ip si JOIN servers s ON s.id = si.server_id WHERE si.ip_id = vs.ip_address_id
-    ) o ORDER BY rank, id LIMIT 1
-  ) own ON TRUE
+  LEFT JOIN LATERAL (${IP_OWNER('vs.ip_address_id')}) own ON TRUE
   LEFT JOIN systems sys ON sys.id = vs.system_id
   LEFT JOIN virtual_server_members m ON m.virtual_server_id = vs.id
-  LEFT JOIN ip_addresses ip ON ip.id = m.ip_address_id`;
+  LEFT JOIN ip_addresses ip ON ip.id = m.ip_address_id
+  LEFT JOIN LATERAL (${IP_OWNER('ip.id')}) mo ON TRUE`;
 const GROUP_BY = 'GROUP BY vs.id, fip.ip_address, dom.domain, own.id, own.name, own.kind, sys.name';
 
 function filterWhere({ search = '', protocol, provider, device_id, system_id, direction, scope, access_mode }) {

@@ -11,6 +11,7 @@ import { removeRoundsOf } from '../pentest/pentest.service.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
 import { dropComponentIpsOutsideSystem } from './system-ip-links.js';
+import { removeComponent } from './component.service.js';
 import { toStringList, hasKey, loadOptions, assertIdsExist, resolveRelations, saveRelations } from '../../shared/service.js';
 
 const RELATIONS = {
@@ -147,14 +148,18 @@ export async function updateSystem(id, input, client) {
 }
 
 // Links without a foreign key (tags, files, pentest rounds) are removed here.
-export async function deleteSystem(id) {
+// deleteComponents: also delete the system's components (sub-systems);
+// without it a system that still has components is not deleted.
+export async function deleteSystem(id, { deleteComponents = false } = {}) {
   await getSystem(id);
-  if (await SystemComponent.countBySystemId(id)) {
+  if (!deleteComponents && await SystemComponent.countBySystemId(id)) {
     throw new ConflictError('You must delete all components of this system before deleting the system. Please remove all components first.');
   }
   const files = await withTransaction(null, async (c) => {
+    const removed = [];
+    for (const component of await SystemComponent.findBySystemId(id, c)) removed.push(...await removeComponent(component, c));
     await saveRelations(id, { contacts: [], ip_addresses: [], domains: [], tags: [] }, RELATIONS, c);
-    const removed = [...await FileUpload.removeRecords('system', id, c), ...await removeRoundsOf('system', id, c)];
+    removed.push(...await FileUpload.removeRecords('system', id, c), ...await removeRoundsOf('system', id, c));
     await System.delete(id, c);
     return removed;
   });

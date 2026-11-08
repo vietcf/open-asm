@@ -6,6 +6,7 @@ import { IPV4_REGEX } from './ip-address.service.js';
 import { excelImport, splitList, resolveNames } from '../../shared/excelImport.js';
 import { parseListQuery, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, runAndRedirect, page, lookup, duplicatePage } from '../../shared/web.js';
 import { sendExcel } from '../../utils/excelExport.js';
+import { loadOptions } from '../../shared/service.js';
 
 const LIST_URL = '/network/service-mapping';
 const PROTOCOL_OPTIONS = ['HTTP', 'HTTPS', 'TCP', 'UDP'];
@@ -42,7 +43,7 @@ const options = (rows, text = (r) => r.name) => (rows || []).map((r) => ({ id: r
 
 async function renderForm(res, mode, vs = {}, copiedFrom = null) {
   const [providerOptions, protocolOptions] = await Promise.all([
-    smService.getProviderOptions(),
+    loadOptions('service_mapping_provider'),
     smService.getProtocolOptions(),
   ]);
   const allProtocols = [...new Set([...PROTOCOL_OPTIONS, ...protocolOptions])];
@@ -52,7 +53,7 @@ async function renderForm(res, mode, vs = {}, copiedFrom = null) {
       ip: vs.ip_address_id ? [{ id: vs.ip_address_id, text: vs.ip_address }] : [],
       domain: vs.domain_id ? [{ id: vs.domain_id, text: vs.domain }] : [],
       system: vs.system_id ? [{ id: vs.system_id, text: vs.system_name }] : [],
-      members: (vs.members || []).map((m) => ({ id: m.ip_address_id, text: m.server_name ? `${m.ip} (${m.server_name})` : m.ip, port: m.port, status: m.status })),
+      members: (vs.members || []).map((m) => ({ id: m.ip_address_id, text: m.owner_name ? `${m.ip} (${m.owner_name})` : m.ip, port: m.port, status: m.status })),
     },
     title: mode === 'edit' ? 'Edit Service Mapping' : 'Add Service Mapping', activeMenu: 'service-mapping',
   });
@@ -181,7 +182,7 @@ export default {
         { header: req.t('IP owner'), value: (r) => r.vs.ip_owner_name, width: 20 },
         { header: req.t('Backend IP'), value: (r) => r.ip, width: 16 },
         { header: req.t('Backend Port'), value: (r) => r.port, width: 12 },
-        { header: req.t('Server'), value: (r) => r.server_name, width: 24 },
+        { header: req.t('Server/Device'), value: (r) => r.owner_name, width: 24 },
         { header: req.t('Status'), value: (r) => r.status, width: 10 },
         { header: req.t('Description'), value: (r) => r.vs.description, width: 40 },
         { header: req.t('Updated'), value: (r) => r.vs.updated_at && new Date(r.vs.updated_at), width: 20 },
@@ -211,9 +212,4 @@ export default {
 
   // ===== AJAX =====
   lookup: lookup((search) => ServiceMapping.select2Search(search)),
-  providers: lookup(async (search) => {
-    const all = await ServiceMapping.getDistinctProviders();
-    const q = (search || '').toLowerCase();
-    return all.filter((p) => p.toLowerCase().includes(q)).map((p) => ({ id: p, text: p }));
-  }),
 };

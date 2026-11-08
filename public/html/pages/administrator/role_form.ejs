@@ -36,7 +36,7 @@
                 <tr>
                   <th><%= t('Resource') %></th>
                   <% actions.forEach(function (a) { %>
-                    <th class="text-center"><button type="button" class="btn btn-link btn-sm p-0" data-toggle-col="<%= a %>"><%= t(a.charAt(0).toUpperCase() + a.slice(1)) %></button></th>
+                    <th class="text-center"><button type="button" class="btn btn-link btn-sm p-0" data-toggle-col="<%= a %>"><%= t({ global: 'All systems', all_scope: 'No unit limit' }[a] || a.charAt(0).toUpperCase() + a.slice(1)) %></button></th>
                   <% }) %>
                 </tr>
               </thead>

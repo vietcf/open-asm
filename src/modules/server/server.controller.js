@@ -34,7 +34,7 @@ function listFilter(query) {
 const formInput = (req, mode) => {
   const b = req.body;
   const input = {
-    name: b.name, description: b.description, os: b.os, status: b.status, location: b.location, type: b.type,
+    name: b.name, description: b.description, os: b.os, os_version: b.os_version, status: b.status, location: b.location, type: b.type,
     ip_addresses: b.ip_addresses || [], managers: b.managers || [], systems: b.systems || [], agents: b.agents || [],
     services: b.services || [], tags: b.tags || [], updated_by: actorName(req),
   };
@@ -67,6 +67,7 @@ const IMPORT_COLUMNS = [
   { header: 'Name (Optional - auto-generated if empty)', key: 'name' },
   { header: 'IPAddress (Require, comma-separated if multiple)', key: 'ips' },
   { header: 'OS (Optional)', key: 'os' },
+  { header: 'OS Version (Optional)', key: 'os_version' },
   { header: 'Status (Optional)', key: 'status' },
   { header: 'Location (Optional)', key: 'location' },
   { header: 'Type (Optional)', key: 'type' },
@@ -85,9 +86,9 @@ export const serverImport = excelImport({
   name: 'server',
   columns: IMPORT_COLUMNS,
   sample: async () => [
-    { name: 'Test Server 1', ips: '192.168.1.100,192.168.1.101', os: 'Linux', status: 'ONLINE', location: 'DC', type: 'Physical',
+    { name: 'Test Server 1', ips: '192.168.1.100,192.168.1.101', os: 'Linux', os_version: '22.04 LTS', status: 'ONLINE', location: 'DC', type: 'Physical',
       manager: 'admin@company.com,manager@company.com', system: 'System1,System2', agent: 'Agent1,Agent2', service: 'Service1,Service2', tag: 'Tag1,Tag2', description: 'Test server description' },
-    { name: '', ips: '192.168.2.3', os: 'Windows', status: 'OFFLINE', location: 'DR', type: 'Virtual',
+    { name: '', ips: '192.168.2.3', os: 'Windows', os_version: '2019 Datacenter', status: 'OFFLINE', location: 'DR', type: 'Virtual',
       manager: 'admin@company.com', system: 'System1', agent: 'Agent1', service: 'Service1', tag: 'Tag1', description: 'Auto-generated name example' },
   ],
   async prepare(req) {
@@ -124,7 +125,7 @@ export const serverImport = excelImport({
       ...IMPORT_COLUMNS.slice(2).map((c) => `${c.header.replace(/ \(.*$/, '')}: ${row[c.key] || 'N/A'}`)].join('\n');
     const ipIds = await ensureIpAddresses(row.ipList, note, ctx.username, client);
     await serverService.createServer({
-      name: row.serverName, os: row.osId, status: row.status || null, location: row.location || null, type: row.type || null,
+      name: row.serverName, os: row.osId, os_version: row.os_version || null, status: row.status || null, location: row.location || null, type: row.type || null,
       description: row.description || null, managers: row.managerIds, systems: row.systemIds, agents: row.agentIds,
       services: row.serviceIds, tags: row.tagIds, ip_addresses: ipIds, updated_by: ctx.username,
     }, client);
@@ -163,6 +164,7 @@ export default {
         { header: req.t('Location'), value: (s) => s.location, width: 12 },
         { header: req.t('Type'), value: (s) => s.type, width: 12 },
         { header: req.t('Platform'), value: (s) => s.platform_name, width: 16 },
+        { header: req.t('OS Version'), value: (s) => s.os_version, width: 16 },
         { header: req.t('Managers'), value: (s) => (s.managers || []).map((m) => m.email || m.name) },
         { header: req.t('Systems'), value: (s) => names(s.systems) },
         { header: req.t('Agents'), value: (s) => names(s.agents) },

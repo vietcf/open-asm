@@ -11,6 +11,7 @@
     { key: 'description', label: 'Description' },
     { key: 'location', label: 'Location' },
     { key: 'platform', label: 'Platform' },
+    { key: 'os_version', label: 'OS Version' },
     { key: 'managers', label: 'Managers' },
     { key: 'services', label: 'Services' },
     { key: 'agents', label: 'Agents' },
@@ -27,6 +28,7 @@
     description: ui.clip(s.description),
     location: s.location ? ui.esc(ui.optionLabel(locations, s.location)) : ui.dash,
     platform: ui.text(s.platform_name),
+    os_version: ui.text(s.os_version),
     managers: ui.text(names(s.managers).join(', ')),
     services: ui.chips(names(s.services)),
     agents: ui.chips(names(s.agents)),
@@ -142,8 +144,7 @@
   </div>
 </div>
 
-<%- include('../../partials/ui/detail_modal', { id: 'serverDetailModal', pentestType: 'server' }) %>
-<%- include('../../partials/ui/pentest_quick_view') %>
+<%- include('../../partials/ui/detail_modal', { id: 'serverDetailModal' }) %>
 <%- include('../../partials/ui/delete_ip_modal') %>
 <% if (hasPermission('server.create')) { %>
   <%- include('../../partials/ui/import_modal', { id: 'serverImportModal', title: 'Import Servers', baseUrl: '/server/server',
@@ -164,6 +165,7 @@
       DV.field('Type', DV.text(opt('type'))),
       DV.field('Location', DV.text(opt('location'))),
       DV.field('Platform', DV.text(s.platform_name)),
+      DV.field('OS Version', DV.text(s.os_version)),
       DV.field('Tags', DV.chips((s.tags || []).map((tg) => tg.name))),
       DV.field('Managers', DV.contacts(s.managers))
     ));

@@ -61,13 +61,16 @@
     return '<li>' + (href ? '<a href="' + esc(encodeURI(href)) + '" target="_blank" rel="noopener noreferrer">' + esc(target) + '</a>' : esc(target)) + note + '</li>';
   }
   const urlList = (values) => (toArray(values).length ? '<ul class="detail-list">' + toArray(values).map(urlItem).join('') + '</ul>' : '');
-  function contacts(list) {
+  // badge(contact) -> optional short label shown after the name (e.g. 'L2')
+  function contacts(list, badge) {
     if (!list || !list.length) return EMPTY;
     return '<ul class="detail-list">' + list.map((c) => {
       const name = c.name || c;
       const user = c.email ? String(c.email).split('@')[0] : '';
+      const label = badge ? badge(c) : '';
       return '<li><i class="bi bi-person text-secondary me-1"></i><a href="/organize/contact?search=' + encodeURIComponent(c.email || name) + '" target="_blank" rel="noopener noreferrer">' + esc(name) + '</a>' +
-        (user ? ' <span class="text-secondary small">(' + esc(user) + ')</span>' : '') + '</li>';
+        (user ? ' <span class="text-secondary small">(' + esc(user) + ')</span>' : '') +
+        (label ? ' <span class="badge tag">' + esc(label) + '</span>' : '') + '</li>';
     }).join('') + '</ul>';
   }
   function ipLink(ip) {
@@ -93,9 +96,21 @@
     return parts.length ? '<div class="detail-meta">' + parts.join('<span class="mx-2">|</span>') + '</div>' : '';
   }
 
-  // ---- tooltips: IP details and unit descriptions (lazy, cached) ----------
+  // ---- tooltips: IP / subnet details and unit descriptions (lazy, cached) --
   const ipCache = {};
   const unitCache = {};
+  const subnetCache = {};
+  function subnetTooltipText(info) {
+    if (!info || !info.address) return tr('No additional information found');
+    const lines = [tr('Subnet') + ': ' + info.address];
+    if (info.description) lines.push(tr('Description') + ': ' + info.description);
+    if (info.zone) lines.push(tr('Zone') + ': ' + info.zone);
+    if (info.environment) lines.push(tr('Environment') + ': ' + info.environment);
+    if (info.gateway_ip_address) lines.push(tr('Gateway') + ': ' + info.gateway_ip_address);
+    lines.push(tr('IP Addresses') + ': ' + (info.ip_count || 0));
+    if ((info.tags || []).length) lines.push(tr('Tags') + ': ' + info.tags.join(', '));
+    return lines.join('\n');
+  }
   function ipTooltipText(ip, info) {
     if (!info) return 'IP: ' + ip + '\n' + tr('No additional information found');
     const lines = ['IP: ' + (info.ip_address || ip)];
@@ -124,6 +139,10 @@
     scope.querySelectorAll('.ip-hover-link[data-ip]').forEach((el) => {
       const ip = el.dataset.ip;
       lazyTooltip(el, ipCache, ip, '/network/api/ip-addresses/detail?search=' + encodeURIComponent(ip), (data) => ipTooltipText(ip, Array.isArray(data) ? data[0] : null));
+    });
+    scope.querySelectorAll('.subnet-hover-link[data-subnet-id]').forEach((el) => {
+      const id = el.dataset.subnetId;
+      lazyTooltip(el, subnetCache, id, '/network/api/subnets/' + encodeURIComponent(id) + '/detail', subnetTooltipText);
     });
     scope.querySelectorAll('.org-tooltip[data-unit-id]').forEach((el) => {
       const id = el.dataset.unitId;

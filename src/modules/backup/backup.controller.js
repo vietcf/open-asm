@@ -1,4 +1,4 @@
-// Web pages: /backup (list, back up now, upload, download, restore, delete).
+// Web pages: /backup (list, back up now, download, restore from an uploaded file, delete).
 import * as backupService from './backup.service.js';
 import { ValidationError } from '../../shared/errors.js';
 import { errorMessage, takeFlash, runAndRedirect, page } from '../../shared/web.js';
@@ -16,19 +16,21 @@ export default {
 
   create: (req, res) => runAndRedirect(req, res, LIST_URL, () => backupService.createBackup('manual'), 'Backup created successfully'),
 
-  upload: (req, res) => runAndRedirect(req, res, LIST_URL, async () => {
-    if (!req.file) throw new ValidationError('Choose a backup file to upload');
-    await backupService.importUpload(req.file.path, req.file.originalname);
-  }, 'Backup uploaded successfully'),
-
   download: page(async (req, res) => {
     res.download(backupService.backupPath(req.params.name), req.params.name);
   }),
 
-  // Replaces the whole database; the previous data is kept as a pre-restore backup
+  // Uploaded file -> stored as an "upload" backup -> replaces the whole database;
+  // the previous data is kept as a pre-restore backup
   async restore(req, res) {
     try {
-      const { safety_backup: safety } = await backupService.restoreBackup(req.params.name, req.body.confirm);
+      if (!req.file) throw new ValidationError('Choose a backup file to upload');
+      if (req.body.confirm !== backupService.RESTORE_CONFIRMATION) {
+        backupService.discardUpload(req.file.path);
+        throw new ValidationError('Type {word} to confirm the restore').withParams({ word: backupService.RESTORE_CONFIRMATION });
+      }
+      const uploaded = await backupService.importUpload(req.file.path, req.file.originalname);
+      const { safety_backup: safety } = await backupService.restoreBackup(uploaded.name, req.body.confirm);
       req.flash('success', req.t('Restore completed. A copy of the previous data was saved as {file}', { file: safety }));
     } catch (err) {
       req.flash('error', errorMessage(req, err));

@@ -49,6 +49,8 @@
 .detail-table > thead > tr > th { font-size: .8125rem; font-weight: 600; color: var(--bs-secondary-color); padding: .5rem 1rem; }
 .detail-table > tbody > tr > td { padding: .5rem 1rem; font-weight: 500; }
 .detail-table > tbody > tr:last-child > td { border-bottom: 0; }
+/* one line of a long text; the full text is in its title (shown on hover) */
+.detail-truncate { display: inline-block; max-width: 22rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 .detail-components { display: grid; gap: .5rem; }
 .detail-component { border: 1px solid var(--bs-border-color); border-radius: .375rem; overflow: hidden; }
 .detail-component-head {

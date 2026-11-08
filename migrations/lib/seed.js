@@ -32,6 +32,9 @@ export async function seedPermissionsAndRoles(db) {
     }
   }
   permissionValues.push(`('backup.restore', 'Restore backup')`);
+  // Privileged accounts: "all systems" roles / permissions, and no unit limit (admin gets both)
+  permissionValues.push(`('priv_role.global', 'Manage privileged roles / permissions for all systems')`);
+  permissionValues.push(`('priv_account.all_scope', 'See every privileged account, role and permission (no unit limit)')`);
   // Backups are never edited: no backup.update
   const updateIdx = permissionValues.indexOf(`('backup.update', 'Update backup')`);
   if (updateIdx >= 0) permissionValues.splice(updateIdx, 1);
@@ -83,6 +86,7 @@ export async function seedConfiguration(db) {
     ['log_level', 'info', 'Minimum level of system log entries (info, warning, critical)'],
     ['log_retention_days', '30', 'Days to keep system log entries'],
     ['api_debug_log', 'off', 'Log every REST API request with its JSON body, level debug (on / off)'],
+    ['priv_scope_enforced', 'off', "Limit privileged accounts / roles / permissions to the systems of the user's units (on / off)"],
     // Backup schedule: installs that set it in .env keep their values
     ['backup_enabled', 'on', 'Run the scheduled database backup (on / off)'],
     ['backup_frequency', ['daily', 'weekly', 'monthly'].includes(process.env.BACKUP_FREQUENCY) ? process.env.BACKUP_FREQUENCY : 'daily', 'Scheduled backup frequency (daily, weekly, monthly)'],
@@ -111,6 +115,16 @@ export async function seedConfiguration(db) {
         { value: 'DIGI', label: 'DIGI' }
       ],
       description: 'Firewall names'
+    },
+    {
+      key: 'service_mapping_provider',
+      value: [
+        { value: 'Akamai', label: 'Akamai' },
+        { value: 'Cloudflare', label: 'Cloudflare' },
+        { value: 'VPN', label: 'VPN' },
+        { value: 'MPLS', label: 'MPLS' }
+      ],
+      description: 'Service mapping providers / channels'
     },
     {
       key: 'priv_account_type',

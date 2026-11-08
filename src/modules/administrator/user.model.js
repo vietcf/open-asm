@@ -1,8 +1,12 @@
 // Application users (login accounts) with their role.
 import { pool } from '../../../config/config.js';
-import { db, Where, searchRank } from '../../shared/db.js';
+import { db, Where, searchRank, replaceLinks } from '../../shared/db.js';
 
-const SELECT = 'SELECT u.*, r.name AS role_name FROM users u LEFT JOIN roles r ON r.id = u.role_id';
+// unit: the user's own unit; scope_units: extra units whose systems they may also see (privileged accounts)
+const SELECT = `SELECT u.*, r.name AS role_name, un.name AS unit_name,
+    COALESCE((SELECT json_agg(json_build_object('id', x.id, 'name', x.name) ORDER BY x.name)
+              FROM user_scope_units su JOIN units x ON x.id = su.unit_id WHERE su.user_id = u.id), '[]') AS scope_units
+  FROM users u LEFT JOIN roles r ON r.id = u.role_id LEFT JOIN units un ON un.id = u.unit_id`;
 
 // filter: {search, role_id[], status ('active' | 'inactive'), auth_source[], twofa ('enabled' | 'required' | 'off')}
 function filterWhere({ search = '', role_id = [], status, auth_source = [], twofa }) {
@@ -18,7 +22,7 @@ function filterWhere({ search = '', role_id = [], status, auth_source = [], twof
   return w;
 }
 
-const COLUMNS = ['username', 'email', 'fullname', 'role_id', 'password_hash', 'require_twofa', 'twofa_setup_deadline', 'must_change_password', 'is_active', 'auth_source'];
+const COLUMNS = ['username', 'email', 'fullname', 'role_id', 'unit_id', 'password_hash', 'require_twofa', 'twofa_setup_deadline', 'must_change_password', 'is_active', 'auth_source'];
 
 class User {
   static async create(data, client) {
@@ -40,6 +44,8 @@ class User {
   static async remove(id, client) {
     await db(client).query('DELETE FROM users WHERE id = $1', [id]);
   }
+
+  static setScopeUnits(id, unitIds, client) { return replaceLinks(client, 'user_scope_units', 'user_id', id, 'unit_id', unitIds); }
 
   static async findById(id) {
     const result = await pool.query(`${SELECT} WHERE u.id = $1`, [id]);

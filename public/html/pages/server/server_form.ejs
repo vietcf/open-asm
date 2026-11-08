@@ -33,6 +33,13 @@
               <select id="f-os" name="os" class="form-select js-select"
                       data-placeholder="<%= t('Select platform') %>"><option value=""></option><%- ui.options(platformOptions, sel.os || []) %></select>
             </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-os-version"><%= t('OS Version') %></label>
+              <%# free text; the browser suggests the versions already recorded %>
+              <input type="text" id="f-os-version" name="os_version" class="form-control" list="os-version-options" maxlength="100" autocomplete="off"
+                     value="<%= s.os_version || '' %>" placeholder="<%= t('e.g. 22.04 LTS, 2019 Datacenter') %>">
+              <datalist id="os-version-options"><% (osVersionOptions || []).forEach(function (v) { %><option value="<%= v %>"></option><% }) %></datalist>
+            </div>
             <% [optionSelect('status', 'Status', statusOptions, 'Select status'), optionSelect('type', 'Type', typesOptions, 'Select type'), optionSelect('location', 'Location', locations, 'Select location')].forEach(function (o) { %>
               <div class="col-md-4">
                 <label class="form-label" for="f-<%= o.name %>"><%= t(o.label) %></label>
@@ -64,6 +71,12 @@
                 <select id="f-vips" name="vip_ip_addresses[]" class="form-select js-select" multiple data-ajax-url="/network/api/ip-addresses/search-all"
                         data-placeholder="<%= t('Select IP addresses') %>" data-selected="<%= JSON.stringify(sel.vips || []) %>"></select>
                 <div class="form-text"><%= t('(shared with other devices/servers)') %></div>
+              </div>
+            <% } else { %>
+              <%# VIP IPs are set once the record exists (they may be shared with other servers / devices) %>
+              <div class="col-md-6">
+                <span class="form-label d-block"><%= t('VIP IP Address(es)') %></span>
+                <div class="form-text mt-0"><i class="bi bi-info-circle me-1"></i><%= t('VIP IP addresses are added from Edit, after the server is saved.') %></div>
               </div>
             <% } %>
           </div>

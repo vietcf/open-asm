@@ -73,7 +73,8 @@
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-management"><%= t('Management Address') %></label>
-              <input type="text" id="f-management" name="management_address" class="form-control" value="<%= d.management_address || '' %>" placeholder="<%= t('e.g. https://10.0.0.1, 10.0.0.1:22') %>">
+              <input type="text" id="f-management" name="management_address" class="form-control" maxlength="255" value="<%= d.management_address || '' %>" placeholder="<%= t('e.g. https://10.10.1.1[kvm], ssh://10.10.1.1:22[cli]') %>">
+              <div class="form-text"><%= t('Free text. Separate several addresses with commas; a label in square brackets after an address is shown as a badge, e.g. https://10.10.1.1[kvm], 10.10.1.1:22[ssh]') %></div>
             </div>
             <% if (isEdit) { %>
               <div class="col-md-6">
@@ -81,6 +82,12 @@
                 <select id="f-vips" name="vip_ip_addresses[]" class="form-select js-select" multiple data-ajax-url="/network/api/ip-addresses/search-all"
                         data-placeholder="<%= t('Select IP addresses') %>" data-selected="<%= JSON.stringify(sel.vips || []) %>"></select>
                 <div class="form-text"><%= t('(shared with other devices/servers)') %></div>
+              </div>
+            <% } else { %>
+              <%# VIP IPs are set once the record exists (they may be shared with other servers / devices) %>
+              <div class="col-md-6">
+                <span class="form-label d-block"><%= t('VIP IP Address(es)') %></span>
+                <div class="form-text mt-0"><i class="bi bi-info-circle me-1"></i><%= t('VIP IP addresses are added from Edit, after the device is saved.') %></div>
               </div>
             <% } %>
           </div>

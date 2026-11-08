@@ -10,7 +10,7 @@
   ];
   const cell = (r, key) => ({
     name: ui.esc(r.name),
-    system: ui.text(r.system?.name),
+    system: r.all_systems ? `<span class="badge tag"><i class="bi bi-globe2 me-1"></i>${ui.esc(t('All systems'))}</span>` : ui.text(r.system?.name),
     permissions: ui.chips(r.permissions.map(p => p.name)),
     accounts: r.account_count ? `<a href="/priv-account/account?search=${encodeURIComponent(r.name)}"><span class="badge tag">${r.account_count}</span></a>` : ui.dash,
     description: ui.clip(r.description),
@@ -22,6 +22,13 @@
 <div class="app-content">
   <div class="container-fluid">
     <%- include('../../partials/ui/flash') %>
+    <% if (locals.scopeUnits) { %>
+      <div class="alert <%= scopeUnits.length ? 'alert-info' : 'alert-warning' %> py-2 small">
+        <i class="bi bi-funnel me-1"></i>
+        <% if (scopeUnits.length) { %><%= t('Limited to the systems of your units:') %> <strong><%= scopeUnits.join(', ') %></strong>
+        <% } else { %><%= t('Your account has no unit yet, so no data is shown. Ask an administrator to assign your unit in User Management.') %><% } %>
+      </div>
+    <% } %>
 
     <div class="card list-card">
       <form class="list-filter-form" method="get" action="/priv-account/role">
@@ -65,10 +72,10 @@
                   <% COLUMNS.forEach(function (c) { %><td data-col="<%= c.key %>" data-label="<%= t(c.label) %>"<%- c.key === 'name' ? ' class="fw-medium"' : '' %>><%- cell(r, c.key) %></td><% }) %>
                   <td class="col-actions">
                     <div class="row-actions">
-                      <% if (hasPermission('priv_role.update')) { %>
+                      <% if (hasPermission('priv_role.update') && r.can_edit) { %>
                         <a href="/priv-account/role/<%= r.id %>/edit" class="btn btn-sm btn-outline-secondary" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
                       <% } %>
-                      <% if (hasPermission('priv_role.delete')) { %>
+                      <% if (hasPermission('priv_role.delete') && r.can_edit) { %>
                         <form action="/priv-account/role/<%= r.id %>/delete" method="POST" data-confirm="<%= t('Delete {1}?', { 1: r.name }) %>">
                           <button type="submit" class="btn btn-sm btn-outline-secondary btn-delete" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
                         </form>

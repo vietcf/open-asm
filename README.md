@@ -17,7 +17,7 @@ A comprehensive network and system management platform built with Node.js, Expre
 - **File Upload Management**: Handle file uploads with AWS S3 integration
 - **System Monitoring**: Real-time system status and logging
 - **API Documentation**: Swagger/OpenAPI integration
-- **Database Backup & Restore**: Scheduled PostgreSQL backups (schedule and retention set in the UI), on-demand backups, upload, download and one-click restore
+- **Database Backup & Restore**: Scheduled PostgreSQL backups (schedule and retention set in the UI), on-demand backups, download, and restore from an uploaded backup file
 
 ### Security Features
 - **Password Management**: Secure password hashing with bcrypt
@@ -620,13 +620,16 @@ Open **Backup & Restore** in the admin menu (permissions `backup.read`,
 - **Schedule**: System Configuration > Backup (on/off, daily / weekly on
   Sunday / monthly on the 1st, hour of the day in server time, number of
   scheduled backups to keep). Changes apply immediately, no restart.
-- **Back up now**, **Download**, **Delete**, and **Upload backup** (a `.sql`
-  or `.sql.gz` made by `pg_dump`, checked before it is listed).
+- **Back up now**, **Download** and **Delete**, in one list of the backup
+  files.
 - Files are in `BACKUP_DIR` (`./backups`): `backup_*` scheduled (pruned to the
   number kept), `manual_*`, `upload_*` (both kept until deleted) and
   `pre-restore_*` (the last 3 are kept).
-- **Restore** replaces the whole database with a backup. You type `RESTORE`
-  to confirm; the app first saves the current data as `pre-restore_*`, then
+- **Restore from file** (`backup.restore`) replaces the whole database with
+  an uploaded `.sql` / `.sql.gz` made by `pg_dump` (e.g. a file downloaded
+  from the list); there is no restore button on the list rows. You choose
+  the file and type `RESTORE` to confirm; the file is checked and kept as
+  `upload_*`, and the app first saves the current data as `pre-restore_*`, then
   drops the `public` schema and loads the dump **in one transaction**, so a
   failing backup leaves the database exactly as it was. Afterwards pending
   migrations run (a backup from an older version is brought up to date) and
@@ -654,7 +657,165 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.3.10 (Latest)
+### Version 1.4.0 (Latest)
+- ⬆️ Upgrading from 1.3.x: new image; migrations `0025`–`0030` run (see the
+  entries below). After upgrading: assign units to users (User Management)
+  before turning on "Limit to the user's units"; API clients of accounts with
+  2FA must send `otp` when logging in; download the new server import template.
+- 🔒 Security fixes (audit of this release):
+  - **RCE via restore**: a restored file is fed to `psql`, which runs
+    meta-commands such as `\! <shell>`. Every backup is now lexed before it
+    is accepted or restored; psql meta-commands (other than pg_dump's
+    `\restrict` / `\unrestrict` and COPY data), `COPY ... TO/FROM PROGRAM` and
+    `lo_import` / `lo_export` are refused.
+  - **Uploaded files without login**: `/uploads/*` (attachments, pentest
+    reports) was served before the login check. It now needs a signed-in user
+    (2FA done) with the folder's read permission (`system.read`,
+    `pentest.read`); import results are only served by their download routes.
+  - **API tokens kept old rights**: tokens carried the permission list for 8
+    h. The token now only names the user; each request re-reads the account
+    (must be active, local) and its current role permissions. Tokens are
+    signed / checked with HS256 only.
+  - **API login**: same lock-out as the web login (HTTP 429), and accounts with
+    2FA must send the current code (`otp`); accounts that must enrol 2FA do it
+    in the web UI first.
+  - **Default secrets**: without `SESSION_SECRET` / `JWT_SECRET` (outside
+    Docker) a random per-process secret is used instead of a published
+    default that allowed forging tokens.
+  - **Privilege escalation in User / Role Management**: someone who is not
+    superadmin can no longer give a role permissions they do not hold, create
+    / edit / delete users whose role has more permissions than theirs (e.g.
+    reset the superadmin password), or give such roles.
+  - **Built-in roles** `superadmin`, `admin`, `viewer` cannot be edited or
+    deleted, and their names are reserved.
+  - **Pickers**: the Select2 lookups (contacts with e-mails, systems, servers,
+    devices, units, tags, services, agents, service mappings...) need the
+    list's read permission or some create / update permission, instead of
+    any signed-in user; the contact QR code needs `contact.read`.
+  - **Headers / CORS**: every response carries `X-Frame-Options: DENY`,
+    `nosniff`, `Referrer-Policy: same-origin` and a CSP with
+    `frame-ancestors 'none'; object-src 'none'; base-uri 'self';
+    form-action 'self'` (nginx dropped its server-level headers in locations
+    with their own); `X-Powered-By` is off; the development CORS rule
+    (`http://127.0.0.1:5500` with credentials) is removed from
+    `nginx.docker.conf`.
+  - Dependencies: `npm audit fix` (express / body-parser / path-to-regexp,
+    multer, jws, lodash, ws, validator...). Remaining: `xlsx` 0.18.5 (no npm
+    fix; 0.20.3 is only published on cdn.sheetjs.com) and `pm2`'s agent
+    chain (`pm2` is not used in the Docker image).
+  - `data/` (generated secrets) is in `.gitignore`.
+- ✨ System detail: each manager is shown on their own line with an **L2** or
+  **L3** badge when their unit is the system's Operations (L2) or
+  Development (L3) department; no badge when it matches neither (or the
+  department is not set). The REST/list `contacts` items now include `unit_id`.
+- ✨ A component's (sub-system's) managers are managers of its system: adding
+  a manager to a component adds them to the system; taking them off the
+  component, deleting the component or moving it to another system takes
+  them off the system too, unless another component of that system still has
+  them (`src/modules/system/system-contact-links.js`, same rule as IPs).
+- ✨ Deleting a system that has components asks whether to **also delete all
+  its components** (checkbox, off by default; left off, the system is not
+  deleted). REST: `DELETE /api/v1/systems/:id?delete_components=true`.
+- ✨ IP detail, Subnet section: lists **every** subnet the IP lies in
+  (smallest first) with its Description, cut to one line (full text on
+  hover). Hovering a subnet loads its details (zone, environment, gateway,
+  IP count, tags) into a tooltip. Web JSON: `/network/api/subnets/containing?ip=`
+  (`ip_address.read`) and `/network/api/subnets/:id/detail` (`subnet.read`).
+- ✏️ IP Address export: the Subnet, Zone and Environment columns are dropped.
+- ✨ Service Mapping backends show the device or server holding each backend
+  IP (icon + name, same rule as the Public IP / VIP owner: device first, then
+  server); an IP nothing holds shows the IP only. Flow diagram, detail table
+  ("Server/Device"), form picker and export ("Server/Device" column) use it;
+  members carry `owner_name` / `owner_type`.
+- ✨ REST API **`/api/v1/service-mappings`** (list with filters, `find?name=`,
+  get, create, partial update, delete; permissions `service_mapping.*`), for
+  integrations such as F5 / Citrix ADC: create the IP addresses, domain and
+  system through their own APIs, then send their **ids** (`ip_address_id`,
+  `domain_id`, `system_id`, `members: [{ip_address_id, port, status}]`).
+  Nothing is created on the fly; an unknown id or field is a 400. On PUT,
+  `members` replaces every backend. Examples: `api-tests/service-mappings.http`.
+- ✨ Service mapping **Provider / Channel** is a System Configuration list,
+  `service_mapping_provider` (Network group): the form picks from it, and the
+  form, Excel import and API refuse other or retired values (matched
+  case-insensitively). Migration `0026` creates the list from the providers
+  already in use (Akamai / Cloudflare / VPN / MPLS when none).
+- ✨ Servers have an **OS Version** (free text, max 100, e.g. `22.04 LTS`)
+  next to the Platform: the form suggests the versions already recorded
+  (still any text allowed). List column (off by default), detail modal,
+  search, export, REST API (`os_version`) and Excel import. Migration `0027`
+  adds `servers.os_version`. ⚠️ The server import template gains an
+  "OS Version (Optional)" column after "OS (Optional)": download the new
+  template (files in the old layout are refused).
+- ✏️ Add Server / Add Device: the VIP IP Address(es) spot shows a note that
+  VIPs are added from Edit once the record is saved.
+- ✏️ Device **Management Address**: the form explains the free-text syntax
+  (comma-separated, an optional `[label]` after each address, e.g.
+  `https://10.10.1.1[kvm], 10.10.1.1:22[ssh]`, max 255); the detail modal
+  shows one link per address with its label as a badge.
+- ✏️ Pentest history belongs to systems and sub-systems only: the Server and
+  Device detail modals no longer have a "Pentest History" button (the API
+  already accepted only `system` / `system_component` targets).
+- ✨ Cluster ↔ System links record the **namespace** (optional) the system
+  runs in on that OCP / Kubernetes cluster (`cluster_system.namespace`,
+  migration `0028`; lowercase DNS label, max 63, unique within a cluster).
+  The cluster form has a "System | Namespace" table; the cluster list,
+  cluster detail ("System — namespace") and the system detail's Clusters
+  ("cluster — namespace") show it; searching clusters or systems matches
+  the namespace; the export lists "System (namespace)". REST: `systems`
+  takes IDs or `{system_id, namespace}` and returns `{id, name, namespace}`.
+  Excel import: `System 001[ns-payment], System 002` in the System column
+  (the template layout is unchanged).
+- ✨ Organization Unit list: a **Detail** button opens the unit (code,
+  description, usage counts) with **every member** (contacts of the unit:
+  name, email, phone, position), loaded from `/organize/api/unit/:id/members`
+  (`unit.read`). The unit export gains a Members column.
+- ✨ Organization units can be **nested** (`units.parent_id`, migration
+  `0029`; every existing unit stays top level). Unit form: Parent unit
+  (itself and its sub-units are not offered; cycles refused). Unit list:
+  Parent unit (path "Division › Department") and Sub-units columns, filters
+  **Parent unit** (its sub-units at every level, or top level only) and
+  **Level** (has sub-units / lowest level); the export follows them and adds
+  both columns; the detail shows the parent path and the direct sub-units.
+  A unit with sub-units cannot be deleted. REST: `parent_id` on create /
+  update, `?parent_id=&level=` on the list.
+- ✏️ Elsewhere (contact, system L2 / L3 department, privileged account,
+  firewall rule pickers and their filters) only **lowest-level units** (no
+  sub-unit) can be picked; a record already set to a unit that later got
+  sub-units keeps it. The Contact list's Organization filter offers every
+  unit (as a path) and a parent unit also lists its sub-units' contacts.
+- ✨ Privileged roles and permissions can be for **All systems** (tick on
+  their form; `all_systems`, migration `0030`). An "All systems" role can be
+  given to an account of any system and may hold any permission; an "All
+  systems" permission can be held by any role. Only users with the new
+  permission `priv_role.global` (admin and superadmin) can tick it or change /
+  delete such roles and permissions; everyone else can still pick them.
+- ✨ Privileged data **limited to the user's units**: users get a **Unit**
+  and **Extra units to see** (User Management; `users.unit_id`,
+  `user_scope_units`). While System Configuration > Privileged Accounts >
+  "Limit to the user's units" (`priv_scope_enforced`, **off** by default) is
+  on, a user without the new permission `priv_account.all_scope` (admin and
+  superadmin have it; grant it to other roles to let them see everything)
+  only works on the systems whose L2 or L3 department is one of their units:
+  accounts are shown when one of their systems is such a system and can be
+  changed / deleted only when all of them are; roles and permissions of
+  those systems, plus the "All systems" ones; the system pickers of the
+  forms, the role / permission pickers, the lists, details and exports all
+  follow it. The list pages say which units they are limited to, or that the
+  user has no unit yet. Turn it on after assigning the units. A unit used by
+  users cannot be deleted.
+- ✏️ Backup & Restore lists the backup files **once** (download / delete).
+  Restoring is only done by uploading a file: **Restore from file** (choose
+  the `.sql` / `.sql.gz`, type `RESTORE`) uploads it and restores it in one
+  step (`POST /backup/restore`, `backup.restore`). The per-row restore
+  buttons, the separate Restore table and the plain "Upload backup" are gone.
+- ✏️ Every list's **Export** button uses the search text and filters
+  currently on screen, even when they were typed but not submitted yet.
+- Migration `0025_component_contacts_in_system.js`: removes duplicate
+  `system_contact` rows and adds a `(system_id, contact_id)` unique
+  constraint, then adds every component manager missing from their system;
+  both counts are printed.
+
+### Version 1.3.10
 - No database migration: upgrading from 1.3.9 only needs the new image.
 - ✨ Pentest target: the form has a **System** (required) and a **Sub-system**
   (optional, lists only the chosen system's components; empty = the whole

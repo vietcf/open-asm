@@ -1,8 +1,10 @@
 // Web pages: /administrator/roles and /administrator/permissions.
 import Permission from './permission.model.js';
-import { SUPERADMIN } from './role.model.js';
+import { SUPERADMIN, BUILTIN_ROLES } from './role.model.js';
 import * as roleService from './role.service.js';
 import { parseListQuery, totalPagesOf, errorMessage, takeFlash, runAndRedirect, page } from '../../shared/web.js';
+
+const actor = (req) => ({ role_name: req.session.user?.role_name, permissions: req.permissions || [] });
 
 // Permissions grouped by resource for the role form: [{resource, actions: {read: perm, ...}}]
 function permissionGrid(permissions) {
@@ -26,7 +28,7 @@ function pagesFor({ url, view, activeMenu, labels, service, formLocals = async (
       const { items, totalCount } = await service.list({ search, page: pageNo, pageSize });
       res.render(`pages/administrator/${view}_list`, {
         list: items, search, page: pageNo, pageSize, totalCount, totalPages: totalPagesOf(totalCount, pageSize),
-        superadmin: SUPERADMIN, ...takeFlash(req), title: labels.title, activeMenu,
+        superadmin: SUPERADMIN, builtinRoles: BUILTIN_ROLES, ...takeFlash(req), title: labels.title, activeMenu,
       });
     }),
     addForm: page((req, res) => renderForm(res, 'add')),
@@ -38,8 +40,9 @@ function pagesFor({ url, view, activeMenu, labels, service, formLocals = async (
         res.redirect(url);
       }
     },
-    create: (req, res) => runAndRedirect(req, res, url, () => service.create(req.body), labels.added, `${url}/add`),
-    update: (req, res) => runAndRedirect(req, res, url, () => service.update(req.params.id, req.body), labels.updated, `${url}/${req.params.id}/edit`),
+    // actor: no granting of permissions beyond the signed-in user's own
+    create: (req, res) => runAndRedirect(req, res, url, () => service.create(req.body, actor(req)), labels.added, `${url}/add`),
+    update: (req, res) => runAndRedirect(req, res, url, () => service.update(req.params.id, req.body, actor(req)), labels.updated, `${url}/${req.params.id}/edit`),
     remove: (req, res) => runAndRedirect(req, res, url, () => service.remove(req.params.id), labels.deleted),
   };
 }
@@ -47,8 +50,8 @@ function pagesFor({ url, view, activeMenu, labels, service, formLocals = async (
 export const rolePages = pagesFor({
   url: '/administrator/roles', view: 'role', activeMenu: 'role-management',
   labels: { title: 'Role Management', add: 'Add Role', edit: 'Edit Role', added: 'Role added successfully', updated: 'Role updated successfully', deleted: 'Role deleted successfully' },
-  service: { list: roleService.listRoles, get: roleService.getRole, create: roleService.createRole, update: roleService.updateRole, remove: roleService.deleteRole },
-  formLocals: async () => ({ permissionGrid: permissionGrid(await Permission.findAll()), actions: ['read', 'create', 'update', 'delete', 'restore'] }),
+  service: { list: roleService.listRoles, get: roleService.getEditableRole, create: roleService.createRole, update: roleService.updateRole, remove: roleService.deleteRole },
+  formLocals: async () => ({ permissionGrid: permissionGrid(await Permission.findAll()), actions: ['read', 'create', 'update', 'delete', 'restore', 'global', 'all_scope'] }),
 });
 
 export const permissionPages = pagesFor({

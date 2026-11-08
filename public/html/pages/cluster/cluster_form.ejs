@@ -1,5 +1,6 @@
 <%#
-  Add / Edit Cluster.  mode: 'add' | 'edit', cluster, roleOptions, selectedSystems [{id, text}]
+  Add / Edit Cluster.  mode: 'add' | 'edit', cluster, roleOptions, systemRows [{id, text, namespace}]
+  Systems: repeater rows (system select + optional namespace) submitted as parallel system_id[] / system_namespace[].
   Members: repeater rows (IP select + role) submitted as parallel member_ip_id[] / member_role[].
 %>
 <% const isEdit = mode === 'edit'; const c = cluster || {}; %>
@@ -24,15 +25,37 @@
                      data-check-url="/cluster/api/check-name" data-exclude-id="<%= c.id || '' %>">
               <div class="invalid-feedback"><%= t('Cluster name already exists') %></div>
             </div>
-            <div class="col-md-6">
-              <label class="form-label" for="f-systems"><%= t('Systems') %></label>
-              <select id="f-systems" name="systems" class="form-select js-select" multiple data-ajax-url="/system/api/system"
-                      data-placeholder="<%= t('Select systems') %>" data-selected="<%= JSON.stringify(selectedSystems || []) %>"></select>
-            </div>
             <div class="col-12">
               <label class="form-label" for="f-description"><%= t('Description') %></label>
               <textarea id="f-description" name="description" class="form-control" rows="3"><%= c.description || '' %></textarea>
             </div>
+          </div>
+        </section>
+
+        <section class="form-section" data-repeater id="clusterSystems">
+          <h4 class="form-section-title"><%= t('Systems') %></h4>
+          <div class="form-text mt-0 mb-2"><%= t('Namespace (optional): the OCP / Kubernetes namespace the system runs in on this cluster; one system per namespace.') %></div>
+          <div class="vstack gap-2" data-repeater-rows>
+            <% (systemRows || []).forEach(function (s) { %>
+              <div class="d-flex gap-2 align-items-start">
+                <select name="system_id" class="form-select js-select" data-ajax-url="/system/api/system" data-placeholder="<%= t('Select system') %>"
+                        data-selected="<%= JSON.stringify([{ id: s.id, text: s.text }]) %>"></select>
+                <input type="text" name="system_namespace" class="form-control font-monospace" value="<%= s.namespace %>" maxlength="63"
+                       pattern="[a-z0-9]([\-a-z0-9]*[a-z0-9])?" placeholder="<%= t('Namespace (optional)') %>">
+                <button type="button" class="btn btn-outline-secondary" data-repeater-remove title="<%= t('Remove') %>"><i class="bi bi-x-lg"></i></button>
+              </div>
+            <% }) %>
+          </div>
+          <template data-repeater-template>
+            <div class="d-flex gap-2 align-items-start">
+              <select name="system_id" class="form-select js-select" data-ajax-url="/system/api/system" data-placeholder="<%= t('Select system') %>"></select>
+              <input type="text" name="system_namespace" class="form-control font-monospace" maxlength="63"
+                     pattern="[a-z0-9]([\-a-z0-9]*[a-z0-9])?" placeholder="<%= t('Namespace (optional)') %>">
+              <button type="button" class="btn btn-outline-secondary" data-repeater-remove title="<%= t('Remove') %>"><i class="bi bi-x-lg"></i></button>
+            </div>
+          </template>
+          <div class="mt-2">
+            <button type="button" class="btn btn-outline-primary btn-sm" data-repeater-add><i class="bi bi-plus-lg"></i> <%= t('Add system') %></button>
           </div>
         </section>
 

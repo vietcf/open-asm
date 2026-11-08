@@ -12,7 +12,6 @@
   const schedule = settings.enabled
     ? t('{frequency} at {hour}:00, keeping {count}', { frequency: t(settings.frequency), hour: String(settings.hour).padStart(2, '0'), count: settings.retention })
     : t('Off');
-  const restorableBackups = backups.filter(b => b.kind !== 'pre-restore');
 %>
 <%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'Backup & Restore' }] }) %>
 
@@ -23,10 +22,17 @@
       <div class="alert alert-info"><i class="bi bi-hourglass-split me-2"></i><%= t('A {operation} is already running', { operation: t(busy) }) %></div>
     <% } %>
 
-    <!-- ===== Backup ===== -->
-    <h5 class="mb-3"><i class="bi bi-database-add me-2"></i><%= t('Backup') %></h5>
+    <% if (canRestore) { %>
+      <div class="alert alert-warning mb-3">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <strong><%= t('Restoring replaces the ENTIRE database.') %></strong>
+        <%= t('All data saved after the backup was made will be lost. User accounts revert to their state at backup time — if you cannot sign in afterwards, use the CLI to reset your password:') %>
+        <div class="font-monospace small mt-2 p-2 bg-body-secondary rounded">docker compose exec app node migrations/tools/reset_admin_password.js [username] [--disable-2fa]</div>
+      </div>
+    <% } %>
 
-    <div class="card list-card mb-4">
+    <!-- ===== Backups: one list; each row downloads, restores or deletes its file ===== -->
+    <div class="card list-card">
       <div class="card-header list-toolbar">
         <div class="me-auto">
           <div class="small text-secondary">
@@ -35,13 +41,16 @@
           </div>
           <div class="small text-secondary"><i class="bi bi-folder2 me-1"></i><%= t('Stored in') %> <span class="font-monospace"><%= directory %></span></div>
         </div>
-        <% if (canCreate) { %>
-          <div class="list-actions">
+        <div class="list-actions">
+          <% if (canRestore) { %>
+            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#restoreModal"<%= busy ? ' disabled' : '' %>><i class="bi bi-arrow-counterclockwise"></i> <span class="btn-text"><%= t('Restore from file') %></span></button>
+          <% } %>
+          <% if (canCreate) { %>
             <form method="POST" action="/backup/create" data-confirm="<%= t('Create a backup now?') %>">
               <button type="submit" class="btn btn-primary"<%= busy ? ' disabled' : '' %>><i class="bi bi-database-add"></i> <%= t('Back up now') %></button>
             </form>
-          </div>
-        <% } %>
+          <% } %>
+        </div>
       </div>
 
       <div class="table-responsive">
@@ -79,97 +88,24 @@
         </table>
       </div>
     </div>
-
-    <% if (canRestore) { %>
-    <!-- ===== Restore ===== -->
-    <div class="d-flex align-items-center mb-3">
-      <h5 class="mb-0"><i class="bi bi-arrow-counterclockwise me-2"></i><%= t('Restore') %></h5>
-      <% if (canCreate) { %>
-        <button type="button" class="btn btn-outline-secondary btn-sm ms-auto" data-bs-toggle="modal" data-bs-target="#uploadBackupModal"><i class="bi bi-upload"></i> <span class="btn-text"><%= t('Upload backup') %></span></button>
-      <% } %>
-    </div>
-
-    <div class="alert alert-warning mb-3">
-      <i class="bi bi-exclamation-triangle-fill me-2"></i>
-      <strong><%= t('Restoring replaces the ENTIRE database.') %></strong>
-      <%= t('All data saved after the backup was made will be lost. User accounts revert to their state at backup time — if you cannot sign in afterwards, use the CLI to reset your password:') %>
-      <div class="font-monospace small mt-2 p-2 bg-body-secondary rounded">docker compose exec app node migrations/tools/reset_admin_password.js [username] [--disable-2fa]</div>
-    </div>
-
-    <div class="card list-card">
-      <div class="table-responsive">
-        <table class="table table-hover align-middle table-stack">
-          <thead>
-            <tr>
-              <th><%= t('File') %></th><th><%= t('Type') %></th><th><%= t('Created') %></th><th><%= t('Size') %></th>
-              <th class="col-actions"><%= t('Actions') %></th>
-            </tr>
-          </thead>
-          <tbody>
-            <% if (restorableBackups.length) { %>
-              <% restorableBackups.forEach(function (b) { %>
-                <tr>
-                  <td class="font-monospace small" data-label="<%= t('File') %>"><%= b.name %></td>
-                  <td data-label="<%= t('Type') %>"><%- ui.chips([t(KIND_LABEL[b.kind])]) %></td>
-                  <td data-label="<%= t('Created') %>"><span class="text-nowrap small"><%= when(b.created_at) %></span></td>
-                  <td data-label="<%= t('Size') %>"><span class="text-nowrap small"><%= size(b.size) %></span></td>
-                  <td class="col-actions">
-                    <div class="row-actions">
-                      <button type="button" class="btn btn-sm btn-outline-danger" title="<%= t('Restore') %>" data-restore="<%= b.name %>"><i class="bi bi-arrow-counterclockwise"></i> <%= t('Restore') %></button>
-                      <% if (canDelete) { %>
-                        <form action="/backup/<%= encodeURIComponent(b.name) %>/delete" method="POST" data-confirm="<%= t('Delete {1}?', { 1: b.name }) %>">
-                          <button type="submit" class="btn btn-sm btn-outline-secondary btn-delete" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
-                        </form>
-                      <% } %>
-                    </div>
-                  </td>
-                </tr>
-              <% }) %>
-            <% } else { %>
-              <tr><td colspan="5"><%- include('../../partials/ui/empty_state', { icon: 'bi-arrow-counterclockwise', message: 'No backups available to restore', filtered: false }) %></td></tr>
-            <% } %>
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <% } %>
   </div>
 </div>
-
-<% if (canCreate) { %>
-<div class="modal fade" id="uploadBackupModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog">
-    <form class="modal-content" method="POST" action="/backup/upload" enctype="multipart/form-data">
-      <div class="modal-header">
-        <h5 class="modal-title"><%= t('Upload backup') %></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
-      </div>
-      <div class="modal-body">
-        <p class="text-secondary small"><%= t('Add a backup made elsewhere (.sql or .sql.gz from pg_dump). It is listed here; restore it from the list.') %></p>
-        <input type="file" name="file" class="form-control" accept=".sql,.gz" required>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal"><%= t('Cancel') %></button>
-        <button type="submit" class="btn btn-primary"><i class="bi bi-upload"></i> <%= t('Upload') %></button>
-      </div>
-    </form>
-  </div>
-</div>
-<% } %>
 
 <% if (canRestore) { %>
+<%# Restore = upload a .sql / .sql.gz file and replace the database with it (typed confirmation) %>
 <div class="modal fade" id="restoreModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog">
-    <form class="modal-content" method="POST" id="restoreForm">
+    <form class="modal-content" method="POST" action="/backup/restore" enctype="multipart/form-data" id="restoreForm">
       <div class="modal-header">
-        <h5 class="modal-title"><%= t('Restore backup') %></h5>
+        <h5 class="modal-title"><%= t('Restore from file') %></h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="<%= t('Close') %>"></button>
       </div>
       <div class="modal-body">
         <div class="alert alert-danger mb-3">
           <i class="bi bi-exclamation-triangle me-2"></i><%= t('Restoring replaces ALL current data with the contents of this backup. Everything saved after it was made is lost. A copy of the current data is saved first.') %>
         </div>
-        <p class="mb-2"><%= t('Backup') %>: <strong class="font-monospace" id="restoreName"></strong></p>
+        <label class="form-label" for="restoreFile"><%= t('Backup file (.sql or .sql.gz from pg_dump, e.g. one downloaded from this list)') %></label>
+        <input type="file" id="restoreFile" name="file" class="form-control mb-3" accept=".sql,.gz" required>
         <label class="form-label" for="restoreConfirm"><%= t('Type {word} to confirm', { word: restoreWord }) %></label>
         <input type="text" id="restoreConfirm" name="confirm" class="form-control" autocomplete="off" required>
         <div class="form-text"><%= t('This can take a while. Keep this page open until it finishes.') %></div>
@@ -184,21 +120,15 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-    const modal = new bootstrap.Modal(document.getElementById('restoreModal'));
     const form = document.getElementById('restoreForm');
+    const file = document.getElementById('restoreFile');
     const input = document.getElementById('restoreConfirm');
     const submit = document.getElementById('restoreSubmit');
     const WORD = <%- jsonSafe(restoreWord) %>;
-    document.querySelectorAll('[data-restore]').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        form.action = '/backup/' + encodeURIComponent(btn.dataset.restore) + '/restore';
-        document.getElementById('restoreName').textContent = btn.dataset.restore;
-        input.value = '';
-        submit.disabled = true;
-        modal.show();
-      });
-    });
-    input.addEventListener('input', function () { submit.disabled = input.value !== WORD; });
+    const check = function () { submit.disabled = !(file.files.length && input.value === WORD); };
+    file.addEventListener('change', check);
+    input.addEventListener('input', check);
+    document.getElementById('restoreModal').addEventListener('show.bs.modal', function () { form.reset(); check(); });
     form.addEventListener('submit', function () {
       submit.disabled = true;
       submit.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + <%- jsonSafe(t('Restoring...')) %>;

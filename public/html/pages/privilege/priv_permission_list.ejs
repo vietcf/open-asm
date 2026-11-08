@@ -9,7 +9,7 @@
   ];
   const cell = (p, key) => ({
     name: ui.esc(p.name),
-    system: ui.text(p.system?.name),
+    system: p.all_systems ? `<span class="badge tag"><i class="bi bi-globe2 me-1"></i>${ui.esc(t('All systems'))}</span>` : ui.text(p.system?.name),
     roles: p.role_count ? `<span class="badge tag">${p.role_count}</span>` : ui.dash,
     description: ui.clip(p.description),
     updated: ui.date(p.updated_at),
@@ -20,6 +20,13 @@
 <div class="app-content">
   <div class="container-fluid">
     <%- include('../../partials/ui/flash') %>
+    <% if (locals.scopeUnits) { %>
+      <div class="alert <%= scopeUnits.length ? 'alert-info' : 'alert-warning' %> py-2 small">
+        <i class="bi bi-funnel me-1"></i>
+        <% if (scopeUnits.length) { %><%= t('Limited to the systems of your units:') %> <strong><%= scopeUnits.join(', ') %></strong>
+        <% } else { %><%= t('Your account has no unit yet, so no data is shown. Ask an administrator to assign your unit in User Management.') %><% } %>
+      </div>
+    <% } %>
 
     <div class="card list-card">
       <form class="list-filter-form" method="get" action="/priv-account/permission">
@@ -63,10 +70,10 @@
                   <% COLUMNS.forEach(function (c) { %><td data-col="<%= c.key %>" data-label="<%= t(c.label) %>"<%- c.key === 'name' ? ' class="fw-medium"' : '' %>><%- cell(p, c.key) %></td><% }) %>
                   <td class="col-actions">
                     <div class="row-actions">
-                      <% if (hasPermission('priv_permission.update')) { %>
+                      <% if (hasPermission('priv_permission.update') && p.can_edit) { %>
                         <a href="/priv-account/permission/<%= p.id %>/edit" class="btn btn-sm btn-outline-secondary" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
                       <% } %>
-                      <% if (hasPermission('priv_permission.delete')) { %>
+                      <% if (hasPermission('priv_permission.delete') && p.can_edit) { %>
                         <form action="/priv-account/permission/<%= p.id %>/delete" method="POST" data-confirm="<%= t('Delete {1}?', { 1: p.name }) %>">
                           <button type="submit" class="btn btn-sm btn-outline-secondary btn-delete" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
                         </form>

@@ -50,7 +50,7 @@ export default {
       const [{ items, totalCount }, options, departments] = await Promise.all([
         systemService.listSystems({ search, page, pageSize, ...filter }),
         systemService.getFormOptions(),
-        Unit.findAll(),
+        Unit.findLeaves(),
       ]);
       res.render('pages/system/system_list', {
     ...(await pageOptions('tags')),
@@ -144,7 +144,7 @@ export default {
 
   async remove(req, res) {
     try {
-      await systemService.deleteSystem(req.params.id);
+      await systemService.deleteSystem(req.params.id, { deleteComponents: req.body.delete_components === 'true' });
       req.flash('success', 'System deleted successfully');
     } catch (err) {
       req.flash('error', errorMessage(req, err));

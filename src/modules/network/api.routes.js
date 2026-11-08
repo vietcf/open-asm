@@ -3,10 +3,11 @@ import express from 'express';
 import ipAddressApi from './ip-address.api.js';
 import subnetApi from './subnet.api.js';
 import domainApi from './domain.api.js';
+import serviceMappingApi from './service-mapping.api.js';
 import { authenticateJWT, authorizePermissionJWT } from '../../middlewares/jwtAuth.middleware.js';
 
 const router = express.Router();
-router.use(['/ip-addresses', '/subnets', '/domains'], authenticateJWT);
+router.use(['/ip-addresses', '/subnets', '/domains', '/service-mappings'], authenticateJWT);
 // IP Address API routes (ES6)
 
 /**
@@ -1059,5 +1060,217 @@ router.put('/domains/:id', authorizePermissionJWT('domain.update'), domainApi.up
 
 // Delete domain
 router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi.remove);
+
+// Service Mapping API routes
+
+/**
+ * @swagger
+ * tags:
+ *   - name: Service Mapping
+ *     description: |
+ *       Published services (virtual servers / VIPs): frontend IP:port, domain, provider and backends.
+ *       Built for integrations (F5, Citrix ADC...): create the IP addresses (`POST /api/v1/ip-addresses`),
+ *       domains (`POST /api/v1/domains`) and systems first, then send their **ids** here. Nothing is
+ *       created on the fly; an unknown id is a 400. To re-sync, look the mapping up with
+ *       `GET /service-mappings/find?name=` and `PUT` it, else `POST` it.
+ *
+ * components:
+ *   schemas:
+ *     ServiceMappingMember:
+ *       type: object
+ *       required: [ip_address_id]
+ *       properties:
+ *         ip_address_id: { type: integer, description: Backend IP address id }
+ *         port: { type: integer, nullable: true, minimum: 1, maximum: 65535 }
+ *         status: { type: string, enum: [active, inactive], default: active }
+ *     ServiceMappingInput:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: Unique (case-insensitive). Default "<domain or IP>:<port>".
+ *         ip_address_id: { type: integer, description: Frontend IP (public IP / VIP / NAT IP) id. Required on create. }
+ *         port: { type: integer, minimum: 1, maximum: 65535, description: Frontend port. Required on create. }
+ *         protocol: { type: string, enum: [HTTP, HTTPS, TCP, UDP], default: HTTPS }
+ *         domain_id: { type: integer, nullable: true }
+ *         direction: { type: string, enum: [inbound, outbound], default: inbound }
+ *         scope: { type: string, enum: [public, private], default: public }
+ *         access_mode: { type: string, enum: [full, limited], default: full }
+ *         allowed_ips:
+ *           type: array
+ *           items: { type: string }
+ *           description: IPs / CIDRs, only kept when access_mode is limited
+ *         provider: { type: string, nullable: true, description: 'CDN / WAF / private channel in front (e.g. Akamai, MPLS): a value of the System Configuration list `service_mapping_provider` (case-insensitive); retired values are refused' }
+ *         provider_port: { type: integer, nullable: true }
+ *         provider_protocol: { type: string, enum: [HTTP, HTTPS, TCP, UDP], nullable: true }
+ *         system_id: { type: integer, nullable: true }
+ *         description: { type: string, nullable: true }
+ *         members:
+ *           type: array
+ *           description: Backends (inbound) or sources (outbound). On PUT it replaces every member.
+ *           items: { $ref: '#/components/schemas/ServiceMappingMember' }
+ *       example:
+ *         name: myapp.com:443
+ *         ip_address_id: 12
+ *         port: 443
+ *         protocol: HTTPS
+ *         domain_id: 7
+ *         system_id: 3
+ *         members:
+ *           - { ip_address_id: 21, port: 8443, status: active }
+ *           - { ip_address_id: 22, port: 8443, status: inactive }
+ *     ServiceMapping:
+ *       type: object
+ *       properties:
+ *         id: { type: integer }
+ *         name: { type: string }
+ *         ip_address_id: { type: integer }
+ *         ip_address: { type: string }
+ *         port: { type: integer }
+ *         protocol: { type: string }
+ *         domain_id: { type: integer, nullable: true }
+ *         domain: { type: string, nullable: true }
+ *         direction: { type: string }
+ *         scope: { type: string }
+ *         access_mode: { type: string }
+ *         allowed_ips: { type: array, nullable: true, items: { type: string } }
+ *         provider: { type: string, nullable: true }
+ *         provider_port: { type: integer, nullable: true }
+ *         provider_protocol: { type: string, nullable: true }
+ *         system_id: { type: integer, nullable: true }
+ *         system_name: { type: string, nullable: true }
+ *         ip_owner_name: { type: string, nullable: true, description: Device, else server, holding the frontend IP }
+ *         ip_owner_type: { type: string, enum: [device, server], nullable: true }
+ *         description: { type: string, nullable: true }
+ *         members:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               id: { type: integer }
+ *               ip_address_id: { type: integer }
+ *               ip: { type: string }
+ *               port: { type: integer, nullable: true }
+ *               status: { type: string }
+ *               owner_name: { type: string, nullable: true, description: Device, else server, holding the backend IP }
+ *               owner_type: { type: string, enum: [device, server], nullable: true }
+ *         updated_at: { type: string, format: date-time }
+ *         updated_by: { type: string }
+ *
+ * /api/v1/service-mappings:
+ *   get:
+ *     summary: List service mappings (search, filters, pagination)
+ *     tags: [Service Mapping]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - { in: query, name: search, schema: { type: string }, description: 'Name, domain, provider, frontend / backend IP or server name' }
+ *       - { in: query, name: page, schema: { type: integer, default: 1 } }
+ *       - { in: query, name: pageSize, schema: { type: integer, default: 10, maximum: 100 } }
+ *       - { in: query, name: protocol, schema: { type: string } }
+ *       - { in: query, name: provider, schema: { type: string } }
+ *       - { in: query, name: direction, schema: { type: string, enum: [inbound, outbound] } }
+ *       - { in: query, name: scope, schema: { type: string, enum: [public, private] } }
+ *       - { in: query, name: access_mode, schema: { type: string, enum: [full, limited] } }
+ *       - { in: query, name: system_id, schema: { type: integer } }
+ *     responses:
+ *       200:
+ *         description: '{ data: ServiceMapping[], pagination }'
+ *   post:
+ *     summary: Create a service mapping
+ *     tags: [Service Mapping]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/ServiceMappingInput' }
+ *     responses:
+ *       201:
+ *         description: Created
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ServiceMapping' }
+ *       400:
+ *         description: Validation error (missing ip_address_id / port, unknown field, unknown id...)
+ *       409:
+ *         description: Name already exists
+ *
+ * /api/v1/service-mappings/find:
+ *   get:
+ *     summary: Find service mappings by exact name (case-insensitive)
+ *     tags: [Service Mapping]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - { in: query, name: name, required: true, schema: { type: string } }
+ *     responses:
+ *       200:
+ *         description: '{ data: ServiceMapping[], count }'
+ *       400:
+ *         description: name is required
+ *
+ * /api/v1/service-mappings/{id}:
+ *   get:
+ *     summary: Get a service mapping
+ *     tags: [Service Mapping]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - { in: path, name: id, required: true, schema: { type: integer } }
+ *     responses:
+ *       200:
+ *         description: The service mapping
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ServiceMapping' }
+ *       404:
+ *         description: Not found
+ *   put:
+ *     summary: Update a service mapping (partial)
+ *     description: Only the fields sent change. `members` replaces every backend; send `[]` to clear them.
+ *     tags: [Service Mapping]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - { in: path, name: id, required: true, schema: { type: integer } }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema: { $ref: '#/components/schemas/ServiceMappingInput' }
+ *     responses:
+ *       200:
+ *         description: Updated
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/ServiceMapping' }
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: Not found
+ *       409:
+ *         description: Name already exists
+ *   delete:
+ *     summary: Delete a service mapping
+ *     tags: [Service Mapping]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - { in: path, name: id, required: true, schema: { type: integer } }
+ *     responses:
+ *       204:
+ *         description: Deleted
+ *       404:
+ *         description: Not found
+ */
+
+router.get('/service-mappings', authorizePermissionJWT('service_mapping.read'), serviceMappingApi.getAll);
+router.get('/service-mappings/find', authorizePermissionJWT('service_mapping.read'), serviceMappingApi.find);
+router.get('/service-mappings/:id', authorizePermissionJWT('service_mapping.read'), serviceMappingApi.getById);
+router.post('/service-mappings', authorizePermissionJWT('service_mapping.create'), serviceMappingApi.create);
+router.put('/service-mappings/:id', authorizePermissionJWT('service_mapping.update'), serviceMappingApi.update);
+router.delete('/service-mappings/:id', authorizePermissionJWT('service_mapping.delete'), serviceMappingApi.remove);
 
 export default router;

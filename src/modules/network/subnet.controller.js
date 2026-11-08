@@ -8,6 +8,7 @@ import { sendExcel } from '../../utils/excelExport.js';
 
 const LIST_URL = '/network/subnet-address';
 const CIDR_REGEX = /^\d{1,3}(\.\d{1,3}){3}\/\d{1,2}$/;
+const IP_REGEX = /^\d{1,3}(\.\d{1,3}){3}$/;
 const listFilter = (query) => ({ tags: queryList(query, 'tags'), zone: queryValue(query, 'zone'), environment: queryValue(query, 'environment') });
 
 // Small lists rendered with the page
@@ -108,4 +109,19 @@ export default {
   update: (req, res) => runAndRedirect(req, res, LIST_URL,
     () => subnetService.updateSubnet(req.params.id, formInput(req)), 'Subnet updated successfully', `${LIST_URL}/${req.params.id}/edit`),
   remove: (req, res) => runAndRedirect(req, res, LIST_URL, () => subnetService.deleteSubnet(req.params.id), 'Subnet deleted successfully'),
+
+  // IP detail modal: ?ip=<address> -> [{id, address, description}], smallest first
+  containing: page(async (req, res) => {
+    const ip = String(req.query.ip || '').trim();
+    if (!IP_REGEX.test(ip)) return res.status(400).json({ error: 'A valid IP address is required' });
+    res.json(await Subnet.findAllContaining(ip));
+  }),
+
+  // Subnet tooltip (detail-view.js), fetched on hover
+  detail: page(async (req, res) => {
+    const subnet = await Subnet.findById(Number(req.params.id) || 0);
+    if (!subnet) return res.status(404).json({ error: 'Subnet not found' });
+    const { id, address, description, zone, environment, gateway_ip_address, ip_count, tags } = subnet;
+    res.json({ id, address, description, zone, environment, gateway_ip_address, ip_count, tags: (tags || []).map((t) => t.name) });
+  }),
 };

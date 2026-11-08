@@ -307,7 +307,7 @@ router.use(['/systems', '/components'], authenticateJWT);
  *         description: System ID or name already exists
  *   delete:
  *     summary: Delete a system
- *     description: Fails if the system still has components — remove them first.
+ *     description: Fails if the system still has components, unless delete_components=true (then its components are deleted too).
  *     tags: [System]
  *     security:
  *       - bearerAuth: []
@@ -318,13 +318,19 @@ router.use(['/systems', '/components'], authenticateJWT);
  *         schema:
  *           type: integer
  *         description: System ID
+ *       - in: query
+ *         name: delete_components
+ *         schema:
+ *           type: boolean
+ *           default: false
+ *         description: Also delete every component (sub-system) of the system
  *     responses:
  *       204:
  *         description: System deleted
  *       404:
  *         description: System not found
  *       409:
- *         description: System still has components — remove them before deleting the system
+ *         description: System still has components and delete_components is not true
  */
 
 // List all systems

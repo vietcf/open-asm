@@ -161,6 +161,12 @@
   .sm-n-servers .sm-srv.is-inactive{opacity:.55;text-decoration:line-through}
 </style>
 <script>
+  // The device / server holding a backend IP, like the frontend IP owner ('' when nothing holds it)
+  function memberOwner(m, before) {
+    if (!m.owner_name) return '';
+    return (before || '') + '<small><i class="bi ' + (m.owner_type === 'device' ? 'bi-hdd-rack' : 'bi-server') + ' me-1 text-secondary"></i>' + DV.esc(m.owner_name) + '</small>';
+  }
+
   function smFlow(vs) {
     const esc = DV.esc;
     const inbound = vs.direction !== 'outbound';
@@ -173,7 +179,7 @@
     const members = vs.members || [];
     const serversNode = members.length
       ? `<div class="sm-node sm-n-servers"><div class="sm-title mb-1">${esc(t(inbound ? 'Backend Servers' : 'Source Servers'))}</div>` +
-        members.map(m => `<div class="sm-srv${m.status === 'inactive' ? ' is-inactive' : ''}"><i class="bi bi-server ${m.status === 'inactive' ? 'text-secondary' : 'text-success'} me-1"></i>${esc(m.ip)}${m.port ? ':' + m.port : ''}${m.server_name ? ' <small>' + esc(m.server_name) + '</small>' : ''}</div>`).join('') + '</div>'
+        members.map(m => `<div class="sm-srv${m.status === 'inactive' ? ' is-inactive' : ''}"><i class="bi bi-server ${m.status === 'inactive' ? 'text-secondary' : 'text-success'} me-1"></i>${esc(m.ip)}${m.port ? ':' + m.port : ''}${memberOwner(m, '<br>')}</div>`).join('') + '</div>'
       : node('sm-n-servers', 'bi-server', esc(t(inbound ? 'Backend Servers' : 'Source Servers')), esc(t('None')));
     const endpoint = `${esc(vs.ip_address)}:${vs.port} · ${esc(vs.protocol)}`;
     // where the provider listens, when known: "<br>:443 · HTTPS"
@@ -221,10 +227,10 @@
     ));
     if (members.length) {
       const rows = members.map(m =>
-        `<tr><td>${esc(m.ip)}</td><td>${m.port || ''}</td><td>${m.server_name ? esc(m.server_name) : '—'}</td><td><span class="badge tag">${esc(t(cap(m.status || 'active')))}</span></td></tr>`
+        `<tr><td>${esc(m.ip)}</td><td>${m.port || ''}</td><td>${memberOwner(m) || '—'}</td><td><span class="badge tag">${esc(t(cap(m.status || 'active')))}</span></td></tr>`
       ).join('');
       body += DV.section(vs.direction === 'outbound' ? 'Source Servers' : 'Backend Servers',
-        `<table class="table table-sm mb-0"><thead><tr><th>${t('IP Address')}</th><th>${t('Port')}</th><th>${t('Server')}</th><th>${t('Status')}</th></tr></thead><tbody>${rows}</tbody></table>`,
+        `<table class="table table-sm mb-0"><thead><tr><th>${t('IP Address')}</th><th>${t('Port')}</th><th>${t('Server/Device')}</th><th>${t('Status')}</th></tr></thead><tbody>${rows}</tbody></table>`,
         ' <span class="badge tag ms-1">' + members.length + '</span>');
     }
     body += DV.meta(vs);

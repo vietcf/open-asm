@@ -31,6 +31,13 @@
 <div class="app-content">
   <div class="container-fluid">
     <%- include('../../partials/ui/flash') %>
+    <% if (locals.scopeUnits) { %>
+      <div class="alert <%= scopeUnits.length ? 'alert-info' : 'alert-warning' %> py-2 small">
+        <i class="bi bi-funnel me-1"></i>
+        <% if (scopeUnits.length) { %><%= t('Limited to the systems of your units:') %> <strong><%= scopeUnits.join(', ') %></strong>
+        <% } else { %><%= t('Your account has no unit yet, so no data is shown. Ask an administrator to assign your unit in User Management.') %><% } %>
+      </div>
+    <% } %>
 
     <div class="card list-card">
       <form class="list-filter-form" method="get" action="/priv-account/account">
@@ -92,10 +99,10 @@
                   <td class="col-actions">
                     <div class="row-actions">
                       <button type="button" class="btn btn-sm btn-outline-secondary" title="<%= t('Detail') %>" onclick="showAccountDetail(this)" data-record='<%= JSON.stringify(a) %>'><i class="bi bi-eye"></i></button>
-                      <% if (hasPermission('priv_account.update')) { %>
+                      <% if (hasPermission('priv_account.update') && a.can_edit) { %>
                         <a href="/priv-account/account/<%= a.id %>/edit" class="btn btn-sm btn-outline-secondary" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
                       <% } %>
-                      <% if (hasPermission('priv_account.delete')) { %>
+                      <% if (hasPermission('priv_account.delete') && a.can_edit) { %>
                         <form action="/priv-account/account/<%= a.id %>/delete" method="POST" data-confirm="<%= t('Delete {1}?', { 1: a.username }) %>">
                           <button type="submit" class="btn btn-sm btn-outline-secondary btn-delete" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
                         </form>

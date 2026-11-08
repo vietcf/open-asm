@@ -19,9 +19,8 @@ const withUpload = (req, res, next) => receive(req, res, (err) => {
 
 router.get('/', can('backup.read'), backups.list);
 router.post('/create', can('backup.create'), backups.create);
-router.post('/upload', can('backup.create'), withUpload, backups.upload);
 router.get('/:name/download', can('backup.read'), backups.download);
-router.post('/:name/restore', can('backup.restore'), backups.restore);
+router.post('/restore', can('backup.restore'), withUpload, backups.restore);
 router.post('/:name/delete', can('backup.delete'), backups.remove);
 
 export default router;

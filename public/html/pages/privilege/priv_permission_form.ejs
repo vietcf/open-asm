@@ -22,12 +22,25 @@
             </div>
             <div class="col-md-6">
               <label class="form-label" for="f-system"><%= t('System') %> <span class="text-danger">*</span></label>
-              <select id="f-system" name="system_id" class="form-select js-select" required data-placeholder="<%= t('Select system') %>"
-                      data-ajax-url="/system/api/system" data-selected="<%= JSON.stringify(p.system ? [{ id: p.system.id, text: p.system.name }] : []) %>"
-                      <%= p.role_count ? 'disabled' : '' %>></select>
-              <% if (p.role_count) { %>
-                <input type="hidden" name="system_id" value="<%= p.system_id %>">
-                <div class="form-text"><%= t('Used by {1} role(s); the system cannot change', { 1: p.role_count }) %></div>
+              <div id="f-system-box"<%- p.all_systems ? ' class="d-none"' : '' %>>
+                <select id="f-system" name="system_id" class="form-select js-select" <%= p.all_systems ? '' : 'required' %> data-placeholder="<%= t('Select system') %>"
+                        data-ajax-url="/priv-account/api/systems" data-selected="<%= JSON.stringify(p.system ? [{ id: p.system.id, text: p.system.name }] : []) %>"
+                        <%= p.role_count ? 'disabled' : '' %>></select>
+                <% if (p.role_count && !p.all_systems) { %>
+                  <input type="hidden" name="system_id" value="<%= p.system_id %>">
+                  <div class="form-text"><%= t('Used by {1} role(s); the system cannot change', { 1: p.role_count }) %></div>
+                <% } %>
+              </div>
+              <% if (canGlobal) { %>
+                <div class="form-check mt-2">
+                  <input class="form-check-input" type="checkbox" id="f-all-systems" name="all_systems" <%= p.all_systems ? 'checked' : '' %> <%= p.role_count && p.all_systems ? 'disabled' : '' %>>
+                  <label class="form-check-label" for="f-all-systems"><%= t('All systems') %></label>
+                </div>
+                <div class="form-text"><%= t('Can be picked for any system. Only administrators can tick it.') %></div>
+              <% } %>
+              <% if (p.role_count && p.all_systems) { %>
+                <input type="hidden" name="all_systems" value="on">
+                <div class="form-text"><%= t('Used by {1} role(s); it stays for all systems', { 1: p.role_count }) %></div>
               <% } %>
             </div>
             <div class="col-12">
@@ -41,3 +54,13 @@
     </form>
   </div>
 </div>
+
+<script>
+  // "All systems": no system
+  $('#f-all-systems').on('change', function () {
+    const all = this.checked;
+    $('#f-system-box').toggleClass('d-none', all);
+    $('#f-system').prop('required', !all);
+    if (all) $('#f-system').val(null).trigger('change');
+  });
+</script>

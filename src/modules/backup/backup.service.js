@@ -4,6 +4,7 @@
 import fs from 'fs';
 import path from 'path';
 import zlib from 'zlib';
+import readline from 'readline';
 import { spawn } from 'child_process';
 import { pipeline } from 'stream/promises';
 import Configuration from '../administrator/configuration.model.js';
@@ -158,11 +159,79 @@ function readHead(file, bytes = 4096) {
   });
 }
 
+// A restore feeds the file to psql, which runs backslash meta-commands such as
+// `\! <shell command>` anywhere outside SQL literals: an uploaded "backup"
+// could run commands in the app container. A plain pg_dump file only has
+// `\restrict` / `\unrestrict` lines and the `\.` ending each COPY data block,
+// so the whole file is lexed (strings, quoted identifiers, dollar quotes,
+// comments, COPY data) and any other meta-command is refused, as are
+// COPY ... TO/FROM PROGRAM and server-side lo_import / lo_export.
+const ALLOWED_META = /^\\(restrict|unrestrict) [A-Za-z0-9]+\s*$/;
+const FORBIDDEN_SQL = [/\b(TO|FROM)\s+PROGRAM\b/i, /\blo_(import|export)\s*\(/i];
+const COPY_FROM_STDIN = /^COPY\s.+\sFROM\s+stdin;\s*$/i;
+const IDENT_CHAR = /[A-Za-z0-9_$]/;
+
+async function scanDump(file) {
+  const reject = (what, lineNo) => {
+    throw new ValidationError('The backup contains commands that are not allowed in a pg_dump file (line {line}: {what})').withParams({ line: lineNo, what });
+  };
+  const lines = readline.createInterface({ input: fs.createReadStream(file).pipe(zlib.createGunzip()), crlfDelay: Infinity });
+  let state = 'sql'; // sql | quote | equote | ident | dollar | block
+  let dollarTag = '';
+  let depth = 0;
+  let inCopy = false;
+  let lineNo = 0;
+  try {
+    for await (const line of lines) {
+      lineNo += 1;
+      if (inCopy) { if (line === '\\.') inCopy = false; continue; }
+      if (state === 'sql' && ALLOWED_META.test(line)) continue;
+      for (const re of FORBIDDEN_SQL) if (re.test(line)) reject(line.match(re)[0], lineNo);
+      for (let i = 0; i < line.length; i += 1) {
+        const c = line[i];
+        if (state === 'sql') {
+          if (c === '\\') reject('psql meta-command', lineNo);
+          if (c === '-' && line[i + 1] === '-') break; // line comment
+          if (c === '/' && line[i + 1] === '*') { state = 'block'; depth = 1; i += 1; continue; }
+          if (c === '"') { state = 'ident'; continue; }
+          if (c === "'") { state = /[eE]/.test(line[i - 1] || '') && !IDENT_CHAR.test(line[i - 2] || '') ? 'equote' : 'quote'; continue; }
+          if (c === '$' && !IDENT_CHAR.test(line[i - 1] || '')) {
+            const m = line.slice(i).match(/^\$([A-Za-z_][A-Za-z0-9_]*)?\$/);
+            if (m) { state = 'dollar'; dollarTag = m[0]; i += m[0].length - 1; }
+          }
+        } else if (state === 'quote') {
+          if (c === "'") { if (line[i + 1] === "'") i += 1; else state = 'sql'; }
+        } else if (state === 'equote') {
+          if (c === '\\') i += 1;
+          else if (c === "'") { if (line[i + 1] === "'") i += 1; else state = 'sql'; }
+        } else if (state === 'ident') {
+          if (c === '"') { if (line[i + 1] === '"') i += 1; else state = 'sql'; }
+        } else if (state === 'dollar') {
+          if (c === '$' && line.startsWith(dollarTag, i)) { state = 'sql'; i += dollarTag.length - 1; }
+        } else if (state === 'block') {
+          if (c === '/' && line[i + 1] === '*') { depth += 1; i += 1; } else if (c === '*' && line[i + 1] === '/') { depth -= 1; i += 1; if (!depth) state = 'sql'; }
+        }
+      }
+      if (state === 'sql' && COPY_FROM_STDIN.test(line)) inCopy = true;
+    }
+  } catch (err) {
+    if (err instanceof ValidationError) throw err;
+    throw new ValidationError('The file is not a valid gzip backup');
+  } finally {
+    lines.close();
+  }
+  if (inCopy) reject('unterminated COPY data', lineNo);
+}
+
 async function assertDump(file) {
   if (!(await readHead(file)).includes(DUMP_MARKER)) throw new ValidationError('The file is not a PostgreSQL backup');
+  await scanDump(file);
 }
 
 // Uploaded file (multer, anywhere on disk) -> a listed `upload_*` backup. .sql or .sql.gz
+// Temporary upload that will not be used
+export const discardUpload = (tmpFile) => fs.rmSync(tmpFile, { force: true });
+
 export async function importUpload(tmpFile, originalName) {
   try {
     const gz = /\.gz$/i.test(originalName || '');

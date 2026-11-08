@@ -25,6 +25,7 @@ function filterWhere({ search = '', filterTags = [], filterContacts = [], filter
     'EXISTS (SELECT 1 FROM system_ip x JOIN ip_addresses ip ON ip.id = x.ip_id WHERE x.system_id = s.id AND ip.ip_address::text ILIKE ?)',
     'EXISTS (SELECT 1 FROM system_domain x JOIN domains d ON d.id = x.domain_id WHERE x.system_id = s.id AND d.domain ILIKE ?)',
     'EXISTS (SELECT 1 FROM system_components x WHERE x.system_id = s.id AND x.name ILIKE ?)',
+    'EXISTS (SELECT 1 FROM cluster_system x WHERE x.system_id = s.id AND x.namespace ILIKE ?)',
   ]);
   if (filterTags.length) {
     w.add(`EXISTS (SELECT 1 FROM tag_object x WHERE x.object_type = 'system' AND x.object_id = s.id AND x.tag_id = ANY(${w.param(filterTags.map(Number))}))`);
@@ -141,9 +142,10 @@ class System {
       SELECT s.*,
         u.name AS department_name,
         uo.name AS ops_department_name,
+        (SELECT COUNT(*)::int FROM system_components sc WHERE sc.system_id = s.id) AS component_count,
         ${subList({ id: 't.id', name: 't.name' },
           "FROM tag_object tobj JOIN tags t ON t.id = tobj.tag_id WHERE tobj.object_type = 'system' AND tobj.object_id = s.id", 't.id')} AS tags,
-        ${subList({ id: 'c.id', name: 'c.name', email: 'c.email' },
+        ${subList({ id: 'c.id', name: 'c.name', email: 'c.email', unit_id: 'c.unit_id' },
           'FROM system_contact sc JOIN contacts c ON c.id = sc.contact_id WHERE sc.system_id = s.id', 'c.id')} AS contacts,
         ${subList({ id: 'ip.id', ip: 'ip.ip_address', server_name: 'srv.name', subnet_zone: 'sub.zone', subnet_environment: 'sub.environment' },
           `FROM system_ip sip JOIN ip_addresses ip ON ip.id = sip.ip_id
@@ -176,12 +178,13 @@ class System {
   }
 
   // Select2 lookup: [{id, text}]
-  static async select2Search({ search = '', limit = 20 }) {
+  // onlyIds: limit to these systems (null: every system)
+  static async select2Search({ search = '', limit = 20, onlyIds = null }) {
     const result = await pool.query(
       `SELECT id, name, system_id FROM systems
-       WHERE name ILIKE $1 OR system_id ILIKE $1
+       WHERE (name ILIKE $1 OR system_id ILIKE $1) AND ($4::int[] IS NULL OR id = ANY($4::int[]))
        ORDER BY ${matchOrder(['name', 'system_id'], '$3')} LIMIT $2`,
-      [`%${search}%`, limit, search]
+      [`%${search}%`, limit, search, onlyIds]
     );
     return result.rows.map((row) => ({ id: row.id, text: row.name ? `${row.name} (${row.system_id})` : row.system_id }));
   }
