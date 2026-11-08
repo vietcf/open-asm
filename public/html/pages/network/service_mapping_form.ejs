@@ -1,16 +1,28 @@
 <%#
   Add / Edit Service Mapping.  mode: 'add' | 'edit', vs, copiedFrom (source name when duplicating), flows [{id, label, icon, path}],
   providerOptions, partnerOptions, protocolOptions, accessOptions, statusOptions,
-  selected: { ip, gateway, natSubnet, domain, system [{id, text}], partners [{address, partner}], members [{id (ip_address_id), text, port, status}] }
+  selected: { ip, domain, system [{id, text}], partners [{address, partner, port, protocol, domain}], members [{id (ip_address_id), text, port, status}] }
   The flow (direction-scope) comes right after name and system; it decides which parts show, their order (the traffic's)
-  and their labels. IPs, the gateway and the domain accept new values (typed): they are created in their inventories on save.
+  and their labels. Outbound flows: sources without port, one NAT / egress IP, each partner IP with its own port / protocol
+  (and domain for internet connectivity). IPs and the domain accept new values (typed): they are created in their inventories.
 %>
 <% const isEdit = mode === 'edit'; const v = vs || {}; const sel = selected || {};
    const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
    const flow = (v.direction || 'inbound') + '-' + (v.scope || 'public');
    const accessMode = v.access_mode || 'full';
    const partnerTags = !(partnerOptions || []).length;
-   const partnerRow = function (p) { return { address: (p && p.address) || '', partner: (p && p.partner) || '' }; }; %>
+   const partnerRow = function (p) { p = p || {}; return { address: p.address || '', partner: p.partner || '', port: p.port || '', protocol: p.protocol || '', domain: p.domain || '' }; };
+   // one partner IP row: IP, then port / protocol (outbound), domain (internet connectivity), partner
+   const partnerCells = function (r) {
+     return '<div class="col-md-3"><input type="text" name="partner_ip" class="form-control font-monospace" value="' + ui.esc(r.address) + '" placeholder="198.51.100.10" maxlength="15" aria-label="' + ui.esc(t('IP')) + '"></div>' +
+       '<div class="col-md-2 col-6" data-flows="outbound-private outbound-public"><input type="number" name="partner_port" class="form-control" value="' + ui.esc(r.port) + '" min="1" max="65535" placeholder="' + ui.esc(t('Port')) + '"></div>' +
+       '<div class="col-md-2 col-6" data-flows="outbound-private outbound-public"><select name="partner_protocol" class="form-select" aria-label="' + ui.esc(t('Protocol')) + '"><option value="">' + ui.esc(t('Protocol')) + '</option>' +
+         (protocolOptions || []).map(function (pr) { return '<option value="' + ui.esc(pr) + '"' + (r.protocol === pr ? ' selected' : '') + '>' + ui.esc(pr) + '</option>'; }).join('') + '</select></div>' +
+       '<div class="col-md-2" data-flows="outbound-public"><input type="text" name="partner_domain" class="form-control font-monospace" value="' + ui.esc(r.domain) + '" maxlength="253" placeholder="' + ui.esc(t('Domain (optional)')) + '"></div>' +
+       '<div class="col-md"><select name="partner_name" class="form-select js-select"' + (partnerTags ? ' data-tags="true"' : '') + ' data-placeholder="' + ui.esc(t('Partner')) + '"><option value=""></option>' +
+         ui.options(partnerOptions, r.partner ? [r.partner] : []) + (partnerTags && r.partner ? '<option value="' + ui.esc(r.partner) + '" selected>' + ui.esc(r.partner) + '</option>' : '') + '</select></div>' +
+       '<div class="col-md-auto"><button type="button" class="btn btn-outline-secondary w-100" data-repeater-remove title="' + ui.esc(t('Remove')) + '"><i class="bi bi-x-lg"></i></button></div>';
+   }; %>
 <%- include('../../partials/ui/page_header', { breadcrumbs: [
   { label: 'Network' }, { label: 'Service Mapping', href: '/network/service-mapping' }, { label: isEdit ? 'Edit Service Mapping' : 'Add Service Mapping' }
 ] }) %>
@@ -18,7 +30,10 @@
   .sm-flow-pick .btn-check + label { text-align: left; height: 100%; }
   .sm-flow-pick .sm-flow-path { font-size: .75rem; color: var(--bs-secondary-color); }
   .btn-check:checked + label .sm-flow-path { color: inherit; opacity: .85; }
-  #smParts { display: flex; flex-direction: column; gap: 1rem; }
+  /* parts are reordered per flow (flex order) and some are hidden: every shown part gets the same
+     separator, instead of the DOM-order ".form-section + .form-section" rule */
+  #smParts { display: flex; flex-direction: column; gap: 1.25rem; margin-top: 1.25rem; }
+  #smParts > .form-section { border-top: 1px solid var(--bs-border-color); padding-top: 1.25rem; margin-top: 0; }
 </style>
 
 <div class="app-content">
@@ -46,7 +61,7 @@
               <label class="form-label"><%= t('Flow') %> <span class="text-danger">*</span></label>
               <div class="row g-2 sm-flow-pick">
                 <% flows.forEach(function (f) { %>
-                  <div class="col-md-6 col-xl-3">
+                  <div class="col-md-6 col-xl">
                     <input type="radio" class="btn-check" name="flow" id="flow-<%= f.id %>" value="<%= f.id %>" <%= flow === f.id ? 'checked' : '' %> autocomplete="off">
                     <label class="btn btn-outline-primary w-100" for="flow-<%= f.id %>">
                       <div class="fw-medium"><i class="bi <%= f.icon %> me-1"></i><%= t(f.id.startsWith('inbound') ? 'Inbound' : 'Outbound') %> · <%= t(f.label) %></div>
@@ -61,10 +76,10 @@
 
         <%# Parts in the order of the traffic: data-flows = the flows showing it, data-order = its place per flow %>
         <div id="smParts">
-          <%# --- partner IPs: allowed sources (1, 2) or destinations (3, 4) --- %>
+          <%# --- partner IPs: allowed sources (inbound) or destinations with their own port / protocol (outbound) --- %>
           <section class="form-section mb-0" id="part-partners" data-flows="inbound-public inbound-private outbound-private outbound-public"
-                   data-order='{"inbound-public":3,"inbound-private":1,"outbound-private":5,"outbound-public":5}'>
-            <h4 class="form-section-title" data-label='{"inbound-public":"<%= t('Who may connect') %>","inbound-private":"<%= t('Partner VPN IPs (source)') %>","outbound-private":"<%= t('Partner IPs (destination)') %>","outbound-public":"<%= t('Internet destination IPs') %>"}'></h4>
+                   data-order='{"inbound-public":3,"inbound-private":1,"outbound-private":4,"outbound-public":3}'>
+            <h4 class="form-section-title" data-label='{"inbound-public":"<%= t('Who may connect (limited on the CDN)') %>","inbound-private":"<%= t('Partner VPN IPs (source)') %>","outbound-private":"<%= t('Partner IPs (destination)') %>","outbound-public":"<%= t('Internet destinations') %>"}'></h4>
             <div class="row g-3 mb-2" id="f-access-wrap">
               <div class="col-md-4">
                 <label class="form-label" for="f-access"><%= t('Access') %></label>
@@ -76,40 +91,33 @@
               </div>
             </div>
             <div data-repeater id="smPartners">
-              <p class="text-body-secondary small mb-2"><%= t('IP or CIDR of the partner, with the partner\'s name (list configured in System Configuration > Network).') %></p>
+              <p class="text-body-secondary small mb-2" data-label='{"inbound-public":"<%= t('One partner IP per row (no CIDR range), with the partner name.') %>","inbound-private":"<%= t('One partner IP per row (no CIDR range), with the partner name.') %>","outbound-private":"<%= t('One partner IP per row with its own port and protocol (no CIDR range).') %>","outbound-public":"<%= t('One destination IP per row with its domain (optional), port and protocol (no CIDR range).') %>"}'></p>
               <div class="vstack gap-2" data-repeater-rows>
-                <% (sel.partners || []).forEach(function (p) { const r = partnerRow(p); %>
-                  <div class="row g-2 align-items-start">
-                    <div class="col-md-5"><input type="text" name="partner_ip" class="form-control font-monospace" value="<%= r.address %>" placeholder="198.51.100.0/24"></div>
-                    <div class="col-md-6"><select name="partner_name" class="form-select js-select" <%= partnerTags ? 'data-tags=true' : '' %> data-placeholder="<%= t('Partner') %>"><option value=""></option><%- ui.options(partnerOptions, r.partner ? [r.partner] : []) %><% if (partnerTags && r.partner) { %><option value="<%= r.partner %>" selected><%= r.partner %></option><% } %></select></div>
-                    <div class="col-md-1"><button type="button" class="btn btn-outline-secondary w-100" data-repeater-remove title="<%= t('Remove') %>"><i class="bi bi-x-lg"></i></button></div>
-                  </div>
+                <% (sel.partners || []).forEach(function (p) { %>
+                  <div class="row g-2 align-items-start"><%- partnerCells(partnerRow(p)) %></div>
                 <% }) %>
               </div>
               <template data-repeater-template>
-                <div class="row g-2 align-items-start">
-                  <div class="col-md-5"><input type="text" name="partner_ip" class="form-control font-monospace" placeholder="198.51.100.0/24"></div>
-                  <div class="col-md-6"><select name="partner_name" class="form-select js-select" <%= partnerTags ? 'data-tags=true' : '' %> data-placeholder="<%= t('Partner') %>"><option value=""></option><%- ui.options(partnerOptions, []) %></select></div>
-                  <div class="col-md-1"><button type="button" class="btn btn-outline-secondary w-100" data-repeater-remove title="<%= t('Remove') %>"><i class="bi bi-x-lg"></i></button></div>
-                </div>
+                <div class="row g-2 align-items-start"><%- partnerCells(partnerRow({})) %></div>
               </template>
               <div class="mt-2"><button type="button" class="btn btn-outline-primary btn-sm" data-repeater-add><i class="bi bi-plus-lg"></i> <%= t('Add partner IP') %></button></div>
+              <div class="form-text"><%= t('Partner names are configured in System Configuration > Network.') %></div>
             </div>
           </section>
 
-          <%# --- domain: entry of 1, destination of 4 --- %>
-          <section class="form-section mb-0" data-flows="inbound-public outbound-public" data-order='{"inbound-public":1,"outbound-public":4}'>
+          <%# --- domain of the public / internal exposure (outbound destinations carry their own) --- %>
+          <section class="form-section mb-0" data-flows="inbound-public inbound-internal" data-order='{"inbound-public":1,"inbound-internal":1}'>
             <div class="row g-3">
               <div class="col-md-6">
-                <label class="form-label" for="f-domain" data-label='{"inbound-public":"<%= t('Domain (optional)') %>","outbound-public":"<%= t('Destination domain (optional)') %>"}'></label>
+                <label class="form-label" for="f-domain"><%= t('Domain (optional)') %></label>
                 <select id="f-domain" name="domain" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/domain"
                         data-placeholder="<%= t('Select or type a domain, e.g. app.example.com') %>" data-selected="<%= JSON.stringify(sel.domain || []) %>"></select>
               </div>
             </div>
           </section>
 
-          <%# --- provider / channel: CDN (1), VPN / lease line (2, 3) --- %>
-          <section class="form-section mb-0" data-flows="inbound-public inbound-private outbound-private" data-order='{"inbound-public":2,"inbound-private":2,"outbound-private":4}'>
+          <%# --- provider / channel: CDN (public exposure, with its own port / protocol), VPN / lease line (private flows) --- %>
+          <section class="form-section mb-0" data-flows="inbound-public inbound-private outbound-private" data-order='{"inbound-public":2,"inbound-private":2,"outbound-private":3}'>
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label" for="f-provider" data-label='{"inbound-public":"<%= t('CDN / WAF (optional)') %>","inbound-private":"<%= t('VPN / Lease line') %>","outbound-private":"<%= t('VPN / Lease line') %>"}'></label>
@@ -119,11 +127,12 @@
                 </select>
                 <div class="form-text"><%= t('List configured in System Configuration > Network') %></div>
               </div>
-              <div class="col-md-3 col-6">
+              <%# a CDN listens on its own port / protocol; a VPN / lease line only carries the traffic to the NAT IP:port %>
+              <div class="col-md-3 col-6" data-flows="inbound-public">
                 <label class="form-label" for="f-provider-port"><%= t('Provider port') %></label>
                 <input type="number" id="f-provider-port" name="provider_port" class="form-control" value="<%= v.provider_port || '' %>" min="1" max="65535" placeholder="443">
               </div>
-              <div class="col-md-3 col-6">
+              <div class="col-md-3 col-6" data-flows="inbound-public">
                 <label class="form-label" for="f-provider-protocol"><%= t('Provider protocol') %></label>
                 <select id="f-provider-protocol" name="provider_protocol" class="form-select">
                   <option value=""></option>
@@ -133,57 +142,44 @@
             </div>
           </section>
 
-          <%# --- gateway: NAT / reverse proxy (1), firewall / NAT gateway / proxy (4) --- %>
-          <section class="form-section mb-0" data-flows="inbound-public outbound-public" data-order='{"inbound-public":5,"outbound-public":2}'>
+          <%# --- our IP (public / NAT service / NAT / egress, on its FW / LB device); inbound: its port / protocol --- %>
+          <section class="form-section mb-0" data-flows="inbound-public inbound-internal inbound-private outbound-private outbound-public" data-order='{"inbound-public":4,"inbound-internal":2,"inbound-private":3,"outbound-private":2,"outbound-public":2}'>
             <div class="row g-3">
               <div class="col-md-6">
-                <label class="form-label" for="f-gateway" data-label='{"inbound-public":"<%= t('NAT / Reverse proxy IP (optional)') %>","outbound-public":"<%= t('Firewall / NAT gateway / Proxy IP (optional)') %>"}'></label>
-                <select id="f-gateway" name="gateway_ip" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/ip-addresses/search-all"
-                        data-placeholder="<%= t('Select or type an IP') %>" data-selected="<%= JSON.stringify(sel.gateway || []) %>"></select>
-              </div>
-            </div>
-          </section>
-
-          <%# --- our IP (+ NAT range) and the port: of our IP inbound, of the destination outbound --- %>
-          <section class="form-section mb-0" data-flows="inbound-public inbound-private outbound-private outbound-public" data-order='{"inbound-public":4,"inbound-private":3,"outbound-private":3,"outbound-public":3}'>
-            <div class="row g-3">
-              <div class="col-md-6">
-                <label class="form-label" for="f-ip"><span data-label='{"inbound-public":"<%= t('Public IP') %>","inbound-private":"<%= t('NAT service IP') %>","outbound-private":"<%= t('NAT IP (optional with a NAT range)') %>","outbound-public":"<%= t('Egress public IP') %>"}'></span> <span class="text-danger" data-required-mark>*</span></label>
+                <label class="form-label" for="f-ip"><span data-label='{"inbound-public":"<%= t('Public IP (on the FW / LB)') %>","inbound-internal":"<%= t('VIP (on the LB)') %>","inbound-private":"<%= t('NAT service IP') %>","outbound-private":"<%= t('NAT IP') %>","outbound-public":"<%= t('Egress public IP') %>"}'></span> <span class="text-danger">*</span></label>
                 <select id="f-ip" name="ip_address" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/ip-addresses/search-all"
                         data-placeholder="<%= t('Select or type an IP') %>" data-selected="<%= JSON.stringify(sel.ip || []) %>"></select>
               </div>
-              <div class="col-md-6" data-flows="inbound-private outbound-private">
-                <label class="form-label" for="f-nat-subnet"><%= t('NAT range (subnet)') %></label>
-                <select id="f-nat-subnet" name="nat_subnet" class="form-select js-select" data-ajax-url="/network/api/subnets"
-                        data-placeholder="<%= t('Dedicated NAT range, avoids overlapping the partner\'s IPs') %>" data-selected="<%= JSON.stringify(sel.natSubnet || []) %>"></select>
-              </div>
               <div class="w-100 mt-0" aria-hidden="true"></div>
-              <div class="col-md-3 col-6">
-                <label class="form-label" for="f-port"><span data-label='{"inbound-public":"<%= t('Port') %>","inbound-private":"<%= t('Port') %>","outbound-private":"<%= t('Partner port') %>","outbound-public":"<%= t('Destination port') %>"}'></span> <span class="text-danger">*</span></label>
-                <input type="number" id="f-port" name="port" class="form-control" value="<%= v.port || '' %>" min="1" max="65535" placeholder="443" required>
+              <div class="col-md-3 col-6" data-flows="inbound-public inbound-internal inbound-private">
+                <label class="form-label" for="f-port"><%= t('Port') %> <span class="text-danger">*</span></label>
+                <input type="number" id="f-port" name="port" class="form-control" value="<%= v.port || '' %>" min="1" max="65535" placeholder="443" data-inbound-required>
               </div>
-              <div class="col-md-3 col-6">
+              <div class="col-md-3 col-6" data-flows="inbound-public inbound-internal inbound-private">
                 <label class="form-label" for="f-protocol"><%= t('Protocol') %> <span class="text-danger">*</span></label>
-                <select id="f-protocol" name="protocol" class="form-select" required>
+                <select id="f-protocol" name="protocol" class="form-select" data-inbound-required>
                   <% (protocolOptions || []).forEach(function (p) { %><option value="<%= p %>" <%= (v.protocol || 'HTTPS') === p ? 'selected' : '' %>><%= p %></option><% }) %>
                 </select>
               </div>
             </div>
           </section>
 
-          <%# --- members: backends (1, 2) or internal sources (3, 4) --- %>
-          <section class="form-section mb-0" data-repeater id="smMembers" data-flows="inbound-public inbound-private outbound-private outbound-public"
-                   data-order='{"inbound-public":6,"inbound-private":4,"outbound-private":1,"outbound-public":1}'>
-            <h4 class="form-section-title" data-label='{"inbound-public":"<%= t('Backend IPs') %>","inbound-private":"<%= t('Backend IPs') %>","outbound-private":"<%= t('Internal IPs (source)') %>","outbound-public":"<%= t('Internal IPs (source)') %>"}'></h4>
+          <%# --- members: backends with their port / protocol (inbound) or internal source IPs without port (outbound) --- %>
+          <section class="form-section mb-0" data-repeater id="smMembers" data-flows="inbound-public inbound-internal inbound-private outbound-private outbound-public"
+                   data-order='{"inbound-public":6,"inbound-internal":3,"inbound-private":4,"outbound-private":1,"outbound-public":1}'>
+            <h4 class="form-section-title" data-label='{"inbound-public":"<%= t('Backend IPs') %>","inbound-internal":"<%= t('Backend IPs') %>","inbound-private":"<%= t('Backend IPs') %>","outbound-private":"<%= t('Internal IPs (source)') %>","outbound-public":"<%= t('Internal IPs (source)') %>"}'></h4>
             <div class="vstack gap-2" data-repeater-rows>
               <% (sel.members || []).forEach(function (m) { %>
                 <div class="row g-2 align-items-start">
-                  <div class="col-md-6">
+                  <div class="col-md-5">
                     <select name="member_ip" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/ip-addresses/search-all" data-placeholder="<%= t('Select IP') %>"
                             data-selected="<%= JSON.stringify([{ id: m.id, text: m.text }]) %>"></select>
                   </div>
-                  <div class="col-md-2 col-5"><input type="number" name="member_port" class="form-control" value="<%= m.port || '' %>" min="1" max="65535" placeholder="<%= t('Port') %>"></div>
-                  <div class="col-md-3 col-5">
+                  <div class="col-md-2 col-4" data-flows="inbound-public inbound-internal inbound-private"><input type="number" name="member_port" class="form-control" value="<%= m.port || '' %>" min="1" max="65535" placeholder="<%= t('Port') %>"></div>
+                  <div class="col-md-2 col-4" data-flows="inbound-public inbound-internal inbound-private">
+                    <select name="member_protocol" class="form-select" aria-label="<%= t('Protocol') %>"><option value=""><%= t('Protocol') %></option><% (protocolOptions || []).forEach(function (p) { %><option value="<%= p %>" <%= m.protocol === p ? 'selected' : '' %>><%= p %></option><% }) %></select>
+                  </div>
+                  <div class="col-md-2 col-4">
                     <select name="member_status" class="form-select">
                       <% statusOptions.forEach(function (s) { %><option value="<%= s %>" <%= (m.status || 'active') === s ? 'selected' : '' %>><%= t(cap(s)) %></option><% }) %>
                     </select>
@@ -194,9 +190,12 @@
             </div>
             <template data-repeater-template>
               <div class="row g-2 align-items-start">
-                <div class="col-md-6"><select name="member_ip" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/ip-addresses/search-all" data-placeholder="<%= t('Select IP') %>"></select></div>
-                <div class="col-md-2 col-5"><input type="number" name="member_port" class="form-control" min="1" max="65535" placeholder="<%= t('Port') %>"></div>
-                <div class="col-md-3 col-5">
+                <div class="col-md-5"><select name="member_ip" class="form-select js-select" data-tags="true" data-ajax-url="/network/api/ip-addresses/search-all" data-placeholder="<%= t('Select IP') %>"></select></div>
+                <div class="col-md-2 col-4" data-flows="inbound-public inbound-internal inbound-private"><input type="number" name="member_port" class="form-control" min="1" max="65535" placeholder="<%= t('Port') %>"></div>
+                <div class="col-md-2 col-4" data-flows="inbound-public inbound-internal inbound-private">
+                  <select name="member_protocol" class="form-select" aria-label="<%= t('Protocol') %>"><option value=""><%= t('Protocol') %></option><% (protocolOptions || []).forEach(function (p) { %><option value="<%= p %>"><%= p %></option><% }) %></select>
+                </div>
+                <div class="col-md-2 col-4">
                   <select name="member_status" class="form-select"><% statusOptions.forEach(function (s) { %><option value="<%= s %>"><%= t(cap(s)) %></option><% }) %></select>
                 </div>
                 <div class="col-md-1 col-2"><button type="button" class="btn btn-outline-secondary w-100" data-repeater-remove title="<%= t('Remove') %>"><i class="bi bi-x-lg"></i></button></div>
@@ -224,15 +223,16 @@
     const flowOf = () => (form.querySelector('input[name="flow"]:checked') || {}).value || 'inbound-public';
     function sync() {
       const flow = flowOf();
-      // parts (and fields) of this flow, in its order, with its labels
+      const inbound = flow.startsWith('inbound');
+      // parts (and fields, rows added later included) of this flow, in its order, with its labels
       form.querySelectorAll('[data-flows]').forEach((el) => { el.hidden = !el.dataset.flows.split(' ').includes(flow); });
       form.querySelectorAll('[data-order]').forEach((el) => { const o = JSON.parse(el.dataset.order); if (o[flow] !== undefined) el.style.order = o[flow]; });
       form.querySelectorAll('[data-label]').forEach((el) => { const l = JSON.parse(el.dataset.label); if (l[flow]) el.textContent = l[flow]; });
-      // Public exposure: Internet-wide or limited to partner IPs; private inbound is always limited to its partners
+      // Public exposure: Internet-wide or limited to partner IPs (on the CDN); private inbound is always limited to its partners
       document.getElementById('f-access-wrap').hidden = flow !== 'inbound-public';
       partnerList.hidden = flow === 'inbound-public' && access.value !== 'limited';
-      // our IP is optional only for partner connectivity (a NAT range may stand for it)
-      form.querySelector('[data-required-mark]').hidden = flow === 'outbound-private';
+      // the mapping's port / protocol are inbound only (outbound ones are on each partner IP)
+      form.querySelectorAll('[data-inbound-required]').forEach((el) => { el.required = inbound; });
     }
     // A chosen domain with a known IP fills an empty public IP (public exposure)
     $('#f-domain').on('select2:select', function (e) {
@@ -243,6 +243,8 @@
     });
     form.querySelectorAll('input[name="flow"]').forEach((r) => r.addEventListener('change', sync));
     access.addEventListener('change', sync);
+    // a row just added follows the flow too
+    form.addEventListener('click', (e) => { if (e.target.closest('[data-repeater-add]')) setTimeout(sync); });
     sync();
   })();
 </script>

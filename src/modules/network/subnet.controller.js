@@ -110,9 +110,6 @@ export default {
     () => subnetService.updateSubnet(req.params.id, formInput(req)), 'Subnet updated successfully', `${LIST_URL}/${req.params.id}/edit`),
   remove: (req, res) => runAndRedirect(req, res, LIST_URL, () => subnetService.deleteSubnet(req.params.id), 'Subnet deleted successfully'),
 
-  // Select2 picker (NAT range of service mappings): ?search= -> [{id, text}]
-  lookup: page(async (req, res) => res.json(await Subnet.select2Search(String(req.query.search || '').trim()))),
-
   // IP detail modal: ?ip=<address> -> [{id, address, description}], smallest first
   containing: page(async (req, res) => {
     const ip = String(req.query.ip || '').trim();
