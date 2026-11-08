@@ -657,7 +657,16 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.7.2 (Latest)
+### Version 1.7.3 (Latest)
+- No database migration: upgrading from 1.7.2 only needs the new image.
+- ✏️ Partner IP rows (one IP, one partner): the partner is picked from a
+  dropdown (the configured partners and the names already used) or **typed**
+  when it does not exist yet; a typed partner joins the System Configuration
+  list `service_mapping_partner` on save, so it can be picked next time. A
+  name matching a configured one (case-insensitive) takes its spelling; a
+  retired one is refused. Same for the import and the API.
+
+### Version 1.7.2
 - No database migration: upgrading from 1.7.1 only needs the new image.
 - ✏️ Service Flow shows at most **10 partners**; with more, "+N partner(s) ·
   See all" jumps to the full partner table of the detail, which scrolls, keeps

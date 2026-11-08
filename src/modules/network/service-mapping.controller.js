@@ -55,11 +55,19 @@ async function formInput(req) {
 const options = (rows, text = (r) => r.name) => (rows || []).map((r) => ({ id: r.id, text: text(r) }));
 
 async function renderForm(res, mode, vs = {}, copiedFrom = null) {
-  const [providerOptions, protocolOptions, partnerOptions] = await Promise.all([
+  const [providerOptions, protocolOptions, configuredPartners, usedPartners] = await Promise.all([
     loadOptions('service_mapping_provider'),
     smService.getProtocolOptions(),
     loadOptions('service_mapping_partner'),
+    smService.getPartnerOptions(),
   ]);
+  // partner dropdown: the configured partners, the names already used and this mapping's, sorted; a new one can be typed
+  const partnerOptions = [...configuredPartners];
+  const seen = new Set(partnerOptions.map((o) => o.id.toLowerCase()));
+  for (const name of [...usedPartners, ...(vs.partner_ips || []).map((p) => p.partner).filter(Boolean)]) {
+    if (!seen.has(name.toLowerCase())) { seen.add(name.toLowerCase()); partnerOptions.push({ id: name, text: name }); }
+  }
+  partnerOptions.sort((a, b) => a.text.localeCompare(b.text));
   const allProtocols = [...new Set([...PROTOCOL_OPTIONS, ...protocolOptions])];
   res.render('pages/network/service_mapping_form', {
     mode, vs, copiedFrom, providerOptions, partnerOptions, flows: FLOWS, protocolOptions: allProtocols, accessOptions: ACCESS_OPTIONS, statusOptions: STATUS_OPTIONS,

@@ -6,6 +6,7 @@ import { IPV4_REGEX } from './ip-address.service.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
 import { hasKey, loadOptions } from '../../shared/service.js';
+import Configuration from '../administrator/configuration.model.js';
 
 const PROTOCOL_OPTIONS = ['HTTP', 'HTTPS', 'TCP', 'UDP'];
 const DIRECTION_OPTIONS = ['inbound', 'outbound'];
@@ -129,7 +130,7 @@ async function partnerRows(input, current = null, { withPorts = false, withDomai
     if (!IPV4_REGEX.test(address) && !kept.has(address)) {
       throw new ValidationError(address.includes('/') ? 'Partner IPs are single IP addresses, not ranges (CIDR): {ips}' : 'Invalid partner IP: {ips}').withParams({ ips: address });
     }
-    const partner = await configuredOption('service_mapping_partner', str(r.partner), 'partner');
+    const partner = await partnerName(str(r.partner));
     let port = null;
     let protocol = null;
     if (withPorts) {
@@ -207,6 +208,32 @@ async function configuredOption(key, value, label, current = null) {
   return found.id;
 }
 const configuredProvider = (value, current = null) => configuredOption('service_mapping_provider', value, 'provider', current);
+
+// Partner name: picked from the System Configuration list service_mapping_partner
+// (its spelling, case-insensitive; a retired one is refused) or typed as a new
+// partner, which rememberPartners() adds to the list.
+async function partnerName(value) {
+  if (!value) return null;
+  if (value.length > 100) throw new ValidationError('Partner name is too long (max 100 characters): {value}').withParams({ value });
+  const found = (await loadOptions('service_mapping_partner')).find((o) => o.id.toLowerCase() === value.toLowerCase());
+  if (found?.inactive) throw new ValidationError('{value} is no longer in use for {label}').withParams({ value: found.id, label: 'partner' });
+  return found ? found.id : value;
+}
+
+// New partner names of the saved rows join the list, so they can be picked next time
+async function rememberPartners(partners, client, updatedBy) {
+  const row = await Configuration.findByKey('service_mapping_partner');
+  let list;
+  try { list = row?.value ? JSON.parse(row.value) : []; } catch { list = []; }
+  if (!Array.isArray(list)) list = [];
+  const known = new Set(list.map((o) => String(o && typeof o === 'object' ? o.value : o).toLowerCase()));
+  const added = [];
+  for (const p of partners) {
+    if (p.partner && !known.has(p.partner.toLowerCase())) { known.add(p.partner.toLowerCase()); added.push({ value: p.partner, label: p.partner }); }
+  }
+  if (!added.length) return;
+  await Configuration.upsert('service_mapping_partner', { value: JSON.stringify([...list, ...added]), description: 'Service mapping partners', updatedBy: updatedBy || null }, client);
+}
 
 // The four flows (direction-scope) and what each one keeps
 const FLOWS = {
@@ -291,6 +318,7 @@ export async function createServiceMapping(input, client) {
       updated_by: input.updated_by || 'admin',
     }, c);
     await ServiceMapping.setPartnerIps(created.id, partners, c);
+    await rememberPartners(partners, c, input.updated_by);
     await ServiceMapping.setMembers(created.id, sourcesWithoutPort(data.direction, await resolveMembers(input, resolve)), c);
     return created.id;
   });
@@ -321,6 +349,7 @@ export async function updateServiceMapping(id, input, client) {
       updated_by: input.updated_by || 'admin',
     }, c);
     await ServiceMapping.setPartnerIps(id, partners, c);
+    await rememberPartners(partners, c, input.updated_by);
     if (hasKey(input, 'member_ip')) await ServiceMapping.setMembers(id, sourcesWithoutPort(data.direction, await resolveMembers(input, resolve)), c);
     else if (data.direction === 'outbound' && current.direction !== 'outbound') {
       await ServiceMapping.setMembers(id, sourcesWithoutPort('outbound', (current.members || []).map((m) => ({ ip_address_id: m.ip_address_id, port: m.port, protocol: m.protocol, status: m.status }))), c);
