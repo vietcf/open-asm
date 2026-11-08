@@ -657,7 +657,13 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.8.1 (Latest)
+### Version 1.8.2 (Latest)
+- No database migration: upgrading from 1.8.1 only needs the new image.
+- ✏️ Public Exposure: the public IP is labelled just **Public IP** (no more
+  "FW / LB", it may be either): the device / server holding it is still looked
+  up from the asset mapping and shown under it, and its detail says what it is.
+
+### Version 1.8.1
 - No database migration: upgrading from 1.8.0 only needs the new image. The
   service mapping import template header "Partner IPs" changed (must exist):
   download the new one.
@@ -738,7 +744,7 @@ when cutting a release.
 - ✏️ Service mapping flows refined:
   | Flow | Path |
   |---|---|
-  | Inbound · Public Exposure | Partners (limited on the CDN) or Internet → Domain → CDN (its own port / protocol) → **Public IP:Port** on its FW / LB → Backends IP:Port |
+  | Inbound · Public Exposure | Partners (limited on the CDN) or Internet → Domain → CDN (its own port / protocol) → **Public IP:Port** (+ the device / server holding it) → NAT private IP (optional) → Backends IP:Port |
   | Inbound · **Internal Exposure** (new) | Internal users → Domain (optional) → **VIP IP:Port + protocol** on its LB → Backends IP:Port + protocol |
   | Inbound · Private Connectivity | Partner VPN IPs → VPN / lease line → **one NAT service IP:Port** → Backends IP:Port |
   | Outbound · Partner Connectivity | Internal IPs (**no port**) → **one NAT IP** → VPN / lease line → **each partner IP with its own port + protocol** |
