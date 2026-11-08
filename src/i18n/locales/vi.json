@@ -1693,8 +1693,13 @@
   "IP is required": "Cần nhập IP",
   "IP": "IP",
   "Pick or type a partner": "Chọn hoặc gõ tên đối tác",
-  "Pick a partner or type a new one: it is added to the partner list (System Configuration > Network).": "Chọn đối tác có sẵn hoặc gõ tên mới: tên mới được thêm vào danh sách đối tác (Cấu hình hệ thống > Mạng).",
   "Partner name is too long (max 100 characters): {value}": "Tên đối tác quá dài (tối đa 100 ký tự): {value}",
   "Who may connect (limited on the FW)": "Ai được kết nối vào (giới hạn trên FW)",
-  "Allowed partners (limited on the FW)": "Đối tác được phép (giới hạn trên FW)"
+  "Allowed partners (limited on the FW)": "Đối tác được phép (giới hạn trên FW)",
+  "IP address {ip} is not in the IP inventory: add it there first": "IP {ip} chưa có trong danh mục IP: hãy thêm vào danh mục IP trước",
+  "Domain {domain} is not in the domain inventory: add it there first": "Domain {domain} chưa có trong danh mục domain: hãy thêm vào danh mục domain trước",
+  "Select an IP from the IP inventory": "Chọn IP trong danh mục IP",
+  "Select a domain from the domain inventory": "Chọn domain trong danh mục domain",
+  "System is looked up by exact name; IPs and the domain must already exist in their inventories (they are never created by the import)": "Hệ thống tìm theo đúng tên; IP và domain phải có sẵn trong danh mục (import không tự tạo)",
+  "Pick a partner or type its name (configured partners are in System Configuration > Network).": "Chọn đối tác hoặc gõ tên đối tác (danh sách đối tác cấu hình tại Cấu hình hệ thống > Mạng)."
 }

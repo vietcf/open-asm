@@ -3,6 +3,8 @@ import ServiceMapping from './service-mapping.model.js';
 import System from '../system/system.model.js';
 import * as smService from './service-mapping.service.js';
 import { IPV4_REGEX } from './ip-address.service.js';
+import IpAddress from './ip-address.model.js';
+import Domain from './domain.model.js';
 import { excelImport, splitList, resolveNames } from '../../shared/excelImport.js';
 import { parseListQuery, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, runAndRedirect, page, lookup, duplicatePage } from '../../shared/web.js';
 import { sendExcel } from '../../utils/excelExport.js';
@@ -86,11 +88,11 @@ export const serviceMappingImport = excelImport({
   name: 'service-mapping',
   columns: [
     { header: 'Name (Optional - auto-generated if empty)', key: 'name' },
-    { header: 'Domain (Optional, created if new)', key: 'domain' },
+    { header: 'Domain (Optional, must exist in the domain inventory)', key: 'domain' },
     { header: 'Provider (Optional, e.g. Akamai, Cloudflare)', key: 'provider' },
     { header: 'Provider Port (Optional)', key: 'provider_port' },
     { header: 'Provider Protocol (Optional, HTTP/HTTPS/TCP/UDP)', key: 'provider_protocol' },
-    { header: 'IP Address (Public / NAT service / NAT / egress IP, created if new)', key: 'ip_address' },
+    { header: 'IP Address (Public / NAT service / NAT / egress IP, must exist in the IP inventory)', key: 'ip_address' },
     { header: 'Port (Require)', key: 'port' },
     { header: 'Protocol (Optional, default HTTPS)', key: 'protocol' },
     { header: 'Direction (Optional, inbound/outbound, default inbound)', key: 'direction' },
@@ -98,7 +100,7 @@ export const serviceMappingImport = excelImport({
     { header: 'Access (Optional, full/limited, default full)', key: 'access_mode' },
     { header: 'Partner IPs (Optional, comma-separated: IP[Partner] for inbound sources, IP:port/protocol@domain[Partner] for outbound destinations)', key: 'allowed_ips' },
     { header: 'System Name (Optional)', key: 'system' },
-    { header: 'Backend IPs (Optional, ip:port comma-separated, created if new)', key: 'backends' }, // ip:port/protocol accepted
+    { header: 'Backend IPs (Optional, ip:port comma-separated, must exist in the IP inventory)', key: 'backends' }, // ip:port/protocol accepted
     { header: 'Description (Optional)', key: 'description' },
   ],
   sample: async () => [
@@ -153,6 +155,10 @@ export const serviceMappingImport = excelImport({
         else errors.push(`Invalid backend IP: ${ip}`);
       }
     }
+    // IPs and the domain are never created by the import: they must already exist
+    if (row.ip_address && IPV4_REGEX.test(row.ip_address) && !(await IpAddress.findByAddress(row.ip_address))) missing.push(`IP address: ${row.ip_address}`);
+    for (const m of row._members) if (!(await IpAddress.findByAddress(m.ip))) missing.push(`IP address: ${m.ip}`);
+    if (row.domain && !(await Domain.findByDomain(row.domain))) missing.push(`Domain: ${row.domain}`);
     if (missing.length) errors.push(`Not found: ${missing.join(', ')}`);
 
     // default name: domain:port, or the first destination "ip:port" of an outbound mapping

@@ -175,7 +175,7 @@
         instructions: ['Flow = Direction + Scope: inbound public (public exposure), inbound internal (internal exposure), inbound private (private connectivity), outbound private (partner connectivity), outbound public (internet connectivity)',
           'IP = the public / NAT service / NAT / egress IP of the flow; Port / Protocol: required for inbound, empty for outbound',
           'Partner IPs (single IPs, no CIDR), comma-separated: IP[Partner] = allowed sources of inbound; IP:port/protocol[Partner] = partner connectivity destinations; IP:port/protocol@domain[Partner] = internet destinations (domain optional)',
-          'System is looked up by exact name', 'Backends: ip:port/protocol (protocol optional), comma-separated; outbound sources: ip, comma-separated'] }) %>
+          'System is looked up by exact name; IPs and the domain must already exist in their inventories (they are never created by the import)', 'Backends: ip:port/protocol (protocol optional), comma-separated; outbound sources: ip, comma-separated'] }) %>
 <% } %>
 
 <style>
