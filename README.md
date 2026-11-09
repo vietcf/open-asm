@@ -657,7 +657,14 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.8.3 (Latest)
+### Version 1.8.4 (Latest)
+- No database migration: upgrading from 1.8.3 only needs the new image.
+- 🐛 Export of every list follows the search and filters **on the form**:
+  a multi-select emptied (tags, systems, status...) or a checkbox unticked
+  before clicking Export no longer keeps the value applied before (it used to
+  stay in the export query).
+
+### Version 1.8.3
 - No database migration: upgrading from 1.8.2 only needs the new image.
 - 🐛 Service Flow: every text of the diagram has the same font size (titles
   bold, not bigger); IPs, partners, backends, owners and arrow labels were

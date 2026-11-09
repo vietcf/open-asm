@@ -65,7 +65,8 @@
     e.preventDefault();
     const url = new URL(link.href, window.location.origin);
     const data = new FormData(form);
-    for (const key of new Set(data.keys())) url.searchParams.delete(key);
+    // every field of the form, also an emptied multi-select or an unticked checkbox (absent from FormData)
+    for (const el of form.elements) if (el.name) url.searchParams.delete(el.name);
     for (const [key, value] of data.entries()) if (String(value).trim() !== '') url.searchParams.append(key, value);
     url.searchParams.delete('page');
     window.location.href = url.pathname + url.search;
