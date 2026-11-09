@@ -657,7 +657,12 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.8.5 (Latest)
+### Version 1.8.6 (Latest)
+- No database migration: upgrading from 1.8.5 only needs the new image.
+- 🐛 Service Mapping: "IP owner" comes right after the IP it belongs to, in
+  the export, the list columns and the detail.
+
+### Version 1.8.5
 - No database migration: upgrading from 1.8.4 only needs the new image.
 - 🐛 Service Mapping filter "Device holding the IP" keeps the chosen device
   after filtering (its restore endpoint `/device/api/device/ids` was missing,
