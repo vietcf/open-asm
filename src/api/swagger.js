@@ -97,6 +97,8 @@ const apiSwaggerRouter = express.Router();
  *     description: Subnets
  *   - name: Domain
  *     description: Domains
+ *   - name: Service Mapping
+ *     description: Service flows - public / private / internal exposure and outbound connectivity (IP, NAT, partners, backends)
  *   - name: Rule
  *     description: Firewall rules
  *   - name: PentestRound

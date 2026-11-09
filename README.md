@@ -657,7 +657,20 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.8.10 (Latest)
+### Version 1.8.11 (Latest)
+- No database migration: upgrading from 1.8.10 only needs the new image.
+- 🐛 `GET /api/v1/service-mappings` has the same filters as the web list:
+  **`device_id`** (the device holding the IP) and **`partner`** were missing.
+  A non-integer `system_id` / `device_id` is a 400. Swagger documents both
+  filters and has a description for the **Service Mapping** tag.
+- 🐛 Swagger, Service Mapping: the request example had no direction, scope,
+  access mode, provider, NAT or partner IPs. `POST` now has one example per
+  flow (public exposure, public exposure limited to partners, internal
+  exposure, private connectivity, partner connectivity, internet
+  connectivity), and the response schema lists the NAT IP / port / owner and
+  the backend protocol.
+
+### Version 1.8.10
 - No database migration: upgrading from 1.8.9 only needs the new image.
 - ✏️ Server detail: **Systems** moved up to Overview (it was under
   Software).

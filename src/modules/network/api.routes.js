@@ -1125,14 +1125,25 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *           items: { $ref: '#/components/schemas/ServiceMappingMember' }
  *       example:
  *         name: myapp.com:443
+ *         direction: inbound
+ *         scope: public
+ *         access_mode: limited
+ *         provider: Akamai
+ *         provider_port: 443
+ *         provider_protocol: HTTPS
  *         ip_address_id: 12
  *         port: 443
  *         protocol: HTTPS
+ *         nat_ip_address_id: 15
+ *         nat_port: 443
  *         domain_id: 7
  *         system_id: 3
+ *         partner_ips:
+ *           - { address: 198.51.100.10, partner: Bank A }
  *         members:
- *           - { ip_address_id: 21, port: 8443, status: active }
- *           - { ip_address_id: 22, port: 8443, status: inactive }
+ *           - { ip_address_id: 21, port: 8443, protocol: HTTP, status: active }
+ *           - { ip_address_id: 22, port: 8443, protocol: HTTP, status: inactive }
+ *         description: Public web of My App, through Akamai, open to Bank A only
  *     ServiceMapping:
  *       type: object
  *       properties:
@@ -1144,9 +1155,14 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *         protocol: { type: string }
  *         domain_id: { type: integer, nullable: true }
  *         domain: { type: string, nullable: true }
- *         direction: { type: string }
- *         scope: { type: string }
- *         access_mode: { type: string }
+ *         direction: { type: string, enum: [inbound, outbound] }
+ *         scope: { type: string, enum: [public, private, internal] }
+ *         access_mode: { type: string, enum: [full, limited] }
+ *         nat_ip_address_id: { type: integer, nullable: true }
+ *         nat_ip: { type: string, nullable: true }
+ *         nat_port: { type: integer, nullable: true }
+ *         nat_owner_name: { type: string, nullable: true, description: Device, else server, holding the NAT private IP }
+ *         nat_owner_type: { type: string, enum: [device, server], nullable: true }
  *         partner_ips:
  *           type: array
  *           items:
@@ -1177,6 +1193,7 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *               ip_address_id: { type: integer }
  *               ip: { type: string }
  *               port: { type: integer, nullable: true }
+ *               protocol: { type: string, nullable: true }
  *               status: { type: string }
  *               owner_name: { type: string, nullable: true, description: Device, else server, holding the backend IP }
  *               owner_type: { type: string, enum: [device, server], nullable: true }
@@ -1199,9 +1216,13 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *       - { in: query, name: scope, schema: { type: string, enum: [public, private, internal] } }
  *       - { in: query, name: access_mode, schema: { type: string, enum: [full, limited] } }
  *       - { in: query, name: system_id, schema: { type: integer } }
+ *       - { in: query, name: device_id, schema: { type: integer }, description: 'Mappings whose IP (public / flow IP) is held by this device' }
+ *       - { in: query, name: partner, schema: { type: string }, description: 'Partner name (System Configuration list service_mapping_partner), exact match' }
  *     responses:
  *       200:
  *         description: '{ data: ServiceMapping[], pagination }'
+ *       400:
+ *         description: system_id / device_id is not an integer
  *   post:
  *     summary: Create a service mapping
  *     tags: [Service Mapping]
@@ -1212,6 +1233,92 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *       content:
  *         application/json:
  *           schema: { $ref: '#/components/schemas/ServiceMappingInput' }
+ *           examples:
+ *             public_exposure:
+ *               summary: Inbound public - Public exposure (CDN in front, NAT to a VIP on the LB)
+ *               value:
+ *                 name: myapp.com:443
+ *                 direction: inbound
+ *                 scope: public
+ *                 access_mode: full
+ *                 provider: Akamai
+ *                 provider_port: 443
+ *                 provider_protocol: HTTPS
+ *                 ip_address_id: 12
+ *                 port: 443
+ *                 protocol: HTTPS
+ *                 nat_ip_address_id: 15
+ *                 nat_port: 443
+ *                 domain_id: 7
+ *                 system_id: 3
+ *                 members:
+ *                   - { ip_address_id: 21, port: 8443, protocol: HTTP, status: active }
+ *                   - { ip_address_id: 22, port: 8443, protocol: HTTP, status: active }
+ *             public_exposure_limited:
+ *               summary: Inbound public - Public exposure open to some partner IPs only
+ *               value:
+ *                 name: api.myapp.com:443
+ *                 direction: inbound
+ *                 scope: public
+ *                 access_mode: limited
+ *                 ip_address_id: 12
+ *                 port: 443
+ *                 protocol: HTTPS
+ *                 partner_ips:
+ *                   - { address: 198.51.100.10, partner: Bank A }
+ *                   - { address: 198.51.100.11, partner: Bank A }
+ *                 members:
+ *                   - { ip_address_id: 21, port: 8443, protocol: HTTP }
+ *             internal_exposure:
+ *               summary: Inbound internal - Internal exposure (VIP on the internal LB)
+ *               value:
+ *                 name: intranet.local:443
+ *                 direction: inbound
+ *                 scope: internal
+ *                 ip_address_id: 30
+ *                 port: 443
+ *                 protocol: HTTPS
+ *                 system_id: 3
+ *                 members:
+ *                   - { ip_address_id: 31, port: 8080, protocol: HTTP }
+ *             private_connectivity:
+ *               summary: Inbound private - Private connectivity (partner reaches our NAT service IP over MPLS)
+ *               value:
+ *                 name: partner-in:9443
+ *                 direction: inbound
+ *                 scope: private
+ *                 provider: MPLS
+ *                 ip_address_id: 40
+ *                 port: 9443
+ *                 protocol: TCP
+ *                 partner_ips:
+ *                   - { address: 192.0.2.10, partner: Bank A }
+ *                 members:
+ *                   - { ip_address_id: 41, port: 9443, protocol: TCP }
+ *             partner_connectivity:
+ *               summary: Outbound private - Partner connectivity (our NAT IP to partner IP:port)
+ *               value:
+ *                 name: to-bank-a
+ *                 direction: outbound
+ *                 scope: private
+ *                 provider: MPLS
+ *                 ip_address_id: 50
+ *                 partner_ips:
+ *                   - { address: 192.0.2.20, partner: Bank A, port: 8443, protocol: HTTPS }
+ *                 members:
+ *                   - { ip_address_id: 51 }
+ *                   - { ip_address_id: 52 }
+ *             internet_connectivity:
+ *               summary: Outbound public - Internet connectivity (egress public IP to an internet API)
+ *               value:
+ *                 name: to-payment-gateway
+ *                 direction: outbound
+ *                 scope: public
+ *                 ip_address_id: 60
+ *                 partner_ips:
+ *                   - { address: 203.0.113.80, partner: Payment Gateway, port: 443, protocol: HTTPS, domain: api.pay.example }
+ *                 members:
+ *                   - { ip_address_id: 51 }
  *     responses:
  *       201:
  *         description: Created
