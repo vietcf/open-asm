@@ -20,7 +20,7 @@
       ...ip.servers.map(o => ({ ...o, kind: 'Server', url: '/server/server?search=' + encodeURIComponent(o.name) })),
       ...ip.devices.map(o => ({ ...o, kind: 'Device', url: '/device/device?search=' + encodeURIComponent(o.name) })),
     ];
-    return list.length ? list.map(o => `<div><a href="${o.url}">${ui.esc(o.name)}</a> <small class="text-secondary">${o.role === 'vip' ? t('VIP on') + ' ' : ''}${t(o.kind)}</small></div>`).join('') : ui.dash;
+    return list.length ? list.map(o => `<div><a href="${o.url}">${ui.esc(o.name)}</a> <small class="text-secondary">${t(o.kind)}</small></div>`).join('') : ui.dash;
   };
   // VIP is a property of the IP (shared by the servers / devices holding it)
   const isVip = (ip) => [...ip.servers, ...ip.devices].some(o => o.role === 'vip');
