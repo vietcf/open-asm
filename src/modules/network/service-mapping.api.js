@@ -88,12 +88,15 @@ async function toInput(body, req) {
 }
 
 export default {
-  // ?search=&page=&pageSize=&protocol=&provider=&direction=&scope=&access_mode=&system_id=
+  // ?search=&page=&pageSize=&protocol=&provider=&direction=&scope=&access_mode=&system_id=&device_id=&partner=
+  // (the same filters as the web list)
   getAll: apiHandler(async (req, res) => {
     const { search, page, pageSize } = apiPage(req.query);
     const q = (k) => (typeof req.query[k] === 'string' && req.query[k].trim() ? req.query[k].trim() : '');
+    const bad = ['system_id', 'device_id'].find((k) => q(k) && !/^\d+$/.test(q(k)));
+    if (bad) return res.status(400).json({ error: `"${bad}" must be an integer` });
     const filter = { search, page, pageSize, protocol: q('protocol'), provider: q('provider'), direction: q('direction'),
-      scope: q('scope'), access_mode: q('access_mode'), system_id: q('system_id') };
+      scope: q('scope'), access_mode: q('access_mode'), system_id: q('system_id'), device_id: q('device_id'), partner: q('partner') };
     const { items, totalCount } = await smService.listServiceMappings(filter);
     res.json(paginated(items, totalCount, page, pageSize));
   }),

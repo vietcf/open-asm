@@ -39,6 +39,10 @@ Authorization: Bearer {{smAuth.response.body.token}}
 GET {{baseUrl}}/{{apiVersion}}/service-mappings?search=shop&page=1&pageSize=20
 Authorization: Bearer {{smAuth.response.body.token}}
 
+### 3b. Filter by the device holding the IP / by partner (same filters as the web list)
+GET {{baseUrl}}/{{apiVersion}}/service-mappings?device_id=1&partner=Bank%20A
+Authorization: Bearer {{smAuth.response.body.token}}
+
 ### 4. Find by exact name (integrations: update instead of create)
 GET {{baseUrl}}/{{apiVersion}}/service-mappings/find?name=shop.example.com:443
 Authorization: Bearer {{smAuth.response.body.token}}
