@@ -657,7 +657,13 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.8.2 (Latest)
+### Version 1.8.3 (Latest)
+- No database migration: upgrading from 1.8.2 only needs the new image.
+- 🐛 Service Flow: every text of the diagram has the same font size (titles
+  bold, not bigger); IPs, partners, backends, owners and arrow labels were
+  mixed sizes (nested small text shrank twice).
+
+### Version 1.8.2
 - No database migration: upgrading from 1.8.1 only needs the new image.
 - ✏️ Public Exposure: the public IP is labelled just **Public IP** (no more
   "FW / LB", it may be either): the device / server holding it is still looked

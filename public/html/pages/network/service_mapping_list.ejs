@@ -179,12 +179,14 @@
 <% } %>
 
 <style>
-  .sm-flow{display:flex;align-items:stretch;gap:.5rem;padding:1rem;overflow-x:auto;background:var(--bs-tertiary-bg);border-radius:.5rem}
+  /* one font size for every text of the diagram (titles are bold, not bigger; nested .small / <small> do not shrink it) */
+  .sm-flow{display:flex;align-items:stretch;gap:.5rem;padding:1rem;overflow-x:auto;background:var(--bs-tertiary-bg);border-radius:.5rem;font-size:.8125rem;line-height:1.4}
+  .sm-flow small,.sm-flow .small,.sm-flow .btn-sm,.sm-flow .font-monospace{font-size:inherit}
   .sm-node{display:flex;flex-direction:column;justify-content:center;text-align:center;padding:.5rem .75rem;border-radius:.5rem;background:var(--bs-body-bg);border:1px solid var(--bs-border-color);min-width:110px;flex-shrink:0}
   .sm-node > i.bi{font-size:1.25rem;margin-bottom:.25rem}
   .sm-node .sm-title{font-weight:500}
-  .sm-node small{display:block;font-size:.75rem;color:var(--bs-secondary-color);word-break:break-all}
-  .sm-arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--bs-secondary-color);flex-shrink:0;font-size:.7rem}
+  .sm-node small{display:block;color:var(--bs-secondary-color);word-break:break-all}
+  .sm-arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--bs-secondary-color);flex-shrink:0}
   .sm-arrow i{font-size:1.25rem}
   .sm-n-source{background:var(--bs-info-bg-subtle);border-color:var(--bs-info-border-subtle)}
   .sm-n-edge{background:var(--bs-warning-bg-subtle);border-color:var(--bs-warning-border-subtle)}
