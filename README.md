@@ -657,7 +657,13 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.8.4 (Latest)
+### Version 1.8.5 (Latest)
+- No database migration: upgrading from 1.8.4 only needs the new image.
+- 🐛 Service Mapping filter "Device holding the IP" keeps the chosen device
+  after filtering (its restore endpoint `/device/api/device/ids` was missing,
+  so the select showed empty although the list was filtered).
+
+### Version 1.8.4
 - No database migration: upgrading from 1.8.3 only needs the new image.
 - 🐛 Export of every list follows the search and filters **on the form**:
   a multi-select emptied (tags, systems, status...) or a checkbox unticked

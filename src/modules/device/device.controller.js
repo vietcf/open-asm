@@ -9,7 +9,7 @@ import * as deviceService from './device.service.js';
 import { IPV4_REGEX } from '../network/ip-address.service.js';
 import { assignedAddresses, ensureIpAddresses } from '../network/ip-ownership.js';
 import { excelImport, splitList, resolveNames } from '../../shared/excelImport.js';
-import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, runAndRedirect, page, lookup, duplicatePage } from '../../shared/web.js';
+import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, runAndRedirect, page, lookup, lookupByIds, duplicatePage } from '../../shared/web.js';
 import { sendExcel } from '../../utils/excelExport.js';
 import { pageOptions } from '../../shared/options.js';
 
@@ -190,6 +190,8 @@ export default {
 
   // ===== AJAX =====
   lookup: lookup((search) => Device.select2Search(search)),
+  // Select2 restore: ?ids=1&ids=2 -> [{id, text}]
+  lookupByIds: lookupByIds((ids) => Device.findByIds(ids), (d) => d.name),
   // Known values of the free-text fields (tags mode: new values allowed)
   manufacturers: lookup(async (search) => (await Device.distinctValues('manufacturer', search)).map((v) => ({ id: v, text: v }))),
   roles: lookup(async (search) => (await Device.distinctValues('device_role', search)).map((v) => ({ id: v, text: v }))),
