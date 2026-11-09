@@ -657,7 +657,13 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.8.8 (Latest)
+### Version 1.8.9 (Latest)
+- No database migration: upgrading from 1.8.8 only needs the new image.
+- 🐛 IP Address list: the Server/Device column no longer says "VIP on", since
+  the **VIP** badge already sits right after the IP. The IP detail and hover
+  keep "VIP on Server/Device".
+
+### Version 1.8.8
 - No database migration: upgrading from 1.8.7 only needs the new image.
 - 🐛 Server / Device detail: every IP and every VIP IP is on its own line.
 - 🐛 IP Address list and detail: **VIP** is shown right after the IP (it is
