@@ -20,10 +20,12 @@
       ...ip.servers.map(o => ({ ...o, kind: 'Server', url: '/server/server?search=' + encodeURIComponent(o.name) })),
       ...ip.devices.map(o => ({ ...o, kind: 'Device', url: '/device/device?search=' + encodeURIComponent(o.name) })),
     ];
-    return list.length ? list.map(o => `<div><a href="${o.url}">${ui.esc(o.name)}</a> <small class="text-secondary">${t(o.kind)}</small>${o.role === 'vip' ? ' <span class="badge text-bg-warning">VIP</span>' : ''}</div>`).join('') : ui.dash;
+    return list.length ? list.map(o => `<div><a href="${o.url}">${ui.esc(o.name)}</a> <small class="text-secondary">${o.role === 'vip' ? t('VIP on') + ' ' : ''}${t(o.kind)}</small></div>`).join('') : ui.dash;
   };
+  // VIP is a property of the IP (shared by the servers / devices holding it)
+  const isVip = (ip) => [...ip.servers, ...ip.devices].some(o => o.role === 'vip');
   const cell = (ip, key) => ({
-    ip: `<span class="font-monospace">${ui.esc(ip.ip_address)}</span>`,
+    ip: `<span class="font-monospace">${ui.esc(ip.ip_address)}</span>${isVip(ip) ? ' <span class="badge text-bg-warning">VIP</span>' : ''}`,
     description: ui.clip(ip.description),
     owners: owners(ip),
     status: ip.status ? ui.chips([ui.optionLabel(statusOptions, ip.status)]) : ui.dash,
@@ -157,12 +159,15 @@
       (ip.servers || []).map((o) => ({ ...o, kind: 'Server', url: '/server/server?search=' + encodeURIComponent(o.name) })),
       (ip.devices || []).map((o) => ({ ...o, kind: 'Device', url: '/device/device?search=' + encodeURIComponent(o.name) }))
     );
-    const ownerHtml = owners.length ? owners.map((o) => '<div><a href="' + o.url + '">' + DV.esc(o.name) + '</a> <small class="text-secondary">' + DV.esc(t(o.kind)) + '</small>' +
-      (o.role === 'vip' ? ' <span class="badge text-bg-warning">VIP</span>' : '') + '</div>').join('') : DV.EMPTY;
+    const ownerHtml = (list) => list.map((o) => '<div><a href="' + o.url + '">' + DV.esc(o.name) + '</a> <small class="text-secondary">' + DV.esc(t(o.kind)) + '</small></div>').join('');
+    // the IP is the VIP: badge after the IP, its holders under "VIP on Server/Device"
+    const primary = owners.filter((o) => o.role !== 'vip');
+    const vip = owners.filter((o) => o.role === 'vip');
     let body = DV.section('Overview', DV.rows(
       DV.multiline(ip.description) ? DV.field('Description', DV.multiline(ip.description)) : '',
       DV.field('Status', DV.text(DV.optionLabel(IP_STATUS, ip.status)) || DV.EMPTY),
-      DV.field('Server/Device', ownerHtml)
+      primary.length || !vip.length ? DV.field('Server/Device', ownerHtml(primary)) : '',
+      vip.length ? DV.field('VIP on Server/Device', ownerHtml(vip)) : ''
     ));
     // every subnet the IP lies in, smallest first; details on hover
     body += DV.section('Subnet', '<div id="ipSubnets" class="text-secondary small detail-pad">' + DV.esc(t('Loading...')) + '</div>');
@@ -172,7 +177,7 @@
       DV.field('Contacts', DV.contacts(ip.contacts || []))
     ));
     body += DV.meta(ip);
-    DV.open('ipDetailModal', { title: ip.ip_address, body, recordId: ip.id });
+    DV.open('ipDetailModal', { title: ip.ip_address, titleExtra: vip.length ? ' <span class="badge text-bg-warning align-middle">VIP</span>' : '', body, recordId: ip.id });
     DV.load('/network/api/subnets/containing?ip=' + encodeURIComponent(ip.ip_address), document.getElementById('ipSubnets'), renderSubnets);
   }
 
