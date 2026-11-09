@@ -115,6 +115,13 @@ class Device {
   }
 
   // Select2 lookup: [{id, text}]
+  // Select2 restore of selected filter values
+  static async findByIds(ids) {
+    if (!Array.isArray(ids) || ids.length === 0) return [];
+    const result = await pool.query('SELECT id, name FROM devices WHERE id = ANY($1)', [ids]);
+    return result.rows;
+  }
+
   static async select2Search(search = '', limit = 20) {
     const result = await pool.query(`SELECT id, name AS text FROM devices WHERE name ILIKE $1
       ORDER BY ${matchOrder('name', '$3')} LIMIT $2`, [`%${search}%`, limit, search]);

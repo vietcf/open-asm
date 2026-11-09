@@ -47,6 +47,7 @@ mountCatalogPages(router, '/platform', platformPages, 'platform', can);
 
 // Select2 lookups, open to any signed-in user
 router.get('/api/device', canPick('device.read'), devices.lookup);
+router.get('/api/device/ids', canPick('device.read'), devices.lookupByIds);
 router.get('/api/manufacturer', canPick('device.read'), devices.manufacturers);
 router.get('/api/device-role', canPick('device.read'), devices.roles);
 router.get('/api/device-type', canPick('device_type.read'), typePages.lookup);
