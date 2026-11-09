@@ -76,7 +76,8 @@
   function ipLink(ip) {
     return '<a href="/network/ip-address?search=' + encodeURIComponent(ip) + '" target="_blank" rel="noopener noreferrer" class="ip-hover-link font-monospace" data-ip="' + esc(ip) + '" title="' + esc(tr('Loading IP info...')) + '">' + esc(ip) + '</a>';
   }
-  const ipLinks = (list) => (toArray(list).length ? '<div class="chip-list">' + toArray(list).map((ip) => ipLink(ip.ip_address || ip.ip || ip)).join('') + '</div>' : '');
+  // one IP per line
+  const ipLinks = (list) => (toArray(list).length ? '<ul class="detail-list">' + toArray(list).map((ip) => '<li>' + ipLink(ip.ip_address || ip.ip || ip) + '</li>').join('') + '</ul>' : '');
   const unit = (id, name) => (id ? '<span class="org-tooltip" data-unit-id="' + esc(id) + '" style="cursor: help;">' + esc(name || '') + '</span>' : '');
   const linkChips = (items, href) => (toArray(items).length
     ? '<div class="chip-list">' + toArray(items).map((it) => '<a href="' + esc(href(it)) + '" target="_blank" rel="noopener noreferrer" class="badge tag text-decoration-none">' + esc(it.name || it.domain || it) + '</a>').join('') + '</div>'
@@ -113,11 +114,14 @@
   }
   function ipTooltipText(ip, info) {
     if (!info) return 'IP: ' + ip + '\n' + tr('No additional information found');
-    const lines = ['IP: ' + (info.ip_address || ip)];
+    // "(VIP)" belongs to the IP; its holders are listed as "VIP on Server/Device"
+    const vipOn = (o) => (o.role === 'vip' ? tr('VIP on') + ' ' : '');
+    const isVip = [].concat(info.servers || [], info.devices || []).some((o) => o.role === 'vip');
+    const lines = ['IP: ' + (info.ip_address || ip) + (isVip ? ' (VIP)' : '')];
     if (info.description) lines.push(tr('Description') + ': ' + info.description);
     if (info.status) lines.push(tr('Status') + ': ' + info.status);
-    (info.servers || []).forEach((s) => lines.push(tr('Server') + ': ' + s.name + (s.role === 'vip' ? ' (VIP)' : '')));
-    (info.devices || []).forEach((d) => lines.push(tr('Device') + ': ' + d.name + (d.role === 'vip' ? ' (VIP)' : '')));
+    (info.servers || []).forEach((s) => lines.push(vipOn(s) + tr('Server') + ': ' + s.name));
+    (info.devices || []).forEach((d) => lines.push(vipOn(d) + tr('Device') + ': ' + d.name));
     if ((info.systems || []).length) lines.push(tr('Systems') + ': ' + info.systems.map((s) => s.name || s).join(', '));
     if ((info.contacts || []).length) lines.push(tr('Contacts') + ': ' + info.contacts.map((c) => c.name || c).join(', '));
     return lines.join('\n');
@@ -186,10 +190,11 @@
   function record(button) {
     try { return JSON.parse(button.getAttribute('data-record')); } catch (e) { return null; }
   }
-  function open(modalId, { title, subtitle, body, recordId } = {}) {
+  // titleExtra: HTML right after the title (e.g. a VIP badge)
+  function open(modalId, { title, titleExtra, subtitle, body, recordId } = {}) {
     const el = document.getElementById(modalId);
     if (!el) return;
-    el.querySelector('[data-detail-title]').textContent = title || '';
+    el.querySelector('[data-detail-title]').innerHTML = esc(title || '') + (titleExtra || '');
     el.querySelector('[data-detail-subtitle]').innerHTML = subtitle || '';
     const bodyEl = el.querySelector('[data-detail-body]');
     bodyEl.innerHTML = body || '';

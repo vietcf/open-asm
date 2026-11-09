@@ -657,7 +657,15 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.8.7 (Latest)
+### Version 1.8.8 (Latest)
+- No database migration: upgrading from 1.8.7 only needs the new image.
+- 🐛 Server / Device detail: every IP and every VIP IP is on its own line.
+- 🐛 IP Address list and detail: **VIP** is shown right after the IP (it is
+  the IP that is the VIP), not next to the server / device. In the detail the
+  holders of a VIP are listed under **VIP on Server/Device**; the IP hover
+  reads "IP: x (VIP)" and "VIP on Server: …".
+
+### Version 1.8.7
 - No database migration: upgrading from 1.8.6 only needs the new image.
 - 🐛 Service Mapping export has every field, in the order of the flow:
   Name, Flow, Direction, Scope, Access, System, Domain, Provider (port,
