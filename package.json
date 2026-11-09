@@ -1,6 +1,6 @@
 {
   "name": "open-asm",
-  "version": "1.8.8",
+  "version": "1.8.9",
   "type": "module",
   "scripts": {
     "start": "node src/app.js",
