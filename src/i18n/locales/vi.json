@@ -1706,5 +1706,12 @@
   "NAT private IP": "NAT IP private",
   "Invalid NAT port: {port}": "Port NAT không hợp lệ: {port}",
   "Partner IPs are picked from the IP inventory (add them there first). Pick a partner or type its name (configured partners are in System Configuration > Network).": "IP đối tác chọn từ danh mục IP (thêm IP vào danh mục trước). Chọn đối tác hoặc gõ tên đối tác (danh sách đối tác cấu hình tại Cấu hình hệ thống > Mạng).",
-  "User → Domain → CDN → Public IP:Port → NAT private IP (optional) → Backend": "Người dùng → Domain → CDN → Public IP:Port → NAT IP private (tùy chọn) → Backend"
+  "User → Domain → CDN → Public IP:Port → NAT private IP (optional) → Backend": "Người dùng → Domain → CDN → Public IP:Port → NAT IP private (tùy chọn) → Backend",
+  "Public IP / Flow IP": "Public IP / IP của luồng",
+  "Public IP / Flow IP owner": "Public IP / IP của luồng thuộc",
+  "NAT private port": "Port NAT private",
+  "NAT private IP owner": "NAT IP private thuộc",
+  "Partner IP owners": "IP đối tác thuộc",
+  "Backend IP owner": "Backend IP thuộc",
+  "Updated by": "Người cập nhật"
 }

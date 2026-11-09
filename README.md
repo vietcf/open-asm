@@ -657,7 +657,17 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.8.6 (Latest)
+### Version 1.8.7 (Latest)
+- No database migration: upgrading from 1.8.6 only needs the new image.
+- 🐛 Service Mapping export has every field, in the order of the flow:
+  Name, Flow, Direction, Scope, Access, System, Domain, Provider (port,
+  protocol), **Public IP / Flow IP** and **its owner** (the device / server
+  holding it), Port, Protocol, **NAT private IP, port and owner**, Partner IPs
+  and **their owners**, Backend IP, port, protocol and **owner**, Status,
+  Description, Updated, **Updated by**. (The IP column used to be a bare "IP
+  Address", the NAT / partner owners and "Updated by" were missing.)
+
+### Version 1.8.6
 - No database migration: upgrading from 1.8.5 only needs the new image.
 - 🐛 Service Mapping: "IP owner" comes right after the IP it belongs to, in
   the export, the list columns and the detail.
