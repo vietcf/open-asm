@@ -166,6 +166,7 @@
       DV.field('Location', DV.text(opt('location'))),
       DV.field('Platform', DV.text(s.platform_name)),
       DV.field('OS Version', DV.text(s.os_version)),
+      DV.field('Systems', DV.linkChips(s.systems || [], (x) => '/system/system?search=' + encodeURIComponent(x.name))),
       DV.field('Tags', DV.chips((s.tags || []).map((tg) => tg.name))),
       DV.field('Managers', DV.contacts(s.managers))
     ));
@@ -174,7 +175,6 @@
       DV.field('VIP IP Address(es)', DV.ipLinks(ips.filter((ip) => ip.role === 'vip')))
     ), ' <span class="badge tag ms-1">' + ips.length + '</span>');
     body += DV.section('Software', DV.rows(
-      DV.field('Systems', DV.linkChips(s.systems || [], (x) => '/system/system?search=' + encodeURIComponent(x.name))),
       DV.field('Services', DV.chips((s.services || []).map((x) => x.name))),
       DV.field('Agents', DV.chips((s.agents || []).map((a) => a.version ? a.name + ' (' + a.version + ')' : a.name)))
     ));
