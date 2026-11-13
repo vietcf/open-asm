@@ -7,6 +7,7 @@
 //   data-tags="true"                    new values can be typed (free text)
 //                                       (extra fields of AJAX results reach the select2:select event)
 //   data-ajax-with='{"k":"#field"}'     sends #field's value as ?k= with each AJAX search
+//                                       ("~selector": the field in the same repeater row)
 //
 // <div data-repeater>                   rows added from <template data-repeater-template>
 //   [data-repeater-rows]                where rows go; [data-repeater-add] adds one,
@@ -38,7 +39,9 @@
         url: ajaxUrl, dataType: 'json', delay: 250,
         // data-ajax-with='{"subnet":"#f-address"}': also sends other fields' current values
         data: (params) => Object.assign({ search: params.term },
-          ...Object.entries($el.data('ajaxWith') || {}).map(([k, sel]) => ({ [k]: $(sel).val() }))),
+          ...Object.entries($el.data('ajaxWith') || {}).map(([k, sel]) => ({
+            [k]: (sel.startsWith('~') ? $el.closest('[data-repeater-rows] > *').find(sel.slice(1)) : $(sel)).val(),
+          }))),
         processResults: (data) => ({ results: (Array.isArray(data) ? data : (data.results || [])).map((x) => ({ ...x, id: x.id, text: x.text || x.name || String(x.id) })) }),
         cache: true,
       };

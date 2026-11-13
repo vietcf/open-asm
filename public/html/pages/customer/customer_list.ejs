@@ -205,9 +205,21 @@
       : '<span class="text-secondary detail-pad">' + DV.esc(t('No contacts')) + '</span>', ' <span class="badge tag ms-1">' + people.length + '</span>');
     (c.connections || []).forEach((x) => { body += connectionCard(x); });
     if (!(c.connections || []).length) body += DV.section('Connections', '<span class="text-secondary detail-pad">' + DV.esc(t('No connections')) + '</span>');
+    body += DV.section('Service Mappings', '<div id="customerMappings" class="text-secondary small detail-pad">' + DV.esc(t('Loading...')) + '</div>');
     body += DV.section('Documents', '<div id="customerFiles" class="text-secondary small detail-pad">' + DV.esc(t('Loading...')) + '</div>');
     body += DV.meta(c);
     DV.open('customerDetailModal', { title: c.name, subtitle: c.code ? '<span class="font-monospace">' + DV.esc(c.code) + '</span>' : '', body, recordId: c.id });
-    DV.load('/customer/' + encodeURIComponent(c.id) + '/detail', document.getElementById('customerFiles'), (data) => DV.files((data && data.docs) || [], '/customer/file/:id/view'));
+    DV.load('/customer/' + encodeURIComponent(c.id) + '/detail', document.getElementById('customerFiles'), (data) => {
+      // the same response fills the service mappings using this customer
+      const maps = (data && data.service_mappings) || [];
+      const box = document.getElementById('customerMappings');
+      if (box) {
+        box.classList.remove('text-secondary', 'small');
+        box.innerHTML = maps.length
+          ? '<ul class="detail-list">' + maps.map((m) => '<li>' + linkTo('/network/service-mapping?search=' + encodeURIComponent(m.name), m.name) + '</li>').join('') + '</ul>'
+          : '<span class="text-secondary">' + DV.esc(t('Not used by any service mapping')) + '</span>';
+      }
+      return DV.files((data && data.docs) || [], '/customer/file/:id/view');
+    });
   }
 </script>

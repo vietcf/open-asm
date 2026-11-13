@@ -672,13 +672,52 @@ fields), detail with every connection and its networks, export (one row per
 connection, one column per custom field), import (one row per connection;
 custom fields as `key=value; key=value`), REST `/api/v1/customers`.
 
+**Service mappings use them** (1.11.0): every partner IP of a service mapping
+(allowed source, partner or internet destination) is a customer and one of its
+registered IPs / networks — picked in the mapping form (customer, then its IP),
+or given as `IP[Customer]` in the import (customer: exact name or code) and as
+`{customer_id, network_id | address}` in the API. A mapping never creates a
+customer or an IP. A registered IP used by a mapping cannot be removed from
+its customer, nor the customer deleted, until the mapping no longer uses it
+(the error names the mappings); the customer detail lists its service mappings.
+
 ## 📝 Changelog
 
 See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.10.0 (Latest)
+### Version 1.11.0 (Latest)
+- ⬆️ Upgrading from 1.10.x: new image; migration `0038` runs and **moves the
+  existing partner IPs to customers** (see below). The service mapping import
+  template header "Partner IPs" changed: download the new one.
+- ✨ Service mapping **partner IPs are a customer and one of its registered IPs
+  / networks** (module Customers): the form picks the customer, then one of its
+  IPs (CIDR allowed); import `IP[Customer]` (exact name or code); API
+  `partner_ips: [{customer_id, network_id | address, port, protocol, domain}]`
+  (`customer` / `address` accepted instead of the ids); list filter
+  **Customer** (`customer_id`, replaces `partner`). Nothing is created from a
+  mapping: an unregistered IP or an unknown customer is refused ("add it in
+  Customers first").
+- ✨ Customers: a registered IP used by a service mapping cannot be removed, nor
+  the customer deleted, while a mapping uses it (the message names the
+  mappings); the customer detail lists its service mappings; endpoint
+  `/customer/api/networks?customer_id=` (picker).
+- ✏️ The System Configuration list **Service mapping partners**
+  (`service_mapping_partner`) is gone: its names are customers now.
+- Migration `0038_partner_ips_customers.js`: `virtual_server_partner_ips`
+  gains `customer_id` / `network_id` (RESTRICT) and loses `partner`. Data:
+  each partner name (used, or in the old partner list) becomes a customer
+  (existing one of the same name reused; new: type Partner, active); rows
+  without a name go to the customer **"Chưa phân loại"** to sort out; each
+  address becomes a registered network of its customer, on the connection of
+  its flow's channel (public flows: Internet whitelist; private: the mapping's
+  provider when it is a channel, else VPN site-to-site), created when missing;
+  an address with host bits set is stored as its network.
+- `form-kit`: `data-ajax-with` accepts `~selector` (a field of the same
+  repeater row).
+
+### Version 1.10.0
 - ⬆️ Upgrading from 1.9.x: new image; migration `0037` runs (new tables,
   permissions and configuration only: no existing row changes).
 - ✨ **Customer management** (`/customer`): customers / partners / vendors,

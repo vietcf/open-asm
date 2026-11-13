@@ -1,6 +1,6 @@
 <%
   const f = filter;
-  const activeFilterCount = [f.access_mode, f.protocol, f.provider, f.partner, f.device_id, f.system_id].filter(Boolean).length;
+  const activeFilterCount = [f.access_mode, f.protocol, f.provider, f.customer_id, f.device_id, f.system_id].filter(Boolean).length;
   const cap = (s) => s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
   const flowOf = (vs) => flows.find((x) => x.id === vs.direction + '-' + vs.scope) || flows[0];
   const currentFlow = f.direction && f.scope ? f.direction + '-' + f.scope : '';
@@ -50,7 +50,6 @@
   })[key];
   const simpleFilter = (name, label, options, labelOf) => ({ name, label, options, labelOf: labelOf || ((o) => o) });
   const FILTERS = [
-    simpleFilter('partner', 'Partner', partnerOptions || []),
     simpleFilter('access_mode', 'Access', ['full', 'limited'], (o) => t(o === 'full' ? 'Full' : 'Limited')),
     simpleFilter('protocol', 'Protocol', protocolOptions || []),
     simpleFilter('provider', 'Provider / Channel', providerOptions || []),
@@ -103,6 +102,11 @@
                   </select>
                 </div>
               <% }) %>
+              <div class="col-md-3">
+                <label class="form-label small"><%= t('Customer') %></label>
+                <select name="customer_id" class="form-select js-filter" data-placeholder="<%= t('All') %>"
+                        data-ajax-url="/customer/api/customer" data-ids-url="/customer/api/customer/ids" data-selected='<%= JSON.stringify(f.customer_id ? [f.customer_id] : []) %>'></select>
+              </div>
               <div class="col-md-3">
                 <label class="form-label small"><%= t('System') %></label>
                 <select name="system_id" class="form-select js-filter" data-placeholder="<%= t('All') %>"
@@ -174,7 +178,7 @@
   <%- include('../../partials/ui/import_modal', { id: 'smImportModal', title: 'Import Service Mappings', baseUrl: '/network/service-mapping',
         instructions: ['Flow = Direction + Scope: inbound public (public exposure), inbound internal (internal exposure), inbound private (private connectivity), outbound private (partner connectivity), outbound public (internet connectivity)',
           'IP = the public / NAT service / NAT / egress IP of the flow; Port / Protocol: required for inbound, empty for outbound',
-          'Partner IPs (single IPs, no CIDR), comma-separated: IP[Partner] = allowed sources of inbound; IP:port/protocol[Partner] = partner connectivity destinations; IP:port/protocol@domain[Partner] = internet destinations (domain optional)',
+          'Partner IPs, comma-separated, each an IP or CIDR registered for its customer in Customers: IP[Customer] = allowed sources of inbound; IP:port/protocol[Customer] = partner connectivity destinations; IP:port/protocol@domain[Customer] = internet destinations (domain optional); Customer = exact name or code',
           'System is looked up by exact name; IPs and the domain must already exist in their inventories (they are never created by the import)', 'Backends: ip:port/protocol (protocol optional), comma-separated; outbound sources: ip, comma-separated'] }) %>
 <% } %>
 
@@ -301,7 +305,7 @@
       // outbound destinations carry their own port / protocol (and domain for internet connectivity)
       const out = vs.direction === 'outbound';
       const withDomain = out && vs.scope === 'public';
-      const head = [t('IP')].concat(out ? [t('Port'), t('Protocol')] : [], withDomain ? [t('Domain')] : [], [t('Partner'), t('Server/Device')]);
+      const head = [t('IP')].concat(out ? [t('Port'), t('Protocol')] : [], withDomain ? [t('Domain')] : [], [t('Customer'), t('Server/Device')]);
       const rows = partners.map((p) => '<tr data-sm-partner-row="' + esc([p.partner, p.address, p.domain, p.port, p.protocol].filter(Boolean).join(' ').toLowerCase()) + '"><td>' + DV.ipLink(p.address) + '</td>' +
         (out ? '<td>' + esc(p.port || '') + '</td><td>' + (p.protocol ? '<span class="badge tag">' + esc(p.protocol) + '</span>' : '') + '</td>' : '') +
         (withDomain ? '<td class="font-monospace">' + esc(p.domain || '—') + '</td>' : '') +

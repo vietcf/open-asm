@@ -24,5 +24,6 @@ router.post('/:id/delete', can('customer.delete'), customers.remove);
 // Select2 lookups (customers picked on other pages)
 router.get('/api/customer', canPick('customer.read'), customers.lookup);
 router.get('/api/customer/ids', canPick('customer.read'), customers.lookupByIds);
+router.get('/api/networks', canPick('customer.read'), customers.networks);
 
 export default router;

@@ -120,6 +120,49 @@ class Customer {
     return (await pool.query('SELECT id, name, code FROM customers WHERE id = ANY($1::int[])', [ids])).rows;
   }
 
+  // ===== Registered IPs / networks (picked by the service mappings) =====
+  // Select2: a customer's networks, ?search= -> [{id, text}] ("10.20.0.0/24 · Core · VPN HCM")
+  static async searchNetworks(customerId, search = '', limit = 50) {
+    const result = await pool.query(
+      `SELECT n.id, ${NETWORK_TEXT('n.network')} || COALESCE(' · ' || n.description, '') || ' · ' || cc.name AS text
+       FROM customer_networks n JOIN customer_connections cc ON cc.id = n.connection_id
+       WHERE n.customer_id = $1 AND (n.network::text ILIKE $2 OR n.description ILIKE $2 OR cc.name ILIKE $2)
+       ORDER BY cc.position, cc.id, n.position, n.id LIMIT $3`, [customerId, `%${search}%`, limit]);
+    return result.rows;
+  }
+
+  // -> {id, customer_id, address (text)} or null
+  static async findNetworkById(id, client) {
+    const result = await db(client).query(`SELECT id, customer_id, ${NETWORK_TEXT('network')} AS address FROM customer_networks WHERE id = $1`, [id]);
+    return result.rows[0] || null;
+  }
+
+  // network: "10.20.0.0/24" | "10.20.1.5/32" -> the customer's first registration of it, or null
+  static async findNetworkByAddress(customerId, network, client) {
+    const result = await db(client).query(
+      `SELECT n.id, n.customer_id, ${NETWORK_TEXT('n.network')} AS address FROM customer_networks n JOIN customer_connections cc ON cc.id = n.connection_id
+       WHERE n.customer_id = $1 AND n.network = $2::cidr ORDER BY cc.position, cc.id LIMIT 1`, [customerId, network]);
+    return result.rows[0] || null;
+  }
+
+  // Networks used by service mappings among networkIds -> [{network_id, address, mappings: 'A, B'}]
+  static async networksInUse(networkIds, client) {
+    if (!networkIds.length) return [];
+    const result = await db(client).query(
+      `SELECT p.network_id, ${NETWORK_TEXT('n.network')} AS address, string_agg(DISTINCT vs.name, ', ') AS mappings
+       FROM virtual_server_partner_ips p JOIN virtual_servers vs ON vs.id = p.virtual_server_id JOIN customer_networks n ON n.id = p.network_id
+       WHERE p.network_id = ANY($1::int[]) GROUP BY p.network_id, n.network`, [networkIds]);
+    return result.rows;
+  }
+
+  // Service mappings with a partner IP of this customer -> [{id, name, direction, scope}]
+  static async serviceMappings(id, client) {
+    const result = await db(client).query(
+      `SELECT DISTINCT vs.id, vs.name, vs.direction, vs.scope FROM virtual_server_partner_ips p JOIN virtual_servers vs ON vs.id = p.virtual_server_id
+       WHERE p.customer_id = $1 ORDER BY vs.name`, [id]);
+    return result.rows;
+  }
+
   // ===== Links =====
   static async setOwners(id, contactIds, client) {
     const ex = db(client);

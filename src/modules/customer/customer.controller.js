@@ -234,10 +234,18 @@ export default {
     serveFileInline(res, { file, folder: 'customer' });
   }),
 
-  // Detail modal: the customer with its files
-  detail: page(async (req, res) => res.json(await customerService.getCustomer(req.params.id))),
+  // Detail modal: the customer with its files and the service mappings using it
+  detail: page(async (req, res) => {
+    const customer = await customerService.getCustomer(req.params.id);
+    res.json({ ...customer, service_mappings: await customerService.getServiceMappings(customer.id) });
+  }),
 
   // ===== AJAX =====
   lookup: lookup((search) => Customer.select2Search(search)),
   lookupByIds: lookupByIds((ids) => Customer.findByIds(ids), (c) => (c.code ? `${c.name} (${c.code})` : c.name)),
+  // Registered IPs / networks of a customer (service mapping partner IPs): ?customer_id=&search= -> [{id, text}]
+  networks: page(async (req, res) => {
+    const customerId = Number(req.query.customer_id);
+    res.json(Number.isInteger(customerId) && customerId > 0 ? await Customer.searchNetworks(customerId, String(req.query.search || '').trim()) : []);
+  }),
 };
