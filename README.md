@@ -657,7 +657,14 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.8.11 (Latest)
+### Version 1.8.12 (Latest)
+- No database migration: upgrading from 1.8.11 only needs the new image.
+- 🐛 Organization Unit detail of a parent unit lists the contacts of the unit
+  **and of all its sub-units** (any depth), with a "Unit" column telling which
+  sub-unit each one belongs to; the members count and the unit export's
+  "Members" column include them too (like the contact filter by unit).
+
+### Version 1.8.11
 - No database migration: upgrading from 1.8.10 only needs the new image.
 - 🐛 `GET /api/v1/service-mappings` has the same filters as the web list:
   **`device_id`** (the device holding the IP) and **`partner`** were missing.
