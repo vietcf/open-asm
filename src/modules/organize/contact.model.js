@@ -141,6 +141,20 @@ class Contact {
   }
 
   // Every contact of the given units (unit detail / export), by name
+  // Contacts of each unit and of all its sub-units (any depth), with the unit they
+  // belong to: [{root_id, id, name, email, phone, position, unit_id, unit_name}]
+  static async findInUnitTrees(unitIds) {
+    if (!unitIds.length) return [];
+    const result = await pool.query(
+      `SELECT r.id AS root_id, c.id, c.name, c.email, c.phone, c.position, c.unit_id, cu.name AS unit_name
+         FROM units r
+         JOIN contacts c ON c.unit_id IN ${unitSubtree('r.id')}
+         JOIN units cu ON cu.id = c.unit_id
+        WHERE r.id = ANY($1::int[])
+        ORDER BY r.id, (c.unit_id <> r.id), cu.name, c.name, c.id`, [unitIds]);
+    return result.rows;
+  }
+
   static async findByUnitIds(unitIds) {
     if (!unitIds.length) return [];
     const result = await pool.query(

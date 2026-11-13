@@ -38,9 +38,11 @@ export default {
     const { search } = parseListQuery(req, res);
     const { items } = await unitService.listUnits({ search, page: 1, pageSize: 10000, ...listFilter(req.query) });
     const members = new Map();
-    for (const c of await Contact.findByUnitIds(items.map((u) => u.id))) {
-      if (!members.has(c.unit_id)) members.set(c.unit_id, []);
-      members.get(c.unit_id).push(c.email ? `${c.name} <${c.email}>` : c.name);
+    // members of the unit and of its sub-units (a sub-unit's contact shows its unit)
+    for (const c of await Contact.findInUnitTrees(items.map((u) => u.id))) {
+      if (!members.has(c.root_id)) members.set(c.root_id, []);
+      const who = c.email ? `${c.name} <${c.email}>` : c.name;
+      members.get(c.root_id).push(c.unit_id === c.root_id ? who : `${who} (${c.unit_name})`);
     }
     await sendExcel(res, {
       filename: 'unit-list', sheet: 'Units',
@@ -77,10 +79,10 @@ export default {
   lookup: lookup((search) => Unit.select2Search(search)),
   lookupByIds: lookupByIds((ids) => Unit.findByIds(ids), (u) => u.name),
 
-  // Unit detail modal: every contact of the unit, position as its label
+  // Unit detail modal: every contact of the unit and of its sub-units (any depth), position as its label
   members: page(async (req, res) => {
     if (!Number(req.params.id) || !(await Unit.exists(req.params.id))) return res.status(404).json({ error: 'Unit not found' });
-    const [contacts, positions, children] = await Promise.all([Contact.findByUnitIds([Number(req.params.id)]), getPositionOptions(), Unit.findChildren(req.params.id)]);
+    const [contacts, positions, children] = await Promise.all([Contact.findInUnitTrees([Number(req.params.id)]), getPositionOptions(), Unit.findChildren(req.params.id)]);
     const label = new Map(positions.map((o) => [o.id, o.text]));
     res.json({ members: contacts.map((c) => ({ ...c, position_label: c.position ? label.get(c.position) || c.position : null })), children });
   }),

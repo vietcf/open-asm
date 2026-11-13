@@ -130,7 +130,7 @@
       DV.field('Firewall Rules', count(u.rulefirewall_count))
     ));
     body += DV.section('Members', '<div id="unitMembers" class="text-secondary small detail-pad">' + DV.esc(t('Loading...')) + '</div>',
-      ' <span class="badge tag ms-1">' + (u.contacts_count || 0) + '</span>');
+      ' <span class="badge tag ms-1" data-unit-members-count>' + (u.contacts_count || 0) + '</span>');
     body += DV.meta(u);
     DV.open('unitDetailModal', { title: u.name, subtitle: u.code ? '<span class="font-monospace">' + DV.esc(u.code) + '</span>' : '', body });
     DV.load('/organize/api/unit/' + encodeURIComponent(u.id) + '/members', document.getElementById('unitMembers'), (data) => {
@@ -142,17 +142,22 @@
           ? '<div class="chip-list">' + children.map((c) => '<a href="/organize/unit?search=' + encodeURIComponent(c.name) + '" class="badge tag text-decoration-none">' + DV.esc(c.name) + (c.children_count ? ' (' + c.children_count + ')' : '') + '</a>').join('') + '</div>'
           : DV.EMPTY;
       }
-      return renderUnitMembers(data);
+      // the count covers the sub-units' contacts too
+      const badge = document.querySelector('#unitDetailModal [data-unit-members-count]');
+      if (badge) badge.textContent = ((data && data.members) || []).length;
+      return renderUnitMembers(data, u.id);
     });
   }
 
-  // Every contact of the unit: name, email, phone, position
-  function renderUnitMembers(data) {
+  // Every contact of the unit and of its sub-units: name, unit (when a sub-unit has sub-units' contacts), email, phone, position
+  function renderUnitMembers(data, unitId) {
     const members = (data && data.members) || [];
     if (!members.length) return '<span class="text-secondary">' + DV.esc(t('No members')) + '</span>';
+    const withUnit = members.some((m) => m.unit_id !== unitId);
     return '<div class="table-responsive"><table class="table table-sm align-middle detail-table mb-0"><thead><tr>' +
-      ['Name', 'Email', 'Phone', 'Position'].map((h) => '<th>' + DV.esc(t(h)) + '</th>').join('') + '</tr></thead><tbody>' +
+      (withUnit ? ['Name', 'Unit', 'Email', 'Phone', 'Position'] : ['Name', 'Email', 'Phone', 'Position']).map((h) => '<th>' + DV.esc(t(h)) + '</th>').join('') + '</tr></thead><tbody>' +
       members.map((m) => '<tr><td><a href="/organize/contact?search=' + encodeURIComponent(m.email || m.name) + '" target="_blank" rel="noopener noreferrer">' + DV.esc(m.name) + '</a></td>' +
+        (withUnit ? '<td>' + (m.unit_id === unitId ? DV.EMPTY : '<a href="/organize/unit?search=' + encodeURIComponent(m.unit_name) + '" target="_blank" rel="noopener noreferrer">' + DV.esc(m.unit_name) + '</a>') + '</td>' : '') +
         '<td>' + (m.email ? '<a href="mailto:' + DV.esc(m.email) + '">' + DV.esc(m.email) + '</a>' : DV.EMPTY) + '</td>' +
         '<td class="text-nowrap">' + (DV.text(m.phone) || DV.EMPTY) + '</td>' +
         '<td>' + (DV.text(m.position_label) || DV.EMPTY) + '</td></tr>').join('') +
