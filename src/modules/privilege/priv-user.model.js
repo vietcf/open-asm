@@ -23,9 +23,10 @@ const visibleIn = (p) => `EXISTS (SELECT 1 FROM priv_user_systems x WHERE x.user
 // Changeable: every one of its systems is managed
 const editableIn = (p) => `NOT EXISTS (SELECT 1 FROM priv_user_systems x WHERE x.user_id = pu.id AND x.system_id NOT IN (${managedSystemsSql(p)}))`;
 
-// filter: {search, system_ids[], organize_id, contact_ids[], account_type[], manage_type[], scope}
-function filterWhere({ search = '', system_ids = [], organize_id, contact_ids = [], account_type = [], manage_type = [], scope = null }) {
+// filter: {search, system_ids[], organize_id, contact_ids[], account_type[], manage_type[], role_id, scope}
+function filterWhere({ search = '', system_ids = [], organize_id, contact_ids = [], account_type = [], manage_type = [], role_id, scope = null }) {
   const w = new Where();
+  if (role_id) w.add(`pu.role_id = ${w.param(Number(role_id))}`);
   if (scope) w.add(visibleIn(w.param(scope.userId)));
   w.search(search, ['pu.username ILIKE ?', 'pu.description ILIKE ?', 'pu.app_url ILIKE ?',
     'EXISTS (SELECT 1 FROM priv_roles x WHERE x.id = pu.role_id AND x.name ILIKE ?)',

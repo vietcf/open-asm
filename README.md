@@ -657,7 +657,17 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.8.12 (Latest)
+### Version 1.9.0 (Latest)
+- No database migration: upgrading from 1.8.12 only needs the new image.
+- ✨ Privileged Role and Permission lists have a **Detail** button (like the
+  accounts): a role shows its system, its permissions (with description) and
+  the **accounts holding it**; a permission shows its system and the **roles
+  holding it** (with their account count). Lists follow the unit scope of the
+  viewer; the accounts / roles are shown only to who may read them
+  (`priv_account.read` / `priv_role.read`). Endpoints
+  `GET /priv-account/role/:id/detail`, `GET /priv-account/permission/:id/detail`.
+
+### Version 1.8.12
 - No database migration: upgrading from 1.8.11 only needs the new image.
 - 🐛 Organization Unit detail of a parent unit lists the contacts of the unit
   **and of all its sub-units** (any depth), with a "Unit" column telling which

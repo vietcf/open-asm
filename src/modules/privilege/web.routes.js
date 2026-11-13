@@ -13,6 +13,7 @@ const can = requirePermission;
 function mountPages(path, pages, permission) {
   router.get(path, can(`${permission}.read`), pages.list);
   router.get(`${path}/export`, can(`${permission}.read`), pages.export);
+  if (pages.detail) router.get(`${path}/:id/detail`, can(`${permission}.read`), pages.detail);
   router.get(`${path}/add`, can(`${permission}.create`), pages.addForm);
   router.post(`${path}/add`, can(`${permission}.create`), pages.create);
   router.get(`${path}/:id/edit`, can(`${permission}.update`), pages.editForm);
