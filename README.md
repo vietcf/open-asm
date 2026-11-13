@@ -687,7 +687,13 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.11.0 (Latest)
+### Version 1.11.1 (Latest)
+- No database migration: upgrading from 1.11.0 only needs the new image.
+- Docs: the 1.10.0 notes no longer announce a relationship graph (not planned).
+- Checked: every page of every module (lists, add / edit / duplicate forms,
+  exports, import templates, System Configuration groups) opens without error.
+
+### Version 1.11.0
 - ⬆️ Upgrading from 1.10.x: new image; migration `0038` runs and **moves the
   existing partner IPs to customers** (see below). The service mapping import
   template header "Partner IPs" changed: download the new one.
@@ -736,8 +742,6 @@ when cutting a release.
   permissions `customer.create/read/update/delete` (admin, superadmin; viewer
   read); option lists `customer_type`, `customer_status`, `customer_channel`;
   `customer_custom_fields` (empty).
-- Next: service mappings pick a customer and one of its registered IPs (1.11.0);
-  relationship graph and impact analysis (1.12.0).
 
 ### Version 1.9.0
 - No database migration: upgrading from 1.8.12 only needs the new image.
