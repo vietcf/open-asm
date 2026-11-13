@@ -18,9 +18,10 @@ const GROUP_BY = 'GROUP BY r.id, s.id';
 // Seen by a scope (priv-scope.js): "all systems" roles, and roles of a managed system
 const visibleIn = (p) => `(r.all_systems OR r.system_id IN (${managedSystemsSql(p)}))`;
 
-// filter: {search, system_id, scope}
-function filterWhere({ search = '', system_id, scope = null }) {
+// filter: {search, system_id, permission_id, scope}
+function filterWhere({ search = '', system_id, permission_id, scope = null }) {
   const w = new Where();
+  if (permission_id) w.add(`EXISTS (SELECT 1 FROM priv_role_permissions x WHERE x.role_id = r.id AND x.permission_id = ${w.param(Number(permission_id))})`);
   w.search(search, ['r.name ILIKE ?', 'r.description ILIKE ?',
     'EXISTS (SELECT 1 FROM priv_role_permissions x JOIN priv_permissions pp ON pp.id = x.permission_id WHERE x.role_id = r.id AND pp.name ILIKE ?)']);
   if (system_id) w.add(`r.system_id = ${w.param(Number(system_id))}`);

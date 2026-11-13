@@ -3,8 +3,10 @@ import PrivRole from './priv-role.model.js';
 import PrivPermission from './priv-permission.model.js';
 import System from '../system/system.model.js';
 import * as roleService from './priv-role.service.js';
+import * as accountService from './priv-user.service.js';
 import { parseListQuery, queryList, queryValue, totalPagesOf, errorMessage, takeFlash, actorName, runAndRedirect, page } from '../../shared/web.js';
 import { sendExcel } from '../../utils/excelExport.js';
+import { optionLabel } from '../../utils/viewHelpers.js';
 import { ForbiddenError } from '../../shared/errors.js';
 import { privAccess, managedSystemIds } from './priv-scope.js';
 
@@ -20,7 +22,8 @@ const formInput = (req) => ({
 const systemName = (t) => (r) => (r.all_systems ? t('All systems') : r.system?.name);
 
 // List + export + Add/Edit pages of roles or permissions
-function pagesFor({ url, entity, view, activeMenu, labels, service, exportColumns }) {
+// detail(record, access, req, res): what the detail modal lists besides the row (accounts of a role, roles of a permission)
+function pagesFor({ url, entity, view, activeMenu, labels, service, exportColumns, detail }) {
   const renderForm = async (res, mode, record = {}, access) => res.render(`pages/privilege/${view}_form`, {
     mode, record, canGlobal: access.canGlobal, title: mode === 'edit' ? labels.edit : labels.add, activeMenu,
   });
@@ -39,6 +42,11 @@ function pagesFor({ url, entity, view, activeMenu, labels, service, exportColumn
       const { search } = parseListQuery(req, res);
       const { items } = await service.list({ search, page: 1, pageSize: 10000, ...listFilter(req.query) }, await privAccess(req, res));
       await sendExcel(res, { filename: `privileged_${entity}s`, sheet: labels.title, columns: exportColumns(req.t), rows: items });
+    }),
+    // Detail modal: ?-> JSON; a record the scope does not see is "not found"
+    detail: page(async (req, res) => {
+      const access = await privAccess(req, res);
+      res.json(await detail(await service.get(req.params.id, access), access, req, res));
     }),
     addForm: page(async (req, res) => renderForm(res, 'add', {}, await privAccess(req, res))),
     async editForm(req, res) {
@@ -77,6 +85,14 @@ export const rolePages = pagesFor({
     { header: t('Accounts'), value: (r) => r.account_count, width: 10 },
     ...commonColumns(t),
   ],
+  // the accounts holding the role (those the scope sees), for who may read accounts
+  detail: async (role, access, req, res) => {
+    if (!res.locals.hasPermission('priv_account.read')) return { accounts: null };
+    const [{ items }, types] = await Promise.all([
+      accountService.listAccounts({ role_id: role.id, scope: access.scope, page: 1, pageSize: 500 }), accountService.getAccountTypeOptions(),
+    ]);
+    return { accounts: items.map((a) => ({ id: a.id, username: a.username, account_type: optionLabel(types, a.account_type, req.t), organize: a.organize, systems: a.systems })) };
+  },
 });
 
 export const permissionPages = pagesFor({
@@ -90,6 +106,11 @@ export const permissionPages = pagesFor({
     { header: t('Roles'), value: (p) => p.role_count, width: 10 },
     ...commonColumns(t),
   ],
+  // the roles holding the permission (those the scope sees), for who may read roles
+  detail: async (permission, access, req, res) => (res.locals.hasPermission('priv_role.read')
+    ? { roles: (await roleService.listRoles({ permission_id: permission.id, page: 1, pageSize: 500 }, access)).items
+      .map((r) => ({ id: r.id, name: r.name, all_systems: r.all_systems, system: r.system, account_count: r.account_count })) }
+    : { roles: null }),
 });
 
 // ===== Pickers (depend on the systems chosen in the form) =====

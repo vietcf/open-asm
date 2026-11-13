@@ -70,6 +70,7 @@
                   <% COLUMNS.forEach(function (c) { %><td data-col="<%= c.key %>" data-label="<%= t(c.label) %>"<%- c.key === 'name' ? ' class="fw-medium"' : '' %>><%- cell(p, c.key) %></td><% }) %>
                   <td class="col-actions">
                     <div class="row-actions">
+                      <button type="button" class="btn btn-sm btn-outline-secondary" title="<%= t('Detail') %>" onclick="showPermissionDetail(this)" data-record='<%= JSON.stringify(p) %>'><i class="bi bi-eye"></i></button>
                       <% if (hasPermission('priv_permission.update') && p.can_edit) { %>
                         <a href="/priv-account/permission/<%= p.id %>/edit" class="btn btn-sm btn-outline-secondary" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
                       <% } %>
@@ -96,3 +97,32 @@
     </div>
   </div>
 </div>
+
+<%- include('../../partials/ui/detail_modal', { id: 'permissionDetailModal' }) %>
+
+<script>
+  const systemOf = (x) => (x.all_systems ? '<span class="badge tag"><i class="bi bi-globe2 me-1"></i>' + DV.esc(t('All systems')) + '</span>' : DV.text(x.system && x.system.name));
+  // Permission detail: system, then the roles holding it (loaded)
+  function showPermissionDetail(button) {
+    const p = DV.record(button);
+    let body = DV.section('Overview', DV.rows(
+      DV.multiline(p.description) ? DV.field('Description', DV.multiline(p.description)) : '',
+      DV.field('System', systemOf(p))
+    ));
+    body += DV.section('Roles', '<div id="permissionRoles" class="text-secondary small detail-pad">' + DV.esc(t('Loading...')) + '</div>',
+      ' <span class="badge tag ms-1">' + (p.role_count || 0) + '</span>');
+    body += DV.meta(p);
+    DV.open('permissionDetailModal', { title: p.name, body, recordId: p.id });
+    DV.load('/priv-account/permission/' + encodeURIComponent(p.id) + '/detail', document.getElementById('permissionRoles'), (data) => {
+      const list = data && data.roles;
+      if (list === null) return '<span class="text-secondary">' + DV.esc(t('You cannot see the privileged roles')) + '</span>';
+      if (!list.length) return '<span class="text-secondary">' + DV.esc(t('No roles')) + '</span>';
+      return '<div class="table-responsive"><table class="table table-sm align-middle detail-table mb-0"><thead><tr>' +
+        ['Role Name', 'System', 'Accounts'].map((h) => '<th>' + DV.esc(t(h)) + '</th>').join('') + '</tr></thead><tbody>' +
+        list.map((r) => '<tr><td><a href="/priv-account/role?search=' + encodeURIComponent(r.name) + '" target="_blank" rel="noopener noreferrer">' + DV.esc(r.name) + '</a></td>' +
+          '<td>' + systemOf(r) + '</td>' +
+          '<td>' + (r.account_count ? '<a href="/priv-account/account?search=' + encodeURIComponent(r.name) + '" target="_blank" rel="noopener noreferrer"><span class="badge tag">' + r.account_count + '</span></a>' : DV.EMPTY) + '</td></tr>').join('') +
+        '</tbody></table></div>';
+    });
+  }
+</script>

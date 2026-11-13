@@ -1715,5 +1715,10 @@
   "NAT private IP owner": "NAT IP private thuộc",
   "Partner IP owners": "IP đối tác thuộc",
   "Backend IP owner": "Backend IP thuộc",
-  "Updated by": "Người cập nhật"
+  "Updated by": "Người cập nhật",
+  "No permissions": "Chưa có quyền",
+  "No accounts": "Chưa có tài khoản",
+  "No roles": "Chưa có vai trò",
+  "You cannot see the privileged accounts": "Bạn không có quyền xem tài khoản đặc quyền",
+  "You cannot see the privileged roles": "Bạn không có quyền xem vai trò đặc quyền"
 }
