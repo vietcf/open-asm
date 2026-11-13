@@ -5,8 +5,11 @@
 %>
 <%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'System Configuration' }] }) %>
 <% const canEdit = hasPermission('configuration.update'); %>
-<% const scalars = fields.filter(f => f.type !== 'options'); %>
+<% const scalars = fields.filter(f => f.type !== 'options' && f.type !== 'custom_fields'); %>
 <% const optionLists = fields.filter(f => f.type === 'options'); %>
+<% const customFieldLists = fields.filter(f => f.type === 'custom_fields'); %>
+<% const CF_TYPES = [['text', 'Text'], ['textarea', 'Long text'], ['number', 'Number'], ['date', 'Date'], ['select', 'Choice list'], ['url', 'URL'], ['boolean', 'Yes / No']]; %>
+<% const cfTypeOptions = (current) => CF_TYPES.map(([v, l]) => '<option value="' + v + '"' + (v === current ? ' selected' : '') + '>' + ui.esc(t(l)) + '</option>').join(''); %>
 
 <div class="app-content">
   <div class="container-fluid">
@@ -105,6 +108,63 @@
         </div>
       <% }) %>
 
+      <%# Custom fields: one row per field (key fixed once saved) %>
+      <% customFieldLists.forEach(function (f) { %>
+        <div class="card mb-3 config-custom-fields" data-key="<%= f.key %>">
+          <div class="card-header d-flex align-items-center gap-2">
+            <h3 class="card-title mb-0 fs-6 fw-semibold"><%= t(f.label) %></h3>
+            <span class="badge text-bg-secondary rounded-pill js-count"><%= f.value.length %></span>
+            <span class="small text-muted font-monospace ms-1"><%= f.key %></span>
+            <% if (canEdit) { %>
+              <button type="button" class="btn btn-outline-primary btn-sm ms-auto js-add-field"><i class="bi bi-plus"></i> <%= t('Add field') %></button>
+            <% } %>
+          </div>
+          <% if (f.help) { %><div class="px-3 pt-2 small text-muted"><%= t(f.help) %></div><% } %>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead>
+                <tr>
+                  <th class="col-index">#</th>
+                  <th style="width: 16%"><%= t('Key') %></th>
+                  <th style="width: 20%"><%= t('Label') %></th>
+                  <th style="width: 13%"><%= t('Type') %></th>
+                  <th><%= t('Choices (choice list: one per line)') %></th>
+                  <th class="text-center text-nowrap" style="width: 1%"><%= t('Required') %></th>
+                  <th class="text-center text-nowrap" style="width: 1%"><%= t('On the list') %></th>
+                  <th class="text-end text-nowrap" style="width: 1%"><%= t('In use') %></th>
+                  <th class="text-center text-nowrap" style="width: 1%"><%= t('Active') %></th>
+                  <% if (canEdit) { %><th class="col-actions"></th><% } %>
+                </tr>
+              </thead>
+              <tbody>
+                <% f.value.forEach(function (d, i) { const used = (f.usage || {})[d.key] || 0; %>
+                  <tr data-existing="1"<%- d.active === false ? ' class="table-secondary"' : '' %>>
+                    <td class="col-index js-index"><%= i + 1 %></td>
+                    <td><input type="text" class="form-control form-control-sm font-monospace js-key" value="<%= d.key %>" readonly tabindex="-1"></td>
+                    <td><input type="text" class="form-control form-control-sm js-label" value="<%= d.label %>" maxlength="100" <%= canEdit ? '' : 'disabled' %>></td>
+                    <td><select class="form-select form-select-sm js-type" <%= canEdit ? '' : 'disabled' %>><%- cfTypeOptions(d.type) %></select></td>
+                    <td><textarea class="form-control form-control-sm js-options" rows="1" <%= d.type === 'select' ? '' : 'hidden' %> <%= canEdit ? '' : 'disabled' %>><%= (d.options || []).join('\n') %></textarea></td>
+                    <td class="text-center"><input type="checkbox" class="form-check-input js-required" <%= d.required ? 'checked' : '' %> <%= canEdit ? '' : 'disabled' %>></td>
+                    <td class="text-center"><input type="checkbox" class="form-check-input js-list" <%= d.list ? 'checked' : '' %> <%= canEdit ? '' : 'disabled' %>></td>
+                    <td class="text-end"><span class="badge rounded-pill <%= used ? 'text-bg-info' : 'text-bg-light' %>"><%= used %></span></td>
+                    <td class="text-center"><div class="form-check form-switch d-inline-block m-0"><input type="checkbox" class="form-check-input js-active" <%= d.active === false ? '' : 'checked' %> <%= canEdit ? '' : 'disabled' %> aria-label="<%= t('Active') %>"></div></td>
+                    <% if (canEdit) { %>
+                      <td class="col-actions">
+                        <button type="button" class="btn btn-outline-secondary btn-sm js-up" title="<%= t('Move up') %>"><i class="bi bi-arrow-up"></i></button>
+                        <button type="button" class="btn btn-outline-secondary btn-sm js-down" title="<%= t('Move down') %>"><i class="bi bi-arrow-down"></i></button>
+                        <button type="button" class="btn btn-outline-danger btn-sm js-remove" data-count="<%= used %>" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
+                      </td>
+                    <% } %>
+                  </tr>
+                <% }) %>
+                <tr class="js-empty<%= f.value.length ? ' d-none' : '' %>"><td colspan="10" class="text-center text-muted py-3"><%= t('No fields yet') %></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <input type="hidden" name="fields[<%= f.key %>]" class="js-json" value="<%= JSON.stringify(f.value) %>" <%= canEdit ? '' : 'disabled' %>>
+        </div>
+      <% }) %>
+
       <% if (canEdit) { %>
         <div class="config-save-bar d-flex align-items-center gap-2">
           <span class="small text-muted js-dirty d-none"><i class="bi bi-circle-fill text-warning me-1"></i><%= t('Unsaved changes') %></span>
@@ -129,6 +189,25 @@
       <button type="button" class="btn btn-outline-secondary btn-sm js-up" title="<%= t('Move up') %>"><i class="bi bi-arrow-up"></i></button>
       <button type="button" class="btn btn-outline-secondary btn-sm js-down" title="<%= t('Move down') %>"><i class="bi bi-arrow-down"></i></button>
       <button type="button" class="btn btn-outline-danger btn-sm js-remove" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
+    </td>
+  </tr>
+</template>
+
+<template id="configFieldRow">
+  <tr>
+    <td class="col-index js-index"></td>
+    <td><input type="text" class="form-control form-control-sm font-monospace js-key" maxlength="40" placeholder="<%= t('e.g. sla_level') %>"></td>
+    <td><input type="text" class="form-control form-control-sm js-label" maxlength="100" placeholder="<%= t('e.g. SLA level') %>"></td>
+    <td><select class="form-select form-select-sm js-type"><%- cfTypeOptions('text') %></select></td>
+    <td><textarea class="form-control form-control-sm js-options" rows="1" hidden placeholder="Gold&#10;Silver"></textarea></td>
+    <td class="text-center"><input type="checkbox" class="form-check-input js-required"></td>
+    <td class="text-center"><input type="checkbox" class="form-check-input js-list"></td>
+    <td class="text-end"><span class="badge rounded-pill text-bg-light">0</span></td>
+    <td class="text-center"><div class="form-check form-switch d-inline-block m-0"><input type="checkbox" class="form-check-input js-active" checked aria-label="<%= t('Active') %>"></div></td>
+    <td class="col-actions">
+      <button type="button" class="btn btn-outline-secondary btn-sm js-up" title="<%= t('Move up') %>"><i class="bi bi-arrow-up"></i></button>
+      <button type="button" class="btn btn-outline-secondary btn-sm js-down" title="<%= t('Move down') %>"><i class="bi bi-arrow-down"></i></button>
+      <button type="button" class="btn btn-outline-danger btn-sm js-remove" data-count="0" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
     </td>
   </tr>
 </template>
@@ -265,6 +344,37 @@
     if (e.target.classList.contains('js-active')) e.target.closest('tr').classList.toggle('table-secondary', !e.target.checked);
   });
 
+  // Custom fields: rows move / are removed like options; a field with values is better made inactive
+  var KEY_RE = /^[a-z][a-z0-9_]{0,39}$/;
+  form.querySelectorAll('.config-custom-fields').forEach(function (card) {
+    var tbody = card.querySelector('tbody');
+    var addBtn = card.querySelector('.js-add-field');
+    if (addBtn) addBtn.addEventListener('click', function () {
+      var row = document.getElementById('configFieldRow').content.firstElementChild.cloneNode(true);
+      tbody.insertBefore(row, card.querySelector('.js-empty'));
+      renumber(card);
+      markDirty();
+      row.querySelector('.js-key').focus();
+    });
+    tbody.addEventListener('change', function (e) {
+      if (e.target.classList.contains('js-type')) e.target.closest('tr').querySelector('.js-options').hidden = e.target.value !== 'select';
+    });
+    tbody.addEventListener('click', function (e) {
+      var btn = e.target.closest('button');
+      if (!btn) return;
+      var row = btn.closest('tr');
+      if (btn.classList.contains('js-up') && row.previousElementSibling) tbody.insertBefore(row, row.previousElementSibling);
+      else if (btn.classList.contains('js-down') && row.nextElementSibling && !row.nextElementSibling.classList.contains('js-empty')) tbody.insertBefore(row.nextElementSibling, row);
+      else if (btn.classList.contains('js-remove')) {
+        var used = Number(btn.dataset.count) || 0;
+        if (used && !window.confirm(tr('{count} record(s) have a value for this field. Delete it anyway? Their values are kept but no longer shown; making it inactive keeps it visible.').replace('{count}', used))) return;
+        row.remove();
+      } else return;
+      renumber(card);
+      markDirty();
+    });
+  });
+
   form.addEventListener('input', markDirty);
   form.addEventListener('change', markDirty);
 
@@ -288,6 +398,36 @@
       });
       card.querySelector('.js-json').value = JSON.stringify(items);
     });
+    var fieldProblem = null;
+    form.querySelectorAll('.config-custom-fields').forEach(function (card) {
+      var seen = {};
+      var items = [];
+      card.querySelectorAll('tbody tr:not(.js-empty)').forEach(function (row) {
+        var keyInput = row.querySelector('.js-key');
+        var labelInput = row.querySelector('.js-label');
+        var key = keyInput.value.trim();
+        var label = labelInput.value.trim();
+        var type = row.querySelector('.js-type').value;
+        var options = row.querySelector('.js-options').value.split('\n').map(function (o) { return o.trim(); }).filter(Boolean);
+        var badKey = !KEY_RE.test(key) || seen[key];
+        keyInput.classList.toggle('is-invalid', !!badKey);
+        labelInput.classList.toggle('is-invalid', !label);
+        row.querySelector('.js-options').classList.toggle('is-invalid', type === 'select' && !options.length);
+        if (badKey || !label || (type === 'select' && !options.length)) { fieldProblem = fieldProblem || (badKey ? keyInput : labelInput); return; }
+        seen[key] = true;
+        var item = { key: key, label: label, type: type, required: row.querySelector('.js-required').checked, list: row.querySelector('.js-list').checked };
+        if (type === 'select') item.options = options;
+        if (!row.querySelector('.js-active').checked) item.active = false;
+        items.push(item);
+      });
+      card.querySelector('.js-json').value = JSON.stringify(items);
+    });
+    if (fieldProblem) {
+      e.preventDefault();
+      fieldProblem.focus();
+      window.alert(tr('Every field needs a unique key (a-z, 0-9, _, starting with a letter) and a label; a choice list needs its choices.'));
+      return;
+    }
     if (problem) {
       e.preventDefault();
       problem.focus();

@@ -5,6 +5,8 @@ import { withTransaction } from '../../shared/transaction.js';
 import { siteConfig } from '../../utils/siteConfig.js';
 import { reschedule } from '../backup/backup.scheduler.js';
 import { usageCounts, replaceValue } from '../../utils/optionUsage.js';
+import { parseCustomFields } from '../../shared/customFields.js';
+import { pool } from '../../../config/config.js';
 import { writeLog } from '../../utils/logHelper.js';
 
 const configurationController = {};
@@ -28,9 +30,10 @@ configurationController.showConfigurationGroup = async (req, res, next) => {
       return {
         ...f,
         exists: Boolean(row),
-        value: f.type === 'options' ? parseOptions(stored) : (stored ?? ''),
-        // option lists: value -> number of records using it
-        usage: f.type === 'options' ? Object.fromEntries(await usageCounts(f.key)) : null,
+        value: f.type === 'options' ? parseOptions(stored) : f.type === 'custom_fields' ? parseCustomFields(stored) : (stored ?? ''),
+        // option lists: value -> number of records using it; custom fields: key -> records with a value
+        usage: f.type === 'options' ? Object.fromEntries(await usageCounts(f.key))
+          : f.type === 'custom_fields' ? await customFieldUsage(f.table) : null,
         updated_by: row ? row.updated_by : null,
         updated_at: row ? row.updated_at : null,
       };
@@ -104,6 +107,12 @@ configurationController.saveConfigurationGroup = async (req, res, next) => {
     res.redirect(back);
   }
 };
+
+// Records with a value for each custom field: {key: count}
+async function customFieldUsage(table) {
+  const { rows } = await pool.query(`SELECT k AS key, COUNT(*)::int AS n FROM ${table}, jsonb_object_keys(attributes) k GROUP BY k`);
+  return Object.fromEntries(rows.map((r) => [r.key, r.n]));
+}
 
 // replace[<key>] posted by the editor: JSON {"<removed value>": "<value that takes its place>"}
 function replaceRequests(req, key) {

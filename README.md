@@ -30,6 +30,7 @@ A comprehensive network and system management platform built with Node.js, Expre
 - **User Management**: Create, edit, and manage user accounts
 - **Organization Management**: Organize resources by units and departments
 - **Contact Management**: Maintain contact information
+- **Customer Management**: Customers / partners / vendors with their contacts, connections (Internet whitelist, VPN, MPLS, lease line...) and the IPs / networks (CIDR) behind each one, plus custom fields declared by the administrator
 - **System Configuration**: Configure application settings
 - **Backup & Migration**: Database migration and seeding tools
 
@@ -193,9 +194,9 @@ over `docker/defaults.env`.
 
 **Administrator → System Configuration** (`/administrator/configuration`)
 holds the settings stored in the `configuration` table, one tab per area:
-General, Security & Logs, System, Server & Device, Network, Firewall,
-Privileged Accounts, Organization, Pentest. There is no raw key/value or
-JSON editor: every key has its own editor and server-side validation.
+General, Security & Logs, System, Server & Device, Network, Customers,
+Firewall, Privileged Accounts, Organization, Pentest. There is no raw key/value
+or JSON editor: every key has its own editor and server-side validation.
 
 | Editor | Keys (examples) | Rules |
 |---|---|---|
@@ -204,6 +205,7 @@ JSON editor: every key has its own editor and server-side validation.
 | Choice | `log_level` | `info`, `warning` or `critical` |
 | Number list | `page_size` (used by every list, the first value is the default) | 1–10 values from 1 to 1000; stored sorted, without duplicates |
 | Option grid | `system_level`, `server_type`, `firewall_name`, … | up to 200 rows; each value unique, max 100 characters, without `, < > " ' \` \`; label optional (defaults to the value) |
+| Custom fields | `customer_custom_fields` | up to 50 fields: key (`a-z0-9_`, starts with a letter, fixed once saved), label, type (text, long text, number, date, choice list, URL, yes / no), choices of a choice list, required, shown on the list; see [Customer management](#customer-management) |
 
 Option lists are stored as `[{"value": "...", "label": "..."}]`; a retired
 value has `"active": false`. The **value** is what records store and never
@@ -438,7 +440,7 @@ curl -k https://localhost/api/v1/systems?page=1&pageSize=20 \
 `/auth/login` · `/systems` · `/components` · `/servers` · `/services` ·
 `/agents` · `/devices` · `/device-types` · `/platforms` · `/clusters` ·
 `/ip-addresses` · `/subnets` · `/domains` · `/rules` · `/pentest-rounds` ·
-`/contacts` · `/units` · `/tags` — 110 operations, all documented in Swagger.
+`/contacts` · `/units` · `/tags` · `/customers` — 121 operations, all documented in Swagger.
 
 ### Keeping the docs right
 
@@ -651,13 +653,54 @@ gunzip -c backups/manual_20260101_120000.sql.gz | docker exec -i openasm_db psql
 docker compose up -d app
 ```
 
+## 🏢 Customer management
+
+**Customers** (menu, `/customer`, permissions `customer.*`:
+admin all, viewer read) keeps, for every customer, partner or vendor:
+
+| Part | What | Notes |
+|---|---|---|
+| Customer | name (unique), code (unique when set), type, status, unit in charge, our contacts, description, documents | type / status / channel: lists of System Configuration > **Customers** |
+| Custom fields | the fields declared in System Configuration > Customers > *Customer custom fields* | stored in `customers.attributes` (JSONB); only declared fields can be filled in (form, import, API); a field made inactive or deleted keeps the values already saved; "shown on the list" adds a column (and a filter for a choice list) |
+| Customer contacts | the customer's own people: name, role, email, phone | not internal contacts |
+| Connections | one per channel: name, channel, primary / backup, our device (FW / VPN gateway / router), our IP (from the IP inventory), start / end date, active / inactive | ids are kept when edited |
+| Customer IPs / networks | per connection: an IPv4 address or a CIDR network (host bits zero, e.g. `10.20.0.0/24`), with a description; the customer's VPN peer / router IP goes here too | entered only here (one per line in the form); never created in the IP inventory, and nothing else creates them |
+
+List: search (name, code, contacts, connections, IPs / networks, custom field
+values), filters (type, status, channel, unit, our device, choice-list custom
+fields), detail with every connection and its networks, export (one row per
+connection, one column per custom field), import (one row per connection;
+custom fields as `key=value; key=value`), REST `/api/v1/customers`.
+
 ## 📝 Changelog
 
 See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.9.0 (Latest)
+### Version 1.10.0 (Latest)
+- ⬆️ Upgrading from 1.9.x: new image; migration `0037` runs (new tables,
+  permissions and configuration only: no existing row changes).
+- ✨ **Customer management** (`/customer`): customers / partners / vendors,
+  their contacts, connections (Internet whitelist, VPN site-to-site, MPLS,
+  lease line, client VPN...) with our device / IP, and the customer's IPs /
+  CIDR networks on each connection. List with
+  filters, detail, form, documents, export / import, REST
+  `/api/v1/customers` (Swagger), permissions `customer.*`. See
+  [Customer management](#customer-management).
+- ✨ **Custom fields**: System Configuration > Customers declares extra fields
+  (text, long text, number, date, choice list, URL, yes / no; required, shown
+  on the list), filled in on the customer form, import and API, stored in
+  JSONB. Only declared fields are accepted.
+- Migration `0037_customers.js`: tables `customers`, `customer_owner_contacts`,
+  `customer_contacts`, `customer_connections`, `customer_networks`;
+  permissions `customer.create/read/update/delete` (admin, superadmin; viewer
+  read); option lists `customer_type`, `customer_status`, `customer_channel`;
+  `customer_custom_fields` (empty).
+- Next: service mappings pick a customer and one of its registered IPs (1.11.0);
+  relationship graph and impact analysis (1.12.0).
+
+### Version 1.9.0
 - No database migration: upgrading from 1.8.12 only needs the new image.
 - ✨ Privileged Role and Permission lists have a **Detail** button (like the
   accounts): a role shows its system, its permissions (with description) and

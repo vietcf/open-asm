@@ -22,6 +22,8 @@ export const UNIQUE_CHECKS = {
   'server.name': ci('servers', 'name', '/server/server/:id/edit', 'server.read'),
   'device.name': ci('devices', 'name', '/device/device/:id/edit', 'device.read'),
   'cluster.name': ci('clusters', 'name', '/cluster/:id/edit', 'cluster.read'),
+  'customer.name': { table: 'customers', column: 'name', compare: 'ci-trim', label: 'name', url: '/customer/:id/edit', permission: 'customer.read' },
+  'customer.code': ci('customers', 'code', '/customer/:id/edit', 'customer.read', { label: 'name' }),
   'service_mapping.name': ci('virtual_servers', 'name', '/network/service-mapping/:id/edit', 'service_mapping.read'),
   'system.name': ci('systems', 'name', '/system/system/:id/edit', 'system.read'),
   'system.system_id': { table: 'systems', column: 'system_id', compare: 'exact', label: 'name', url: '/system/system/:id/edit', permission: 'system.read' },
