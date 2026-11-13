@@ -36,7 +36,7 @@ function listFilter(query) {
     scope: queryValue(query, 'scope'),
     access_mode: queryValue(query, 'access_mode'),
     system_id: queryValue(query, 'system_id'),
-    partner: queryValue(query, 'partner'),
+    customer_id: queryValue(query, 'customer_id'),
   };
 }
 
@@ -47,7 +47,7 @@ async function formInput(req) {
     name: b.name, domain: b.domain, provider: b.provider, provider_port: b.provider_port, provider_protocol: b.provider_protocol,
     ip_address: b.ip_address, port: b.port, protocol: b.protocol, nat_ip: b.nat_ip, nat_port: b.nat_port,
     direction, scope, access_mode: b.access_mode,
-    partner_ip: b.partner_ip ?? [], partner_name: b.partner_name ?? [], partner_port: b.partner_port ?? [], partner_protocol: b.partner_protocol ?? [], partner_domain: b.partner_domain ?? [],
+    partner_customer: b.partner_customer ?? [], partner_network: b.partner_network ?? [], partner_port: b.partner_port ?? [], partner_protocol: b.partner_protocol ?? [], partner_domain: b.partner_domain ?? [],
     system_id: b.system_id || null, description: b.description,
     member_ip: b.member_ip ?? [], member_port: b.member_port ?? [], member_protocol: b.member_protocol ?? [], member_status: b.member_status ?? [],
     updated_by: actorName(req),
@@ -57,26 +57,19 @@ async function formInput(req) {
 const options = (rows, text = (r) => r.name) => (rows || []).map((r) => ({ id: r.id, text: text(r) }));
 
 async function renderForm(res, mode, vs = {}, copiedFrom = null) {
-  const [providerOptions, protocolOptions, configuredPartners, usedPartners] = await Promise.all([
-    loadOptions('service_mapping_provider'),
-    smService.getProtocolOptions(),
-    loadOptions('service_mapping_partner'),
-    smService.getPartnerOptions(),
-  ]);
-  // partner dropdown: the configured partners, the names already used and this mapping's, sorted; a new one can be typed
-  const partnerOptions = [...configuredPartners];
-  const seen = new Set(partnerOptions.map((o) => o.id.toLowerCase()));
-  for (const name of [...usedPartners, ...(vs.partner_ips || []).map((p) => p.partner).filter(Boolean)]) {
-    if (!seen.has(name.toLowerCase())) { seen.add(name.toLowerCase()); partnerOptions.push({ id: name, text: name }); }
-  }
-  partnerOptions.sort((a, b) => a.text.localeCompare(b.text));
+  const [providerOptions, protocolOptions] = await Promise.all([loadOptions('service_mapping_provider'), smService.getProtocolOptions()]);
   const allProtocols = [...new Set([...PROTOCOL_OPTIONS, ...protocolOptions])];
   res.render('pages/network/service_mapping_form', {
-    mode, vs, copiedFrom, providerOptions, partnerOptions, flows: FLOWS, protocolOptions: allProtocols, accessOptions: ACCESS_OPTIONS, statusOptions: STATUS_OPTIONS,
+    mode, vs, copiedFrom, providerOptions, flows: FLOWS, protocolOptions: allProtocols, accessOptions: ACCESS_OPTIONS, statusOptions: STATUS_OPTIONS,
     selected: {
       ip: vs.ip_address_id ? [{ id: vs.ip_address_id, text: vs.ip_address }] : [],
       natIp: vs.nat_ip_address_id ? [{ id: vs.nat_ip_address_id, text: vs.nat_ip }] : [],
-      partners: vs.partner_ips || [],
+      // each partner IP: its customer and registered IP / network (older rows without one: the address alone)
+      partners: (vs.partner_ips || []).map((p) => ({
+        ...p,
+        customer: p.customer_id ? [{ id: p.customer_id, text: p.customer_code ? `${p.partner} (${p.customer_code})` : p.partner }] : [],
+        network: [{ id: p.network_id || p.address, text: p.network_description ? `${p.address} · ${p.network_description}` : p.address }],
+      })),
       domain: vs.domain_id ? [{ id: vs.domain_id, text: vs.domain }] : [],
       system: vs.system_id ? [{ id: vs.system_id, text: vs.system_name }] : [],
       members: (vs.members || []).map((m) => ({ id: m.ip_address_id, text: m.owner_name ? `${m.ip} (${m.owner_name})` : m.ip, port: m.port, protocol: m.protocol, status: m.status })),
@@ -99,7 +92,7 @@ export const serviceMappingImport = excelImport({
     { header: 'Direction (Optional, inbound/outbound, default inbound)', key: 'direction' },
     { header: 'Scope (Optional, public/private, default public)', key: 'scope' }, // also "internal" (inbound internal exposure)
     { header: 'Access (Optional, full/limited, default full)', key: 'access_mode' },
-    { header: 'Partner IPs (Optional, comma-separated, must exist in the IP inventory: IP[Partner] for inbound sources, IP:port/protocol@domain[Partner] for outbound destinations)', key: 'allowed_ips' },
+    { header: 'Partner IPs (Optional, comma-separated, IP or CIDR registered for the customer in Customers: IP[Customer] for inbound sources, IP:port/protocol@domain[Customer] for outbound destinations)', key: 'allowed_ips' },
     { header: 'System Name (Optional)', key: 'system' },
     { header: 'Backend IPs (Optional, ip:port comma-separated, must exist in the IP inventory)', key: 'backends' }, // ip:port/protocol accepted
     { header: 'Description (Optional)', key: 'description' },
@@ -197,14 +190,13 @@ export default {
   list: page(async (req, res) => {
     const { page: pageNo, pageSize, search } = parseListQuery(req, res);
     const filter = listFilter(req.query);
-    const [{ items, totalCount }, providerOptions, partnerOptions] = await Promise.all([
+    const [{ items, totalCount }, providerOptions] = await Promise.all([
       smService.listServiceMappings({ search, page: pageNo, pageSize, ...filter }),
       smService.getProviderOptions(),
-      smService.getPartnerOptions(),
     ]);
     res.render('pages/network/service_mapping_list', {
       vsList: items, search, page: pageNo, pageSize, totalCount, totalPages: totalPagesOf(totalCount, pageSize),
-      filter, protocolOptions: PROTOCOL_OPTIONS, directionOptions: DIRECTION_OPTIONS, scopeOptions: SCOPE_OPTIONS, providerOptions, partnerOptions, flows: FLOWS,
+      filter, protocolOptions: PROTOCOL_OPTIONS, directionOptions: DIRECTION_OPTIONS, scopeOptions: SCOPE_OPTIONS, providerOptions, flows: FLOWS,
       ...takeFlash(req), title: 'Service Mapping', activeMenu: 'service-mapping',
     });
   }),

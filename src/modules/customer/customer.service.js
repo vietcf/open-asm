@@ -154,6 +154,19 @@ async function links(input, customerId) {
   return out;
 }
 
+// The networks a save would remove (their connection dropped, or the line deleted) must not
+// be used by a service mapping: the mapping is changed first.
+async function assertNetworksFree(customerId, connections) {
+  const current = (await Customer.findWithLinks(customerId))?.connections || [];
+  const wanted = new Map(connections.filter((x) => x.id).map((x) => [x.id, new Set(x.networks.map((n) => n.network))]));
+  const cidr = (text) => (text.includes('/') ? text : `${text}/32`);
+  const removed = current.flatMap((x) => x.networks.filter((n) => !wanted.get(x.id)?.has(cidr(n.network))).map((n) => n.id));
+  const used = await Customer.networksInUse(removed);
+  if (used.length) {
+    throw new ConflictError('{list}: used by service mappings, remove them there first').withParams({ list: used.map((u) => `${u.address} (${u.mappings})`).join('; ') });
+  }
+}
+
 async function saveLinks(customerId, l, updatedBy, c) {
   if (l.owners) await Customer.setOwners(customerId, l.owners, c);
   if (l.contacts) await Customer.setContacts(customerId, l.contacts, c);
@@ -183,6 +196,7 @@ export const getTypeOptions = () => loadOptions('customer_type');
 export const getStatusOptions = () => loadOptions('customer_status');
 export const getChannelOptions = () => loadOptions('customer_channel');
 export const getCustomFields = () => loadCustomFields('customer');
+export const getServiceMappings = (customerId) => Customer.serviceMappings(customerId);
 
 // ===== Commands =====
 // input: {name, code?, type?, status?, unit_id?, description?, attributes? {key: value}, owner_ids[]?,
@@ -212,6 +226,7 @@ export async function updateCustomer(customerId, input, client, files) {
   const data = await customerData(input, current);
   await assertUnique(data.name, data.code, customerId);
   const l = await links(input, Number(customerId));
+  if (l.connections) await assertNetworksFree(Number(customerId), l.connections);
   const updatedBy = input.updated_by || 'admin';
   const removed = await withTransaction(client, async (c) => {
     await Customer.update(customerId, { ...data, updated_by: updatedBy }, c);
@@ -224,6 +239,10 @@ export async function updateCustomer(customerId, input, client, files) {
 
 export async function deleteCustomer(customerId) {
   if (!(await Customer.exists(customerId))) throw new NotFoundError('Customer not found');
+  const mappings = await Customer.serviceMappings(customerId);
+  if (mappings.length) {
+    throw new ConflictError('The customer is used by service mappings ({names}): remove its partner IPs there first').withParams({ names: mappings.map((m) => m.name).join(', ') });
+  }
   const files = await withTransaction(null, async (c) => {
     const removed = await FileUpload.removeRecords('customer', customerId, c);
     await Customer.delete(customerId, c);

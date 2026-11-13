@@ -3,6 +3,8 @@ import IpAddress from './ip-address.model.js';
 import Domain from './domain.model.js';
 import System from '../system/system.model.js';
 import { IPV4_REGEX } from './ip-address.service.js';
+import Customer from '../customer/customer.model.js';
+import { normalizeNetwork } from '../customer/customer.service.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../shared/errors.js';
 import { withTransaction } from '../../shared/transaction.js';
 import { hasKey, loadOptions } from '../../shared/service.js';
@@ -96,45 +98,60 @@ function pick(value, options, fallback, label) {
 }
 
 
-// Partner IPs ([{address, partner}]: the allowed sources of flows 1 / 2, the
-// destinations of flows 3 / 4) from any input shape, or null when none is given.
-// Single IPv4 addresses only, no CIDR: they are the partner's hosts, kept apart
-// from the subnet inventory (internal ranges). A CIDR the mapping already had
-// (from the older "allowed IPs") is kept until it is replaced.
+// Partner IPs: the allowed sources of flows 1 / 2, the destinations of flows 3 / 4.
+// Each is a customer (module Customers) and one of the IPs / networks registered for
+// it there: a service mapping picks them, it never creates either. A row the mapping
+// already had without a registered network (older data) is kept as it is.
 //
-//   partner_ips  [{address, partner, port, protocol, domain}] or ["ip:port/protocol@domain[partner]"]  (API)
-//   partner_ip[] / partner_name[] / partner_port[] / partner_protocol[] / partner_domain[]         (form rows)
-//   allowed_ips  "ip:port/protocol@domain[partner], ip, ..." or an array                             (import, older API clients)
+//   partner_ips  [{customer_id | customer, network_id | address, port, protocol, domain}]
+//                or ["ip:port/protocol@domain[customer]"]                               (API)
+//   partner_customer[] / partner_network[] / partner_port[] / partner_protocol[] / partner_domain[]  (form rows)
+//   allowed_ips  "ip:port/protocol@domain[customer], ..." or an array                   (import)
+// customer: id, or the exact name or code; address: an IP or a CIDR registered for it.
 // withPorts (outbound): every row needs its port and protocol; withDomain (internet
 // connectivity): a row may have a domain. Otherwise they are dropped.
-async function partnerRows(input, current, resolve, { withPorts = false, withDomain = false } = {}) {
-  const kept = new Set((current?.partner_ips || []).map((p) => p.address));
+// -> [{customer_id, network_id, address, partner (customer name), port, protocol, domain}] or null
+async function partnerRows(input, current, { withPorts = false, withDomain = false } = {}) {
+  const legacy = new Map((current?.partner_ips || []).filter((p) => !p.network_id).map((p) => [`${p.address}|${p.customer_id || ''}`, p]));
   let rows;
   if (hasKey(input, 'partner_ips')) {
-    rows = [].concat(input.partner_ips ?? []).map((r) => (r && typeof r === 'object' ? { address: r.address, partner: r.partner, port: r.port, protocol: r.protocol, domain: r.domain } : partnerCell(r)));
-  } else if (hasKey(input, 'partner_ip')) {
-    const names = [].concat(input.partner_name ?? []);
-    const ports = [].concat(input.partner_port ?? []);
-    const protocols = [].concat(input.partner_protocol ?? []);
-    const domains = [].concat(input.partner_domain ?? []);
-    rows = [].concat(input.partner_ip ?? []).map((address, i) => ({ address, partner: names[i], port: ports[i], protocol: protocols[i], domain: domains[i] }));
+    rows = [].concat(input.partner_ips ?? []).map((r) => (r && typeof r === 'object'
+      ? { customer: r.customer_id ?? r.customer ?? r.partner, network: r.network_id ?? r.address, port: r.port, protocol: r.protocol, domain: r.domain }
+      : partnerCell(r)));
+  } else if (hasKey(input, 'partner_network') || hasKey(input, 'partner_customer')) {
+    const col = (key) => [].concat(input[key] ?? []);
+    const [customers, ports, protocols, domains] = ['partner_customer', 'partner_port', 'partner_protocol', 'partner_domain'].map(col);
+    rows = col('partner_network').map((network, i) => ({ customer: customers[i], network, port: ports[i], protocol: protocols[i], domain: domains[i] }));
   } else if (hasKey(input, 'allowed_ips')) {
     rows = [].concat(input.allowed_ips ?? []).flatMap((v) => String(v).split(/[,;\n]+/)).map(partnerCell);
   } else {
     return null;
   }
+  const customers = new Map();
   const seen = new Set();
   const out = [];
   for (const r of rows) {
-    let address = String(r.address ?? '').trim();
-    if (!address) continue;
-    // an IP of the IP inventory (id or address; never created here). Partner IPs saved
-    // before 1.8.1 that are not in the inventory stay as they are.
-    if (!kept.has(address)) {
-      if (address.includes('/')) throw new ValidationError('Partner IPs are single IP addresses, not ranges (CIDR): {ips}').withParams({ ips: address });
-      address = (await resolve.ip(address)).address;
+    // ids may come as numbers (API JSON)
+    const network = str(typeof r.network === 'number' ? String(r.network) : r.network);
+    const ref = str(typeof r.customer === 'number' ? String(r.customer) : r.customer);
+    if (!network && !ref) continue;
+    if (!ref) throw new ValidationError('Partner IP {ip}: choose its customer').withParams({ ip: network });
+    if (!customers.has(ref)) customers.set(ref, await findCustomer(ref));
+    const customer = customers.get(ref);
+    if (!network) throw new ValidationError('Customer {customer}: choose one of its registered IPs').withParams({ customer: customer.name });
+    let net;
+    if (/^\d+$/.test(network)) {
+      net = await Customer.findNetworkById(Number(network));
+      if (!net || net.customer_id !== customer.id) throw new ValidationError('This IP is not registered for customer {customer}').withParams({ customer: customer.name });
+    } else {
+      net = await Customer.findNetworkByAddress(customer.id, normalizeNetwork(network));
+      if (!net) {
+        const old = legacy.get(`${network}|${customer.id}`);
+        if (!old) throw new ValidationError('{ip} is not registered for customer {customer}: add it in Customers first').withParams({ ip: network, customer: customer.name });
+        net = { id: null, address: old.address };
+      }
     }
-    const partner = await partnerName(str(r.partner));
+    const address = net.address;
     let port = null;
     let protocol = null;
     if (withPorts) {
@@ -145,20 +162,27 @@ async function partnerRows(input, current, resolve, { withPorts = false, withDom
     }
     const domain = withDomain ? str(r.domain)?.toLowerCase() || null : null;
     if (domain && !DOMAIN_REGEX.test(domain)) throw new ValidationError('Partner IP {ip}: invalid domain {domain}').withParams({ ip: address, domain });
-    const key = `${address}|${partner || ''}|${port || ''}|${protocol || ''}|${domain || ''}`;
+    const key = `${customer.id}|${address}|${port || ''}|${protocol || ''}|${domain || ''}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push({ address, partner, port, protocol, domain });
+    out.push({ customer_id: customer.id, network_id: net.id, address, partner: customer.name, port, protocol, domain });
   }
   return out;
 }
 
-// "203.0.113.10:443/HTTPS@api.bank.com[Bank A]" (port, protocol, domain and partner optional)
-// -> { address, port, protocol, domain, partner }
+// Customer of a partner IP: id, or its exact name or code (case-insensitive)
+async function findCustomer(ref) {
+  const found = /^\d+$/.test(ref) ? await Customer.findById(Number(ref)) : (await Customer.findByNameExact(ref))[0] || (await Customer.findByCode(ref))[0];
+  if (!found) throw new ValidationError('Customer not found: {customer}. Add it in Customers first').withParams({ customer: ref });
+  return found;
+}
+
+// "203.0.113.10:443/HTTPS@api.bank.com[Bank A]" (port, protocol and domain optional; the address may be a CIDR)
+// -> { network, port, protocol, domain, customer }
 function partnerCell(value) {
   const m = String(value ?? '').trim().match(/^([^:@\[\s]+)(?::(\d+)(?:\/(\w+))?)?(?:@([^\[\s]+))?\s*(?:\[(.*)\])?$/);
-  if (!m) return { address: String(value ?? '').trim(), partner: null };
-  return { address: m[1], port: m[2] || null, protocol: m[3] || null, domain: m[4] || null, partner: m[5] ? m[5].trim() : null };
+  if (!m) return { network: String(value ?? '').trim(), customer: null };
+  return { network: m[1], port: m[2] || null, protocol: m[3] || null, domain: m[4] || null, customer: m[5] ? m[5].trim() : null };
 }
 const DOMAIN_REGEX = /^(?=.{1,253}$)([a-z0-9-]+\.)+[a-z]{2,}$/;
 
@@ -197,7 +221,7 @@ function providerFields(provider, rawPort, rawProtocol) {
   return { provider, provider_port: port, provider_protocol: protocol };
 }
 
-// Provider / channel (service_mapping_provider) and partner (service_mapping_partner):
+// Provider / channel (service_mapping_provider):
 // a value of the System Configuration list (matched case-insensitively, stored as
 // configured); a retired value is refused unless the record already has it. An
 // empty list accepts any value.
@@ -213,17 +237,6 @@ async function configuredOption(key, value, label, current = null) {
 }
 const configuredProvider = (value, current = null) => configuredOption('service_mapping_provider', value, 'provider', current);
 
-// Partner name: one of the System Configuration list service_mapping_partner (its
-// spelling, case-insensitive; a retired one is refused) or a typed name, kept on
-// the partner IP row only. Service mappings are an extension: they never create
-// objects (IPs, domains, configuration values...) in the rest of the system.
-async function partnerName(value) {
-  if (!value) return null;
-  if (value.length > 100) throw new ValidationError('Partner name is too long (max 100 characters): {value}').withParams({ value });
-  const found = (await loadOptions('service_mapping_partner')).find((o) => o.id.toLowerCase() === value.toLowerCase());
-  if (found?.inactive) throw new ValidationError('{value} is no longer in use for {label}').withParams({ value: found.id, label: 'partner' });
-  return found ? found.id : value;
-}
 
 
 // The four flows (direction-scope) and what each one keeps
@@ -253,7 +266,7 @@ function providerForFlow(flow, providerData, current) {
 }
 
 // Flow fields of a mapping: the input over the current values (update), checked
-// for its flow. -> { data (virtual_servers columns), partners ([{address, partner}]) }
+// for its flow. -> { data (virtual_servers columns), partners (see partnerRows) }
 async function flowData(input, current, resolve, domain) {
   const has = (k) => !current || hasKey(input, k);
   const direction = has('direction') ? pick(input.direction, DIRECTION_OPTIONS, 'inbound', 'direction') : current.direction;
@@ -267,9 +280,9 @@ async function flowData(input, current, resolve, domain) {
   natPort = natPort === '' || natPort === null ? null : Number(natPort);
   if (natPort !== null && !(Number.isInteger(natPort) && natPort >= 1 && natPort <= 65535)) throw new ValidationError('Invalid NAT port: {port}').withParams({ port: input.nat_port });
   if (!flow.natIp || !natIp) { natIp = null; natPort = null; }
-  let partners = await partnerRows(input, current, resolve, { withPorts: Boolean(flow.partnerPorts), withDomain: Boolean(flow.partnerDomain) });
+  let partners = await partnerRows(input, current, { withPorts: Boolean(flow.partnerPorts), withDomain: Boolean(flow.partnerDomain) });
   if (partners === null) {
-    partners = (current?.partner_ips || []).map((p) => ({ address: p.address, partner: p.partner,
+    partners = (current?.partner_ips || []).map((p) => ({ customer_id: p.customer_id, network_id: p.network_id, address: p.address, partner: p.partner,
       port: flow.partnerPorts ? p.port : null, protocol: flow.partnerPorts ? p.protocol : null, domain: flow.partnerDomain ? p.domain : null }));
     if (flow.partnerPorts && partners.some((p) => !p.port || !p.protocol)) throw new ValidationError('Every partner IP needs its port and protocol');
   }
@@ -354,7 +367,6 @@ export async function updateServiceMapping(id, input, client) {
   return ServiceMapping.findByIdWithRelations(id, client);
 }
 
-export const getPartnerOptions = () => ServiceMapping.getDistinctPartners();
 
 // Outbound sources open the connection: no port (an ephemeral one) nor protocol
 function sourcesWithoutPort(direction, members) {

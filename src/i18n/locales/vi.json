@@ -1820,5 +1820,19 @@
   "{field}: \"{value}\" is not one of its choices": "{field}: \"{value}\" không nằm trong các lựa chọn",
   "{field}: an http(s) URL is required": "{field}: cần một URL http(s)",
   "{field} is too long (max {max} characters)": "{field} quá dài (tối đa {max} ký tự)",
-  "One per line: an IP or a network (CIDR), then a description (their VPN peer / router too). Only entered here: nothing else creates them.": "Mỗi dòng một IP hoặc một mạng (CIDR), sau đó là mô tả (gồm cả IP VPN peer / router của khách). Chỉ nhập tại đây: không nơi nào khác tự tạo."
+  "One per line: an IP or a network (CIDR), then a description (their VPN peer / router too). Only entered here: nothing else creates them.": "Mỗi dòng một IP hoặc một mạng (CIDR), sau đó là mô tả (gồm cả IP VPN peer / router của khách). Chỉ nhập tại đây: không nơi nào khác tự tạo.",
+  "Registered IP / network": "IP / mạng đã đăng ký",
+  "One partner IP per row: the customer, then one of its registered IPs / networks.": "Mỗi dòng một IP đối tác: chọn khách hàng, rồi chọn một IP / mạng đã đăng ký của khách đó.",
+  "One partner IP per row: the customer, one of its registered IPs / networks, its port and protocol.": "Mỗi dòng một IP đối tác: khách hàng, một IP / mạng đã đăng ký của khách, port và protocol.",
+  "One destination per row: the customer, one of its registered IPs / networks, its domain (optional), port and protocol.": "Mỗi dòng một đích: khách hàng, một IP / mạng đã đăng ký của khách, domain (không bắt buộc), port và protocol.",
+  "Customers and their IPs / networks are registered in Customers (add them there first): a service mapping only picks them.": "Khách hàng và IP / mạng của khách được đăng ký ở mục Khách hàng (thêm ở đó trước): Service Mapping chỉ chọn.",
+  "Partner IP {ip}: choose its customer": "IP đối tác {ip}: hãy chọn khách hàng",
+  "Customer {customer}: choose one of its registered IPs": "Khách hàng {customer}: hãy chọn một IP đã đăng ký của khách",
+  "This IP is not registered for customer {customer}": "IP này không thuộc khách hàng {customer}",
+  "{ip} is not registered for customer {customer}: add it in Customers first": "{ip} chưa được đăng ký cho khách hàng {customer}: hãy thêm ở mục Khách hàng trước",
+  "Customer not found: {customer}. Add it in Customers first": "Không tìm thấy khách hàng: {customer}. Hãy thêm ở mục Khách hàng trước",
+  "{list}: used by service mappings, remove them there first": "{list}: đang được Service Mapping dùng, hãy bỏ ở đó trước",
+  "The customer is used by service mappings ({names}): remove its partner IPs there first": "Khách hàng đang được Service Mapping dùng ({names}): hãy bỏ các IP đối tác ở đó trước",
+  "Not used by any service mapping": "Chưa được Service Mapping nào dùng",
+  "Partner IPs, comma-separated, each an IP or CIDR registered for its customer in Customers: IP[Customer] = allowed sources of inbound; IP:port/protocol[Customer] = partner connectivity destinations; IP:port/protocol@domain[Customer] = internet destinations (domain optional); Customer = exact name or code": "IP đối tác, cách nhau bằng dấu phẩy, mỗi IP hoặc CIDR phải đã đăng ký cho khách hàng của nó ở mục Khách hàng: IP[Khách hàng] = nguồn được phép của luồng inbound; IP:port/protocol[Khách hàng] = đích của Partner Connectivity; IP:port/protocol@domain[Khách hàng] = đích Internet (domain không bắt buộc); Khách hàng = đúng tên hoặc mã"
 }

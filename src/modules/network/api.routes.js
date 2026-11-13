@@ -1096,12 +1096,13 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *         nat_port: { type: integer, nullable: true, minimum: 1, maximum: 65535, description: 'Port of the NAT private IP (empty = the public port)' }
  *         partner_ips:
  *           type: array
- *           description: 'Partner IP addresses (single IPv4, no CIDR) with the partner name (System Configuration list service_mapping_partner): the allowed sources of inbound (access_mode limited for public), the destinations of outbound with their own port / protocol (required) and, for internet connectivity, domain (optional). Replaces every row.'
+ *           description: 'Partner IPs, each a customer (module Customers) and one of the IPs / networks registered for it there (never created here): the allowed sources of inbound (access_mode limited for public), the destinations of outbound with their own port / protocol (required) and, for internet connectivity, domain (optional). Replaces every row.'
  *           items:
  *             type: object
  *             properties:
- *               address: { type: string, example: 198.51.100.10, description: Single IPv4 address }
- *               partner: { type: string, nullable: true, example: Bank A }
+ *               customer_id: { type: integer, example: 3, description: 'The customer (or `customer`: its exact name or code)' }
+ *               network_id: { type: integer, example: 12, description: 'One of its registered IPs / networks (or `address`: that IP / CIDR as registered)' }
+ *               address: { type: string, example: 198.51.100.10, description: 'IP or CIDR registered for the customer, instead of network_id' }
  *               port: { type: integer, nullable: true, example: 443, description: Outbound destinations only (required there) }
  *               protocol: { type: string, nullable: true, enum: [HTTP, HTTPS, TCP, UDP], description: Outbound destinations only (required there) }
  *               domain: { type: string, nullable: true, example: api.bank.example, description: Internet connectivity destinations only (optional) }
@@ -1113,7 +1114,7 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *         allowed_ips:
  *           type: array
  *           items: { type: string }
- *           description: 'Older form of partner_ips: "IP[Partner]", "IP:port/protocol[Partner]" or "IP:port/protocol@domain[Partner]" strings'
+ *           description: 'Older form of partner_ips: "IP[Customer]", "IP:port/protocol[Customer]" or "IP:port/protocol@domain[Customer]" strings (customer: exact name or code; IP / CIDR registered for it)'
  *         provider: { type: string, nullable: true, description: 'CDN / WAF / private channel in front (e.g. Akamai, MPLS): a value of the System Configuration list `service_mapping_provider` (case-insensitive); retired values are refused' }
  *         provider_port: { type: integer, nullable: true }
  *         provider_protocol: { type: string, enum: [HTTP, HTTPS, TCP, UDP], nullable: true }
@@ -1139,7 +1140,7 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *         domain_id: 7
  *         system_id: 3
  *         partner_ips:
- *           - { address: 198.51.100.10, partner: Bank A }
+ *           - { address: 198.51.100.10, customer: Bank A }
  *         members:
  *           - { ip_address_id: 21, port: 8443, protocol: HTTP, status: active }
  *           - { ip_address_id: 22, port: 8443, protocol: HTTP, status: inactive }
@@ -1169,8 +1170,12 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *             type: object
  *             properties:
  *               id: { type: integer }
- *               address: { type: string }
- *               partner: { type: string, nullable: true }
+ *               address: { type: string, description: 'The registered IP / network (CIDR)' }
+ *               customer_id: { type: integer, nullable: true }
+ *               network_id: { type: integer, nullable: true, description: 'null: a row from before 1.11.0 that had no valid IP' }
+ *               partner: { type: string, nullable: true, description: The customer name }
+ *               customer_code: { type: string, nullable: true }
+ *               network_description: { type: string, nullable: true }
  *               port: { type: integer, nullable: true }
  *               protocol: { type: string, nullable: true }
  *               domain: { type: string, nullable: true }
@@ -1217,7 +1222,7 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *       - { in: query, name: access_mode, schema: { type: string, enum: [full, limited] } }
  *       - { in: query, name: system_id, schema: { type: integer } }
  *       - { in: query, name: device_id, schema: { type: integer }, description: 'Mappings whose IP (public / flow IP) is held by this device' }
- *       - { in: query, name: partner, schema: { type: string }, description: 'Partner name (System Configuration list service_mapping_partner), exact match' }
+ *       - { in: query, name: customer_id, schema: { type: integer }, description: 'Mappings with a partner IP of this customer' }
  *     responses:
  *       200:
  *         description: '{ data: ServiceMapping[], pagination }'
@@ -1265,8 +1270,8 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *                 port: 443
  *                 protocol: HTTPS
  *                 partner_ips:
- *                   - { address: 198.51.100.10, partner: Bank A }
- *                   - { address: 198.51.100.11, partner: Bank A }
+ *                   - { address: 198.51.100.10, customer: Bank A }
+ *                   - { address: 198.51.100.11, customer: Bank A }
  *                 members:
  *                   - { ip_address_id: 21, port: 8443, protocol: HTTP }
  *             internal_exposure:
@@ -1292,7 +1297,7 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *                 port: 9443
  *                 protocol: TCP
  *                 partner_ips:
- *                   - { address: 192.0.2.10, partner: Bank A }
+ *                   - { address: 192.0.2.10, customer: Bank A }
  *                 members:
  *                   - { ip_address_id: 41, port: 9443, protocol: TCP }
  *             partner_connectivity:
@@ -1304,7 +1309,7 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *                 provider: MPLS
  *                 ip_address_id: 50
  *                 partner_ips:
- *                   - { address: 192.0.2.20, partner: Bank A, port: 8443, protocol: HTTPS }
+ *                   - { address: 192.0.2.20, customer: Bank A, port: 8443, protocol: HTTPS }
  *                 members:
  *                   - { ip_address_id: 51 }
  *                   - { ip_address_id: 52 }
@@ -1316,7 +1321,7 @@ router.delete('/domains/:id', authorizePermissionJWT('domain.delete'), domainApi
  *                 scope: public
  *                 ip_address_id: 60
  *                 partner_ips:
- *                   - { address: 203.0.113.80, partner: Payment Gateway, port: 443, protocol: HTTPS, domain: api.pay.example }
+ *                   - { address: 203.0.113.80, customer: Payment Gateway, port: 443, protocol: HTTPS, domain: api.pay.example }
  *                 members:
  *                   - { ip_address_id: 51 }
  *     responses:

@@ -22,8 +22,11 @@ const SELECT_WITH_LINKS = `
   SELECT vs.*, fip.ip_address, dom.domain,
     own.name AS ip_owner_name, own.kind AS ip_owner_type, own.id AS ip_owner_id, sys.name AS system_name,
     nip.ip_address AS nat_ip, nown.name AS nat_owner_name, nown.kind AS nat_owner_type,
-    ${subList({ id: 'p.id', address: 'p.address', partner: 'p.partner', port: 'p.port', protocol: 'p.protocol', domain: 'p.domain', owner_name: 'po.name', owner_type: 'po.kind' },
+    ${subList({ id: 'p.id', address: 'p.address', customer_id: 'p.customer_id', network_id: 'p.network_id', partner: 'pc.name', customer_code: 'pc.code',
+      network_description: 'pn.description', port: 'p.port', protocol: 'p.protocol', domain: 'p.domain', owner_name: 'po.name', owner_type: 'po.kind' },
       `FROM virtual_server_partner_ips p
+       LEFT JOIN customers pc ON pc.id = p.customer_id
+       LEFT JOIN customer_networks pn ON pn.id = p.network_id
        LEFT JOIN LATERAL (${IP_OWNER("(SELECT x.id FROM ip_addresses x WHERE x.ip_address = p.address LIMIT 1)")}) po ON TRUE
        WHERE p.virtual_server_id = vs.id`, 'p.position')} AS partner_ips,
     ${jsonList('m', {
@@ -43,7 +46,7 @@ const SELECT_WITH_LINKS = `
   LEFT JOIN LATERAL (${IP_OWNER('ip.id')}) mo ON TRUE`;
 const GROUP_BY = 'GROUP BY vs.id, fip.ip_address, dom.domain, own.id, own.name, own.kind, sys.name, nip.ip_address, nown.id, nown.name, nown.kind';
 
-function filterWhere({ search = '', protocol, provider, device_id, system_id, direction, scope, access_mode, partner }) {
+function filterWhere({ search = '', protocol, provider, device_id, system_id, direction, scope, access_mode, customer_id }) {
   const w = new Where();
   w.search(search, [
     'vs.name ILIKE ?', 'vs.provider ILIKE ?', 'vs.description ILIKE ?',
@@ -55,9 +58,11 @@ function filterWhere({ search = '', protocol, provider, device_id, system_id, di
     'EXISTS (SELECT 1 FROM systems x WHERE x.id = vs.system_id AND x.name ILIKE ?)',
     'EXISTS (SELECT 1 FROM virtual_server_members x JOIN ip_addresses i ON i.id = x.ip_address_id WHERE x.virtual_server_id = vs.id AND i.ip_address ILIKE ?)',
     'EXISTS (SELECT 1 FROM virtual_server_members x JOIN server_ip si ON si.ip_id = x.ip_address_id JOIN servers s ON s.id = si.server_id WHERE x.virtual_server_id = vs.id AND s.name ILIKE ?)',
-    'EXISTS (SELECT 1 FROM virtual_server_partner_ips x WHERE x.virtual_server_id = vs.id AND (x.address ILIKE ? OR x.partner ILIKE ? OR x.domain ILIKE ?))',
+    `EXISTS (SELECT 1 FROM virtual_server_partner_ips x LEFT JOIN customers c ON c.id = x.customer_id
+       WHERE x.virtual_server_id = vs.id AND (x.address ILIKE ? OR c.name ILIKE ? OR c.code ILIKE ? OR x.domain ILIKE ?))`,
   ]);
-  if (partner) w.add(`EXISTS (SELECT 1 FROM virtual_server_partner_ips x WHERE x.virtual_server_id = vs.id AND x.partner = ${w.param(partner)})`);
+  // customer_id: mappings with a partner IP of this customer
+  if (Number(customer_id)) w.add(`EXISTS (SELECT 1 FROM virtual_server_partner_ips x WHERE x.virtual_server_id = vs.id AND x.customer_id = ${w.param(Number(customer_id))})`);
   if (protocol) w.add(`vs.protocol = ${w.param(protocol)}`);
   if (provider) w.add(`vs.provider = ${w.param(provider)}`);
   // device_id: mappings whose frontend IP the device holds
@@ -158,20 +163,16 @@ class ServiceMapping {
     return result.rows.map((r) => r.protocol);
   }
 
-  // Partner names already used (filter of the list)
-  static async getDistinctPartners() {
-    const result = await pool.query("SELECT DISTINCT partner FROM virtual_server_partner_ips WHERE COALESCE(partner, '') <> '' ORDER BY partner");
-    return result.rows.map((r) => r.partner);
-  }
-
   // ===== Links =====
-  // rows: [{address, partner, port, protocol, domain}] in their order
+  // rows: [{customer_id, network_id, address, port, protocol, domain}] in their order
   static async setPartnerIps(vsId, rows, client) {
     const ex = db(client);
     await ex.query('DELETE FROM virtual_server_partner_ips WHERE virtual_server_id = $1', [vsId]);
     for (const [i, r] of (rows || []).entries()) {
-      await ex.query('INSERT INTO virtual_server_partner_ips (virtual_server_id, address, partner, port, protocol, domain, position) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-        [vsId, r.address, r.partner || null, r.port || null, r.protocol || null, r.domain || null, i]);
+      await ex.query(
+        `INSERT INTO virtual_server_partner_ips (virtual_server_id, customer_id, network_id, address, port, protocol, domain, position)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [vsId, r.customer_id || null, r.network_id || null, r.address, r.port || null, r.protocol || null, r.domain || null, i]);
     }
   }
 

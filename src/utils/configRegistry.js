@@ -72,7 +72,6 @@ export const CONFIG_GROUPS = [
       { key: 'ip_address_type', type: 'options', label: 'IP address types' },
       { key: 'ip_address_status', type: 'options', usedBy: [{ table: 'ip_addresses', column: 'status', label: 'IP addresses' }], label: 'IP address statuses' },
       { key: 'network_domain_record_type', type: 'options', usedBy: [{ table: 'domains', column: 'record_type', label: 'Domains' }], label: 'DNS record types' },
-      { key: 'service_mapping_partner', type: 'options', usedBy: [{ table: 'virtual_server_partner_ips', column: 'partner', label: 'Service Mappings' }], label: 'Service mapping partners', help: 'Partners of the service mappings (banks, payment gateways...), named on their partner IPs; empty = any name' },
       { key: 'service_mapping_provider', type: 'options', usedBy: [{ table: 'virtual_servers', column: 'provider', label: 'Service Mappings' }], label: 'Service mapping providers / channels', help: 'CDN / WAF (Akamai, Cloudflare) or private channel (VPN, MPLS) in front of a service mapping' },
     ],
   },
