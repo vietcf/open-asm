@@ -10,6 +10,7 @@ import clusterApiRoutes from '../modules/cluster/api.routes.js';
 import networkApiRoutes from '../modules/network/api.routes.js';
 import firewallApiRoutes from '../modules/firewall/api.routes.js';
 import pentestApiRoutes from '../modules/pentest/api.routes.js';
+import customerApiRoutes from '../modules/customer/api.routes.js';
 
 const apiRouter = express.Router();
 
@@ -22,6 +23,7 @@ apiRouter.use(clusterApiRoutes); // /clusters
 apiRouter.use(networkApiRoutes); // /ip-addresses, /subnets, /domains
 apiRouter.use(firewallApiRoutes); // /rules
 apiRouter.use(pentestApiRoutes); // /pentest-rounds
+apiRouter.use(customerApiRoutes); // /customers
 
 // JSON parse errors of API requests
 apiRouter.use((err, req, res, next) => {

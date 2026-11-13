@@ -76,7 +76,8 @@ class FileUpload {
   // Add an entry here whenever a new object_type gets file attachments.
   static FOLDER_BY_OBJECT_TYPE = {
     system: 'system',
-    pentest_round: 'pentest'
+    pentest_round: 'pentest',
+    customer: 'customer'
   };
 
   static getUrl(file) {

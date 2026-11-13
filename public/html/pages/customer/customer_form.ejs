@@ -1,0 +1,158 @@
+<%#
+  Add / Edit Customer.  mode: 'add' | 'edit', customer, typeOptions, statusOptions, channelOptions, unitOptions,
+  customFields (definitions), connectionRoles, connectionStatuses, networksText(networks)
+  Custom fields: attr[<key>]. Customer contacts: parallel contact_name[] / contact_role[] / contact_email[] / contact_phone[].
+  Connections: parallel conn_<field>[] (conn_id keeps an existing connection and its networks); their IPs / networks are
+  one "IP-or-CIDR description" per line of conn_networks. Empty selects post "" so the rows stay aligned.
+%>
+<% const isEdit = mode === 'edit'; const c = customer || {}; const attrs = c.attributes || {};
+   const fields = customFields.filter((d) => d.active);
+   const roleLabel = (r) => t(r === 'primary' ? 'Primary' : 'Backup');
+   const statusLabel = (s) => t(s === 'active' ? 'Active' : 'Inactive');
+   const conn = (x) => {
+     x = x || {};
+     const sel = (list, value, label) => list.map((v) => '<option value="' + ui.esc(v) + '"' + (v === value ? ' selected' : '') + '>' + ui.esc(label(v)) + '</option>').join('');
+     return '<div class="card card-body bg-body-tertiary border-0 vstack gap-2">' +
+       '<input type="hidden" name="conn_id" value="' + ui.esc(x.id || '') + '">' +
+       '<div class="row g-2">' +
+         '<div class="col-md-4"><label class="form-label small mb-1">' + ui.esc(t('Connection Name')) + ' <span class="text-danger">*</span></label><input type="text" name="conn_name" class="form-control" maxlength="255" value="' + ui.esc(x.name || '') + '" placeholder="' + ui.esc(t('e.g. VPN HCM primary')) + '"></div>' +
+         '<div class="col-md-3"><label class="form-label small mb-1">' + ui.esc(t('Channel')) + ' <span class="text-danger">*</span></label><select name="conn_channel" class="form-select"><option value=""></option>' + ui.options(channelOptions, x.channel ? [x.channel] : []) + '</select></div>' +
+         '<div class="col-md-2 col-6"><label class="form-label small mb-1">' + ui.esc(t('Role')) + '</label><select name="conn_role" class="form-select"><option value="">—</option>' + sel(connectionRoles, x.role, roleLabel) + '</select></div>' +
+         '<div class="col-md-2 col-6"><label class="form-label small mb-1">' + ui.esc(t('Status')) + '</label><select name="conn_status" class="form-select">' + sel(connectionStatuses, x.status || 'active', statusLabel) + '</select></div>' +
+         '<div class="col-md-1 d-flex align-items-end justify-content-end"><button type="button" class="btn btn-outline-secondary" data-repeater-remove title="' + ui.esc(t('Remove')) + '"><i class="bi bi-x-lg"></i></button></div>' +
+       '</div>' +
+       '<div class="row g-2">' +
+         '<div class="col-md-4"><label class="form-label small mb-1">' + ui.esc(t('Our Device')) + '</label><select name="conn_device_id" class="form-select js-select" data-ajax-url="/device/api/device" data-placeholder="' + ui.esc(t('FW / VPN gateway / router')) + '"' +
+           ' data-selected="' + ui.esc(JSON.stringify(x.device_id ? [{ id: x.device_id, text: x.device_name }] : [])) + '"><option value=""></option></select></div>' +
+         '<div class="col-md-4"><label class="form-label small mb-1">' + ui.esc(t('Our IP')) + '</label><select name="conn_local_ip_id" class="form-select js-select" data-ajax-url="/network/api/ip-addresses/search-all" data-placeholder="' + ui.esc(t('Select an IP from the IP inventory')) + '"' +
+           ' data-selected="' + ui.esc(JSON.stringify(x.local_ip_id ? [{ id: x.local_ip_id, text: x.local_ip }] : [])) + '"><option value=""></option></select></div>' +
+         '<div class="col-md-2 col-6"><label class="form-label small mb-1">' + ui.esc(t('Start Date')) + '</label><input type="date" name="conn_start_date" class="form-control" value="' + ui.esc(x.start_date || '') + '"></div>' +
+         '<div class="col-md-2 col-6"><label class="form-label small mb-1">' + ui.esc(t('End Date')) + '</label><input type="date" name="conn_end_date" class="form-control" value="' + ui.esc(x.end_date || '') + '"></div>' +
+       '</div>' +
+       '<div class="row g-2">' +
+         '<div class="col-md-7"><label class="form-label small mb-1">' + ui.esc(t('Customer IPs / Networks')) + '</label><textarea name="conn_networks" class="form-control font-monospace" rows="3" placeholder="10.20.0.0/24 Core servers&#10;10.20.1.5 API gateway&#10;203.0.113.10 VPN peer">' + ui.esc(networksText(x.networks)) + '</textarea>' +
+           '<div class="form-text">' + ui.esc(t('One per line: an IP or a network (CIDR), then a description (their VPN peer / router too). Only entered here: nothing else creates them.')) + '</div></div>' +
+         '<div class="col-md-5"><label class="form-label small mb-1">' + ui.esc(t('Description')) + '</label><textarea name="conn_description" class="form-control" rows="3">' + ui.esc(x.description || '') + '</textarea></div>' +
+       '</div>' +
+     '</div>';
+   };
+   const person = (p) => {
+     p = p || {};
+     return '<div class="d-flex gap-2 align-items-start">' +
+       '<input type="text" name="contact_name" class="form-control" maxlength="255" value="' + ui.esc(p.name || '') + '" placeholder="' + ui.esc(t('Name')) + '">' +
+       '<input type="text" name="contact_role" class="form-control" maxlength="255" value="' + ui.esc(p.role || '') + '" placeholder="' + ui.esc(t('Role (e.g. technical, NOC)')) + '">' +
+       '<input type="email" name="contact_email" class="form-control" maxlength="255" value="' + ui.esc(p.email || '') + '" placeholder="' + ui.esc(t('Email')) + '">' +
+       '<input type="text" name="contact_phone" class="form-control" maxlength="50" value="' + ui.esc(p.phone || '') + '" placeholder="' + ui.esc(t('Phone')) + '">' +
+       '<button type="button" class="btn btn-outline-secondary" data-repeater-remove title="' + ui.esc(t('Remove')) + '"><i class="bi bi-x-lg"></i></button>' +
+     '</div>';
+   };
+%>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [
+  { label: 'Customers', href: '/customer' }, { label: isEdit ? 'Edit Customer' : 'Add Customer' }
+] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
+    <form id="customerForm" class="card form-card" method="POST" action="<%= isEdit ? '/customer/' + c.id + '/edit' : '/customer/add' %>">
+      <div class="card-header form-card-header">
+        <h3 class="card-title mb-0"><%= t(isEdit ? 'Edit Customer' : 'Add Customer') %></h3>
+      </div>
+      <div class="card-body">
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('General information') %></h4>
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label" for="f-name"><%= t('Customer Name') %> <span class="text-danger">*</span></label>
+              <input type="text" id="f-name" name="name" data-unique="customer.name" data-unique-exclude="<%= c.id || '' %>" class="form-control" value="<%= c.name || '' %>" maxlength="255" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="f-code"><%= t('Code') %></label>
+              <input type="text" id="f-code" name="code" data-unique="customer.code" data-unique-exclude="<%= c.id || '' %>" class="form-control font-monospace" value="<%= c.code || '' %>" maxlength="50">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="f-type"><%= t('Type') %></label>
+              <select id="f-type" name="type" class="form-select"><option value=""></option><%- ui.options(typeOptions, c.type ? [c.type] : []) %></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="f-status"><%= t('Status') %></label>
+              <select id="f-status" name="status" class="form-select"><option value=""></option><%- ui.options(statusOptions, c.status ? [c.status] : []) %></select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label" for="f-unit"><%= t('Unit in charge') %></label>
+              <select id="f-unit" name="unit_id" class="form-select js-select" data-placeholder="<%= t('Select unit') %>"><option value=""></option><%- ui.options(unitOptions, c.unit_id ? [String(c.unit_id)] : []) %></select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="f-owners"><%= t('Our contacts') %></label>
+              <select id="f-owners" name="owner_ids" class="form-select js-select" multiple data-ajax-url="/organize/api/contact" data-placeholder="<%= t('Select contacts') %>"
+                      data-selected="<%= JSON.stringify((c.owners || []).map((o) => ({ id: o.id, text: o.email ? o.name + ' (' + o.email + ')' : o.name }))) %>"></select>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="f-description"><%= t('Description') %></label>
+              <textarea id="f-description" name="description" class="form-control" rows="3"><%= c.description || '' %></textarea>
+            </div>
+          </div>
+        </section>
+
+        <% if (fields.length) { %>
+          <section class="form-section">
+            <h4 class="form-section-title"><%= t('Custom fields') %></h4>
+            <div class="row g-3">
+              <% fields.forEach(function (d) { const v = attrs[d.key]; const id = 'f-attr-' + d.key; %>
+                <div class="<%= d.type === 'textarea' ? 'col-12' : 'col-md-4' %>">
+                  <label class="form-label" for="<%= id %>"><%= d.label %><% if (d.required) { %> <span class="text-danger">*</span><% } %></label>
+                  <% if (d.type === 'select') { %>
+                    <select id="<%= id %>" name="attr[<%= d.key %>]" class="form-select" <%= d.required ? 'required' : '' %>>
+                      <option value=""></option>
+                      <% d.options.concat(v && !d.options.includes(v) ? [v] : []).forEach(function (o) { %><option value="<%= o %>" <%= v === o ? 'selected' : '' %>><%= o %></option><% }) %>
+                    </select>
+                  <% } else if (d.type === 'boolean') { %>
+                    <select id="<%= id %>" name="attr[<%= d.key %>]" class="form-select" <%= d.required ? 'required' : '' %>>
+                      <option value=""></option>
+                      <option value="true" <%= v === true ? 'selected' : '' %>><%= t('Yes') %></option>
+                      <option value="false" <%= v === false ? 'selected' : '' %>><%= t('No') %></option>
+                    </select>
+                  <% } else if (d.type === 'textarea') { %>
+                    <textarea id="<%= id %>" name="attr[<%= d.key %>]" class="form-control" rows="3" maxlength="5000" <%= d.required ? 'required' : '' %>><%= v || '' %></textarea>
+                  <% } else { %>
+                    <input id="<%= id %>" name="attr[<%= d.key %>]" class="form-control"
+                           type="<%= d.type === 'number' ? 'number' : d.type === 'date' ? 'date' : d.type === 'url' ? 'url' : 'text' %>"<%- d.type === 'number' ? ' step="any"' : '' %>
+                           value="<%= v === undefined || v === null ? '' : v %>" maxlength="<%= d.type === 'url' ? 1000 : 500 %>" <%= d.required ? 'required' : '' %>>
+                  <% } %>
+                </div>
+              <% }) %>
+            </div>
+          </section>
+        <% } %>
+
+        <section class="form-section" data-repeater id="customerContacts">
+          <h4 class="form-section-title"><%= t('Customer contacts') %></h4>
+          <div class="vstack gap-2" data-repeater-rows>
+            <% (c.contacts || []).forEach(function (p) { %><%- person(p) %><% }) %>
+          </div>
+          <template data-repeater-template><%- person({}) %></template>
+          <div class="mt-2"><button type="button" class="btn btn-outline-primary btn-sm" data-repeater-add><i class="bi bi-plus-lg"></i> <%= t('Add contact') %></button></div>
+        </section>
+
+        <section class="form-section" data-repeater id="customerConnections">
+          <h4 class="form-section-title"><%= t('Connections') %></h4>
+          <div class="form-text mt-0 mb-2"><%= t('One per channel (Internet whitelist, VPN, MPLS...), with the IPs / networks of the customer behind it.') %></div>
+          <div class="vstack gap-3" data-repeater-rows>
+            <% (c.connections || []).forEach(function (x) { %><%- conn(x) %><% }) %>
+          </div>
+          <template data-repeater-template><%- conn({}) %></template>
+          <div class="mt-2"><button type="button" class="btn btn-outline-primary btn-sm" data-repeater-add><i class="bi bi-plus-lg"></i> <%= t('Add connection') %></button></div>
+        </section>
+
+        <section class="form-section">
+          <h4 class="form-section-title"><%= t('Documents') %></h4>
+          <%- include('../../partials/ui/file_attachments', {
+                existing: isEdit ? (c.docs || []) : [], viewUrl: '/customer/file/:id/view',
+                uploadedName: isEdit ? 'uploaded_docs_edit' : 'uploaded_docs', deletedName: isEdit ? 'delete_files' : null }) %>
+        </section>
+      </div>
+
+      <%- include('../../partials/ui/form_actions', { cancelUrl: '/customer', submitLabel: isEdit ? 'Save Changes' : 'Add Customer', record: c }) %>
+    </form>
+  </div>
+</div>

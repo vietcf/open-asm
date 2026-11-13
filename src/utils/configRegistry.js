@@ -12,9 +12,14 @@
 //             longer be chosen. `usedBy` lists the table columns holding its
 //             values (multi: a JSONB array of values), for the usage counts
 //             and the "replace with" of the editor (src/utils/optionUsage.js).
+//   custom_fields  custom field definitions of an object type (src/shared/customFields.js),
+//             stored as JSON; `table` holds the records and their `attributes` JSONB
+//             (for the usage counts).
 //
 // Only the keys listed here can be written from the UI (there is no raw
 // key/value editor). `label` / `help` are English i18n keys.
+
+import { validateCustomFieldDefs } from '../shared/customFields.js';
 
 export const CONFIG_GROUPS = [
   {
@@ -90,6 +95,16 @@ export const CONFIG_GROUPS = [
     ],
   },
   {
+    id: 'customer', section: 'Assets', label: 'Customers', icon: 'bi-building',
+    fields: [
+      { key: 'customer_type', type: 'options', usedBy: [{ table: 'customers', column: 'type', label: 'Customers' }], label: 'Customer types', help: 'Customer, partner, vendor...' },
+      { key: 'customer_status', type: 'options', usedBy: [{ table: 'customers', column: 'status', label: 'Customers' }], label: 'Customer statuses' },
+      { key: 'customer_channel', type: 'options', usedBy: [{ table: 'customer_connections', column: 'channel', label: 'Customer connections' }], label: 'Connection channels', help: 'How a customer connects: Internet whitelist, VPN site-to-site, MPLS, lease line...' },
+      { key: 'customer_custom_fields', type: 'custom_fields', table: 'customers', label: 'Customer custom fields',
+        help: 'Extra information of every customer (SLA, contract number...). Declare a field here before it can be filled in; a removed or inactive field keeps the values already saved' },
+    ],
+  },
+  {
     id: 'organization', section: 'Assets', label: 'Organization', icon: 'bi-people',
     fields: [
       { key: 'contact_position', type: 'options', usedBy: [{ table: 'contacts', column: 'position', label: 'Contacts' }], label: 'Contact positions' },
@@ -159,6 +174,8 @@ const CONTROL_CHARS = /\p{Cc}/u;
 export function validateField(field, raw, storedValues = new Set()) {
   const str = raw === undefined || raw === null ? '' : String(raw).trim();
   switch (field.type) {
+    case 'custom_fields':
+      return validateCustomFieldDefs(str);
     case 'text':
       if (!str) return field.required ? { error: '{field} is required', params: {} } : { value: null };
       if (str.length > LIMITS.textLength) return { error: '{field} is too long (max 255 characters)', params: {} };

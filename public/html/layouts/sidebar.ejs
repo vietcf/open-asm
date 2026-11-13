@@ -16,7 +16,7 @@
           hasPermission('ip_address.read') || hasPermission('subnet.read') || hasPermission('domain.read') || hasPermission('service_mapping.read') ||
           hasPermission('server.read') || hasPermission('service.read') || hasPermission('agent.read') ||
           hasPermission('device.read') || hasPermission('device_type.read') || hasPermission('platform.read') ||
-          hasPermission('cluster.read') ||
+          hasPermission('cluster.read') || hasPermission('customer.read') ||
           hasPermission('contact.read') || hasPermission('unit.read') || hasPermission('tag.read')
         ) { %>
         <li class="nav-header"><%= t('ASSET MANAGEMENT') %></li>
@@ -229,6 +229,15 @@
             </li>
             <% } %>
           </ul>
+        </li>
+        <% } %>
+        <!-- Customers: one page, a direct link -->
+        <% if (hasPermission('customer.read')) { %>
+        <li class="nav-item">
+          <a href="/customer" class="nav-link<%= (activeMenu === 'customer') ? ' active' : '' %>">
+            <i class="nav-icon bi bi-building"></i>
+            <p><%= t('Customers') %></p>
+          </a>
         </li>
         <% } %>
         <% if (

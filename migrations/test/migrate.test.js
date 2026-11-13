@@ -76,7 +76,7 @@ test('fresh database: baseline + seeds + admin with generated password', async (
   assert.match(r.out, /applying 0003_add_session_table\.sql/);
   assert.match(r.out, /password : \S{16}/);
   const [{ n }] = await q(db, `SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='public'`);
-  assert.equal(n, 55); // 53 app tables (incl. virtual_servers / virtual_server_members, 0010) + session + migrations_history
+  assert.equal(n, 62); // 60 app tables (incl. virtual_servers / virtual_server_members, 0010; customers..., 0037) + session + migrations_history
   const users = await q(db, 'SELECT username, must_change_password FROM users');
   assert.deepEqual(users, [{ username: 'admin', must_change_password: true }]);
 });
@@ -128,8 +128,10 @@ test('upgrading a database with data does not seed; migrations add new permissio
   assert.match(r.out, /seeds skipped/);
   assert.doesNotMatch(r.out, /administrator account created/);
   assert.equal((await q(db, 'SELECT * FROM users')).length, 0);
-  assert.deepEqual(await perms('admin'), ['device.read', 'service_mapping.create', 'service_mapping.delete', 'service_mapping.read', 'service_mapping.update']);
-  assert.deepEqual(await perms('viewer'), ['service_mapping.read']);
+  assert.deepEqual(await perms('admin'), ['customer.create', 'customer.delete', 'customer.read', 'customer.update',
+    'device.read', 'priv_account.all_scope', 'priv_role.global',
+    'service_mapping.create', 'service_mapping.delete', 'service_mapping.read', 'service_mapping.update']);
+  assert.deepEqual(await perms('viewer'), ['customer.read', 'service_mapping.read']);
   assert.ok((await perms('superadmin')).includes('backup.restore'));
   assert.equal((await q(db, `SELECT value FROM configuration WHERE key = 'api_debug_log'`))[0].value, 'off');
 

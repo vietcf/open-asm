@@ -49,6 +49,7 @@ import networkRouter from './modules/network/web.routes.js';
 import systemRouter from './modules/system/web.routes.js';
 import pentestRouter from './modules/pentest/web.routes.js';
 import clusterRouter from './modules/cluster/web.routes.js';
+import customerRouter from './modules/customer/web.routes.js';
 import privAccountRouter from './modules/privilege/web.routes.js';
 import serverRouter from './modules/server/web.routes.js';
 import organizeRouter from './modules/organize/web.routes.js';
@@ -243,7 +244,7 @@ app.set('layout', 'layouts/layout');
 // Only for a signed-in user (2FA done) holding the read permission of the
 // module the folder belongs to; import results (temp) are served by their own
 // download routes, and tmp holds the uploads of forms being filled in.
-const UPLOAD_FOLDER_PERMISSION = { system: 'system.read', pentest: 'pentest.read', tmp: null };
+const UPLOAD_FOLDER_PERMISSION = { system: 'system.read', pentest: 'pentest.read', customer: 'customer.read', tmp: null };
 app.use('/uploads', requireLogin, require2fa, (req, res, next) => {
   const folder = decodeURIComponent(req.path).split('/').filter(Boolean)[0] || '';
   if (!Object.prototype.hasOwnProperty.call(UPLOAD_FOLDER_PERMISSION, folder)) return res.status(404).send('Not found');
@@ -300,6 +301,7 @@ app.use('/dashboard', requireLogin, require2fa, dashboardRouter);
 app.use('/system', requireLogin, require2fa, systemRouter);
 app.use('/pentest', requireLogin, require2fa, pentestRouter);
 app.use('/cluster', requireLogin, require2fa, clusterRouter);
+app.use('/customer', requireLogin, require2fa, customerRouter);
 app.use('/network', requireLogin, require2fa, networkRouter);
 app.use('/server', requireLogin, require2fa, serverRouter);
 app.use('/organize', requireLogin, require2fa, organizeRouter);

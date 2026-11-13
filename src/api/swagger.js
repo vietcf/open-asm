@@ -103,6 +103,8 @@ const apiSwaggerRouter = express.Router();
  *     description: Firewall rules
  *   - name: PentestRound
  *     description: Pentest rounds of systems / components
+ *   - name: Customer
+ *     description: Customers, partners and vendors, their connections (Internet whitelist, VPN, MPLS...) and the IPs / networks behind each one
  *   - name: Contact
  *     description: Contacts (owners, managers)
  *   - name: OrganizationUnit

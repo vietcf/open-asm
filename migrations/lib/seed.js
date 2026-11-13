@@ -22,7 +22,7 @@ export async function seedPermissionsAndRoles(db) {
     'role', 'permission',
     'configuration', 'system_log',
     'priv_account', 'priv_role', 'priv_permission', 'rule', 'pentest', 'cluster',
-    'service_mapping', 'backup'
+    'service_mapping', 'backup', 'customer'
   ];
   const actions = ['create', 'read', 'update', 'delete'];
   const permissionValues = [];
@@ -226,6 +226,32 @@ export async function seedConfiguration(db) {
         { value: 'OTHER', label: 'Other' }
       ],
       description: 'DNS record types'
+    },
+    {
+      key: 'customer_type',
+      value: [{ value: 'Customer', label: 'Customer' }, { value: 'Partner', label: 'Partner' }, { value: 'Vendor', label: 'Vendor' }],
+      description: 'Customer types'
+    },
+    {
+      key: 'customer_status',
+      value: [{ value: 'active', label: 'Active' }, { value: 'suspended', label: 'Suspended' }, { value: 'terminated', label: 'Terminated' }],
+      description: 'Customer statuses'
+    },
+    {
+      key: 'customer_channel',
+      value: [
+        { value: 'Internet whitelist', label: 'Internet whitelist' },
+        { value: 'VPN site-to-site', label: 'VPN site-to-site' },
+        { value: 'MPLS', label: 'MPLS' },
+        { value: 'Lease line', label: 'Lease line' },
+        { value: 'Client VPN', label: 'Client VPN' }
+      ],
+      description: 'Customer connection channels'
+    },
+    {
+      key: 'customer_custom_fields',
+      value: [],
+      description: 'Custom fields of the customers'
     },
     {
       key: 'pentest_status',

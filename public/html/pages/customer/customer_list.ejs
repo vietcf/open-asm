@@ -1,0 +1,213 @@
+<%
+  const f = filter;
+  const listFields = customFields.filter((d) => d.active && d.list);
+  const selectFilters = listFields.filter((d) => d.type === 'select');
+  const activeFilterCount = [f.type.length, f.status.length, f.channel.length, f.unit_id, f.device_id, ...selectFilters.map((d) => f.attr[d.key])].filter(Boolean).length;
+  const COLUMNS = [
+    { key: 'name', label: 'Customer Name', def: true, fixed: true },
+    { key: 'code', label: 'Code', def: true },
+    { key: 'type', label: 'Type', def: true },
+    { key: 'status', label: 'Status', def: true },
+    { key: 'channels', label: 'Channels', def: true },
+    { key: 'networks', label: 'Customer IPs / Networks', def: true },
+    { key: 'unit', label: 'Unit in charge' },
+    { key: 'owners', label: 'Our contacts' },
+    ...listFields.map((d) => ({ key: 'attr_' + d.key, label: d.label, def: true, raw: true })),
+    { key: 'description', label: 'Description' },
+    { key: 'updated', label: 'Updated' },
+  ];
+  const networksOf = (c) => c.connections.flatMap((x) => x.networks.map((n) => n.network));
+  const attrText = (d, v) => (v === undefined || v === null || v === '' ? ui.dash : d.type === 'boolean' ? ui.esc(t(v ? 'Yes' : 'No')) : ui.clip(String(v)));
+  const cell = (c, key) => {
+    if (key.startsWith('attr_')) { const d = listFields.find((x) => 'attr_' + x.key === key); return attrText(d, (c.attributes || {})[d.key]); }
+    return ({
+      name: ui.esc(c.name),
+      code: c.code ? `<span class="font-monospace">${ui.esc(c.code)}</span>` : ui.dash,
+      type: c.type ? ui.chips([ui.optionLabel(typeOptions, c.type)]) : ui.dash,
+      status: c.status ? ui.chips([ui.optionLabel(statusOptions, c.status)]) : ui.dash,
+      channels: ui.chips([...new Set(c.connections.map((x) => ui.optionLabel(channelOptions, x.channel)))]),
+      networks: networksOf(c).length ? `<span class="badge tag">${networksOf(c).length}</span> ` + ui.mono(networksOf(c).slice(0, 3).concat(networksOf(c).length > 3 ? ['…'] : [])) : ui.dash,
+      unit: ui.text(c.unit && c.unit.name),
+      owners: ui.chips(c.owners.map((o) => o.name)),
+      description: ui.clip(c.description),
+      updated: ui.date(c.updated_at),
+    })[key];
+  };
+%>
+<%- include('../../partials/ui/page_header', { breadcrumbs: [{ label: 'Customers' }] }) %>
+
+<div class="app-content">
+  <div class="container-fluid">
+    <%- include('../../partials/ui/flash') %>
+
+    <div class="card list-card">
+      <form class="list-filter-form" method="get" action="/customer">
+        <input type="hidden" name="pageSize" value="<%= pageSize %>">
+        <%- include('../../partials/ui/list_toolbar', {
+              search, searchPlaceholder: 'Search by name, code, contact, connection, IP / network, custom field...',
+              filtersId: 'customerFilters', activeFilterCount,
+              columns: { tableId: 'customerTable', storageKey: 'openasm.customerList.columns', list: COLUMNS },
+              exportUrl: '/customer/export' + currentQuery,
+              importModal: hasPermission('customer.create') ? 'customerImportModal' : null,
+              addUrl: hasPermission('customer.create') ? '/customer/add' : null, addLabel: 'Add Customer' }) %>
+        <div class="collapse<%= activeFilterCount ? ' show' : '' %>" id="customerFilters">
+          <div class="list-filters">
+            <div class="row g-2">
+              <div class="col-md-3">
+                <label class="form-label small"><%= t('Type') %></label>
+                <select name="type" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"><%- ui.options(typeOptions, f.type, { all: true }) %></select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small"><%= t('Status') %></label>
+                <select name="status" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"><%- ui.options(statusOptions, f.status, { all: true }) %></select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small"><%= t('Channel') %></label>
+                <select name="channel" class="form-select js-filter" multiple data-placeholder="<%= t('All') %>"><%- ui.options(channelOptions, f.channel, { all: true }) %></select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small"><%= t('Unit in charge') %></label>
+                <select name="unit_id" class="form-select js-filter" data-placeholder="<%= t('All') %>"><option value=""></option><%- ui.options(unitOptions, f.unit_id ? [f.unit_id] : [], { all: true }) %></select>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small"><%= t('Our Device') %></label>
+                <select name="device_id" class="form-select js-filter" data-placeholder="<%= t('All') %>"
+                        data-ajax-url="/device/api/device" data-ids-url="/device/api/device/ids" data-selected='<%= JSON.stringify(f.device_id ? [f.device_id] : []) %>'></select>
+              </div>
+              <% selectFilters.forEach(function (d) { %>
+                <div class="col-md-3">
+                  <label class="form-label small"><%= d.label %></label>
+                  <select name="attr_<%= d.key %>" class="form-select js-filter" data-placeholder="<%= t('All') %>">
+                    <option value=""></option>
+                    <% d.options.forEach(function (o) { %><option value="<%= o %>" <%= f.attr[d.key] === o ? 'selected' : '' %>><%= o %></option><% }) %>
+                  </select>
+                </div>
+              <% }) %>
+            </div>
+            <% if (activeFilterCount) { %>
+              <div class="mt-2 text-end"><a href="#" class="small" data-clear-filters><i class="bi bi-x-circle me-1"></i><%= t('Clear All Filters') %></a></div>
+            <% } %>
+          </div>
+        </div>
+      </form>
+
+      <div class="table-responsive">
+        <table class="table table-hover align-middle table-stack" id="customerTable">
+          <thead>
+            <tr>
+              <th class="col-index">#</th>
+              <% COLUMNS.forEach(function (c) { %><th data-col="<%= c.key %>"><%= c.raw ? c.label : t(c.label) %></th><% }) %>
+              <th class="col-actions"><%= t('Actions') %></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (customerList.length) { %>
+              <% customerList.forEach(function (c, idx) { %>
+                <tr>
+                  <td class="col-index"><%= (page - 1) * pageSize + idx + 1 %></td>
+                  <% COLUMNS.forEach(function (col) { %><td data-col="<%= col.key %>" data-label="<%= col.raw ? col.label : t(col.label) %>"<%- col.key === 'name' ? ' class="fw-medium"' : '' %>><%- cell(c, col.key) %></td><% }) %>
+                  <td class="col-actions">
+                    <div class="row-actions">
+                      <button type="button" class="btn btn-sm btn-outline-secondary" title="<%= t('Detail') %>" onclick="showCustomerDetail(this)" data-record='<%= JSON.stringify(c) %>'><i class="bi bi-eye"></i></button>
+                      <% if (hasPermission('customer.update')) { %>
+                        <a href="/customer/<%= c.id %>/edit" class="btn btn-sm btn-outline-secondary" title="<%= t('Edit') %>"><i class="bi bi-pencil"></i></a>
+                      <% } %>
+                      <% if (hasPermission('customer.delete')) { %>
+                        <form action="/customer/<%= c.id %>/delete" method="POST" data-confirm="<%= t('Delete {1}? Its contacts, connections, IPs / networks and files are deleted too.', { 1: c.name }) %>">
+                          <button type="submit" class="btn btn-sm btn-outline-secondary btn-delete" title="<%= t('Delete') %>"><i class="bi bi-trash"></i></button>
+                        </form>
+                      <% } %>
+                    </div>
+                  </td>
+                </tr>
+              <% }); %>
+            <% } else { %>
+              <tr><td colspan="<%= COLUMNS.length + 2 %>">
+                <%- include('../../partials/ui/empty_state', { icon: 'bi-building', message: 'No customers found', filtered: activeFilterCount > 0 || !!search, clearUrl: '/customer',
+                      actionUrl: hasPermission('customer.create') ? '/customer/add' : null, actionLabel: 'Add Customer' }) %>
+              </td></tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+
+      <%- include('../../partials/ui/pagination', { page, totalPages, totalCount, pageSize, count: customerList.length, summary: 'Showing {1} - {2} of {3} customers' }) %>
+    </div>
+  </div>
+</div>
+
+<%- include('../../partials/ui/detail_modal', { id: 'customerDetailModal' }) %>
+<% if (hasPermission('customer.create')) { %>
+  <%- include('../../partials/ui/import_modal', { id: 'customerImportModal', title: 'Import Customers', baseUrl: '/customer',
+        instructions: ['One row per connection; rows with the same customer name make one customer, created only when all of its rows are valid',
+          'Customer IPs / networks: IP or CIDR followed by a description, comma-separated (e.g. 10.20.0.0/24 Core servers, 10.20.1.5 API)',
+          'Our IP must already exist in the IP inventory, the device and unit by their exact name',
+          'Custom fields: key=value separated by ";" (keys declared in System Configuration > Customers)',
+          'Contacts and files are added in the form'] }) %>
+<% } %>
+
+<script>
+  const CUSTOMER_TYPES = <%- jsonSafe(typeOptions) %>;
+  const CUSTOMER_STATUSES = <%- jsonSafe(statusOptions) %>;
+  const CUSTOMER_CHANNELS = <%- jsonSafe(channelOptions) %>;
+  const CUSTOMER_FIELDS = <%- jsonSafe(customFields.filter((d) => d.active)) %>;
+  const linkTo = (href, label) => '<a href="' + href + '" target="_blank" rel="noopener noreferrer">' + DV.esc(label) + '</a>';
+
+  // Custom field value as shown in the detail
+  function customValue(d, v) {
+    if (v === undefined || v === null || v === '') return '';
+    if (d.type === 'boolean') return DV.esc(t(v ? 'Yes' : 'No'));
+    if (d.type === 'url') return DV.urlList([v]);
+    if (d.type === 'textarea') return DV.multiline(v);
+    return DV.esc(v);
+  }
+
+  // One connection: its channel, both ends, dates, then the customer's IPs / networks behind it
+  function connectionCard(x) {
+    const nets = x.networks || [];
+    // the title is the connection name; channel, role, status and the network count follow it
+    const badges = ' <span class="badge tag ms-1">' + DV.esc(DV.optionLabel(CUSTOMER_CHANNELS, x.channel)) + '</span>' +
+      (x.role ? ' <span class="badge text-bg-light ms-1">' + DV.esc(t(x.role === 'primary' ? 'Primary' : 'Backup')) + '</span>' : '') +
+      (x.status === 'inactive' ? ' <span class="badge text-bg-secondary ms-1">' + DV.esc(t('Inactive')) + '</span>' : '') +
+      ' <span class="badge text-bg-light ms-1" title="' + DV.esc(t('IPs / networks')) + '"><i class="bi bi-hdd-network me-1"></i>' + nets.length + '</span>';
+    const table = nets.length
+      ? '<div class="table-responsive"><table class="table table-sm align-middle detail-table mb-0"><thead><tr><th>' + DV.esc(t('IP / Network')) + '</th><th>' + DV.esc(t('Description')) + '</th></tr></thead><tbody>' +
+        nets.map((n) => '<tr><td class="font-monospace">' + DV.esc(n.network) + '</td><td>' + (DV.text(n.description) || DV.EMPTY) + '</td></tr>').join('') + '</tbody></table></div>'
+      : '<span class="text-secondary detail-pad">' + DV.esc(t('No IPs / networks')) + '</span>';
+    return DV.section(x.name, DV.rows(
+      DV.field('Our Device', x.device_name ? linkTo('/device/device?search=' + encodeURIComponent(x.device_name), x.device_name) : ''),
+      DV.field('Our IP', x.local_ip ? DV.ipLink(x.local_ip) : ''),
+      x.start_date || x.end_date ? DV.field('Period', DV.esc((x.start_date || '…') + ' → ' + (x.end_date || '…'))) : '',
+      DV.multiline(x.description) ? DV.field('Description', DV.multiline(x.description)) : ''
+    ) + '<div class="mt-2">' + table + '</div>', badges);
+  }
+
+  function showCustomerDetail(button) {
+    const c = DV.record(button);
+    if (!c) return;
+    const attrs = c.attributes || {};
+    let body = DV.section('Overview', DV.rows(
+      DV.multiline(c.description) ? DV.field('Description', DV.multiline(c.description)) : '',
+      DV.field('Type', DV.text(c.type && DV.optionLabel(CUSTOMER_TYPES, c.type))),
+      DV.field('Status', DV.text(c.status && DV.optionLabel(CUSTOMER_STATUSES, c.status))),
+      DV.field('Unit in charge', DV.text(c.unit && c.unit.name)),
+      DV.field('Our contacts', DV.contacts(c.owners || []))
+    ));
+    if (CUSTOMER_FIELDS.length) {
+      body += DV.section('Custom fields', DV.rows(...CUSTOMER_FIELDS.map((d) => '<div class="detail-row"><div class="detail-label">' + DV.esc(d.label) + '</div><div class="detail-value">' + (customValue(d, attrs[d.key]) || DV.EMPTY) + '</div></div>')));
+    }
+    const people = c.contacts || [];
+    body += DV.section('Customer contacts', people.length
+      ? '<div class="table-responsive"><table class="table table-sm align-middle detail-table mb-0"><thead><tr>' +
+        ['Name', 'Role', 'Email', 'Phone'].map((h) => '<th>' + DV.esc(t(h)) + '</th>').join('') + '</tr></thead><tbody>' +
+        people.map((p) => '<tr><td>' + DV.esc(p.name) + '</td><td>' + (DV.text(p.role) || DV.EMPTY) + '</td><td>' + (p.email ? '<a href="mailto:' + DV.esc(p.email) + '">' + DV.esc(p.email) + '</a>' : DV.EMPTY) + '</td><td class="text-nowrap">' + (DV.text(p.phone) || DV.EMPTY) + '</td></tr>').join('') +
+        '</tbody></table></div>'
+      : '<span class="text-secondary detail-pad">' + DV.esc(t('No contacts')) + '</span>', ' <span class="badge tag ms-1">' + people.length + '</span>');
+    (c.connections || []).forEach((x) => { body += connectionCard(x); });
+    if (!(c.connections || []).length) body += DV.section('Connections', '<span class="text-secondary detail-pad">' + DV.esc(t('No connections')) + '</span>');
+    body += DV.section('Documents', '<div id="customerFiles" class="text-secondary small detail-pad">' + DV.esc(t('Loading...')) + '</div>');
+    body += DV.meta(c);
+    DV.open('customerDetailModal', { title: c.name, subtitle: c.code ? '<span class="font-monospace">' + DV.esc(c.code) + '</span>' : '', body, recordId: c.id });
+    DV.load('/customer/' + encodeURIComponent(c.id) + '/detail', document.getElementById('customerFiles'), (data) => DV.files((data && data.docs) || [], '/customer/file/:id/view'));
+  }
+</script>
