@@ -51,7 +51,7 @@ A comprehensive network and system management platform built with Node.js, Expre
 
 ## 🛠️ Installation
 
-Two ways, one command each. Then open **https://localhost** (self-signed
+Two ways, one command each. Then open **https://localhost:3100** (self-signed
 certificate: accept the browser warning) and sign in with the initial admin:
 
 ```bash
@@ -113,7 +113,7 @@ Configuration**. After changing `.env.docker`: `docker compose up -d` again.
 - New version: [Upgrading an existing install](#upgrading-an-existing-install-production).
 - Server without Internet: build there from an archive, see [Docker Image Management](#docker-image-management).
 
-**Access:** web https://localhost · API docs https://localhost/api-docs ·
+**Access:** web https://localhost:3100 · API docs https://localhost:3100/api-docs ·
 pgAdmin http://localhost:8888 (case A) · PostgreSQL `127.0.0.1:5432` on the
 Docker host only (case A)
 
@@ -386,7 +386,7 @@ driver (see Logs and Monitoring above), not by an app-level job.
 ## 📊 API Documentation
 
 REST API under **`/api/v1`**, JSON in and out. The full reference is the
-**Swagger UI at https://localhost/api-docs** (sign in to the web app first):
+**Swagger UI at https://localhost:3100/api-docs** (sign in to the web app first):
 every endpoint with its parameters, bodies, responses and a "Try it out"
 button. The same short guide as below is at the top of that page.
 
@@ -408,13 +408,13 @@ OrganizationUnit, Tags.
 
 ```bash
 # 1. token (local account whose first-login password change is done; LDAP accounts cannot get one)
-curl -k -X POST https://localhost/api/v1/auth/login \
+curl -k -X POST https://localhost:3100/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username": "api-user", "password": "..."}'
 # -> {"token": "eyJhbGciOi..."}
 
 # 2. every other call
-curl -k https://localhost/api/v1/systems?page=1&pageSize=20 \
+curl -k https://localhost:3100/api/v1/systems?page=1&pageSize=20 \
   -H "Authorization: Bearer eyJhbGciOi..."
 ```
 
@@ -687,7 +687,14 @@ See `package.json`'s `version` field and the `image:` tag in
 `docker-compose.yml` for the current released version — bump both together
 when cutting a release.
 
-### Version 1.11.1 (Latest)
+### Version 1.11.2 (Latest)
+- ⬆️ Upgrading: `docker compose up -d` (no database migration). **Open ASM is
+  now at https://<host>:3100** (was https://<host> on 443; port 80 is no longer
+  used): update bookmarks, firewall rules and API clients. Plain HTTP on 3100
+  is redirected to HTTPS. Another port: change `"3100:443"` of the nginx
+  service in `docker-compose.yml`.
+
+### Version 1.11.1
 - No database migration: upgrading from 1.11.0 only needs the new image.
 - Docs: the 1.10.0 notes no longer announce a relationship graph (not planned).
 - Checked: every page of every module (lists, add / edit / duplicate forms,
@@ -1789,7 +1796,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 ### Documentation
-- **API Documentation**: https://localhost/api-docs
+- **API Documentation**: https://localhost:3100/api-docs
 - **Swagger UI**: Interactive API documentation
 
 ### Issues
